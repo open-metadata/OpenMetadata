@@ -2688,6 +2688,10 @@ export const getEntityNameLabel = (entityName?: string) => {
     apiEndpoint: t('label.api-endpoint'),
     metric: t('label.metric'),
     page: t('label.knowledge-page'),
+    directory: t('label.directory'),
+    file: t('label.file'),
+    spreadsheet: t('label.spreadsheet'),
+    worksheet: t('label.worksheet'),
   };
 
   return (
@@ -2710,6 +2714,10 @@ export const getPluralizeEntityName = (entityType?: string) => {
     [EntityType.API_COLLECTION]: t('label.api-collection-plural'),
     [EntityType.API_ENDPOINT]: t('label.api-endpoint-plural'),
     [EntityType.METRIC]: t('label.metric-plural'),
+    [EntityType.DIRECTORY]: t('label.directory-plural'),
+    [EntityType.FILE]: t('label.file-plural'),
+    [EntityType.SPREADSHEET]: t('label.spreadsheet-plural'),
+    [EntityType.WORKSHEET]: t('label.worksheet-plural'),
   };
 
   return (

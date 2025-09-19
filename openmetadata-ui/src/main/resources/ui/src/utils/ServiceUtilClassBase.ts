@@ -701,6 +701,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_SEARCH_DEFAULT;
         } else if (serviceTypes.securityServices.includes(type)) {
           logo = DEFAULT_SERVICE;
+        } else if (serviceTypes.driveServices.includes(type)) {
+          logo = CUSTOM_DRIVE_DEFAULT;
         } else {
           logo = DEFAULT_SERVICE;
         }

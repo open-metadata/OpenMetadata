@@ -43,7 +43,7 @@ function FilesTable({
   handlePageChange,
   files,
   isLoading,
-}: FilesTableProps) {
+}: Readonly<FilesTableProps>) {
   const { t } = useTranslation();
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(

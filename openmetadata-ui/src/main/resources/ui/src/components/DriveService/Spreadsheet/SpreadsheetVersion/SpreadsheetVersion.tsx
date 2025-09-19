@@ -67,7 +67,7 @@ const SpreadsheetVersion = ({
   backHandler,
   versionHandler,
   entityPermissions,
-}: SpreadsheetVersionProps) => {
+}: Readonly<SpreadsheetVersionProps>) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();

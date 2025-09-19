@@ -76,7 +76,7 @@ function FileDetails({
   versionHandler,
   onFileUpdate,
   onUpdateVote,
-}: FileDetailsProps) {
+}: Readonly<FileDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.OVERVIEW } =

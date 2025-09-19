@@ -73,6 +73,13 @@ export const GlobalSearchBar = () => {
     : '';
   const [searchValue, setSearchValue] = useState<string>(searchQuery);
 
+  const renderSearchDropdown = useCallback(
+    (originNode: ReactNode) => (
+      <div data-testid="global-search-select-dropdown">{originNode}</div>
+    ),
+    []
+  );
+
   const entitiesSelect = useMemo(
     () => (
       <Select
@@ -80,9 +87,7 @@ export const GlobalSearchBar = () => {
         bordered={false}
         className="global-search-select"
         data-testid="global-search-selector"
-        dropdownRender={(originNode: ReactNode) => (
-          <div data-testid="global-search-select-dropdown">{originNode}</div>
-        )}
+        dropdownRender={renderSearchDropdown}
         listHeight={300}
         popupClassName="global-search-select-menu"
         size="small"
@@ -99,7 +104,7 @@ export const GlobalSearchBar = () => {
         ))}
       </Select>
     ),
-    [searchCriteria, i18n.language]
+    [searchCriteria, i18n.language, renderSearchDropdown]
   );
 
   const handleSelectOption = useCallback((text: string) => {

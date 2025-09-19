@@ -24,8 +24,11 @@ import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colo
 import { ReactComponent as DataProductIcon } from '../assets/svg/data-product-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored-new.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema-colored.svg';
+import { ReactComponent as DirectoryIcon } from '../assets/svg/directory-colored-new.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/domain-colored.svg';
+import { ReactComponent as DriveServiceIcon } from '../assets/svg/drive-service-colored-new.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/file-colored-new.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as HealthIcon } from '../assets/svg/health-check.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/lineage-colored.svg';
@@ -49,6 +52,7 @@ import { ReactComponent as DataObservability } from '../assets/svg/setting-data-
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services-omd.svg';
+import { ReactComponent as SpreadsheetIcon } from '../assets/svg/spreadsheet-colored-new.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored-new.svg';
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedures-colored-new.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-colored-new.svg';
@@ -57,6 +61,7 @@ import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/theme-colored-new.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/url-link-colored.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
+import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored-new.svg';
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
@@ -242,7 +247,7 @@ class GlobalSettingsClassBase {
               permissions
             ),
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DRIVES}`,
-            icon: MetadataIcon,
+            icon: DriveServiceIcon,
           },
           {
             label: t('label.data-observability'),
@@ -560,7 +565,7 @@ class GlobalSettingsClassBase {
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DIRECTORIES}`,
-                icon: SearchIndexIcon,
+                icon: DirectoryIcon,
               },
               {
                 label: t('label.file-plural'),
@@ -569,7 +574,7 @@ class GlobalSettingsClassBase {
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.FILES}`,
-                icon: SearchIndexIcon,
+                icon: FileIcon,
               },
               {
                 label: t('label.spreadsheet-plural'),
@@ -578,7 +583,7 @@ class GlobalSettingsClassBase {
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.SPREADSHEETS}`,
-                icon: SearchIndexIcon,
+                icon: SpreadsheetIcon,
               },
               {
                 label: t('label.worksheet-plural'),
@@ -587,7 +592,7 @@ class GlobalSettingsClassBase {
                 }),
                 isProtected: Boolean(isAdminUser),
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.WORKSHEETS}`,
-                icon: SearchIndexIcon,
+                icon: WorksheetIcon,
               },
             ].sort((a, b) => a.label.localeCompare(b.label)),
           },
@@ -801,7 +806,7 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
-            icon: ChartIcon,
+            icon: DirectoryIcon,
           },
           {
             label: t('label.file-plural'),
@@ -810,7 +815,7 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.FILES}`,
-            icon: ChartIcon,
+            icon: FileIcon,
           },
           {
             label: t('label.spreadsheet-plural'),
@@ -819,7 +824,7 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SPREADSHEETS}`,
-            icon: ChartIcon,
+            icon: SpreadsheetIcon,
           },
           {
             label: t('label.worksheet-plural'),
@@ -828,7 +833,7 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
-            icon: ChartIcon,
+            icon: WorksheetIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

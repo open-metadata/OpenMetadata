@@ -22,6 +22,7 @@ import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg'
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as DriveIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
@@ -303,7 +304,7 @@ class SearchClassBase {
             EntityType.WORKSHEET,
           ],
         },
-        icon: DatabaseIcon,
+        icon: DriveIcon,
       },
       {
         title: t('label.governance'),

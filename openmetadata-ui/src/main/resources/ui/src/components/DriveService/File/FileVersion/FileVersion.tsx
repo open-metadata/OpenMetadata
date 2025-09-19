@@ -55,7 +55,7 @@ const FileVersion = ({
   backHandler,
   versionHandler,
   entityPermissions,
-}: FileVersionProps) => {
+}: Readonly<FileVersionProps>) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();

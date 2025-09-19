@@ -67,7 +67,7 @@ const DirectoryVersion = ({
   backHandler,
   versionHandler,
   entityPermissions,
-}: DirectoryVersionProps) => {
+}: Readonly<DirectoryVersionProps>) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();

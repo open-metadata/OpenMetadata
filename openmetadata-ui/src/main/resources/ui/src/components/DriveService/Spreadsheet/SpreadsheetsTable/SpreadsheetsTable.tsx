@@ -43,7 +43,7 @@ function SpreadsheetsTable({
   handlePageChange,
   spreadsheets,
   isLoading,
-}: SpreadsheetsTableProps) {
+}: Readonly<SpreadsheetsTableProps>) {
   const { t } = useTranslation();
 
   const tableColumn: ColumnsType<ServicePageData> = useMemo(

@@ -63,7 +63,7 @@ const WorksheetVersion = ({
   backHandler,
   versionHandler,
   entityPermissions,
-}: WorksheetVersionProps) => {
+}: Readonly<WorksheetVersionProps>) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { tab } = useRequiredParams<{ tab: EntityTabs }>();

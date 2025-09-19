@@ -76,7 +76,7 @@ function WorksheetDetails({
   versionHandler,
   onWorksheetUpdate,
   onUpdateVote,
-}: WorksheetDetailsProps) {
+}: Readonly<WorksheetDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.SCHEMA } =

@@ -78,7 +78,7 @@ function DirectoryDetails({
   versionHandler,
   onDirectoryUpdate,
   onUpdateVote,
-}: DirectoryDetailsProps) {
+}: Readonly<DirectoryDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.CHILDREN } =

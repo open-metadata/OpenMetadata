@@ -92,12 +92,11 @@ import dashboardDefault from '../assets/svg/dashboard.svg';
 import iconDefaultService from '../assets/svg/default-service-icon.svg';
 import elasticSearch from '../assets/svg/elasticsearch.svg';
 import databaseDefault from '../assets/svg/ic-custom-database.svg';
+import { default as customDriveDefault } from '../assets/svg/ic-custom-drive.svg';
 import mlModelDefault from '../assets/svg/ic-custom-model.svg';
 import searchDefault from '../assets/svg/ic-custom-search.svg';
-import {
-  default as driveDefault,
-  default as storageDefault,
-} from '../assets/svg/ic-custom-storage.svg';
+import { default as storageDefault } from '../assets/svg/ic-custom-storage.svg';
+import { default as driveDefault } from '../assets/svg/ic-drive-service.svg';
 import restService from '../assets/svg/ic-service-rest-api.svg';
 import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
@@ -194,7 +193,8 @@ export const DASHBOARD_DEFAULT = dashboardDefault;
 export const PIPELINE_DEFAULT = pipelineDefault;
 export const ML_MODEL_DEFAULT = mlModelDefault;
 export const CUSTOM_STORAGE_DEFAULT = storageDefault;
-export const CUSTOM_DRIVE_DEFAULT = driveDefault;
+export const CUSTOM_DRIVE_DEFAULT = customDriveDefault;
+export const DRIVE_DEFAULT = driveDefault;
 export const NIFI = nifi;
 export const KINESIS = kinesis;
 export const QUICKSIGHT = quicksight;
