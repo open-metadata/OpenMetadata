@@ -947,10 +947,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   };
 
-  const onQueryFilterUpdate = useCallback((query: string) => {
-    setQueryFilter(query);
-  }, []);
-
   const selectLoadMoreNode = async (node: Node) => {
     const { pagination_data, direction } = node.data.node;
     const { parentId, index: from } = pagination_data;
@@ -1715,7 +1711,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       onColumnClick,
       onNodesChange,
       onEdgesChange,
-      onQueryFilterUpdate,
       onZoomUpdate,
       updateEntityData,
       onDrawerClose,

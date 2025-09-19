@@ -75,7 +75,7 @@ export interface LineageContextType {
   onColumnClick: (node: string) => void;
   onLineageEditClick: () => void;
   onZoomUpdate: (value: number) => void;
-  onLineageConfigUpdate: (config: any) => void;
+  onLineageConfigUpdate: (config: LineageConfig) => void;
   selectedQuickFilters: ExploreQuickFilterField[];
   setSelectedQuickFilters: Dispatch<SetStateAction<ExploreQuickFilterField[]>>;
   onDrawerClose: () => void;

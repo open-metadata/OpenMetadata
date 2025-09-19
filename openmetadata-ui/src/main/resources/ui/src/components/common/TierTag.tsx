@@ -21,17 +21,7 @@ interface TierTagProps {
   size?: 'small' | 'default' | 'large';
 }
 
-const sizeMap = {
-  small: 'p-x-sm p-y-xs text-xs',
-  default: 'p-x-md p-y-sm text-sm',
-  large: 'p-x-lg p-y-md text-md',
-};
-
-const TierTag: React.FC<TierTagProps> = ({
-  tier,
-  className = '',
-  size = 'default',
-}) => {
+const TierTag: React.FC<TierTagProps> = ({ tier, className = '' }) => {
   return (
     <span
       className={classNames(

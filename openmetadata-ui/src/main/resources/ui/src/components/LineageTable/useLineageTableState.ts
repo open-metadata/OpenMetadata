@@ -13,12 +13,10 @@
 
 import { useReducer } from 'react';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { SearchSourceAlias } from '../../interface/search.interface';
 import { LineageNode } from '../Lineage/Lineage.interface';
 import { EImpactLevel } from './LineageTable.interface';
 
 interface LineageTableState {
-  currentNodeData: SearchSourceAlias | null;
   filterNodes: LineageNode[];
   loading: boolean;
   filterSelectionActive: boolean;
@@ -33,7 +31,6 @@ interface LineageTableState {
 }
 
 type LineageTableAction =
-  | { type: 'SET_CURRENT_NODE_DATA'; payload: SearchSourceAlias | null }
   | { type: 'SET_FILTER_NODES'; payload: LineageNode[] }
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_FILTER_SELECTION_ACTIVE'; payload: boolean }
@@ -62,7 +59,6 @@ export interface LineagePagingInfo {
 }
 
 const initialState: LineageTableState = {
-  currentNodeData: null,
   filterNodes: [],
   loading: false,
   filterSelectionActive: false,
@@ -81,9 +77,6 @@ function lineageTableReducer(
   action: LineageTableAction
 ): LineageTableState {
   switch (action.type) {
-    case 'SET_CURRENT_NODE_DATA':
-      return { ...state, currentNodeData: action.payload };
-
     case 'SET_FILTER_NODES':
       return { ...state, filterNodes: action.payload };
 
@@ -142,11 +135,6 @@ function lineageTableReducer(
 
 export function useLineageTableState() {
   const [state, dispatch] = useReducer(lineageTableReducer, initialState);
-
-  // Helper functions for common state updates
-  const setCurrentNodeData = (nodeData: SearchSourceAlias | null) => {
-    dispatch({ type: 'SET_CURRENT_NODE_DATA', payload: nodeData });
-  };
 
   const setFilterNodes = (nodes: LineageNode[]) => {
     dispatch({ type: 'SET_FILTER_NODES', payload: nodes });
@@ -215,7 +203,6 @@ export function useLineageTableState() {
     ...state,
 
     // Action dispatchers
-    setCurrentNodeData,
     setFilterNodes,
     setLoading,
     setFilterSelectionActive,

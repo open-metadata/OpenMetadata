@@ -17,10 +17,11 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  MenuProps,
+  styled,
   ToggleButton,
   ToggleButtonGroup,
 } from '@mui/material';
-import { MenuProps } from 'antd';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
 import classNames from 'classnames';
@@ -30,9 +31,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
 import { ReactComponent as FilterLinesIcon } from '../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as ShareIcon } from '../../assets/svg/ic-share-new.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
 import { NO_DATA, PAGE_SIZE_LARGE } from '../../constants/constants';
@@ -87,19 +90,67 @@ import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
 
 export const ImpactOptions = [
-  { label: 'Table Level', key: EImpactLevel.TableLevel },
-  { label: 'Column Level', key: EImpactLevel.ColumnLevel },
+  { label: 'Table Level', key: EImpactLevel.TableLevel, icon: <TableIcon /> },
+  {
+    label: 'Column Level',
+    key: EImpactLevel.ColumnLevel,
+    icon: <ColumnIcon />,
+  },
 ];
+
+const StyledMenu = styled((props: MenuProps) => (
+  <Menu
+    anchorOrigin={{
+      vertical: 'bottom',
+      horizontal: 'right',
+    }}
+    elevation={0}
+    transformOrigin={{
+      vertical: 'top',
+      horizontal: 'right',
+    }}
+    {...props}
+  />
+))(({ theme }) => ({
+  '& .MuiPaper-root': {
+    borderRadius: 6,
+    marginTop: theme.spacing(1),
+    minWidth: 180,
+    color: 'rgb(55, 65, 81)',
+    boxShadow:
+      'rgb(255, 255, 255) 0px 0px 0px 0px, rgba(0, 0, 0, 0.05) 0px 0px 0px 1px, rgba(0, 0, 0, 0.1) 0px 10px 15px -3px, rgba(0, 0, 0, 0.05) 0px 4px 6px -2px',
+    '& .MuiMenu-list': {
+      padding: '0',
+    },
+    '& .MuiMenuItem-root': {
+      margin: '0',
+      padding: '10px 16px',
+      borderRadius: '0px',
+      '& svg': {
+        height: 24,
+        marginRight: theme.spacing(1.5),
+      },
+      '&:active': {
+        backgroundColor: theme.palette.allShades.blue[25],
+      },
+      '&.Mui-selected': {
+        backgroundColor: theme.palette.allShades.blue[25],
+        color: theme.palette.allShades.blue[700],
+      },
+      '&:hover': {
+        backgroundColor: theme.palette.allShades.blue[25],
+      },
+    },
+  },
+}));
 
 const LineageTable = () => {
   const {
-    entityLineage,
     selectedQuickFilters,
     setSelectedQuickFilters,
     lineageConfig,
     onExportClick,
     onLineageConfigUpdate,
-    fetchLineageData,
   } = useLineageProvider();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
@@ -107,7 +158,6 @@ const LineageTable = () => {
   const navigate = useNavigate();
   // Use the custom hook for state management
   const {
-    currentNodeData,
     filterNodes,
     loading,
     filterSelectionActive,
@@ -117,7 +167,6 @@ const LineageTable = () => {
     upstreamColumnLineageNodes,
     downstreamColumnLineageNodes,
     lineagePagingInfo,
-    setCurrentNodeData,
     setFilterNodes,
     setLoading,
     setSearchValue,
@@ -219,21 +268,15 @@ const LineageTable = () => {
   const radioGroupOptions = useMemo(() => {
     return [
       {
-        label:
-          'Upstream ' +
-          (lineageDirection === LineageDirection.Upstream ? upstreamCount : ''),
+        label: 'Upstream ' + upstreamCount,
         value: LineageDirection.Upstream,
       },
       {
-        label:
-          'Downstream ' +
-          (lineageDirection === LineageDirection.Downstream
-            ? downstreamCount
-            : ''),
+        label: 'Downstream ' + downstreamCount,
         value: LineageDirection.Downstream,
       },
     ];
-  }, [upstreamCount, downstreamCount, lineageDirection]);
+  }, [upstreamCount, downstreamCount]);
 
   const streamButtonGroup = useMemo(() => {
     return (
@@ -257,18 +300,6 @@ const LineageTable = () => {
     );
   }, [lineageDirection, radioGroupOptions]);
 
-  const handleImpactLevelChange = useCallback(({ key }: { key: string }) => {
-    setSelectedImpactLevel(key as EImpactLevel);
-  }, []);
-
-  const impactDropdownMenu: MenuProps = useMemo(() => {
-    return {
-      items: ImpactOptions,
-      selectedKeys: [impactLevel],
-      onClick: handleImpactLevelChange,
-    };
-  }, [impactLevel, handleImpactLevelChange]);
-
   const extraTableFilters = useMemo(() => {
     return (
       <div className="d-flex justify-between items-center w-full">
@@ -289,18 +320,23 @@ const LineageTable = () => {
                 values={{ area: t(`label.${impactLevel}`) }}
               />
             </Button>
-            <Menu
+            <StyledMenu
               anchorEl={impactOnEl}
               open={Boolean(impactOnEl)}
               onClose={() => setImpactOnEl(null)}>
               {ImpactOptions.map((option) => (
                 <MenuItem
                   key={option.key}
-                  onClick={() => setSelectedImpactLevel(option.key)}>
+                  selected={option.key === impactLevel}
+                  onClick={() => {
+                    setSelectedImpactLevel(option.key);
+                    setImpactOnEl(null);
+                  }}>
+                  {option.icon}
                   {option.label}
                 </MenuItem>
               ))}
-            </Menu>
+            </StyledMenu>
           </div>
 
           <Button
@@ -311,22 +347,7 @@ const LineageTable = () => {
         </div>
       </div>
     );
-  }, [
-    // dependencyDropdownMenu,
-    navigate,
-    impactDropdownMenu,
-    streamButtonGroup,
-    // selectedDependencyType,
-    impactLevel,
-  ]);
-
-  useEffect(() => {
-    const activeNode = entityLineage.nodes?.find(
-      (node) => node.fullyQualifiedName === fqn
-    ) as SearchSourceAlias;
-
-    activeNode ? setCurrentNodeData(activeNode) : setCurrentNodeData(null);
-  }, [entityLineage.nodes]);
+  }, [navigate, streamButtonGroup, impactOnEl, impactLevel]);
 
   const handleQuickFiltersValueSelect = useCallback(
     (field: ExploreQuickFilterField) => {
@@ -381,6 +402,8 @@ const LineageTable = () => {
         queryFilter,
       });
 
+      delete res.nodes[fqn];
+
       setFilterNodes(
         sortBy(
           map(
@@ -419,7 +442,6 @@ const LineageTable = () => {
   }, [
     lineageDirection,
     queryFilter,
-    currentNodeData,
     entityType,
     fqn,
     nodeDepth,
@@ -430,14 +452,6 @@ const LineageTable = () => {
   useEffect(() => {
     fetchNodes();
   }, [queryFilter, nodeDepth, currentPage, lineageDirection]);
-
-  useEffect(() => {
-    fetchLineageData(fqn, entityType, {
-      upstreamDepth: 0,
-      downstreamDepth: 0,
-      nodesPerLayer: 50,
-    });
-  }, [queryFilter]);
 
   const onSearch = useCallback(
     (text: string) => {
@@ -495,22 +509,13 @@ const LineageTable = () => {
         </div>
         {isFilterVisible ? (
           <>
-            <ExploreQuickFilters
-              independent
-              aggregations={{}}
-              fields={selectedQuickFilters}
-              index={SearchIndex.ALL}
-              showDeleted={false}
-              onFieldValueSelect={handleQuickFiltersValueSelect}
-            />
-
             <Button
               endIcon={<DropdownIcon />}
               variant="text"
               onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
-              {t('node-depth')}: {nodeDepth}{' '}
+              {t('label.node-depth')}: {nodeDepth}{' '}
             </Button>
-            <Menu
+            <StyledMenu
               anchorEl={nodeDepthAnchorEl}
               open={Boolean(nodeDepthAnchorEl)}
               slotProps={{
@@ -533,7 +538,15 @@ const LineageTable = () => {
                   {depth}
                 </MenuItem>
               ))}
-            </Menu>
+            </StyledMenu>
+            <ExploreQuickFilters
+              independent
+              aggregations={{}}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
           </>
         ) : (
           <></>
