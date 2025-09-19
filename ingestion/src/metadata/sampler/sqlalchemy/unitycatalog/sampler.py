@@ -27,18 +27,22 @@ class UnityCatalogSamplerInterface(DatabricksSamplerInterface):
     """
 
     def __init__(self, *args, **kwargs):
-        # Convert the service connection token to databricks connection auth
-        service_connection_config = kwargs.get("service_connection_config")
-        service_connection_config_dict = service_connection_config.model_dump()
-        service_connection_config_dict["scheme"] = service_connection_config_dict[
-            "scheme"
-        ].value
-        service_connection_config_dict["type"] = "Databricks"
-        service_connection_config_dict["authType"] = {
-            "token": service_connection_config_dict.pop("token")
-        }
+        # Convert Unity Catalog connection to Databricks and move token to authType.
         kwargs["service_connection_config"] = DatabricksConnection.model_validate(
-            service_connection_config_dict
+            {
+                **(
+                    (
+                        t := (
+                            cfg := kwargs["service_connection_config"].model_dump(
+                                mode="json"
+                            )
+                        ).pop("token")
+                    )
+                    and cfg
+                ),
+                "type": "Databricks",
+                "authType": {"token": t},
+            }
         )
 
         super().__init__(*args, **kwargs)
