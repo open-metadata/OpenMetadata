@@ -171,6 +171,7 @@ export const validateViewPermissions = async (
     .getByTestId('loader')
     .waitFor({ state: 'detached' });
   await page.waitForLoadState('domcontentloaded');
+
   await page.waitForSelector('[data-testid="profiler-tab-left-panel"]', {
     state: 'visible',
   });
