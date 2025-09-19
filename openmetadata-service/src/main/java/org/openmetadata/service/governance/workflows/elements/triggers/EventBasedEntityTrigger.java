@@ -149,37 +149,15 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     }
   }
 
-  /**
-   * Helper method to get entity types from trigger configuration.
-   * Supports both legacy single entityType and new multiple entityTypes.
-   *
-   * Uses JsonUtils to convert config Object to Map for safe field access
-   * instead of risky reflection-based approach.
-   *
-   * @param configObj The trigger configuration object
-   * @return List of entity types to monitor
-   */
   private List<String> getEntityTypesFromConfig(Object configObj) {
-    // Convert config object to Map for safe field access - NO REFLECTION!
     Map<String, Object> configMap = JsonUtils.getMap(configObj);
-
-    // Try new entityTypes array first (preferred approach)
     @SuppressWarnings("unchecked")
     List<String> entityTypes = (List<String>) configMap.get("entityTypes");
     if (entityTypes != null && !entityTypes.isEmpty()) {
       return entityTypes;
     }
-
-    // Fall back to legacy single entityType (backward compatibility)
-    String entityType = (String) configMap.get("entityType");
-    if (entityType != null && !entityType.isEmpty()) {
-      return List.of(entityType);
-    }
-
-    // Should not happen due to schema validation, but defensive programming
-    throw new IllegalArgumentException(
-        "Neither 'entityType' nor 'entityTypes' found in workflow trigger configuration. "
-            + "At least one must be specified.");
+    LOG.debug("No entityTypes found in workflow trigger configuration, returning empty list");
+    return new ArrayList<>();
   }
 
   private CallActivity getWorkflowTrigger(

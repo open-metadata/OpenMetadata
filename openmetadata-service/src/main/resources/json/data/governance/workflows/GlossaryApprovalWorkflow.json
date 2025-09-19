@@ -9,7 +9,7 @@
   "trigger": {
     "type": "eventBasedEntity",
     "config": {
-      "entityType": "glossaryTerm",
+      "entityTypes": ["glossaryTerm"],
       "events": ["Created", "Updated"],
       "exclude": ["reviewers"],
       "filter": ""

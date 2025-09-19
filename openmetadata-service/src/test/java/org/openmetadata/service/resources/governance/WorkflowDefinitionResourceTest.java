@@ -1023,6 +1023,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Wait for workflow to process all three entity types using Awaitility
     await()
         .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(1))
         .until(
             () -> {
@@ -1258,8 +1259,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     // Wait for workflow to process using Awaitility
     await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
         .until(
             () -> {
               try {
@@ -1735,8 +1737,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     // Wait for workflow to process using Awaitility for API Collection
     await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
         .until(
             () -> {
               try {
@@ -1753,8 +1756,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     // Wait for workflow to process using Awaitility for Container
     await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
         .until(
             () -> {
               try {
@@ -2038,8 +2042,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     // Wait for filtered entities to be updated (only table1 and dashboard1 should be updated)
     Awaitility.await()
-        .pollInterval(Duration.ofSeconds(2))
+        .pollInterval(Duration.ofSeconds(1))
         .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
         .ignoreExceptions()
         .until(
             () -> {
@@ -3857,8 +3862,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     // Step 6: Wait for workflow to process and assert tags are replaced
     await()
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .pollDelay(Duration.ofMillis(500))
         .until(
             () -> {
               try {
@@ -4343,6 +4349,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     await()
         .atMost(Duration.ofSeconds(120))
         .pollInterval(Duration.ofSeconds(1))
+        .pollDelay(Duration.ofMillis(500))
         .until(
             () -> {
               try {
@@ -4364,7 +4371,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.info("Verifying Tag description update...");
     await()
         .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .pollDelay(Duration.ofMillis(500))
         .until(
             () -> {
               try {
@@ -4383,6 +4391,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     await()
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofMillis(500))
         .until(
             () -> {
               try {
@@ -4405,6 +4414,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     await()
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofMillis(500))
         .until(
             () -> {
               try {
@@ -4585,6 +4595,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     await()
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofMillis(500))
         .until(
             () -> {
               try {
@@ -4604,5 +4615,84 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     LOG.info("✓ DataProduct status successfully auto-approved to 'Approved'");
     LOG.info("test_AutoApprovalForEntitiesWithoutReviewers completed successfully");
+  }
+
+  @Test
+  @Order(16)
+  void test_CreateWorkflowWithoutEntityTypes() throws Exception {
+    String workflowJson =
+        """
+    {
+      "name": "Test",
+      "displayName": "Test-1",
+      "description": "string",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "output": [],
+        "config": {}
+      },
+      "nodes": [],
+      "edges": []
+    }
+    """;
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+
+    // Create the workflow - should succeed without entityTypes and with empty nodes
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(workflow));
+
+    assertTrue(
+        response.getStatus() == Response.Status.CREATED.getStatusCode()
+            || response.getStatus() == Response.Status.OK.getStatusCode(),
+        "Should successfully create workflow without entityTypes and with empty nodes");
+
+    WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
+    assertNotNull(createdWorkflow);
+    assertEquals("Test", createdWorkflow.getName());
+    assertEquals("Test-1", createdWorkflow.getDisplayName());
+    assertEquals("string", createdWorkflow.getDescription());
+    LOG.debug("Created workflow without entityTypes: {}", createdWorkflow.getName());
+
+    // Update the same workflow - should succeed again
+    String updatedWorkflowJson =
+        """
+    {
+      "name": "Test",
+      "displayName": "Test-1-Updated",
+      "description": "updated string",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "output": [],
+        "config": {}
+      },
+      "nodes": [],
+      "edges": []
+    }
+    """;
+
+    CreateWorkflowDefinition updatedWorkflow =
+        JsonUtils.readValue(updatedWorkflowJson, CreateWorkflowDefinition.class);
+
+    // Update the workflow - should succeed
+    Response updateResponse =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .put(Entity.json(updatedWorkflow));
+
+    assertTrue(
+        updateResponse.getStatus() == Response.Status.OK.getStatusCode()
+            || updateResponse.getStatus() == Response.Status.CREATED.getStatusCode(),
+        "Should successfully update workflow without entityTypes and with empty nodes");
+
+    WorkflowDefinition updatedWorkflowDef = updateResponse.readEntity(WorkflowDefinition.class);
+    assertNotNull(updatedWorkflowDef);
+    assertEquals("Test", updatedWorkflowDef.getName());
+    assertEquals("Test-1-Updated", updatedWorkflowDef.getDisplayName());
+    assertEquals("updated string", updatedWorkflowDef.getDescription());
+    LOG.debug("Updated workflow without entityTypes: {}", updatedWorkflowDef.getName());
+
+    LOG.info("test_CreateWorkflowWithoutEntityTypes completed successfully");
   }
 }

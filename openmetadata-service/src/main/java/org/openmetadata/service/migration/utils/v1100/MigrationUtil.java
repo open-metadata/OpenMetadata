@@ -335,6 +335,7 @@ public class MigrationUtil {
    * 3. Add version-based approval routing for different paths between creates and updates
    * 4. Add detailed approval task for updates with higher thresholds
    * 5. Add rollback capability for rejected updates
+   * 6. Update trigger to use entityTypes array instead of entityType string
    */
   public static void updateGlossaryTermApprovalWorkflow() {
     try {
@@ -359,6 +360,9 @@ public class MigrationUtil {
         List<EdgeDefinition> edges = new ArrayList<>(workflowDefinition.getEdges());
 
         boolean workflowModified = false;
+
+        // Update trigger to use entityTypes array if needed
+        workflowModified |= updateTriggerToEntityTypes(workflowDefinition);
 
         // Step 1: Migrate setGlossaryTermStatusTask nodes to setEntityAttributeTask
         for (int i = 0; i < nodes.size(); i++) {
@@ -814,5 +818,58 @@ public class MigrationUtil {
       LOG.error("Failed to migrate glossary term status node", e);
       return node;
     }
+  }
+
+  /**
+   * Update trigger from entityType string to entityTypes array
+   */
+  private static boolean updateTriggerToEntityTypes(WorkflowDefinition workflowDefinition) {
+    try {
+      if (workflowDefinition.getTrigger() != null) {
+        String triggerJson = JsonUtils.pojoToJson(workflowDefinition.getTrigger());
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode triggerNode = mapper.readTree(triggerJson);
+
+        if (triggerNode instanceof ObjectNode) {
+          ObjectNode triggerObj = (ObjectNode) triggerNode;
+
+          // Check if it's an eventBasedEntity trigger
+          if ("eventBasedEntity".equals(triggerObj.get("type").asText())) {
+            JsonNode configNode = triggerObj.get("config");
+
+            if (configNode instanceof ObjectNode) {
+              ObjectNode configObj = (ObjectNode) configNode;
+
+              // Check if there's an entityType field (old format)
+              if (configObj.has("entityType") && !configObj.has("entityTypes")) {
+                String entityType = configObj.get("entityType").asText();
+                configObj.remove("entityType");
+
+                // Create entityTypes array with the single value
+                ArrayNode entityTypesArray = mapper.createArrayNode();
+                entityTypesArray.add(entityType);
+                configObj.set("entityTypes", entityTypesArray);
+
+                // Convert back to trigger object
+                var updatedTrigger =
+                    JsonUtils.readValue(
+                        mapper.writeValueAsString(triggerObj),
+                        workflowDefinition.getTrigger().getClass());
+                workflowDefinition.setTrigger(updatedTrigger);
+
+                LOG.info(
+                    "Updated trigger from entityType='{}' to entityTypes=['{}']",
+                    entityType,
+                    entityType);
+                return true;
+              }
+            }
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to update trigger to entityTypes array", e);
+    }
+    return false;
   }
 }

@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.Getter;
+import lombok.extern.slf4j.Slf4j;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.CallActivity;
 import org.flowable.bpmn.model.EndEvent;
@@ -37,6 +38,7 @@ import org.openmetadata.service.governance.workflows.flowable.builders.ServiceTa
 import org.openmetadata.service.governance.workflows.flowable.builders.StartEventBuilder;
 import org.quartz.CronTrigger;
 
+@Slf4j
 public class PeriodicBatchEntityTrigger implements TriggerInterface {
   private final List<Process> processes = new ArrayList<>();
 
@@ -213,21 +215,13 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
 
   private List<String> getEntityTypesFromConfig(Object configObj) {
     Map<String, Object> configMap = JsonUtils.getMap(configObj);
-
     @SuppressWarnings("unchecked")
     List<String> entityTypes = (List<String>) configMap.get("entityTypes");
     if (entityTypes != null && !entityTypes.isEmpty()) {
       return entityTypes;
     }
-
-    String entityType = (String) configMap.get("entityType");
-    if (entityType != null && !entityType.isEmpty()) {
-      return List.of(entityType);
-    }
-
-    throw new IllegalArgumentException(
-        "Neither 'entityType' nor 'entityTypes' found in workflow trigger configuration. "
-            + "At least one must be specified for batch processing.");
+    LOG.debug("No entityTypes found in workflow trigger configuration, returning empty list");
+    return new ArrayList<>();
   }
 
   @Override

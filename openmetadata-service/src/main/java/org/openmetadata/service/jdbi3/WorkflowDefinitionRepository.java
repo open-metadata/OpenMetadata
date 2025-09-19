@@ -190,7 +190,7 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   /**
    * Comprehensive workflow graph structure validation.
    * Performs all graph validations in a single traversal for efficiency:
-   * 1. Exactly one start node
+   * 1. Exactly one start node (if nodes exist)
    * 2. No cycles in the graph
    * 3. No orphaned nodes (all nodes are reachable from start)
    * 4. All edges reference valid nodes
@@ -198,9 +198,9 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
    * 6. End nodes must not have outgoing edges
    */
   private void validateWorkflowGraphStructure(WorkflowDefinition workflowDefinition) {
+    // Skip validation if no nodes are present - allow empty workflows
     if (workflowDefinition.getNodes() == null || workflowDefinition.getNodes().isEmpty()) {
-      throw BadRequestException.of(
-          String.format("Workflow '%s' must have at least one node", workflowDefinition.getName()));
+      return;
     }
 
     if (workflowDefinition.getEdges() == null) {
