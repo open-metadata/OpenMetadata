@@ -208,10 +208,71 @@
   .form-control {
     box-shadow: 0px 1px 2px 0px @grey-27;
 
-    &:focus {
-      border-color: @primary-color;
-      box-shadow: @box-shadow-ant-select;
-      outline: none;
+    &:focus,
+    &:focus-visible,
+    &:focus-within,
+    &:active {
+      border-color: @grey-300 !important;
+      box-shadow: 0px 1px 2px 0px @grey-27 !important;
+      outline: none !important;
     }
+  }
+}
+
+// Apply proper blue focus styles to select container
+.sso-select-container,
+.sso-array-field {
+  .ant-select {
+    &:hover .ant-select-selector {
+      border-color: @primary-6 !important;
+    }
+
+    &.ant-select-focused .ant-select-selector,
+    &.ant-select-open .ant-select-selector {
+      border-color: @primary-color !important;
+      box-shadow: @box-shadow-ant-select !important;
+      outline: none !important;
+    }
+
+    .ant-select-selector {
+      &:hover {
+        border-color: @primary-6 !important;
+      }
+
+      &:focus,
+      &:focus-within,
+      &:active {
+        border-color: @primary-color !important;
+        box-shadow: @box-shadow-ant-select !important;
+        outline: none !important;
+      }
+    }
+  }
+}
+
+// Specific override for ant-select show-search input
+.sso-select-container
+  .ant-select-show-search.ant-select:not(.ant-select-customize-input)
+  .ant-select-selector
+  input,
+.sso-array-field
+  .ant-select-show-search.ant-select:not(.ant-select-customize-input)
+  .ant-select-selector
+  input,
+.sso-array-field-container
+  .ant-select-show-search.ant-select:not(.ant-select-customize-input)
+  .ant-select-selector
+  input {
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+
+  &:focus,
+  &:focus-visible,
+  &:focus-within,
+  &:active {
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
   }
 }
