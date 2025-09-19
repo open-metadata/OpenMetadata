@@ -15,6 +15,9 @@ supporting sqlalchemy abstraction layer
 """
 
 
+from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
+    DatabricksConnection,
+)
 from metadata.sampler.sqlalchemy.databricks.sampler import DatabricksSamplerInterface
 
 
@@ -24,4 +27,18 @@ class UnityCatalogSamplerInterface(DatabricksSamplerInterface):
     """
 
     def __init__(self, *args, **kwargs):
+        # Convert the service connection token to databricks connection auth
+        service_connection_config = kwargs.get("service_connection_config")
+        service_connection_config_dict = service_connection_config.model_dump()
+        service_connection_config_dict["scheme"] = service_connection_config_dict[
+            "scheme"
+        ].value
+        service_connection_config_dict["type"] = "Databricks"
+        service_connection_config_dict["authType"] = {
+            "token": service_connection_config_dict.pop("token")
+        }
+        kwargs["service_connection_config"] = DatabricksConnection.model_validate(
+            service_connection_config_dict
+        )
+
         super().__init__(*args, **kwargs)
