@@ -199,7 +199,29 @@
       padding: 0px !important;
     }
     .rjsf .form-control {
-      padding: @padding-sm - 2px @padding-sm + 2px !important;
+      padding: @size-xs @size-sm;
+    }
+    .rjsf .form-group.field {
+      margin-top: 0;
+    }
+    // Form label styling for configured SSO
+    .rjsf .control-label {
+      color: @grey-700;
+      font-weight: 500;
+      font-size: @font-size-base;
+
+      .required {
+        color: @red-23;
+      }
+    }
+
+    // Boolean field labels (checkboxes, radio buttons) styling for configured SSO
+    .rjsf .checkbox label span,
+    .rjsf .radio-inline label span span,
+    .rjsf .ant-radio-wrapper {
+      color: @grey-700 !important;
+      font-weight: 500 !important;
+      font-size: @font-size-base !important;
     }
 
     // Apply select styling to configure tab form
@@ -208,7 +230,7 @@
       border: 1px solid @grey-300;
       background-color: @background-color;
       height: auto;
-      padding: @padding-sm - 2px @padding-sm + 2px;
+      padding: @size-xs @size-sm;
 
       &:hover {
         border-color: @primary-6;

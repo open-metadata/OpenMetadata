@@ -145,8 +145,8 @@ const SettingsSso = () => {
           <div>
             {/* Enable SSO section */}
             <div className="enable-sso-card-container">
-              <div className="flex justify-between items-center">
-                <div className="flex flex-col  gap-2">
+              <div className="flex justify-between items-start">
+                <div className="flex flex-col">
                   <Typography.Title className="enable-self-signup-header m-b-xs">
                     {t('label.enable-sso')}
                   </Typography.Title>

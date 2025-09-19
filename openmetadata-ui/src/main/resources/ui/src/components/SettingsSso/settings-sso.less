@@ -226,6 +226,31 @@
   padding: @size-lg;
   height: calc(100vh - (@om-navbar-height + @size-2xl));
   margin-top: @size-xs;
+
+  // Tab styling for configured SSO
+  .ant-tabs .ant-tabs-tab {
+    .ant-tabs-tab-btn {
+      color: @grey-700;
+      font-weight: 500;
+      font-size: @font-size-base;
+    }
+  }
+
+  // Active tab styling for configured SSO
+  .ant-tabs .ant-tabs-tab.ant-tabs-tab-active {
+    color: @blue-34;
+    padding: 0px;
+
+    .ant-tabs-tab-btn {
+      color: @blue-34;
+      font-weight: 500;
+      font-size: @font-size-base;
+    }
+  }
+
+  .ant-tabs .ant-tabs-ink-bar {
+    background-color: @blue-34;
+  }
 }
 
 .sso-provider-header {
@@ -233,6 +258,7 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: @size-lg;
+  gap: @size-xs;
 
   color: @grey-900;
   .sso-form-header {
