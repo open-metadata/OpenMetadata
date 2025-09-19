@@ -129,12 +129,6 @@ const AuthMechanismForm: FC<Props> = ({
           {t(
             'message.scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider'
           )}
-          <Typography.Link
-            // href="https://docs.open-metadata.org/connectors/sso/scim"
-            className="read-docs-link"
-            target="_blank">
-            {t('message.read-setup-docs')}
-          </Typography.Link>
         </Typography.Paragraph>
       </div>
       <Button
