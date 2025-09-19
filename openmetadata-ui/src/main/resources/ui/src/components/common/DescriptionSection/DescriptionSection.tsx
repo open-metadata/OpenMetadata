@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
@@ -32,10 +32,28 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditDescription, setIsEditDescription] = useState(false);
   const [editValue, setEditValue] = useState(description || '');
+  const [shouldShowButton, setShouldShowButton] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const toggleExpanded = () => {
     setIsExpanded(!isExpanded);
   };
+
+  // Function to check if text is truncated
+  const checkIfTextIsTruncated = useCallback(() => {
+    if (containerRef.current) {
+      const element = containerRef.current;
+      // Look for the markdown-parser element within the rich-text-editor-container
+      const markdownParser = element.querySelector('.markdown-parser');
+      if (markdownParser) {
+        // Check if the element's scroll height is greater than its client height
+        // This indicates that the text is being truncated by CSS
+        const isTruncated =
+          markdownParser.scrollHeight > markdownParser.clientHeight;
+        setShouldShowButton(isTruncated);
+      }
+    }
+  }, []);
 
   // Callback to handle the edit button from description
   const handleEditDescription = useCallback(() => {
@@ -62,8 +80,13 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
     setEditValue(description || '');
   }, [description]);
 
-  // Check if text is long enough to need truncation
-  const shouldShowButton = description && description.length > 100;
+  // Check if text is truncated when description changes or component mounts
+  useEffect(() => {
+    if (description && !isEditDescription) {
+      // Use setTimeout to ensure the DOM has been updated
+      setTimeout(checkIfTextIsTruncated, 0);
+    }
+  }, [description, isEditDescription, checkIfTextIsTruncated]);
 
   if (!description?.trim()) {
     return (
@@ -151,14 +174,13 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
             <div
               className={`description-text ${
                 isExpanded ? 'expanded' : 'collapsed'
-              }`}>
-              {isExpanded ? (
-                <RichTextEditorPreviewerV1 markdown={description} />
-              ) : (
-                <div className="description-preview">
-                  <div className="truncated-text">{description}</div>
-                </div>
-              )}
+              }`}
+              ref={containerRef}>
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant={false}
+                isDescriptionExpanded={isExpanded}
+                markdown={description}
+              />
             </div>
             {shouldShowButton && (
               <button
