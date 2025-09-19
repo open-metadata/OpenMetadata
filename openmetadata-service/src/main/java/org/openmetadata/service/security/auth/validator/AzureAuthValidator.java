@@ -14,6 +14,7 @@ import org.openmetadata.service.util.ValidationHttpUtil;
 @Slf4j
 public class AzureAuthValidator {
 
+  private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
   private static final String AZURE_LOGIN_BASE = "https://login.microsoftonline.com";
   private static final String TOKEN_ENDPOINT_V2 = "/oauth2/v2.0/token";
   private static final String OPENID_CONFIG_PATH = "/.well-known/openid-configuration";
@@ -81,9 +82,61 @@ public class AzureAuthValidator {
     try {
       String tenantId = oidcConfig.getTenant();
 
-      ValidationResult tenantValidation = validateTenantExists(tenantId);
+      // Determine the discovery URI to use
+      String discoveryUri;
+      if (!nullOrEmpty(oidcConfig.getDiscoveryUri())) {
+        // User provided a discovery URI - validate it's correct for Azure
+        discoveryUri = oidcConfig.getDiscoveryUri();
+        String expectedDiscoveryUri = AZURE_LOGIN_BASE + "/" + tenantId + OPENID_CONFIG_PATH;
+        String expectedV2DiscoveryUri =
+            AZURE_LOGIN_BASE + "/" + tenantId + "/v2.0" + OPENID_CONFIG_PATH;
+
+        // Check if the provided URI matches either v1 or v2 format
+        if (!discoveryUri.equals(expectedDiscoveryUri)
+            && !discoveryUri.equals(expectedV2DiscoveryUri)) {
+          // Check if it's a malformed URI (common error: missing slash)
+          if (discoveryUri.contains(".well-knownopenid-configuration")) {
+            return new ValidationResult()
+                .withComponent("azure-discovery-uri")
+                .withStatus("failed")
+                .withMessage(
+                    "Malformed discovery URI detected. Missing '/' between '.well-known' and 'openid-configuration'. "
+                        + "Expected format: "
+                        + expectedDiscoveryUri);
+          }
+          return new ValidationResult()
+              .withComponent("azure-discovery-uri")
+              .withStatus("failed")
+              .withMessage(
+                  "Invalid Azure discovery URI. Expected: "
+                      + expectedDiscoveryUri
+                      + " or "
+                      + expectedV2DiscoveryUri
+                      + " but got: "
+                      + discoveryUri);
+        }
+      } else {
+        // No discovery URI provided, construct default v2 endpoint
+        discoveryUri = AZURE_LOGIN_BASE + "/" + tenantId + "/v2.0" + OPENID_CONFIG_PATH;
+      }
+
+      // First validate that the discovery URI is accessible
+      ValidationResult tenantValidation = validateDiscoveryEndpoint(discoveryUri, tenantId);
       if ("failed".equals(tenantValidation.getStatus())) {
         return tenantValidation;
+      }
+
+      // Then validate against the discovery document
+      ValidationResult discoveryCheck =
+          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
+      if (!"success".equals(discoveryCheck.getStatus())) {
+        return discoveryCheck;
+      }
+
+      // For Azure confidential clients, validate offline_access scope is present
+      ValidationResult offlineAccessCheck = validateOfflineAccessScope(discoveryUri, oidcConfig);
+      if (!"success".equals(offlineAccessCheck.getStatus())) {
+        return offlineAccessCheck;
       }
 
       ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, tenantId);
@@ -101,13 +154,55 @@ public class AzureAuthValidator {
           .withComponent("azure-confidential")
           .withStatus("success")
           .withMessage(
-              "Azure confidential client validated successfully. Discovery URI, client ID, public key URLs, and secret are valid.");
+              "Azure confidential client validated successfully. Configuration validated against discovery document, client credentials, and public key URLs are valid.");
     } catch (Exception e) {
       LOG.error("Azure confidential client validation failed", e);
       return new ValidationResult()
           .withComponent("azure-confidential")
           .withStatus("failed")
           .withMessage("Azure confidential client validation failed: " + e.getMessage());
+    }
+  }
+
+  private ValidationResult validateDiscoveryEndpoint(String discoveryUrl, String tenantId) {
+    try {
+      LOG.debug("Validating Azure discovery endpoint: {}", discoveryUrl);
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUrl);
+
+      if (response.getStatusCode() == 404) {
+        return new ValidationResult()
+            .withComponent("azure-discovery")
+            .withStatus("failed")
+            .withMessage(
+                "Azure discovery endpoint not found. Please verify the discovery URI is correct: "
+                    + discoveryUrl);
+      } else if (response.getStatusCode() != 200) {
+        return new ValidationResult()
+            .withComponent("azure-discovery")
+            .withStatus("failed")
+            .withMessage(
+                "Failed to access Azure discovery endpoint. HTTP response: "
+                    + response.getStatusCode());
+      }
+
+      // Parse and validate the discovery document
+      JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+      if (!discoveryDoc.has("issuer") || !discoveryDoc.has("token_endpoint")) {
+        return new ValidationResult()
+            .withComponent("azure-discovery")
+            .withStatus("failed")
+            .withMessage("Invalid Azure discovery document format at: " + discoveryUrl);
+      }
+
+      return new ValidationResult()
+          .withComponent("azure-discovery")
+          .withStatus("success")
+          .withMessage("Azure discovery endpoint validated successfully");
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("azure-discovery")
+          .withStatus("failed")
+          .withMessage("Discovery endpoint validation failed: " + e.getMessage());
     }
   }
 
@@ -408,6 +503,87 @@ public class AzureAuthValidator {
           .withComponent("azure-public-key-urls")
           .withStatus("failed")
           .withMessage("Public key URL validation failed: " + e.getMessage());
+    }
+  }
+
+  private ValidationResult validateOfflineAccessScope(
+      String discoveryUri, OidcClientConfig oidcConfig) {
+    try {
+      // Fetch the discovery document to check supported scopes
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+      if (response.getStatusCode() != 200) {
+        return new ValidationResult()
+            .withComponent("azure-offline-access")
+            .withStatus("warning")
+            .withMessage("Could not verify offline_access scope support from discovery document");
+      }
+
+      JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+      JsonNode scopesSupported = discoveryDoc.get("scopes_supported");
+
+      boolean offlineAccessSupported = false;
+      if (scopesSupported != null && scopesSupported.isArray()) {
+        for (JsonNode scope : scopesSupported) {
+          if ("offline_access".equals(scope.asText())) {
+            offlineAccessSupported = true;
+            break;
+          }
+        }
+      }
+
+      // Check if the configured scope includes offline_access
+      String configuredScope = oidcConfig.getScope();
+      boolean hasOfflineAccess =
+          configuredScope != null && configuredScope.contains("offline_access");
+
+      if (offlineAccessSupported && !hasOfflineAccess) {
+        return new ValidationResult()
+            .withComponent("azure-offline-access")
+            .withStatus("failed")
+            .withMessage(
+                "Azure confidential clients require 'offline_access' scope for refresh tokens. "
+                    + "Without this scope, users may experience frequent authentication issues due to Azure's short token lifetimes. "
+                    + "Please add 'offline_access' to your scope configuration. "
+                    + "Current scope: '"
+                    + (configuredScope != null ? configuredScope : "")
+                    + "'");
+      }
+
+      if (hasOfflineAccess && !offlineAccessSupported) {
+        return new ValidationResult()
+            .withComponent("azure-offline-access")
+            .withStatus("warning")
+            .withMessage(
+                "The 'offline_access' scope is configured but may not be supported by this Azure tenant");
+      }
+
+      if (hasOfflineAccess && offlineAccessSupported) {
+        return new ValidationResult()
+            .withComponent("azure-offline-access")
+            .withStatus("success")
+            .withMessage("Offline access scope is properly configured for refresh tokens");
+      }
+
+      // If offline_access is not supported by Azure, just warn
+      if (!offlineAccessSupported) {
+        return new ValidationResult()
+            .withComponent("azure-offline-access")
+            .withStatus("warning")
+            .withMessage(
+                "This Azure tenant may not support offline_access scope. Users might experience frequent re-authentication");
+      }
+
+      return new ValidationResult()
+          .withComponent("azure-offline-access")
+          .withStatus("success")
+          .withMessage("Offline access scope validation completed");
+
+    } catch (Exception e) {
+      LOG.error("Error validating offline_access scope", e);
+      return new ValidationResult()
+          .withComponent("azure-offline-access")
+          .withStatus("warning")
+          .withMessage("Could not validate offline_access scope: " + e.getMessage());
     }
   }
 }

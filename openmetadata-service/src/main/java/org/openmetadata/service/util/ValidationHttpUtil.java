@@ -41,10 +41,16 @@ public class ValidationHttpUtil {
   public static class HttpResponseData {
     private final int statusCode;
     private final String body;
+    private final String locationHeader;
 
     public HttpResponseData(int statusCode, String body) {
+      this(statusCode, body, null);
+    }
+
+    public HttpResponseData(int statusCode, String body, String locationHeader) {
       this.statusCode = statusCode;
       this.body = body != null ? body : "";
+      this.locationHeader = locationHeader;
     }
 
     public int getStatusCode() {
@@ -53,6 +59,10 @@ public class ValidationHttpUtil {
 
     public String getBody() {
       return body;
+    }
+
+    public String getLocationHeader() {
+      return locationHeader;
     }
   }
 
@@ -127,8 +137,21 @@ public class ValidationHttpUtil {
    */
   public static HttpResponseData getNoRedirect(String url, Map<String, String> headers)
       throws IOException, InterruptedException {
-    // Use the default client which already has NEVER redirect policy
-    return get(url, headers);
+    HttpRequest.Builder builder =
+        HttpRequest.newBuilder().uri(URI.create(url)).timeout(DEFAULT_TIMEOUT).GET();
+
+    headers.forEach(builder::header);
+
+    HttpRequest request = builder.build();
+    HttpResponse<String> response =
+        DEFAULT_CLIENT.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+
+    String locationHeader = response.headers().firstValue("Location").orElse(null);
+    if (locationHeader == null) {
+      locationHeader = response.headers().firstValue("location").orElse(null);
+    }
+
+    return new HttpResponseData(response.statusCode(), response.body(), locationHeader);
   }
 
   /**

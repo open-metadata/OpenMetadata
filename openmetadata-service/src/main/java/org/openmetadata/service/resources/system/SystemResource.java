@@ -545,10 +545,14 @@ public class SystemResource {
       })
   public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
-    SecurityConfiguration config =
+    SecurityConfiguration originalConfig =
         SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
 
-    // Apply password masking if needed
+    // Create a deep copy to avoid mutating the original shared objects
+    String configJson = JsonUtils.pojoToJson(originalConfig);
+    SecurityConfiguration config = JsonUtils.readValue(configJson, SecurityConfiguration.class);
+
+    // Apply password masking if needed - only to the copy
     if (authorizer.shouldMaskPasswords(securityContext)) {
       // Mask OIDC configuration if present
       if (config.getAuthenticationConfiguration() != null
