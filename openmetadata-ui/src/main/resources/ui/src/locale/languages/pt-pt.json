@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 dia",
     "1-hr": "1 hora",
     "a-to-z": "A a Z",

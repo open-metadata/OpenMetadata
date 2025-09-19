@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 روز",
     "1-hr": "1 ساعت",
     "a-to-z": "A'dan Z'ye",
