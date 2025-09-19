@@ -49,7 +49,7 @@ import {
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
+import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
 import { OPEN_METADATA } from '../../../../constants/Services.constant';
@@ -374,8 +374,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         placeholder: t('message.enter-test-case-name'),
         rules: [
           {
-            pattern: ENTITY_NAME_REGEX,
-            message: t('message.entity-name-validation'),
+            pattern: TEST_CASE_NAME_REGEX,
+            message: t('message.test-case-name-validation'),
           },
           {
             max: MAX_NAME_LENGTH,
