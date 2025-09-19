@@ -32,4 +32,5 @@ export type DataAssetSummaryPanelProps = {
   onTagsUpdate?: (updatedTags: any[]) => void;
   onDataProductsUpdate?: (updatedDataProducts: any[]) => void;
   onGlossaryTermsUpdate?: (updatedGlossaryTerms: any[]) => void;
+  onDescriptionUpdate?: (updatedDescription: string) => void;
 };

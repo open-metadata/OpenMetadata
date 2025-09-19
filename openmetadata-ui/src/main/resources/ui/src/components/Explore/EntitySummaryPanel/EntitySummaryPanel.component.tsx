@@ -593,6 +593,56 @@ export default function EntitySummaryPanel({
     [entityData, entityDetails.details, entityType, t]
   );
 
+  const handleDescriptionUpdate = useCallback(
+    (updatedDescription: string) => {
+      // Update the entityData state with the new description
+      setEntityData((prevData: any) => {
+        if (!prevData) {
+          return prevData;
+        }
+
+        const updatedData = {
+          ...prevData,
+          description: updatedDescription,
+          entityType: prevData.entityType || entityDetails.details.entityType,
+          fullyQualifiedName:
+            prevData.fullyQualifiedName ||
+            entityDetails.details.fullyQualifiedName,
+          id: prevData.id || entityDetails.details.id,
+          displayName:
+            prevData.displayName || entityDetails.details.displayName,
+          name: prevData.name || entityDetails.details.name,
+          deleted:
+            prevData.deleted !== undefined
+              ? prevData.deleted
+              : entityDetails.details.deleted,
+          serviceType:
+            prevData.serviceType || (entityDetails.details as any).serviceType,
+          service: prevData.service || entityDetails.details.service,
+          owners: prevData.owners || entityDetails.details.owners,
+          domains: prevData.domains || entityDetails.details.domains,
+          tags: prevData.tags || entityDetails.details.tags,
+          dataProducts:
+            prevData.dataProducts ||
+            (entityDetails.details as any).dataProducts,
+          tier: prevData.tier || entityDetails.details.tier,
+          columnNames:
+            prevData.columnNames || (entityDetails.details as any).columnNames,
+          database:
+            prevData.database || (entityDetails.details as any).database,
+          databaseSchema:
+            prevData.databaseSchema ||
+            (entityDetails.details as any).databaseSchema,
+          tableType:
+            prevData.tableType || (entityDetails.details as any).tableType,
+        };
+
+        return updatedData;
+      });
+    },
+    [entityDetails.details]
+  );
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
@@ -709,6 +759,7 @@ export default function EntitySummaryPanel({
         entityType={type}
         highlights={highlights}
         onDataProductsUpdate={handleDataProductsUpdate}
+        onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}
         onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
         onOwnerUpdate={handleOwnerUpdate}
@@ -725,6 +776,7 @@ export default function EntitySummaryPanel({
     handleDomainUpdate,
     handleTagsUpdate,
     handleDataProductsUpdate,
+    handleDescriptionUpdate,
     handleGlossaryTermsUpdate,
   ]);
   const entityLink = useMemo(

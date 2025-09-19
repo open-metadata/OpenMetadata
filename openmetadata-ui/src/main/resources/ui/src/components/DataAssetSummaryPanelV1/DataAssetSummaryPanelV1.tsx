@@ -12,6 +12,7 @@
  */
 import { isEmpty, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -33,12 +34,18 @@ import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
+import { patchChartDetails } from '../../rest/chartsAPI';
+import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
+import { patchMlModelDetails } from '../../rest/mlModelAPI';
+import { patchPipelineDetails } from '../../rest/pipelineAPI';
+import { patchTableDetails } from '../../rest/tableAPI';
 import { listTestCases } from '../../rest/testAPI';
+import { patchTopicDetails } from '../../rest/topicsAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
@@ -72,8 +79,76 @@ export const DataAssetSummaryPanelV1 = ({
   onTagsUpdate,
   onDataProductsUpdate,
   onGlossaryTermsUpdate,
+  onDescriptionUpdate,
 }: DataAssetSummaryPanelProps) => {
+  const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
+
+  // Function to get the appropriate patch API based on entity type
+  const getPatchAPI = (entityType?: EntityType) => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        return patchTableDetails;
+      case EntityType.DASHBOARD:
+        return patchDashboardDetails;
+      case EntityType.TOPIC:
+        return patchTopicDetails;
+      case EntityType.PIPELINE:
+        return patchPipelineDetails;
+      case EntityType.MLMODEL:
+        return patchMlModelDetails;
+      case EntityType.CHART:
+        return patchChartDetails;
+      default:
+        // Default to table API for backward compatibility
+        return patchTableDetails;
+    }
+  };
+
+  // Handler for description updates
+  const handleDescriptionUpdate = useCallback(
+    async (newDescription: string) => {
+      try {
+        if (!dataAsset.id) {
+          return;
+        }
+
+        // Create the JSON patch for description update
+        const jsonPatch = [
+          {
+            op: 'replace' as const,
+            path: '/description',
+            value: newDescription,
+          },
+        ];
+
+        // Make the API call using the correct patch API for the entity type
+        const patchAPI = getPatchAPI(entityType);
+        await patchAPI(dataAsset.id, jsonPatch);
+
+        // Show success message
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.description'),
+          })
+        );
+
+        // Update the parent component with the new description
+        if (onDescriptionUpdate) {
+          onDescriptionUpdate(newDescription);
+        }
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.description'),
+          })
+        );
+      }
+    },
+    [dataAsset.id, entityType, t, onDescriptionUpdate]
+  );
+
   const [additionalInfo, setAdditionalInfo] = useState<
     Record<string, number | string>
   >({});
@@ -268,11 +343,7 @@ export const DataAssetSummaryPanelV1 = ({
           <>
             <DescriptionSection
               description={dataAsset.description}
-              onDescriptionUpdate={async () => {
-                // Handle description update
-                // TODO: Implement actual API call to update description
-                // Example: await updateEntityDescription(dataAsset.id, newDescription);
-              }}
+              onDescriptionUpdate={handleDescriptionUpdate}
             />
             <OverviewSection
               items={[
