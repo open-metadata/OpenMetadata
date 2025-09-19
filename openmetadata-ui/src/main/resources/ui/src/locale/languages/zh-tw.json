@@ -1448,6 +1448,7 @@
     "select-to-search": "搜尋以選取",
     "select-type": "選取類型",
     "select-user-to-debug-permissions": "選取使用者以偵錯其權限",
+    "select-users-or-team": "Select Users or a Team",
     "selected-entity": "已選取的 {{entity}}",
     "selected-lowercase": "已選取",
     "selected-user": "已選取的使用者：{{username}}",

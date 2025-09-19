@@ -1448,6 +1448,7 @@
     "select-to-search": "Поиск для выбора",
     "select-type": "Выбрать тип",
     "select-user-to-debug-permissions": "Выберите пользователя для отладки его прав",
+    "select-users-or-team": "Select Users or a Team",
     "selected-entity": "Выбрано {{entity}}",
     "selected-lowercase": "выбрано",
     "selected-user": "Selected user: {{username}}",

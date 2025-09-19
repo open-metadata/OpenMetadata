@@ -14,9 +14,10 @@
 import { Avatar, AvatarGroup, Box, Typography, useTheme } from '@mui/material';
 import { Cube01, Globe01 } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
+import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
-import { getRandomColor } from '../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import { ProfilePicture } from '../ProfilePicture';
 import { CellRenderer, ColumnConfig } from '../shared/types';
 import TagsCell from './TagsCell';
 
@@ -33,7 +34,7 @@ export const useCellRenderer = <
 >(
   props: UseCellRendererProps<T>
 ) => {
-  const { columns, renderers = {}, chipSize = 'large' } = props;
+  const { renderers = {}, chipSize = 'large' } = props;
   const theme = useTheme();
 
   const defaultRenderers: CellRenderer<T> = useMemo(
@@ -113,31 +114,21 @@ export const useCellRenderer = <
           );
         }
 
-        const getOwnerAvatar = (owner: EntityReference, size = 24) => {
-          const { color, backgroundColor } = getRandomColor(
-            owner.displayName || owner.name || ''
-          );
-
-          return (
-            <Avatar
-              sx={{
-                width: size,
-                height: size,
-                backgroundColor,
-                color,
-                fontSize: size <= 16 ? '0.75rem' : '0.875rem',
-              }}>
-              {(owner.displayName || owner.name || '?')[0]}
-            </Avatar>
-          );
-        };
-
         if (owners.length === 1) {
+          const owner = owners[0];
+          const isTeam = owner.type === EntityType.TEAM;
+
           return (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-              {getOwnerAvatar(owners[0], 16)}
+              <ProfilePicture
+                avatarType="solid"
+                displayName={owner.displayName}
+                isTeam={isTeam}
+                name={owner.name || ''}
+                size={16}
+              />
               <Typography sx={{ fontSize: '0.875rem' }}>
-                {owners[0].displayName || owners[0].name}
+                {owner.displayName || owner.name}
               </Typography>
             </Box>
           );
@@ -154,9 +145,20 @@ export const useCellRenderer = <
                   fontSize: '0.75rem',
                 },
               }}>
-              {owners.map((owner: EntityReference, index: number) =>
-                getOwnerAvatar(owner, 24)
-              )}
+              {owners.map((owner: EntityReference, index: number) => {
+                const isTeam = owner.type === EntityType.TEAM;
+
+                return (
+                  <ProfilePicture
+                    avatarType="solid"
+                    displayName={owner.displayName}
+                    isTeam={isTeam}
+                    key={owner.id || index}
+                    name={owner.name || ''}
+                    size={24}
+                  />
+                );
+              })}
             </AvatarGroup>
           </Box>
         );

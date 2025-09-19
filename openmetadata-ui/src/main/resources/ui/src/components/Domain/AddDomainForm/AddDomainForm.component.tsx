@@ -34,7 +34,6 @@ import {
 import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
-import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { AddDomainFormProps } from './AddDomainForm.interface';
@@ -199,23 +198,18 @@ const AddDomainForm = ({
     id: 'root/owner',
     required: false,
     label: t('label.owner-plural'),
-    type: FieldTypes.USER_TEAM_SELECT,
+    type: FieldTypes.USER_TEAM_SELECT_MUI,
     props: {
-      hasPermission: true,
-      children: (
-        <Button
-          data-testid="add-owner"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
-      multiple: { user: true, team: false },
+      multipleUser: true,
+      multipleTeam: false,
+      label: t('label.owner-plural'),
+      placeholder: t('label.select-field', {
+        field: t('label.user-or-team'),
+      }),
     },
-    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
-      valuePropName: 'owners',
-      trigger: 'onUpdate',
+      valuePropName: 'value',
+      trigger: 'onChange',
     },
   };
 
@@ -224,23 +218,18 @@ const AddDomainForm = ({
     id: 'root/experts',
     required: false,
     label: t('label.expert-plural'),
-    type: FieldTypes.USER_MULTI_SELECT,
+    type: FieldTypes.USER_TEAM_SELECT_MUI,
     props: {
-      hasPermission: true,
-      popoverProps: { placement: 'topLeft' },
-      children: (
-        <Button
-          data-testid="add-experts"
-          icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-          size="small"
-          type="primary"
-        />
-      ),
+      userOnly: true,
+      multipleUser: true,
+      label: t('label.expert-plural'),
+      placeholder: t('label.select-field', {
+        field: t('label.user-plural'),
+      }),
     },
-    formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
-      valuePropName: 'selectedUsers',
-      trigger: 'onUpdate',
+      valuePropName: 'value',
+      trigger: 'onChange',
       initialValue: [],
     },
   };
@@ -282,9 +271,11 @@ const AddDomainForm = ({
       tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
     } as CreateDomain | CreateDataProduct;
 
-    // Add domains as array if present
-    if (formData.domains) {
-      data.domains = [formData.domains.fullyQualifiedName];
+    // Add domains as array if present (for DataProduct)
+    if (formData.domains && 'domains' in data) {
+      (data as CreateDataProduct).domains = [
+        formData.domains.fullyQualifiedName,
+      ];
     }
 
     onSubmit(data);
@@ -297,26 +288,8 @@ const AddDomainForm = ({
       layout="vertical"
       onFinish={handleFormSubmit}>
       {generateFormFields(formFields)}
-      <div className="m-t-xss">
-        {getField(ownerField)}
-        {Boolean(ownersList.length) && (
-          <Space wrap data-testid="owner-container" size={[8, 8]}>
-            <OwnerLabel owners={ownersList} />
-          </Space>
-        )}
-      </div>
-      <div className="m-t-xss">
-        {getField(expertsField)}
-        {Boolean(expertsList.length) && (
-          <Space
-            wrap
-            className="m-b-xs"
-            data-testid="experts-container"
-            size={[8, 8]}>
-            <OwnerLabel owners={expertsList} />
-          </Space>
-        )}
-      </div>
+      <div className="m-t-xss">{getField(ownerField)}</div>
+      <div className="m-t-xss">{getField(expertsField)}</div>
 
       {!isFormInDialog && (
         <Space

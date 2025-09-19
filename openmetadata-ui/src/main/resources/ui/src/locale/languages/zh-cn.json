@@ -1448,6 +1448,7 @@
     "select-to-search": "搜索以选择",
     "select-type": "选择类型",
     "select-user-to-debug-permissions": "Select a user to debug their permissions",
+    "select-users-or-team": "Select Users or a Team",
     "selected-entity": "已选择{{entity}}",
     "selected-lowercase": "已选择",
     "selected-user": "Selected user: {{username}}",

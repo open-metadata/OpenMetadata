@@ -1448,6 +1448,7 @@
     "select-to-search": "検索して選択",
     "select-type": "タイプを選択",
     "select-user-to-debug-permissions": "パーミッションをデバッグするユーザーを選択",
+    "select-users-or-team": "Select Users or a Team",
     "selected-entity": "選択された {{entity}}",
     "selected-lowercase": "選択済み",
     "selected-user": "選択されたユーザー: {{username}}",

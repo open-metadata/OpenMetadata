@@ -1448,6 +1448,7 @@
     "select-to-search": "جستجو برای انتخاب",
     "select-type": "نوع انتخاب",
     "select-user-to-debug-permissions": "Select a user to debug their permissions",
+    "select-users-or-team": "Select Users or a Team",
     "selected-entity": "انتخاب شده {{entity}}",
     "selected-lowercase": "انتخاب شده",
     "selected-user": "Selected user: {{username}}",

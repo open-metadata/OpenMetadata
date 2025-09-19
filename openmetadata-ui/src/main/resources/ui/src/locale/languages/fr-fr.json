@@ -1448,6 +1448,7 @@
     "select-to-search": "Sélectionner pour Rechercher",
     "select-type": "Type Sélectionné",
     "select-user-to-debug-permissions": "Select a user to debug their permissions",
+    "select-users-or-team": "Select Users or a Team",
     "selected-entity": "Selected {{entity}}",
     "selected-lowercase": "sélectionné",
     "selected-user": "Selected user: {{username}}",

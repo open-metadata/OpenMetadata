@@ -1448,6 +1448,7 @@
     "select-to-search": "ค้นหาเพื่อเลือก",
     "select-type": "เลือกประเภท",
     "select-user-to-debug-permissions": "Select a user to debug their permissions",
+    "select-users-or-team": "Select Users or a Team",
     "selected-entity": "เลือก {{entity}} แล้ว",
     "selected-lowercase": "ถูกเลือก",
     "selected-user": "Selected user: {{username}}",
