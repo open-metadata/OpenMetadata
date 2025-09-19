@@ -28,6 +28,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   enableSeeMoreVariant = true,
   textVariant = 'black',
   isDescriptionExpanded = false,
+  maxLineLength = '2',
 }) => {
   const { t, i18n } = useTranslation();
   const [content, setContent] = useState<string>('');
@@ -56,12 +57,15 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
     const checkOverflow = () => {
       if (contentRef.current) {
         const el = contentRef.current;
-        el.style.setProperty('-webkit-line-clamp', '2');
+        el.style.setProperty('-webkit-line-clamp', maxLineLength);
         const { scrollHeight, clientHeight } = el;
         const isOverflow = scrollHeight > clientHeight + 1;
         setIsOverflowing(isOverflow);
         setIsContentLoaded(true);
-        el.style.setProperty('-webkit-line-clamp', readMore ? 'unset' : '2');
+        el.style.setProperty(
+          '-webkit-line-clamp',
+          readMore ? 'unset' : maxLineLength
+        );
       }
     };
 
@@ -100,7 +104,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
         style={{
           display: '-webkit-box',
           WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: readMore ? 'unset' : 2,
+          WebkitLineClamp: readMore ? 'unset' : Number(maxLineLength),
           overflow: 'hidden',
           maxHeight: maxHeight,
           transition: 'max-height 0.3s ease',

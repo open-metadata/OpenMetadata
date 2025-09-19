@@ -207,7 +207,7 @@ describe('AddDataContract', () => {
 
       expect(
         screen
-          .getByRole('tab', { name: 'label.schema' })
+          .getByRole('tab', { name: 'label.terms-of-service' })
           .closest('.ant-tabs-tab')
       ).toHaveClass('ant-tabs-tab-active');
     });
