@@ -17,6 +17,7 @@ public class Auth0Validator {
 
   private static final String AUTH0_WELL_KNOWN_PATH = "/.well-known/openid-configuration";
   private static final String AUTH0_TOKEN_PATH = "/oauth/token";
+  private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
 
   public ValidationResult validateAuth0Configuration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
@@ -41,6 +42,18 @@ public class Auth0Validator {
       if ("failed".equals(domainValidation.getStatus())) {
         return domainValidation;
       }
+
+      // Validate against OIDC discovery document for public clients too
+      String discoveryUri = authority + AUTH0_WELL_KNOWN_PATH;
+      OidcClientConfig publicClientConfig =
+          new OidcClientConfig().withId(authConfig.getClientId()).withDiscoveryUri(discoveryUri);
+
+      ValidationResult discoveryCheck =
+          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, publicClientConfig);
+      if (!"success".equals(discoveryCheck.getStatus())) {
+        return discoveryCheck;
+      }
+
       ValidationResult clientIdValidation =
           validatePublicClientId(authority, authConfig.getClientId());
       if ("failed".equals(clientIdValidation.getStatus())) {
@@ -73,6 +86,14 @@ public class Auth0Validator {
       ValidationResult domainValidation = validateAuth0Domain(auth0Domain);
       if ("failed".equals(domainValidation.getStatus())) {
         return domainValidation;
+      }
+
+      // Validate against OIDC discovery document (scopes, response types, etc.)
+      String discoveryUri = auth0Domain + AUTH0_WELL_KNOWN_PATH;
+      ValidationResult discoveryCheck =
+          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
+      if (!"success".equals(discoveryCheck.getStatus())) {
+        return discoveryCheck;
       }
 
       ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, auth0Domain);
