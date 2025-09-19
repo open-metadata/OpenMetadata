@@ -40,7 +40,7 @@
   }
   .rjsf .form-control {
     border-radius: @border-rad-xs;
-    border: 1px solid @grey-200;
+    border: 1px solid @grey-300;
     background-color: @background-color;
     padding: @padding-sm - 2px @padding-sm + 2px;
     color: @grey-700;
@@ -51,7 +51,8 @@
 
     &:focus {
       border-color: @primary-color;
-      box-shadow: 0 0 0 @size-xxs @primary-1;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
     }
     .rjsf span {
       font-weight: @font-regular;
@@ -59,10 +60,10 @@
   }
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
     border-radius: @border-rad-xs;
-    border: 1px solid @grey-200;
+    border: 1px solid @grey-300;
     background-color: @background-color;
     height: auto;
-    padding: @padding-sm - 2px @padding-sm + 2px;
+    padding: @padding-xs @padding-sm + 2px;
 
     &:hover {
       border-color: @primary-6;
@@ -70,7 +71,8 @@
 
     &:focus {
       border-color: @primary-color;
-      box-shadow: 0 0 0 @size-xxs @primary-1;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
     }
     .ant-select-selection-item {
       font-weight: @font-regular;
@@ -79,7 +81,7 @@
 
   .ant-select-focused .ant-select-selector {
     border-color: @primary-color;
-    box-shadow: 0 0 0 @size-xxs @primary-1;
+    box-shadow: @box-shadow-ant-select;
   }
 
   .ant-select:hover .ant-select-selector {
@@ -203,7 +205,7 @@
     // Apply select styling to configure tab form
     .ant-select:not(.ant-select-customize-input) .ant-select-selector {
       border-radius: @border-rad-xs;
-      border: 1px solid @grey-200;
+      border: 1px solid @grey-300;
       background-color: @background-color;
       height: auto;
       padding: @padding-sm - 2px @padding-sm + 2px;
@@ -214,7 +216,7 @@
 
       &:focus {
         border-color: @primary-color;
-        box-shadow: 0 0 0 @size-xxs @primary-1;
+        box-shadow: @box-shadow-ant-select;
       }
       .ant-select-selection-item {
         font-weight: @font-regular;
@@ -223,7 +225,7 @@
 
     .ant-select-focused .ant-select-selector {
       border-color: @primary-color;
-      box-shadow: 0 0 0 @size-xxs @primary-1;
+      box-shadow: @box-shadow-ant-select;
     }
 
     .ant-select:hover .ant-select-selector {
@@ -283,7 +285,7 @@
   }
 }
 
-.rjsf .ant-radio-wrapper {
+.sso-configuration-form-card .rjsf .ant-radio-wrapper {
   color: @grey-700 !important;
   font-weight: 500 !important;
   font-size: @font-size-base !important;
@@ -316,7 +318,7 @@
   }
 }
 
-.rjsf .ant-radio-group {
+.sso-configuration-form-card .rjsf .ant-radio-group {
   display: flex;
   gap: @size-lg;
 
@@ -325,12 +327,12 @@
   }
 }
 
-.rjsf .field-radio-group {
+.sso-configuration-form-card .rjsf .field-radio-group {
   display: flex;
   gap: @size-lg;
 }
 
-.rjsf .form-group {
+.sso-configuration-form-card .rjsf .form-group {
   margin-bottom: @size-md;
 
   .control-label {
@@ -340,23 +342,89 @@
     margin-bottom: @size-xs;
 
     .required {
-      color: @red-21;
+      color: @red-23;
       margin-left: 2px;
     }
   }
 }
 
-.rjsf .form-group.field {
+// SSO-specific override for required field color
+.sso-configuration-form-card .rjsf .control-label .required {
+  color: @red-23;
+}
+
+// SSO-specific overrides for form controls and textareas
+.sso-configuration-form-card .rjsf .form-control {
+  border: 1px solid @grey-300;
+  box-shadow: 0px 1px 2px 0px @grey-27;
+
+  &:focus {
+    border-color: @primary-color;
+    box-shadow: @box-shadow-ant-select;
+    outline: none;
+  }
+}
+
+.sso-configuration-form-card .rjsf textarea.form-control {
+  box-shadow: 0px 1px 2px 0px @grey-27;
+
+  &:focus {
+    border-color: @primary-color;
+    box-shadow: @box-shadow-ant-select;
+    outline: none;
+  }
+}
+
+// SSO-specific select dropdown styles
+.sso-configuration-form-card
+  .ant-select:not(.ant-select-customize-input)
+  .ant-select-selector {
+  border: 1px solid @grey-300;
+  box-shadow: 0px 1px 2px 0px @grey-27;
+
+  &:focus {
+    border-color: @primary-color;
+    box-shadow: @box-shadow-ant-select;
+    outline: none;
+  }
+}
+
+.sso-configuration-form-card .ant-select {
+  .ant-select-arrow {
+    .anticon {
+      display: none;
+    }
+
+    &::after {
+      content: '';
+      display: block;
+      width: @size-sm;
+      height: @size-xs;
+      margin-right: @size-xxs;
+      background-image: url('../../../assets/svg/ic-dropdown-arrow.svg');
+      background-size: @size-sm @size-xs;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+  }
+}
+
+// SSO-specific dropdown menu box-shadow
+.sso-configuration-form-card .ant-select-dropdown {
+  box-shadow: 0px 1px 2px 0px @grey-27;
+}
+
+.sso-configuration-form-card .rjsf .form-group.field {
   margin: 0;
 }
 
-.rjsf .required,
-.rjsf .field-required {
-  color: @red-21;
+.sso-configuration-form-card .rjsf .required,
+.sso-configuration-form-card .rjsf .field-required {
+  color: @red-23;
 }
 
-.rjsf .array-item-label,
-.rjsf .field-array .control-label {
+.sso-configuration-form-card .rjsf .array-item-label,
+.sso-configuration-form-card .rjsf .field-array .control-label {
   font-weight: 500;
   font-size: @font-size-base;
   color: @grey-900;
@@ -364,12 +432,12 @@
   display: block;
 
   .required {
-    color: @red-21;
+    color: @red-23;
     margin-left: @size-xxs;
   }
 }
 
-.rjsf .checkbox {
+.sso-configuration-form-card .rjsf .checkbox {
   display: flex;
   align-items: flex-start;
 
@@ -415,7 +483,7 @@
 
       &:focus {
         outline: none;
-        box-shadow: 0 0 0 @size-xxs @primary-1;
+        box-shadow: @box-shadow-ant-select;
       }
     }
 
@@ -426,14 +494,14 @@
       line-height: 1.4;
 
       .required {
-        color: @red-21;
+        color: @red-23;
         margin-left: @size-xxs;
       }
     }
   }
 }
 
-.rjsf span {
+.sso-configuration-form-card .rjsf span {
   display: inline-flex;
   align-items: center;
   gap: @size-xs;
@@ -442,14 +510,14 @@
   font-size: @font-size-base;
 }
 
-.rjsf .radio-inline label span span {
+.sso-configuration-form-card .rjsf .radio-inline label span span {
   color: @grey-700 !important;
   font-weight: 500 !important;
   font-size: @font-size-base !important;
   margin-bottom: @size-xs;
 }
 
-.rjsf .radio-inline input[type='radio'] {
+.sso-configuration-form-card .rjsf .radio-inline input[type='radio'] {
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -484,11 +552,11 @@
 
   &:focus {
     outline: none;
-    box-shadow: 0 0 0 @size-xxs @primary-1;
+    box-shadow: @box-shadow-ant-select;
   }
 }
 
-.hide-section-title {
+.sso-configuration-form-card .hide-section-title {
   > .panel-title,
   > .form-group > .panel-title,
   > .panel-default > .panel-heading,
@@ -506,7 +574,7 @@
 .sso-provider-selection {
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
     border-radius: @border-rad-xs;
-    border: 1px solid @grey-200;
+    border: 1px solid @grey-300;
     background-color: @background-color;
     height: auto;
     padding: @padding-sm - 2px @padding-sm + 2px @padding-xs @padding-sm + 2px;
@@ -517,7 +585,8 @@
 
     &:focus {
       border-color: @primary-color;
-      box-shadow: 0 0 0 @size-xxs @primary-1;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
     }
     .ant-select-selection-item {
       font-weight: @font-regular;
@@ -526,7 +595,7 @@
 
   .ant-select-focused .ant-select-selector {
     border-color: @primary-color;
-    box-shadow: 0 0 0 @size-xxs @primary-1;
+    box-shadow: @box-shadow-ant-select;
   }
 
   .ant-select:hover .ant-select-selector {
@@ -563,7 +632,7 @@
     .form-control {
       background-color: @grey-100;
       color: @grey-500;
-      border-color: @grey-200;
+      border-color: @grey-300;
       cursor: not-allowed;
       opacity: 0.7;
       pointer-events: none;
@@ -576,6 +645,25 @@
       cursor: not-allowed;
       opacity: 0.7;
       pointer-events: none;
+    }
+  }
+
+  // Custom dropdown arrow for SSO forms
+  .ant-select .ant-select-arrow {
+    .anticon {
+      display: none;
+    }
+
+    &::after {
+      content: '';
+      display: block;
+      width: @size-sm;
+      height: @size-xs;
+      margin-right: @size-xxs;
+      background-image: url('../../../assets/svg/ic-dropdown-arrow.svg');
+      background-size: @size-sm @size-xs;
+      background-repeat: no-repeat;
+      background-position: center;
     }
   }
 }

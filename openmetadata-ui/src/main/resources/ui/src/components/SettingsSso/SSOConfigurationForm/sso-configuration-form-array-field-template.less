@@ -78,6 +78,9 @@
       word-wrap: break-word;
       white-space: normal;
       line-height: 1.4;
+      color: @tag-text;
+      font-weight: @font-regular;
+      font-size: @size-sm;
     }
 
     .ant-select-selection-item-remove {
@@ -99,10 +102,21 @@
   }
 
   .ant-select-selector {
-    background: @grey-50;
-    border: 1px solid @grey-200;
+    background: @background-color;
+    border: 1px solid @grey-300;
     border-radius: @border-rad-xs;
-    padding: @size-xxs 14px 0 14px;
+
+    box-shadow: 0px 1px 2px 0px @grey-27;
+
+    &:hover {
+      border-color: @primary-6;
+    }
+
+    &:focus {
+      border-color: @primary-color;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
+    }
 
     .ant-select-selection-search {
       margin: 0;
@@ -124,6 +138,18 @@
     }
   }
 
+  // Hover state for the select
+  .ant-select:hover .ant-select-selector {
+    border-color: @primary-6;
+  }
+
+  // Focused state for the select
+  .ant-select-focused .ant-select-selector {
+    border-color: @primary-color;
+    box-shadow: @box-shadow-ant-select;
+    outline: none;
+  }
+
   // Override Ant Design's default input positioning for tags mode
   .ant-select-selection-overflow {
     padding-left: 0;
@@ -138,6 +164,7 @@
 
   .ant-select:not(.ant-select-customize-input) .ant-select-selector {
     border-radius: @border-rad-xs;
+    padding: @size-xs @size-sm;
   }
 }
 .array-field-label {
@@ -146,6 +173,45 @@
   font-size: @font-size-base;
 
   &.required-field::after {
-    color: @red-21;
+    color: @red-23;
+  }
+}
+
+// Custom dropdown arrow icon for array field selects
+.sso-select-container {
+  .ant-select .ant-select-arrow {
+    .anticon {
+      display: none;
+    }
+
+    &::after {
+      content: '';
+      display: block;
+      width: @size-sm;
+      height: @size-xs;
+      margin-right: @size-xxs;
+      background-image: url('../../../assets/svg/ic-dropdown-arrow.svg');
+      background-size: @size-sm @size-xs;
+      background-repeat: no-repeat;
+      background-position: center;
+    }
+  }
+}
+
+// Add box shadow to any input fields in array field templates
+.sso-array-field {
+  input[type='text'],
+  input[type='email'],
+  input[type='url'],
+  input[type='number'],
+  .ant-input,
+  .form-control {
+    box-shadow: 0px 1px 2px 0px @grey-27;
+
+    &:focus {
+      border-color: @primary-color;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
+    }
   }
 }
