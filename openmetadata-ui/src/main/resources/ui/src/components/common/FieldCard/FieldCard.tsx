@@ -86,8 +86,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
 
   return (
     <div
-      className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}
-    >
+      className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}>
       <div className="field-card-header">
         <div className="field-name-container">
           {columnConstraint && (
