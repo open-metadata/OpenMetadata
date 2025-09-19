@@ -16,6 +16,7 @@ import org.openmetadata.service.util.ValidationHttpUtil;
 public class OktaAuthValidator {
 
   private static final String OKTA_WELL_KNOWN_PATH = "/.well-known/openid-configuration";
+  private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
 
   public ValidationResult validateOktaConfiguration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
@@ -52,6 +53,17 @@ public class OktaAuthValidator {
         return domainValidation;
       }
 
+      // Validate against OIDC discovery document for public clients too
+      String discoveryUri = oktaDomain + OKTA_WELL_KNOWN_PATH;
+      OidcClientConfig publicClientConfig =
+          new OidcClientConfig().withId(authConfig.getClientId()).withDiscoveryUri(discoveryUri);
+
+      ValidationResult discoveryCheck =
+          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, publicClientConfig);
+      if (!"success".equals(discoveryCheck.getStatus())) {
+        return discoveryCheck;
+      }
+
       ValidationResult clientIdValidation =
           validatePublicClientId(oktaDomain, authConfig.getClientId());
       if ("failed".equals(clientIdValidation.getStatus())) {
@@ -81,15 +93,22 @@ public class OktaAuthValidator {
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
 
-      // Step 2: Extract and validate Okta domain from oidcConfig
+      // Step 1: Extract and validate Okta domain from oidcConfig
       String oktaDomain = extractOktaDomainFromOidcConfig(oidcConfig);
 
-      String clientId = oidcConfig.getId();
-      //      ValidationResult clientIdValidation = validateClientIdViaIntrospection(oktaDomain,
-      // clientId);
-      //      if ("failed".equals(clientIdValidation.getStatus())) {
-      //        return clientIdValidation;
-      //      }
+      // Step 2: Validate domain accessibility
+      ValidationResult domainValidation = validateOktaDomain(oktaDomain);
+      if ("failed".equals(domainValidation.getStatus())) {
+        return domainValidation;
+      }
+
+      // Step 3: Validate against OIDC discovery document (scopes, response types, etc.)
+      String discoveryUri = oktaDomain + OKTA_WELL_KNOWN_PATH;
+      ValidationResult discoveryCheck =
+          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
+      if (!"success".equals(discoveryCheck.getStatus())) {
+        return discoveryCheck;
+      }
 
       // Step 4: Validate public key URLs (required for JWT signature verification)
       ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain);
@@ -98,6 +117,7 @@ public class OktaAuthValidator {
       }
 
       // Step 5: Validate client credentials (secret)
+      String clientId = oidcConfig.getId();
       ValidationResult credentialsValidation =
           validateClientCredentials(oktaDomain, clientId, oidcConfig.getSecret());
       if ("failed".equals(credentialsValidation.getStatus())) {
