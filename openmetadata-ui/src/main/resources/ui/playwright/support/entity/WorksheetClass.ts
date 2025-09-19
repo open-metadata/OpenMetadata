@@ -104,7 +104,7 @@ export class WorksheetClass extends EntityClass {
     this.type = 'Worksheet';
     this.serviceCategory = SERVICE_TYPE.DriveService;
     this.serviceType = ServiceTypes.DRIVE_SERVICES;
-    this.childrenSelectorId = `${this.service.name}.${this.worksheetName}.${this.worksheetColumns[0].name}`;
+    this.childrenSelectorId = `${this.service.name}.${this.spreadsheetName}.${this.worksheetName}.${this.worksheetColumns[0].name}`;
   }
 
   async create(apiContext: APIRequestContext) {

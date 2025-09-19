@@ -16,120 +16,97 @@ export const navbarSearchItems = [
   {
     label: 'All',
     searchIndex: 'dataAsset',
-    scrollValue: 0,
   },
   {
     label: 'Database',
     searchIndex: 'database_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Database Schema',
     searchIndex: 'database_schema_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Table',
     searchIndex: 'table_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Topic',
     searchIndex: 'topic_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Dashboard',
     searchIndex: 'dashboard_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Pipeline',
     searchIndex: 'pipeline_search_index',
-    scrollValue: 0,
   },
   {
     label: 'ML Model',
     searchIndex: 'mlmodel_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Container',
     searchIndex: 'container_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Stored Procedure',
     searchIndex: 'stored_procedure_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Data Model',
     searchIndex: 'dashboard_data_model_search_index',
-    scrollValue: 0,
   },
   {
     label: 'Glossary',
     searchIndex: 'glossary_term_search_index',
-    scrollValue: 100,
   },
   {
     label: 'Tag',
     searchIndex: 'tag_search_index',
-    scrollValue: 100,
   },
   {
     label: 'Search Index',
     searchIndex: 'search_entity_search_index',
-    scrollValue: 100,
   },
   {
     label: 'Data Product',
     searchIndex: 'data_product_search_index',
-    scrollValue: 100,
   },
   {
     label: 'API Endpoint',
     searchIndex: 'api_endpoint_search_index',
-    scrollValue: 100,
   },
   {
     label: 'API Collection',
     searchIndex: 'api_collection_search_index',
-    scrollValue: 100,
   },
   {
     label: 'Metric',
     searchIndex: 'metric_search_index',
-    scrollValue: 100,
   },
   {
     label: 'Directory',
     searchIndex: 'directory_search_index',
-    scrollValue: 200,
   },
   {
     label: 'File',
     searchIndex: 'file_search_index',
-    scrollValue: 200,
   },
   {
     label: 'Spreadsheet',
     searchIndex: 'spreadsheet_search_index',
-    scrollValue: 200,
   },
   {
     label: 'Worksheet',
     searchIndex: 'worksheet_search_index',
-    scrollValue: 200,
   },
 ];
 
 export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
-  optionTitle: string,
-  scrollValue: number
+  optionTitle: string
 ) => {
   // moving out side left menu bar to avoid random failure due to left menu bar
   await page.mouse.move(1280, 0);
@@ -138,9 +115,38 @@ export const selectOption = async (
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
-  if (scrollValue) {
-    await page.getByTestId('global-search-select-option-Container').hover();
-    await page.mouse.wheel(0, scrollValue);
+
+  // Logic to scroll to find the option
+  // Since antd dropdown only ingests 10 option at a time in the DOM.
+  await page.getByTestId('global-search-select-dropdown').hover();
+
+  const maxScrollAttempts = 15; // Prevent infinite loop
+  let scrollAttempts = 0;
+  const scrollStep = 50; // Pixels to scroll each time
+
+  while (scrollAttempts < maxScrollAttempts) {
+    // Check if option is visible in current view
+    const optionLocator = page.getByTestId(
+      `global-search-select-option-${optionTitle}`
+    );
+
+    const isOptionVisible = await optionLocator
+      .first()
+      .isVisible()
+      .catch(() => false);
+
+    if (isOptionVisible) {
+      await optionLocator.first().click();
+
+      return;
+    }
+
+    // Scroll down
+    await page.mouse.wheel(0, scrollStep);
+
+    // Small delay to allow DOM to update
+    await page.waitForTimeout(100);
+
+    scrollAttempts++;
   }
-  await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
 };

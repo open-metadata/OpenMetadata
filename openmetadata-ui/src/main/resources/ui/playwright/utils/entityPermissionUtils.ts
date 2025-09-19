@@ -602,7 +602,10 @@ export const createCustomPropertyForEntity = async (
   await addCustomPropertiesForEntity({
     page,
     propertyName: customPropertyName,
-    customPropertyData: { description: `Test ${entityType} custom property` },
+    customPropertyData: {
+      description: `Test ${entityType} custom property`,
+      entityApiType,
+    },
     customType: 'String',
   });
 

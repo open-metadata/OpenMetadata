@@ -20,19 +20,14 @@ import { sidebarClick } from '../../utils/sidebar';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 for (const searchItem of navbarSearchItems) {
-  const { label, searchIndex, scrollValue } = searchItem;
+  const { label, searchIndex } = searchItem;
 
   test(`Search Term - ${label}`, async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);
     await page.waitForLoadState('networkidle');
 
-    await selectOption(
-      page,
-      page.getByTestId('global-search-selector'),
-      label,
-      scrollValue
-    );
+    await selectOption(page, page.getByTestId('global-search-selector'), label);
 
     await expect(page.getByTestId('global-search-selector')).toContainText(
       label

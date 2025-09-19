@@ -15,7 +15,14 @@ import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
@@ -73,6 +80,9 @@ export const GlobalSearchBar = () => {
         bordered={false}
         className="global-search-select"
         data-testid="global-search-selector"
+        dropdownRender={(originNode: ReactNode) => (
+          <div data-testid="global-search-select-dropdown">{originNode}</div>
+        )}
         listHeight={300}
         popupClassName="global-search-select-menu"
         size="small"
