@@ -1174,11 +1174,11 @@ export interface OidcClientConfig {
     /**
      * Discovery Uri for the Client.
      */
-    discoveryUri?: string;
+    discoveryUri: string;
     /**
      * Client ID.
      */
-    id?: string;
+    id: string;
     /**
      * Validity for the JWT Token created from SAML Response
      */
@@ -1206,7 +1206,7 @@ export interface OidcClientConfig {
     /**
      * Client Secret.
      */
-    secret?: string;
+    secret: string;
     /**
      * Server Url.
      */
@@ -1218,7 +1218,7 @@ export interface OidcClientConfig {
     /**
      * Tenant in case of Azure.
      */
-    tenant?: string;
+    tenant: string;
     /**
      * Validity for the JWT Token created from SAML Response
      */
