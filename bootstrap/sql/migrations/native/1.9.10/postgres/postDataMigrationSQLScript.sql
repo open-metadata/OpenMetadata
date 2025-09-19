@@ -3,5 +3,5 @@
 -- you will hence have performed the same migration again. This brings the json 
 -- `profileData`field back to the original state.
 UPDATE profiler_data_time_series
-SET json = jsonb_set(json, '{profileData}', json->'profileData'->'profileData')
+SET json = jsonb_set(json::jsonb, '{profileData}', json::jsonb->'profileData'->'profileData')::json
 WHERE json->'profileData'->>'profileData' IS NOT NULL;
