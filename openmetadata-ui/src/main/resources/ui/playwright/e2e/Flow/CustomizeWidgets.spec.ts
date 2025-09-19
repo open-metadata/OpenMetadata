@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { DataProduct } from '../../support/domain/DataProduct';
+import { Domain } from '../../support/domain/Domain';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
@@ -23,6 +25,7 @@ import {
 import {
   verifyActivityFeedFilters,
   verifyDataFilters,
+  verifyDataProductsFilters,
   verifyDomainsFilters,
   verifyTaskFilters,
   verifyTotalDataAssetsFilters,
@@ -30,6 +33,16 @@ import {
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
+
+// Test domain and data products for comprehensive testing
+const testDomain = new Domain();
+const testDataProducts = [
+  new DataProduct([testDomain], 'pw-data-product-customer'),
+  new DataProduct([testDomain], 'pw-data-product-sales'),
+  new DataProduct([testDomain], 'pw-data-product-marketing'),
+];
+
+const createdDataProducts: DataProduct[] = [];
 
 const test = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
@@ -45,6 +58,16 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
+
+  // Create test domain first
+  await testDomain.create(apiContext);
+
+  // Create test data products
+  for (const dp of testDataProducts) {
+    await dp.create(apiContext);
+    createdDataProducts.push(dp);
+  }
+
   await afterAction();
 });
 
@@ -52,6 +75,15 @@ base.afterAll('Cleanup', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await adminUser.delete(apiContext);
   await persona.delete(apiContext);
+
+  // Delete test data products
+  for (const dp of createdDataProducts) {
+    await dp.delete(apiContext);
+  }
+
+  // Delete test domain
+  await testDomain.delete(apiContext);
+
   await afterAction();
 });
 
@@ -219,6 +251,28 @@ test.describe('Widgets', () => {
     await removeAndVerifyWidget(
       page,
       'KnowledgePanel.MyTask',
+      persona.responseData.name
+    );
+  });
+
+  test('Data Products', async ({ page }) => {
+    test.slow(true);
+
+    await expect(
+      page.getByTestId('KnowledgePanel.DataProducts')
+    ).not.toBeVisible();
+
+    await addAndVerifyWidget(
+      page,
+      'KnowledgePanel.DataProducts',
+      persona.responseData.name
+    );
+
+    await verifyDataProductsFilters(page, 'KnowledgePanel.DataProducts');
+
+    await removeAndVerifyWidget(
+      page,
+      'KnowledgePanel.DataProducts',
       persona.responseData.name
     );
   });
