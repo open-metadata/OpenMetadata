@@ -1192,6 +1192,7 @@
     "pipeline-state": "Pipeline State",
     "pipeline-type": "Pipeline Type",
     "platform": "Platform",
+    "platform-service-client-unavailable": "Platform Service Client Unavailable",
     "platform-type-lineage": "{{platformType}} Lineage",
     "play": "Play",
     "please-enter-value": "Please enter {{name}} value",
@@ -1558,6 +1559,7 @@
     "support": "Support",
     "support-url": "Support URL",
     "supported-language-plural": "Supported Languages",
+    "switch-persona": "Switch Persona",
     "sync-alert-offset": "Sync Alert",
     "synonym-lowercase-plural": "synonyms",
     "synonym-plural": "Synonyms",
@@ -2447,6 +2449,7 @@
     "team-moved-success": "Team moved successfully!",
     "team-no-asset": "Your team does not have any assets.",
     "test-case-insight-description": "Access a centralized view of your dataset's health based on configured test validations.",
+    "test-case-name-validation": "Name cannot contain double colons (::), quotes (\"), or greater-than symbols (>).",
     "test-case-schedule-description": "The data quality tests can be scheduled to run at the desired frequency. The timezone is in UTC.",
     "test-connection-cannot-be-triggered": "Test connection cannot be triggered.",
     "test-connection-taking-too-long": {

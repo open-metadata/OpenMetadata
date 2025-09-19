@@ -55,8 +55,8 @@ import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -473,6 +473,13 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
         fieldSortBuilder.unmappedType("integer");
       }
       searchSourceBuilder.sort(fieldSortBuilder);
+
+      // Add tiebreaker sort for stable pagination when sorting by score
+      // This ensures consistent ordering when multiple documents have identical scores
+      if (request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        searchSourceBuilder.sort(
+            SortBuilders.fieldSort("name.keyword").order(SortOrder.ASC).unmappedType("keyword"));
+      }
     }
 
     buildHierarchyQuery(request, searchSourceBuilder, client);
