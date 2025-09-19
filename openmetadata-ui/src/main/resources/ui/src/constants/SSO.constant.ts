@@ -304,6 +304,36 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
 };
 
+// Azure-specific UI schema with required tenant for confidential client
+export const AZURE_OAUTH_UI_SCHEMA = {
+  ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  oidcConfiguration: {
+    ...COMMON_UI_FIELDS.oidcConfiguration,
+    type: COMMON_UI_FIELDS.oidcIdpType,
+    id: COMMON_UI_FIELDS.oidcClientId,
+    secret: COMMON_UI_FIELDS.oidcClientSecret,
+    scope: COMMON_UI_FIELDS.oidcScope,
+    discoveryUri: COMMON_UI_FIELDS.oidcDiscoveryUri,
+    useNonce: COMMON_UI_FIELDS.oidcUseNonce,
+    preferredJwsAlgorithm: COMMON_UI_FIELDS.oidcPreferredJwsAlgorithm,
+    responseType: COMMON_UI_FIELDS.oidcResponseType,
+    disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
+    maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
+    clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
+    tokenValidity: COMMON_UI_FIELDS.oidcTokenValidity,
+    customParams: COMMON_UI_FIELDS.oidcCustomParameters,
+    tenant: COMMON_UI_FIELDS.oidcTenant,
+    serverUrl: COMMON_UI_FIELDS.oidcServerUrl,
+    callbackUrl: COMMON_UI_FIELDS.oidcCallbackUrl,
+    maxAge: COMMON_UI_FIELDS.oidcMaxAge,
+    prompt: COMMON_UI_FIELDS.oidcPrompt,
+    sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+  },
+  // Hide universal settings managed in overview tab
+  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+};
+
 // Google-specific UI schema
 export const GOOGLE_OAUTH_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -436,7 +466,7 @@ export const PROVIDER_UI_SCHEMAS: Record<string, UISchemaObject> = {
   customoidc: OIDC_UI_SCHEMA,
   google: GOOGLE_OAUTH_UI_SCHEMA,
   auth0: STANDARD_OAUTH_UI_SCHEMA,
-  azure: STANDARD_OAUTH_UI_SCHEMA,
+  azure: AZURE_OAUTH_UI_SCHEMA,
   okta: STANDARD_OAUTH_UI_SCHEMA,
   basic: STANDARD_OAUTH_UI_SCHEMA,
   'aws-cognito': STANDARD_OAUTH_UI_SCHEMA,
