@@ -13,8 +13,26 @@ Test SAP Hana source
 """
 import xml.etree.ElementTree as ET
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
+from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaSQLConnection import (
+    SapHanaSQLConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
+    SapHanaConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+)
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+    SourceConfig,
+)
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ColumnMapping,
     DataSource,
@@ -26,6 +44,7 @@ from metadata.ingestion.source.database.saphana.cdata_parser import (
     _traverse_ds_with_columns,
     parse_registry,
 )
+from metadata.ingestion.source.database.saphana.lineage import SaphanaLineageSource
 
 RESOURCES_DIR = Path(__file__).parent.parent.parent / "resources" / "saphana"
 
@@ -780,3 +799,115 @@ def test_circular_reference_prevention() -> None:
         ), f"Too many function calls: {call_count} (indicates circular recursion)"
 
 
+def test_sap_hana_lineage_filter_pattern() -> None:
+    """
+    Test that SAP HANA lineage source filters views based on
+    the full package_id/object_name format.
+    """
+    mock_metadata = create_autospec(OpenMetadata)
+    mock_metadata.get_by_name = Mock(return_value=None)
+    mock_config = WorkflowSource(
+        type="saphana-lineage",
+        serviceName="test_sap_hana",
+        serviceConnection=DatabaseConnection(
+            config=SapHanaConnection(
+                connection=SapHanaSQLConnection(
+                    username="test", password="test", hostPort="localhost:39015"
+                )
+            )
+        ),
+        sourceConfig=SourceConfig(
+            config=DatabaseServiceMetadataPipeline(
+                tableFilterPattern=FilterPattern(
+                    includes=["com.example.package/CV_INCLUDE.*"],
+                    excludes=[".*/CV_EXCLUDE.*"],
+                )
+            )
+        ),
+    )
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.lineage.get_ssl_connection"
+    ) as mock_get_engine:
+        mock_engine = MagicMock()
+        mock_connection = MagicMock()
+        mock_get_engine.return_value = mock_engine
+        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+        mock_engine.connect.return_value.__exit__ = Mock()
+
+        mock_rows = [
+            {
+                "PACKAGE_ID": "com.example.package",
+                "OBJECT_NAME": "CV_INCLUDE_VIEW",
+                "OBJECT_SUFFIX": "calculationview",
+                "CDATA": "<dummy/>",
+            },
+            {
+                "PACKAGE_ID": "com.example.package",
+                "OBJECT_NAME": "CV_EXCLUDE_VIEW",
+                "OBJECT_SUFFIX": "calculationview",
+                "CDATA": "<dummy/>",
+            },
+            {
+                "PACKAGE_ID": "com.example.package",
+                "OBJECT_NAME": "CV_OTHER_VIEW",
+                "OBJECT_SUFFIX": "calculationview",
+                "CDATA": "<dummy/>",
+            },
+            {
+                "PACKAGE_ID": "com.example.package",
+                "OBJECT_NAME": "CV_INCLUDE_ANOTHER",
+                "OBJECT_SUFFIX": "calculationview",
+                "CDATA": "<dummy/>",
+            },
+        ]
+
+        mock_result = []
+        for row_dict in mock_rows:
+
+            class MockRow(dict):
+                def __init__(self, data):
+                    lowercase_data = {k.lower(): v for k, v in data.items()}
+                    super().__init__(lowercase_data)
+                    self._data = data
+
+                def __getitem__(self, key):
+                    if key in self._data:
+                        return self._data[key]
+                    return super().__getitem__(key.lower())
+
+                def keys(self):
+                    return [k.lower() for k in self._data.keys()]
+
+                def get(self, key, default=None):
+                    try:
+                        return self[key]
+                    except KeyError:
+                        return default
+
+            mock_result.append(MockRow(row_dict))
+
+        mock_execution = MagicMock()
+        mock_execution.__iter__ = Mock(return_value=iter(mock_result))
+        mock_connection.execution_options.return_value.execute.return_value = (
+            mock_execution
+        )
+
+        source = SaphanaLineageSource(config=mock_config, metadata=mock_metadata)
+
+        processed_views = []
+
+        def mock_parse_cdata(metadata, lineage_model):
+            processed_views.append(lineage_model.object_name)
+            return iter([])
+
+        with patch.object(source, "parse_cdata", side_effect=mock_parse_cdata):
+            list(source._iter())
+
+        assert "CV_INCLUDE_VIEW" in processed_views
+        assert "CV_INCLUDE_ANOTHER" in processed_views
+        assert "CV_EXCLUDE_VIEW" not in processed_views
+        assert "CV_OTHER_VIEW" not in processed_views
+
+        assert len(processed_views) == 2
+        assert len(source.status.filtered) == 2
