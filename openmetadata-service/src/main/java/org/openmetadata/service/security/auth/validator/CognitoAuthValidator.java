@@ -16,6 +16,7 @@ import org.openmetadata.service.util.ValidationHttpUtil;
 public class CognitoAuthValidator {
 
   private static final String COGNITO_WELL_KNOWN_PATH = "/.well-known/openid-configuration";
+  private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
 
   public ValidationResult validateCognitoConfiguration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
@@ -74,16 +75,31 @@ public class CognitoAuthValidator {
         return poolValidation;
       }
 
+      // Validate against OIDC discovery document (scopes, response types, etc.)
+      ValidationResult discoveryCheck =
+          discoveryValidator.validateAgainstDiscovery(
+              cognitoDetails.discoveryUri, authConfig, oidcConfig);
+      if (!"success".equals(discoveryCheck.getStatus())) {
+        return discoveryCheck;
+      }
+
       ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, cognitoDetails);
       if ("failed".equals(publicKeyValidation.getStatus())) {
         return publicKeyValidation;
+      }
+
+      // Validate client credentials
+      ValidationResult credentialsValidation =
+          validateClientCredentials(cognitoDetails, oidcConfig.getId(), oidcConfig.getSecret());
+      if ("failed".equals(credentialsValidation.getStatus())) {
+        return credentialsValidation;
       }
 
       return new ValidationResult()
           .withComponent("cognito-confidential")
           .withStatus("success")
           .withMessage(
-              "Cognito confidential client validated successfully. Discovery URI, client ID, public key URLs, and secret format are valid.");
+              "Cognito confidential client validated successfully. Discovery URI, client ID, public key URLs, and secret are valid.");
     } catch (Exception e) {
       LOG.error("Cognito confidential client validation failed", e);
       return new ValidationResult()
@@ -320,6 +336,190 @@ public class CognitoAuthValidator {
           .withComponent("cognito-public-key-urls")
           .withStatus("failed")
           .withMessage("Public key URL validation failed: " + e.getMessage());
+    }
+  }
+
+  private ValidationResult validateClientCredentials(
+      CognitoDetails cognitoDetails, String clientId, String clientSecret) {
+    try {
+      if (nullOrEmpty(clientSecret)) {
+        return new ValidationResult()
+            .withComponent("cognito-credentials")
+            .withStatus("failed")
+            .withMessage("Client secret is required for confidential Cognito clients");
+      }
+
+      // Extract token endpoint from discovery document
+      String tokenEndpoint = getTokenEndpointFromDiscovery(cognitoDetails.discoveryUri);
+      if (tokenEndpoint == null) {
+        // Fallback to standard Cognito token endpoint pattern
+        tokenEndpoint =
+            String.format(
+                "https://cognito-idp.%s.amazonaws.com/%s/token",
+                cognitoDetails.region, cognitoDetails.userPoolId);
+      }
+
+      // First, try to validate using client credentials grant
+      // Note: This requires the app client to have client credentials grant enabled
+      // and custom scopes configured in Cognito
+      String requestBody =
+          String.format("grant_type=client_credentials&client_id=%s&scope=openid", clientId);
+
+      String authHeader = ValidationHttpUtil.createBasicAuthHeader(clientId, clientSecret);
+
+      ValidationHttpUtil.HttpResponseData response =
+          ValidationHttpUtil.postForm(
+              tokenEndpoint, requestBody, java.util.Map.of("Authorization", authHeader));
+
+      int responseCode = response.getStatusCode();
+      if (responseCode == 200) {
+        // Successfully obtained token
+        return new ValidationResult()
+            .withComponent("cognito-credentials")
+            .withStatus("success")
+            .withMessage("Cognito client credentials validated successfully");
+      } else if (responseCode == 400 || responseCode == 401) {
+        // Parse error response
+        try {
+          JsonNode errorResponse = JsonUtils.readTree(response.getBody());
+          String error = errorResponse.path("error").asText();
+          String errorDescription = errorResponse.path("error_description").asText();
+
+          if ("invalid_client".equals(error)) {
+            return new ValidationResult()
+                .withComponent("cognito-credentials")
+                .withStatus("failed")
+                .withMessage(
+                    "Invalid client credentials. Please verify the client ID and secret are correct.");
+          } else if ("unauthorized_client".equals(error)) {
+            return new ValidationResult()
+                .withComponent("cognito-credentials")
+                .withStatus("failed")
+                .withMessage(
+                    "Client is not authorized. Please check app client settings in Cognito.");
+          } else if ("unsupported_grant_type".equals(error)) {
+            // Client credentials grant not enabled - try fallback validation
+            return tryFallbackCredentialsValidation(
+                tokenEndpoint,
+                clientId,
+                clientSecret,
+                "Client credentials grant not enabled for this app client.");
+          } else if ("invalid_grant".equals(error)) {
+            // This typically means client_credentials is enabled but no custom scopes are
+            // configured
+            // Or the scope requested is not allowed
+            return tryFallbackCredentialsValidation(
+                tokenEndpoint,
+                clientId,
+                clientSecret,
+                "Client credentials grant may require custom scopes in Cognito. "
+                    + "Error: "
+                    + (errorDescription.isEmpty() ? error : errorDescription));
+          } else {
+            // Unknown error - try fallback validation
+            return tryFallbackCredentialsValidation(
+                tokenEndpoint, clientId, clientSecret, "Initial validation failed: " + error);
+          }
+        } catch (Exception parseError) {
+          // Could not parse error response - try fallback
+          return tryFallbackCredentialsValidation(
+              tokenEndpoint, clientId, clientSecret, "Could not parse error response");
+        }
+      } else {
+        return new ValidationResult()
+            .withComponent("cognito-credentials")
+            .withStatus("warning")
+            .withMessage("Could not fully validate credentials. HTTP response: " + responseCode);
+      }
+    } catch (Exception e) {
+      LOG.warn("Cognito credentials validation encountered an error", e);
+      return new ValidationResult()
+          .withComponent("cognito-credentials")
+          .withStatus("warning")
+          .withMessage(
+              "Could not fully validate credentials: "
+                  + e.getMessage()
+                  + ". Credentials format appears valid.");
+    }
+  }
+
+  private String getTokenEndpointFromDiscovery(String discoveryUri) {
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+      if (response.getStatusCode() == 200) {
+        JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+        if (discoveryDoc.has("token_endpoint")) {
+          return discoveryDoc.get("token_endpoint").asText();
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to get token endpoint from discovery document", e);
+    }
+    return null;
+  }
+
+  private ValidationResult tryFallbackCredentialsValidation(
+      String tokenEndpoint, String clientId, String clientSecret, String initialError) {
+    try {
+      // Try using an invalid authorization code to test if credentials are correct
+      // This will fail with a different error if credentials are valid
+      String fallbackBody =
+          String.format(
+              "grant_type=authorization_code&client_id=%s&code=invalid_test_code&redirect_uri=http://localhost",
+              clientId);
+
+      String authHeader = ValidationHttpUtil.createBasicAuthHeader(clientId, clientSecret);
+
+      ValidationHttpUtil.HttpResponseData response =
+          ValidationHttpUtil.postForm(
+              tokenEndpoint, fallbackBody, java.util.Map.of("Authorization", authHeader));
+
+      int responseCode = response.getStatusCode();
+      if (responseCode == 400 || responseCode == 401) {
+        try {
+          JsonNode errorResponse = JsonUtils.readTree(response.getBody());
+          String error = errorResponse.path("error").asText();
+
+          if ("invalid_client".equals(error)) {
+            // Credentials are definitely wrong
+            return new ValidationResult()
+                .withComponent("cognito-credentials")
+                .withStatus("failed")
+                .withMessage(
+                    "Invalid client credentials. Please verify the client ID and secret are correct.");
+          } else if ("invalid_grant".equals(error) || "invalid_request".equals(error)) {
+            // Credentials are likely correct, just the code is invalid (as expected)
+            return new ValidationResult()
+                .withComponent("cognito-credentials")
+                .withStatus("success")
+                .withMessage(
+                    "Cognito client credentials validated successfully. Note: " + initialError);
+          } else {
+            // Some other error, but credentials might still be valid
+            return new ValidationResult()
+                .withComponent("cognito-credentials")
+                .withStatus("warning")
+                .withMessage("Client credentials format appears valid. " + initialError);
+          }
+        } catch (Exception e) {
+          return new ValidationResult()
+              .withComponent("cognito-credentials")
+              .withStatus("warning")
+              .withMessage("Could not fully validate credentials. " + initialError);
+        }
+      } else {
+        return new ValidationResult()
+            .withComponent("cognito-credentials")
+            .withStatus("warning")
+            .withMessage("Could not fully validate credentials. " + initialError);
+      }
+    } catch (Exception e) {
+      LOG.warn("Fallback validation failed", e);
+      return new ValidationResult()
+          .withComponent("cognito-credentials")
+          .withStatus("warning")
+          .withMessage(
+              "Could not fully validate credentials: " + e.getMessage() + ". " + initialError);
     }
   }
 
