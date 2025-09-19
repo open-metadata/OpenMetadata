@@ -1,4 +1,5 @@
 -- Performance optimization for tag_usage prefix queries
+ALTER TABLE tag_usage
 ADD COLUMN IF NOT EXISTS targetfqnhash_lower text
 GENERATED ALWAYS AS (lower(targetFQNHash)) STORED;
 
