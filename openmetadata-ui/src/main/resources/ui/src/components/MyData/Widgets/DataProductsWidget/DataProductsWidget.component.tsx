@@ -38,6 +38,7 @@ import {
   WidgetConfig,
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchData } from '../../../../rest/miscAPI';
+import { getEntityTypeExploreQueryFilter } from '../../../../utils/CommonUtils';
 import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -225,16 +226,20 @@ const DataProductsWidget = ({
     [dataProducts, loading]
   );
 
-  const footer = useMemo(
-    () => (
+  const footer = useMemo(() => {
+    const quickFilter = encodeURIComponent(
+      getEntityTypeExploreQueryFilter('dataproduct')
+    );
+    const exploreUrl = `${ROUTES.EXPLORE}?quickFilter=${quickFilter}`;
+
+    return (
       <WidgetFooter
-        moreButtonLink={`${ROUTES.EXPLORE}?tab=data_product`}
+        moreButtonLink={exploreUrl}
         moreButtonText={t('label.view-more')}
         showMoreButton={showWidgetFooterMoreButton}
       />
-    ),
-    [t, showWidgetFooterMoreButton]
-  );
+    );
+  }, [t, showWidgetFooterMoreButton]);
 
   const widgetHeader = useMemo(
     () => (
