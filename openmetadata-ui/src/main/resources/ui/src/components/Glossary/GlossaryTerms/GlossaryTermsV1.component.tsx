@@ -33,7 +33,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { MOCK_GLOSSARY_NO_PERMISSIONS } from '../../../mocks/Glossary.mock';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
@@ -137,17 +137,21 @@ const GlossaryTermsV1 = ({
         const encodedFqn = getEncodedFqn(
           escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
         );
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(tags.tagFQN:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: {
+            query: {
+              term: {
+                'tags.tagFQN': encodedFqn,
+              },
+            },
+          },
+          searchIndex: SearchIndex.ALL,
+        });
 
-        setAssetCount(res.data.hits.total.value ?? 0);
+        setAssetCount(res.hits.total.value ?? 0);
       } catch {
         setAssetCount(0);
       }

@@ -65,7 +65,6 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
 import { addDataProducts } from '../../../rest/dataProductAPI';
 import { addDomains } from '../../../rest/domainAPI';
-import { searchData } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import {
@@ -241,19 +240,22 @@ const DomainDetailsPage = ({
   const fetchSubDomainsCount = useCallback(async () => {
     if (!isVersionsView) {
       try {
-        const res = await searchData(
-          '',
-          0,
-          0,
-          `(parent.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DOMAIN,
-          false,
-          true
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: {
+            query: {
+              term: {
+                'parent.fullyQualifiedName.keyword': encodedFqn,
+              },
+            },
+          },
+          searchIndex: SearchIndex.DOMAIN,
+          trackTotalHits: true,
+        });
 
-        const totalCount = res.data.hits.total.value ?? 0;
+        const totalCount = res.hits.total.value ?? 0;
         setSubDomainsCount(totalCount);
       } catch (error) {
         setSubDomainsCount(0);
@@ -347,17 +349,21 @@ const DomainDetailsPage = ({
   const fetchDataProducts = async () => {
     if (!isVersionsView) {
       try {
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(domains.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DATA_PRODUCT
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: {
+            query: {
+              term: {
+                'domains.fullyQualifiedName': encodedFqn,
+              },
+            },
+          },
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
 
-        setDataProductsCount(res.data.hits.total.value ?? 0);
+        setDataProductsCount(res.hits.total.value ?? 0);
       } catch (error) {
         setDataProductsCount(0);
         showErrorToast(
