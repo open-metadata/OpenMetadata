@@ -16,6 +16,16 @@ import { ClientType } from '../generated/configuration/securityConfiguration';
 // Default callback URL for SSO configuration
 export const DEFAULT_CALLBACK_URL = 'http://localhost:8585/callback';
 
+// Google-specific default values
+export const GOOGLE_SSO_DEFAULTS = {
+  authority: 'https://accounts.google.com',
+  publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+  discoveryUri: 'https://accounts.google.com/.well-known/openid-configuration',
+  tokenValidity: 3600,
+  sessionExpiry: 604800,
+  serverUrl: 'http://localhost:8585',
+};
+
 // Common UI field configurations to reduce duplication
 export const COMMON_UI_FIELDS = {
   clientId: {
@@ -264,7 +274,7 @@ export const OIDC_UI_SCHEMA = {
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
 };
 
-// Standard OAuth/OIDC providers (Google, Auth0, Azure, Okta)
+// Standard OAuth/OIDC providers (Auth0, Azure, Okta)
 export const STANDARD_OAUTH_UI_SCHEMA = {
   ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
   samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
@@ -289,6 +299,57 @@ export const STANDARD_OAUTH_UI_SCHEMA = {
     maxAge: COMMON_UI_FIELDS.oidcMaxAge,
     prompt: COMMON_UI_FIELDS.oidcPrompt,
     sessionExpiry: COMMON_UI_FIELDS.oidcSessionExpiry,
+  },
+  // Hide universal settings managed in overview tab
+  enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
+};
+
+// Google-specific UI schema
+export const GOOGLE_OAUTH_UI_SCHEMA = {
+  ldapConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  samlConfiguration: { 'ui:widget': 'hidden', 'ui:hideError': true },
+  oidcConfiguration: {
+    ...COMMON_UI_FIELDS.oidcConfiguration,
+    type: { 'ui:widget': 'hidden', 'ui:hideError': true }, // Hide type field for Google (same as provider name)
+    id: COMMON_UI_FIELDS.oidcClientId,
+    secret: COMMON_UI_FIELDS.oidcClientSecret,
+    scope: COMMON_UI_FIELDS.oidcScope,
+    discoveryUri: {
+      'ui:title': 'OIDC Discovery URI',
+      'ui:placeholder': GOOGLE_SSO_DEFAULTS.discoveryUri,
+    },
+    useNonce: COMMON_UI_FIELDS.oidcUseNonce,
+    preferredJwsAlgorithm: COMMON_UI_FIELDS.oidcPreferredJwsAlgorithm,
+    responseType: COMMON_UI_FIELDS.oidcResponseType,
+    disablePkce: COMMON_UI_FIELDS.oidcDisablePkce,
+    maxClockSkew: COMMON_UI_FIELDS.oidcMaxClockSkew,
+    clientAuthenticationMethod: COMMON_UI_FIELDS.oidcClientAuthenticationMethod,
+    tokenValidity: {
+      'ui:title': 'OIDC Token Validity',
+      'ui:placeholder': `Default: ${GOOGLE_SSO_DEFAULTS.tokenValidity}`,
+    },
+    customParams: COMMON_UI_FIELDS.oidcCustomParameters,
+    tenant: { 'ui:widget': 'hidden', 'ui:hideError': true }, // Hide tenant for Google (not applicable)
+    serverUrl: {
+      'ui:title': 'OIDC Server URL',
+      'ui:placeholder': 'e.g. http://localhost:8585',
+    },
+    callbackUrl: COMMON_UI_FIELDS.oidcCallbackUrl,
+    maxAge: COMMON_UI_FIELDS.oidcMaxAge,
+    prompt: COMMON_UI_FIELDS.oidcPrompt,
+    sessionExpiry: {
+      'ui:title': 'OIDC Session Expiry',
+      'ui:placeholder': `Default: ${GOOGLE_SSO_DEFAULTS.sessionExpiry}`,
+    },
+  },
+  // For public client mode
+  authority: {
+    'ui:title': 'Authority',
+    'ui:placeholder': GOOGLE_SSO_DEFAULTS.authority,
+  },
+  publicKeyUrls: {
+    'ui:title': 'Public Key URLs',
+    'ui:placeholder': `Enter value (default: ${GOOGLE_SSO_DEFAULTS.publicKeyUrls[0]}) and press ENTER`,
   },
   // Hide universal settings managed in overview tab
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
@@ -373,7 +434,7 @@ export const PROVIDER_UI_SCHEMAS: Record<string, UISchemaObject> = {
   ldap: LDAP_UI_SCHEMA,
   saml: SAML_UI_SCHEMA,
   customoidc: OIDC_UI_SCHEMA,
-  google: STANDARD_OAUTH_UI_SCHEMA,
+  google: GOOGLE_OAUTH_UI_SCHEMA,
   auth0: STANDARD_OAUTH_UI_SCHEMA,
   azure: STANDARD_OAUTH_UI_SCHEMA,
   okta: STANDARD_OAUTH_UI_SCHEMA,

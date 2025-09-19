@@ -35,6 +35,7 @@ import {
   DEFAULT_CALLBACK_URL,
   DEFAULT_CONTAINER_REQUEST_FILTER,
   getSSOUISchema,
+  GOOGLE_SSO_DEFAULTS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
   VALIDATION_STATUS,
@@ -230,12 +231,22 @@ const SSOConfigurationFormRJSF = ({
           ? ClientType.Public
           : ClientType.Confidential;
 
+      // Get Google-specific defaults if applicable
+      const isGoogle = selectedProvider === AuthProvider.Google;
+
       const freshFormData = {
         authenticationConfiguration: {
           provider: selectedProvider as AuthProvider,
           providerName: selectedProvider,
           enableSelfSignup: true,
           clientType: defaultClientType,
+          // Always include authority and publicKeyUrls for Google (required by backend)
+          ...(isGoogle
+            ? {
+                authority: GOOGLE_SSO_DEFAULTS.authority,
+                publicKeyUrls: GOOGLE_SSO_DEFAULTS.publicKeyUrls,
+              }
+            : {}),
           // For confidential clients, fields go in oidcConfiguration
           // For public clients, use root level fields
           ...(defaultClientType === ClientType.Confidential
@@ -245,29 +256,37 @@ const SSOConfigurationFormRJSF = ({
                   id: '',
                   secret: '',
                   scope: 'openid email profile',
-                  discoveryUri: '',
+                  discoveryUri: isGoogle
+                    ? GOOGLE_SSO_DEFAULTS.discoveryUri
+                    : '',
                   useNonce: false,
                   preferredJwsAlgorithm: 'RS256',
                   responseType: 'code',
                   disablePkce: false,
                   maxClockSkew: 0,
                   clientAuthenticationMethod: 'client_secret_post',
-                  tokenValidity: 0,
+                  tokenValidity: isGoogle
+                    ? GOOGLE_SSO_DEFAULTS.tokenValidity
+                    : 0,
                   customParams: {},
                   tenant: '',
-                  serverUrl: '',
+                  serverUrl: isGoogle ? GOOGLE_SSO_DEFAULTS.serverUrl : '',
                   callbackUrl: DEFAULT_CALLBACK_URL,
                   maxAge: 0,
                   prompt: '',
-                  sessionExpiry: 0,
+                  sessionExpiry: isGoogle
+                    ? GOOGLE_SSO_DEFAULTS.sessionExpiry
+                    : 0,
                 },
               }
             : {
                 // For public clients, use root level fields
-                authority: '',
+                authority: isGoogle ? GOOGLE_SSO_DEFAULTS.authority : '',
                 clientId: '',
                 callbackUrl: DEFAULT_CALLBACK_URL,
-                publicKeyUrls: [],
+                publicKeyUrls: isGoogle
+                  ? GOOGLE_SSO_DEFAULTS.publicKeyUrls
+                  : [],
                 tokenValidationAlgorithm: 'RS256',
                 jwtPrincipalClaims: [],
                 jwtPrincipalClaimsMapping: [],
@@ -522,6 +541,12 @@ const SSOConfigurationFormRJSF = ({
           if (typeof oidcConfig.callbackUrl === 'string') {
             authConfig.callbackUrl = oidcConfig.callbackUrl;
           }
+          // Clean up serverUrl to ensure it doesn't contain /callback
+          if (typeof oidcConfig.serverUrl === 'string') {
+            const serverUrl = oidcConfig.serverUrl as string;
+            // Remove /callback or any path from serverUrl
+            oidcConfig.serverUrl = serverUrl.replace(/\/callback\/?$/, '');
+          }
         }
       }
 
@@ -757,6 +782,19 @@ const SSOConfigurationFormRJSF = ({
         'ui:widget': 'hidden',
         'ui:hideError': true,
       };
+
+      // For Google, show authority and publicKeyUrls even in Confidential mode
+      const isGoogle = currentProvider === AuthProvider.Google;
+      if (isGoogle) {
+        authConfig.authority = {
+          'ui:title': 'Authority',
+          'ui:placeholder': GOOGLE_SSO_DEFAULTS.authority,
+        } as UISchemaObject;
+        authConfig.publicKeyUrls = {
+          'ui:title': 'Public Key URLs',
+          'ui:placeholder': `Enter value (default: ${GOOGLE_SSO_DEFAULTS.publicKeyUrls[0]}) and press ENTER`,
+        } as UISchemaObject;
+      }
     }
 
     const finalSchema = {
@@ -807,6 +845,13 @@ const SSOConfigurationFormRJSF = ({
             // Set default callback URL if not present
             authConfig.callbackUrl = DEFAULT_CALLBACK_URL;
           }
+
+          // For Google SSO, prepopulate Authority and Public Key URLs when switching to Public
+          const isGoogle = authConfig.provider === AuthProvider.Google;
+          if (isGoogle) {
+            authConfig.authority = GOOGLE_SSO_DEFAULTS.authority;
+            authConfig.publicKeyUrls = GOOGLE_SSO_DEFAULTS.publicKeyUrls;
+          }
         }
         // If switching from Public to Confidential, move callback URL from root to OIDC
         else if (
@@ -825,6 +870,26 @@ const SSOConfigurationFormRJSF = ({
           } else if (!oidcConfig.callbackUrl) {
             // Set default callback URL if not present
             oidcConfig.callbackUrl = DEFAULT_CALLBACK_URL;
+          }
+
+          // For Google SSO, prepopulate OIDC fields when switching to Confidential
+          const isGoogle = authConfig.provider === AuthProvider.Google;
+          if (isGoogle) {
+            oidcConfig.type = AuthProvider.Google;
+            oidcConfig.discoveryUri = GOOGLE_SSO_DEFAULTS.discoveryUri;
+            oidcConfig.tokenValidity = GOOGLE_SSO_DEFAULTS.tokenValidity;
+            oidcConfig.sessionExpiry = GOOGLE_SSO_DEFAULTS.sessionExpiry;
+            oidcConfig.serverUrl = GOOGLE_SSO_DEFAULTS.serverUrl;
+            // Set default values for other required OIDC fields
+            oidcConfig.scope = oidcConfig.scope || 'openid email profile';
+            oidcConfig.useNonce = oidcConfig.useNonce ?? false;
+            oidcConfig.preferredJwsAlgorithm =
+              oidcConfig.preferredJwsAlgorithm || 'RS256';
+            oidcConfig.responseType = oidcConfig.responseType || 'code';
+            oidcConfig.disablePkce = oidcConfig.disablePkce ?? false;
+            oidcConfig.maxClockSkew = oidcConfig.maxClockSkew ?? 0;
+            oidcConfig.clientAuthenticationMethod =
+              oidcConfig.clientAuthenticationMethod || 'client_secret_post';
           }
         }
       }
@@ -1124,12 +1189,22 @@ const SSOConfigurationFormRJSF = ({
         ? ClientType.Public
         : ClientType.Confidential;
 
+    // Get Google-specific defaults if applicable
+    const isGoogle = provider === AuthProvider.Google;
+
     setInternalData({
       authenticationConfiguration: {
         provider: provider,
         providerName: provider,
         enableSelfSignup: false,
         clientType: defaultClientType,
+        // Always include authority and publicKeyUrls for Google (required by backend)
+        ...(isGoogle
+          ? {
+              authority: GOOGLE_SSO_DEFAULTS.authority,
+              publicKeyUrls: GOOGLE_SSO_DEFAULTS.publicKeyUrls,
+            }
+          : {}),
         // For confidential clients, fields go in oidcConfiguration
         // For public clients, use root level fields
         ...(defaultClientType === ClientType.Confidential
@@ -1139,29 +1214,29 @@ const SSOConfigurationFormRJSF = ({
                 id: '',
                 secret: '',
                 scope: 'openid email profile',
-                discoveryUri: '',
+                discoveryUri: isGoogle ? GOOGLE_SSO_DEFAULTS.discoveryUri : '',
                 useNonce: false,
                 preferredJwsAlgorithm: 'RS256',
                 responseType: 'code',
                 disablePkce: false,
                 maxClockSkew: 0,
                 clientAuthenticationMethod: 'client_secret_post',
-                tokenValidity: 0,
+                tokenValidity: isGoogle ? GOOGLE_SSO_DEFAULTS.tokenValidity : 0,
                 customParams: {},
                 tenant: '',
-                serverUrl: '',
+                serverUrl: isGoogle ? GOOGLE_SSO_DEFAULTS.serverUrl : '',
                 callbackUrl: DEFAULT_CALLBACK_URL,
                 maxAge: 0,
                 prompt: '',
-                sessionExpiry: 0,
+                sessionExpiry: isGoogle ? GOOGLE_SSO_DEFAULTS.sessionExpiry : 0,
               },
             }
           : {
               // For public clients, use root level fields
-              authority: '',
+              authority: isGoogle ? GOOGLE_SSO_DEFAULTS.authority : '',
               clientId: '',
               callbackUrl: DEFAULT_CALLBACK_URL,
-              publicKeyUrls: [],
+              publicKeyUrls: isGoogle ? GOOGLE_SSO_DEFAULTS.publicKeyUrls : [],
               tokenValidationAlgorithm: 'RS256',
               jwtPrincipalClaims: [],
               jwtPrincipalClaimsMapping: [],
