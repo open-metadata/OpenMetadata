@@ -191,6 +191,8 @@ export default function EntitySummaryPanel({
           owners: data.owners || entityDetails.details.owners, // ✅ Preserve owners from API or fallback to search result
           domains: entityDetails.details.domains,
           tags: entityDetails.details.tags,
+          dataProducts:
+            data.dataProducts || (entityDetails.details as any).dataProducts,
           tier: entityDetails.details.tier,
           columnNames: (entityDetails.details as any).columnNames,
           database: (entityDetails.details as any).database,
@@ -390,6 +392,55 @@ export default function EntitySummaryPanel({
     [entityData]
   );
 
+  const handleDataProductsUpdate = useCallback(
+    (updatedDataProducts: EntityReference[]) => {
+      // Update the entityData state with the new data products
+      setEntityData((prevData: any) => {
+        if (!prevData) {
+          return prevData;
+        }
+
+        const updatedData = {
+          ...prevData,
+          dataProducts: updatedDataProducts,
+          entityType: prevData.entityType || entityDetails.details.entityType,
+          fullyQualifiedName:
+            prevData.fullyQualifiedName ||
+            entityDetails.details.fullyQualifiedName,
+          id: prevData.id || entityDetails.details.id,
+          description:
+            prevData.description || entityDetails.details.description,
+          displayName:
+            prevData.displayName || entityDetails.details.displayName,
+          name: prevData.name || entityDetails.details.name,
+          deleted:
+            prevData.deleted !== undefined
+              ? prevData.deleted
+              : entityDetails.details.deleted,
+          serviceType:
+            prevData.serviceType || (entityDetails.details as any).serviceType,
+          service: prevData.service || entityDetails.details.service,
+          owners: prevData.owners || entityDetails.details.owners,
+          domains: prevData.domains || entityDetails.details.domains,
+          tags: prevData.tags || entityDetails.details.tags,
+          tier: prevData.tier || entityDetails.details.tier,
+          columnNames:
+            prevData.columnNames || (entityDetails.details as any).columnNames,
+          database:
+            prevData.database || (entityDetails.details as any).database,
+          databaseSchema:
+            prevData.databaseSchema ||
+            (entityDetails.details as any).databaseSchema,
+          tableType:
+            prevData.tableType || (entityDetails.details as any).tableType,
+        };
+
+        return updatedData;
+      });
+    },
+    [entityData]
+  );
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
@@ -484,6 +535,7 @@ export default function EntitySummaryPanel({
         }
         entityType={type}
         highlights={highlights}
+        onDataProductsUpdate={handleDataProductsUpdate}
         onDomainUpdate={handleDomainUpdate}
         onOwnerUpdate={handleOwnerUpdate}
         onTagsUpdate={handleTagsUpdate}
@@ -498,6 +550,7 @@ export default function EntitySummaryPanel({
     handleOwnerUpdate,
     handleDomainUpdate,
     handleTagsUpdate,
+    handleDataProductsUpdate,
   ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),

@@ -370,6 +370,9 @@ export const DataAssetSummaryPanelV1 = ({
                 hasPermission={
                   entityPermissions?.EditAll || entityPermissions?.EditTags
                 }
+                key={`data-products-${dataAsset.id}-${
+                  (dataAsset.dataProducts as unknown[])?.length || 0
+                }`}
                 onDataProductsUpdate={onDataProductsUpdate}
               />
             </div>
