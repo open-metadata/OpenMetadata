@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tab, Tabs } from '@mui/material';
+import { Stack, Tab, Tabs } from '@mui/material';
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -21,6 +21,7 @@ import profilerClassBase from '../TableProfiler/ProfilerClassBase';
 import { TableProfilerProps } from '../TableProfiler/TableProfiler.interface';
 import { TableProfilerProvider } from '../TableProfiler/TableProfilerProvider';
 import './data-observability-tab.less';
+import TabFilters from './TabFilters/TabFilters';
 
 const DataObservabilityTab = (props: TableProfilerProps) => {
   const { isTourOpen } = useTourProvider();
@@ -66,38 +67,45 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
         className="data-observability-tab-container"
         data-testid="table-profiler-container"
         id="profilerDetails">
-        <Tabs
-          sx={(theme) => ({
-            width: 'auto',
-            display: 'inline-flex',
-            '.MuiTab-root': {
-              transition: 'background-color 0.2s ease-in, color 0.2s ease-in',
-              borderRadius: '6px',
-            },
-            '.Mui-selected': {
-              backgroundColor: `${theme.palette.primary.main} !important`,
-              color: `${theme.palette.primary.contrastText} !important`,
-            },
-            '.MuiTab-root:hover': {
-              backgroundColor: `${theme.palette.primary.main} !important`,
-              color: `${theme.palette.primary.contrastText} !important`,
-            },
-            '.MuiTabs-indicator': {
-              display: 'none',
-            },
-            '.MuiTabs-scroller': {
-              padding: '0 8px',
-            },
-            '.MuiTab-root:not(:first-of-type)': {
-              marginLeft: '4px',
-            },
-          })}
-          value={activeTab}
-          onChange={handleTabChangeMUI}>
-          {tabOptions.map(({ label, key }) => (
-            <Tab key={key} label={label} value={key} />
-          ))}
-        </Tabs>
+        <Stack
+          alignItems="center"
+          direction="row"
+          justifyContent="space-between"
+          spacing={4}>
+          <Tabs
+            sx={(theme) => ({
+              width: 'auto',
+              display: 'inline-flex',
+              '.MuiTab-root': {
+                transition: 'background-color 0.2s ease-in, color 0.2s ease-in',
+                borderRadius: '6px',
+              },
+              '.Mui-selected': {
+                backgroundColor: `${theme.palette.primary.main} !important`,
+                color: `${theme.palette.primary.contrastText} !important`,
+              },
+              '.MuiTab-root:hover': {
+                backgroundColor: `${theme.palette.primary.main} !important`,
+                color: `${theme.palette.primary.contrastText} !important`,
+              },
+              '.MuiTabs-indicator': {
+                display: 'none',
+              },
+              '.MuiTabs-scroller': {
+                padding: '0 8px',
+              },
+              '.MuiTab-root:not(:first-of-type)': {
+                marginLeft: '4px',
+              },
+            })}
+            value={activeTab}
+            onChange={handleTabChangeMUI}>
+            {tabOptions.map(({ label, key }) => (
+              <Tab key={key} label={label} value={key} />
+            ))}
+          </Tabs>
+          <TabFilters />
+        </Stack>
         <div className="data-observability-content-panel">
           {activeTabComponent}
         </div>

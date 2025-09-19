@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Chip } from '@mui/material';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/no-data-icon.svg';
+import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/ticket-with-check.svg';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
 
 const NoProfilerBanner = () => {
@@ -21,10 +22,9 @@ const NoProfilerBanner = () => {
       .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;
 
   return (
-    <div
-      className="border d-flex items-center border-warning rounded-4 p-xs"
-      data-testid="no-profiler-placeholder">
-      <NoDataIcon />
+    <div data-testid="no-profiler-placeholder">
+      <Chip color="secondary" icon={<NoDataIcon />} variant="outlined" />
+
       <p className="m-l-xs" data-testid="error-msg">
         {t('message.no-profiler-message')}
         <a
