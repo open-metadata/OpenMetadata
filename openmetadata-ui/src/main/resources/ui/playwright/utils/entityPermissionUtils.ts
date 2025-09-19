@@ -592,6 +592,10 @@ export const createCustomPropertyForEntity = async (
     ApiCollection: 'apiCollections',
     ApiEndpoint: 'apiEndpoints',
     DataProduct: 'dataProducts',
+    Directory: 'directories',
+    File: 'files',
+    Spreadsheet: 'spreadsheets',
+    Worksheet: 'worksheets',
   };
 
   const entityApiType =

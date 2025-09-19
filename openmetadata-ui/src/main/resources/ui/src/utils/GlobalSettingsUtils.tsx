@@ -78,6 +78,14 @@ export const getSettingOptionByEntityType = (entityType: EntityType) => {
       return GlobalSettingOptions.DATA_PRODUCT;
     case EntityType.METRIC:
       return GlobalSettingOptions.METRICS;
+    case EntityType.DIRECTORY:
+      return GlobalSettingOptions.DIRECTORIES;
+    case EntityType.FILE:
+      return GlobalSettingOptions.FILES;
+    case EntityType.SPREADSHEET:
+      return GlobalSettingOptions.SPREADSHEETS;
+    case EntityType.WORKSHEET:
+      return GlobalSettingOptions.WORKSHEETS;
 
     case EntityType.TABLE:
     default:
