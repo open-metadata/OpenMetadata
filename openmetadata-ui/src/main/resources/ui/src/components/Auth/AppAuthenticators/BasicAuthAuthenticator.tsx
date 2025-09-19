@@ -56,9 +56,6 @@ const BasicAuthenticator = forwardRef(
 
         const response = await getAccessTokenOnExpiry();
 
-        if (response.refreshToken) {
-          await setRefreshToken(response.refreshToken);
-        }
         await setOidcToken(response.accessToken);
 
         return Promise.resolve(response);
