@@ -16,7 +16,6 @@ import { AxiosError } from 'axios';
 import { get, startCase } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
 import { ReactComponent as IconExternalLinkOutlined } from '../../../assets/svg/redirect-icon.svg';
 import { LineageData } from '../../../components/Lineage/Lineage.interface';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -56,6 +55,7 @@ import EntityRightPanelVerticalNav, {
   EntityRightPanelTab,
 } from '../../Entity/EntityRightPanel/EntityRightPanelVerticalNav';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
+import CustomPropertiesSection from './CustomPropertiesSection';
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import { EntitySummaryPanelProps } from './EntitySummaryPanel.interface';
@@ -556,138 +556,14 @@ export default function EntitySummaryPanel({
           </div>
         );
       case EntityRightPanelTab.CUSTOM_PROPERTIES: {
-        if (isEntityDataLoading) {
-          return (
-            <div className="entity-summary-panel-tab-content">
-              <div className="p-lg">
-                <Loader size="default" />
-              </div>
-            </div>
-          );
-        }
-
-        const customProperties = entityTypeDetail?.customProperties || [];
-        const extensionData = entityData?.extension || {};
-
-        if (customProperties.length === 0) {
-          return (
-            <div className="entity-summary-panel-tab-content">
-              <div className="p-lg">
-                <Typography.Text className="text-grey-muted">
-                  {t('message.no-custom-properties-defined')}
-                </Typography.Text>
-              </div>
-            </div>
-          );
-        }
-
         return (
-          <div className="entity-summary-panel-tab-content">
-            <div className="p-x-md">
-              <div className="custom-properties-list">
-                {customProperties.slice(0, 5).map((property: any) => {
-                  const value = extensionData[property.name];
-
-                  const formatValue = (val: any) => {
-                    if (!val) {
-                      return (
-                        <div className="text-center text-grey-muted p-sm">
-                          {t('label.no-data-found')}
-                        </div>
-                      );
-                    }
-
-                    if (typeof val === 'object') {
-                      if (Array.isArray(val)) {
-                        return val.join(', ');
-                      }
-                      if (val.name || val.displayName) {
-                        return val.name || val.displayName;
-                      }
-                      if (val.value) {
-                        return val.value;
-                      }
-                      // Handle table-type custom properties
-                      if (val.rows && val.columns) {
-                        return (
-                          <div className="custom-property-table">
-                            <table className="ant-table ant-table-small">
-                              <colgroup>
-                                {val.columns.map((_: string, index: number) => (
-                                  <col
-                                    key={index}
-                                    style={{ minWidth: '80px' }}
-                                  />
-                                ))}
-                              </colgroup>
-                              <thead>
-                                <tr>
-                                  {val.columns.map(
-                                    (column: string, index: number) => (
-                                      <th
-                                        className="ant-table-cell"
-                                        key={index}>
-                                        {column}
-                                      </th>
-                                    )
-                                  )}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {val.rows.map((row: any, rowIndex: number) => (
-                                  <tr key={rowIndex}>
-                                    {val.columns.map(
-                                      (column: string, colIndex: number) => (
-                                        <td
-                                          className="ant-table-cell"
-                                          key={colIndex}>
-                                          {row[column] || '-'}
-                                        </td>
-                                      )
-                                    )}
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        );
-                      }
-
-                      return JSON.stringify(val);
-                    }
-
-                    return String(val);
-                  };
-
-                  return (
-                    <div className="custom-property-item" key={property.name}>
-                      <Typography.Text strong className="property-name">
-                        {property.displayName || property.name}
-                      </Typography.Text>
-                      <Typography.Text className="property-value">
-                        {formatValue(value)}
-                      </Typography.Text>
-                    </div>
-                  );
-                })}
-                {customProperties.length > 5 && (
-                  <div className="m-t-md">
-                    <Link
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      to={getEntityLinkFromType(
-                        entityDetails.details.fullyQualifiedName || '',
-                        entityType as EntityType
-                      )}>
-                      <Button size="small" type="primary">
-                        {t('label.view-all')}
-                      </Button>
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          <CustomPropertiesSection
+            entityData={entityData}
+            entityDetails={entityDetails}
+            entityType={entityType}
+            entityTypeDetail={entityTypeDetail}
+            isEntityDataLoading={isEntityDataLoading}
+          />
         );
       }
       default:
