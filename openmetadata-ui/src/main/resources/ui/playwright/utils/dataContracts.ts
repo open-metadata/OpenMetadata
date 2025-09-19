@@ -36,6 +36,12 @@ export const saveAndTriggerDataContractValidation = async (
   const runNowResponse = page.waitForResponse(
     '/api/v1/dataContracts/*/validate'
   );
+  await page.getByTestId('manage-contract-actions').click();
+
+  await page.waitForSelector('.contract-action-dropdown', {
+    state: 'visible',
+  });
+
   await page.getByTestId('contract-run-now-button').click();
   await runNowResponse;
 
