@@ -33,6 +33,19 @@ MOCK_PIPELINE_FQN = "OpenMetadata.CollateAIApplication"
 class MockAppRunner(AppRunner):
     """Mock AppRunner for testing"""
 
+    def __init__(
+        self,
+        config: OpenMetadataApplicationConfig,
+        metadata: OpenMetadata,
+    ):
+        self.app_config = config.appConfig.root if config.appConfig else None
+        self.metadata = metadata
+        # Use ingestionPipelineFQN instead of applicationFqn
+        self.private_config = self._retrieve_app_private_config(
+            config.appPrivateConfig.root if config.appPrivateConfig else None,
+            config.ingestionPipelineFQN,
+        )
+
     def run(self) -> None:
         pass
 
