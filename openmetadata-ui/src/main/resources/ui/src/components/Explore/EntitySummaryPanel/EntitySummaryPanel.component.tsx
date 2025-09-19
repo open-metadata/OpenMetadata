@@ -27,24 +27,35 @@ import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
-import { getDashboardByFqn } from '../../../rest/dashboardAPI';
+import { TagSource } from '../../../generated/type/tagLabel';
+import { patchChartDetails } from '../../../rest/chartsAPI';
+import {
+  getDashboardByFqn,
+  patchDashboardDetails,
+} from '../../../rest/dashboardAPI';
 import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
 import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
-import { getMlModelByFQN } from '../../../rest/mlModelAPI';
-import { getPipelineByFqn } from '../../../rest/pipelineAPI';
+import { getMlModelByFQN, patchMlModelDetails } from '../../../rest/mlModelAPI';
+import {
+  getPipelineByFqn,
+  patchPipelineDetails,
+} from '../../../rest/pipelineAPI';
 import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
 import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
-import { getTableDetailsByFQN } from '../../../rest/tableAPI';
-import { getTopicByFqn } from '../../../rest/topicsAPI';
+import {
+  getTableDetailsByFQN,
+  patchTableDetails,
+} from '../../../rest/tableAPI';
+import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
 } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -441,6 +452,147 @@ export default function EntitySummaryPanel({
     [entityData]
   );
 
+  const handleGlossaryTermsUpdate = useCallback(
+    async (updatedTags: any[]) => {
+      try {
+        // Use the most up-to-date entity data as the base
+        const currentEntityData = entityData || entityDetails.details;
+
+        // Get current tags and separate glossary terms from classification tags
+        const currentTags = currentEntityData.tags || [];
+        const classificationTags = currentTags.filter(
+          (tag: any) => tag.source !== TagSource.Glossary
+        );
+
+        // Normalize the current tags to ensure they have all required properties
+        const normalizedClassificationTags = classificationTags.map(
+          (tag: any) => ({
+            ...tag,
+            style: tag.style || {},
+          })
+        );
+
+        // Normalize the updated tags to ensure they have all required properties
+        const normalizedUpdatedTags = updatedTags.map((tag: any) => ({
+          ...tag,
+          style: tag.style || {},
+        }));
+
+        // Merge classification tags with new glossary terms
+        const mergedTags = [
+          ...normalizedClassificationTags,
+          ...normalizedUpdatedTags,
+        ];
+
+        // Create updated entity data with merged tags - following the same pattern as TableDetailsPageV1
+        const updatedEntityData = {
+          ...currentEntityData,
+          tags: mergedTags,
+        };
+
+        // Normalize the current entity data to ensure all tags have required properties
+        const normalizedCurrentEntityData = {
+          ...currentEntityData,
+          tags: currentTags.map((tag: any) => ({
+            ...tag,
+            style: tag.style || {},
+          })),
+        };
+
+        // Generate JSON patch by comparing only the tags arrays to avoid array index issues
+        const currentTagsNormalized = normalizedCurrentEntityData.tags || [];
+        const updatedTagsArray = updatedEntityData.tags || [];
+
+        // Check if tags have actually changed
+        const tagsChanged =
+          JSON.stringify(currentTagsNormalized) !==
+          JSON.stringify(updatedTagsArray);
+
+        if (!tagsChanged) {
+          return;
+        }
+
+        // Create a simple replace operation for the entire tags array
+        const jsonPatch = [
+          {
+            op: 'replace' as const,
+            path: '/tags',
+            value: updatedTagsArray,
+          },
+        ];
+
+        // Make the API call using the correct patch API for the entity type
+        const patchAPI = getPatchAPI(entityType);
+        if (entityDetails.details.id) {
+          await patchAPI(entityDetails.details.id, jsonPatch);
+        }
+
+        // Show success message
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.glossary-term-plural'),
+          })
+        );
+
+        // Update the entityData state with the new tags
+        setEntityData((prevData: any) => {
+          if (!prevData) {
+            return prevData;
+          }
+
+          const updatedData = {
+            ...prevData,
+            tags: updatedTags,
+            entityType: prevData.entityType || entityDetails.details.entityType,
+            fullyQualifiedName:
+              prevData.fullyQualifiedName ||
+              entityDetails.details.fullyQualifiedName,
+            id: prevData.id || entityDetails.details.id,
+            description:
+              prevData.description || entityDetails.details.description,
+            displayName:
+              prevData.displayName || entityDetails.details.displayName,
+            name: prevData.name || entityDetails.details.name,
+            deleted:
+              prevData.deleted !== undefined
+                ? prevData.deleted
+                : entityDetails.details.deleted,
+            serviceType:
+              prevData.serviceType ||
+              (entityDetails.details as any).serviceType,
+            service: prevData.service || entityDetails.details.service,
+            owners: prevData.owners || entityDetails.details.owners,
+            domains: prevData.domains || entityDetails.details.domains,
+            dataProducts:
+              prevData.dataProducts ||
+              (entityDetails.details as any).dataProducts,
+            tier: prevData.tier || entityDetails.details.tier,
+            columnNames:
+              prevData.columnNames ||
+              (entityDetails.details as any).columnNames,
+            database:
+              prevData.database || (entityDetails.details as any).database,
+            databaseSchema:
+              prevData.databaseSchema ||
+              (entityDetails.details as any).databaseSchema,
+            tableType:
+              prevData.tableType || (entityDetails.details as any).tableType,
+          };
+
+          return updatedData;
+        });
+      } catch (error) {
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-updating-error', {
+            entity: t('label.glossary-term-plural'),
+          })
+        );
+      }
+    },
+    [entityData, entityDetails.details, entityType, t]
+  );
+
   useEffect(() => {
     if (id) {
       fetchResourcePermission(id);
@@ -462,6 +614,27 @@ export default function EntitySummaryPanel({
     () => entityPermissions.ViewBasic || entityPermissions.ViewAll,
     [entityPermissions]
   );
+
+  // Function to get the correct patch API based on entity type
+  const getPatchAPI = (entityType?: EntityType) => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        return patchTableDetails;
+      case EntityType.DASHBOARD:
+        return patchDashboardDetails;
+      case EntityType.TOPIC:
+        return patchTopicDetails;
+      case EntityType.PIPELINE:
+        return patchPipelineDetails;
+      case EntityType.MLMODEL:
+        return patchMlModelDetails;
+      case EntityType.CHART:
+        return patchChartDetails;
+      default:
+        // Default to table API for backward compatibility
+        return patchTableDetails;
+    }
+  };
 
   const summaryComponent = useMemo(() => {
     if (isPermissionLoading) {
@@ -537,6 +710,7 @@ export default function EntitySummaryPanel({
         highlights={highlights}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDomainUpdate={handleDomainUpdate}
+        onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
         onOwnerUpdate={handleOwnerUpdate}
         onTagsUpdate={handleTagsUpdate}
       />
@@ -551,6 +725,7 @@ export default function EntitySummaryPanel({
     handleDomainUpdate,
     handleTagsUpdate,
     handleDataProductsUpdate,
+    handleGlossaryTermsUpdate,
   ]);
   const entityLink = useMemo(
     () => searchClassBase.getEntityLink(entityDetails.details),

@@ -32,6 +32,7 @@ import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
 import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
+import { TagSource } from '../../generated/type/tagLabel';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { listTestCases } from '../../rest/testAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
@@ -340,10 +341,12 @@ export const DataAssetSummaryPanelV1 = ({
             <div className="section-container">
               <GlossaryTermsSection
                 entityId={dataAsset.id}
-                entityType={entityType}
                 hasPermission={
                   entityPermissions?.EditAll || entityPermissions?.EditTags
                 }
+                key={`glossary-terms-${dataAsset.id}-${
+                  (dataAsset.tags as unknown[])?.length || 0
+                }`}
                 tags={dataAsset.tags}
                 onGlossaryTermsUpdate={onGlossaryTermsUpdate}
               />
@@ -357,7 +360,9 @@ export const DataAssetSummaryPanelV1 = ({
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
-                tags={dataAsset.tags}
+                tags={dataAsset.tags?.filter(
+                  (tag: any) => tag.source !== TagSource.Glossary
+                )}
                 onTagsUpdate={onTagsUpdate}
               />
             </div>
