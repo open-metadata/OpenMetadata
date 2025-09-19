@@ -1079,6 +1079,7 @@
     "nodes-per-layer": "โหนดต่อชั้น",
     "non-partitioned": "ไม่มีการแบ่งส่วน",
     "none": "ไม่มี",
+    "not-contain-plural": "ไม่ประกอบด้วย",
     "not-covered": "ไม่ครอบคลุม",
     "not-found-lowercase": "ไม่พบ",
     "not-null": "ไม่เป็นค่าว่าง",

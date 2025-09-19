@@ -1079,6 +1079,7 @@
     "nodes-per-layer": "每層節點數",
     "non-partitioned": "非分割",
     "none": "無",
+    "not-contain-plural": "不包含",
     "not-covered": "未涵蓋",
     "not-found-lowercase": "找不到",
     "not-null": "非空值",

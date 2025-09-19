@@ -1079,6 +1079,7 @@
     "nodes-per-layer": "Nodes Per Layer",
     "non-partitioned": "Non-partitioned",
     "none": "None",
+    "not-contain-plural": "Not Contains",
     "not-covered": "Not Covered",
     "not-found-lowercase": "not found",
     "not-null": "Not Null",
