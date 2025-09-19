@@ -105,8 +105,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             filter === 'upstream' ? 'active' : ''
           }`}
           size="small"
-          onClick={() => onFilterChange('upstream')}
-        >
+          onClick={() => onFilterChange('upstream')}>
           {t('label.upstream')}
           <span className="lineage-filter-button-count">{upstreamCount}</span>
         </Button>
@@ -115,8 +114,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             filter === 'downstream' ? 'active' : ''
           }`}
           size="small"
-          onClick={() => onFilterChange('downstream')}
-        >
+          onClick={() => onFilterChange('downstream')}>
           {t('label.downstream')}
           <span className="lineage-filter-button-count">{downstreamCount}</span>
         </Button>
@@ -128,8 +126,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           lineageItems.map((item, index) => (
             <div
               className="lineage-item-card"
-              key={`${item.entity.id}-${index}`}
-            >
+              key={`${item.entity.id}-${index}`}>
               <div className="lineage-item-header">
                 <div className="service-icon">
                   {getServiceLogo(
@@ -168,7 +165,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           ))
         ) : (
           <div className="text-center text-grey-muted p-lg">
-            {t('message.no-lineage-items-found')}
+            {t('label.no-data-found')}
           </div>
         )}
       </div>

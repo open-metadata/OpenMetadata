@@ -15,6 +15,7 @@ import { Avatar, Badge, Button, Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
 import { PROFILER_FILTER_RANGE } from '../../../../constants/profiler.constant';
 import { TestCase, TestCaseStatus } from '../../../../generated/tests/testCase';
 import {
@@ -24,6 +25,7 @@ import {
 import { Include } from '../../../../generated/type/include';
 import { getListTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { listTestCases } from '../../../../rest/testAPI';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import {
   getCurrentMillis,
   getEpochMillisForPastDays,
@@ -450,14 +452,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   activeFilter === 'success' ? 'active' : ''
                 }`}
                 size="small"
-                onClick={() => handleFilterChange('success')}
-              >
+                onClick={() => handleFilterChange('success')}>
                 {t('label.success')}
                 <span
                   className={`test-case-count ${
                     activeFilter === 'success' ? 'active' : ''
-                  }`}
-                >
+                  }`}>
                   {statusCounts.success}
                 </span>
               </Button>
@@ -469,14 +469,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   activeFilter === 'aborted' ? 'active' : ''
                 }`}
                 size="small"
-                onClick={() => handleFilterChange('aborted')}
-              >
+                onClick={() => handleFilterChange('aborted')}>
                 {t('label.aborted')}
                 <span
                   className={`test-case-count ${
                     activeFilter === 'aborted' ? 'active' : ''
-                  }`}
-                >
+                  }`}>
                   {statusCounts.aborted}
                 </span>
               </Button>
@@ -487,14 +485,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   activeFilter === 'failed' ? 'active' : ''
                 }`}
                 size="small"
-                onClick={() => handleFilterChange('failed')}
-              >
+                onClick={() => handleFilterChange('failed')}>
                 {t('label.failed')}
                 <span
                   className={`test-case-count ${
                     activeFilter === 'failed' ? 'active' : ''
-                  }`}
-                >
+                  }`}>
                   {statusCounts.failed}
                 </span>
               </Button>
@@ -611,14 +607,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   activeIncidentFilter === 'new' ? 'active' : ''
                 }`}
                 size="small"
-                onClick={() => handleIncidentFilterChange('new')}
-              >
+                onClick={() => handleIncidentFilterChange('new')}>
                 {t('label.new')}
                 <span
                   className={`incident-test-case-count ${
                     activeIncidentFilter === 'new' ? 'active' : ''
-                  }`}
-                >
+                  }`}>
                   {incidentCounts.new}
                 </span>
               </Button>
@@ -628,14 +622,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   activeIncidentFilter === 'ack' ? 'active' : ''
                 }`}
                 size="small"
-                onClick={() => handleIncidentFilterChange('ack')}
-              >
+                onClick={() => handleIncidentFilterChange('ack')}>
                 {t('label.ack')}
                 <span
                   className={`incident-test-case-count ${
                     activeIncidentFilter === 'ack' ? 'active' : ''
-                  }`}
-                >
+                  }`}>
                   {incidentCounts.ack}
                 </span>
               </Button>
@@ -644,14 +636,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   activeIncidentFilter === 'assigned' ? 'active' : ''
                 }`}
                 size="small"
-                onClick={() => handleIncidentFilterChange('assigned')}
-              >
+                onClick={() => handleIncidentFilterChange('assigned')}>
                 {t('label.assigned')}
                 <span
                   className={`incident-test-case-count ${
                     activeIncidentFilter === 'assigned' ? 'active' : ''
-                  }`}
-                >
+                  }`}>
                   {incidentCounts.assigned}
                 </span>
               </Button>
@@ -660,14 +650,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   activeIncidentFilter === 'resolved' ? 'active' : ''
                 }`}
                 size="small"
-                onClick={() => handleIncidentFilterChange('resolved')}
-              >
+                onClick={() => handleIncidentFilterChange('resolved')}>
                 {t('label.resolved')}
                 <span
                   className={`incident-test-case-count ${
                     activeIncidentFilter === 'resolved' ? 'active' : ''
-                  }`}
-                >
+                  }`}>
                   {incidentCounts.resolved}
                 </span>
               </Button>
@@ -720,7 +708,20 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     return (
       <div className="data-quality-tab-container">
         <div className="text-center text-grey-muted">
-          {t('message.no-data-quality-test-case')}
+          <Transi18next
+            i18nKey="message.no-data-quality-test-case"
+            renderElement={
+              <a
+                href={DATA_QUALITY_PROFILER_DOCS}
+                rel="noreferrer"
+                target="_blank"
+                title="Data Quality Profiler Documentation"
+              />
+            }
+            values={{
+              explore: t('message.explore-our-guide-here'),
+            }}
+          />
         </div>
       </div>
     );

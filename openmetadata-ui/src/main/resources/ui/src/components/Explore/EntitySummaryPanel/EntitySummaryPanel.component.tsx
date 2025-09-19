@@ -548,7 +548,7 @@ export default function EntitySummaryPanel({
         );
       case EntityRightPanelTab.DATA_QUALITY:
         return (
-          <div className="p-t-sm">
+          <div className="p-t-sm p-x-sm">
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
               entityType={entityType}

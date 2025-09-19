@@ -24,9 +24,12 @@
  */
 
 import { Button, Typography } from 'antd';
+import { startCase } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { CUSTOM_PROPERTIES_DOCS } from '../../../../constants/docs.constants';
 import { EntityType } from '../../../../enums/entity.enum';
+import { Transi18next } from '../../../../utils/CommonUtils';
 import { getEntityLinkFromType } from '../../../../utils/EntityUtils';
 import Loader from '../../../common/Loader/Loader';
 
@@ -64,9 +67,21 @@ const CustomPropertiesSection = ({
     return (
       <div className="entity-summary-panel-tab-content">
         <div className="p-lg">
-          <Typography.Text className="text-grey-muted">
-            {t('message.no-custom-properties-defined')}
-          </Typography.Text>
+          <Transi18next
+            i18nKey="message.no-custom-properties-entity"
+            renderElement={
+              <a
+                href={CUSTOM_PROPERTIES_DOCS}
+                rel="noreferrer"
+                target="_blank"
+                title="Custom properties documentation"
+              />
+            }
+            values={{
+              docs: t('label.doc-plural-lowercase'),
+              entity: startCase(entityType),
+            }}
+          />
         </div>
       </div>
     );
