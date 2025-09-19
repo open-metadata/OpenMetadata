@@ -10,35 +10,42 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AxiosError } from 'axios';
+import { Button, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
-import { ReactComponent as NoDataProductsPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
+import { ReactComponent as DataProductNoDataPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import {
-  PAGE_SIZE_LARGE,
+  INITIAL_PAGING_VALUE,
+  PAGE_SIZE_BASE,
   PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../../../constants/constants';
 import {
+  applySortToData,
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
-import { SIZE } from '../../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
+import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
-import { WidgetCommonProps } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
-import { searchQuery } from '../../../../rest/searchAPI';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import {
+  WidgetCommonProps,
+  WidgetConfig,
+} from '../../../../pages/CustomizablePage/CustomizablePage.interface';
+import { searchData } from '../../../../rest/miscAPI';
+import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';
 import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './data-products-widget.less';
-import DataProductCard from './DataProductCard/DataProductCard.component';
 import {
   DATA_PRODUCTS_SORT_BY_KEYS,
   DATA_PRODUCTS_SORT_BY_OPTIONS,
@@ -52,121 +59,173 @@ const DataProductsWidget = ({
   currentLayout,
 }: WidgetCommonProps) => {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState<boolean>(true);
   const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
+  const navigate = useNavigate();
   const [selectedSortBy, setSelectedSortBy] = useState<string>(
-    DATA_PRODUCTS_SORT_BY_KEYS.A_TO_Z
+    DATA_PRODUCTS_SORT_BY_KEYS.LATEST
   );
-
-  const widgetData = useMemo(
-    () => currentLayout?.find((w) => w.i === widgetKey),
-    [currentLayout, widgetKey]
-  );
-
-  const isFullSize = widgetData?.w === 2;
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchDataProducts = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const sortField = getSortField(selectedSortBy);
       const sortOrder = getSortOrder(selectedSortBy);
-      const res = await searchQuery({
-        query: '',
-        pageNumber: 1,
-        pageSize: PAGE_SIZE_LARGE,
-        searchIndex: SearchIndex.DATA_PRODUCT,
+
+      const res = await searchData(
+        '',
+        INITIAL_PAGING_VALUE,
+        PAGE_SIZE_MEDIUM,
+        '',
         sortField,
         sortOrder,
-        queryFilter: {},
-        fetchSource: true,
-      });
+        SearchIndex.DATA_PRODUCT
+      );
 
-      setDataProducts(res.hits.hits.map((hit) => hit._source) as DataProduct[]);
-    } catch (error) {
-      showErrorToast(error as AxiosError);
+      const dataProducts = res?.data?.hits?.hits.map((hit) => hit._source);
+      const sortedDataProducts = applySortToData(dataProducts, selectedSortBy);
+      setDataProducts(sortedDataProducts as DataProduct[]);
+    } catch {
+      setError(t('message.fetch-data-product-list-error'));
+      setDataProducts([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedSortBy]);
+  }, [selectedSortBy, getSortField, getSortOrder, applySortToData]);
+
+  const handleDataProductClick = useCallback(
+    (dataProduct: DataProduct) => {
+      navigate(
+        getEntityDetailsPath(
+          EntityType.DATA_PRODUCT,
+          dataProduct.fullyQualifiedName ?? ''
+        )
+      );
+    },
+    [navigate]
+  );
+
+  const dataProductsWidget = useMemo(() => {
+    const widget = currentLayout?.find(
+      (widget: WidgetConfig) => widget.i === widgetKey
+    );
+
+    return widget;
+  }, [currentLayout, widgetKey]);
+
+  const isFullSize = useMemo(() => {
+    return dataProductsWidget?.w === 2;
+  }, [dataProductsWidget]);
 
   useEffect(() => {
     fetchDataProducts();
   }, [fetchDataProducts]);
 
-  const handleSortByClick = useCallback(
-    (key: string) => {
-      setSelectedSortBy(key);
-    },
-    [setSelectedSortBy]
-  );
+  const handleSortByClick = useCallback((key: string) => {
+    setSelectedSortBy(key);
+  }, []);
 
   const handleTitleClick = useCallback(() => {
     navigate(`${ROUTES.EXPLORE}?tab=data_product`);
   }, [navigate]);
 
-  const sortedDataProducts = useMemo(() => {
-    switch (selectedSortBy) {
-      case DATA_PRODUCTS_SORT_BY_KEYS.A_TO_Z:
-        return [...dataProducts].sort((a, b) =>
-          (a.displayName || a.name).localeCompare(b.displayName || b.name)
-        );
-      case DATA_PRODUCTS_SORT_BY_KEYS.Z_TO_A:
-        return [...dataProducts].sort((a, b) =>
-          (b.displayName || b.name).localeCompare(a.displayName || a.name)
-        );
-      case DATA_PRODUCTS_SORT_BY_KEYS.HIGH_TO_LOW:
-        return [...dataProducts].sort(
-          (a, b) => (b.assets?.length || 0) - (a.assets?.length || 0)
-        );
-      case DATA_PRODUCTS_SORT_BY_KEYS.LOW_TO_HIGH:
-        return [...dataProducts].sort(
-          (a, b) => (a.assets?.length || 0) - (b.assets?.length || 0)
-        );
-      default:
-        return dataProducts;
-    }
-  }, [dataProducts, selectedSortBy]);
-
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
+        actionButtonLink={`${ROUTES.EXPLORE}?tab=data_product`}
+        actionButtonText={t('label.explore-data-product-plural')}
+        description={t('message.data-products-no-data-message')}
         icon={
-          <NoDataProductsPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
+          <DataProductNoDataPlaceholder
+            height={SIZE.MEDIUM}
+            width={SIZE.MEDIUM}
+          />
         }
-        title={t('message.no-data-products-yet')}
+        title={t('label.no-data-products-yet')}
       />
     ),
     [t]
   );
 
-  const dataProductsContent = useMemo(
+  const dataProductsList = useMemo(
     () => (
       <div className="entity-list-body">
-        <div
-          className={classNames(
-            'cards-scroll-container flex-1 overflow-y-auto',
-            isFullSize ? 'justify-start' : 'justify-center'
-          )}>
-          {sortedDataProducts.slice(0, PAGE_SIZE_MEDIUM).map((dataProduct) => (
-            <div
-              className="card-wrapper"
+        <div className="data-products-widget-grid">
+          {dataProducts.slice(0, PAGE_SIZE_BASE).map((dataProduct) => (
+            <Button
+              className={classNames('data-product-card', {
+                'data-product-card-full': isFullSize,
+                'p-0': !isFullSize,
+              })}
               key={dataProduct.id}
-              style={{
-                width: isFullSize ? '125px' : '110px',
-              }}>
-              <DataProductCard dataProduct={dataProduct} />
-            </div>
+              onClick={() => handleDataProductClick(dataProduct)}>
+              {isFullSize ? (
+                <div className="d-flex gap-2">
+                  <div
+                    className="data-product-card-full-icon"
+                    style={{ background: dataProduct.style?.color }}>
+                    {getDataProductIconByUrl(dataProduct.style?.iconURL)}
+                  </div>
+                  <div className="data-product-card-full-content">
+                    <div className="data-product-card-full-title-row">
+                      <Typography.Text
+                        className="font-semibold"
+                        ellipsis={{
+                          tooltip: true,
+                        }}>
+                        {dataProduct.displayName || dataProduct.name}
+                      </Typography.Text>
+                      <span className="data-product-card-full-count">
+                        {dataProduct.assets?.length || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  className="d-flex data-product-card-bar"
+                  style={{ borderLeftColor: dataProduct.style?.color }}>
+                  <div className="data-product-card-content">
+                    <span className="data-product-card-title">
+                      <div className="data-product-card-icon">
+                        {getDataProductIconByUrl(dataProduct.style?.iconURL)}
+                      </div>
+                      <Typography.Text
+                        className="data-product-card-name"
+                        ellipsis={{ tooltip: true }}>
+                        {dataProduct.displayName || dataProduct.name}
+                      </Typography.Text>
+                    </span>
+                    <span className="data-product-card-count">
+                      {dataProduct.assets?.length || 0}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </Button>
           ))}
         </div>
       </div>
     ),
-    [sortedDataProducts, isFullSize]
+    [dataProducts, isFullSize]
   );
 
   const showWidgetFooterMoreButton = useMemo(
-    () => Boolean(!loading) && dataProducts?.length > PAGE_SIZE_MEDIUM,
+    () => Boolean(!loading) && dataProducts.length > PAGE_SIZE_BASE,
     [dataProducts, loading]
+  );
+
+  const footer = useMemo(
+    () => (
+      <WidgetFooter
+        moreButtonLink={`${ROUTES.EXPLORE}?tab=data_product`}
+        moreButtonText={t('label.view-more')}
+        showMoreButton={showWidgetFooterMoreButton}
+      />
+    ),
+    [t, showWidgetFooterMoreButton]
   );
 
   const widgetHeader = useMemo(
@@ -175,13 +234,19 @@ const DataProductsWidget = ({
         currentLayout={currentLayout}
         handleLayoutUpdate={handleLayoutUpdate}
         handleRemoveWidget={handleRemoveWidget}
-        icon={<DataProductIcon height={24} width={24} />}
+        icon={
+          <DataProductIcon
+            className="data-products-widget-icon"
+            height={22}
+            width={22}
+          />
+        }
         isEditView={isEditView}
         selectedSortBy={selectedSortBy}
         sortOptions={DATA_PRODUCTS_SORT_BY_OPTIONS}
         title={t('label.data-product-plural')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
+        widgetWidth={2}
         onSortChange={handleSortByClick}
         onTitleClick={handleTitleClick}
       />
@@ -191,29 +256,12 @@ const DataProductsWidget = ({
       handleLayoutUpdate,
       handleRemoveWidget,
       isEditView,
+      selectedSortBy,
       t,
       widgetKey,
-      widgetData?.w,
-      selectedSortBy,
       handleSortByClick,
       handleTitleClick,
     ]
-  );
-
-  const widgetContent = useMemo(
-    () => (
-      <div className="data-products-widget-container">
-        <div className="widget-content flex-1">
-          {isEmpty(dataProducts) ? emptyState : dataProductsContent}
-          <WidgetFooter
-            moreButtonLink={`${ROUTES.EXPLORE}?tab=data_product`}
-            moreButtonText={t('label.view-more')}
-            showMoreButton={showWidgetFooterMoreButton}
-          />
-        </div>
-      </div>
-    ),
-    [emptyState, dataProductsContent, showWidgetFooterMoreButton, t]
   );
 
   return (
@@ -221,7 +269,22 @@ const DataProductsWidget = ({
       dataTestId="KnowledgePanel.DataProducts"
       header={widgetHeader}
       loading={loading}>
-      {widgetContent}
+      <div className="data-products-widget-container">
+        <div className="widget-content flex-1">
+          {error ? (
+            <ErrorPlaceHolder
+              className="data-products-widget-error border-none"
+              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+              {error}
+            </ErrorPlaceHolder>
+          ) : isEmpty(dataProducts) ? (
+            emptyState
+          ) : (
+            dataProductsList
+          )}
+        </div>
+        {!isEmpty(dataProducts) && footer}
+      </div>
     </WidgetWrapper>
   );
 };

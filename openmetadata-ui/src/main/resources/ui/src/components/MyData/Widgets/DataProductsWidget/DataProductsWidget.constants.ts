@@ -13,13 +13,16 @@
 import { t } from '../../../../utils/i18next/LocalUtil';
 
 export const DATA_PRODUCTS_SORT_BY_KEYS = {
+  LATEST: 'latest',
   A_TO_Z: 'a-to-z',
   Z_TO_A: 'z-to-a',
-  HIGH_TO_LOW: 'high-to-low',
-  LOW_TO_HIGH: 'low-to-high',
 };
 
 export const DATA_PRODUCTS_SORT_BY_OPTIONS = [
+  {
+    key: DATA_PRODUCTS_SORT_BY_KEYS.LATEST,
+    label: t('label.latest'),
+  },
   {
     key: DATA_PRODUCTS_SORT_BY_KEYS.A_TO_Z,
     label: t('label.a-to-z'),
@@ -27,13 +30,5 @@ export const DATA_PRODUCTS_SORT_BY_OPTIONS = [
   {
     key: DATA_PRODUCTS_SORT_BY_KEYS.Z_TO_A,
     label: t('label.z-to-a'),
-  },
-  {
-    key: DATA_PRODUCTS_SORT_BY_KEYS.HIGH_TO_LOW,
-    label: t('label.high-to-low'),
-  },
-  {
-    key: DATA_PRODUCTS_SORT_BY_KEYS.LOW_TO_HIGH,
-    label: t('label.low-to-high'),
   },
 ];
