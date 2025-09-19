@@ -38,9 +38,11 @@ import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
 import { generateEntityLink } from '../../utils/TableUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
 import DescriptionSection from '../common/DescriptionSection/DescriptionSection';
 import DomainsSection from '../common/DomainsSection/DomainsSection';
+import GlossaryTermsSection from '../common/GlossaryTermsSection/GlossaryTermsSection';
 import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
 import OwnersSection from '../common/OwnersSection/OwnersSection';
@@ -67,6 +69,8 @@ export const DataAssetSummaryPanelV1 = ({
   onOwnerUpdate,
   onDomainUpdate,
   onTagsUpdate,
+  onDataProductsUpdate,
+  onGlossaryTermsUpdate,
 }: DataAssetSummaryPanelProps) => {
   const { getEntityPermission } = usePermissionProvider();
   const [additionalInfo, setAdditionalInfo] = useState<
@@ -334,6 +338,17 @@ export const DataAssetSummaryPanelV1 = ({
               />
             </div>
             <div className="section-container">
+              <GlossaryTermsSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                tags={dataAsset.tags}
+                onGlossaryTermsUpdate={onGlossaryTermsUpdate}
+              />
+            </div>
+            <div className="section-container">
               <TagsSection
                 entityId={dataAsset.id}
                 hasPermission={
@@ -344,6 +359,18 @@ export const DataAssetSummaryPanelV1 = ({
                 }`}
                 tags={dataAsset.tags}
                 onTagsUpdate={onTagsUpdate}
+              />
+            </div>
+            <div className="section-container">
+              <DataProductsSection
+                activeDomains={dataAsset.domains as EntityReference[]}
+                dataProducts={dataAsset.dataProducts as EntityReference[]}
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                onDataProductsUpdate={onDataProductsUpdate}
               />
             </div>
           </>

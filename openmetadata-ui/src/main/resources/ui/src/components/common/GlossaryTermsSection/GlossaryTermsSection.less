@@ -1,0 +1,134 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.glossary-terms-section {
+  .glossary-terms-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+    padding-left: 16px;
+    padding-right: 16px;
+
+    .glossary-terms-title {
+      font-weight: 500;
+      color: #181d27;
+      font-size: 14px;
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .cursor-pointer {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+
+        &:hover {
+          opacity: 0.7;
+        }
+      }
+    }
+
+    .cursor-pointer {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  .glossary-terms-content {
+    padding-left: 16px;
+    padding-right: 16px;
+    padding-bottom: 16px;
+    .glossary-terms-loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px 0;
+
+      .glossary-terms-loading-spinner {
+        .loading-spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid #f3f3f3;
+          border-top: 2px solid #1890ff;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      }
+    }
+
+    .inline-edit-container {
+      .glossary-term-selector {
+        width: 100%;
+      }
+    }
+
+    .no-data-placeholder {
+      color: #6b7280;
+      font-size: 14px;
+      font-style: italic;
+    }
+
+    .glossary-terms-display {
+      .glossary-terms-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+
+        .glossary-term-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 4px 0;
+
+          .glossary-term-icon {
+            width: 14px;
+            height: 14px;
+            color: #6b7280;
+            flex-shrink: 0;
+          }
+
+          .glossary-term-name {
+            color: #181d27;
+            font-size: 14px;
+            font-weight: 400;
+            line-height: 1.4;
+          }
+        }
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
