@@ -64,10 +64,14 @@
     min-width: 0;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    line-height: @size-mlg;
+    gap: @size-xs;
+    .ant-typography {
+      color: @grey-700;
+    }
 
     .ant-typography-ellipsis {
-      color: @grey-600;
+      color: @grey-700;
       margin-bottom: 0;
     }
   }

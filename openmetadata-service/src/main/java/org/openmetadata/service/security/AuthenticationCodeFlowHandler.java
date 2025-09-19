@@ -108,7 +108,7 @@ import org.pac4j.oidc.config.PrivateKeyJWTClientAuthnMethodConfig;
 import org.pac4j.oidc.credentials.OidcCredentials;
 
 @Slf4j
-public class AuthenticationCodeFlowHandler {
+public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final Collection<ClientAuthenticationMethod> SUPPORTED_METHODS =
       Arrays.asList(
           ClientAuthenticationMethod.CLIENT_SECRET_POST,
@@ -120,17 +120,31 @@ public class AuthenticationCodeFlowHandler {
   public static final String OIDC_CREDENTIAL_PROFILE = "oidcCredentialProfile";
   public static final String SESSION_REDIRECT_URI = "sessionRedirectUri";
   public static final String REDIRECT_URI_KEY = "redirectUri";
-  private final OidcClient client;
-  private final List<String> claimsOrder;
-  private final Map<String, String> claimsMapping;
-  private final String serverUrl;
-  private final ClientAuthentication clientAuthentication;
-  private final String principalDomain;
-  private final int tokenValidity;
-  private final String maxAge;
-  private final String promptType;
 
-  public AuthenticationCodeFlowHandler(
+  private static class Holder {
+    private static AuthenticationCodeFlowHandler instance;
+
+    private static void initialize(
+        AuthenticationConfiguration authenticationConfiguration,
+        AuthorizerConfiguration authorizerConfiguration) {
+      instance =
+          new AuthenticationCodeFlowHandler(authenticationConfiguration, authorizerConfiguration);
+    }
+  }
+
+  private OidcClient client;
+  private List<String> claimsOrder;
+  private Map<String, String> claimsMapping;
+  private String serverUrl;
+  private ClientAuthentication clientAuthentication;
+  private String principalDomain;
+  private int tokenValidity;
+  private String maxAge;
+  private String promptType;
+  private AuthenticationConfiguration authenticationConfiguration;
+  private AuthorizerConfiguration authorizerConfiguration;
+
+  private AuthenticationCodeFlowHandler(
       AuthenticationConfiguration authenticationConfiguration,
       AuthorizerConfiguration authorizerConfiguration) {
     // Assert oidcConfig and Callback Url
@@ -142,9 +156,44 @@ public class AuthenticationCodeFlowHandler {
         "ServerUrl", authenticationConfiguration.getOidcConfiguration().getServerUrl());
 
     // Build Required Params
+    this.authenticationConfiguration = authenticationConfiguration;
+    this.authorizerConfiguration = authorizerConfiguration;
+    initializeFields();
+  }
+
+  public static AuthenticationCodeFlowHandler getInstance(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
+    if (Holder.instance == null) {
+      synchronized (AuthenticationCodeFlowHandler.class) {
+        if (Holder.instance == null) {
+          Holder.initialize(authenticationConfiguration, authorizerConfiguration);
+        }
+      }
+    }
+    return Holder.instance;
+  }
+
+  public static AuthenticationCodeFlowHandler getInstance() {
+    if (Holder.instance == null) {
+      throw new IllegalStateException(
+          "AuthenticationCodeFlowHandler is not initialized. Call getInstance() with configuration first.");
+    }
+    return Holder.instance;
+  }
+
+  public synchronized void updateConfiguration(
+      AuthenticationConfiguration authenticationConfiguration,
+      AuthorizerConfiguration authorizerConfiguration) {
+    this.authenticationConfiguration = authenticationConfiguration;
+    this.authorizerConfiguration = authorizerConfiguration;
+    initializeFields();
+  }
+
+  private void initializeFields() {
     this.client = buildOidcClient(authenticationConfiguration.getOidcConfiguration());
     client.setCallbackUrl(authenticationConfiguration.getOidcConfiguration().getCallbackUrl());
-    this.clientAuthentication = getClientAuthentication(client.getConfiguration());
+
     this.serverUrl = authenticationConfiguration.getOidcConfiguration().getServerUrl();
     this.claimsOrder = authenticationConfiguration.getJwtPrincipalClaims();
     this.claimsMapping =
@@ -156,6 +205,7 @@ public class AuthenticationCodeFlowHandler {
     this.tokenValidity = authenticationConfiguration.getOidcConfiguration().getTokenValidity();
     this.maxAge = authenticationConfiguration.getOidcConfiguration().getMaxAge();
     this.promptType = authenticationConfiguration.getOidcConfiguration().getPrompt();
+    this.clientAuthentication = getClientAuthentication(client.getConfiguration());
   }
 
   private OidcClient buildOidcClient(OidcClientConfig clientConfig) {
@@ -948,5 +998,45 @@ public class AuthenticationCodeFlowHandler {
     }
     LOG.debug("Token response successful");
     return (OIDCTokenResponse) response;
+  }
+
+  public static void validateConfig(
+      AuthenticationConfiguration authConfig, AuthorizerConfiguration authzConfig) {
+    try {
+      // Create a temporary handler just for validation
+      AuthenticationCodeFlowHandler tempHandler =
+          new AuthenticationCodeFlowHandler(authConfig, authzConfig);
+
+      // Validate required configurations
+      CommonHelper.assertNotNull("OidcConfiguration", authConfig.getOidcConfiguration());
+      CommonHelper.assertNotBlank(
+          "CallbackUrl", authConfig.getOidcConfiguration().getCallbackUrl());
+      CommonHelper.assertNotBlank("ServerUrl", authConfig.getOidcConfiguration().getServerUrl());
+
+      // Use the temporary handler's client to validate
+      if (tempHandler.client == null) {
+        throw new IllegalArgumentException("Failed to initialize OIDC client");
+      }
+
+      // Validate provider metadata
+      OIDCProviderMetadata providerMetadata =
+          tempHandler.client.getConfiguration().findProviderMetadata();
+      if (providerMetadata == null) {
+        throw new IllegalArgumentException("Failed to retrieve provider metadata from server URL");
+      }
+
+      // Validate required endpoints
+      if (providerMetadata.getAuthorizationEndpointURI() == null) {
+        throw new IllegalArgumentException("Authorization endpoint not found in provider metadata");
+      }
+
+      if (providerMetadata.getTokenEndpointURI() == null) {
+        throw new IllegalArgumentException("Token endpoint not found in provider metadata");
+      }
+
+    } catch (Exception e) {
+      throw new IllegalArgumentException(
+          "OIDC configuration validation failed: " + e.getMessage(), e);
+    }
   }
 }

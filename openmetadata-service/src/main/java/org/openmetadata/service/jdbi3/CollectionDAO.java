@@ -66,6 +66,8 @@ import org.openmetadata.schema.api.configuration.OpenMetadataBaseUrlConfiguratio
 import org.openmetadata.schema.api.configuration.profiler.ProfilerConfiguration;
 import org.openmetadata.schema.api.lineage.LineageSettings;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.EmailVerificationToken;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.PersonalAccessToken;
@@ -136,6 +138,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.TestCase;
@@ -6687,7 +6690,12 @@ public interface CollectionDAO {
                 json, AssetCertificationSettings.class);
             case WORKFLOW_SETTINGS -> JsonUtils.readValue(json, WorkflowSettings.class);
             case LINEAGE_SETTINGS -> JsonUtils.readValue(json, LineageSettings.class);
+            case AUTHENTICATION_CONFIGURATION -> JsonUtils.readValue(
+                json, AuthenticationConfiguration.class);
+            case AUTHORIZER_CONFIGURATION -> JsonUtils.readValue(
+                json, AuthorizerConfiguration.class);
             case ENTITY_RULES_SETTINGS -> JsonUtils.readValue(json, EntityRulesSettings.class);
+            case SCIM_CONFIGURATION -> JsonUtils.readValue(json, ScimConfiguration.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

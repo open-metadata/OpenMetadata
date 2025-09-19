@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.AuthenticationException;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
@@ -51,13 +52,10 @@ import org.openmetadata.service.util.UserUtil;
 @Slf4j
 @WebServlet("/api/v1/saml/acs")
 public class SamlAssertionConsumerServlet extends HttpServlet {
-  private final AuthorizerConfiguration authorizerConfiguration;
-  private final Set<String> admins;
   private Auth auth;
 
-  public SamlAssertionConsumerServlet(AuthorizerConfiguration authorizerConfiguration) {
-    this.authorizerConfiguration = authorizerConfiguration;
-    admins = authorizerConfiguration.getAdminPrincipals();
+  public SamlAssertionConsumerServlet() {
+    // No constructor dependencies - fetch configuration dynamically
   }
 
   @Override
@@ -122,7 +120,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
                 .generateJWTToken(
                     username,
                     new HashSet<>(),
-                    admins.contains(username),
+                    getAdmins().contains(username),
                     email,
                     SamlSettingsHolder.getInstance().getTokenValidity(),
                     false,
@@ -168,5 +166,11 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
     response.setRefreshToken(newRefreshToken.getToken().toString());
     response.setExpiryDuration(jwtAuthMechanism.getJWTTokenExpiresAt());
     return response;
+  }
+
+  private Set<String> getAdmins() {
+    AuthorizerConfiguration authorizerConfiguration =
+        SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
+    return authorizerConfiguration.getAdminPrincipals();
   }
 }

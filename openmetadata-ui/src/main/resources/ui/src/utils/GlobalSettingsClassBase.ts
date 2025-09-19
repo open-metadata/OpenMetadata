@@ -49,6 +49,7 @@ import { ReactComponent as DataObservability } from '../assets/svg/setting-data-
 import { ReactComponent as ManagementIcon } from '../assets/svg/setting-management.svg';
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services-omd.svg';
+import { ReactComponent as SSOIcon } from '../assets/svg/settings-sso.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored-new.svg';
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedures-colored-new.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-colored-new.svg';
@@ -113,6 +114,10 @@ class GlobalSettingsClassBase {
     [GlobalSettingsMenuCategory.PERSONA]: {
       name: t('label.persona'),
       url: GlobalSettingsMenuCategory.PERSONA,
+    },
+    [GlobalSettingsMenuCategory.SSO]: {
+      name: t('label.sso'),
+      url: GlobalSettingsMenuCategory.SSO,
     },
   };
 
@@ -754,6 +759,13 @@ class GlobalSettingsClassBase {
         isProtected: Boolean(isAdminUser),
         key: GlobalSettingOptions.PERSONA,
         icon: PersonasIcon,
+      },
+      {
+        category: t('label.sso'),
+        isProtected: Boolean(isAdminUser),
+        key: GlobalSettingOptions.SSO,
+        icon: SSOIcon,
+        description: t('message.sso-configuration-directly-from-the-ui'),
       },
     ];
   }

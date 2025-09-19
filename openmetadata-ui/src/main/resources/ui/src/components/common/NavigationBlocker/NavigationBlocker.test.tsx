@@ -14,6 +14,22 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { NavigationBlocker } from './NavigationBlocker';
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'message.unsaved-changes': 'Unsaved changes',
+        'message.unsaved-changes-description':
+          'Do you want to save or discard changes?',
+        'message.unsaved-changes-discard': 'Discard',
+        'message.unsaved-changes-save': 'Save changes',
+      };
+
+      return translations[key] || key;
+    },
+  }),
+}));
+
 describe('NavigationBlocker component', () => {
   beforeEach(() => {
     // Reset any mocked functions
