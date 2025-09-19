@@ -31,6 +31,7 @@ export interface FormDrawerConfig<T = any>
   cancelTestId?: string;
   headerActions?: ReactNode;
   footerAlign?: 'left' | 'center' | 'right' | 'space-between';
+  closeOnEscape?: boolean;
 }
 
 /**
@@ -85,11 +86,13 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
     cancelTestId = 'cancel-btn',
     headerActions,
     footerAlign = 'right',
+    closeOnEscape,
     ...drawerConfig
   } = config;
 
   const compositeDrawer = useCompositeDrawer({
     ...drawerConfig,
+    closeOnEscape,
     header: {
       title,
       onClose: () => {

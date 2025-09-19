@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
@@ -40,6 +41,7 @@ import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
 import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
@@ -113,6 +115,18 @@ export const getField = (field: FieldProp) => {
     ...formItemProps,
   };
 
+  // Define MUI label for MUI field types
+  const muiLabel = field.muiLabel || (
+    <MUIFormItemLabel
+      helperText={helperText}
+      helperTextType={helperTextType}
+      isBeta={isBeta}
+      label={label}
+      placement={props?.tooltipPlacement as MUITooltipProps['placement']}
+      showHelperText={showHelperText}
+    />
+  );
+
   switch (type) {
     case FieldTypes.TEXT:
       fieldElement = (
@@ -131,9 +145,11 @@ export const getField = (field: FieldProp) => {
         <Form.Item {...formProps}>
           <MUITextField
             error={Boolean(error)}
-            helperText={helperText}
+            helperText={
+              helperTextType === HelperTextType.ALERT ? helperText : undefined
+            }
             id={id}
-            label={label}
+            label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
             {...muiProps}
@@ -196,9 +212,11 @@ export const getField = (field: FieldProp) => {
         <Form.Item {...formProps}>
           <MUISelect
             {...props}
-            helperText={helperText}
+            helperText={
+              helperTextType === HelperTextType.ALERT ? helperText : undefined
+            }
             id={id}
-            label={label}
+            label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
           />
@@ -235,7 +253,7 @@ export const getField = (field: FieldProp) => {
         <Form.Item {...formProps}>
           <MUITagSuggestion
             {...(props as unknown as TagSuggestionProps)}
-            label={label}
+            label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
           />
@@ -252,7 +270,7 @@ export const getField = (field: FieldProp) => {
         <Form.Item {...formProps}>
           <MUIGlossaryTagSuggestion
             {...(props as unknown as TagSuggestionProps)}
-            label={label}
+            label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
           />

@@ -179,6 +179,7 @@ const DomainDetailsPage = ({
     title: t('label.add-entity', { entity: t('label.sub-domain') }),
     anchor: 'right',
     width: 750,
+    closeOnEscape: false,
     form: (
       <AddDomainForm
         isFormInDialog
@@ -239,6 +240,7 @@ const DomainDetailsPage = ({
     title: t('label.add-entity', { entity: t('label.data-product') }),
     anchor: 'right',
     width: 750,
+    closeOnEscape: false,
     form: (
       <AddDomainForm
         isFormInDialog

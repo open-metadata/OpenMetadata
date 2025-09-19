@@ -104,7 +104,11 @@ export const useDrawer = (config: DrawerConfig = {}) => {
       config.anchor === 'right' ||
       !config.anchor
     ) {
-      sx['& .MuiDrawer-paper'] = { width: config.width || 400 };
+      sx['& .MuiDrawer-paper'] = {
+        width: config.width || 400,
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+      };
     }
 
     if (config.anchor === 'top' || config.anchor === 'bottom') {
