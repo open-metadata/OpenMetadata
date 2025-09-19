@@ -717,10 +717,6 @@
       <scope>test</scope>
     </dependency>
     <dependency>
-      <groupId>com.lmax</groupId>
-      <artifactId>disruptor</artifactId>
-    </dependency>
-    <dependency>
       <groupId>io.socket</groupId>
       <artifactId>socket.io-server</artifactId>
       <version>4.0.1</version>
