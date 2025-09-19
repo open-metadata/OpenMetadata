@@ -699,21 +699,23 @@ export default function EntitySummaryPanel({
     <div className="entity-summary-panel-container">
       {viewPermission && (
         <div className="title-container">
-          <Tooltip
-            mouseEnterDelay={0.5}
-            placement="topLeft"
-            title={entityDetails.details.name}
-            trigger="hover">
-            <Typography.Text
-              className="entity-title-link"
-              data-testid="entity-link">
-              {entityDetails.details.name}
-            </Typography.Text>
-          </Tooltip>
-          <div className="entity-type-badge">
-            <Typography.Text className="entity-type-badge-text">
-              {startCase(entityDetails.details.entityType)}
-            </Typography.Text>
+          <div className="d-flex items-center gap-2">
+            <Tooltip
+              mouseEnterDelay={0.5}
+              placement="topLeft"
+              title={entityDetails.details.name}
+              trigger="hover">
+              <Typography.Text
+                className="entity-title-link"
+                data-testid="entity-link">
+                {entityDetails.details.name}
+              </Typography.Text>
+            </Tooltip>
+            <div className="entity-type-badge">
+              <Typography.Text className="entity-type-badge-text">
+                {startCase(entityDetails.details.entityType)}
+              </Typography.Text>
+            </div>
           </div>
           <div className="p-r-md">
             <Button
