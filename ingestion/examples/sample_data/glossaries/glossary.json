@@ -1,0 +1,10 @@
+{
+    "name": "TestGlossary",
+    "displayName": "Test Glossary for Pagination",
+    "description": "<p>This is a test glossary created for pagination testing purposes. It contains 500 glossary terms to validate large-scale data handling and UI pagination functionality in OpenMetadata.</p><p>This glossary serves as a comprehensive test dataset for:</p><ul><li>Testing pagination performance with large datasets</li><li>Validating search and filtering capabilities</li><li>Ensuring proper data loading and display in the UI</li><li>Testing bulk operations on glossary terms</li></ul>",
+    "reviewers": [],
+    "owners": [],
+    "tags": [],
+    "provider": "user",
+    "mutuallyExclusive": false
+}
