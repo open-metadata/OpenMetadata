@@ -79,6 +79,7 @@ const DataProductListPage = () => {
     title: t('label.add-entity', { entity: t('label.data-product') }),
     anchor: 'right',
     width: 750,
+    closeOnEscape: false,
     form: (
       <AddDomainForm
         isFormInDialog

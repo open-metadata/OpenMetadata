@@ -53,7 +53,7 @@ const AddDomainForm = ({
   const { permissions } = usePermissionProvider();
 
   const domainTypeArray = Object.keys(DomainType).map((key) => ({
-    key,
+    label: key,
     value: DomainType[key as keyof typeof DomainType],
   }));
 
@@ -64,7 +64,7 @@ const AddDomainForm = ({
       label: t('label.name'),
       required: true,
       placeholder: t('label.name'),
-      type: FieldTypes.TEXT,
+      type: FieldTypes.TEXT_MUI,
       props: {
         'data-testid': 'name',
       },
@@ -76,7 +76,7 @@ const AddDomainForm = ({
       label: t('label.display-name'),
       required: false,
       placeholder: t('label.display-name'),
-      type: FieldTypes.TEXT,
+      type: FieldTypes.TEXT_MUI,
       props: {
         'data-testid': 'display-name',
       },
@@ -150,13 +150,13 @@ const AddDomainForm = ({
       required: true,
       label: t('label.domain-type'),
       id: 'root/domainType',
-      type: FieldTypes.SELECT,
+      type: FieldTypes.SELECT_MUI,
       helperText: domainTypeTooltipDataRender(),
       props: {
         'data-testid': 'domainType',
         options: domainTypeArray,
         overlayClassName: 'domain-type-tooltip-container',
-        tooltipPlacement: 'topLeft',
+        tooltipPlacement: 'top-start',
         tooltipAlign: { targetOffset: [18, 0] },
       },
     };
@@ -274,20 +274,20 @@ const AddDomainForm = ({
     };
 
     // Build the data object
-    const data: any = {
+    const data: CreateDomain | CreateDataProduct = {
       ...updatedData,
       style,
       experts: expertsList.map((item) => item.name ?? ''),
       owners: ownersList ?? [],
       tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
-    };
+    } as CreateDomain | CreateDataProduct;
 
     // Add domains as array if present
     if (formData.domains) {
       data.domains = [formData.domains.fullyQualifiedName];
     }
 
-    onSubmit(data as CreateDomain | CreateDataProduct);
+    onSubmit(data);
   };
 
   return (

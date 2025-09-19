@@ -73,4 +73,5 @@ export interface FieldProp {
   formItemLayout?: FormItemLayout;
   isBeta?: boolean;
   newLook?: boolean;
+  muiLabel?: ReactNode;
 }

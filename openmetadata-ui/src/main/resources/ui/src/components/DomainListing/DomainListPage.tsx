@@ -79,6 +79,7 @@ const DomainListPage = () => {
     title: t('label.add-entity', { entity: t('label.domain') }),
     anchor: 'right',
     width: 750,
+    closeOnEscape: false,
     form: (
       <AddDomainForm
         isFormInDialog

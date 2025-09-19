@@ -115,6 +115,8 @@ export const useDrawerFooter = (config: DrawerFooterConfig = {}) => {
             p: 3,
             borderTop: 1,
             borderColor: 'divider',
+            boxShadow:
+              '0px -4px 6px -2px #0A0D1208, 0px -13px 16px -4px #0A0D1214',
             ...sx,
           }}>
           {customContent}
@@ -148,6 +150,8 @@ export const useDrawerFooter = (config: DrawerFooterConfig = {}) => {
           display: 'flex',
           justifyContent: getJustifyContent(),
           gap: 2,
+          boxShadow:
+            '0px -4px 6px -2px #0A0D1208, 0px -13px 16px -4px #0A0D1214',
           ...sx,
         }}>
         {buttonsToRender.map(renderButton)}
