@@ -224,6 +224,71 @@
       font-size: @font-size-base !important;
     }
 
+    // Checkbox styling for configured SSO - match non-configured styling
+    .rjsf .checkbox {
+      display: flex;
+      align-items: flex-start;
+
+      label {
+        display: flex;
+        align-items: center;
+        gap: @size-xs;
+        cursor: pointer;
+        margin: 0;
+
+        input[type='checkbox'] {
+          appearance: none;
+          width: @size-mlg;
+          height: @size-mlg;
+          border: 1px solid @grey-300;
+          border-radius: 6px;
+          background-color: @background-color;
+          cursor: pointer;
+          position: relative;
+          margin: 0;
+          flex-shrink: 0;
+
+          &:checked {
+            background-color: @primary-color;
+            border-color: @primary-color;
+          }
+
+          &:checked::after {
+            content: '';
+            position: absolute;
+            top: 45%;
+            left: 50%;
+            width: 5px;
+            height: 9px;
+            border: solid @white;
+            border-width: 0 2px 2px 0;
+            transform: translate(-50%, -50%) rotate(45deg);
+          }
+
+          &:hover {
+            border-color: @primary-6;
+          }
+
+          &:focus {
+            outline: none;
+            box-shadow: @box-shadow-ant-select;
+          }
+        }
+
+        span {
+          color: @grey-700;
+          font-weight: 500;
+          font-size: @font-size-base;
+          line-height: 1.4;
+
+          .required {
+            color: @red-23;
+            margin-left: @size-xxs;
+          }
+        }
+      }
+    }
+
     // Apply select styling to configure tab form
     .ant-select:not(.ant-select-customize-input) .ant-select-selector {
       border-radius: @border-rad-xs;
