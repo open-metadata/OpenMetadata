@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product.svg';
+import { ReactComponent as DataProductIcon } from '../../../../assets/svg/ic-data-product-new.svg';
 import { ReactComponent as DataProductNoDataPlaceholder } from '../../../../assets/svg/no-folder-data.svg';
 import {
   INITIAL_PAGING_VALUE,
@@ -134,8 +134,6 @@ const DataProductsWidget = ({
   const emptyState = useMemo(
     () => (
       <WidgetEmptyState
-        actionButtonLink={`${ROUTES.EXPLORE}?tab=data_product`}
-        actionButtonText={t('label.explore-data-product-plural')}
         description={t('message.data-products-no-data-message')}
         icon={
           <DataProductNoDataPlaceholder
@@ -159,12 +157,14 @@ const DataProductsWidget = ({
                 'data-product-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
+              data-testid={`data-product-card-${dataProduct.id}`}
               key={dataProduct.id}
               onClick={() => handleDataProductClick(dataProduct)}>
               {isFullSize ? (
                 <div className="d-flex gap-2">
                   <div
                     className="data-product-card-full-icon"
+                    data-testid="data-product-icon-container"
                     style={{ background: dataProduct.style?.color }}>
                     {getDataProductIconByUrl(dataProduct.style?.iconURL)}
                   </div>
@@ -172,12 +172,15 @@ const DataProductsWidget = ({
                     <div className="data-product-card-full-title-row">
                       <Typography.Text
                         className="font-semibold"
+                        data-testid="data-product-name"
                         ellipsis={{
                           tooltip: true,
                         }}>
                         {dataProduct.displayName || dataProduct.name}
                       </Typography.Text>
-                      <span className="data-product-card-full-count">
+                      <span
+                        className="data-product-card-full-count"
+                        data-testid="data-product-asset-count">
                         {dataProduct.assets?.length || 0}
                       </span>
                     </div>
@@ -189,16 +192,21 @@ const DataProductsWidget = ({
                   style={{ borderLeftColor: dataProduct.style?.color }}>
                   <div className="data-product-card-content">
                     <span className="data-product-card-title">
-                      <div className="data-product-card-icon">
+                      <div
+                        className="data-product-card-icon"
+                        data-testid="data-product-icon-container">
                         {getDataProductIconByUrl(dataProduct.style?.iconURL)}
                       </div>
                       <Typography.Text
                         className="data-product-card-name"
+                        data-testid="data-product-name"
                         ellipsis={{ tooltip: true }}>
                         {dataProduct.displayName || dataProduct.name}
                       </Typography.Text>
                     </span>
-                    <span className="data-product-card-count">
+                    <span
+                      className="data-product-card-count"
+                      data-testid="data-product-asset-count">
                       {dataProduct.assets?.length || 0}
                     </span>
                   </div>
@@ -278,7 +286,7 @@ const DataProductsWidget = ({
               {error}
             </ErrorPlaceHolder>
           ) : isEmpty(dataProducts) ? (
-            emptyState
+            <div data-testid="data-products-empty-state">{emptyState}</div>
           ) : (
             dataProductsList
           )}
