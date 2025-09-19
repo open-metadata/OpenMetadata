@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EditOutlined } from '@ant-design/icons';
 import { Button, Typography } from 'antd';
 import React from 'react';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import './SectionWithEdit.less';
 
 interface SectionWithEditProps {
@@ -45,7 +45,7 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
         {showEditButton && onEdit && (
           <Button
             className="section-edit-button"
-            icon={<EditOutlined />}
+            icon={<EditIcon height={16} width={16} />}
             size="small"
             type="text"
             onClick={onEdit}

@@ -44,9 +44,11 @@ import DomainsSection from '../common/DomainsSection/DomainsSection';
 import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
 import OwnersSection from '../common/OwnersSection/OwnersSection';
+import QueryCount from '../common/QueryCount/QueryCount.component';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import { DataAssetSummaryPanelProps } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
+import './DataAssetSummaryPanelV1.less';
 
 interface TestCaseStatusCounts {
   success: number;
@@ -276,6 +278,14 @@ export const DataAssetSummaryPanelV1 = ({
                   // @ts-expect-error TODO: fix
                   value: dataAsset?.columnNames?.length || 0,
                 },
+                {
+                  label: 'Queries',
+                  value: <QueryCount tableId={dataAsset.id || ''} />,
+                },
+                {
+                  label: 'Incidents',
+                  value: additionalInfo?.incidentCount ?? 0,
+                },
               ]}
             />
             {isTestCaseLoading ? (
@@ -295,43 +305,47 @@ export const DataAssetSummaryPanelV1 = ({
                 />
               )
             )}
-
-            <OwnersSection
-              entityId={dataAsset.id}
-              hasPermission={
-                entityPermissions?.EditAll || entityPermissions?.EditTags
-              }
-              key={`owners-${dataAsset.id}-${
-                (dataAsset.owners as EntityReference[])?.length || 0
-              }`}
-              owners={dataAsset.owners as EntityReference[]}
-              onOwnerUpdate={onOwnerUpdate}
-            />
-
-            <DomainsSection
-              domains={dataAsset.domains}
-              entityFqn={dataAsset.fullyQualifiedName}
-              entityId={dataAsset.id}
-              entityType={entityType}
-              hasPermission={
-                entityPermissions?.EditAll || entityPermissions?.EditTags
-              }
-              key={`domains-${dataAsset.id}-${
-                (dataAsset.domains as EntityReference[])?.length || 0
-              }`}
-              onDomainUpdate={onDomainUpdate}
-            />
-            <TagsSection
-              entityId={dataAsset.id}
-              hasPermission={
-                entityPermissions?.EditAll || entityPermissions?.EditTags
-              }
-              key={`tags-${dataAsset.id}-${
-                (dataAsset.tags as unknown[])?.length || 0
-              }`}
-              tags={dataAsset.tags}
-              onTagsUpdate={onTagsUpdate}
-            />
+            <div className="section-container">
+              <OwnersSection
+                entityId={dataAsset.id}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                key={`owners-${dataAsset.id}-${
+                  (dataAsset.owners as EntityReference[])?.length || 0
+                }`}
+                owners={dataAsset.owners as EntityReference[]}
+                onOwnerUpdate={onOwnerUpdate}
+              />
+            </div>
+            <div className="section-container">
+              <DomainsSection
+                domains={dataAsset.domains}
+                entityFqn={dataAsset.fullyQualifiedName}
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                key={`domains-${dataAsset.id}-${
+                  (dataAsset.domains as EntityReference[])?.length || 0
+                }`}
+                onDomainUpdate={onDomainUpdate}
+              />
+            </div>
+            <div className="section-container">
+              <TagsSection
+                entityId={dataAsset.id}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                key={`tags-${dataAsset.id}-${
+                  (dataAsset.tags as unknown[])?.length || 0
+                }`}
+                tags={dataAsset.tags}
+                onTagsUpdate={onTagsUpdate}
+              />
+            </div>
           </>
         );
       case EntityType.GLOSSARY_TERM:

@@ -37,10 +37,10 @@ const OverviewSection: React.FC<OverviewSectionProps> = ({
       showEditButton={showEditButton}
       title={t('label.overview')}
       onEdit={onEdit}>
-      <div className="overview-items">
+      <div className="overview-section">
         {items.map((item, index) => (
-          <div className="overview-item" key={index}>
-            <span className="overview-label">{item.label}</span>
+          <div className="overview-row" key={index}>
+            <span className="overview-label">{item.label}:</span>
             <span className="overview-value">{item.value}</span>
           </div>
         ))}

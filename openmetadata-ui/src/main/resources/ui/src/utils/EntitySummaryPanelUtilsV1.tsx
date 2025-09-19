@@ -192,8 +192,7 @@ const SchemaFieldCardsV1: React.FC<{
         block
         loading={isLoading && currentPage > 1}
         type="link"
-        onClick={handleLoadMore}
-      >
+        onClick={handleLoadMore}>
         {t('label.show-more')}
       </Button>
     );

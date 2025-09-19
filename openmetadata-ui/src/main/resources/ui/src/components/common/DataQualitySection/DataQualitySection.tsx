@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Typography } from 'antd';
+import { Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
 import './DataQualitySection.less';
@@ -54,22 +54,14 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
           <Typography.Text className="section-title mr-2">
             {t('label.data-quality-test-plural')}
           </Typography.Text>
-          <Badge
-            className="data-quality-badge"
-            color="#F9FAFC"
-            count={totalTests}
-            style={{
-              color: '#364254',
-              marginLeft: '8px',
-              fontWeight: 500,
-              border: '1px solid #E3E8F0',
-              fontSize: '10px',
-            }}
-          />
+          <div className="data-quality-badge">
+            <Typography.Text className="data-quality-badge-text">
+              {totalTests}
+            </Typography.Text>
+          </div>
         </div>
       }
-      onEdit={onEdit}
-    >
+      onEdit={onEdit}>
       <div className="data-quality-content">
         <div className="data-quality-header" />
 
@@ -101,7 +93,8 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
             <div className="legend-item">
               <span className="legend-dot success" />
               <span className="legend-text">
-                {t('label.success')} <strong>{successTests}</strong>
+                {t('label.-with-colon', { text: t('label.success') })}{' '}
+                {successTests}
               </span>
             </div>
           )}
@@ -109,7 +102,8 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
             <div className="legend-item">
               <span className="legend-dot aborted" />
               <span className="legend-text">
-                {t('label.aborted')} <strong>{abortedTests}</strong>
+                {t('label.-with-colon', { text: t('label.aborted') })}{' '}
+                {abortedTests}
               </span>
             </div>
           )}
@@ -117,7 +111,8 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
             <div className="legend-item">
               <span className="legend-dot failed" />
               <span className="legend-text">
-                {t('label.failed')} <strong>{failedTests}</strong>
+                {t('label.-with-colon', { text: t('label.failed') })}{' '}
+                {failedTests}
               </span>
             </div>
           )}

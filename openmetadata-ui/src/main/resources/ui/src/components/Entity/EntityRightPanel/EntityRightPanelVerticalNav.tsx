@@ -56,7 +56,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           EntityType.TABLE,
           EntityType.TOPIC,
           EntityType.DASHBOARD,
-          EntityType.CHART,
+          EntityType.DATABASE_SCHEMA,
         ].includes(entityType)
       ) {
         items.push({
@@ -70,6 +70,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
         [
           EntityType.TABLE,
           EntityType.TOPIC,
+          EntityType.CONTAINER,
           EntityType.DASHBOARD,
           EntityType.CHART,
           EntityType.PIPELINE,

@@ -15,10 +15,10 @@
 @import (reference) '../../../styles/components/card.less';
 
 .entity-summary-panel-container {
-  // display: flex;
   height: 100%;
   background: #fff;
-
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
   .entity-title-link {
     text-decoration: none;
     font-size: 13px;
@@ -42,17 +42,7 @@
     }
   }
 }
-.entity-type-badge {
-  border-radius: 6px;
-  padding: 2px 8px;
-  border: 1px solid #e3e8f0;
-  background-color: #ffffff;
-}
-.entity-type-badge-text {
-  color: #21263c;
-  font-size: 13px;
-  font-weight: 500;
-}
+
 .summary-panel-container {
   position: sticky;
   box-shadow: none;
@@ -65,6 +55,8 @@
   border-bottom: none !important;
   border-radius: 0px !important;
   display: flex;
+  border-color: #f2f3f9 !important;
+  border-top: none !important;
 
   /* Hide scrollbar but keep the space reserved to prevent layout shift */
   &::-webkit-scrollbar {
@@ -164,8 +156,8 @@
   align-items: center;
   padding-left: 16px;
   height: 49px;
-  border: 1px solid #d9d9d9;
-  background-color: #f9fafc;
+  border: 1px solid #f2f3f9;
+  background-color: #f8f9fc;
   border-top-right-radius: 10px;
   border-top-left-radius: 10px;
 
@@ -177,7 +169,7 @@
     text-overflow: ellipsis;
     white-space: nowrap;
     text-decoration: none;
-    color: inherit;
+    color: @primary-color;
   }
 }
 

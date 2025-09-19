@@ -13,7 +13,7 @@
 
 import { Button, Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { get, startCase } from 'lodash';
+import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconExternalLinkOutlined } from '../../../assets/svg/redirect-icon.svg';
@@ -575,24 +575,17 @@ export default function EntitySummaryPanel({
     <div className="entity-summary-panel-container">
       {viewPermission && (
         <div className="title-container">
-          <div className="d-flex items-center gap-2">
-            <Tooltip
-              mouseEnterDelay={0.5}
-              placement="topLeft"
-              title={entityDetails.details.name}
-              trigger="hover">
-              <Typography.Text
-                className="entity-title-link"
-                data-testid="entity-link">
-                {entityDetails.details.name}
-              </Typography.Text>
-            </Tooltip>
-            <div className="entity-type-badge">
-              <Typography.Text className="entity-type-badge-text">
-                {startCase(entityDetails.details.entityType)}
-              </Typography.Text>
-            </div>
-          </div>
+          <Tooltip
+            mouseEnterDelay={0.5}
+            placement="topLeft"
+            title={entityDetails.details.name}
+            trigger="hover">
+            <Typography.Text
+              className="entity-title-link"
+              data-testid="entity-link">
+              {entityDetails.details.name}
+            </Typography.Text>
+          </Tooltip>
           <div className="p-r-md">
             <Button
               className="entity-redirect-button"
