@@ -506,6 +506,89 @@ public class LineageResource {
   }
 
   @GET
+  @Path("/exportByEntityCountAsync")
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "exportLineageByEntityCount",
+      summary = "Export lineage by entity count",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "export response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CSVExportMessage.class)))
+      })
+  public Response exportLineageByEntityCountAsync(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "fqn", required = true) @QueryParam("fqn") String fqn,
+      @Parameter(description = "Direction of lineage traversal", required = true)
+          @QueryParam("direction")
+          @Valid
+          LineageDirection direction,
+      @Parameter(description = "Starting offset for pagination (0-based)")
+          @QueryParam("from")
+          @DefaultValue("0")
+          @Min(0)
+          int from,
+      @Parameter(description = "Number of entities to return in this page")
+          @QueryParam("size")
+          @DefaultValue("10000")
+          int size,
+      @Parameter(
+              description = "Filter entities by specific node depth level (optional)",
+              required = true)
+          @QueryParam("nodeDepth")
+          Integer nodeDepth,
+      @Parameter(description = "Maximum depth to traverse in the specified direction")
+          @QueryParam("maxDepth")
+          @DefaultValue("10000")
+          int maxDepth,
+      @Parameter(
+              description =
+                  "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
+          @QueryParam("queryFilter")
+          String queryFilter,
+      @Parameter(description = "Filter documents by deleted param. By default deleted is false")
+          @QueryParam("includeDeleted")
+          @DefaultValue("false")
+          boolean deleted,
+      @Parameter(description = "entity type") @QueryParam("entityType") String entityType,
+      @Parameter(description = "Source Fields to Include", schema = @Schema(type = "string"))
+          @QueryParam("fields")
+          @DefaultValue("*")
+          String includeSourceFields) {
+    String jobId = UUID.randomUUID().toString();
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            String csvData =
+                dao.exportByEntityCountCsvAsync(
+                    fqn,
+                    direction,
+                    from,
+                    size,
+                    nodeDepth,
+                    maxDepth,
+                    queryFilter,
+                    deleted,
+                    entityType,
+                    includeSourceFields);
+            WebsocketNotificationHandler.sendCsvExportCompleteNotification(
+                jobId, securityContext, csvData);
+          } catch (Exception e) {
+            WebsocketNotificationHandler.sendCsvExportFailedNotification(
+                jobId, securityContext, e.getMessage());
+          }
+        });
+    CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
+    return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  @GET
   @Path("/getLineageByEntityCount")
   @Operation(
       operationId = "getLineageByEntityCount",
