@@ -28,19 +28,24 @@ export enum FormItemLayout {
 
 export enum FieldTypes {
   TEXT = 'text',
+  TEXT_MUI = 'text_mui',
   PASSWORD = 'password',
   FILTER_PATTERN = 'filter_pattern',
   SWITCH = 'switch',
   SELECT = 'select',
+  SELECT_MUI = 'select_mui',
   ASYNC_SELECT_LIST = 'async_select_list',
   NUMBER = 'number',
   CHECK_BOX = 'check_box',
   SLIDER_INPUT = 'slider_input',
   DESCRIPTION = 'description',
   TAG_SUGGESTION = 'tag_suggestion',
+  TAG_SUGGESTION_MUI = 'tag_suggestion_mui',
+  GLOSSARY_TAG_SUGGESTION_MUI = 'glossary_tag_suggestion_mui',
   USER_TEAM_SELECT = 'user_team_select',
   USER_TEAM_SELECT_INPUT = 'user_team_select_input',
   USER_MULTI_SELECT = 'user_multi_select',
+  USER_TEAM_SELECT_MUI = 'user_team_select_mui',
   COLOR_PICKER = 'color_picker',
   DOMAIN_SELECT = 'domain_select',
   CRON_EDITOR = 'cron_editor',
@@ -69,4 +74,5 @@ export interface FieldProp {
   formItemLayout?: FormItemLayout;
   isBeta?: boolean;
   newLook?: boolean;
+  muiLabel?: ReactNode;
 }

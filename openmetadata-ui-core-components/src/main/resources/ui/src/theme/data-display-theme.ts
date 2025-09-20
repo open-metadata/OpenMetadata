@@ -247,9 +247,18 @@ export const dataDisplayTheme = (colors: any): Components<Theme> & Record<string
           color: colors.gray[750],
           fontWeight: 400,
           fontSize: '12px',
+          borderRadius: '8px',
         },
       },
     ],
+  },
+  MuiAvatar: {
+    styleOverrides: {
+      root: {
+        backgroundColor: colors.blue[50],
+        color: colors.blue[600],
+      },
+    },
   },
   MuiDivider: {
     styleOverrides: {

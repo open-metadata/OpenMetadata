@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import { ErrorTransformer } from '@rjsf/utils';
 import {
   Alert,
@@ -40,6 +41,14 @@ import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
+import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
+import MUISelect from '../components/common/MUISelect/MUISelect';
+import MUITagSuggestion from '../components/common/MUITagSuggestion/MUITagSuggestion';
+import MUITextField from '../components/common/MUITextField/MUITextField';
+import MUIUserTeamSelect, {
+  MUIUserTeamSelectProps,
+} from '../components/common/MUIUserTeamSelect/MUIUserTeamSelect';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
@@ -83,7 +92,6 @@ export const getField = (field: FieldProp) => {
     newLook = false,
   } = field;
 
-  let internalFormItemProps: FormItemProps = {};
   let fieldElement: ReactNode = null;
   let fieldRules = [...rules];
   // Check if required rule is already present to avoid rule duplication
@@ -103,6 +111,25 @@ export const getField = (field: FieldProp) => {
     ];
   }
 
+  const formProps: FormItemProps = {
+    id: id,
+    name: name,
+    rules: fieldRules,
+    ...formItemProps,
+  };
+
+  // Define MUI label for MUI field types
+  const muiLabel = field.muiLabel || (
+    <MUIFormItemLabel
+      helperText={helperText}
+      helperTextType={helperTextType}
+      isBeta={isBeta}
+      label={label}
+      placement={props?.tooltipPlacement as MUITooltipProps['placement']}
+      showHelperText={showHelperText}
+    />
+  );
+
   switch (type) {
     case FieldTypes.TEXT:
       fieldElement = (
@@ -110,6 +137,29 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
+
+    case FieldTypes.TEXT_MUI: {
+      const { error, ...muiProps } = props;
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUITextField
+            error={Boolean(error)}
+            helperText={
+              helperTextType === HelperTextType.ALERT ? helperText : undefined
+            }
+            id={id}
+            label={muiLabel}
+            placeholder={placeholder}
+            required={isRequired}
+            {...muiProps}
+          />
+        </Form.Item>
+      );
+    }
 
     case FieldTypes.PASSWORD:
       fieldElement = (
@@ -143,24 +193,39 @@ export const getField = (field: FieldProp) => {
 
     case FieldTypes.SWITCH:
       fieldElement = <Switch {...props} id={id} />;
-      internalFormItemProps = {
-        ...internalFormItemProps,
-        valuePropName: 'checked',
-      };
+      formProps.valuePropName = 'checked';
 
       break;
     case FieldTypes.CHECK_BOX:
       fieldElement = <Checkbox {...props} id={id} />;
-      internalFormItemProps = {
-        ...internalFormItemProps,
-        valuePropName: 'checked',
-      };
+      formProps.valuePropName = 'checked';
 
       break;
     case FieldTypes.SELECT:
       fieldElement = <Select {...props} id={id} />;
 
       break;
+
+    case FieldTypes.SELECT_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUISelect
+            {...props}
+            helperText={
+              helperTextType === HelperTextType.ALERT ? helperText : undefined
+            }
+            id={id}
+            label={muiLabel}
+            placeholder={placeholder}
+            required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
     case FieldTypes.SLIDER_INPUT:
       fieldElement = (
         <SliderWithInput {...(props as unknown as SliderWithInputProps)} />
@@ -171,11 +236,8 @@ export const getField = (field: FieldProp) => {
       fieldElement = (
         <RichTextEditor {...(props as unknown as RichTextEditorProp)} />
       );
-      internalFormItemProps = {
-        ...internalFormItemProps,
-        trigger: 'onTextChange',
-        initialValue: props?.initialValue ?? '',
-      };
+      formProps.trigger = 'onTextChange';
+      formProps.initialValue = props?.initialValue ?? '';
 
       break;
     case FieldTypes.TAG_SUGGESTION:
@@ -184,6 +246,40 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
+
+    case FieldTypes.TAG_SUGGESTION_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUITagSuggestion
+            {...(props as unknown as TagSuggestionProps)}
+            label={muiLabel}
+            placeholder={placeholder}
+            required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUIGlossaryTagSuggestion
+            {...(props as unknown as TagSuggestionProps)}
+            label={muiLabel}
+            placeholder={placeholder}
+            required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
 
     case FieldTypes.TREE_ASYNC_SELECT_LIST:
       fieldElement = (
@@ -255,18 +351,26 @@ export const getField = (field: FieldProp) => {
 
       break;
 
+    case FieldTypes.USER_TEAM_SELECT_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUIUserTeamSelect
+            {...(props as unknown as MUIUserTeamSelectProps)}
+            label={muiLabel}
+            placeholder={placeholder}
+            required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
+
     default:
       break;
   }
-
-  const formProps = {
-    id: id,
-    key: id,
-    name: name,
-    rules: fieldRules,
-    ...internalFormItemProps,
-    ...formItemProps,
-  };
 
   const labelValue = (
     <FormItemLabel
