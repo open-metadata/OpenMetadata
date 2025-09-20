@@ -18,7 +18,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
-import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import jakarta.validation.constraints.NotNull;
@@ -99,6 +98,10 @@ public final class EntityUtil {
       Comparator.comparing(GlossaryTerm::getName);
   public static final Comparator<CustomProperty> compareCustomProperty =
       Comparator.comparing(CustomProperty::getName);
+
+  private static final String DOMAIN_ONLY_ACCESS_ROLE = "DomainOnlyAccessRole";
+  private static final Set<String> SYSTEM_LEVEL_ENTITIES =
+      Set.of(Entity.TEST_DEFINITION, Entity.KPI);
 
   //
   // Matchers used for matching two items in a list
@@ -833,19 +836,42 @@ public final class EntityUtil {
   public static void addDomainQueryParam(
       SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
-    // If the User is admin then no need to add domainId in the query param
-    // Also if there are domain restriction on the subject context via role
-    if (!subjectContext.isAdmin()
-        && !subjectContext.isBot()
-        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
-      if (!nullOrEmpty(subjectContext.getUserDomains())) {
-        filter.addQueryParam(
-            "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+
+    if (shouldApplyDomainFilter(subjectContext, entityType)) {
+      List<EntityReference> userDomains = subjectContext.getUserDomains();
+      if (!nullOrEmpty(userDomains)) {
+        filter.addQueryParam("domainId", getCommaSeparatedIdsFromRefs(userDomains));
       } else {
         filter.addQueryParam("domainId", NULL_PARAM);
         filter.addQueryParam("entityType", entityType);
       }
     }
+  }
+
+  private static boolean shouldApplyDomainFilter(SubjectContext subjectContext, String entityType) {
+    return isValidSubjectForDomainFilter(subjectContext)
+        && isValidEntityForDomainFilter(entityType);
+  }
+
+  private static boolean isValidSubjectForDomainFilter(SubjectContext subjectContext) {
+    return subjectContext != null
+        && !subjectContext.isAdmin()
+        && !subjectContext.isBot()
+        && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE);
+  }
+
+  private static boolean isValidEntityForDomainFilter(String entityType) {
+    boolean result = false;
+    if (entityType != null && !SYSTEM_LEVEL_ENTITIES.contains(entityType)) {
+      try {
+        EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+        result = repository.isSupportsDomains();
+      } catch (Exception e) {
+        // If we can't get the repository, assume it doesn't support domains
+      }
+    }
+
+    return result;
   }
 
   public static String encodeEntityFqn(String fqn) {

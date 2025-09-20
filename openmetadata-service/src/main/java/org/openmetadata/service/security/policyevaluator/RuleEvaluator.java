@@ -13,7 +13,6 @@ import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 
 /**
@@ -79,8 +78,7 @@ public class RuleEvaluator {
       description =
           "Returns true if the logged in user has domain access to the entity being accessed. "
               + "For entities with domains (explicit or inherited), the user must have at least one matching domain. "
-              + "For entities without domains, users without domains can access them. "
-              + "For resources that don't support domains (like DataInsights), always returns true.",
+              + "For entities without domains, users without domains can access them.",
       examples = {"hasDomain()", "!hasDomain()"})
   public boolean hasDomain() {
     if (expressionValidation) {
@@ -88,15 +86,6 @@ public class RuleEvaluator {
     }
     if (subjectContext == null || resourceContext == null || subjectContext.user() == null) {
       return false;
-    }
-
-    // Check if the resource type supports domains
-    String resourceType = resourceContext.getResource();
-    EntityRepository<?> repository = Entity.getEntityRepository(resourceType);
-    if (!repository.isSupportsDomains()) {
-      LOG.info(
-          "hasDomain() - Resource type {} does not support domains, returning true", resourceType);
-      return true;
     }
 
     if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
