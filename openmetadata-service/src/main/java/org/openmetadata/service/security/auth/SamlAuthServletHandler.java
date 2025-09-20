@@ -12,7 +12,9 @@ import jakarta.servlet.http.HttpSession;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.felix.http.javaxwrappers.HttpServletRequestWrapper;
@@ -258,16 +260,46 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
   private User getOrCreateUser(String username, String email) {
     try {
-      return Entity.getEntityByName(
-          Entity.USER, username, "id,roles,isAdmin,email", Include.NON_DELETED);
+      User existingUser =
+          Entity.getEntityByName(
+              Entity.USER, username, "id,roles,isAdmin,email", Include.NON_DELETED);
+
+      boolean shouldBeAdmin = getAdminPrincipals().contains(username);
+      LOG.info(
+          "SAML login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
+          username,
+          email,
+          shouldBeAdmin,
+          existingUser.getIsAdmin());
+      LOG.info("Admin principals list: {}", getAdminPrincipals());
+
+      if (shouldBeAdmin && !Boolean.TRUE.equals(existingUser.getIsAdmin())) {
+        LOG.info("Updating user {} to admin based on adminPrincipals", username);
+        existingUser.setIsAdmin(true);
+        return UserUtil.addOrUpdateUser(existingUser);
+      }
+
+      return existingUser;
     } catch (Exception e) {
       LOG.info("User not found, creating new user: {}", username);
-      // Create new user if self-signup is enabled
       if (authConfig.getEnableSelfSignup()) {
-        return UserUtil.addOrUpdateUser(UserUtil.user(username, email.split("@")[1], username));
+        boolean isAdmin = getAdminPrincipals().contains(username);
+        LOG.info("Creating new user - Username: {}, Should be admin: {}", username, isAdmin);
+        LOG.info("Admin principals list: {}", getAdminPrincipals());
+        User newUser =
+            UserUtil.user(username, email.split("@")[1], username)
+                .withIsAdmin(isAdmin)
+                .withIsEmailVerified(true);
+        return UserUtil.addOrUpdateUser(newUser);
       }
       throw new AuthenticationException("User not found and self-signup is disabled");
     }
+  }
+
+  private Set<String> getAdminPrincipals() {
+    AuthorizerConfiguration authorizerConfig =
+        SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
+    return new HashSet<>(authorizerConfig.getAdminPrincipals());
   }
 
   private void sendError(HttpServletResponse resp, int status, String message) {

@@ -75,9 +75,11 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
@@ -94,7 +96,9 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.auth.JwtResponse;
+import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.util.UserUtil;
 import org.pac4j.core.context.HttpConstants;
 import org.pac4j.core.exception.TechnicalException;
 import org.pac4j.core.util.CommonHelper;
@@ -728,18 +732,59 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     String email = findEmailFromClaims(claimsMapping, claimsOrder, claims, principalDomain);
 
     String redirectUri = (String) httpSession.getAttribute(SESSION_REDIRECT_URI);
+    User user = getOrCreateOidcUser(userName, email);
+    Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
 
-    String storedUserStr =
-        Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
-    if (storedUserStr != null) {
-      User user = JsonUtils.readValue(storedUserStr, User.class);
-      Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
-    }
     String url =
         String.format(
             "%s?id_token=%s&email=%s&name=%s",
             redirectUri, credentials.getIdToken().getParsedString(), email, userName);
     response.sendRedirect(url);
+  }
+
+  private User getOrCreateOidcUser(String userName, String email) {
+    try {
+      String storedUserStr =
+          Entity.getCollectionDAO().userDAO().findUserByNameAndEmail(userName, email);
+      if (storedUserStr != null) {
+        User user = JsonUtils.readValue(storedUserStr, User.class);
+
+        boolean shouldBeAdmin = getAdminPrincipals().contains(userName);
+
+        LOG.info(
+            "OIDC login - Username: {}, Email: {}, Should be admin: {}, Current admin status: {}",
+            userName,
+            email,
+            shouldBeAdmin,
+            user.getIsAdmin());
+        LOG.info("Admin principals list: {}", getAdminPrincipals());
+
+        if (shouldBeAdmin && !Boolean.TRUE.equals(user.getIsAdmin())) {
+          LOG.info("Updating user {} to admin based on adminPrincipals", userName);
+          user.setIsAdmin(true);
+          UserUtil.addOrUpdateUser(user);
+        }
+        return user;
+      }
+    } catch (Exception e) {
+      LOG.debug("User not found, will create new user: {}", userName);
+    }
+
+    if (authenticationConfiguration.getEnableSelfSignup()) {
+      boolean isAdmin = getAdminPrincipals().contains(userName);
+      LOG.info("Creating new OIDC user - Username: {}, Should be admin: {}", userName, isAdmin);
+      LOG.info("Admin principals list: {}", getAdminPrincipals());
+
+      String domain = email.split("@")[1];
+      User newUser =
+          UserUtil.user(userName, domain, userName).withIsAdmin(isAdmin).withIsEmailVerified(true);
+      return UserUtil.addOrUpdateUser(newUser);
+    }
+    throw new AuthenticationException("User not found and self-signup is disabled");
+  }
+
+  private Set<String> getAdminPrincipals() {
+    return new HashSet<>(authorizerConfiguration.getAdminPrincipals());
   }
 
   private void renewOidcCredentials(HttpSession httpSession, OidcCredentials credentials) {
