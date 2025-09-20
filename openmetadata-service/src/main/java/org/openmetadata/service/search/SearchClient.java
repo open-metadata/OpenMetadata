@@ -453,6 +453,12 @@ public interface SearchClient<T> {
 
   void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
 
+  default void updateEntityAsync(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    // Default implementation falls back to synchronous update
+    updateEntity(indexName, docId, doc, scriptTxt);
+  }
+
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 

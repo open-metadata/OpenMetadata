@@ -32,9 +32,13 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -150,6 +154,7 @@ import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.action.update.UpdateResponse;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.ResponseException;
@@ -233,6 +238,23 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private final String clusterAlias;
+
+  // Singleton factory to avoid object creation on every request
+  private volatile OpenSearchSourceBuilderFactory searchBuilderFactory = null;
+
+  // RBAC cache to avoid expensive query building on every request
+  private static final LoadingCache<String, QueryBuilder> RBAC_CACHE =
+      CacheBuilder.newBuilder()
+          .maximumSize(10000)
+          .expireAfterWrite(5, TimeUnit.MINUTES)
+          .build(
+              new CacheLoader<String, QueryBuilder>() {
+                @Override
+                public QueryBuilder load(String key) {
+                  // Will be loaded via computeIfAbsent pattern
+                  return null;
+                }
+              });
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -396,8 +418,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException {
     String indexName = Entity.getSearchRepository().getIndexNameWithoutAlias(request.getIndex());
-    OpenSearchSourceBuilderFactory searchBuilderFactory =
-        new OpenSearchSourceBuilderFactory(searchSettings);
+    OpenSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
     SearchSourceBuilder searchSourceBuilder =
         searchBuilderFactory.getSearchSourceBuilder(
             request.getIndex(),
@@ -1728,7 +1749,17 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     if (updateRequest != null) {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      client.update(updateRequest, RequestOptions.DEFAULT);
+
+      // Time the actual HTTP request to OpenSearch
+      long startHttp = System.currentTimeMillis();
+      UpdateResponse response = client.update(updateRequest, RequestOptions.DEFAULT);
+      long httpTime = System.currentTimeMillis() - startHttp;
+
+      LOG.debug(
+          "OpenSearch HTTP update - Doc ID: {}, HTTP time: {}ms, Result: {}",
+          updateRequest.id(),
+          httpTime,
+          response.getResult());
     }
   }
 
@@ -1796,6 +1827,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       updateRequest.doc(doc, XContentType.JSON);
       updateRequest.docAsUpsert(true);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
       updateSearch(updateRequest);
     }
   }
@@ -1808,6 +1840,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
         Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
         UpdateRequest updateRequest = new UpdateRequest(indexName, entry.getKey());
         updateRequest.doc(entry.getValue(), XContentType.JSON);
+        updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
         bulkRequest.add(updateRequest);
       }
       bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
@@ -1839,6 +1872,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
       updateRequest.doc(doc, XContentType.JSON);
       updateRequest.docAsUpsert(true);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
       updateSearch(updateRequest);
     }
   }
@@ -1894,6 +1928,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       Script script =
           new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
       updateRequest.script(script);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
       updateSearch(updateRequest);
     }
   }
@@ -1926,7 +1961,23 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
               ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
       updateRequest.scriptedUpsert(true);
       updateRequest.script(script);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
       updateOpenSearch(updateRequest);
+    }
+  }
+
+  @Override
+  public void updateEntityAsync(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    if (isClientAvailable) {
+      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
+      Script script =
+          new Script(
+              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
+      updateRequest.scriptedUpsert(true);
+      updateRequest.script(script);
+      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
+      updateOpenSearchAsync(updateRequest);
     }
   }
 
@@ -2147,6 +2198,36 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
       LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
       client.update(updateRequest, RequestOptions.DEFAULT);
+    }
+  }
+
+  public void updateOpenSearchAsync(UpdateRequest updateRequest) {
+    if (updateRequest != null && isClientAvailable) {
+      // Use WAIT_UNTIL for async updates - waits for next refresh but doesn't force immediate
+      // refresh
+      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
+      LOG.debug("Sending async request to OpenSearch: {}", updateRequest);
+
+      // The REST client has built-in retry with exponential backoff (default 3 retries, 30s
+      // timeout)
+      client.updateAsync(
+          updateRequest,
+          RequestOptions.DEFAULT,
+          new ActionListener<UpdateResponse>() {
+            @Override
+            public void onResponse(UpdateResponse updateResponse) {
+              LOG.debug(
+                  "Async update successful for doc: {}, result: {}",
+                  updateResponse.getId(),
+                  updateResponse.getResult());
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+              // Log the error - the built-in retry already attempted 3 times before failing
+              LOG.error("Async update failed for doc: {} after retries", updateRequest.id(), e);
+            }
+          });
     }
   }
 
@@ -2569,35 +2650,61 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
         RestClientBuilder restClientBuilder =
             RestClient.builder(
                 new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
-        if (StringUtils.isNotEmpty(esConfig.getUsername())
-            && StringUtils.isNotEmpty(esConfig.getPassword())) {
-          CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-          credentialsProvider.setCredentials(
-              AuthScope.ANY,
-              new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-          SSLContext sslContext = createElasticSearchSSLContext(esConfig);
-          restClientBuilder.setHttpClientConfigCallback(
-              httpAsyncClientBuilder -> {
+
+        // Configure connection pooling
+        restClientBuilder.setHttpClientConfigCallback(
+            httpAsyncClientBuilder -> {
+              // Set connection pool sizes
+              if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
+                httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+              }
+              if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
+                httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
+              }
+
+              // Configure authentication if provided
+              if (StringUtils.isNotEmpty(esConfig.getUsername())
+                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
+                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                    AuthScope.ANY,
+                    new UsernamePasswordCredentials(
+                        esConfig.getUsername(), esConfig.getPassword()));
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-                if (sslContext != null) {
-                  httpAsyncClientBuilder.setSSLContext(sslContext);
-                }
-                // Enable TCP keep alive strategy
-                if (esConfig.getKeepAliveTimeoutSecs() != null
-                    && esConfig.getKeepAliveTimeoutSecs() > 0) {
-                  httpAsyncClientBuilder.setKeepAliveStrategy(
-                      (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
-                }
-                return httpAsyncClientBuilder;
-              });
-        }
+              }
+
+              // Configure SSL if needed
+              SSLContext sslContext = null;
+              try {
+                sslContext = createElasticSearchSSLContext(esConfig);
+              } catch (KeyStoreException e) {
+                throw new RuntimeException(e);
+              }
+              if (sslContext != null) {
+                httpAsyncClientBuilder.setSSLContext(sslContext);
+              }
+
+              // Enable TCP keep alive strategy
+              if (esConfig.getKeepAliveTimeoutSecs() != null
+                  && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                httpAsyncClientBuilder.setKeepAliveStrategy(
+                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+              }
+
+              return httpAsyncClientBuilder;
+            });
+
+        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+
+        // Enable compression and chunking for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
         restClientBuilder.setChunkedEnabled(true);
+
         return new RestHighLevelClient(restClientBuilder);
       } catch (Exception e) {
         LOG.error("Failed to create open search client ", e);
@@ -2652,7 +2759,39 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   private void buildSearchRBACQuery(
       SubjectContext subjectContext, SearchSourceBuilder searchSourceBuilder) {
-    if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+    if (!shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
+      return;
+    }
+
+    // Create cache key from user ID and roles
+    String cacheKey =
+        subjectContext.user().getId()
+            + ":"
+            + subjectContext.user().getRoles().stream()
+                .map(r -> r.getId().toString())
+                .sorted()
+                .collect(Collectors.joining(","));
+
+    try {
+      QueryBuilder cachedQuery =
+          RBAC_CACHE.get(
+              cacheKey,
+              () -> {
+                OMQueryBuilder rbacQuery =
+                    rbacConditionEvaluator.evaluateConditions(subjectContext);
+                if (rbacQuery != null) {
+                  return ((OpenSearchQueryBuilder) rbacQuery).build();
+                }
+                return null;
+              });
+
+      if (cachedQuery != null) {
+        searchSourceBuilder.query(
+            QueryBuilders.boolQuery().must(searchSourceBuilder.query()).filter(cachedQuery));
+      }
+    } catch (Exception e) {
+      LOG.warn("RBAC cache miss, building query", e);
+      // Fallback to original implementation
       OMQueryBuilder rbacQuery = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQuery != null) {
         searchSourceBuilder.query(
@@ -2706,7 +2845,18 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private OpenSearchSourceBuilderFactory getSearchBuilderFactory() {
     SearchSettings searchSettings =
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
-    return new OpenSearchSourceBuilderFactory(searchSettings);
+
+    if (searchBuilderFactory == null
+        || !searchSettings.equals(searchBuilderFactory.getSearchSettings())) {
+      synchronized (this) {
+        if (searchBuilderFactory == null
+            || !searchSettings.equals(searchBuilderFactory.getSearchSettings())) {
+          searchBuilderFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+          LOG.debug("Created new OpenSearchSourceBuilderFactory singleton");
+        }
+      }
+    }
+    return searchBuilderFactory;
   }
 
   @Override

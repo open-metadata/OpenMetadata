@@ -207,4 +207,25 @@ public class MicrometerBundle implements ConfiguredBundle<OpenMetadataApplicatio
       resp.getWriter().flush();
     }
   }
+
+  /**
+   * Servlet that exposes user-friendly metrics in JSON format.
+   */
+  private class UserMetricsServlet extends HttpServlet {
+    private static final String CONTENT_TYPE = "application/json; charset=utf-8";
+
+    @Override
+    protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+      resp.setStatus(HttpServletResponse.SC_OK);
+      resp.setContentType(CONTENT_TYPE);
+
+      // Return a simple JSON response with basic metrics info
+      String json =
+          String.format(
+              "{\"status\":\"ok\",\"metricsCount\":%d}",
+              prometheusMeterRegistry.getMeters().size());
+      resp.getWriter().write(json);
+      resp.getWriter().flush();
+    }
+  }
 }
