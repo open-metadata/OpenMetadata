@@ -840,6 +840,8 @@ public class MigrationUtil {
             if (configNode instanceof ObjectNode) {
               ObjectNode configObj = (ObjectNode) configNode;
 
+              boolean triggerModified = false;
+
               // Check if there's an entityType field (old format)
               if (configObj.has("entityType") && !configObj.has("entityTypes")) {
                 String entityType = configObj.get("entityType").asText();
@@ -850,6 +852,48 @@ public class MigrationUtil {
                 entityTypesArray.add(entityType);
                 configObj.set("entityTypes", entityTypesArray);
 
+                LOG.info(
+                    "Updated trigger from entityType='{}' to entityTypes=['{}']",
+                    entityType,
+                    entityType);
+                triggerModified = true;
+              }
+
+              // Also migrate filter from string to entity-specific object format
+              if (configObj.has("filter")) {
+                JsonNode filterNode = configObj.get("filter");
+
+                // If filter is a string, convert to entity-specific format
+                if (filterNode.isTextual()) {
+                  String filterStr = filterNode.asText();
+                  ObjectNode newFilterObj = mapper.createObjectNode();
+
+                  // If the filter string is not empty, add it to specific entity types
+                  if (filterStr != null && !filterStr.trim().isEmpty()) {
+                    // Get entity types to create specific filters
+                    if (configObj.has("entityTypes")) {
+                      JsonNode entityTypesNode = configObj.get("entityTypes");
+                      if (entityTypesNode.isArray()) {
+                        for (JsonNode entityTypeNode : entityTypesNode) {
+                          String entityType = entityTypeNode.asText();
+                          // Apply the filter to this specific entity type
+                          newFilterObj.put(entityType.toLowerCase(), filterStr);
+                        }
+                      }
+                    }
+                    LOG.info("Migrated non-empty filter to entity-specific object format");
+                  } else {
+                    // For empty filters, just leave the object empty
+                    LOG.info("Migrated empty string filter to empty object format");
+                  }
+
+                  // Replace the string filter with object filter (empty or populated)
+                  configObj.set("filter", newFilterObj);
+                  triggerModified = true;
+                }
+              }
+
+              if (triggerModified) {
                 // Convert back to trigger object
                 var updatedTrigger =
                     JsonUtils.readValue(
@@ -857,10 +901,6 @@ public class MigrationUtil {
                         workflowDefinition.getTrigger().getClass());
                 workflowDefinition.setTrigger(updatedTrigger);
 
-                LOG.info(
-                    "Updated trigger from entityType='{}' to entityTypes=['{}']",
-                    entityType,
-                    entityType);
                 return true;
               }
             }

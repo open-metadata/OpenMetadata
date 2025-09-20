@@ -176,15 +176,14 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     // Execute validations in order of importance
     // 1. Basic structural validations
     validateNodeIds(workflowDefinition);
-
     // 2. Comprehensive graph structure validations (cycles, connectivity, edges, start/end nodes)
     validateWorkflowGraphStructure(workflowDefinition);
-
     // 3. Business rule validations
     validateUserTasksForReviewerSupport(workflowDefinition);
-
     // 4. Namespace configuration validations
     validateUpdatedByNamespace(workflowDefinition);
+    // 5. Node input/output validations
+    validateNodeInputOutputMapping(workflowDefinition);
   }
 
   /**
@@ -359,6 +358,58 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   /**
+   * Suspends a workflow by pausing all active instances in Flowable engine.
+   * @param workflow The workflow definition to suspend
+   */
+  public void suspendWorkflow(WorkflowDefinition workflow) {
+    String workflowName = workflow.getName();
+
+    try {
+      // Suspend all active process instances for this workflow
+      WorkflowHandler.getInstance().suspendWorkflow(workflowName);
+
+      // Log the suspension
+      LOG.info("Suspended workflow '{}' in Flowable engine", workflowName);
+    } catch (IllegalArgumentException e) {
+      // Workflow not deployed to Flowable - this can happen for workflows that haven't been
+      // triggered yet
+      LOG.warn(
+          "Workflow '{}' is not deployed to Flowable engine: {}", workflowName, e.getMessage());
+      throw BadRequestException.of(
+          "Workflow '"
+              + workflowName
+              + "' is not deployed to the workflow engine. "
+              + "Please ensure the workflow has been triggered at least once before attempting to suspend it.");
+    }
+  }
+
+  /**
+   * Resumes a suspended workflow by activating all paused instances in Flowable engine.
+   * @param workflow The workflow definition to resume
+   */
+  public void resumeWorkflow(WorkflowDefinition workflow) {
+    String workflowName = workflow.getName();
+
+    try {
+      // Resume all suspended process instances for this workflow
+      WorkflowHandler.getInstance().resumeWorkflow(workflowName);
+
+      // Log the resumption
+      LOG.info("Resumed workflow '{}' in Flowable engine", workflowName);
+    } catch (IllegalArgumentException e) {
+      // Workflow not deployed to Flowable - this can happen for workflows that haven't been
+      // triggered yet
+      LOG.warn(
+          "Workflow '{}' is not deployed to Flowable engine: {}", workflowName, e.getMessage());
+      throw BadRequestException.of(
+          "Workflow '"
+              + workflowName
+              + "' is not deployed to the workflow engine. "
+              + "Please ensure the workflow has been triggered at least once before attempting to resume it.");
+    }
+  }
+
+  /**
    * Validates that node IDs are unique and don't clash with workflow name.
    */
   private void validateNodeIds(WorkflowDefinition workflowDefinition) {
@@ -526,8 +577,118 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   }
 
   /**
+   * Validates node input/output mappings.
+   * Ensures that nodes properly reference variables from global scope or from reachable upstream nodes.
+   */
+  private void validateNodeInputOutputMapping(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getNodes() == null || workflowDefinition.getNodes().isEmpty()) {
+      return;
+    }
+
+    // Build node map and reachability information
+    Map<String, WorkflowNodeDefinitionInterface> nodeMap = new java.util.HashMap<>();
+    Map<String, List<String>> adjacencyList = new java.util.HashMap<>();
+
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      nodeMap.put(node.getName(), node);
+    }
+
+    if (workflowDefinition.getEdges() != null) {
+      for (EdgeDefinition edge : workflowDefinition.getEdges()) {
+        adjacencyList.computeIfAbsent(edge.getFrom(), k -> new ArrayList<>()).add(edge.getTo());
+      }
+    }
+
+    Set<String> globalVariables = workflowDefinition.getTrigger().getOutput();
+    boolean isNoOpTrigger = "noOp".equals(workflowDefinition.getTrigger().getType());
+
+    // Validate each node's input namespace mapping
+    for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
+      Map<String, String> inputNamespaceMap =
+          JsonUtils.readOrConvertValue(node.getInputNamespaceMap(), Map.class);
+
+      if (inputNamespaceMap == null) {
+        continue;
+      }
+
+      for (Map.Entry<String, String> entry : inputNamespaceMap.entrySet()) {
+        String variable = entry.getKey();
+        String namespace = entry.getValue();
+
+        if (Workflow.GLOBAL_NAMESPACE.equals(namespace)) {
+          // Validate global variable exists (unless noOp trigger)
+          if (!isNoOpTrigger && !globalVariables.contains(variable)) {
+            throw BadRequestException.of(
+                String.format(
+                    "Invalid Workflow: Node '%s' expects '%s' to be a global variable, but it is not present in trigger outputs",
+                    node.getName(), variable));
+          }
+        } else {
+          // Validate the referenced node exists and is reachable
+          WorkflowNodeDefinitionInterface sourceNode = nodeMap.get(namespace);
+          if (sourceNode == null) {
+            throw BadRequestException.of(
+                String.format(
+                    "Invalid Workflow: Node '%s' references non-existent node '%s'",
+                    node.getName(), namespace));
+          }
+
+          // Check if the source node outputs the expected variable
+          if (sourceNode.getOutput() != null && !sourceNode.getOutput().contains(variable)) {
+            throw BadRequestException.of(
+                String.format(
+                    "Invalid Workflow: Node '%s' expects '%s' from node '%s', but it does not output this variable",
+                    node.getName(), variable, namespace));
+          }
+
+          // Validate node is reachable
+          if (!isNodeReachable(namespace, node.getName(), adjacencyList)) {
+            throw BadRequestException.of(
+                String.format(
+                    "Invalid Workflow: Node '%s' expects input from '%s', but no path exists between them",
+                    node.getName(), namespace));
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Checks if targetNode is reachable from sourceNode in the workflow graph.
+   */
+  private boolean isNodeReachable(
+      String sourceNode, String targetNode, Map<String, List<String>> adjacencyList) {
+    if (sourceNode.equals(targetNode)) {
+      return false; // Self-reference is not allowed
+    }
+
+    Set<String> visited = new java.util.HashSet<>();
+    Queue<String> queue = new java.util.LinkedList<>();
+    queue.add(sourceNode);
+
+    while (!queue.isEmpty()) {
+      String current = queue.poll();
+      if (visited.contains(current)) {
+        continue;
+      }
+      visited.add(current);
+
+      List<String> neighbors = adjacencyList.get(current);
+      if (neighbors != null) {
+        for (String neighbor : neighbors) {
+          if (neighbor.equals(targetNode)) {
+            return true;
+          }
+          queue.add(neighbor);
+        }
+      }
+    }
+    return false;
+  }
+
+  /**
    * Extracts entity types from workflow trigger configuration.
-   * Handles both single entityType and multiple entityTypes fields.
+   * Migration has already converted single entityType to entityTypes array.
    */
   private List<String> getEntityTypesFromWorkflow(WorkflowDefinition workflowDefinition) {
     List<String> entityTypes = new ArrayList<>();
@@ -537,12 +698,6 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
 
       // Convert config to Map for field access
       Map<String, Object> configMap = JsonUtils.getMap(workflowDefinition.getTrigger().getConfig());
-
-      // Check for single entityType (deprecated, kept for backward compatibility)
-      Object entityTypeObj = configMap.get("entityType");
-      if (entityTypeObj != null) {
-        entityTypes.add(entityTypeObj.toString());
-      }
 
       // Check for multiple entityTypes (both eventBasedEntity and periodicBatchEntity triggers)
       @SuppressWarnings("unchecked")

@@ -13,8 +13,8 @@ import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -37,7 +37,6 @@ public class RollbackEntityImpl implements JavaDelegate {
     try {
       WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
 
-      // Get the input namespace map to know which namespace contains the related entity
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(inputNamespaceMapExpr.getValue(execution), Map.class);
 
@@ -48,20 +47,18 @@ public class RollbackEntityImpl implements JavaDelegate {
               ? workflowInstanceExecutionIdObj.toString()
               : (String) workflowInstanceExecutionIdObj;
 
-      // Get the related entity using the correct namespace from inputNamespaceMap
       MessageParser.EntityLink entityLink =
           MessageParser.EntityLink.parse(
               (String)
                   varHandler.getNamespacedVariable(
                       inputNamespaceMap.get(RELATED_ENTITY_VARIABLE), RELATED_ENTITY_VARIABLE));
 
-      // Get the updatedBy user from the workflow context
       String updatedBy =
           (String)
               varHandler.getNamespacedVariable(
                   inputNamespaceMap.get(UPDATED_BY_VARIABLE), UPDATED_BY_VARIABLE);
       if (updatedBy == null || updatedBy.isEmpty()) {
-        updatedBy = "governance-bot"; // Fallback to system user
+        updatedBy = "governance-bot";
       }
 
       EntityInterface currentEntity = Entity.getEntity(entityLink, "*", Include.ALL);
@@ -96,7 +93,6 @@ public class RollbackEntityImpl implements JavaDelegate {
 
       restoreToPreviousVersion(repository, currentEntity, previousEntity, updatedBy);
 
-      // Store rollback information in execution variables
       execution.setVariable("rollbackAction", "rollback");
       execution.setVariable("rollbackFromVersion", currentEntity.getVersion());
       execution.setVariable("rollbackToVersion", previousVersion);
@@ -134,7 +130,6 @@ public class RollbackEntityImpl implements JavaDelegate {
           EntityInterface versionEntity = JsonUtils.readValue(versionJson, entity.getClass());
           Double versionNumber = versionEntity.getVersion();
 
-          // Only include versions before the current version
           if (versionNumber < currentVersion) {
             versionNumbers.add(versionNumber);
           }
@@ -144,26 +139,34 @@ public class RollbackEntityImpl implements JavaDelegate {
         }
       }
 
-      // Sort versions in descending order to check most recent first
       versionNumbers.sort((v1, v2) -> Double.compare(v2, v1));
 
-      // Iterate through versions in descending order to find the first approved or rejected version
       for (Double versionNumber : versionNumbers) {
         try {
-          // Get this version's full entity using getVersion
           EntityInterface fullVersionEntity =
               repository.getVersion(entityId, versionNumber.toString());
 
-          // Log the entity type and status for debugging
-          if (fullVersionEntity instanceof GlossaryTerm) {
-            GlossaryTerm term = (GlossaryTerm) fullVersionEntity;
+          try {
+            java.lang.reflect.Method getStatusMethod =
+                fullVersionEntity.getClass().getMethod("getEntityStatus");
+            Object statusObj = getStatusMethod.invoke(fullVersionEntity);
             LOG.debug(
-                "[RollbackEntity] Checking version {} - Status: {}",
+                "[RollbackEntity] Checking {} version {} - Status: {}",
+                fullVersionEntity.getClass().getSimpleName(),
                 versionNumber,
-                term.getEntityStatus() != null ? term.getEntityStatus().value() : "null");
+                statusObj != null ? statusObj.toString() : "null");
+          } catch (NoSuchMethodException e) {
+            LOG.debug(
+                "[RollbackEntity] {} version {} - No entityStatus field",
+                fullVersionEntity.getClass().getSimpleName(),
+                versionNumber);
+          } catch (Exception e) {
+            LOG.debug(
+                "[RollbackEntity] Could not get status for {} version {}",
+                fullVersionEntity.getClass().getSimpleName(),
+                versionNumber);
           }
 
-          // Check if it's approved or rejected (for GlossaryTerm, check status field)
           String status = getRollbackStatus(fullVersionEntity);
           if (status != null) {
             LOG.info(
@@ -196,43 +199,55 @@ public class RollbackEntityImpl implements JavaDelegate {
   }
 
   private String getRollbackStatus(EntityInterface entity) {
-    // For GlossaryTerm, check if the status is "Approved" or "Rejected"
-    if (entity instanceof GlossaryTerm) {
-      GlossaryTerm glossaryTerm = (GlossaryTerm) entity;
-      if (glossaryTerm.getEntityStatus() == null) {
+    try {
+      java.lang.reflect.Method getStatusMethod = entity.getClass().getMethod("getEntityStatus");
+      Object statusObj = getStatusMethod.invoke(entity);
+
+      if (statusObj == null) {
         LOG.warn(
-            "[RollbackEntity] Status is null for GlossaryTerm version {}",
-            glossaryTerm.getVersion());
+            "[RollbackEntity] Status is null for {} version {}",
+            entity.getClass().getSimpleName(),
+            entity.getVersion());
         return null;
       }
 
-      String status = glossaryTerm.getEntityStatus().value();
-      LOG.debug(
-          "[RollbackEntity] Checking status: '{}' for version {}",
-          status,
-          glossaryTerm.getVersion());
+      if (statusObj instanceof EntityStatus) {
+        EntityStatus status = (EntityStatus) statusObj;
+        LOG.debug(
+            "[RollbackEntity] Checking status: '{}' for version {}", status, entity.getVersion());
 
-      // Return the status if it's either Approved or Rejected (these are rollback targets)
-      // Use exact case matching as per the enum definition
-      if ("Approved".equals(status)) {
-        return "Approved";
-      } else if ("Rejected".equals(status)) {
-        return "Rejected";
+        if (status == EntityStatus.APPROVED) {
+          return "Approved";
+        } else if (status == EntityStatus.REJECTED) {
+          return "Rejected";
+        }
+
+        LOG.debug(
+            "[RollbackEntity] Skipping version {} with status '{}' - not a rollback target",
+            entity.getVersion(),
+            status);
+
+        return null;
       }
 
-      // Log why we're skipping this version
-      LOG.debug(
-          "[RollbackEntity] Skipping version {} with status '{}' - not a rollback target",
-          glossaryTerm.getVersion(),
-          status);
+      LOG.warn(
+          "[RollbackEntity] Unexpected status type for {}: {}",
+          entity.getClass().getSimpleName(),
+          statusObj.getClass().getName());
+      return null;
 
-      // Return null for other statuses (Draft, In Review, Deprecated) as we don't rollback to those
+    } catch (NoSuchMethodException e) {
+      LOG.debug(
+          "[RollbackEntity] Entity type {} doesn't have entityStatus field, treating as approved",
+          entity.getClass().getSimpleName());
+      return "Approved";
+    } catch (Exception e) {
+      LOG.error(
+          "[RollbackEntity] Error checking entity status for {}",
+          entity.getClass().getSimpleName(),
+          e);
       return null;
     }
-
-    // For other entities, we'd need to check their status when that field is added
-    // For now, just return "Approved" as the default rollback status
-    return "Approved";
   }
 
   private void restoreToPreviousVersion(

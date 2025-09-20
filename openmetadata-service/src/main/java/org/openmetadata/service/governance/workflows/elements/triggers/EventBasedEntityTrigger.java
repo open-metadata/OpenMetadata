@@ -221,8 +221,8 @@ public class EventBasedEntityTrigger implements TriggerInterface {
                 .build();
         serviceTask.getFieldExtensions().add(excludedFilterExpr);
       }
-      if (triggerConfig.getFilter() != null && !triggerConfig.getFilter().trim().isEmpty()) {
-        // Use JSON Logic path
+      if (triggerConfig.getFilter() != null) {
+        // Pass the entire filter configuration (string or object with entity-specific filters)
         FieldExtension filterExpr =
             new FieldExtensionBuilder()
                 .fieldName("filterExpr")

@@ -11,6 +11,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.client.Entity;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -18,6 +19,7 @@ import java.lang.reflect.Method;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -436,7 +438,10 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             "scheduleTimeline": "None"
           },
           "batchSize": 100,
-          "filters": ""
+          "filters": {
+            "table": "",
+            "default": ""
+          }
         },
         "output": [
           "relatedEntity",
@@ -885,7 +890,12 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             "scheduleTimeline": "None"
           },
           "batchSize": 100,
-          "filters": ""
+          "filters": {
+            "glossaryterm": "",
+            "table": "",
+            "tag": "",
+            "default": ""
+          }
         },
         "output": [
           "relatedEntity",
@@ -1128,7 +1138,10 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             "scheduleTimeline": "None"
           },
           "batchSize": 100,
-          "filters": ""
+          "filters": {
+            "mlmodel": "",
+            "default": ""
+          }
         },
         "output": [
           "relatedEntity",
@@ -1567,7 +1580,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(6)
+  @Order(7)
   void test_EventBasedWorkflowForMultipleEntities(TestInfo test)
       throws IOException, InterruptedException {
     LOG.info("Starting test_EventBasedWorkflowForMultipleEntities");
@@ -1631,7 +1644,11 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           "exclude": [
             "reviewers"
           ],
-          "filter": ""
+          "filter": {
+            "apiCollection": "",
+            "container": "",
+            "default": ""
+          }
         },
         "output": [
           "relatedEntity",
@@ -1791,7 +1808,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(5)
+  @Order(6)
   void test_MultiEntityPeriodicQueryWithFilters(TestInfo test)
       throws IOException, InterruptedException {
     LOG.info("Starting test_MultiEntityPeriodicQueryWithFilters");
@@ -2104,7 +2121,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(6)
+  @Order(8)
   void test_InvalidWorkflowDefinition() {
     LOG.info("Starting test_InvalidWorkflowDefinition");
 
@@ -2189,7 +2206,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(7)
+  @Order(9)
   void test_UserApprovalTaskWithoutReviewerSupport() {
     LOG.info("Starting test_UserApprovalTaskWithoutReviewerSupport");
 
@@ -2204,7 +2221,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
       "trigger": {
         "type": "eventBasedEntity",
         "config": {
-          "entityType": "database",
+          "entityTypes": ["database"],
           "events": ["Created", "Updated"]
         }
       },
@@ -2281,6 +2298,538 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.info("test_UserApprovalTaskWithoutReviewerSupport completed successfully");
   }
 
+  @Test
+  @Order(14)
+  void test_SuspendAndResumeWorkflow(TestInfo test)
+      throws HttpResponseException, InterruptedException {
+    LOG.info("Starting test_SuspendAndResumeWorkflow");
+
+    // Step 1: Create a simple workflow that can be triggered immediately
+    // Using noOp trigger type which can be deployed and triggered manually
+    String workflowJson =
+        """
+    {
+      "name": "TestSuspendResumeWorkflow",
+      "displayName": "Test Suspend Resume Workflow",
+      "description": "Workflow for testing suspend and resume functionality",
+      "trigger": {
+        "type": "noOp"
+      },
+      "nodes": [
+        {
+          "type": "startEvent",
+          "subType": "startEvent",
+          "name": "start",
+          "displayName": "Start"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "end",
+          "displayName": "End"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "end"
+        }
+      ],
+      "config": {
+        "storeStageStatus": false
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition createWorkflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+
+    // Create the workflow
+    Response createResponse =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(createWorkflow));
+
+    if (createResponse.getStatus() == 400) {
+      String errorMessage = createResponse.readEntity(String.class);
+      LOG.error("Failed to create workflow. Error: {}", errorMessage);
+      fail("Failed to create workflow for suspend/resume test. Error: " + errorMessage);
+    }
+
+    assertTrue(
+        createResponse.getStatus() == Response.Status.CREATED.getStatusCode()
+            || createResponse.getStatus() == Response.Status.OK.getStatusCode(),
+        "Failed to create workflow for suspend/resume test");
+
+    WorkflowDefinition createdWorkflow = createResponse.readEntity(WorkflowDefinition.class);
+    assertNotNull(createdWorkflow);
+    String workflowFqn = createdWorkflow.getFullyQualifiedName();
+    LOG.info("Created workflow for suspend/resume test: {}", workflowFqn);
+
+    // Step 2: Trigger the workflow to deploy it to Flowable
+    LOG.info("Triggering workflow to deploy it to Flowable engine");
+    Response triggerResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/name/" + workflowFqn + "/trigger"),
+                ADMIN_AUTH_HEADERS)
+            .post(Entity.json("{}"));
+
+    assertEquals(
+        Response.Status.OK.getStatusCode(),
+        triggerResponse.getStatus(),
+        "Failed to trigger workflow for deployment");
+    LOG.info("Workflow triggered successfully, waiting for deployment to complete");
+
+    // Wait a few seconds for the workflow to be deployed and start
+    java.lang.Thread.sleep(10000);
+
+    // Step 3: Now suspend the deployed workflow
+    LOG.info("Attempting to suspend the deployed workflow");
+    Response suspendResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/name/" + workflowFqn + "/suspend"),
+                ADMIN_AUTH_HEADERS)
+            .put(Entity.json("{}"));
+
+    assertEquals(
+        Response.Status.OK.getStatusCode(),
+        suspendResponse.getStatus(),
+        "Failed to suspend deployed workflow");
+
+    String suspendBody = suspendResponse.readEntity(String.class);
+    assertNotNull(suspendBody);
+    assertTrue(
+        suspendBody.contains("suspended"),
+        "Response should indicate workflow is suspended. Got: " + suspendBody);
+    LOG.info("Workflow suspended successfully");
+
+    // Step 4: Wait 10-15 seconds while workflow is suspended
+    LOG.info("Waiting 12 seconds with workflow in suspended state...");
+    java.lang.Thread.sleep(12000);
+
+    // Step 5: Resume the workflow
+    LOG.info("Attempting to resume the suspended workflow");
+    Response resumeResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/name/" + workflowFqn + "/resume"),
+                ADMIN_AUTH_HEADERS)
+            .put(Entity.json("{}"));
+
+    assertEquals(
+        Response.Status.OK.getStatusCode(),
+        resumeResponse.getStatus(),
+        "Failed to resume suspended workflow");
+
+    String resumeBody = resumeResponse.readEntity(String.class);
+    assertNotNull(resumeBody);
+    assertTrue(
+        resumeBody.contains("resumed"),
+        "Response should indicate workflow is resumed. Got: " + resumeBody);
+    LOG.info("Workflow resumed successfully");
+
+    // Step 6: Verify we can suspend it again (proves it's active)
+    LOG.info("Verifying workflow is active by suspending it again");
+    Response secondSuspendResponse =
+        SecurityUtil.addHeaders(
+                getResource("governance/workflowDefinitions/name/" + workflowFqn + "/suspend"),
+                ADMIN_AUTH_HEADERS)
+            .put(Entity.json("{}"));
+
+    assertEquals(
+        Response.Status.OK.getStatusCode(),
+        secondSuspendResponse.getStatus(),
+        "Should be able to suspend the active workflow again");
+
+    LOG.info("test_SuspendAndResumeWorkflow completed successfully");
+  }
+
+  @Test
+  @Order(15)
+  void test_EntitySpecificFiltering(TestInfo test) throws IOException, InterruptedException {
+    LOG.info("Starting test_EntitySpecificFiltering");
+
+    // Create test entities
+    // 1. Create a Glossary and GlossaryTerms
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(
+                "test_filter_glossary_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDisplayName("Test Filter Glossary")
+            .withDescription("Glossary for testing entity-specific filters");
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created glossary: {}", glossary.getName());
+
+    // Create glossary term that SHOULD trigger workflow (has description)
+    CreateGlossaryTerm createTermToMatch =
+        new CreateGlossaryTerm()
+            .withName("test_term_complete_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDisplayName("Complete Term")
+            .withDescription("This term has a description and should trigger workflow")
+            .withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm termToMatch = glossaryTermTest.createEntity(createTermToMatch, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created glossary term that should match filter: {}", termToMatch.getName());
+
+    // Create glossary term that should NOT trigger workflow (will not match filter)
+    CreateGlossaryTerm createTermNotToMatch =
+        new CreateGlossaryTerm()
+            .withName(
+                "test_term_incomplete_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDisplayName("Incomplete Term")
+            .withDescription(
+                "Simple description without the magic word") // Description without "workflow" won't
+            // match
+            .withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm termNotToMatch =
+        glossaryTermTest.createEntity(createTermNotToMatch, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created glossary term that should NOT match filter: {}", termNotToMatch.getName());
+
+    // 2. Create Tables for testing
+    // Create database service
+    CreateDatabaseService createDbService =
+        databaseServiceTest.createRequest(
+            "test_filter_db_service_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""));
+    DatabaseService dbService =
+        databaseServiceTest.createEntity(createDbService, ADMIN_AUTH_HEADERS);
+
+    // Create database
+    CreateDatabase createDatabase =
+        new CreateDatabase()
+            .withName("test_filter_db_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withService(dbService.getFullyQualifiedName());
+    Database database = databaseTest.createEntity(createDatabase, ADMIN_AUTH_HEADERS);
+
+    // Create database schema
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName("test_filter_schema_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabase(database.getFullyQualifiedName());
+    DatabaseSchema dbSchema = schemaTest.createEntity(createSchema, ADMIN_AUTH_HEADERS);
+
+    // Create table that SHOULD trigger workflow (production table)
+    CreateTable createProdTable =
+        new CreateTable()
+            .withName(
+                "production_customer_data_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Production table that should trigger workflow")
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("data").withDataType(ColumnDataType.STRING)));
+    Table prodTable = tableTest.createEntity(createProdTable, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created production table that should match filter: {}", prodTable.getName());
+
+    // Create table that should NOT trigger workflow (dev/test table)
+    CreateTable createDevTable =
+        new CreateTable()
+            .withName("dev_test_table_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDatabaseSchema(dbSchema.getFullyQualifiedName())
+            .withDescription("Dev table that should NOT trigger workflow")
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("test_data").withDataType(ColumnDataType.STRING)));
+    Table devTable = tableTest.createEntity(createDevTable, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created dev table that should NOT match filter: {}", devTable.getName());
+
+    // Create workflow with entity-specific filters
+    String workflowJson =
+        """
+    {
+      "name": "EntitySpecificFilterWorkflow",
+      "displayName": "Entity Specific Filter Workflow",
+      "description": "Workflow to test entity-specific filtering for different entity types",
+      "trigger": {
+        "type": "eventBasedEntity",
+        "config": {
+          "entityTypes": ["glossaryTerm", "table"],
+          "events": ["Created", "Updated"],
+          "exclude": ["reviewers"],
+          "filter": {
+            "glossaryterm": "{\\\"!\\\": [{\\\"in\\\": [\\\"workflow\\\", {\\\"var\\\": \\\"description\\\"}]}]}",
+            "table": "{\\\"!\\\": [{\\\"in\\\": [\\\"production\\\", {\\\"var\\\": \\\"name\\\"}]}]}"
+          }
+        },
+        "output": ["relatedEntity", "updatedBy"]
+      },
+      "nodes": [
+        {
+          "type": "startEvent",
+          "subType": "startEvent",
+          "name": "start",
+          "displayName": "Start"
+        },
+        {
+          "type": "automatedTask",
+          "subType": "setEntityAttributeTask",
+          "name": "AddProcessedTag",
+          "displayName": "Add Processed Tag",
+          "config": {
+            "fieldName": "displayName",
+            "fieldValue": "[FILTERED] - Entity passed specific filter"
+          },
+          "input": ["relatedEntity", "updatedBy"],
+          "inputNamespaceMap": {
+            "relatedEntity": "global",
+            "updatedBy": "global"
+          },
+          "output": []
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "end",
+          "displayName": "End"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "AddProcessedTag"
+        },
+        {
+          "from": "AddProcessedTag",
+          "to": "end"
+        }
+      ],
+      "config": {
+        "storeStageStatus": true
+      }
+    }
+    """;
+
+    CreateWorkflowDefinition workflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+
+    // Create the workflow
+    Response response =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(workflow));
+
+    if (response.getStatus() == Response.Status.CREATED.getStatusCode()
+        || response.getStatus() == Response.Status.OK.getStatusCode()) {
+      WorkflowDefinition createdWorkflow = response.readEntity(WorkflowDefinition.class);
+      assertNotNull(createdWorkflow);
+      LOG.info("EntitySpecificFilterWorkflow created successfully");
+    } else {
+      String responseBody = response.readEntity(String.class);
+      LOG.error(
+          "Failed to create workflow. Status: {}, Response: {}",
+          response.getStatus(),
+          responseBody);
+      fail("Failed to create workflow: " + responseBody);
+    }
+
+    // Wait a bit for workflow to be deployed
+    java.lang.Thread.sleep(5000);
+
+    // Store IDs for lambda expressions
+    final UUID termToMatchId = termToMatch.getId();
+    final UUID termNotToMatchId = termNotToMatch.getId();
+    final UUID prodTableId = prodTable.getId();
+    final UUID devTableId = devTable.getId();
+
+    // Update entities to trigger the workflow
+    LOG.info("Updating entities to trigger workflow events");
+
+    // Update glossary terms to trigger events
+    String termToMatchPatchStr =
+        "[{\"op\":\"replace\",\"path\":\"/synonyms\",\"value\":[\"complete_synonym\"]}]";
+    JsonNode termToMatchPatch = JsonUtils.readTree(termToMatchPatchStr);
+    glossaryTermTest.patchEntity(termToMatchId, termToMatchPatch, ADMIN_AUTH_HEADERS);
+
+    String termNotToMatchPatchStr =
+        "[{\"op\":\"replace\",\"path\":\"/synonyms\",\"value\":[\"incomplete_synonym\"]}]";
+    JsonNode termNotToMatchPatch = JsonUtils.readTree(termNotToMatchPatchStr);
+    glossaryTermTest.patchEntity(termNotToMatchId, termNotToMatchPatch, ADMIN_AUTH_HEADERS);
+
+    // Update tables to trigger events
+    String prodTablePatchStr =
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Updated production table\"}]";
+    JsonNode prodTablePatch = JsonUtils.readTree(prodTablePatchStr);
+    tableTest.patchEntity(prodTableId, prodTablePatch, ADMIN_AUTH_HEADERS);
+
+    String devTablePatchStr =
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Updated dev table\"}]";
+    JsonNode devTablePatch = JsonUtils.readTree(devTablePatchStr);
+    tableTest.patchEntity(devTableId, devTablePatch, ADMIN_AUTH_HEADERS);
+
+    // Wait for workflow processing using Awaitility
+    LOG.info("Waiting for workflow to process entities...");
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () -> {
+              try {
+                // Check if entities that match filters got processed
+                GlossaryTerm updatedTermToMatch =
+                    glossaryTermTest.getEntity(termToMatchId, "", ADMIN_AUTH_HEADERS);
+                Table updatedProdTable = tableTest.getEntity(prodTableId, "", ADMIN_AUTH_HEADERS);
+
+                boolean termProcessed =
+                    updatedTermToMatch.getDisplayName() != null
+                        && updatedTermToMatch.getDisplayName().startsWith("[FILTERED]");
+                boolean tableProcessed =
+                    updatedProdTable.getDisplayName() != null
+                        && updatedProdTable.getDisplayName().startsWith("[FILTERED]");
+
+                if (termProcessed && tableProcessed) {
+                  LOG.debug("Both matching entities have been processed by workflow");
+                  return true;
+                }
+
+                LOG.debug(
+                    "Waiting... Term processed: {}, Table processed: {}",
+                    termProcessed,
+                    tableProcessed);
+                return false;
+              } catch (Exception e) {
+                LOG.debug("Error checking entities: {}", e.getMessage());
+                return false;
+              }
+            });
+
+    // Verify results
+    LOG.info("Verifying workflow results");
+
+    // Entities that match filter should be processed
+    GlossaryTerm finalTermToMatch =
+        glossaryTermTest.getEntity(termToMatchId, "", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        finalTermToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm with description should have been processed by workflow");
+    LOG.info(
+        "✓ GlossaryTerm with description was correctly processed using glossaryterm-specific filter");
+
+    Table finalProdTable = tableTest.getEntity(prodTableId, "", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        finalProdTable.getDisplayName().startsWith("[FILTERED]"),
+        "Production table should have been processed by workflow");
+    LOG.info(
+        "✓ Table with 'production' in name was correctly processed using table-specific filter");
+
+    // Entities that don't match filter should NOT be processed
+    GlossaryTerm finalTermNotToMatch =
+        glossaryTermTest.getEntity(termNotToMatchId, "", ADMIN_AUTH_HEADERS);
+    assertFalse(
+        finalTermNotToMatch.getDisplayName() != null
+            && finalTermNotToMatch.getDisplayName().startsWith("[FILTERED]"),
+        "GlossaryTerm without description should NOT have been processed by workflow");
+    LOG.info("✓ GlossaryTerm without description was correctly filtered out");
+
+    Table finalDevTable = tableTest.getEntity(devTableId, "", ADMIN_AUTH_HEADERS);
+    assertFalse(
+        finalDevTable.getDisplayName() != null
+            && finalDevTable.getDisplayName().startsWith("[FILTERED]"),
+        "Dev table should NOT have been processed by workflow");
+    LOG.info("✓ Table without 'production' in name was correctly filtered out");
+
+    LOG.info(
+        "test_EntitySpecificFiltering completed successfully - Entity-specific filters working correctly!");
+  }
+
+  @Test
+  @Order(16)
+  void test_SuspendNonExistentWorkflow(TestInfo test) {
+    LOG.info("Starting test_SuspendNonExistentWorkflow");
+
+    String nonExistentWorkflowFqn = "NonExistentWorkflow_" + UUID.randomUUID();
+
+    // Try to suspend a non-existent workflow
+    Response suspendResponse =
+        SecurityUtil.addHeaders(
+                getResource(
+                    "governance/workflowDefinitions/name/" + nonExistentWorkflowFqn + "/suspend"),
+                ADMIN_AUTH_HEADERS)
+            .put(Entity.json("{}"));
+
+    assertEquals(
+        Response.Status.NOT_FOUND.getStatusCode(),
+        suspendResponse.getStatus(),
+        "Should return 404 for non-existent workflow");
+
+    LOG.info("test_SuspendNonExistentWorkflow completed successfully");
+  }
+
+  @Test
+  @Order(17)
+  void test_UnauthorizedSuspendResume(TestInfo test) throws HttpResponseException {
+    LOG.info("Starting test_UnauthorizedSuspendResume");
+
+    // First create a workflow as admin
+    String workflowJson =
+        """
+    {
+      "name": "TestUnauthorizedWorkflow",
+      "displayName": "Test Unauthorized Workflow",
+      "description": "Workflow for testing unauthorized suspend/resume",
+      "trigger": {
+        "type": "noOp"
+      },
+      "nodes": [
+        {
+          "type": "startEvent",
+          "subType": "startEvent",
+          "name": "start"
+        },
+        {
+          "type": "endEvent",
+          "subType": "endEvent",
+          "name": "end"
+        }
+      ],
+      "edges": [
+        {
+          "from": "start",
+          "to": "end"
+        }
+      ]
+    }
+    """;
+
+    CreateWorkflowDefinition createWorkflow =
+        JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
+
+    Response createResponse =
+        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
+            .post(Entity.json(createWorkflow));
+
+    WorkflowDefinition createdWorkflow = createResponse.readEntity(WorkflowDefinition.class);
+    String workflowFqn = createdWorkflow.getFullyQualifiedName();
+
+    // Create a user with limited permissions
+    CreateUser createUser =
+        new CreateUser()
+            .withName("testUser_" + UUID.randomUUID())
+            .withEmail("testuser@example.com");
+    User testUser = userTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    // Try to suspend without proper authorization (using test user's auth)
+    Map<String, String> testUserAuth = authHeaders(testUser.getName());
+
+    try {
+      Response suspendResponse =
+          SecurityUtil.addHeaders(
+                  getResource("governance/workflowDefinitions/name/" + workflowFqn + "/suspend"),
+                  testUserAuth)
+              .put(Entity.json("{}"));
+
+      // Should get 403 Forbidden
+      assertEquals(
+          Response.Status.FORBIDDEN.getStatusCode(),
+          suspendResponse.getStatus(),
+          "Should return 403 for unauthorized user");
+    } catch (Exception e) {
+      // Some security frameworks might throw exception instead
+      assertTrue(
+          e.getMessage().contains("Unauthorized") || e.getMessage().contains("Forbidden"),
+          "Should indicate authorization failure");
+    }
+
+    LOG.info("test_UnauthorizedSuspendResume completed successfully");
+  }
+
   private void createOrUpdateWorkflow(CreateWorkflowDefinition workflow) {
     Response response =
         SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
@@ -2303,7 +2852,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(9)
+  @Order(10)
   void test_UserApprovalTaskWithSuggestionsWithoutReviewerSupport() {
     LOG.info("Starting test_UserApprovalTaskWithSuggestionsWithoutReviewerSupport");
 
@@ -2401,7 +2950,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(9)
+  @Order(11)
   void test_EventBasedMultipleEntitiesWithoutReviewerSupport() {
     LOG.info("Starting test_EventBasedMultipleEntitiesWithoutReviewerSupport");
 
@@ -2497,7 +3046,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(10)
+  @Order(12)
   void test_MixedEntityTypesWithReviewerSupport() {
     LOG.info("Starting test_MixedEntityTypesWithReviewerSupport");
 
@@ -2591,7 +3140,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(11)
+  @Order(13)
   void test_WorkflowValidationEndpoint() {
     LOG.info("Starting test_WorkflowValidationEndpoint");
 
@@ -3590,7 +4139,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(12)
+  @Order(18)
   void test_MutualExclusivitySmartReplacement(TestInfo test) throws IOException {
     LOG.info("Starting test_MutualExclusivitySmartReplacement");
 
@@ -3742,7 +4291,10 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             "scheduleTimeline": "None"
           },
           "batchSize": 100,
-          "filters": ""
+          "filters": {
+            "table": "",
+            "default": ""
+          }
         },
         "output": [
           "relatedEntity",
@@ -3935,7 +4487,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(13)
+  @Order(19)
   void test_CustomApprovalWorkflowForNewEntities(TestInfo test)
       throws IOException, InterruptedException {
     LOG.info("Starting test_CustomApprovalWorkflowForNewEntities");
@@ -3963,7 +4515,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
               "entityTypes": ["dataContract", "tag", "dataProduct", "testCase"],
               "events": ["Created", "Updated"],
               "exclude": ["reviewers"],
-              "filter": ""
+              "filter": {}
             },
             "output": ["relatedEntity", "updatedBy"]
           },
@@ -4433,7 +4985,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(15)
+  @Order(20)
   void test_AutoApprovalForEntitiesWithoutReviewers(TestInfo test)
       throws IOException, InterruptedException {
     LOG.info("Starting test_AutoApprovalForEntitiesWithoutReviewers");
@@ -4451,7 +5003,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           "entityTypes": ["dataProduct"],
           "events": ["Created", "Updated"],
           "exclude": ["reviewers"],
-          "filter": ""
+          "filter": {}
         },
         "output": ["relatedEntity", "updatedBy"]
       },
@@ -4618,7 +5170,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   }
 
   @Test
-  @Order(16)
+  @Order(21)
   void test_CreateWorkflowWithoutEntityTypes() throws Exception {
     String workflowJson =
         """

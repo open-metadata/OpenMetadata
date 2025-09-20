@@ -2427,7 +2427,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Patch workflow to include isOwner in OR condition
     String patchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"or\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"isOwner\\\":{\\\"var\\\":\\\"updatedBy\\\"}}]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"or\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"isOwner\\\":{\\\"var\\\":\\\"updatedBy\\\"}}]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
 
     // Wait for workflow patch to take effect
@@ -2446,7 +2446,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Reset workflow filter back to empty AND
     String resetPatchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", resetPatchJson);
   }
 
@@ -2472,7 +2472,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Patch workflow to use AND: isReviewer AND description exists
     String patchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"!=\\\":[{\\\"var\\\":\\\"description\\\"},null]}]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"!=\\\":[{\\\"var\\\":\\\"description\\\"},null]}]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
 
     // Wait for workflow patch to take effect
@@ -2511,7 +2511,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Reset workflow filter back to empty AND
     String resetPatchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", resetPatchJson);
   }
 

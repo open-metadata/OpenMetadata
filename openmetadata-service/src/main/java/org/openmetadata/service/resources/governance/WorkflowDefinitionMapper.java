@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.governance;
 
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.mapper.EntityMapper;
 
@@ -9,8 +10,7 @@ public class WorkflowDefinitionMapper
   @Override
   public WorkflowDefinition createToEntity(CreateWorkflowDefinition create, String user) {
     // Convert API WorkflowConfiguration to entity WorkflowConfiguration
-    org.openmetadata.schema.governance.workflows.WorkflowConfiguration config =
-        new org.openmetadata.schema.governance.workflows.WorkflowConfiguration();
+    WorkflowConfiguration config = new WorkflowConfiguration();
 
     if (create.getConfig() != null) {
       config.setStoreStageStatus(create.getConfig().getStoreStageStatus());

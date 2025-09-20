@@ -641,4 +641,100 @@ public class WorkflowDefinitionResource
       return Response.status(Response.Status.NOT_FOUND).entity(fqn).build();
     }
   }
+
+  @PUT
+  @Path("/name/{fqn}/suspend")
+  @Operation(
+      operationId = "suspendWorkflow",
+      summary = "Suspend a Workflow Definition",
+      description = "Suspend a Workflow Definition to temporarily stop its execution.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Workflow suspended successfully",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Workflow Definition named '{fqn}' is not found")
+      })
+  public Response suspend(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Workflow Definition", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    // Check if workflow exists
+    WorkflowDefinition workflow = repository.getByName(uriInfo, fqn, repository.getFields("id"));
+
+    // Authorize the operation
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    ResourceContext<WorkflowDefinition> resourceContext =
+        new ResourceContext<>(entityType, workflow.getId(), workflow.getName());
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    // Suspend the workflow through repository layer (separation of concerns)
+    repository.suspendWorkflow(workflow);
+
+    return Response.ok()
+        .entity(
+            Map.of(
+                "status",
+                "suspended",
+                "workflow",
+                fqn,
+                "message",
+                "Workflow suspended successfully",
+                "suspendedAt",
+                System.currentTimeMillis()))
+        .build();
+  }
+
+  @PUT
+  @Path("/name/{fqn}/resume")
+  @Operation(
+      operationId = "resumeWorkflow",
+      summary = "Resume a suspended Workflow Definition",
+      description = "Resume a suspended Workflow Definition to continue its execution.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Workflow resumed successfully",
+            content = @Content(mediaType = "application/json")),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Workflow Definition named '{fqn}' is not found")
+      })
+  public Response resume(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the Workflow Definition", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    // Check if workflow exists
+    WorkflowDefinition workflow = repository.getByName(uriInfo, fqn, repository.getFields("id"));
+
+    // Authorize the operation
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    ResourceContext<WorkflowDefinition> resourceContext =
+        new ResourceContext<>(entityType, workflow.getId(), workflow.getName());
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    // Resume the workflow through repository layer (separation of concerns)
+    repository.resumeWorkflow(workflow);
+
+    return Response.ok()
+        .entity(
+            Map.of(
+                "status",
+                "resumed",
+                "workflow",
+                fqn,
+                "message",
+                "Workflow resumed successfully",
+                "resumedAt",
+                System.currentTimeMillis()))
+        .build();
+  }
 }

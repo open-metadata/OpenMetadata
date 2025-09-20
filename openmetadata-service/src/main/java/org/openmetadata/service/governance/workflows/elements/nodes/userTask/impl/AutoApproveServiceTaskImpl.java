@@ -18,21 +18,13 @@ public class AutoApproveServiceTaskImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
 
-    // This task only executes when hasAssignees=false (routed by the gateway)
-    // So we know there are no assignees and can auto-approve
     LOG.info(
         "Auto-approving task in process instance {} due to no assignees/reviewers configured.",
         execution.getProcessInstanceId());
 
-    // Set the result variable to true (approved) in the proper namespace
-    // This mimics what happens when a user approves the task
     varHandler.setNodeVariable("result", true);
+    varHandler.setNodeVariable("autoApprovalReason", "No reviewers configured");
 
-    // Log for audit trail
-    execution.setVariable("autoApproved", true);
-    execution.setVariable("autoApprovalReason", "No reviewers configured");
-
-    // Get entity info for logging
     if (inputNamespaceMapExpr != null) {
       try {
         Map<String, String> inputNamespaceMap =

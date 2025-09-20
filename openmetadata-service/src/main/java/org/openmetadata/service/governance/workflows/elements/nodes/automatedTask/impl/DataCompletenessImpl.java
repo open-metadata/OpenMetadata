@@ -61,13 +61,34 @@ public class DataCompletenessImpl implements JavaDelegate {
       // Calculate completeness
       DataCompletenessResult result = calculateCompleteness(entityMap, fieldsToCheck, qualityBands);
 
-      // Set output variables
+      // Set output variables - optimize for performance
       varHandler.setNodeVariable("completenessScore", result.score);
       varHandler.setNodeVariable("filledFieldsCount", result.filledFieldsCount);
       varHandler.setNodeVariable("totalFieldsCount", result.totalFieldsCount);
-      varHandler.setNodeVariable("missingFields", result.missingFields);
-      varHandler.setNodeVariable("filledFields", result.filledFields);
       varHandler.setNodeVariable("qualityBand", result.qualityBand);
+
+      // Only store field lists if they're reasonably sized (< 50 items)
+      if (result.missingFields.size() <= 50) {
+        varHandler.setNodeVariable("missingFields", result.missingFields);
+      } else {
+        varHandler.setNodeVariable(
+            "missingFields",
+            result.missingFields.subList(0, 50)
+                + " [+"
+                + (result.missingFields.size() - 50)
+                + " more]");
+      }
+
+      if (result.filledFields.size() <= 50) {
+        varHandler.setNodeVariable("filledFields", result.filledFields);
+      } else {
+        varHandler.setNodeVariable(
+            "filledFields",
+            result.filledFields.subList(0, 50)
+                + " [+"
+                + (result.filledFields.size() - 50)
+                + " more]");
+      }
 
       // Set result variable for edge routing (using the quality band name)
       varHandler.setNodeVariable(RESULT_VARIABLE, result.qualityBand);

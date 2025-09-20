@@ -189,8 +189,9 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       return null;
     }
 
-    // Handle legacy string format - apply same filter to all entity types
     if (filtersObj instanceof String) {
+      LOG.warn(
+          "DEPRECATED: String filter format is deprecated. Use entity-specific filter map instead.");
       return (String) filtersObj;
     }
 

@@ -53,42 +53,32 @@ public class WorkflowTransactionManager {
       WorkflowDefinition entity,
       Authorizer authorizer,
       Limits limits) {
-    // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // Authorization (following OpenMetadata pattern)
     OperationContext operationContext = new OperationContext(Entity.WORKFLOW_DEFINITION, CREATE);
     CreateResourceContext<WorkflowDefinition> createResourceContext =
         new CreateResourceContext<>(Entity.WORKFLOW_DEFINITION, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
 
-    // Pre-validate by creating Workflow object (constructor will throw if invalid)
     Workflow workflow = new Workflow(entity);
 
-    // Start a NEW transaction at the API level
-    // This is the TOP-LEVEL transaction for this operation
     Jdbi jdbi = Entity.getJdbi();
 
     return jdbi.inTransaction(
         TransactionIsolationLevel.READ_COMMITTED,
         handle -> {
           try {
-            // Within this transaction, call the repository methods
-            // The repository's postCreate will deploy to Flowable
-            // Both operations happen within THIS transaction
             WorkflowDefinition created = repository.create(uriInfo, entity);
 
             LOG.info("Successfully created workflow definition: {}", entity.getName());
             return created;
 
           } catch (BadRequestException | EntityNotFoundException e) {
-            // Preserve these exception types for proper HTTP status codes
             throw e;
           } catch (Exception e) {
             LOG.error("Failed to create workflow definition: {}", entity.getName(), e);
-            // The transaction will rollback automatically
             throw new UnhandledServerException(
                 "Failed to create workflow definition: " + e.getMessage(), e);
           }
@@ -107,35 +97,25 @@ public class WorkflowTransactionManager {
       String updatedBy,
       Authorizer authorizer) {
 
-    // Get the repository
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
 
-    // Pre-validate the updated workflow BEFORE authorization and transaction
-    // This ensures we fail fast with proper exception types
-    // Update method in the repository doesn't call prepareInternal so we validate here, update
-    // method calls prepareInternal in the resource layer
     repository.prepareInternal(updated, true);
 
-    // Authorization (following OpenMetadata pattern)
     OperationContext operationContext = new OperationContext(Entity.WORKFLOW_DEFINITION, EDIT_ALL);
     ResourceContext<WorkflowDefinition> resourceContext =
         new ResourceContext<>(
             Entity.WORKFLOW_DEFINITION, original.getId(), original.getFullyQualifiedName());
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    // Pre-validate by creating Workflow object
     Workflow updatedWorkflow = new Workflow(updated);
 
-    // Start a NEW transaction at the API level
     Jdbi jdbi = Entity.getJdbi();
 
     return jdbi.inTransaction(
         TransactionIsolationLevel.READ_COMMITTED,
         handle -> {
           try {
-            // The repository's postUpdate will handle Flowable operations
-            // Both DB operations happen within THIS transaction
             PutResponse<WorkflowDefinition> response =
                 repository.update(uriInfo, original, updated, updatedBy);
             WorkflowDefinition result = response.getEntity();
@@ -144,11 +124,9 @@ public class WorkflowTransactionManager {
             return result;
 
           } catch (BadRequestException | EntityNotFoundException e) {
-            // Preserve these exception types for proper HTTP status codes
             throw e;
           } catch (Exception e) {
             LOG.error("Failed to update workflow definition: {}", updated.getName(), e);
-            // The transaction will rollback automatically
             throw new UnhandledServerException(
                 "Failed to update workflow definition: " + e.getMessage(), e);
           }
