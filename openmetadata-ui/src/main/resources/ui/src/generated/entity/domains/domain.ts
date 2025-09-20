@@ -16,6 +16,11 @@
  */
 export interface Domain {
     /**
+     * Aggregated data assets collection including assets from this domain and all its
+     * sub-domains.
+     */
+    allAssets?: EntityReference[];
+    /**
      * Data assets collection that is part of this domain.
      */
     assets?: EntityReference[];
@@ -100,7 +105,8 @@ export interface Domain {
 }
 
 /**
- * Data assets collection that is part of this domain.
+ * Aggregated data assets collection including assets from this domain and all its
+ * sub-domains.
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
