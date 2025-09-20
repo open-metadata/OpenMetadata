@@ -1,0 +1,505 @@
+"""
+Base entity class with common CRUD operations for all entities.
+This provides a clean API that avoids conflicts with Pydantic models.
+Enhanced with improved list operations, CSV import/export with async and WebSocket support.
+"""
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
+from uuid import UUID
+
+from pydantic import BaseModel
+
+from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
+from metadata.sdk.client import OpenMetadata
+from metadata.sdk.entities.csv_operations import BaseCsvExporter, BaseCsvImporter
+
+# Type variables for generic entity types
+# pylint: disable=invalid-name
+TEntity = TypeVar("TEntity", bound=BaseModel)
+TCreateRequest = TypeVar("TCreateRequest", bound=BaseModel)
+# pylint: enable=invalid-name
+
+
+@dataclass
+class ListResponse:
+    """Response wrapper for list operations with pagination"""
+
+    entities: List[TEntity]
+    total: Optional[int] = None
+    after: Optional[str] = None
+    before: Optional[str] = None
+
+
+class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
+    """
+    Base class for all entity wrappers.
+    Provides common CRUD operations following the Java SDK pattern.
+    """
+
+    _default_client: ClassVar[Optional[OMeta]] = None
+
+    @classmethod
+    @abstractmethod
+    def entity_type(cls) -> Type[TEntity]:
+        """Return the Pydantic entity type this wrapper handles"""
+
+    @classmethod
+    def set_default_client(cls, client: Union[OpenMetadata, OMeta]) -> None:
+        """Set the default client for static methods"""
+        if isinstance(client, OpenMetadata):
+            cls._default_client = client.ometa
+        else:
+            cls._default_client = client
+
+    @classmethod
+    def _get_client(cls) -> OMeta:
+        """Get the default client, initializing if needed"""
+        if cls._default_client is None:
+            cls._default_client = OpenMetadata.get_default_client()
+        return cls._default_client
+
+    @classmethod
+    def create(cls, request: Union[TCreateRequest, TEntity]) -> TEntity:
+        """
+        Create a new entity.
+
+        Args:
+            request: CreateRequest object or Entity object
+
+        Returns:
+            Created entity
+        """
+        client = cls._get_client()
+        return client.create_or_update(request)
+
+    @classmethod
+    def retrieve(cls, entity_id: str, fields: Optional[List[str]] = None) -> TEntity:
+        """
+        Retrieve an entity by ID.
+
+        Args:
+            entity_id: Entity UUID
+            fields: Optional list of fields to include
+
+        Returns:
+            Retrieved entity
+        """
+        client = cls._get_client()
+        return client.get_by_id(
+            entity=cls.entity_type(), entity_id=entity_id, fields=fields
+        )
+
+    @classmethod
+    def retrieve_by_name(cls, fqn: str, fields: Optional[List[str]] = None) -> TEntity:
+        """
+        Retrieve an entity by fully qualified name.
+
+        Args:
+            fqn: Fully qualified name
+            fields: Optional list of fields to include
+
+        Returns:
+            Retrieved entity
+        """
+        client = cls._get_client()
+        return client.get_by_name(entity=cls.entity_type(), fqn=fqn, fields=fields)
+
+    @classmethod
+    def update(cls, entity: TEntity) -> TEntity:
+        """
+        Update an entity (uses PATCH internally for efficiency).
+
+        Args:
+            entity: Modified entity object with ID
+
+        Returns:
+            Updated entity
+
+        Note: This method automatically generates a PATCH request
+              by comparing the entity with its current state
+        """
+        if not hasattr(entity, "id") or not entity.id:
+            raise ValueError("Entity must have an ID for update")
+
+        client = cls._get_client()
+
+        # Get entity ID as string
+        entity_id = (
+            str(entity.id.root) if hasattr(entity.id, "root") else str(entity.id)  # type: ignore
+        )
+
+        # Following Java SDK pattern:
+        # 1. Get the current entity state from the server
+        # 2. Use the ometa patch method which generates JSON Patch internally
+
+        # Fetch current state of the entity
+        current = client.get_by_id(
+            entity=cls.entity_type(),
+            entity_id=entity_id
+            # Don't specify fields to avoid getting computed fields
+        )
+
+        # The ometa.patch method generates JSON Patch by comparing source and destination
+        # source = current state (from server)
+        # destination = desired state (modified entity)
+        result = client.patch(
+            entity=cls.entity_type(),
+            source=current,  # Current state from server
+            destination=entity,  # Desired state with changes
+            skip_on_failure=False,  # Raise errors for debugging
+        )
+        return cast(TEntity, result) if result else entity
+
+    @classmethod
+    def delete(
+        cls, entity_id: str, recursive: bool = False, hard_delete: bool = False
+    ) -> None:
+        """
+        Delete an entity.
+
+        Args:
+            entity_id: Entity UUID
+            recursive: Delete recursively
+            hard_delete: Hard delete (permanent)
+        """
+        client = cls._get_client()
+        client.delete(
+            entity=cls.entity_type(),
+            entity_id=entity_id,
+            recursive=recursive,
+            hard_delete=hard_delete,
+        )
+
+    @classmethod
+    def list(
+        cls,
+        fields: Optional[List[str]] = None,
+        after: Optional[str] = None,
+        before: Optional[str] = None,
+        limit: int = 10,
+        filters: Optional[Dict[str, Any]] = None,  # pylint: disable=unused-argument
+    ) -> ListResponse:
+        """
+        List entities with pagination.
+
+        Args:
+            fields: Optional list of fields to include
+            after: Pagination cursor for next page
+            before: Pagination cursor for previous page
+            limit: Number of entities to return
+            filters: Optional filters to apply
+
+        Returns:
+            ListResponse with entities and pagination info
+        """
+        client = cls._get_client()
+        response = client.list_entities(
+            entity=cls.entity_type(),
+            fields=fields,
+            after=after,
+            before=before,
+            limit=limit,
+        )
+
+        # Handle different response types from ometa.list_entities
+        if hasattr(response, "entities"):
+            # Response is a paginated response object
+            entities = response.entities
+            total = getattr(response, "total", None)
+            after = getattr(response, "after", None)
+            before = getattr(response, "before", None)
+        else:
+            # Response is a direct list of entities
+            entities = response if isinstance(response, list) else [response]
+            total = len(entities)
+            after = None
+            before = None
+
+        return ListResponse(
+            entities=entities,
+            total=total,
+            after=after,
+            before=before,
+        )
+
+    @classmethod
+    def list_all(
+        cls,
+        fields: Optional[List[str]] = None,
+        filters: Optional[Dict[str, Any]] = None,
+        batch_size: int = 100,
+    ) -> List[TEntity]:
+        """
+        List all entities, automatically handling pagination.
+
+        Args:
+            fields: Optional list of fields to include
+            filters: Optional filters to apply
+            batch_size: Number of entities per batch
+
+        Returns:
+            Complete list of all entities
+        """
+        all_entities = []
+        after = None
+
+        while True:
+            response = cls.list(
+                fields=fields, after=after, limit=batch_size, filters=filters
+            )
+
+            all_entities.extend(response.entities)
+
+            if not response.after or len(response.entities) < batch_size:
+                break
+
+            after = response.after
+
+        return all_entities
+
+    @classmethod
+    def search(
+        cls,
+        query: str,
+        fields: Optional[List[str]] = None,  # pylint: disable=unused-argument
+        size: int = 10,
+        filters: Optional[Dict[str, Any]] = None,  # pylint: disable=unused-argument
+    ) -> List[TEntity]:
+        """
+        Search for entities.
+
+        Args:
+            query: Search query string
+            fields: Optional list of fields to include
+            size: Number of results to return
+            filters: Optional filters
+
+        Returns:
+            List of matching entities
+        """
+        client = cls._get_client()
+        # Use elasticsearch search from OMeta client
+        return client.es_search_from_fqn(
+            entity_type=cls.entity_type(), fqn_search_string=query, size=size
+        )
+
+    @classmethod
+    def export_csv(cls, name: str) -> BaseCsvExporter:
+        """
+        Create a CSV exporter for this entity.
+
+        Args:
+            name: Entity name for export
+
+        Returns:
+            CsvExporter instance for fluent configuration
+        """
+        entity_type = cls.entity_type()
+
+        class EntityCsvExporter(BaseCsvExporter):
+            """CSV exporter with entity-specific operations"""
+
+            def perform_sync_export(self) -> str:
+                """Perform synchronous CSV export"""
+                client = cls._get_client()  # pylint: disable=protected-access
+                return client.export_csv(entity=entity_type, name=name)
+
+            def perform_async_export(self) -> str:
+                """Perform asynchronous CSV export"""
+                client = cls._get_client()  # pylint: disable=protected-access
+                return client.export_csv_async(entity=entity_type, name=name)
+
+        return EntityCsvExporter(cls._get_client(), name)
+
+    @classmethod
+    def import_csv(cls, name: str) -> BaseCsvImporter:
+        """
+        Create a CSV importer for this entity.
+
+        Args:
+            name: Entity name for import
+
+        Returns:
+            CsvImporter instance for fluent configuration
+        """
+        entity_type = cls.entity_type()
+
+        class EntityCsvImporter(BaseCsvImporter):
+            """CSV importer with entity-specific operations"""
+
+            def perform_sync_import(self) -> Dict[str, Any]:
+                """Perform synchronous CSV import"""
+                client = cls._get_client()  # pylint: disable=protected-access
+                return client.import_csv(
+                    entity=entity_type,
+                    name=name,
+                    csv_data=self.csv_data or "",
+                    dry_run=self.dry_run,
+                )
+
+            def perform_async_import(self) -> str:
+                """Perform asynchronous CSV import"""
+                client = cls._get_client()  # pylint: disable=protected-access
+                return client.import_csv_async(
+                    entity=entity_type,
+                    name=name,
+                    csv_data=self.csv_data or "",
+                    dry_run=self.dry_run,
+                )
+
+        return EntityCsvImporter(cls._get_client(), name)
+
+    @classmethod
+    def get_versions(cls, entity_id: str) -> List[Any]:
+        """
+        Get version history for an entity.
+
+        Args:
+            entity_id: Entity UUID
+
+        Returns:
+            List of entity versions
+        """
+        client = cls._get_client()
+        result = client.get_list_entity_versions(
+            entity=cls.entity_type(), entity_id=entity_id
+        )
+        # Return the versions list if available
+        if hasattr(result, "versions"):
+            return result.versions  # type: ignore
+        return result
+
+    @classmethod
+    def get_specific_version(cls, entity_id: str, version: str) -> Optional[TEntity]:
+        """
+        Get a specific version of an entity.
+
+        Args:
+            entity_id: Entity UUID
+            version: Version number
+
+        Returns:
+            Entity at specified version
+        """
+        client = cls._get_client()
+        result = client.get_entity_version(
+            entity=cls.entity_type(), entity_id=entity_id, version=version
+        )
+        return cast(Optional[TEntity], result)
+
+    @classmethod
+    def restore(cls, entity_id: str) -> Optional[TEntity]:
+        """
+        Restore a soft-deleted entity.
+
+        Note: This requires the entity to be soft-deleted first.
+        Uses PUT request to /api/v1/<entity>/restore endpoint with RestoreEntity body.
+
+        Args:
+            entity_id: Entity UUID
+
+        Returns:
+            Restored entity
+        """
+        client = cls._get_client()
+        # Use the get_suffix method to get the proper endpoint
+        entity_endpoint = client.get_suffix(cls.entity_type())
+
+        # Make PUT request to restore endpoint with RestoreEntity body
+        restore_body = {"id": entity_id}
+        response = client.client.put(f"{entity_endpoint}/restore", data=restore_body)
+        if response:
+            return cls.entity_type()(**response)  # type: ignore
+        return None
+
+    @classmethod
+    def add_followers(
+        cls, entity_id: str, follower_ids: List[str]
+    ) -> Optional[TEntity]:
+        """
+        Add followers to an entity.
+
+        Args:
+            entity_id: Entity UUID
+            follower_ids: List of follower user IDs
+
+        Returns:
+            Updated entity
+        """
+        client = cls._get_client()
+        for follower_id in follower_ids:
+            client.put_follow(
+                entity=cls.entity_type(), entity_id=entity_id, user_id=follower_id
+            )
+        result = client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
+        return cast(Optional[TEntity], result)
+
+    @classmethod
+    def remove_followers(
+        cls, entity_id: str, follower_ids: List[str]
+    ) -> Optional[TEntity]:
+        """
+        Remove followers from an entity.
+
+        Args:
+            entity_id: Entity UUID
+            follower_ids: List of follower user IDs to remove
+
+        Returns:
+            Updated entity
+        """
+        client = cls._get_client()
+        for follower_id in follower_ids:
+            client.delete_follow(
+                entity=cls.entity_type(), entity_id=entity_id, user_id=follower_id
+            )
+        result = client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
+        return cast(Optional[TEntity], result)
+
+    @classmethod
+    def update_custom_properties(cls, entity_id: Union[str, UUID]) -> Any:
+        """
+        Update custom properties on an entity by ID.
+
+        Args:
+            entity_id: The entity UUID
+
+        Returns:
+            CustomPropertyUpdater instance for fluent configuration
+        """
+        # pylint: disable=import-outside-toplevel,cyclic-import
+        from metadata.sdk.entities.custom_properties import CustomProperties
+        # pylint: enable=import-outside-toplevel,cyclic-import
+
+        return CustomProperties.update(cls.entity_type(), entity_id, cls._get_client())
+
+    @classmethod
+    def update_custom_properties_by_name(cls, entity_name: str) -> Any:
+        """
+        Update custom properties on an entity by name/FQN.
+
+        Args:
+            entity_name: The entity name or FQN
+
+        Returns:
+            CustomPropertyUpdater instance for fluent configuration
+        """
+        # pylint: disable=import-outside-toplevel,cyclic-import
+        from metadata.sdk.entities.custom_properties import CustomProperties
+        # pylint: enable=import-outside-toplevel,cyclic-import
+
+        return CustomProperties.update_by_name(
+            cls.entity_type(), entity_name, cls._get_client()
+        )
