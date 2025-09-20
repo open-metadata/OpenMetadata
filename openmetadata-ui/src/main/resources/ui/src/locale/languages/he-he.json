@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 יום",
     "1-hr": "1 שעה",
     "a-to-z": "א עד ז",
@@ -16,6 +17,7 @@
     "account": "חשבון",
     "account-email": "אימייל חשבון",
     "account-name": "שם החשבון",
+    "ack": "Ack",
     "acknowledged": "מאושר",
     "action": "Action",
     "action-plural": "פעולות",
@@ -509,6 +511,7 @@
     "domain-type": "סוג דומיין",
     "domain_access": "Domain Access",
     "down-vote": "Down Vote",
+    "downstream": "Downstream",
     "downstream-depth": "דרגות במורד הזרימה",
     "duplicate": "שכפל",
     "duration": "משך זמן",
@@ -1734,6 +1737,7 @@
     "upload-image": "העלאת תמונה",
     "uploading": "העלאה",
     "uploading-file": "העלאת קובץ",
+    "upstream": "Upstream",
     "upstream-depth": "עומק למעלה",
     "url-lowercase": "כתובת URL",
     "url-uppercase": "כתובת URL",

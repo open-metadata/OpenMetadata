@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 روز",
     "1-hr": "1 ساعت",
     "a-to-z": "A'dan Z'ye",
@@ -16,6 +17,7 @@
     "account": "حساب",
     "account-email": "ایمیل حساب",
     "account-name": "نام حساب",
+    "ack": "Ack",
     "acknowledged": "تأیید شد",
     "action": "عمل",
     "action-plural": "اعمال",
@@ -509,6 +511,7 @@
     "domain-type": "نوع دامنه",
     "domain_access": "Domain Access",
     "down-vote": "رأی منفی",
+    "downstream": "Downstream",
     "downstream-depth": "عمق پایین‌دست",
     "duplicate": "تکراری",
     "duration": "مدت زمان",
@@ -1734,6 +1737,7 @@
     "upload-image": "بارگذاری تصویر",
     "uploading": "بارگذاری",
     "uploading-file": "بارگذاری فایل",
+    "upstream": "Upstream",
     "upstream-depth": "عمق بالادست",
     "url-lowercase": "آدرس وب",
     "url-uppercase": "URL",

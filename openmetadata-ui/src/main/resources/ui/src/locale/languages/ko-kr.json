@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 일",
     "1-hr": "1 시간",
     "a-to-z": "A에서 Z",
@@ -16,6 +17,7 @@
     "account": "계정",
     "account-email": "계정 이메일",
     "account-name": "계정 이름",
+    "ack": "Ack",
     "acknowledged": "확인됨",
     "action": "작업",
     "action-plural": "작업들",
@@ -509,6 +511,7 @@
     "domain-type": "도메인 유형",
     "domain_access": "Domain Access",
     "down-vote": "비추천",
+    "downstream": "Downstream",
     "downstream-depth": "다운스트림 깊이",
     "duplicate": "복제",
     "duration": "기간",
@@ -1734,6 +1737,7 @@
     "upload-image": "이미지 업로드",
     "uploading": "업로드 중",
     "uploading-file": "파일 업로드 중",
+    "upstream": "Upstream",
     "upstream-depth": "업스트림 깊이",
     "url-lowercase": "url",
     "url-uppercase": "URL",

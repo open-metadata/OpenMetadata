@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 日",
     "1-hr": "1 時間",
     "a-to-z": "AからZ",
@@ -16,6 +17,7 @@
     "account": "アカウント",
     "account-email": "アカウントのEmail",
     "account-name": "アカウント名",
+    "ack": "Ack",
     "acknowledged": "確認済み",
     "action": "操作",
     "action-plural": "アクション",
@@ -509,6 +511,7 @@
     "domain-type": "ドメインタイプ",
     "domain_access": "ドメインアクセス",
     "down-vote": "ダウン投票",
+    "downstream": "Downstream",
     "downstream-depth": "下流の深さ",
     "duplicate": "重複",
     "duration": "所要時間",
@@ -1734,6 +1737,7 @@
     "upload-image": "画像をアップロード",
     "uploading": "アップロード中",
     "uploading-file": "ファイルをアップロード中",
+    "upstream": "Upstream",
     "upstream-depth": "上流の深さ",
     "url-lowercase": "url",
     "url-uppercase": "URL",

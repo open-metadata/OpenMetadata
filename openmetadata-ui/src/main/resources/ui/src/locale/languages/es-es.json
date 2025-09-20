@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 día",
     "1-hr": "1 hora",
     "a-to-z": "A a Z",
@@ -16,6 +17,7 @@
     "account": "Cuenta",
     "account-email": "Correo electrónico de la cuenta",
     "account-name": "Nombre de la cuenta",
+    "ack": "Ack",
     "acknowledged": "Reconocido",
     "action": "Acción",
     "action-plural": "Acciones",
@@ -509,6 +511,7 @@
     "domain-type": "Tipo de Dominio",
     "domain_access": "Acceso al Dominio",
     "down-vote": "Voto Negativo",
+    "downstream": "Downstream",
     "downstream-depth": "Profundidad del flujo",
     "duplicate": "Duplicar",
     "duration": "Duración",
@@ -1734,6 +1737,7 @@
     "upload-image": "Cargar Imagen",
     "uploading": "Cargando",
     "uploading-file": "Subiendo archivo",
+    "upstream": "Upstream",
     "upstream-depth": "Profundidad aguas arriba",
     "url-lowercase": "url",
     "url-uppercase": "URL",

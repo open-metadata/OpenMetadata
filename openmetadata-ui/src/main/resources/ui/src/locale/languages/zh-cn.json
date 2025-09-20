@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 天",
     "1-hr": "1 小时",
     "a-to-z": "A到Z",
@@ -16,6 +17,7 @@
     "account": "帐号",
     "account-email": "帐号邮箱",
     "account-name": "帐号名称",
+    "ack": "Ack",
     "acknowledged": "已确认",
     "action": "操作",
     "action-plural": "操作",
@@ -509,6 +511,7 @@
     "domain-type": "域类型",
     "domain_access": "Domain Access",
     "down-vote": "Down Vote",
+    "downstream": "Downstream",
     "downstream-depth": "下游深度",
     "duplicate": "Duplicate",
     "duration": "持续时间",
@@ -1734,6 +1737,7 @@
     "upload-image": "上传图片",
     "uploading": "上传中",
     "uploading-file": "上传文件",
+    "upstream": "Upstream",
     "upstream-depth": "上游深度",
     "url-lowercase": "url",
     "url-uppercase": "URL",

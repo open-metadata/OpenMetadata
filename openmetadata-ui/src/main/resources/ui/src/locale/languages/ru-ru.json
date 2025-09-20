@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 день",
     "1-hr": "1 час",
     "a-to-z": "А до Я",
@@ -16,6 +17,7 @@
     "account": "Аккаунт",
     "account-email": "Адрес электронной почты",
     "account-name": "Наименование аккаунта",
+    "ack": "Ack",
     "acknowledged": "Признано",
     "action": "Действие",
     "action-plural": "Действия",
@@ -509,6 +511,7 @@
     "domain-type": "Тип домена",
     "domain_access": "Доступ к домену",
     "down-vote": "Голосовать против",
+    "downstream": "Downstream",
     "downstream-depth": "Нисходящая линия",
     "duplicate": "Дубликат",
     "duration": "Длительность",
@@ -1734,6 +1737,7 @@
     "upload-image": "Загрузить изображение",
     "uploading": "Загрузка",
     "uploading-file": "Загрузка файла",
+    "upstream": "Upstream",
     "upstream-depth": "Восходящая линия",
     "url-lowercase": "url",
     "url-uppercase": "URL",

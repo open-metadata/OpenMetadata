@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 gün",
     "1-hr": "1 saat",
     "a-to-z": "A'dan Z'ye",
@@ -16,6 +17,7 @@
     "account": "Hesap",
     "account-email": "Hesap e-postası",
     "account-name": "Hesap Adı",
+    "ack": "Ack",
     "acknowledged": "Onaylandı",
     "action": "Eylem",
     "action-plural": "Eylemler",
@@ -509,6 +511,7 @@
     "domain-type": "Alan Adı Türü",
     "domain_access": "Domain Access",
     "down-vote": "Aşağı Oy",
+    "downstream": "Downstream",
     "downstream-depth": "Aşağı Akış Derinliği",
     "duplicate": "Kopya",
     "duration": "Süre",
@@ -1734,6 +1737,7 @@
     "upload-image": "Resim Yükle",
     "uploading": "yükleniyor",
     "uploading-file": "Dosya yükleniyor",
+    "upstream": "Upstream",
     "upstream-depth": "Yukarı Akış Derinliği",
     "url-lowercase": "url",
     "url-uppercase": "URL",

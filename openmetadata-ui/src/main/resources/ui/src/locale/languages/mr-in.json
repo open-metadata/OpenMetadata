@@ -1,5 +1,6 @@
 {
   "label": {
+    "-with-colon": "{{text}}:",
     "1-day": "1 दिवस",
     "1-hr": "1 तास",
     "a-to-z": "अ ते ज",
@@ -16,6 +17,7 @@
     "account": "खाते",
     "account-email": "खाते ईमेल",
     "account-name": "खात्याचे नाव",
+    "ack": "Ack",
     "acknowledged": "मान्य केले",
     "action": "कृती",
     "action-plural": "कृती",
@@ -509,6 +511,7 @@
     "domain-type": "डोमेन प्रकार",
     "domain_access": "Domain Access",
     "down-vote": "खाली मत द्या",
+    "downstream": "Downstream",
     "downstream-depth": "डाउनस्ट्रीम खोली",
     "duplicate": "डुप्लिकेट",
     "duration": "कालावधी",
@@ -1734,6 +1737,7 @@
     "upload-image": "प्रतिमा अपलोड करा",
     "uploading": "अपलोड करत आहे",
     "uploading-file": "फाइल अपलोड करत आहे",
+    "upstream": "Upstream",
     "upstream-depth": "अपस्ट्रीम खोली",
     "url-lowercase": "url",
     "url-uppercase": "URL",
