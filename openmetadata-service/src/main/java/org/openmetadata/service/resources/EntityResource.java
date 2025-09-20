@@ -518,7 +518,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, deleteResponse.entity());
           } catch (Exception e) {
             WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, entity, e.getMessage());
+                jobId,
+                securityContext,
+                entity,
+                e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
 
@@ -584,7 +587,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           } catch (Exception e) {
             LOG.error("Encountered Exception while exporting.", e);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
@@ -635,7 +638,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, result);
           } catch (Exception e) {
             WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     BulkAssetsOperationResponse response =
@@ -685,7 +688,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, result);
           } catch (Exception e) {
             WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     BulkAssetsOperationResponse response =
@@ -715,7 +718,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           } catch (Exception e) {
             LOG.error("Encountered Exception while importing.", e);
             WebsocketNotificationHandler.sendCsvImportFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
 
