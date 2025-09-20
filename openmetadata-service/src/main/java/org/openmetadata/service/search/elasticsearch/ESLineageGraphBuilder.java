@@ -811,7 +811,9 @@ public class ESLineageGraphBuilder {
       allEntitiesUpToDepth.put(
           request.getFqn(),
           new EntityData(
-              request.getFqn(), 0, JsonUtils.getMap(result.getNodes().get(request.getFqn()))));
+              request.getFqn(),
+              0,
+              JsonUtils.getMap(result.getNodes().get(request.getFqn()).getEntity())));
     }
 
     // Traverse up to the target depth and collect all entities
