@@ -12,7 +12,12 @@
  */
 
 import { ClientType } from '../generated/configuration/securityConfiguration';
-import { getCallbackUrl, getServerUrl } from '../utils/SSOUtils';
+import {
+  getAuthorityUrl,
+  getCallbackUrl,
+  getDomainUrl,
+  getServerUrl,
+} from '../utils/SSOUtils';
 
 // Default callback URL for SSO configuration
 export const DEFAULT_CALLBACK_URL = getCallbackUrl();
@@ -25,6 +30,19 @@ export const GOOGLE_SSO_DEFAULTS = {
   tokenValidity: 3600,
   sessionExpiry: 604800,
   serverUrl: getServerUrl(),
+};
+
+// SAML-specific default values
+export const SAML_SSO_DEFAULTS = {
+  authority: getAuthorityUrl(),
+  idp: {
+    authorityUrl: getAuthorityUrl(), // Note: field name is authorityUrl in IDP, not authority
+  },
+  sp: {
+    entityId: getDomainUrl(),
+    acs: getCallbackUrl(),
+    callback: getCallbackUrl(),
+  },
 };
 
 // Common UI field configurations to reduce duplication
@@ -194,6 +212,10 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Identity Provider (IdP)',
       entityId: { 'ui:title': 'IdP Entity ID' },
       ssoLoginUrl: { 'ui:title': 'IdP SSO Login URL' },
+      authorityUrl: {
+        'ui:title': 'Authority URL',
+        'ui:placeholder': `Default: ${getAuthorityUrl()}`,
+      },
       idpX509Certificate: {
         'ui:title': 'IdP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -204,7 +226,7 @@ export const SAML_UI_SCHEMA = {
       'ui:title': 'Service Provider (SP)',
       entityId: { 'ui:title': 'SP Entity ID' },
       acs: { 'ui:title': 'Assertion Consumer Service URL' },
-      callback: { 'ui:title': 'SP Callback URL' },
+      callback: { 'ui:title': 'Callback URL' },
       spX509Certificate: {
         'ui:title': 'SP X.509 Certificate',
         'ui:widget': 'textarea',
@@ -239,10 +261,10 @@ export const SAML_UI_SCHEMA = {
   enableSelfSignup: { 'ui:title': 'Enable Self Signup' },
   // Hide clientType for SAML as it defaults to public
   clientType: { 'ui:widget': 'hidden', 'ui:hideError': true },
-  // Show required fields for SAML
-  authority: COMMON_UI_FIELDS.authority,
+  // Hide root level authority and callbackUrl for SAML - will be managed via IDP/SP sections
+  authority: { 'ui:widget': 'hidden', 'ui:hideError': true },
   clientId: COMMON_UI_FIELDS.clientId,
-  callbackUrl: { 'ui:title': 'Callback URL' },
+  callbackUrl: { 'ui:widget': 'hidden', 'ui:hideError': true },
   publicKeyUrls: { 'ui:title': 'Public Key URLs' },
 };
 

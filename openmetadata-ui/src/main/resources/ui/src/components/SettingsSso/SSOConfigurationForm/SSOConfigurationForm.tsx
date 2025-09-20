@@ -38,6 +38,7 @@ import {
   GOOGLE_SSO_DEFAULTS,
   PROVIDERS_WITHOUT_BOT_PRINCIPALS,
   PROVIDER_FIELD_MAPPINGS,
+  SAML_SSO_DEFAULTS,
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
 import { AuthProvider, ClientType } from '../../../generated/settings/settings';
@@ -145,6 +146,36 @@ const SSOConfigurationFormRJSF = ({
           authenticationConfiguration: config.authenticationConfiguration,
           authorizerConfiguration: config.authorizerConfiguration,
         };
+
+        // For SAML, ensure IDP authorityUrl and SP callback fields are populated from root level
+        if (config.authenticationConfiguration.provider === AuthProvider.Saml) {
+          const authConfig =
+            configData.authenticationConfiguration as AuthenticationConfiguration & {
+              samlConfiguration?: {
+                idp?: { authorityUrl?: string };
+                sp?: { callback?: string; acs?: string };
+              };
+            };
+          if (authConfig.samlConfiguration) {
+            // Copy root authority to IDP authorityUrl, or use default if both are empty
+            if (authConfig.samlConfiguration.idp) {
+              if (authConfig.authority) {
+                authConfig.samlConfiguration.idp.authorityUrl =
+                  authConfig.authority;
+              } else if (!authConfig.samlConfiguration.idp.authorityUrl) {
+                // If no authority exists anywhere, use the default
+                authConfig.samlConfiguration.idp.authorityUrl =
+                  SAML_SSO_DEFAULTS.idp.authorityUrl;
+              }
+            }
+            // Copy root callbackUrl to SP callback if not set
+            if (authConfig.callbackUrl && authConfig.samlConfiguration.sp) {
+              authConfig.samlConfiguration.sp.callback = authConfig.callbackUrl;
+              authConfig.samlConfiguration.sp.acs = authConfig.callbackUrl;
+            }
+          }
+        }
+
         setSavedData(configData);
         setInternalData(configData);
         setShowForm(true);
@@ -231,8 +262,9 @@ const SSOConfigurationFormRJSF = ({
           ? ClientType.Public
           : ClientType.Confidential;
 
-      // Get Google-specific defaults if applicable
+      // Get provider-specific defaults
       const isGoogle = selectedProvider === AuthProvider.Google;
+      const isSaml = selectedProvider === AuthProvider.Saml;
 
       const freshFormData = {
         authenticationConfiguration: {
@@ -247,9 +279,46 @@ const SSOConfigurationFormRJSF = ({
                 publicKeyUrls: GOOGLE_SSO_DEFAULTS.publicKeyUrls,
               }
             : {}),
+          // Add SAML-specific configuration
+          ...(isSaml
+            ? {
+                authority: SAML_SSO_DEFAULTS.authority, // Will be populated from IDP authority
+                // callbackUrl is not included here - will be populated from SP callback on submit
+                publicKeyUrls: [],
+                clientId: '',
+                tokenValidationAlgorithm: 'RS256',
+                jwtPrincipalClaims: [],
+                jwtPrincipalClaimsMapping: [],
+                samlConfiguration: {
+                  debugMode: false,
+                  idp: {
+                    entityId: '',
+                    ssoLoginUrl: '',
+                    authorityUrl: SAML_SSO_DEFAULTS.idp.authorityUrl, // Prepopulate with domain/api/auth/login
+                    idpX509Certificate: '',
+                    nameId:
+                      'urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress',
+                  },
+                  sp: {
+                    entityId: SAML_SSO_DEFAULTS.sp.entityId,
+                    acs: SAML_SSO_DEFAULTS.sp.acs,
+                    callback: SAML_SSO_DEFAULTS.sp.callback,
+                    spX509Certificate: '',
+                    spPrivateKey: '',
+                  },
+                  security: {
+                    strictMode: false,
+                    tokenValidity: 3600,
+                    wantAssertionsSigned: false,
+                    wantMessagesSigned: false,
+                    sendSignedAuthRequest: false,
+                  },
+                },
+              }
+            : {}),
           // For confidential clients, fields go in oidcConfiguration
-          // For public clients, use root level fields
-          ...(defaultClientType === ClientType.Confidential
+          // For public clients, use root level fields (but not for SAML which has its own config)
+          ...(!isSaml && defaultClientType === ClientType.Confidential
             ? {
                 oidcConfiguration: {
                   type: selectedProvider,
@@ -279,8 +348,9 @@ const SSOConfigurationFormRJSF = ({
                     : 0,
                 },
               }
-            : {
-                // For public clients, use root level fields
+            : !isSaml
+            ? {
+                // For public clients, use root level fields (excluding SAML)
                 authority: isGoogle ? GOOGLE_SSO_DEFAULTS.authority : '',
                 clientId: '',
                 callbackUrl: DEFAULT_CALLBACK_URL,
@@ -290,7 +360,8 @@ const SSOConfigurationFormRJSF = ({
                 tokenValidationAlgorithm: 'RS256',
                 jwtPrincipalClaims: [],
                 jwtPrincipalClaimsMapping: [],
-              }),
+              }
+            : {}),
         } as AuthenticationConfiguration,
         authorizerConfiguration: {
           className: DEFAULT_AUTHORIZER_CLASS_NAME,
@@ -646,15 +717,25 @@ const SSOConfigurationFormRJSF = ({
     if (cleanedData.authenticationConfiguration?.samlConfiguration) {
       const samlConfig = cleanedData.authenticationConfiguration
         .samlConfiguration as Record<string, unknown>;
+      const authConfig = cleanedData.authenticationConfiguration;
 
       // SAML-specific boolean fields
       if (samlConfig.debugMode === undefined) {
         samlConfig.debugMode = false;
       }
 
-      // Process certificates to fix escaping issues
+      // Process certificates to fix escaping issues and handle authority/callback
       if (samlConfig.idp && typeof samlConfig.idp === 'object') {
         const idpConfig = samlConfig.idp as Record<string, unknown>;
+
+        // Copy IDP authorityUrl to root level authority
+        if (
+          idpConfig.authorityUrl &&
+          typeof idpConfig.authorityUrl === 'string'
+        ) {
+          authConfig.authority = idpConfig.authorityUrl as string;
+        }
+
         if (
           idpConfig.idpX509Certificate &&
           typeof idpConfig.idpX509Certificate === 'string'
@@ -668,6 +749,13 @@ const SSOConfigurationFormRJSF = ({
 
       if (samlConfig.sp && typeof samlConfig.sp === 'object') {
         const spConfig = samlConfig.sp as Record<string, unknown>;
+
+        // Copy SP callback to root level callbackUrl and ensure ACS matches callback
+        if (spConfig.callback && typeof spConfig.callback === 'string') {
+          authConfig.callbackUrl = spConfig.callback as string;
+          // Also ensure ACS has the same value as callback
+          spConfig.acs = spConfig.callback;
+        }
         if (
           spConfig.spX509Certificate &&
           typeof spConfig.spX509Certificate === 'string'
@@ -709,16 +797,53 @@ const SSOConfigurationFormRJSF = ({
     return cleanedData;
   };
 
+  const getProviderSpecificSchema = (provider: string | undefined) => {
+    const baseSchema = {
+      properties: {
+        authenticationConfiguration: authenticationConfigSchema,
+        authorizerConfiguration: authorizerConfigSchema,
+      },
+    } as RJSFSchema;
+
+    if (!provider) {
+      return baseSchema;
+    }
+
+    // For SAML, remove callbackUrl from required fields and properties
+    if (provider === AuthProvider.Saml) {
+      // Deep clone the schema to avoid mutating the original
+      const authSchema = JSON.parse(JSON.stringify(authenticationConfigSchema));
+
+      // Remove callbackUrl from properties
+      if (authSchema.properties && authSchema.properties.callbackUrl) {
+        delete authSchema.properties.callbackUrl;
+      }
+
+      // Remove callbackUrl from required array
+      if (authSchema.required && Array.isArray(authSchema.required)) {
+        authSchema.required = authSchema.required.filter(
+          (field: string) => field !== 'callbackUrl'
+        );
+      }
+
+      return {
+        properties: {
+          authenticationConfiguration: authSchema,
+          authorizerConfiguration: authorizerConfigSchema,
+        },
+      } as RJSFSchema;
+    }
+
+    return baseSchema;
+  };
+
   const customFields: RegistryFieldsType = {
     ArrayField: SsoConfigurationFormArrayFieldTemplate,
   };
 
-  const schema = {
-    properties: {
-      authenticationConfiguration: authenticationConfigSchema,
-      authorizerConfiguration: authorizerConfigSchema,
-    },
-  } as RJSFSchema;
+  const schema = useMemo(() => {
+    return getProviderSpecificSchema(currentProvider);
+  }, [currentProvider]);
 
   // Dynamic UI schema using the optimized constants
   const uiSchema = useMemo(() => {

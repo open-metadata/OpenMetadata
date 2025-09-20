@@ -110,6 +110,32 @@ export const getServerUrl = (): string => {
 };
 
 /**
+ * Get just the domain/origin without any path
+ * @returns The domain URL for SSO entity ID
+ */
+export const getDomainUrl = (): string => {
+  if (isDev()) {
+    return 'http://localhost:8585';
+  }
+
+  // In production, use just the origin (protocol + domain + port)
+  return window.location.origin;
+};
+
+/**
+ * Get the authority URL for SAML authentication
+ * @returns The authority URL for SAML login
+ */
+export const getAuthorityUrl = (): string => {
+  if (isDev()) {
+    return 'http://localhost:8585/api/v1/auth/login';
+  }
+
+  // In production, use the current domain with /api/auth/login path
+  return `${window.location.origin}/api/v1/auth/login`;
+};
+
+/**
  * Provider options for SSO configuration
  */
 export const PROVIDER_OPTIONS: ProviderOption[] = [
