@@ -1079,6 +1079,7 @@
     "nodes-per-layer": "계층당 노드",
     "non-partitioned": "비분할",
     "none": "없음",
+    "not-contain-plural": "포함하지 않음",
     "not-covered": "포함되지 않음",
     "not-found-lowercase": "찾을 수 없음",
     "not-null": "널이 아님",

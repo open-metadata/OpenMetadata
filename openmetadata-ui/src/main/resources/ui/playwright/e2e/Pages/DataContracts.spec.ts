@@ -14,6 +14,7 @@ import { expect, Page, test as base } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
+  DATA_CONTRACT_NOT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_SECURITY_DETAILS_1,
   DATA_CONTRACT_SECURITY_DETAILS_2,
   DATA_CONTRACT_SEMANTICS1,
@@ -31,7 +32,6 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { resetTokenFromBotPage } from '../../utils/bot';
 import {
   clickOutside,
   redirectToHomePage,
@@ -114,10 +114,10 @@ test.describe('Data Contracts', () => {
       ],
     });
 
-    if (!process.env.PLAYWRIGHT_IS_OSS) {
-      // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromBotPage(page, 'testsuite-bot');
-    }
+    // if (!process.env.PLAYWRIGHT_IS_OSS) {
+    //   // Todo: Remove this patch once the issue is fixed #19140
+    //   await resetTokenFromBotPage(page, 'testsuite-bot');
+    // }
 
     await afterAction();
   });
@@ -1326,6 +1326,168 @@ test.describe('Data Contracts', () => {
         .getByTestId('contract-semantics-card-0')
         .locator('.semantic-form-item-description')
     ).toContainText(DATA_CONTRACT_CONTAIN_SEMANTICS.description);
+
+    await page.locator('.expand-collapse-icon').click();
+
+    await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
+
+    // save and trigger contract validation
+    await saveAndTriggerDataContractValidation(page, true);
+
+    await expect(
+      page.getByTestId('contract-status-card-item-semantics-status')
+    ).toContainText('Failed');
+    await expect(
+      page.getByTestId('data-contract-latest-result-btn')
+    ).toContainText('Contract Failed');
+
+    await page.getByTestId('schema').click();
+
+    // Add the data in the Table Entity which Semantic Required
+    await assignTier(page, 'Tier1', EntityTypeEndpoint.Table);
+    await assignTag(
+      page,
+      testTag.responseData.displayName,
+      'Add',
+      EntityTypeEndpoint.Table,
+      'KnowledgePanel.Tags',
+      testTag.responseData.fullyQualifiedName
+    );
+    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+
+    await page.click('[data-testid="contract"]');
+
+    const runNowResponse = page.waitForResponse(
+      '/api/v1/dataContracts/*/validate'
+    );
+
+    await page.getByTestId('manage-contract-actions').click();
+
+    await page.waitForSelector('.contract-action-dropdown', {
+      state: 'visible',
+    });
+
+    await page.getByTestId('contract-run-now-button').click();
+    await runNowResponse;
+
+    await toastNotification(page, 'Contract validation trigger successfully.');
+
+    await page.reload();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(
+      page.getByTestId('contract-status-card-item-semantics-status')
+    ).toContainText('Passed');
+  });
+
+  test('Semantic with Not_Contains Operator should work for Tier, Tag and Glossary', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+
+    await page.getByRole('tab', { name: 'Semantics' }).click();
+
+    await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
+
+    await page.fill(
+      '#semantics_0_name',
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.name
+    );
+    await page.fill(
+      '#semantics_0_description',
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.description
+    );
+    const ruleLocator = page.locator('.group').nth(0);
+    await selectOption(
+      page,
+      ruleLocator.locator('.group--field .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[0].operator
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--value .ant-select'),
+      'Tier.Tier1',
+      true
+    );
+    await page.getByRole('button', { name: 'Add New Rule' }).click();
+
+    await expect(page.locator('.group--conjunctions')).toBeVisible();
+
+    const ruleLocator2 = page.locator('.rule').nth(1);
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--field .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[1].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[1].operator
+    );
+
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--value .ant-select'),
+      testTag.responseData.name,
+      true
+    );
+
+    await page.getByRole('button', { name: 'Add New Rule' }).click();
+
+    await expect(page.locator('.group--conjunctions')).toBeVisible();
+
+    const ruleLocator3 = page.locator('.rule').nth(2);
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--field .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[2].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[2].operator
+    );
+
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--value .ant-select'),
+      testGlossaryTerm.responseData.name,
+      true
+    );
+
+    await page.getByTestId('save-semantic-button').click();
+
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-title')
+    ).toContainText(DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.name);
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-description')
+    ).toContainText(DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.description);
 
     await page.locator('.expand-collapse-icon').click();
 

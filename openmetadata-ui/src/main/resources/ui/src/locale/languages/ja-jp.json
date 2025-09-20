@@ -1079,6 +1079,7 @@
     "nodes-per-layer": "レイヤーごとのノード数",
     "non-partitioned": "非パーティション化",
     "none": "なし",
+    "not-contain-plural": "含まない",
     "not-covered": "未カバー",
     "not-found-lowercase": "見つかりません",
     "not-null": "NULLではない",

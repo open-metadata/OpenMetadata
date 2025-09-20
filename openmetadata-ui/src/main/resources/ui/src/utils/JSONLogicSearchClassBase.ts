@@ -60,6 +60,7 @@ class JSONLogicSearchClassBase {
             ...(this.baseConfig.types.multiselect?.widgets?.multiselect
               ?.operators || []),
             'array_contains',
+            'array_not_contains',
           ],
         },
       },
@@ -77,6 +78,7 @@ class JSONLogicSearchClassBase {
           operators: [
             ...(this.baseConfig.types.select?.widgets?.select?.operators || []),
             'array_contains',
+            'array_not_contains',
           ],
         },
       },
@@ -171,6 +173,14 @@ class JSONLogicSearchClassBase {
       cardinality: 1,
       valueSources: ['value'],
       jsonLogic: 'contains',
+    },
+    array_not_contains: {
+      label: t('label.not-contain-plural'),
+      labelForFormat: t('label.not-contain-plural'),
+      valueTypes: ['multiselect', 'select'],
+      cardinality: 1,
+      valueSources: ['value'],
+      jsonLogic: 'not_contains',
     },
   };
 

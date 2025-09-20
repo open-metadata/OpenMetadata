@@ -146,6 +146,7 @@ export const getSematicRuleFields = () => {
       tagFQN: {
         label: 'Tags',
         type: 'select',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_OPERATORS,
         fieldSettings: {
@@ -172,6 +173,7 @@ export const getSematicRuleFields = () => {
       tagFQN: {
         label: 'Tags',
         type: 'select',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_OPERATORS,
         fieldSettings: {
@@ -196,6 +198,7 @@ export const getSematicRuleFields = () => {
       tagFQN: {
         label: 'Tags',
         type: 'multiselect',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_OPERATORS,
         fieldSettings: {
