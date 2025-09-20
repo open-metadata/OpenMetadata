@@ -42,11 +42,10 @@ export interface TriggerConfiguration {
      */
     exclude?: string[];
     /**
-     * JSON Logic expression to determine if the workflow should be triggered. The expression
-     * has access to: entity (current entity), changeDescription (what changed), updatedBy (user
-     * who made the change), changedFields (array of field names that changed).
+     * JSON Logic expression to determine if the workflow should be triggered. Can be a string
+     * (applied to all entity types) or an object mapping entity types to their specific filters.
      */
-    filter?: string;
+    filter?: FilterConditionObject | string;
 }
 
 /**
@@ -55,4 +54,15 @@ export interface TriggerConfiguration {
 export enum Event {
     Created = "Created",
     Updated = "Updated",
+}
+
+/**
+ * Entity-specific filters with optional default
+ */
+export interface FilterConditionObject {
+    /**
+     * Default filter for entity types not explicitly configured
+     */
+    default?: string;
+    [property: string]: string;
 }
