@@ -89,10 +89,7 @@ public class JWTTokenGenerator {
         publicKey = (RSAPublicKey) kf.generatePublic(spec);
         issuer = jwtTokenConfiguration.getJwtissuer();
         kid = jwtTokenConfiguration.getKeyId();
-        tokenValidationAlgorithm =
-            SecurityConfigurationManager.getInstance()
-                .getCurrentAuthConfig()
-                .getTokenValidationAlgorithm();
+        tokenValidationAlgorithm = algorithm;
       }
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);
