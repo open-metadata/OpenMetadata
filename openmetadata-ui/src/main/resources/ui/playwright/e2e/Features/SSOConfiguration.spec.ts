@@ -289,7 +289,6 @@ test.describe('SSO Configuration Tests', () => {
         'Name ID Format',
         'SP Entity ID',
         'Assertion Consumer Service URL',
-        'SP Callback URL',
         'SP X.509 Certificate',
         'SP Private Key',
         'Debug Mode',
