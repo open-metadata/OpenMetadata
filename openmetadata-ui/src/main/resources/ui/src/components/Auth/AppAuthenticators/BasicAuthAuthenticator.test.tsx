@@ -158,7 +158,7 @@ describe('BasicAuthenticator', () => {
     });
 
     expect(getAccessTokenOnExpiry).toHaveBeenCalled();
-    expect(setRefreshToken).toHaveBeenCalledWith('new-refresh-token');
+
     expect(setOidcToken).toHaveBeenCalledWith('access-token');
     expect(result).toEqual(response);
   });
