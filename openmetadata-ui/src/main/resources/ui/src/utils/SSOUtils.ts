@@ -21,6 +21,7 @@ import OktaIcon from '../assets/img/icon-okta.png';
 import SSOIcon from '../assets/svg/sso-settings.svg';
 
 import { AuthProvider } from '../generated/settings/settings';
+import { isDev } from './EnvironmentUtils';
 
 export interface ProviderOption {
   key: AuthProvider;
@@ -80,6 +81,32 @@ export const getProviderIcon = (provider: string): string | null => {
     default:
       return null;
   }
+};
+
+/**
+ * Get dynamic callback URL based on environment
+ * @returns The callback URL for SSO authentication
+ */
+export const getCallbackUrl = (): string => {
+  if (isDev()) {
+    return 'http://localhost:8585/callback';
+  }
+
+  // In production, use the current domain with /callback path
+  return `${window.location.origin}/callback`;
+};
+
+/**
+ * Get dynamic server URL based on environment
+ * @returns The server URL for SSO configuration
+ */
+export const getServerUrl = (): string => {
+  if (isDev()) {
+    return 'http://localhost:8585';
+  }
+
+  // In production, use the current domain
+  return window.location.origin;
 };
 
 /**

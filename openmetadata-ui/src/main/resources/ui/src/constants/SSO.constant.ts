@@ -12,9 +12,10 @@
  */
 
 import { ClientType } from '../generated/configuration/securityConfiguration';
+import { getCallbackUrl, getServerUrl } from '../utils/SSOUtils';
 
 // Default callback URL for SSO configuration
-export const DEFAULT_CALLBACK_URL = 'http://localhost:8585/callback';
+export const DEFAULT_CALLBACK_URL = getCallbackUrl();
 
 // Google-specific default values
 export const GOOGLE_SSO_DEFAULTS = {
@@ -23,7 +24,7 @@ export const GOOGLE_SSO_DEFAULTS = {
   discoveryUri: 'https://accounts.google.com/.well-known/openid-configuration',
   tokenValidity: 3600,
   sessionExpiry: 604800,
-  serverUrl: 'http://localhost:8585',
+  serverUrl: getServerUrl(),
 };
 
 // Common UI field configurations to reduce duplication
