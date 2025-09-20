@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.system.ValidationResult;
 import org.openmetadata.service.util.ValidationHttpUtil;
@@ -105,6 +106,7 @@ public class OidcDiscoveryValidator {
       validateJwsAlgorithm(authConfig, oidcConfig, discovery, errors, warnings);
       validateGrantTypes(oidcConfig, discovery, warnings);
       validateEndpoints(oidcConfig, discovery, warnings);
+      validatePromptParameter(authConfig, errors);
 
       if (!errors.isEmpty()) {
         String errorMessage = String.join("; ", errors);
@@ -241,6 +243,43 @@ public class OidcDiscoveryValidator {
 
     if (!nullOrEmpty(discovery.tokenEndpoint)) {
       LOG.debug("Token endpoint from discovery: {}", discovery.tokenEndpoint);
+    }
+  }
+
+  private void validatePromptParameter(
+      AuthenticationConfiguration authConfig, List<String> errors) {
+    // Validate prompt parameter for confidential clients
+    if (authConfig != null
+        && authConfig.getClientType() == ClientType.CONFIDENTIAL
+        && authConfig.getOidcConfiguration() != null) {
+
+      String prompt = authConfig.getOidcConfiguration().getPrompt();
+      if (!nullOrEmpty(prompt)) {
+        // Valid prompt values according to OpenID Connect spec
+        Set<String> validPromptValues = Set.of("", "none", "consent", "select_account", "login");
+
+        // The prompt parameter can contain multiple space-separated values
+        String[] promptValues = prompt.trim().split("\\s+");
+        List<String> invalidValues = new ArrayList<>();
+
+        for (String value : promptValues) {
+          if (!value.isEmpty() && !validPromptValues.contains(value)) {
+            invalidValues.add(value);
+          }
+        }
+
+        if (!invalidValues.isEmpty()) {
+          errors.add(
+              "Invalid prompt value(s) for confidential client: "
+                  + String.join(", ", invalidValues)
+                  + ". Valid values are: empty string, none, consent, select_account, login");
+        }
+
+        // Additional validation: 'none' cannot be combined with other values
+        if (promptValues.length > 1 && List.of(promptValues).contains("none")) {
+          errors.add("Prompt value 'none' cannot be combined with other prompt values");
+        }
+      }
     }
   }
 
