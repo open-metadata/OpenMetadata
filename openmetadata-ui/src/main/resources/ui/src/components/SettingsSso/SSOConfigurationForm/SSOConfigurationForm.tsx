@@ -809,11 +809,11 @@ const SSOConfigurationFormRJSF = ({
       return baseSchema;
     }
 
+    // Deep clone the schema to avoid mutating the original
+    const authSchema = JSON.parse(JSON.stringify(authenticationConfigSchema));
+
     // For SAML, remove callbackUrl from required fields and properties
     if (provider === AuthProvider.Saml) {
-      // Deep clone the schema to avoid mutating the original
-      const authSchema = JSON.parse(JSON.stringify(authenticationConfigSchema));
-
       // Remove callbackUrl from properties
       if (authSchema.properties && authSchema.properties.callbackUrl) {
         delete authSchema.properties.callbackUrl;
@@ -823,6 +823,39 @@ const SSOConfigurationFormRJSF = ({
       if (authSchema.required && Array.isArray(authSchema.required)) {
         authSchema.required = authSchema.required.filter(
           (field: string) => field !== 'callbackUrl'
+        );
+      }
+
+      return {
+        properties: {
+          authenticationConfiguration: authSchema,
+          authorizerConfiguration: authorizerConfigSchema,
+        },
+      } as RJSFSchema;
+    }
+
+    // For Custom OIDC, remove LDAP and SAML configuration sections and clientType field
+    if (provider === AuthProvider.CustomOidc) {
+      // Remove ldapConfiguration, samlConfiguration, and clientType from properties
+      if (authSchema.properties) {
+        if (authSchema.properties.ldapConfiguration) {
+          delete authSchema.properties.ldapConfiguration;
+        }
+        if (authSchema.properties.samlConfiguration) {
+          delete authSchema.properties.samlConfiguration;
+        }
+        if (authSchema.properties.clientType) {
+          delete authSchema.properties.clientType;
+        }
+      }
+
+      // Remove from required array if present
+      if (authSchema.required && Array.isArray(authSchema.required)) {
+        authSchema.required = authSchema.required.filter(
+          (field: string) =>
+            field !== 'ldapConfiguration' &&
+            field !== 'samlConfiguration' &&
+            field !== 'clientType'
         );
       }
 
