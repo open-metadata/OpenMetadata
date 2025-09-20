@@ -35,6 +35,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.ValidationResponse;
+import org.openmetadata.schema.system.ValidationResult;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
@@ -652,29 +654,49 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
-      // Get current configuration from SecurityConfigurationManager and create a deep copy
       SecurityConfiguration originalConfig =
           SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
 
-      // Create a deep copy to avoid modifying the singleton instance
       String configJson = JsonUtils.pojoToJson(originalConfig);
       SecurityConfiguration currentConfig =
           JsonUtils.readValue(configJson, SecurityConfiguration.class);
 
-      // Apply patch to the copy
-      JsonValue patched = JsonUtils.applyPatch(currentConfig, patch);
+      JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
+
+      JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
           JsonUtils.readValue(jsonString, SecurityConfiguration.class);
 
-      // Validate the patched configuration
       SecurityValidationResponse validationResponse =
           systemRepository.validateSecurityConfiguration(updatedConfig, applicationConfig);
 
-      // Check if all components validated successfully
       boolean isValidConfig = validationResponse.getStatus().equalsIgnoreCase("success");
 
       if (!isValidConfig) {
+        // Consolidate all failed messages into the overall message for better user experience
+        List<String> failedMessages = new ArrayList<>();
+        if (validationResponse.getResults() != null) {
+          for (ValidationResult result : validationResponse.getResults()) {
+            if ("failed".equals(result.getStatus()) && result.getMessage() != null) {
+              failedMessages.add(result.getMessage());
+            }
+          }
+        }
+
+        // Build a comprehensive error message
+        String consolidatedMessage;
+        if (!failedMessages.isEmpty()) {
+          consolidatedMessage =
+              "Security configuration validation failed: " + String.join("; ", failedMessages);
+        } else {
+          // Fallback to original message if no specific failures found
+          consolidatedMessage = validationResponse.getMessage();
+        }
+
+        // Update the validation response with the consolidated message
+        validationResponse.setMessage(consolidatedMessage);
+
         return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
       }
       Settings authSettings =

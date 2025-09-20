@@ -109,6 +109,12 @@ public class SamlValidator {
         throw new IllegalArgumentException("SAML IdP Entity ID is required");
       }
 
+      // IdP X509 certificate is REQUIRED for signature verification
+      if (nullOrEmpty(idpConfig.getIdpX509Certificate())) {
+        throw new IllegalArgumentException(
+            "SAML IdP X509 Certificate is required for verifying SAML response signatures");
+      }
+
       // Validate IdP Entity ID format and verify with actual endpoints
       try {
         // For Azure AD, entity ID should be a valid URL like https://sts.windows.net/{tenant-id}/
@@ -132,11 +138,11 @@ public class SamlValidator {
                   "Okta Entity ID should be in format: http://www.okta.com/{app-id}");
             }
           } else if (entityId.contains(".auth0.com")) {
-            // Auth0 entity ID validation
-            if (!entityId.startsWith("urn:")) {
-              throw new IllegalArgumentException(
-                  "Auth0 Entity ID should be a URN, e.g., urn:{tenant}.auth0.com");
-            }
+            // Auth0 entity ID validation - Auth0 supports both URL and URN formats
+            // Valid formats:
+            // - https://dev-tenant.us.auth0.com
+            // - urn:dev-tenant.us.auth0.com
+            // Both are valid, no additional validation needed beyond the URL check above
           }
         } else if (!entityId.startsWith("urn:")) {
           // If not a URL, should at least be a URN or some identifier
@@ -184,7 +190,7 @@ public class SamlValidator {
       if (!nullOrEmpty(samlConfig.getIdp().getIdpX509Certificate())) {
         try {
           validateX509Certificate(
-              samlConfig.getIdp().getIdpX509Certificate(), "IdP X509 certificate");
+              samlConfig.getIdp().getIdpX509Certificate(), "IdP X509 certificate", samlConfig);
         } catch (Exception e) {
           return new ValidationResult()
               .withComponent("saml-certificates")
@@ -420,6 +426,11 @@ public class SamlValidator {
   }
 
   private void validateX509Certificate(String certData, String certName) throws Exception {
+    validateX509Certificate(certData, certName, null);
+  }
+
+  private void validateX509Certificate(
+      String certData, String certName, SamlSSOClientConfig samlConfig) throws Exception {
     try {
       // Extract base64 content from PEM format
       String base64Content =
@@ -465,6 +476,11 @@ public class SamlValidator {
             notAfter);
       }
 
+      // Perform IdP-specific validation if this is an IdP certificate
+      if (samlConfig != null && certName.contains("IdP")) {
+        validateIdpCertificateAgainstConfig(cert, samlConfig);
+      }
+
       LOG.debug(
           "SAML {} validated successfully. Subject: {}, Valid until: {}",
           certName,
@@ -477,6 +493,170 @@ public class SamlValidator {
       }
       throw new CertificateException("Failed to parse " + certName + ": " + e.getMessage(), e);
     }
+  }
+
+  private void validateIdpCertificateAgainstConfig(
+      X509Certificate cert, SamlSSOClientConfig samlConfig) throws CertificateException {
+    try {
+      String subjectDN = cert.getSubjectDN().toString();
+
+      // Extract CN from certificate subject
+      String certCN = extractCNFromDN(subjectDN);
+      if (certCN == null || certCN.isEmpty()) {
+        LOG.warn("Certificate does not have a Common Name (CN) in subject");
+        return;
+      }
+
+      LOG.info("Validating certificate CN '{}' against IdP configuration", certCN);
+
+      // Extract domains from IdP configuration
+      String idpEntityId = samlConfig.getIdp().getEntityId();
+      String ssoLoginUrl = samlConfig.getIdp().getSsoLoginUrl();
+
+      // Extract domain from Entity ID for comparison
+      String entityIdDomain = null;
+      if (idpEntityId != null && !idpEntityId.isEmpty()) {
+        entityIdDomain = extractDomainFromUrl(idpEntityId);
+        LOG.info("Extracted domain '{}' from Entity ID '{}'", entityIdDomain, idpEntityId);
+      }
+
+      // SIMPLE AUTH0 VALIDATION: Certificate CN must match the Entity ID domain exactly
+      if (entityIdDomain != null && entityIdDomain.contains(".auth0.com")) {
+        // This is Auth0 configuration - certificate CN MUST match the tenant domain
+        if (!certCN.equals(entityIdDomain)) {
+          throw new CertificateException(
+              "Auth0 certificate validation failed. Certificate CN '"
+                  + certCN
+                  + "' does not match Entity ID domain '"
+                  + entityIdDomain
+                  + "'. Auth0 requires exact tenant match.");
+        }
+        LOG.info("Auth0 certificate validation passed - CN matches Entity ID domain");
+        return; // Valid Auth0 certificate, no need for further checks
+      }
+
+      // OKTA VALIDATION: Similar to Auth0
+      if (entityIdDomain != null && entityIdDomain.contains(".okta.com")) {
+        if (!certCN.equals(entityIdDomain) && !certCN.equals("*.okta.com")) {
+          throw new CertificateException(
+              "Okta certificate validation failed. Certificate CN '"
+                  + certCN
+                  + "' does not match Entity ID domain '"
+                  + entityIdDomain
+                  + "'");
+        }
+        LOG.info("Okta certificate validation passed");
+        return;
+      }
+
+      // AZURE AD VALIDATION: Must have Microsoft certificate
+      if ((idpEntityId != null
+              && (idpEntityId.contains("sts.windows.net")
+                  || idpEntityId.contains("microsoftonline.com")))
+          || (ssoLoginUrl != null && ssoLoginUrl.contains("microsoftonline.com"))) {
+        if (!certCN.contains("Microsoft Azure")) {
+          throw new CertificateException(
+              "Azure AD certificate validation failed. Expected Microsoft Azure certificate but found CN: '"
+                  + certCN
+                  + "'");
+        }
+        LOG.info("Azure AD certificate validation passed - Microsoft certificate detected");
+        return;
+      }
+
+      // REJECT MICROSOFT CERTIFICATE IF NOT AZURE CONFIG
+      if (certCN.contains("Microsoft Azure")) {
+        throw new CertificateException(
+            "Invalid use of Microsoft Azure certificate. This certificate can only be used with Azure AD configurations. "
+                + "Current Entity ID: "
+                + idpEntityId);
+      }
+
+      // For other providers or custom OIDC, warn if CN doesn't match
+      if (entityIdDomain != null && !certCN.equals(entityIdDomain)) {
+        LOG.warn(
+            "Certificate CN '{}' does not match Entity ID domain '{}'. This may cause issues.",
+            certCN,
+            entityIdDomain);
+      }
+
+      // Also check Subject Alternative Names if present
+      try {
+        java.util.Collection<java.util.List<?>> sanNames = cert.getSubjectAlternativeNames();
+        if (sanNames != null && !sanNames.isEmpty()) {
+          LOG.debug("Certificate has {} Subject Alternative Names", sanNames.size());
+          for (java.util.List<?> san : sanNames) {
+            if (san.size() >= 2) {
+              Integer type = (Integer) san.get(0);
+              String value = san.get(1).toString();
+              // Type 2 is DNS name, Type 6 is URI
+              if (type == 2 || type == 6) {
+                LOG.debug("SAN: {}", value);
+                // Check if SAN matches entity ID domain
+                if (entityIdDomain != null
+                    && !entityIdDomain.isEmpty()
+                    && value.contains(entityIdDomain)) {
+                  LOG.info("Found matching SAN '{}' for domain '{}'", value, entityIdDomain);
+                }
+              }
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug("Could not check Subject Alternative Names: {}", e.getMessage());
+      }
+
+    } catch (CertificateException e) {
+      // Re-throw certificate validation failures
+      throw e;
+    } catch (Exception e) {
+      LOG.warn("Could not perform IdP certificate domain validation: {}", e.getMessage());
+    }
+  }
+
+  private String extractCNFromDN(String dn) {
+    try {
+      String searchStr = "CN=";
+      int startIdx = dn.indexOf(searchStr);
+      if (startIdx == -1) {
+        return null;
+      }
+      startIdx += searchStr.length();
+      int endIdx = dn.indexOf(",", startIdx);
+      if (endIdx == -1) {
+        endIdx = dn.length();
+      }
+      return dn.substring(startIdx, endIdx).trim();
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private String extractDomainFromUrl(String url) {
+    try {
+      // Handle both URL and URN formats
+      if (url.startsWith("urn:")) {
+        // For URN format like "urn:dev-tenant.us.auth0.com"
+        String urnPart = url.substring(4); // Remove "urn:"
+        // Extract domain-like part
+        if (urnPart.contains(".")) {
+          return urnPart;
+        }
+        return null;
+      } else if (url.startsWith("http://") || url.startsWith("https://")) {
+        // For URL format
+        URL parsedUrl = new URL(url);
+        return parsedUrl.getHost();
+      } else {
+        // Assume it might be a domain directly
+        if (url.contains(".")) {
+          return url;
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not extract domain from: {}", url);
+    }
+    return null;
   }
 
   private ValidationResult validateAzureAdTenant(String entityId, String ssoLoginUrl) {

@@ -76,6 +76,7 @@ import org.openmetadata.service.security.auth.LoginAttemptCache;
 import org.openmetadata.service.security.auth.validator.Auth0Validator;
 import org.openmetadata.service.security.auth.validator.AzureAuthValidator;
 import org.openmetadata.service.security.auth.validator.CognitoAuthValidator;
+import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
@@ -665,6 +666,91 @@ public class SystemRepository {
                 missingVersions, unexpectedVersions));
   }
 
+  public JsonPatch filterInvalidPatchOperations(
+      JsonPatch patch, SecurityConfiguration currentConfig) {
+    try {
+      String provider =
+          currentConfig.getAuthenticationConfiguration() != null
+                  && currentConfig.getAuthenticationConfiguration().getProvider() != null
+              ? currentConfig.getAuthenticationConfiguration().getProvider().value()
+              : null;
+
+      LOG.info("Current provider for patch filtering: {}", provider);
+
+      jakarta.json.JsonArrayBuilder filteredPatchBuilder = jakarta.json.Json.createArrayBuilder();
+      jakarta.json.JsonArray patchArray = patch.toJsonArray();
+      LOG.info("Original patch has {} operations", patchArray.size());
+
+      int filteredCount = 0;
+
+      for (int i = 0; i < patchArray.size(); i++) {
+        jakarta.json.JsonObject operation = patchArray.getJsonObject(i);
+
+        String path = operation.getString("path", "");
+        String op = operation.getString("op", "");
+
+        boolean shouldFilter = false;
+
+        if ("saml".equalsIgnoreCase(provider)) {
+          // clientType is not applicable for SAML
+          if (path.contains("clientType")) {
+            LOG.info(
+                "Filtering out clientType patch operation for SAML provider: op={}, path={}",
+                op,
+                path);
+            shouldFilter = true;
+          } else if (path.contains("oidcConfiguration")) {
+            LOG.info(
+                "Filtering out OIDC configuration patch operation for SAML provider: op={}, path={}",
+                op,
+                path);
+            shouldFilter = true;
+          }
+        } else if (!"saml".equalsIgnoreCase(provider) && path.contains("samlConfiguration")) {
+          LOG.info(
+              "Filtering out SAML configuration patch operation for non-SAML provider: op={}, path={}",
+              op,
+              path);
+          shouldFilter = true;
+        } else if (!isOidcProvider(provider) && path.contains("oidcConfiguration")) {
+          LOG.info(
+              "Filtering out OIDC configuration patch operation for non-OIDC provider: op={}, path={}",
+              op,
+              path);
+          shouldFilter = true;
+        }
+
+        if (!shouldFilter) {
+          filteredPatchBuilder.add(operation);
+          filteredCount++;
+        }
+      }
+
+      LOG.info(
+          "Patch filtering complete: {} operations -> {} operations",
+          patchArray.size(),
+          filteredCount);
+
+      jakarta.json.JsonArray filteredArray = filteredPatchBuilder.build();
+      return jakarta.json.Json.createPatch(filteredArray);
+
+    } catch (Exception e) {
+      LOG.error("Error filtering patch operations, returning original patch", e);
+      // Return original patch if filtering fails
+      return patch;
+    }
+  }
+
+  private boolean isOidcProvider(String provider) {
+    return provider != null
+        && (provider.toLowerCase().contains("oidc")
+            || "google".equalsIgnoreCase(provider)
+            || "azure".equalsIgnoreCase(provider)
+            || "okta".equalsIgnoreCase(provider)
+            || "auth0".equalsIgnoreCase(provider)
+            || "custom-oidc".equalsIgnoreCase(provider));
+  }
+
   public SecurityValidationResponse validateSecurityConfiguration(
       SecurityConfiguration securityConfig, OpenMetadataApplicationConfig applicationConfig) {
     List<ValidationResult> results = new ArrayList<>();
@@ -849,8 +935,10 @@ public class SystemRepository {
           break;
 
         case "custom-oidc":
-          // For custom OIDC providers, we rely on the generic validation
-          LOG.info("Custom OIDC provider - using generic validation");
+          CustomOidcValidator customOidcValidator = new CustomOidcValidator();
+          providerValidation =
+              customOidcValidator.validateCustomOidcConfiguration(
+                  authConfig, authConfig.getOidcConfiguration());
           break;
 
         default:
