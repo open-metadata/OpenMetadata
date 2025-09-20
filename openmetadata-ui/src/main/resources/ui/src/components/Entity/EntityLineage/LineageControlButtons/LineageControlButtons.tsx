@@ -146,7 +146,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
           }
           title={t('label.export-entity', { entity: t('label.lineage') })}
           type="text"
-          onClick={onExportClick}
+          onClick={() => onExportClick()}
         />
 
         {handleFullScreenViewClick && (

@@ -10,14 +10,17 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
@@ -240,5 +243,20 @@ public class LineageUtil {
             ref);
       }
     }
+  }
+
+  public static NodeInformation getNodeInformation(
+      Map<String, Object> sourceMap,
+      Integer entityDownstreamCount,
+      Integer entityUpstreamCount,
+      Integer nodeDepth) {
+    // sourceMap.remove("upstreamLineage");
+    return new NodeInformation()
+        .withEntity(sourceMap)
+        .withPaging(
+            new LayerPaging()
+                .withEntityDownstreamCount(entityDownstreamCount)
+                .withEntityUpstreamCount(entityUpstreamCount))
+        .withNodeDepth(nodeDepth);
   }
 }

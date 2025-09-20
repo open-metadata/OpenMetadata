@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
+import { omit } from 'lodash';
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import {
   EntityLineageResponse,
   LineageData,
 } from '../components/Lineage/Lineage.interface';
+import { LineagePagingInfo } from '../components/LineageTable/useLineageTableState';
+import { EntityType } from '../enums/entity.enum';
 
 import { AddLineage } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/searchLineageRequest';
@@ -77,7 +80,7 @@ export const getLineageDataByFQN = async ({
       type: entityType,
       // upstreamDepth depth in BE is n+1 rather than exactly n, so we need to subtract 1 to get the correct depth
       // and we don't want to pass the negative value
-      upstreamDepth: upstreamDepth === 0 ? 0 : upstreamDepth - 1,
+      upstreamDepth: upstreamDepth === 0 ? 0 : upstreamDepth,
       downstreamDepth,
       query_filter: queryFilter,
       includeDeleted: false,
@@ -129,6 +132,65 @@ export const getDataQualityLineage = async (
         upstreamDepth,
         includeDeleted: false,
         query_filter: queryFilter,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const getLineageByEntityCount = async (params: {
+  fqn: string;
+  type: EntityType;
+  direction: LineageDirection;
+  nodeDepth: number;
+  from: number;
+  size: number;
+  queryFilter?: string;
+}) => {
+  const response = await APIClient.get(`lineage/getLineageByEntityCount`, {
+    params: {
+      ...omit(params, ['queryFilter']),
+      query_filter: params.queryFilter,
+    },
+  });
+
+  return response.data;
+};
+
+export const exportLineageByEntityCountAsync = async (params: {
+  fqn: string;
+  type: EntityType;
+  direction: LineageDirection;
+  nodeDepth: number;
+  from: number;
+  size: number;
+  queryFilter?: string;
+}) => {
+  const response = await APIClient.get<CSVExportResponse>(
+    `lineage/exportByEntityCountAsync`,
+    {
+      params: {
+        ...omit(params, ['queryFilter']),
+        query_filter: params.queryFilter,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const getLineagePagingData = async (params: {
+  fqn: string;
+  type?: EntityType;
+  queryFilter?: string;
+}) => {
+  const response = await APIClient.get<LineagePagingInfo>(
+    `lineage/getPaginationInfo`,
+    {
+      params: {
+        ...omit(params, ['queryFilter']),
+        query_filter: params.queryFilter,
       },
     }
   );

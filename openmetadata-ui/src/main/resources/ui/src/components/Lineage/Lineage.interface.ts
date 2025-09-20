@@ -12,8 +12,11 @@
  */
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/type';
+import { TagLabel } from '../../generated/tests/testCase';
 import { ColumnLineage } from '../../generated/type/entityLineage';
+import { SearchSourceAlias } from '../../interface/search.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProps {
@@ -52,6 +55,22 @@ export interface EdgeDetails {
   extraInfo?: EdgeDetails;
 }
 
+export interface ColumnLevelLineageNode
+  extends Pick<Table, 'owners' | 'tags' | 'domains' | 'description'> {
+  fromEntity: EdgeFromToData;
+  toEntity: EdgeFromToData;
+  pipeline?: EntityReference;
+  source?: string;
+  sqlQuery?: string;
+  column?: ColumnLineage;
+  description?: string;
+  pipelineEntityType?: EntityType.PIPELINE | EntityType.STORED_PROCEDURE;
+  docId?: string;
+  extraInfo?: EdgeDetails;
+  nodeDepth?: number;
+  tier?: TagLabel;
+}
+
 export type LineageSourceType = Omit<SourceType, 'service'> & {
   direction: string;
   depth: number;
@@ -63,6 +82,7 @@ export type NodeData = {
     entityDownstreamCount?: number;
     entityUpstreamCount?: number;
   };
+  nodeDepth?: number;
 };
 
 export type LineageData = {
@@ -85,3 +105,11 @@ export interface LineageEntityReference extends EntityReference {
   downstreamExpandPerformed?: boolean;
   direction?: LineageDirection;
 }
+
+export type LineageNode = SearchSourceAlias & {
+  nodeDepth?: number;
+  paging: {
+    entityDownstreamCount?: number;
+    entityUpstreamCount?: number;
+  };
+};
