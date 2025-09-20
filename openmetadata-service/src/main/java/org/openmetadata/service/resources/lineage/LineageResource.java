@@ -549,7 +549,7 @@ public class LineageResource {
       @Parameter(
               description =
                   "Elasticsearch query that will be combined with the query_string query generator from the `query` argument")
-          @QueryParam("queryFilter")
+          @QueryParam("query_filter")
           String queryFilter,
       @Parameter(description = "Filter documents by deleted param. By default deleted is false")
           @QueryParam("includeDeleted")

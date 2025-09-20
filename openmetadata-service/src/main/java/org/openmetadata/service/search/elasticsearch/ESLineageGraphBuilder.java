@@ -44,7 +44,6 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -131,7 +130,9 @@ public class ESLineageGraphBuilder {
         getSearchRequest(
             lineageRequest.getDirection(),
             GLOBAL_SEARCH_ALIAS,
-            lineageRequest.getQueryFilter(),
+            lineageRequest.getUpstreamDepth() == remainingDepth
+                ? null
+                : lineageRequest.getQueryFilter(),
             GRAPH_AGGREGATION,
             directionKeyAndValues,
             0,
@@ -468,29 +469,31 @@ public class ESLineageGraphBuilder {
 
     Map<Integer, Integer> upstreamDepthCounts = new HashMap<>();
     Map<Integer, Integer> downstreamDepthCounts = new HashMap<>();
+    upstreamDepthCounts.put(0, 1);
+    downstreamDepthCounts.put(0, 1);
 
     // Get upstream pagination info
     if (upstreamDepth > 0) {
-      upstreamDepthCounts =
+      upstreamDepthCounts.putAll(
           getDepthWiseEntityCounts(
               fqn,
               LineageDirection.UPSTREAM,
               upstreamDepth,
               queryFilter,
               includeDeleted,
-              entityType);
+              entityType));
     }
 
     // Get downstream pagination info
     if (downstreamDepth > 0) {
-      downstreamDepthCounts =
+      downstreamDepthCounts.putAll(
           getDepthWiseEntityCounts(
               fqn,
               LineageDirection.DOWNSTREAM,
               downstreamDepth,
               queryFilter,
               includeDeleted,
-              entityType);
+              entityType));
     }
 
     // Build pagination info response
@@ -541,19 +544,17 @@ public class ESLineageGraphBuilder {
             .withDownstreamEdges(new HashMap<>());
 
     // Handle root entity (nodeDepth = 0)
-    if (request.getNodeDepth() == null || request.getNodeDepth() == 0) {
-      addRootEntityWithPagingCounts(
-          new SearchLineageRequest()
-              .withFqn(request.getFqn())
-              .withQueryFilter(request.getQueryFilter())
-              .withIncludeDeleted(request.getIncludeDeleted())
-              .withIsConnectedVia(request.getIsConnectedVia())
-              .withIncludeSourceFields(request.getIncludeSourceFields()),
-          result);
-      // If nodeDepth is specifically 0, return just root entity
-      if (request.getNodeDepth() != null && request.getNodeDepth() == 0) {
-        return result;
-      }
+    addRootEntityWithPagingCounts(
+        new SearchLineageRequest()
+            .withFqn(request.getFqn())
+            .withQueryFilter(request.getQueryFilter())
+            .withIncludeDeleted(request.getIncludeDeleted())
+            .withIsConnectedVia(request.getIsConnectedVia())
+            .withIncludeSourceFields(request.getIncludeSourceFields()),
+        result);
+    // If nodeDepth is specifically 0, return just root entity
+    if (request.getNodeDepth() != null && request.getNodeDepth() == 0) {
+      return result;
     }
 
     // Filter by specific node depth if provided
@@ -612,7 +613,7 @@ public class ESLineageGraphBuilder {
           EsUtils.getSearchRequest(
               direction,
               GLOBAL_SEARCH_ALIAS,
-              queryFilter,
+              depth == 0 ? null : queryFilter,
               GRAPH_AGGREGATION,
               directionKeyAndValues,
               0,
@@ -725,7 +726,7 @@ public class ESLineageGraphBuilder {
 
     for (String entityFqn : entityFqns) {
       Map<String, Object> entityDoc =
-          OsUtils.searchEntityByKey(
+          EsUtils.searchEntityByKey(
               null,
               GLOBAL_SEARCH_ALIAS,
               FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
@@ -805,7 +806,13 @@ public class ESLineageGraphBuilder {
     Set<String> visitedFqns = new HashSet<>();
     visitedFqns.add(request.getFqn());
 
-    List<EntityData> allEntitiesUpToDepth = new ArrayList<>();
+    Map<String, EntityData> allEntitiesUpToDepth = new LinkedHashMap<>();
+    if (result.getNodes().containsKey(request.getFqn())) {
+      allEntitiesUpToDepth.put(
+          request.getFqn(),
+          new EntityData(
+              request.getFqn(), 0, JsonUtils.getMap(result.getNodes().get(request.getFqn()))));
+    }
 
     // Traverse up to the target depth and collect all entities
     for (int depth = startingOffset; depth <= targetDepth; depth++) {
@@ -820,7 +827,7 @@ public class ESLineageGraphBuilder {
           EsUtils.getSearchRequest(
               request.getDirection(),
               GLOBAL_SEARCH_ALIAS,
-              request.getQueryFilter(),
+              depth == 0 ? null : request.getQueryFilter(),
               GRAPH_AGGREGATION,
               directionKeyAndValues,
               0,
@@ -836,7 +843,7 @@ public class ESLineageGraphBuilder {
         Map<String, Object> esDoc = hit.getSourceAsMap();
         if (!esDoc.isEmpty()) {
           String entityFqn = esDoc.get(FQN_FIELD).toString();
-          allEntitiesUpToDepth.add(new EntityData(entityFqn, depth, esDoc));
+          allEntitiesUpToDepth.put(entityFqn, new EntityData(entityFqn, depth, esDoc));
           if (request.getDirection().equals(LineageDirection.DOWNSTREAM)) {
             if (depth < targetDepth && !visitedFqns.contains(entityFqn)) {
               nextLevel.put(FullyQualifiedName.buildHash(entityFqn), entityFqn);
@@ -857,12 +864,13 @@ public class ESLineageGraphBuilder {
     }
 
     // Apply pagination to all collected entities
+    List<EntityData> allEntitiesUpToDepthList = new ArrayList<>(allEntitiesUpToDepth.values());
     List<EntityData> paginatedEntities =
-        paginateList(allEntitiesUpToDepth, request.getFrom(), request.getSize());
+        paginateList(allEntitiesUpToDepthList, request.getFrom(), request.getSize());
 
     // Create a set of all collected FQNs for edge filtering
     Set<String> allCollectedFqns = new HashSet<>();
-    for (EntityData entityData : allEntitiesUpToDepth) {
+    for (EntityData entityData : allEntitiesUpToDepthList) {
       allCollectedFqns.add(entityData.fqn);
     }
     // Add the root entity FQN as well
