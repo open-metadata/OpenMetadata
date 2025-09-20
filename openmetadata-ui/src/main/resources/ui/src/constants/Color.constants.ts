@@ -16,8 +16,10 @@ import { DEFAULT_THEME } from './Appearance.constants';
 
 export const GREEN_1 = '#067647';
 export const GREEN_3 = '#48ca9e';
+export const GREEN_4 = '#039855';
 export const GREEN_3_OPACITY = '#48ca9e30';
 export const YELLOW_2 = '#ffbe0e';
+export const YELLOW_3 = '#f79009';
 export const RED_1 = '#F04438';
 export const RED_3 = '#f24822';
 export const RED_3_OPACITY = '#FF7C501A';
@@ -38,5 +40,6 @@ export const DESERT = '#B56727';
 export const PINK_SALMON = '#FF92AE';
 export const ELECTRIC_VIOLET = '#9747FF';
 export const LEMON_ZEST = '#FFD700';
+export const GREY_100 = '#f5f5f5';
 export const GREY_200 = '#E9EAEB';
 export const GRAY_600 = '#535862';
