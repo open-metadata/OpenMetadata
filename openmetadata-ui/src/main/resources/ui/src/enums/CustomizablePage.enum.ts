@@ -22,6 +22,7 @@ export enum LandingPageWidgetKeys {
   ANNOUNCEMENTS = 'KnowledgePanel.Announcements',
   CURATED_ASSETS = 'KnowledgePanel.CuratedAssets',
   DATA_ASSETS = 'KnowledgePanel.DataAssets',
+  DATA_PRODUCTS = 'KnowledgePanel.DataProducts',
   DOMAINS = 'KnowledgePanel.Domains',
   EMPTY_WIDGET_PLACEHOLDER = 'ExtraWidget.EmptyWidgetPlaceholder',
   FOLLOWING = 'KnowledgePanel.Following',

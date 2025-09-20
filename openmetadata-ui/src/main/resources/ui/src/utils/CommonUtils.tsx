@@ -764,6 +764,32 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
   });
 };
 
+/**
+ * @param entityType key for quick filter (e.g., 'dataproduct', 'table', 'dashboard')
+ * @returns json filter query string for entity type
+ */
+export const getEntityTypeExploreQueryFilter = (entityType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    'entityType.keyword': entityType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};
+
 export const filterSelectOptions = (
   input: string,
   option?: DefaultOptionType
