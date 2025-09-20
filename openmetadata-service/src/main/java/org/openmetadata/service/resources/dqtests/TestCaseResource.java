@@ -1119,9 +1119,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Valid CreateLogicalTestCases createLogicalTestCases) {
 
     // don't get entity from cache as test result summary may be stale
+    // Fetch with domains field to ensure proper authorization
     TestSuite testSuite =
         Entity.getEntity(
-            Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), null, null, false);
+            Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), "domains", null, false);
     OperationContext operationContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
     ResourceContextInterface resourceContext =
