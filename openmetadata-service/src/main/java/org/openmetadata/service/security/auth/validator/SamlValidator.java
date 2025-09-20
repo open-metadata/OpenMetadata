@@ -2,27 +2,23 @@ package org.openmetadata.service.security.auth.validator;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.io.BufferedReader;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
+import org.openmetadata.catalog.type.IdentityProviderConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.system.ValidationResult;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
 public class SamlValidator {
@@ -30,55 +26,30 @@ public class SamlValidator {
   public ValidationResult validateSamlConfiguration(
       AuthenticationConfiguration authConfig, SamlSSOClientConfig samlConfig) {
     try {
-      // Step 1: Validate basic SAML configuration
       ValidationResult basicValidation = validateBasicSamlConfig(samlConfig);
       if ("failed".equals(basicValidation.getStatus())) {
         return basicValidation;
       }
 
-      // Note: SAML metadata URL validation is not available in current schema
-      // Could be added in the future if metadata URL field is added to IdP config
-
-      // Step 3: Validate certificates if provided
       ValidationResult certValidation = validateCertificates(samlConfig);
       if ("failed".equals(certValidation.getStatus())) {
         return certValidation;
       }
 
-      // Step 4: Validate security configuration consistency
       ValidationResult securityValidation = validateSecurityConfiguration(samlConfig);
       if ("failed".equals(securityValidation.getStatus())) {
         return securityValidation;
       }
 
-      // Step 5: Validate IdP connectivity (real validation)
-      ValidationResult connectivityValidation = validateIdpConnectivity(samlConfig);
-      if ("failed".equals(connectivityValidation.getStatus())) {
-        return connectivityValidation;
-      }
-
-      // Step 6: Validate IdP metadata if available (real validation)
-      ValidationResult metadataValidation = validateIdpMetadata(samlConfig);
-      // Note: Metadata validation returns warning if not available, not failure
-
-      // Step 7: Test SAML request generation
-      ValidationResult requestValidation = validateSamlRequestGeneration(samlConfig);
-      if ("failed".equals(requestValidation.getStatus())) {
-        return requestValidation;
-      }
-
-      StringBuilder message = new StringBuilder("SAML configuration validated successfully.");
-      if ("warning".equals(connectivityValidation.getStatus())) {
-        message.append(" Warning: ").append(connectivityValidation.getMessage());
-      }
-      if ("warning".equals(metadataValidation.getStatus())) {
-        message.append(" Note: ").append(metadataValidation.getMessage());
+      ValidationResult idpValidation = validateIdpConnectivity(samlConfig);
+      if ("failed".equals(idpValidation.getStatus())) {
+        return idpValidation;
       }
 
       return new ValidationResult()
           .withComponent("saml")
           .withStatus("success")
-          .withMessage(message.toString());
+          .withMessage("SAML configuration validated successfully.");
     } catch (Exception e) {
       LOG.error("SAML validation failed", e);
       return new ValidationResult()
@@ -90,7 +61,6 @@ public class SamlValidator {
 
   private ValidationResult validateBasicSamlConfig(SamlSSOClientConfig samlConfig) {
     try {
-      // Validate SP configuration
       if (samlConfig.getSp() == null) {
         throw new IllegalArgumentException("SAML Service Provider (SP) configuration is required");
       }
@@ -109,15 +79,26 @@ public class SamlValidator {
         throw new IllegalArgumentException("SAML SP callback URL is required");
       }
 
-      // Validate URLs
       try {
-        new URL(spConfig.getAcs());
-        new URL(spConfig.getCallback());
+        URL acsUrl = new URL(spConfig.getAcs());
+        String path = acsUrl.getPath();
+        if (!path.endsWith("/api/v1/saml/acs") && !path.endsWith("/callback")) {
+          throw new IllegalArgumentException(
+              "ACS URL must end with '/api/v1/saml/acs' or '/callback'. Current path: " + path);
+        }
       } catch (Exception e) {
-        throw new IllegalArgumentException("Invalid SAML SP URL format: " + e.getMessage());
+        if (e instanceof IllegalArgumentException) {
+          throw e;
+        }
+        throw new IllegalArgumentException("Invalid ACS URL format: " + e.getMessage());
       }
 
-      // Validate IdP configuration
+      try {
+        new URL(spConfig.getCallback());
+      } catch (Exception e) {
+        throw new IllegalArgumentException("Invalid callback URL format: " + e.getMessage());
+      }
+
       if (samlConfig.getIdp() == null) {
         throw new IllegalArgumentException(
             "SAML Identity Provider (IdP) configuration is required");
@@ -126,6 +107,52 @@ public class SamlValidator {
       var idpConfig = samlConfig.getIdp();
       if (nullOrEmpty(idpConfig.getEntityId())) {
         throw new IllegalArgumentException("SAML IdP Entity ID is required");
+      }
+
+      // Validate IdP Entity ID format and verify with actual endpoints
+      try {
+        // For Azure AD, entity ID should be a valid URL like https://sts.windows.net/{tenant-id}/
+        // For other providers, it could be a URL or URN
+        String entityId = idpConfig.getEntityId();
+        if (entityId.startsWith("http://") || entityId.startsWith("https://")) {
+          new URL(entityId); // Validate URL format
+
+          // Special validation for Azure AD with real tenant validation
+          if (entityId.contains("sts.windows.net")
+              || entityId.contains("login.microsoftonline.com")) {
+            ValidationResult azureValidation =
+                validateAzureAdTenant(entityId, idpConfig.getSsoLoginUrl());
+            if ("failed".equals(azureValidation.getStatus())) {
+              throw new IllegalArgumentException(azureValidation.getMessage());
+            }
+          } else if (entityId.contains(".okta.com")) {
+            // Okta entity ID validation
+            if (!entityId.matches("http[s]?://www\\.okta\\.com/[a-zA-Z0-9]+")) {
+              throw new IllegalArgumentException(
+                  "Okta Entity ID should be in format: http://www.okta.com/{app-id}");
+            }
+          } else if (entityId.contains(".auth0.com")) {
+            // Auth0 entity ID validation
+            if (!entityId.startsWith("urn:")) {
+              throw new IllegalArgumentException(
+                  "Auth0 Entity ID should be a URN, e.g., urn:{tenant}.auth0.com");
+            }
+          }
+        } else if (!entityId.startsWith("urn:")) {
+          // If not a URL, should at least be a URN or some identifier
+          throw new IllegalArgumentException(
+              "IdP Entity ID should be a valid URL or URN. Got: " + entityId);
+        }
+      } catch (Exception e) {
+        if (e instanceof IllegalArgumentException) {
+          throw e;
+        }
+        throw new IllegalArgumentException("Invalid IdP Entity ID format: " + e.getMessage());
+      }
+
+      ValidationResult nameIdValidation = validateNameIdFormatWithIdp(idpConfig);
+      if ("failed".equals(nameIdValidation.getStatus())) {
+        throw new IllegalArgumentException(nameIdValidation.getMessage());
       }
 
       if (nullOrEmpty(idpConfig.getSsoLoginUrl())) {
@@ -166,7 +193,6 @@ public class SamlValidator {
         }
       }
 
-      // Validate SP certificate if signing is enabled and certificate is provided
       if (samlConfig.getSecurity() != null) {
         boolean needsSpCert =
             Boolean.TRUE.equals(samlConfig.getSecurity().getSendSignedAuthRequest())
@@ -241,6 +267,158 @@ public class SamlValidator {
     }
   }
 
+  private ValidationResult validateIdpConnectivity(SamlSSOClientConfig samlConfig) {
+    try {
+      String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
+      LOG.debug("Testing IdP SSO URL with SAML request: {}", ssoUrl);
+
+      // Create a minimal SAML request to test the SSO URL
+      String samlRequest = createTestSamlRequest(samlConfig);
+
+      // Build URL with SAML request parameter (HTTP-Redirect binding)
+      StringBuilder urlWithParams = new StringBuilder(ssoUrl);
+      urlWithParams.append(ssoUrl.contains("?") ? "&" : "?");
+      urlWithParams.append("SAMLRequest=").append(samlRequest);
+
+      URL url = new URL(urlWithParams.toString());
+      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+      conn.setRequestMethod("GET");
+      conn.setConnectTimeout(5000);
+      conn.setReadTimeout(5000);
+      conn.setInstanceFollowRedirects(false);
+
+      int responseCode = conn.getResponseCode();
+      LOG.debug("IdP response code to SAML request: {}", responseCode);
+
+      // Analyze response
+      if (responseCode == 404) {
+        return new ValidationResult()
+            .withComponent("saml-sso-url")
+            .withStatus("failed")
+            .withMessage(
+                "SSO Login URL not found (HTTP 404). The URL '" + ssoUrl + "' does not exist.");
+      } else if (responseCode == 405) {
+        return new ValidationResult()
+            .withComponent("saml-sso-url")
+            .withStatus("failed")
+            .withMessage(
+                "SSO URL doesn't accept GET requests (HTTP 405). Please check the SSO URL configuration.");
+      } else if (responseCode >= 200 && responseCode < 400) {
+        // 200 or 302 means the IdP accepted our SAML request
+        return new ValidationResult()
+            .withComponent("saml-sso-url")
+            .withStatus("success")
+            .withMessage(
+                "SSO Login URL validated successfully. IdP accepted SAML request (HTTP "
+                    + responseCode
+                    + ")");
+      } else if (responseCode >= 400 && responseCode < 500) {
+        // 400-499 could mean wrong URL or IdP rejecting the request
+        // Read a bit of the response to check for specific errors
+        String responseSnippet = readResponseSnippet(conn);
+        if (responseSnippet.toLowerCase().contains("saml")
+            || responseSnippet.toLowerCase().contains("invalid")) {
+          return new ValidationResult()
+              .withComponent("saml-sso-url")
+              .withStatus("warning")
+              .withMessage(
+                  "SSO URL responded with client error (HTTP "
+                      + responseCode
+                      + "). This might be due to the test SAML request format. Please verify the SSO URL is correct.");
+        }
+        return new ValidationResult()
+            .withComponent("saml-sso-url")
+            .withStatus("failed")
+            .withMessage(
+                "SSO URL returned error (HTTP "
+                    + responseCode
+                    + "). Please verify the URL is correct.");
+      } else {
+        return new ValidationResult()
+            .withComponent("saml-sso-url")
+            .withStatus("failed")
+            .withMessage("SSO URL is not accessible (HTTP " + responseCode + ")");
+      }
+    } catch (Exception e) {
+      LOG.warn("SSO URL validation failed", e);
+      return new ValidationResult()
+          .withComponent("saml-sso-url")
+          .withStatus("warning")
+          .withMessage(
+              "SSO URL validation failed: "
+                  + e.getMessage()
+                  + ". Please verify the SSO Login URL is correct.");
+    }
+  }
+
+  private String createTestSamlRequest(SamlSSOClientConfig samlConfig) {
+    try {
+      // Create a minimal SAML AuthnRequest XML
+      String timestamp = java.time.Instant.now().toString();
+      String requestId = "_" + java.util.UUID.randomUUID().toString();
+
+      String samlRequestXml =
+          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+              + "<samlp:AuthnRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" "
+              + "xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" "
+              + "ID=\""
+              + requestId
+              + "\" "
+              + "Version=\"2.0\" "
+              + "IssueInstant=\""
+              + timestamp
+              + "\" "
+              + "Destination=\""
+              + samlConfig.getIdp().getSsoLoginUrl()
+              + "\" "
+              + "AssertionConsumerServiceURL=\""
+              + samlConfig.getSp().getAcs()
+              + "\">"
+              + "<saml:Issuer>"
+              + samlConfig.getSp().getEntityId()
+              + "</saml:Issuer>"
+              + "</samlp:AuthnRequest>";
+
+      // Compress (deflate) the request
+      java.io.ByteArrayOutputStream bytesOut = new java.io.ByteArrayOutputStream();
+      java.util.zip.Deflater deflater =
+          new java.util.zip.Deflater(java.util.zip.Deflater.DEFLATED, true);
+      java.util.zip.DeflaterOutputStream deflaterStream =
+          new java.util.zip.DeflaterOutputStream(bytesOut, deflater);
+      deflaterStream.write(samlRequestXml.getBytes("UTF-8"));
+      deflaterStream.finish();
+
+      // Base64 encode
+      String base64Request = Base64.getEncoder().encodeToString(bytesOut.toByteArray());
+
+      // URL encode for use in query parameter
+      return java.net.URLEncoder.encode(base64Request, "UTF-8");
+    } catch (Exception e) {
+      LOG.warn("Failed to create test SAML request", e);
+      // Return a dummy encoded string if we can't create proper request
+      return "dGVzdA==";
+    }
+  }
+
+  private String readResponseSnippet(HttpURLConnection conn) {
+    try {
+      java.io.InputStream inputStream = conn.getErrorStream();
+      if (inputStream == null) {
+        inputStream = conn.getInputStream();
+      }
+      if (inputStream != null) {
+        byte[] buffer = new byte[500];
+        int bytesRead = inputStream.read(buffer);
+        if (bytesRead > 0) {
+          return new String(buffer, 0, bytesRead, "UTF-8");
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Could not read response", e);
+    }
+    return "";
+  }
+
   private void validateX509Certificate(String certData, String certName) throws Exception {
     try {
       // Extract base64 content from PEM format
@@ -301,255 +479,342 @@ public class SamlValidator {
     }
   }
 
-  private ValidationResult validateIdpConnectivity(SamlSSOClientConfig samlConfig) {
+  private ValidationResult validateAzureAdTenant(String entityId, String ssoLoginUrl) {
     try {
-      String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
-      LOG.debug("Testing IdP connectivity to: {}", ssoUrl);
+      // Extract tenant ID from entity ID or SSO URL
+      String tenantId = null;
 
-      URL url = new URL(ssoUrl);
-      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-      conn.setRequestMethod("GET");
-      conn.setConnectTimeout(5000);
-      conn.setReadTimeout(5000);
-      conn.setInstanceFollowRedirects(false);
-
-      int responseCode = conn.getResponseCode();
-      LOG.debug("IdP connectivity test response code: {}", responseCode);
-
-      if (responseCode >= 200 && responseCode < 400) {
-        return new ValidationResult()
-            .withComponent("saml-connectivity")
-            .withStatus("success")
-            .withMessage("IdP SSO endpoint is accessible (HTTP " + responseCode + ")");
-      } else if (responseCode >= 400 && responseCode < 500) {
-        // 4xx might be expected for SAML endpoints without proper parameters
-        return new ValidationResult()
-            .withComponent("saml-connectivity")
-            .withStatus("warning")
-            .withMessage(
-                "IdP endpoint returned HTTP "
-                    + responseCode
-                    + " (may be normal for SAML endpoints)");
-      } else {
-        return new ValidationResult()
-            .withComponent("saml-connectivity")
-            .withStatus("failed")
-            .withMessage("IdP SSO endpoint is not accessible (HTTP " + responseCode + ")");
+      if (entityId.contains("sts.windows.net")) {
+        // Format: https://sts.windows.net/{tenant-id}/
+        String[] parts = entityId.split("/");
+        for (int i = 0; i < parts.length; i++) {
+          if (parts[i].equals("sts.windows.net") && i + 1 < parts.length) {
+            tenantId = parts[i + 1].replace("/", "");
+            break;
+          }
+        }
+      } else if (entityId.contains("login.microsoftonline.com")) {
+        // Format: https://login.microsoftonline.com/{tenant-id}/
+        String[] parts = entityId.split("/");
+        for (int i = 0; i < parts.length; i++) {
+          if (parts[i].equals("login.microsoftonline.com") && i + 1 < parts.length) {
+            tenantId = parts[i + 1].replace("/", "");
+            break;
+          }
+        }
       }
-    } catch (Exception e) {
-      LOG.warn("IdP connectivity test failed", e);
-      return new ValidationResult()
-          .withComponent("saml-connectivity")
-          .withStatus("warning")
-          .withMessage(
-              "IdP connectivity test failed: "
-                  + e.getMessage()
-                  + ". This may not prevent SAML authentication.");
-    }
-  }
 
-  private ValidationResult validateIdpMetadata(SamlSSOClientConfig samlConfig) {
-    // Try common metadata URL patterns for different IdP providers
-    String[] metadataUrls = buildMetadataUrls(samlConfig);
+      // Also check SSO URL for tenant ID if not found in entity ID
+      if (tenantId == null
+          && ssoLoginUrl != null
+          && ssoLoginUrl.contains("login.microsoftonline.com")) {
+        String[] parts = ssoLoginUrl.split("/");
+        for (int i = 0; i < parts.length; i++) {
+          if (parts[i].equals("login.microsoftonline.com") && i + 1 < parts.length) {
+            tenantId = parts[i + 1].replace("/", "");
+            break;
+          }
+        }
+      }
 
-    for (String metadataUrl : metadataUrls) {
+      if (tenantId == null || tenantId.isEmpty()) {
+        return new ValidationResult()
+            .withComponent("azure-tenant")
+            .withStatus("failed")
+            .withMessage("Could not extract tenant ID from Entity ID or SSO URL");
+      }
+
+      // Validate tenant ID format (should be a GUID)
+      if (!tenantId.matches("[a-f0-9\\-]{36}")
+          && !tenantId.equals("common")
+          && !tenantId.equals("organizations")
+          && !tenantId.equals("consumers")) {
+        return new ValidationResult()
+            .withComponent("azure-tenant")
+            .withStatus("failed")
+            .withMessage("Invalid Azure AD tenant ID format: " + tenantId);
+      }
+
+      // Validate tenant exists by checking OpenID configuration
+      String openIdConfigUrl =
+          "https://login.microsoftonline.com/"
+              + tenantId
+              + "/v2.0/.well-known/openid-configuration";
+
       try {
-        LOG.debug("Attempting to fetch SAML metadata from: {}", metadataUrl);
+        ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(openIdConfigUrl);
 
-        ValidationResult result = fetchAndValidateMetadata(metadataUrl, samlConfig);
-        if ("success".equals(result.getStatus())) {
-          return result;
+        if (response.getStatusCode() == 200) {
+          // Parse response to verify it's a valid OpenID config
+          JsonNode config = JsonUtils.readTree(response.getBody());
+
+          // Check if the issuer matches the tenant
+          if (config.has("issuer")) {
+            String issuer = config.get("issuer").asText();
+            if (!issuer.contains(tenantId)
+                && !tenantId.equals("common")
+                && !tenantId.equals("organizations")
+                && !tenantId.equals("consumers")) {
+              return new ValidationResult()
+                  .withComponent("azure-tenant")
+                  .withStatus("failed")
+                  .withMessage(
+                      "Tenant ID mismatch. Expected tenant: "
+                          + tenantId
+                          + " but issuer is: "
+                          + issuer);
+            }
+          }
+
+          return new ValidationResult()
+              .withComponent("azure-tenant")
+              .withStatus("success")
+              .withMessage("Azure AD tenant validated successfully: " + tenantId);
+        } else if (response.getStatusCode() == 404) {
+          return new ValidationResult()
+              .withComponent("azure-tenant")
+              .withStatus("failed")
+              .withMessage(
+                  "Azure AD tenant not found: "
+                      + tenantId
+                      + ". Please verify the tenant ID is correct.");
+        } else {
+          return new ValidationResult()
+              .withComponent("azure-tenant")
+              .withStatus("warning")
+              .withMessage(
+                  "Could not fully validate Azure AD tenant. HTTP response: "
+                      + response.getStatusCode());
         }
       } catch (Exception e) {
-        LOG.debug("Metadata URL {} failed: {}", metadataUrl, e.getMessage());
-      }
-    }
-
-    return new ValidationResult()
-        .withComponent("saml-metadata")
-        .withStatus("warning")
-        .withMessage(
-            "Could not fetch IdP metadata for enhanced validation. Basic configuration validation passed.");
-  }
-
-  private String[] buildMetadataUrls(SamlSSOClientConfig samlConfig) {
-    String entityId = samlConfig.getIdp().getEntityId();
-    String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
-
-    // Common metadata URL patterns for different providers
-    return new String[] {
-      // Azure AD pattern
-      entityId + "/federationmetadata/2007-06/federationmetadata.xml",
-      // Generic patterns
-      entityId + "/metadata",
-      ssoUrl.replace("/sso", "/metadata"),
-      ssoUrl.replace("/saml2", "/metadata"),
-      // Okta pattern
-      ssoUrl.replace("/sso/saml", "/metadata"),
-      // ADFS pattern
-      entityId + "/FederationMetadata/2007-06/FederationMetadata.xml"
-    };
-  }
-
-  private ValidationResult fetchAndValidateMetadata(
-      String metadataUrl, SamlSSOClientConfig samlConfig) {
-    try {
-      URL url = new URL(metadataUrl);
-      HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-      conn.setRequestMethod("GET");
-      conn.setConnectTimeout(5000);
-      conn.setReadTimeout(10000);
-      conn.setRequestProperty("Accept", "application/samlmetadata+xml, text/xml");
-
-      int responseCode = conn.getResponseCode();
-      if (responseCode != 200) {
-        throw new Exception("HTTP " + responseCode);
-      }
-
-      // Read metadata XML
-      StringBuilder metadata = new StringBuilder();
-      try (BufferedReader reader =
-          new BufferedReader(
-              new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8))) {
-        String line;
-        while ((line = reader.readLine()) != null) {
-          metadata.append(line).append("\n");
-        }
-      }
-
-      // Parse and validate metadata XML
-      return validateMetadataXml(metadata.toString(), samlConfig, metadataUrl);
-
-    } catch (Exception e) {
-      throw new RuntimeException(
-          "Failed to fetch metadata from " + metadataUrl + ": " + e.getMessage());
-    }
-  }
-
-  private ValidationResult validateMetadataXml(
-      String metadataXml, SamlSSOClientConfig samlConfig, String metadataUrl) {
-    try {
-      DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-      factory.setNamespaceAware(true);
-      // Security settings for XML parsing
-      factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-      factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-      factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-
-      DocumentBuilder builder = factory.newDocumentBuilder();
-      Document doc =
-          builder.parse(new ByteArrayInputStream(metadataXml.getBytes(StandardCharsets.UTF_8)));
-
-      // Validate EntityDescriptor
-      NodeList entityDescriptors =
-          doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:metadata", "EntityDescriptor");
-      if (entityDescriptors.getLength() == 0) {
-        throw new Exception("No EntityDescriptor found in metadata");
-      }
-
-      Element entityDescriptor = (Element) entityDescriptors.item(0);
-      String metadataEntityId = entityDescriptor.getAttribute("entityID");
-
-      // Validate EntityID matches configuration
-      if (!metadataEntityId.equals(samlConfig.getIdp().getEntityId())) {
+        LOG.warn("Failed to validate Azure AD tenant", e);
         return new ValidationResult()
-            .withComponent("saml-metadata")
+            .withComponent("azure-tenant")
             .withStatus("warning")
-            .withMessage(
-                "Metadata EntityID ("
-                    + metadataEntityId
-                    + ") doesn't match configuration ("
-                    + samlConfig.getIdp().getEntityId()
-                    + ")");
+            .withMessage("Could not validate Azure AD tenant: " + e.getMessage());
+      }
+    } catch (Exception e) {
+      return new ValidationResult()
+          .withComponent("azure-tenant")
+          .withStatus("failed")
+          .withMessage("Azure tenant validation failed: " + e.getMessage());
+    }
+  }
+
+  private ValidationResult validateNameIdFormatWithIdp(IdentityProviderConfig idpConfig) {
+    try {
+      if (nullOrEmpty(idpConfig.getNameId())) {
+        // NameID is optional, use default if not specified
+        return new ValidationResult()
+            .withComponent("saml-nameid")
+            .withStatus("success")
+            .withMessage("Using default NameID format");
       }
 
-      // Validate SSO Service endpoints
-      NodeList ssoServices =
-          doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:metadata", "SingleSignOnService");
-      boolean foundMatchingSso = false;
-      for (int i = 0; i < ssoServices.getLength(); i++) {
-        Element ssoService = (Element) ssoServices.item(i);
-        String location = ssoService.getAttribute("Location");
-        if (location.equals(samlConfig.getIdp().getSsoLoginUrl())) {
-          foundMatchingSso = true;
+      String nameId = idpConfig.getNameId();
+
+      // First check if it's a valid SAML format
+      String[] validFormats = {
+        "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+        "urn:oasis:names:tc:SAML:2.0:nameid-format:transient",
+        "urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress",
+        "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified",
+        "urn:oasis:names:tc:SAML:2.0:nameid-format:kerberos",
+        "urn:oasis:names:tc:SAML:2.0:nameid-format:entity",
+        "urn:oasis:names:tc:SAML:2.0:nameid-format:encrypted",
+        "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+        "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified",
+        "urn:oasis:names:tc:SAML:1.1:nameid-format:X509SubjectName",
+        "urn:oasis:names:tc:SAML:1.1:nameid-format:WindowsDomainQualifiedName"
+      };
+
+      boolean isValidFormat = false;
+      for (String format : validFormats) {
+        if (format.equals(nameId)) {
+          isValidFormat = true;
           break;
         }
       }
 
-      if (!foundMatchingSso) {
+      if (!isValidFormat) {
         return new ValidationResult()
-            .withComponent("saml-metadata")
-            .withStatus("warning")
+            .withComponent("saml-nameid")
+            .withStatus("failed")
             .withMessage(
-                "SSO URL in metadata doesn't match configuration. This may cause authentication issues.");
+                "Invalid NameID format: "
+                    + nameId
+                    + ". Must be a valid SAML NameID format URN. Common formats: "
+                    + "emailAddress, persistent, transient, unspecified");
       }
 
-      // Validate certificates in metadata match configuration
-      if (!nullOrEmpty(samlConfig.getIdp().getIdpX509Certificate())) {
-        NodeList keyDescriptors =
-            doc.getElementsByTagNameNS("urn:oasis:names:tc:SAML:2.0:metadata", "KeyDescriptor");
-        // Note: Full certificate comparison would be complex, skipping for now
+      // Now validate against IdP's actual supported formats
+      if (!nullOrEmpty(idpConfig.getSsoLoginUrl())) {
+        // For Azure AD, fetch SAML metadata and validate
+        if (idpConfig.getSsoLoginUrl().contains("login.microsoftonline.com")
+            || (idpConfig.getEntityId() != null
+                && idpConfig.getEntityId().contains("sts.windows.net"))) {
+
+          ValidationResult azureNameIdValidation = validateAzureNameIdFormat(idpConfig, nameId);
+          if ("failed".equals(azureNameIdValidation.getStatus())) {
+            return azureNameIdValidation;
+          }
+        }
+        // Add similar validation for other IdPs if needed
       }
 
       return new ValidationResult()
-          .withComponent("saml-metadata")
+          .withComponent("saml-nameid")
           .withStatus("success")
-          .withMessage("IdP metadata validated successfully from " + metadataUrl);
+          .withMessage("NameID format validated: " + nameId);
 
     } catch (Exception e) {
-      throw new RuntimeException("Failed to parse metadata XML: " + e.getMessage());
+      return new ValidationResult()
+          .withComponent("saml-nameid")
+          .withStatus("failed")
+          .withMessage("NameID validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateSamlRequestGeneration(SamlSSOClientConfig samlConfig) {
+  private ValidationResult validateAzureNameIdFormat(
+      IdentityProviderConfig idpConfig, String nameId) {
     try {
-      // Basic validation that we can build SAML settings without errors
-      // This tests the consistency of SP configuration
+      // Extract tenant ID
+      String tenantId = null;
+      if (idpConfig.getEntityId() != null) {
+        if (idpConfig.getEntityId().contains("sts.windows.net")) {
+          String[] parts = idpConfig.getEntityId().split("/");
+          for (int i = 0; i < parts.length; i++) {
+            if (parts[i].equals("sts.windows.net") && i + 1 < parts.length) {
+              tenantId = parts[i + 1].replace("/", "");
+              break;
+            }
+          }
+        }
+      }
 
-      // Validate SP Entity ID format
-      String spEntityId = samlConfig.getSp().getEntityId();
-      if (!spEntityId.startsWith("http://") && !spEntityId.startsWith("https://")) {
+      if (tenantId == null && idpConfig.getSsoLoginUrl() != null) {
+        String[] parts = idpConfig.getSsoLoginUrl().split("/");
+        for (int i = 0; i < parts.length; i++) {
+          if (parts[i].equals("login.microsoftonline.com") && i + 1 < parts.length) {
+            tenantId = parts[i + 1].replace("/", "");
+            break;
+          }
+        }
+      }
+
+      if (tenantId == null
+          || tenantId.equals("common")
+          || tenantId.equals("organizations")
+          || tenantId.equals("consumers")) {
+        // Can't validate against metadata for multi-tenant endpoints
+        LOG.warn("Cannot validate NameID format for multi-tenant Azure AD configuration");
         return new ValidationResult()
-            .withComponent("saml-request-generation")
+            .withComponent("saml-nameid-azure")
             .withStatus("warning")
-            .withMessage("SP Entity ID should typically be a URL format for better compatibility");
+            .withMessage(
+                "Cannot validate NameID format for multi-tenant configuration. Please ensure it matches your Azure AD app configuration.");
       }
 
-      // Validate ACS URL is accessible from SP perspective
-      String acsUrl = samlConfig.getSp().getAcs();
+      // Fetch SAML metadata from Azure AD
+      String metadataUrl =
+          "https://login.microsoftonline.com/"
+              + tenantId
+              + "/FederationMetadata/2007-06/FederationMetadata.xml";
+
       try {
-        new URL(acsUrl); // Basic URL validation
+        ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(metadataUrl);
+
+        if (response.getStatusCode() == 200) {
+          String metadata = response.getBody();
+
+          // Azure AD SAML 1.1 supports these NameID formats
+          String[] azureSaml11Formats = {
+            "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress",
+            "urn:oasis:names:tc:SAML:1.1:nameid-format:unspecified"
+          };
+
+          // Azure AD SAML 2.0 supports these NameID formats
+          String[] azureSaml20Formats = {
+            "urn:oasis:names:tc:SAML:2.0:nameid-format:persistent",
+            "urn:oasis:names:tc:SAML:2.0:nameid-format:transient"
+          };
+
+          // Check if metadata contains SAML 2.0 or SAML 1.1 indicators
+          boolean supportsSaml20 = metadata.contains("urn:oasis:names:tc:SAML:2.0:protocol");
+          boolean supportsSaml11 =
+              metadata.contains("urn:oasis:names:tc:SAML:1.1:protocol")
+                  || metadata.contains("http://schemas.xmlsoap.org/ws/2005/05/identity");
+
+          // Azure AD typically uses SAML 1.1 emailAddress format for user principal name
+          boolean isSupported = false;
+          String supportedFormats = "";
+
+          if (supportsSaml11) {
+            for (String format : azureSaml11Formats) {
+              supportedFormats += format + ", ";
+              if (nameId.equals(format)) {
+                isSupported = true;
+              }
+            }
+          }
+
+          if (supportsSaml20) {
+            for (String format : azureSaml20Formats) {
+              supportedFormats += format + ", ";
+              if (nameId.equals(format)) {
+                isSupported = true;
+              }
+            }
+          }
+
+          // Azure AD most commonly uses SAML 1.1 emailAddress
+          if (nameId.equals("urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress")) {
+            return new ValidationResult()
+                .withComponent("saml-nameid-azure")
+                .withStatus("success")
+                .withMessage(
+                    "NameID format is supported by Azure AD (recommended format for email-based identification)");
+          } else if (nameId.equals("urn:oasis:names:tc:SAML:2.0:nameid-format:emailAddress")) {
+            return new ValidationResult()
+                .withComponent("saml-nameid-azure")
+                .withStatus("warning")
+                .withMessage(
+                    "Azure AD typically uses SAML 1.1 emailAddress format (urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress), not SAML 2.0. Your configuration may not work correctly.");
+          } else if (isSupported) {
+            return new ValidationResult()
+                .withComponent("saml-nameid-azure")
+                .withStatus("success")
+                .withMessage("NameID format is supported by Azure AD");
+          } else {
+            return new ValidationResult()
+                .withComponent("saml-nameid-azure")
+                .withStatus("failed")
+                .withMessage(
+                    "NameID format '"
+                        + nameId
+                        + "' is not supported by Azure AD. Supported formats: "
+                        + supportedFormats);
+          }
+
+        } else {
+          LOG.warn("Could not fetch Azure AD metadata: HTTP " + response.getStatusCode());
+          return new ValidationResult()
+              .withComponent("saml-nameid-azure")
+              .withStatus("warning")
+              .withMessage("Could not verify NameID format against Azure AD metadata");
+        }
       } catch (Exception e) {
+        LOG.warn("Failed to validate NameID against Azure AD metadata", e);
         return new ValidationResult()
-            .withComponent("saml-request-generation")
-            .withStatus("failed")
-            .withMessage("Invalid ACS URL format: " + e.getMessage());
+            .withComponent("saml-nameid-azure")
+            .withStatus("warning")
+            .withMessage("Could not verify NameID format: " + e.getMessage());
       }
-
-      // Validate callback URL format
-      String callbackUrl = samlConfig.getSp().getCallback();
-      try {
-        new URL(callbackUrl); // Basic URL validation
-      } catch (Exception e) {
-        return new ValidationResult()
-            .withComponent("saml-request-generation")
-            .withStatus("failed")
-            .withMessage("Invalid callback URL format: " + e.getMessage());
-      }
-
-      // Note: We could integrate with OneLogin SAML library here to actually generate a request
-      // but that would require additional dependencies and mock objects
-
-      return new ValidationResult()
-          .withComponent("saml-request-generation")
-          .withStatus("success")
-          .withMessage("SAML request generation validation passed");
-
     } catch (Exception e) {
       return new ValidationResult()
-          .withComponent("saml-request-generation")
+          .withComponent("saml-nameid-azure")
           .withStatus("failed")
-          .withMessage("SAML request generation test failed: " + e.getMessage());
+          .withMessage("Azure NameID validation failed: " + e.getMessage());
     }
   }
 }
