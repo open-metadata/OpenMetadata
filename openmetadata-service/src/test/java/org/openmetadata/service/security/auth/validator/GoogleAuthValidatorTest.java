@@ -86,8 +86,10 @@ public class GoogleAuthValidatorTest {
 
     ValidationResult result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
-    // The validator doesn't check secret, only format and discovery URI
-    assertEquals("success", result.getStatus());
+    // The validator requires both client ID and secret for confidential clients
+    assertEquals("failed", result.getStatus());
+    assertEquals("google-credentials", result.getComponent());
+    assertTrue(result.getMessage().contains("Client ID and Client Secret are required"));
   }
 
   @Test
@@ -96,10 +98,12 @@ public class GoogleAuthValidatorTest {
     authConfig.setClientType(ClientType.CONFIDENTIAL);
     oidcConfig.setId("123456789012-abcdefghijklmnopqrstuvwxyz012345.apps.googleusercontent.com");
     oidcConfig.setSecret("short");
+    oidcConfig.setCallbackUrl("http://localhost:8585/callback/google");
 
     ValidationResult result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
-    // The validator doesn't check secret length, only format and discovery URI
-    assertEquals("success", result.getStatus());
+    // The validator will try to validate the credentials and likely fail due to invalid secret
+    assertEquals("failed", result.getStatus());
+    assertEquals("google-credentials", result.getComponent());
   }
 }

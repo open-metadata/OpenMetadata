@@ -74,19 +74,21 @@ class OktaAuthValidatorTest {
 
   @Test
   void testMissingDiscoveryUriAndValidServerUrl() {
-    // Test fallback to serverUrl when it contains "okta"
+    // Test case where discoveryUri is missing - should fail
     oidcConfig.setServerUrl("https://company.okta.com");
     oidcConfig.setSecret("test-secret-12345678901234567890");
 
     ValidationResult result = validator.validateOktaConfiguration(authConfig, oidcConfig);
 
     assertNotNull(result);
-    // Should use the Okta serverUrl, not fail
+    // Should fail because discoveryUri is required
+    assertEquals("failed", result.getStatus());
+    assertTrue(result.getMessage().contains("Unable to extract Okta domain"));
   }
 
   @Test
   void testMissingDiscoveryUriAndInvalidServerUrl() {
-    // Test case where serverUrl is not an Okta domain (e.g., localhost)
+    // Test case where discoveryUri is missing - should fail regardless of serverUrl
     oidcConfig.setServerUrl("http://localhost:8585");
 
     ValidationResult result = validator.validateOktaConfiguration(authConfig, oidcConfig);
