@@ -6,8 +6,21 @@
   "type": "object",
   "properties": {
     "newValue": {
-      "description": "The new value object that needs to be updated to resolve the task.",
+      "description": "The new value object that needs to be updated to resolve the task. Used for backward compatibility.",
       "type": "string"
+    },
+    "fieldUpdates": {
+      "description": "Map of field names to their new values for structured task resolution.",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "resolution": {
+      "description": "The resolution action for the task.",
+      "type": "string",
+      "enum": ["approve", "reject"],
+      "default": "approve"
     },
     "testCaseFailureReason": {
       "description": "Reason of Test Case resolution.",
@@ -18,6 +31,5 @@
         "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     }
   },
-  "required": ["newValue"],
   "additionalProperties": false
 }

@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 /**
- * Sets the GlossaryTerm Status to the configured value.
+ * Rolls back an entity to its previous approved version. Always rolls back to the most
+ * recent 'Approved' status.
  */
-export interface SetGlossaryTermStatusTask {
+export interface RollbackEntityTask {
     config?: NodeConfiguration;
     /**
      * Description of the Node.
@@ -28,31 +29,14 @@ export interface SetGlossaryTermStatusTask {
     /**
      * Name that identifies this Node.
      */
-    name?:    string;
-    subType?: string;
-    type?:    string;
-    [property: string]: any;
+    name:                string;
+    output?:             string[];
+    outputNamespaceMap?: { [key: string]: string };
+    subType?:            string;
+    type?:               string;
 }
 
 export interface NodeConfiguration {
-    /**
-     * Choose which Status to apply to the Glossary Term
-     */
-    glossaryTermStatus: EntityStatus;
-}
-
-/**
- * Choose which Status to apply to the Glossary Term
- *
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 export interface InputNamespaceMap {

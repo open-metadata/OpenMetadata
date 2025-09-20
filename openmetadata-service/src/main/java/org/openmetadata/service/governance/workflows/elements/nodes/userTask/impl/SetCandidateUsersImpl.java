@@ -1,5 +1,7 @@
 package org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl;
 
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
@@ -13,6 +15,7 @@ import org.flowable.engine.delegate.TaskListener;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.resources.feeds.MessageParser;
 
 @Slf4j
 public class SetCandidateUsersImpl implements TaskListener {
@@ -26,7 +29,20 @@ public class SetCandidateUsersImpl implements TaskListener {
           JsonUtils.readOrConvertValue(
               delegateTask.getVariable(assigneesVarNameExpr.getValue(delegateTask).toString()),
               List.class);
-      delegateTask.addCandidateUsers(assignees);
+
+      for (String linkString : assignees) {
+        try {
+          MessageParser.EntityLink link = MessageParser.EntityLink.parse(linkString);
+          switch (link.getEntityType()) {
+            case USER -> delegateTask.addCandidateUser(linkString);
+            case TEAM -> delegateTask.addCandidateGroup(linkString);
+            default -> delegateTask.addCandidateUser(linkString);
+          }
+        } catch (Exception e) {
+          // Fallback to treating as user id
+          delegateTask.addCandidateUser(linkString);
+        }
+      }
     } catch (Exception exc) {
       LOG.error(
           String.format(

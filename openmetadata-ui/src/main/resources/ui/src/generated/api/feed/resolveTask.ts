@@ -15,9 +15,18 @@
  */
 export interface ResolveTask {
     /**
-     * The new value object that needs to be updated to resolve the task.
+     * Map of field names to their new values for structured task resolution.
      */
-    newValue: string;
+    fieldUpdates?: { [key: string]: string };
+    /**
+     * The new value object that needs to be updated to resolve the task. Used for backward
+     * compatibility.
+     */
+    newValue?: string;
+    /**
+     * The resolution action for the task.
+     */
+    resolution?: Resolution;
     /**
      * Reason of Test Case resolution.
      */
@@ -26,6 +35,14 @@ export interface ResolveTask {
      * Fully qualified name of the test case.
      */
     testCaseFQN?: string;
+}
+
+/**
+ * The resolution action for the task.
+ */
+export enum Resolution {
+    Approve = "approve",
+    Reject = "reject",
 }
 
 /**

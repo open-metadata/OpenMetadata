@@ -8,12 +8,13 @@
   "enum": [
     "userApprovalTask",
     "checkEntityAttributesTask",
-    "setEntityCertificationTask",
-    "setGlossaryTermStatusTask",
+    "setEntityAttributeTask",
     "endEvent",
     "startEvent",
     "createAndRunIngestionPipelineTask",
     "runAppTask",
+    "rollbackEntityTask",
+    "dataCompletenessTask",
     "parallelGateway"
   ]
 }
