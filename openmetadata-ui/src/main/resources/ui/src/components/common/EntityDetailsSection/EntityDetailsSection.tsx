@@ -33,12 +33,7 @@ const EntityDetailsSection: React.FC<EntityDetailsSectionProps> = ({
   const entityDetails = useMemo(() => {
     return getEntityChildDetailsV1(
       entityType,
-      entityType === EntityType.DASHBOARD
-        ? ({
-            ...dataAsset,
-            charts: [],
-          } as unknown as SearchedDataProps['data'][number]['_source'])
-        : dataAsset,
+      dataAsset,
       highlights,
       isLoading
     );

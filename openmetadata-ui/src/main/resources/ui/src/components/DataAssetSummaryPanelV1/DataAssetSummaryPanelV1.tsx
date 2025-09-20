@@ -454,9 +454,60 @@ export const DataAssetSummaryPanelV1 = ({
             </div>
           </>
         );
+      case EntityType.DATA_PRODUCT:
+        return (
+          <>
+            <DescriptionSection
+              description={dataAsset.description}
+              onDescriptionUpdate={handleDescriptionUpdate}
+            />
+            <div className="section-container">
+              <OwnersSection
+                entityId={dataAsset.id}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                key={`owners-${dataAsset.id}-${
+                  (dataAsset.owners as EntityReference[])?.length || 0
+                }`}
+                owners={dataAsset.owners as EntityReference[]}
+                onOwnerUpdate={onOwnerUpdate}
+              />
+            </div>
+            <div className="section-container">
+              <DomainsSection
+                domains={dataAsset.domains}
+                entityFqn={dataAsset.fullyQualifiedName}
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                key={`domains-${dataAsset.id}-${
+                  (dataAsset.domains as EntityReference[])?.length || 0
+                }`}
+                onDomainUpdate={onDomainUpdate}
+              />
+            </div>
+            <div className="section-container">
+              <TagsSection
+                entityId={dataAsset.id}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                key={`tags-${dataAsset.id}-${
+                  (dataAsset.tags as unknown[])?.length || 0
+                }`}
+                tags={dataAsset.tags?.filter(
+                  (tag: any) => tag.source !== TagSource.Glossary
+                )}
+                onTagsUpdate={onTagsUpdate}
+              />
+            </div>
+          </>
+        );
       case EntityType.GLOSSARY_TERM:
       case EntityType.TAG:
-      case EntityType.DATA_PRODUCT:
       default:
         return null;
     }

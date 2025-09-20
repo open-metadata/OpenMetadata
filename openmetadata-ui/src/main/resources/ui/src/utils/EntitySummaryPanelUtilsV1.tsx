@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Row, Typography } from 'antd';
+import { Button, Col, Row, Segmented, Table, Typography } from 'antd';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FieldCard } from '../components/common/FieldCard';
@@ -18,10 +18,11 @@ import Loader from '../components/common/Loader/Loader';
 import { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
 import { PAGE_SIZE_LARGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
-import { Column, Table } from '../generated/entity/data/table';
+import { Column, Table as TableEntity } from '../generated/entity/data/table';
+import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { getDataModelColumnsByFQN } from '../rest/dataModelsAPI';
-import { getTableColumnsByFQN } from '../rest/tableAPI';
+import { getTableColumnsByFQN, getTableList } from '../rest/tableAPI';
 import { t } from './i18next/LocalUtil';
 
 const { Text } = Typography;
@@ -40,8 +41,30 @@ export const getEntityChildDetailsV1 = (
 
       return (
         <SchemaFieldCardsV1
-          entityInfo={entityInfo as Table}
+          entityInfo={entityInfo as TableEntity}
           entityType={entityType}
+          highlights={highlights}
+          loading={loading}
+        />
+      );
+
+    case EntityType.DATABASE_SCHEMA:
+      heading = t('label.table-plural');
+
+      return (
+        <DatabaseSchemaTablesV1
+          entityInfo={entityInfo as any}
+          highlights={highlights}
+          loading={loading}
+        />
+      );
+
+    case EntityType.DASHBOARD:
+      heading = t('label.chart-plural');
+
+      return (
+        <DashboardChartsV1
+          entityInfo={entityInfo as any}
           highlights={highlights}
           loading={loading}
         />
@@ -94,6 +117,28 @@ export const getEntityChildDetailsV1 = (
         />
       );
 
+    case EntityType.API_ENDPOINT:
+      heading = t('label.schema');
+
+      return (
+        <APIEndpointSchemaV1
+          entityInfo={entityInfo as any}
+          highlights={highlights}
+          loading={loading}
+        />
+      );
+
+    case EntityType.DATABASE:
+      heading = t('label.schema-plural');
+
+      return (
+        <DatabaseSchemasV1
+          entityInfo={entityInfo as any}
+          highlights={highlights}
+          loading={loading}
+        />
+      );
+
     default:
       return null;
   }
@@ -101,7 +146,7 @@ export const getEntityChildDetailsV1 = (
 
 // Component for Table and Dashboard Data Model schema fields
 const SchemaFieldCardsV1: React.FC<{
-  entityInfo: Table | any;
+  entityInfo: TableEntity | any;
   entityType: EntityType;
   highlights?: Record<string, string[]>;
   loading?: boolean;
@@ -341,6 +386,377 @@ const ContainerFieldCardsV1: React.FC<{
                 glossaryTerms={column.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={column.tags}
+              />
+            </Col>
+          );
+        })}
+      </Row>
+    </div>
+  );
+};
+
+// Component for Database Schema tables
+const DatabaseSchemaTablesV1: React.FC<{
+  entityInfo: any;
+  highlights?: Record<string, string[]>;
+  loading?: boolean;
+}> = ({ entityInfo, highlights, loading }) => {
+  const [tables, setTables] = useState<TableEntity[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [hasInitialized, setHasInitialized] = useState<boolean>(false);
+  const fqn = entityInfo.fullyQualifiedName ?? '';
+
+  const fetchPaginatedTables = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data } = await getTableList({
+        databaseSchema: fqn,
+        limit: PAGE_SIZE_LARGE,
+        fields: 'tags,owners,domains,dataProducts',
+        include: Include.NonDeleted,
+      });
+
+      setTables(data);
+      setHasInitialized(true);
+    } catch (error) {
+      setTables([]);
+      setHasInitialized(true);
+      // eslint-disable-next-line no-console
+      console.error('Error fetching tables:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fqn]);
+
+  useEffect(() => {
+    fetchPaginatedTables();
+
+    return () => {
+      setTables([]);
+      setIsLoading(false);
+      setHasInitialized(false);
+    };
+  }, [fetchPaginatedTables]);
+
+  const loadMoreBtn = useMemo(() => {
+    // For now, we fetch all tables at once, so no load more button needed
+    // This can be enhanced later with proper cursor-based pagination
+    return null;
+  }, []);
+
+  if (loading || (isLoading && !hasInitialized)) {
+    return (
+      <div className="flex-center p-lg">
+        <Loader size="default" />
+      </div>
+    );
+  }
+
+  if (isEmpty(tables) && hasInitialized) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+      </div>
+    );
+  }
+
+  // If not initialized yet, show loading
+  if (!hasInitialized) {
+    return (
+      <div className="flex-center p-lg">
+        <Loader size="default" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="schema-field-cards-container">
+      <Row>
+        {tables.map((table) => {
+          const isHighlighted = highlights?.table?.includes(table.name);
+
+          return (
+            <Col key={table.name} span={24}>
+              <FieldCard
+                dataType={table.tableType || 'Table'}
+                description={table.description}
+                fieldName={table.name}
+                isHighlighted={isHighlighted}
+                tags={table.tags}
+              />
+            </Col>
+          );
+        })}
+      </Row>
+      {loadMoreBtn}
+    </div>
+  );
+};
+
+// Component for Dashboard charts
+const DashboardChartsV1: React.FC<{
+  entityInfo: any;
+  highlights?: Record<string, string[]>;
+  loading?: boolean;
+}> = ({ entityInfo, highlights, loading }) => {
+  const charts = entityInfo.charts || [];
+
+  if (loading) {
+    return (
+      <div className="flex-center p-lg">
+        <Loader size="default" />
+      </div>
+    );
+  }
+
+  if (isEmpty(charts)) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+      </div>
+    );
+  }
+
+  return (
+    <div className="schema-field-cards-container">
+      <Row>
+        {charts.map((chart: any) => {
+          const isHighlighted = highlights?.chart?.includes(chart.name);
+
+          return (
+            <Col key={chart.id} span={24}>
+              <FieldCard
+                dataType="Chart"
+                description={chart.description}
+                fieldName={chart.displayName || chart.name}
+                isHighlighted={isHighlighted}
+                tags={chart.tags}
+              />
+            </Col>
+          );
+        })}
+      </Row>
+    </div>
+  );
+};
+
+// Component for API Endpoint schema fields
+const APIEndpointSchemaV1: React.FC<{
+  entityInfo: any;
+  highlights?: Record<string, string[]>;
+  loading?: boolean;
+}> = ({ entityInfo, highlights, loading }) => {
+  const [viewType, setViewType] = useState<
+    'request-schema' | 'response-schema'
+  >('request-schema');
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+
+  const requestSchemaFields = entityInfo.requestSchema?.schemaFields || [];
+  const responseSchemaFields = entityInfo.responseSchema?.schemaFields || [];
+
+  const viewTypeOptions = [
+    {
+      label: t('label.request'),
+      value: 'request-schema',
+    },
+    {
+      label: t('label.response'),
+      value: 'response-schema',
+    },
+  ];
+
+  const activeSchemaFields = useMemo(() => {
+    return viewType === 'request-schema'
+      ? requestSchemaFields
+      : responseSchemaFields;
+  }, [viewType, requestSchemaFields, responseSchemaFields]);
+
+  // Get all row keys for expandable functionality
+  const getAllRowKeys = (fields: any[]): string[] => {
+    const keys: string[] = [];
+    const traverse = (fieldList: any[]) => {
+      fieldList.forEach((field) => {
+        keys.push(field.name);
+        if (field.children && field.children.length > 0) {
+          traverse(field.children);
+        }
+      });
+    };
+    traverse(fields);
+
+    return keys;
+  };
+
+  const allRowKeys = useMemo(
+    () => getAllRowKeys(activeSchemaFields),
+    [activeSchemaFields]
+  );
+
+  const handleExpandedRowsChange = (keys: readonly React.Key[]) => {
+    setExpandedRowKeys(keys as string[]);
+  };
+
+  const handleToggleExpandAll = () => {
+    if (expandedRowKeys.length < allRowKeys.length) {
+      setExpandedRowKeys(allRowKeys);
+    } else {
+      setExpandedRowKeys([]);
+    }
+  };
+
+  const columns = [
+    {
+      title: t('label.name'),
+      dataIndex: 'name',
+      key: 'name',
+      width: 200,
+      render: (name: string, record: any) => (
+        <div className="d-inline-flex w-max-90">
+          <span className="break-word">{record.displayName || name}</span>
+        </div>
+      ),
+    },
+    {
+      title: t('label.type'),
+      dataIndex: 'dataType',
+      key: 'dataType',
+      width: 150,
+      render: (dataType: string, record: any) => (
+        <Typography.Text>
+          {record.dataTypeDisplay || dataType || 'Unknown'}
+        </Typography.Text>
+      ),
+    },
+    {
+      title: t('label.description'),
+      dataIndex: 'description',
+      key: 'description',
+      render: (description: string) => (
+        <div className="break-word">
+          {description || (
+            <span className="text-grey-muted">{t('label.no-description')}</span>
+          )}
+        </div>
+      ),
+    },
+    {
+      title: t('label.tag-plural'),
+      dataIndex: 'tags',
+      key: 'tags',
+      width: 200,
+      render: (tags: any[]) => (
+        <div className="d-flex flex-wrap gap-2">
+          {tags?.map((tag, index) => (
+            <span className="tag-container" key={index}>
+              {tag.displayName || tag.name}
+            </span>
+          )) || <span className="text-grey-muted">{t('label.no-tags')}</span>}
+        </div>
+      ),
+    },
+  ];
+
+  if (loading) {
+    return (
+      <div className="flex-center p-lg">
+        <Loader size="default" />
+      </div>
+    );
+  }
+
+  if (isEmpty(requestSchemaFields) && isEmpty(responseSchemaFields)) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+      </div>
+    );
+  }
+
+  return (
+    <div className="schema-field-cards-container">
+      {/* Schema Type Toggle */}
+      <div className="mb-md p-x-md d-flex p-y-md justify-between items-center">
+        <Segmented
+          className="segment-toggle"
+          options={viewTypeOptions}
+          value={viewType}
+          onChange={(value) =>
+            setViewType(value as 'request-schema' | 'response-schema')
+          }
+        />
+        <Button size="small" type="link" onClick={handleToggleExpandAll}>
+          {expandedRowKeys.length < allRowKeys.length
+            ? t('label.expand-all')
+            : t('label.collapse-all')}
+        </Button>
+      </div>
+
+      {/* Schema Fields Table */}
+      {!isEmpty(activeSchemaFields) ? (
+        <div className="m-l-md">
+          <Table
+            columns={columns}
+            dataSource={activeSchemaFields}
+            expandable={{
+              rowExpandable: (record) => !isEmpty(record.children),
+              onExpandedRowsChange: handleExpandedRowsChange,
+              expandedRowKeys,
+              childrenColumnName: 'children',
+            }}
+            pagination={false}
+            rowKey="name"
+            scroll={{ x: 800 }}
+            size="small"
+          />
+        </div>
+      ) : (
+        <div className="no-data-container m-x-md">
+          <Text className="no-data-text">{t('message.no-data-available')}</Text>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Component for Database schemas
+const DatabaseSchemasV1: React.FC<{
+  entityInfo: any;
+  highlights?: Record<string, string[]>;
+  loading?: boolean;
+}> = ({ entityInfo, highlights, loading }) => {
+  const databaseSchemas = entityInfo.databaseSchemas || [];
+
+  if (loading) {
+    return (
+      <div className="flex-center p-lg">
+        <Loader size="default" />
+      </div>
+    );
+  }
+
+  if (isEmpty(databaseSchemas)) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+      </div>
+    );
+  }
+
+  return (
+    <div className="schema-field-cards-container">
+      <Row>
+        {databaseSchemas.map((schema: any) => {
+          const isHighlighted = highlights?.databaseSchema?.includes(
+            schema.name
+          );
+
+          return (
+            <Col key={schema.id} span={24}>
+              <FieldCard
+                dataType={schema.type || 'Database Schema'}
+                description={schema.description || ''}
+                fieldName={schema.displayName || schema.name}
+                tags={schema.tags || []}
               />
             </Col>
           );

@@ -52,9 +52,11 @@ import { getTopicByFqn, patchTopicDetails } from '../../../rest/topicsAPI';
 import {
   DRAWER_NAVIGATION_OPTIONS,
   getEntityLinkFromType,
+  getEntityName,
 } from '../../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { stringToHTML } from '../../../utils/StringsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import EntityDetailsSection from '../../common/EntityDetailsSection/EntityDetailsSection';
@@ -863,7 +865,7 @@ export default function EntitySummaryPanel({
             <Typography.Text
               className="entity-title-link"
               data-testid="entity-link">
-              {entityDetails.details.name}
+              {stringToHTML(getEntityName(entityDetails.details))}
             </Typography.Text>
           </Tooltip>
           <div className="p-r-md">
