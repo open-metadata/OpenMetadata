@@ -26,8 +26,10 @@ from metadata.sdk.client import OpenMetadata
 from metadata.sdk.entities.csv_operations import BaseCsvExporter, BaseCsvImporter
 
 # Type variables for generic entity types
+# pylint: disable=invalid-name
 TEntity = TypeVar("TEntity", bound=BaseModel)
 TCreateRequest = TypeVar("TCreateRequest", bound=BaseModel)
+# pylint: enable=invalid-name
 
 
 @dataclass
@@ -52,7 +54,6 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
     @abstractmethod
     def entity_type(cls) -> Type[TEntity]:
         """Return the Pydantic entity type this wrapper handles"""
-        pass
 
     @classmethod
     def set_default_client(cls, client: Union[OpenMetadata, OMeta]) -> None:
@@ -188,7 +189,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         after: Optional[str] = None,
         before: Optional[str] = None,
         limit: int = 10,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # pylint: disable=unused-argument
     ) -> ListResponse:
         """
         List entities with pagination.
@@ -272,9 +273,9 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
     def search(
         cls,
         query: str,
-        fields: Optional[List[str]] = None,
+        fields: Optional[List[str]] = None,  # pylint: disable=unused-argument
         size: int = 10,
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Optional[Dict[str, Any]] = None,  # pylint: disable=unused-argument
     ) -> List[TEntity]:
         """
         Search for entities.
@@ -312,12 +313,12 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
 
             def perform_sync_export(self) -> str:
                 """Perform synchronous CSV export"""
-                client = cls._get_client()
+                client = cls._get_client()  # pylint: disable=protected-access
                 return client.export_csv(entity=entity_type, name=name)
 
             def perform_async_export(self) -> str:
                 """Perform asynchronous CSV export"""
-                client = cls._get_client()
+                client = cls._get_client()  # pylint: disable=protected-access
                 return client.export_csv_async(entity=entity_type, name=name)
 
         return EntityCsvExporter(cls._get_client(), name)
@@ -340,7 +341,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
 
             def perform_sync_import(self) -> Dict[str, Any]:
                 """Perform synchronous CSV import"""
-                client = cls._get_client()
+                client = cls._get_client()  # pylint: disable=protected-access
                 return client.import_csv(
                     entity=entity_type,
                     name=name,
@@ -350,7 +351,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
 
             def perform_async_import(self) -> str:
                 """Perform asynchronous CSV import"""
-                client = cls._get_client()
+                client = cls._get_client()  # pylint: disable=protected-access
                 return client.import_csv_async(
                     entity=entity_type,
                     name=name,
@@ -478,7 +479,9 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         Returns:
             CustomPropertyUpdater instance for fluent configuration
         """
+        # pylint: disable=import-outside-toplevel,cyclic-import
         from metadata.sdk.entities.custom_properties import CustomProperties
+        # pylint: enable=import-outside-toplevel,cyclic-import
 
         return CustomProperties.update(cls.entity_type(), entity_id, cls._get_client())
 
@@ -493,7 +496,9 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         Returns:
             CustomPropertyUpdater instance for fluent configuration
         """
+        # pylint: disable=import-outside-toplevel,cyclic-import
         from metadata.sdk.entities.custom_properties import CustomProperties
+        # pylint: enable=import-outside-toplevel,cyclic-import
 
         return CustomProperties.update_by_name(
             cls.entity_type(), entity_name, cls._get_client()
