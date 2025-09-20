@@ -110,6 +110,26 @@ export const DATA_ASSETS = [
     label: 'api endpoints',
     indexType: 'api_endpoint_search_index',
   },
+  {
+    key: 'directory',
+    label: 'directories',
+    indexType: 'directory_search_index',
+  },
+  {
+    key: 'file',
+    label: 'files',
+    indexType: 'file_search_index',
+  },
+  {
+    key: 'spreadsheet',
+    label: 'spreadsheets',
+    indexType: 'spreadsheet_search_index',
+  },
+  {
+    key: 'worksheet',
+    label: 'worksheets',
+    indexType: 'worksheet_search_index',
+  },
 ];
 
 export const DATA_ASSETS_SORT = [

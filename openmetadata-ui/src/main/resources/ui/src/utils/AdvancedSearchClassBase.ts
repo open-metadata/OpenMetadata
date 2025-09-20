@@ -567,6 +567,107 @@ class AdvancedSearchClassBase {
   };
 
   /**
+   * Fields specific to directories
+   */
+  directorySearchQueryBuilderFields: Fields = {
+    [EntityFields.PARENT]: {
+      label: t('label.entity-parent', { entity: t('label.directory') }),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to files
+   */
+  fileSearchQueryBuilderFields: Fields = {
+    [EntityFields.DIRECTORY]: {
+      label: t('label.directory'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.FILE_EXTENSION]: {
+      label: t('label.file-extension'),
+      type: 'text',
+      mainWidgetProps: this.mainWidgetProps,
+    },
+    [EntityFields.FILE_TYPE]: {
+      label: t('label.file-type'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.FILE_SEARCH_INDEX,
+          entityField: EntityFields.FILE_TYPE,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to spreadsheets
+   */
+  spreadsheetSearchQueryBuilderFields: Fields = {
+    [EntityFields.DIRECTORY]: {
+      label: t('label.directory'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.DIRECTORY_SEARCH_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+    [EntityFields.LAST_MODIFIED_BY]: {
+      label: t('label.last-modified-by'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.USER,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
+   * Fields specific to spreadsheets
+   */
+  worksheetSearchQueryBuilderFields: Fields = {
+    [EntityFields.SPREADSHEET]: {
+      label: t('label.spreadsheet'),
+      type: 'select',
+      mainWidgetProps: this.mainWidgetProps,
+      fieldSettings: {
+        asyncFetch: this.autocomplete({
+          searchIndex: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+          entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+        }),
+        useAsyncSearch: true,
+      },
+    },
+  };
+
+  /**
    * Overriding default configurations.
    * Basic attributes that fields inherit from.
    */
@@ -919,6 +1020,13 @@ class AdvancedSearchClassBase {
       [SearchIndex.GLOSSARY_TERM]: this.glossaryTermQueryBuilderFields,
       [SearchIndex.DATABASE_SCHEMA]: this.databaseSchemaQueryBuilderFields,
       [SearchIndex.STORED_PROCEDURE]: this.storedProcedureQueryBuilderFields,
+      [SearchIndex.DIRECTORY_SEARCH_INDEX]:
+        this.directorySearchQueryBuilderFields,
+      [SearchIndex.FILE_SEARCH_INDEX]: this.fileSearchQueryBuilderFields,
+      [SearchIndex.SPREADSHEET_SEARCH_INDEX]:
+        this.spreadsheetSearchQueryBuilderFields,
+      [SearchIndex.WORKSHEET_SEARCH_INDEX]:
+        this.worksheetSearchQueryBuilderFields,
       [SearchIndex.ALL]: {
         ...this.tableQueryBuilderFields,
         ...this.pipelineQueryBuilderFields,
@@ -929,6 +1037,10 @@ class AdvancedSearchClassBase {
         ...this.searchIndexQueryBuilderFields,
         ...this.dataModelQueryBuilderFields,
         ...this.apiEndpointQueryBuilderFields,
+        ...this.directorySearchQueryBuilderFields,
+        ...this.fileSearchQueryBuilderFields,
+        ...this.spreadsheetSearchQueryBuilderFields,
+        ...this.worksheetSearchQueryBuilderFields,
       },
       [SearchIndex.DATA_ASSET]: {
         ...this.tableQueryBuilderFields,
@@ -941,6 +1053,10 @@ class AdvancedSearchClassBase {
         ...this.dataModelQueryBuilderFields,
         ...this.apiEndpointQueryBuilderFields,
         ...this.glossaryTermQueryBuilderFields,
+        ...this.directorySearchQueryBuilderFields,
+        ...this.fileSearchQueryBuilderFields,
+        ...this.spreadsheetSearchQueryBuilderFields,
+        ...this.worksheetSearchQueryBuilderFields,
       },
     };
 

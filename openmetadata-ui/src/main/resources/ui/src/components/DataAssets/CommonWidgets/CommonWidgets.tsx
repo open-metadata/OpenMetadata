@@ -22,11 +22,13 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { Dashboard } from '../../../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../../../generated/entity/data/dashboardDataModel';
+import { Directory } from '../../../generated/entity/data/directory';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Mlmodel } from '../../../generated/entity/data/mlmodel';
 import { Pipeline } from '../../../generated/entity/data/pipeline';
 import { SearchIndex } from '../../../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../../../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../../../generated/entity/data/storedProcedure';
 import { Table } from '../../../generated/entity/data/table';
 import { Topic } from '../../../generated/entity/data/topic';
@@ -176,7 +178,13 @@ export const CommonWidgets = ({
         return (data as unknown as Glossary).termCount === 0;
       case EntityType.DOMAIN:
       case EntityType.METRIC:
+      case EntityType.FILE:
+      case EntityType.WORKSHEET:
         return true;
+      case EntityType.DIRECTORY:
+        return isEmpty((data as unknown as Directory).children);
+      case EntityType.SPREADSHEET:
+        return isEmpty((data as unknown as Spreadsheet).worksheets);
       default:
         return false;
     }

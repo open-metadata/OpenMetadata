@@ -156,7 +156,8 @@ test.describe('Curated Assets Widget', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        'Display Name'
+        'Display Name',
+        true
       );
 
       await selectOption(
@@ -260,7 +261,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
 
     await selectOption(
@@ -335,7 +337,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
     await selectOption(
       page,
@@ -352,7 +355,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
     await selectOption(
       page,
@@ -439,7 +443,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
     await selectOption(
       page,
@@ -457,7 +462,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Display Name'
+      'Display Name',
+      true
     );
     await selectOption(
       page,
@@ -560,7 +566,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
     await selectOption(
       page,

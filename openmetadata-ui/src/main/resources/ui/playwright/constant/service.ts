@@ -25,6 +25,7 @@ export const SERVICE_TYPE = {
   Metadata: GlobalSettingOptions.METADATA,
   StoredProcedure: GlobalSettingOptions.STORED_PROCEDURES,
   ApiService: GlobalSettingOptions.APIS,
+  DriveService: GlobalSettingOptions.DRIVES,
 };
 export const FollowSupportedServices = [
   EntityTypeEndpoint.DatabaseService,

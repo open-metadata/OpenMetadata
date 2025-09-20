@@ -14,6 +14,7 @@ import { expect } from '@playwright/test';
 import { Page } from 'playwright';
 import { EXPECTED_BUCKETS } from '../constant/explore';
 import { getApiContext } from './common';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export interface Bucket {
   key: string;
@@ -37,6 +38,8 @@ export const searchAndClickOnOption = async (
   } else {
     testId = filter.value ?? '';
   }
+
+  await waitForAllLoadersToDisappear(page);
 
   await page.getByTestId(testId).click();
 
