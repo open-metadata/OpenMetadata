@@ -111,14 +111,15 @@ class SaphanaLineageSource(Source):
 
                     if filter_by_table(
                         self.source_config.tableFilterPattern,
-                        lineage_model.object_name,
+                        lineage_model.name,
                     ):
                         self.status.filter(
-                            lineage_model.object_name,
+                            lineage_model.name,
                             "View Object Filtered Out",
                         )
                         continue
 
+                    logger.debug(f"Processing lineage for view: {lineage_model.name}")
                     yield from self.parse_cdata(
                         metadata=self.metadata, lineage_model=lineage_model
                     )
@@ -156,11 +157,11 @@ class SaphanaLineageSource(Source):
         except Exception as exc:
             error = (
                 f"Error parsing CDATA XML for {lineage_model.object_suffix} at "
-                + f"{lineage_model.package_id}/{lineage_model.object_name} due to [{exc}]"
+                + f"{lineage_model.name} due to [{exc}]"
             )
             self.status.failed(
                 error=StackTraceError(
-                    name=lineage_model.object_name,
+                    name=lineage_model.name,
                     error=error,
                     stackTrace=traceback.format_exc(),
                 )
