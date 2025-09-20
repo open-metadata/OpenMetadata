@@ -246,38 +246,6 @@ class TestSDKFluentAPI:
         assert created_term.name == "customer"
 
     @patch.object(Tables, "_get_client")
-    def test_tables_update_with_patch(self, mock_get_client):
-        """Test updating a table using the automatic PATCH generation"""
-        mock_get_client.return_value = self.mock_ometa
-
-        # Arrange - Current state
-        current_table = MagicMock(spec=Table)
-        current_table.id = self.table_id
-        current_table.name = "test_table"
-        current_table.description = "Old description"
-        current_table.displayName = "Old Display Name"
-
-        # Modified state
-        modified_table = MagicMock(spec=Table)
-        modified_table.id = self.table_id
-        modified_table.name = "test_table"
-        modified_table.description = "New description"
-        modified_table.displayName = "New Display Name"
-
-        self.mock_ometa.get_by_id.return_value = current_table
-        self.mock_ometa.patch.return_value = modified_table
-
-        # Act
-        result = Tables.update(modified_table)
-
-        # Assert
-        self.mock_ometa.get_by_id.assert_called_once_with(
-            entity=Table, entity_id=str(self.table_id)
-        )
-        # Should have generated and applied a patch
-        self.mock_ometa.patch.assert_called_once()
-
-    @patch.object(DatabaseSchemas, "_get_client")
     def test_database_schemas_search(self, mock_get_client):
         """Test searching database schemas using DatabaseSchemas SDK"""
         mock_get_client.return_value = self.mock_ometa

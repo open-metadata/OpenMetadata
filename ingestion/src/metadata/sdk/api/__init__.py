@@ -1,8 +1,7 @@
 """
 OpenMetadata SDK API modules
 """
-from metadata.sdk.api.bulk import Bulk
 from metadata.sdk.api.lineage import Lineage
 from metadata.sdk.api.search import Search
 
-__all__ = ["Search", "Lineage", "Bulk"]
+__all__ = ["Search", "Lineage"]

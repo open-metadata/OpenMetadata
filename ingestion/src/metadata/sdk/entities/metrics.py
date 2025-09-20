@@ -64,4 +64,5 @@ class Metrics(BaseEntity[Metric, CreateMetricRequest]):
                 modified_metric.relatedMetrics.append(related_ref)
 
         # Apply patch using proper method signature
-        return client.patch(entity=Metric, source=metric, destination=modified_metric)
+        result = client.patch(entity=Metric, source=metric, destination=modified_metric)
+        return result  # type: ignore

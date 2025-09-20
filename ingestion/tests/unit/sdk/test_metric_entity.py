@@ -139,29 +139,6 @@ class TestMetricEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_metric(self):
-        """Test patching a metric"""
-        json_patch = [
-            {"op": "replace", "path": "/metricType", "value": "COUNT"},
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "KPI.Revenue"}},
-            {"op": "replace", "path": "/granularity", "value": "Week"},
-        ]
-
-        patched_metric = MagicMock(spec=MetricEntity)
-        patched_metric.id = UUID(self.metric_id)
-        patched_metric.metricType = MetricType.COUNT
-        patched_metric.granularity = MetricGranularity.WEEK
-
-        self.mock_ometa.patch.return_value = patched_metric
-
-        result = Metrics.patch(self.metric_id, json_patch)
-
-        self.assertEqual(result.metricType, MetricType.COUNT)
-        self.assertEqual(result.granularity, MetricGranularity.WEEK)
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=MetricEntity, entity_id=self.metric_id, json_patch=json_patch
-        )
-
     def test_delete_metric(self):
         """Test deleting a metric"""
         Metrics.delete(self.metric_id, recursive=False, hard_delete=False)
@@ -291,25 +268,6 @@ class TestMetricEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_update_metric_type(self):
-        """Test updating metric type"""
-        new_type = "SUM"
-
-        expected_patch = [{"op": "replace", "path": "/metricType", "value": new_type}]
-
-        updated_metric = MagicMock(spec=MetricEntity)
-        updated_metric.id = UUID(self.metric_id)
-        updated_metric.metricType = MetricType.SUM
-
-        self.mock_ometa.patch.return_value = updated_metric
-
-        result = Metrics.patch(self.metric_id, expected_patch)
-
-        self.assertEqual(result.metricType, MetricType.SUM)
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=MetricEntity, entity_id=self.metric_id, json_patch=expected_patch
-        )
-
     def test_export_metrics_csv(self):
         """Test exporting metrics to CSV"""
         csv_data = "id,name,type,formula\n123,revenue,Percentage,SUM(revenue)"
@@ -354,16 +312,6 @@ class TestMetricEntity(unittest.TestCase):
         self.assertIsNotNone(result.dimensions)
         self.assertEqual(len(result.dimensions), 3)
         self.assertIn("region", result.dimensions)
-
-    def test_error_handling_invalid_formula(self):
-        """Test error handling for invalid formula"""
-        invalid_patch = [{"op": "replace", "path": "/metricType", "value": "INVALID"}]
-        self.mock_ometa.patch.side_effect = ValueError("Invalid metric type")
-
-        with self.assertRaises(ValueError) as context:
-            Metrics.patch(self.metric_id, invalid_patch)
-
-        self.assertIn("Invalid metric type", str(context.exception))
 
 
 if __name__ == "__main__":

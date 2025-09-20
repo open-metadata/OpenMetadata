@@ -138,29 +138,6 @@ class TestChartEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_chart(self):
-        """Test patching a chart"""
-        json_patch = [
-            {"op": "add", "path": "/description", "value": "Patched description"},
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Verified.Yes"}},
-            {"op": "replace", "path": "/chartType", "value": "Bar"},
-        ]
-
-        patched_chart = MagicMock(spec=ChartEntity)
-        patched_chart.id = UUID(self.chart_id)
-        patched_chart.description = "Patched description"
-        patched_chart.chartType = ChartType.Bar
-
-        self.mock_ometa.patch.return_value = patched_chart
-
-        result = Charts.patch(self.chart_id, json_patch)
-
-        self.assertEqual(result.description, "Patched description")
-        self.assertEqual(result.chartType, ChartType.Bar)
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=ChartEntity, entity_id=self.chart_id, json_patch=json_patch
-        )
-
     def test_delete_chart(self):
         """Test deleting a chart"""
         Charts.delete(self.chart_id, recursive=False, hard_delete=False)
@@ -363,16 +340,6 @@ class TestChartEntity(unittest.TestCase):
             Charts.retrieve("non-existent-id")
 
         self.assertIn("Chart not found", str(context.exception))
-
-    def test_error_handling_invalid_patch(self):
-        """Test error handling for invalid patch operation"""
-        invalid_patch = [{"op": "invalid", "path": "/test"}]
-        self.mock_ometa.patch.side_effect = ValueError("Invalid patch operation")
-
-        with self.assertRaises(ValueError) as context:
-            Charts.patch(self.chart_id, invalid_patch)
-
-        self.assertIn("Invalid patch operation", str(context.exception))
 
 
 if __name__ == "__main__":

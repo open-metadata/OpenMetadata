@@ -5,7 +5,18 @@ Enhanced with improved list operations, CSV import/export with async and WebSock
 """
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, ClassVar, Dict, Generic, List, Optional, Type, TypeVar, Union
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Type,
+    TypeVar,
+    Union,
+    cast,
+)
 from uuid import UUID
 
 from pydantic import BaseModel
@@ -125,7 +136,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
 
         # Get entity ID as string
         entity_id = (
-            str(entity.id.root) if hasattr(entity.id, "root") else str(entity.id)
+            str(entity.id.root) if hasattr(entity.id, "root") else str(entity.id)  # type: ignore
         )
 
         # Following Java SDK pattern:
@@ -142,29 +153,13 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         # The ometa.patch method generates JSON Patch by comparing source and destination
         # source = current state (from server)
         # destination = desired state (modified entity)
-        return client.patch(
+        result = client.patch(
             entity=cls.entity_type(),
             source=current,  # Current state from server
             destination=entity,  # Desired state with changes
             skip_on_failure=False,  # Raise errors for debugging
         )
-
-    @classmethod
-    def patch(cls, entity_id: str, json_patch: List[Dict[str, Any]]) -> TEntity:
-        """
-        Apply JSON Patch operations to an entity.
-
-        Args:
-            entity_id: Entity UUID
-            json_patch: List of JSON Patch operations
-
-        Returns:
-            Patched entity
-        """
-        client = cls._get_client()
-        return client.patch(
-            entity=cls.entity_type(), entity_id=entity_id, json_patch=json_patch
-        )
+        return cast(TEntity, result) if result else entity
 
     @classmethod
     def delete(
@@ -343,13 +338,13 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         class EntityCsvImporter(BaseCsvImporter):
             """CSV importer with entity-specific operations"""
 
-            def perform_sync_import(self) -> Dict:
+            def perform_sync_import(self) -> Dict[str, Any]:
                 """Perform synchronous CSV import"""
                 client = cls._get_client()
                 return client.import_csv(
                     entity=entity_type,
                     name=name,
-                    csv_data=self.csv_data,
+                    csv_data=self.csv_data or "",
                     dry_run=self.dry_run,
                 )
 
@@ -359,14 +354,14 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
                 return client.import_csv_async(
                     entity=entity_type,
                     name=name,
-                    csv_data=self.csv_data,
+                    csv_data=self.csv_data or "",
                     dry_run=self.dry_run,
                 )
 
         return EntityCsvImporter(cls._get_client(), name)
 
     @classmethod
-    def get_versions(cls, entity_id: str) -> Any:
+    def get_versions(cls, entity_id: str) -> List[Any]:
         """
         Get version history for an entity.
 
@@ -374,7 +369,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             entity_id: Entity UUID
 
         Returns:
-            EntityVersionHistory object with list of versions
+            List of entity versions
         """
         client = cls._get_client()
         result = client.get_list_entity_versions(
@@ -382,11 +377,11 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         )
         # Return the versions list if available
         if hasattr(result, "versions"):
-            return result.versions
+            return result.versions  # type: ignore
         return result
 
     @classmethod
-    def get_specific_version(cls, entity_id: str, version: str) -> TEntity:
+    def get_specific_version(cls, entity_id: str, version: str) -> Optional[TEntity]:
         """
         Get a specific version of an entity.
 
@@ -398,12 +393,13 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             Entity at specified version
         """
         client = cls._get_client()
-        return client.get_entity_version(
+        result = client.get_entity_version(
             entity=cls.entity_type(), entity_id=entity_id, version=version
         )
+        return cast(Optional[TEntity], result)
 
     @classmethod
-    def restore(cls, entity_id: str) -> TEntity:
+    def restore(cls, entity_id: str) -> Optional[TEntity]:
         """
         Restore a soft-deleted entity.
 
@@ -423,10 +419,14 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         # Make PUT request to restore endpoint with RestoreEntity body
         restore_body = {"id": entity_id}
         response = client.client.put(f"{entity_endpoint}/restore", data=restore_body)
-        return cls.entity_type()(**response) if response else None
+        if response:
+            return cls.entity_type()(**response)  # type: ignore
+        return None
 
     @classmethod
-    def add_followers(cls, entity_id: str, follower_ids: List[str]) -> TEntity:
+    def add_followers(
+        cls, entity_id: str, follower_ids: List[str]
+    ) -> Optional[TEntity]:
         """
         Add followers to an entity.
 
@@ -442,10 +442,13 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             client.put_follow(
                 entity=cls.entity_type(), entity_id=entity_id, user_id=follower_id
             )
-        return client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
+        result = client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
+        return cast(Optional[TEntity], result)
 
     @classmethod
-    def remove_followers(cls, entity_id: str, follower_ids: List[str]) -> TEntity:
+    def remove_followers(
+        cls, entity_id: str, follower_ids: List[str]
+    ) -> Optional[TEntity]:
         """
         Remove followers from an entity.
 
@@ -461,12 +464,11 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             client.delete_follow(
                 entity=cls.entity_type(), entity_id=entity_id, user_id=follower_id
             )
-        return client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
+        result = client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
+        return cast(Optional[TEntity], result)
 
     @classmethod
-    def update_custom_properties(
-        cls, entity_id: Union[str, UUID]
-    ) -> "CustomPropertyUpdater":
+    def update_custom_properties(cls, entity_id: Union[str, UUID]) -> Any:
         """
         Update custom properties on an entity by ID.
 
@@ -481,9 +483,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         return CustomProperties.update(cls.entity_type(), entity_id, cls._get_client())
 
     @classmethod
-    def update_custom_properties_by_name(
-        cls, entity_name: str
-    ) -> "CustomPropertyUpdater":
+    def update_custom_properties_by_name(cls, entity_name: str) -> Any:
         """
         Update custom properties on an entity by name/FQN.
 

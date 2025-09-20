@@ -95,26 +95,6 @@ class TestQueryEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_query(self):
-        """Test patching a query"""
-        json_patch = [
-            {"op": "add", "path": "/description", "value": "Patched description"},
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Important.High"}},
-        ]
-
-        patched_entity = MagicMock(spec=QueryEntity)
-        patched_entity.id = UUID(self.entity_id)
-        patched_entity.description = "Patched description"
-
-        self.mock_ometa.patch.return_value = patched_entity
-
-        result = Queries.patch(self.entity_id, json_patch)
-
-        self.assertEqual(result.description, "Patched description")
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=QueryEntity, entity_id=self.entity_id, json_patch=json_patch
-        )
-
     def test_delete_query(self):
         """Test deleting a query"""
         Queries.delete(self.entity_id, recursive=True, hard_delete=False)

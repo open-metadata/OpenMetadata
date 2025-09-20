@@ -88,36 +88,6 @@ class TestImprovedTableEntity(unittest.TestCase):
         mock_ometa.get_by_id.assert_called_once()
 
     @patch("metadata.sdk.entities.tables.Tables._get_client")
-    def test_patch_table(self, mock_get_client):
-        """Test patching a table with JSON patch"""
-        # Arrange
-        mock_ometa = MagicMock()
-        mock_get_client.return_value = mock_ometa
-
-        table_id = "550e8400-e29b-41d4-a716-446655440000"
-        json_patch = [
-            {"op": "add", "path": "/description", "value": "Patched description"},
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "PII.Sensitive"}},
-        ]
-
-        patched_table = MagicMock(spec=TableEntity)
-        patched_table.id = UUID(table_id)
-        patched_table.description = "Patched description"
-
-        mock_ometa.patch.return_value = patched_table
-
-        from metadata.sdk.entities.tables import Tables
-
-        # Act
-        result = Tables.patch(table_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.description, "Patched description")
-        mock_ometa.patch.assert_called_once_with(
-            entity=TableEntity, entity_id=table_id, json_patch=json_patch
-        )
-
-    @patch("metadata.sdk.entities.tables.Tables._get_client")
     def test_delete_table(self, mock_get_client):
         """Test deleting a table"""
         # Arrange
@@ -279,31 +249,6 @@ class TestImprovedDashboardEntity(unittest.TestCase):
         self.assertEqual(result.displayName, "Sales Dashboard")
         mock_ometa.create_or_update.assert_called_once()
 
-    @patch("metadata.sdk.entities.dashboards.Dashboards._get_client")
-    def test_patch_dashboard(self, mock_get_client):
-        """Test patching a dashboard"""
-        # Arrange
-        mock_ometa = MagicMock()
-        mock_get_client.return_value = mock_ometa
-
-        dashboard_id = "750e8400-e29b-41d4-a716-446655440000"
-        json_patch = [
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Department.Sales"}}
-        ]
-
-        patched_dashboard = MagicMock(spec=DashboardEntity)
-        patched_dashboard.id = UUID(dashboard_id)
-
-        mock_ometa.patch.return_value = patched_dashboard
-
-        from metadata.sdk.entities.dashboards import Dashboards
-
-        # Act
-        result = Dashboards.patch(dashboard_id, json_patch)
-
-        # Assert
-        mock_ometa.patch.assert_called_once()
-
 
 class TestImprovedPipelineEntity(unittest.TestCase):
     """Tests for improved Pipeline entity operations"""
@@ -392,33 +337,6 @@ class TestImprovedTeamEntity(unittest.TestCase):
         # Assert
         self.assertEqual(result.name, "data-engineering")
         mock_ometa.create_or_update.assert_called_once()
-
-    @patch("metadata.sdk.entities.teams.Teams._get_client")
-    def test_patch_team_add_users(self, mock_get_client):
-        """Test patching team to add users"""
-        # Arrange
-        mock_ometa = MagicMock()
-        mock_get_client.return_value = mock_ometa
-
-        team_id = "350e8400-e29b-41d4-a716-446655440000"
-        json_patch = [
-            {"op": "add", "path": "/users/0", "value": {"id": "user-1"}},
-            {"op": "add", "path": "/users/1", "value": {"id": "user-2"}},
-        ]
-
-        patched_team = MagicMock(spec=TeamEntity)
-        patched_team.userCount = 2
-
-        mock_ometa.patch.return_value = patched_team
-
-        from metadata.sdk.entities.teams import Teams
-
-        # Act
-        result = Teams.patch(team_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.userCount, 2)
-        mock_ometa.patch.assert_called_once()
 
 
 class TestImprovedUserEntity(unittest.TestCase):

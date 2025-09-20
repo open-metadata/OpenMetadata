@@ -95,26 +95,6 @@ class TestDomainEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_domain(self):
-        """Test patching a domain"""
-        json_patch = [
-            {"op": "add", "path": "/description", "value": "Patched description"},
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Important.High"}},
-        ]
-
-        patched_entity = MagicMock(spec=DomainEntity)
-        patched_entity.id = UUID(self.entity_id)
-        patched_entity.description = "Patched description"
-
-        self.mock_ometa.patch.return_value = patched_entity
-
-        result = Domains.patch(self.entity_id, json_patch)
-
-        self.assertEqual(result.description, "Patched description")
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=DomainEntity, entity_id=self.entity_id, json_patch=json_patch
-        )
-
     def test_delete_domain(self):
         """Test deleting a domain"""
         Domains.delete(self.entity_id, recursive=True, hard_delete=False)

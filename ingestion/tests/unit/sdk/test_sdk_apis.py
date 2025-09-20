@@ -1,11 +1,11 @@
 """
-Unit tests for SDK API operations (Search, Lineage, Bulk)
+Unit tests for SDK API operations (Search, Lineage)
 """
 import asyncio
 import unittest
 from unittest.mock import MagicMock
 
-from metadata.sdk.api import Bulk, Lineage, Search
+from metadata.sdk.api import Lineage, Search
 
 
 class TestSDKAPIs(unittest.TestCase):
@@ -19,7 +19,6 @@ class TestSDKAPIs(unittest.TestCase):
         # Set default clients for API classes
         Search._default_client = self.mock_ometa
         Lineage._default_client = self.mock_ometa
-        Bulk._default_client = self.mock_ometa
 
     def test_search_basic(self):
         """Test basic search"""
@@ -140,61 +139,6 @@ class TestSDKAPIs(unittest.TestCase):
 
         self.assertEqual(result, mock_lineage)
 
-    def test_bulk_import_csv(self):
-        """Test bulk CSV import"""
-        mock_response = {"imported": 10}
-        self.mock_ometa.import_csv.return_value = mock_response
-
-        csv_data = "name,description\ntable1,desc1\ntable2,desc2"
-        result = Bulk.import_csv("table", csv_data, dry_run=True)
-
-        self.assertEqual(result["imported"], 10)
-        self.mock_ometa.import_csv.assert_called_once_with(
-            entity_type="table",
-            csv_data=csv_data,
-            dry_run=True,
-        )
-
-    def test_bulk_export_csv(self):
-        """Test bulk CSV export"""
-        mock_csv = "name,description\ntable1,desc1"
-        self.mock_ometa.export_csv.return_value = mock_csv
-
-        result = Bulk.export_csv("table", "test_export")
-
-        self.assertEqual(result, mock_csv)
-        self.mock_ometa.export_csv.assert_called_once_with(
-            entity_type="table",
-            name="test_export",
-        )
-
-    def test_bulk_delete(self):
-        """Test bulk delete"""
-        ids = ["id1", "id2", "id3"]
-
-        # Mock successful deletes
-        self.mock_ometa.delete.return_value = None
-
-        result = Bulk.delete("table", ids, hard_delete=True)
-
-        self.assertEqual(result, ids)
-        self.assertEqual(self.mock_ometa.delete.call_count, 3)
-
-    def test_bulk_builder(self):
-        """Test bulk builder pattern"""
-        mock_csv = "exported data"
-        self.mock_ometa.export_csv.return_value = mock_csv
-
-        result = (
-            Bulk.builder()
-            .entity_type("table")
-            .for_export()
-            .name("export_name")
-            .execute()
-        )
-
-        self.assertEqual(result, mock_csv)
-
     def test_search_async(self):
         """Test async search operations"""
         # Just verify async functions are callable without testing actual async behavior
@@ -215,16 +159,6 @@ class TestSDKAPIs(unittest.TestCase):
         # Verify the methods exist and are callable
         self.assertTrue(asyncio.iscoroutinefunction(Lineage.get_lineage_async))
         self.assertTrue(asyncio.iscoroutinefunction(Lineage.add_lineage_async))
-
-    def test_bulk_async(self):
-        """Test async bulk operations"""
-        # Just verify async functions are callable without testing actual async behavior
-        self.mock_ometa.import_csv.return_value = {}
-        self.mock_ometa.export_csv.return_value = ""
-
-        # Verify the methods exist and are callable
-        self.assertTrue(asyncio.iscoroutinefunction(Bulk.import_csv_async))
-        self.assertTrue(asyncio.iscoroutinefunction(Bulk.export_csv_async))
 
 
 if __name__ == "__main__":

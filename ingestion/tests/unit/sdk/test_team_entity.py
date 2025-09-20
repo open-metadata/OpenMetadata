@@ -158,29 +158,6 @@ class TestTeamEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_team_add_users(self):
-        """Test patching a team to add users"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/users/0", "value": {"id": "user-id-1"}},
-            {"op": "add", "path": "/users/1", "value": {"id": "user-id-2"}},
-        ]
-
-        patched_team = MagicMock(spec=TeamEntity)
-        patched_team.id = UUID(self.team_id)
-        patched_team.userCount = 2
-
-        self.mock_ometa.patch.return_value = patched_team
-
-        # Act
-        result = Teams.patch(self.team_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.userCount, 2)
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=TeamEntity, entity_id=self.team_id, json_patch=json_patch
-        )
-
     def test_delete_team(self):
         """Test deleting a team"""
         # Act

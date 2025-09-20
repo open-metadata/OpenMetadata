@@ -157,33 +157,6 @@ class TestDashboardEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_dashboard(self):
-        """Test patching a dashboard"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Department.Sales"}},
-            {
-                "op": "replace",
-                "path": "/displayName",
-                "value": "Executive Sales Dashboard",
-            },
-        ]
-
-        patched_dashboard = MagicMock(spec=DashboardEntity)
-        patched_dashboard.id = UUID(self.dashboard_id)
-        patched_dashboard.displayName = "Executive Sales Dashboard"
-
-        self.mock_ometa.patch.return_value = patched_dashboard
-
-        # Act
-        result = Dashboards.patch(self.dashboard_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.displayName, "Executive Sales Dashboard")
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=DashboardEntity, entity_id=self.dashboard_id, json_patch=json_patch
-        )
-
     def test_delete_dashboard(self):
         """Test deleting a dashboard"""
         # Act

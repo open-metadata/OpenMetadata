@@ -162,29 +162,6 @@ class TestContainerEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_container(self):
-        """Test patching a container"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "DataLake.Raw"}},
-            {"op": "replace", "path": "/description", "value": "Patched container"},
-        ]
-
-        patched_container = MagicMock(spec=ContainerEntity)
-        patched_container.id = UUID(self.container_id)
-        patched_container.description = "Patched container"
-
-        self.mock_ometa.patch.return_value = patched_container
-
-        # Act
-        result = Containers.patch(self.container_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.description, "Patched container")
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=ContainerEntity, entity_id=self.container_id, json_patch=json_patch
-        )
-
     def test_delete_container(self):
         """Test deleting a container"""
         # Act

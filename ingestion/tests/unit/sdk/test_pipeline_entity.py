@@ -165,27 +165,6 @@ class TestPipelineEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_pipeline(self):
-        """Test patching a pipeline"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Tier.Tier1"}},
-            {"op": "add", "path": "/owner", "value": {"id": "user-id", "type": "user"}},
-        ]
-
-        patched_pipeline = MagicMock(spec=PipelineEntity)
-        patched_pipeline.id = UUID(self.pipeline_id)
-
-        self.mock_ometa.patch.return_value = patched_pipeline
-
-        # Act
-        result = Pipelines.patch(self.pipeline_id, json_patch)
-
-        # Assert
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=PipelineEntity, entity_id=self.pipeline_id, json_patch=json_patch
-        )
-
     def test_delete_pipeline(self):
         """Test deleting a pipeline"""
         # Act

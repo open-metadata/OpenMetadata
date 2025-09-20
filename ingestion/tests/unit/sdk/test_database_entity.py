@@ -156,29 +156,6 @@ class TestDatabaseEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_database(self):
-        """Test patching a database"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/description", "value": "Patched database"},
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Tier.Tier1"}},
-        ]
-
-        patched_database = MagicMock(spec=DatabaseEntity)
-        patched_database.id = UUID(self.database_id)
-        patched_database.description = "Patched database"
-
-        self.mock_ometa.patch.return_value = patched_database
-
-        # Act
-        result = Databases.patch(self.database_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.description, "Patched database")
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=DatabaseEntity, entity_id=self.database_id, json_patch=json_patch
-        )
-
     def test_delete_database(self):
         """Test deleting a database"""
         # Act

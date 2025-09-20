@@ -155,29 +155,6 @@ class TestUserEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_user(self):
-        """Test patching a user"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/isAdmin", "value": True},
-            {"op": "add", "path": "/teams/0", "value": {"id": "team-id"}},
-        ]
-
-        patched_user = MagicMock(spec=UserEntity)
-        patched_user.id = UUID(self.user_id)
-        patched_user.isAdmin = True
-
-        self.mock_ometa.patch.return_value = patched_user
-
-        # Act
-        result = Users.patch(self.user_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.isAdmin, True)
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=UserEntity, entity_id=self.user_id, json_patch=json_patch
-        )
-
     def test_delete_user(self):
         """Test deleting a user"""
         # Act

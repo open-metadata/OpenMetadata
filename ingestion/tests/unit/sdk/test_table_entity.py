@@ -186,36 +186,6 @@ class TestTableEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_table(self):
-        """Test patching a table (PATCH operation)"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/description", "value": "Patched description"},
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "PII.Sensitive"}},
-            {
-                "op": "replace",
-                "path": "/columns/0/description",
-                "value": "Updated column desc",
-            },
-        ]
-
-        patched_table = MagicMock(spec=TableEntity)
-        patched_table.id = UUID(self.table_id)
-        patched_table.name = "test_table"
-        patched_table.description = "Patched description"
-        patched_table.columns = self.columns
-
-        self.mock_ometa.patch.return_value = patched_table
-
-        # Act
-        result = Tables.patch(self.table_id, json_patch)
-
-        # Assert
-        self.assertEqual(result.description, "Patched description")
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=TableEntity, entity_id=self.table_id, json_patch=json_patch
-        )
-
     def test_delete_table(self):
         """Test deleting a table"""
         # Act
@@ -349,18 +319,6 @@ class TestTableEntity(unittest.TestCase):
             Tables.retrieve("non-existent-id")
 
         self.assertIn("Table not found", str(context.exception))
-
-    def test_error_handling_invalid_patch(self):
-        """Test error handling for invalid patch operation"""
-        # Arrange
-        invalid_patch = [{"op": "invalid", "path": "/test"}]
-        self.mock_ometa.patch.side_effect = ValueError("Invalid patch operation")
-
-        # Act & Assert
-        with self.assertRaises(ValueError) as context:
-            Tables.patch(self.table_id, invalid_patch)
-
-        self.assertIn("Invalid patch operation", str(context.exception))
 
 
 if __name__ == "__main__":

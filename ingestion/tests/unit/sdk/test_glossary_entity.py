@@ -123,31 +123,6 @@ class TestGlossaryEntity(unittest.TestCase):
         # Verify patch was called with source and destination
         self.mock_ometa.patch.assert_called_once()
 
-    def test_patch_glossary(self):
-        """Test patching a glossary"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "Department.Finance"}},
-            {
-                "op": "add",
-                "path": "/owner",
-                "value": {"id": "owner-id", "type": "user"},
-            },
-        ]
-
-        patched_glossary = MagicMock(spec=GlossaryEntity)
-        patched_glossary.id = UUID(self.glossary_id)
-
-        self.mock_ometa.patch.return_value = patched_glossary
-
-        # Act
-        result = Glossaries.patch(self.glossary_id, json_patch)
-
-        # Assert
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=GlossaryEntity, entity_id=self.glossary_id, json_patch=json_patch
-        )
-
     def test_delete_glossary(self):
         """Test deleting a glossary"""
         # Act
@@ -314,27 +289,6 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.assertEqual(result.parent.name, "BusinessGlossary.Entity")
         self.assertIsNotNone(result.children)
         self.assertEqual(result.children[0].name, "BusinessGlossary.Customer.Corporate")
-
-    def test_patch_glossary_term(self):
-        """Test patching a glossary term"""
-        # Arrange
-        json_patch = [
-            {"op": "add", "path": "/synonyms/0", "value": "Patron"},
-            {"op": "add", "path": "/tags/0", "value": {"tagFQN": "PII.NonSensitive"}},
-        ]
-
-        patched_term = MagicMock(spec=GlossaryTermEntity)
-        patched_term.id = UUID(self.term_id)
-
-        self.mock_ometa.patch.return_value = patched_term
-
-        # Act
-        result = GlossaryTerms.patch(self.term_id, json_patch)
-
-        # Assert
-        self.mock_ometa.patch.assert_called_once_with(
-            entity=GlossaryTermEntity, entity_id=self.term_id, json_patch=json_patch
-        )
 
     def test_delete_glossary_term(self):
         """Test deleting a glossary term"""
