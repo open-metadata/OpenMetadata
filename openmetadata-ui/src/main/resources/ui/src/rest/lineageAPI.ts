@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { omit } from 'lodash';
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import {
@@ -140,20 +141,17 @@ export const getDataQualityLineage = async (
 
 export const getLineageByEntityCount = async (params: {
   fqn: string;
-  type?: EntityType;
-  direction?: LineageDirection;
-  nodeDepth?: number;
-  from?: number;
-  size?: number;
+  type: EntityType;
+  direction: LineageDirection;
+  nodeDepth: number;
+  from: number;
+  size: number;
   queryFilter?: string;
 }) => {
   const response = await APIClient.get(`lineage/getLineageByEntityCount`, {
     params: {
-      from: 0,
-      size: 10,
-      nodeDepth: 1,
-      direction: LineageDirection.Downstream,
-      ...params,
+      ...omit(params, ['queryFilter']),
+      query_filter: params.queryFilter,
     },
   });
 
@@ -162,22 +160,19 @@ export const getLineageByEntityCount = async (params: {
 
 export const exportLineageByEntityCountAsync = async (params: {
   fqn: string;
-  type?: EntityType;
-  direction?: LineageDirection;
-  nodeDepth?: number;
-  from?: number;
-  size?: number;
+  type: EntityType;
+  direction: LineageDirection;
+  nodeDepth: number;
+  from: number;
+  size: number;
   queryFilter?: string;
 }) => {
   const response = await APIClient.get<CSVExportResponse>(
     `lineage/exportByEntityCountAsync`,
     {
       params: {
-        from: 0,
-        size: 50,
-        nodeDepth: 2,
-        direction: LineageDirection.Upstream,
-        ...params,
+        ...omit(params, ['queryFilter']),
+        query_filter: params.queryFilter,
       },
     }
   );
@@ -193,7 +188,10 @@ export const getLineagePagingData = async (params: {
   const response = await APIClient.get<LineagePagingInfo>(
     `lineage/getPaginationInfo`,
     {
-      params,
+      params: {
+        ...omit(params, ['queryFilter']),
+        query_filter: params.queryFilter,
+      },
     }
   );
 
