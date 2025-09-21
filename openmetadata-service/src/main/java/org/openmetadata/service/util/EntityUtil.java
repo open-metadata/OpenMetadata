@@ -100,8 +100,6 @@ public final class EntityUtil {
       Comparator.comparing(CustomProperty::getName);
 
   private static final String DOMAIN_ONLY_ACCESS_ROLE = "DomainOnlyAccessRole";
-  private static final Set<String> SYSTEM_LEVEL_ENTITIES =
-      Set.of(Entity.TEST_DEFINITION, Entity.KPI);
 
   //
   // Matchers used for matching two items in a list
@@ -862,7 +860,7 @@ public final class EntityUtil {
 
   private static boolean isValidEntityForDomainFilter(String entityType) {
     boolean result = false;
-    if (entityType != null && !SYSTEM_LEVEL_ENTITIES.contains(entityType)) {
+    if (entityType != null && !Entity.SKIP_DOMAIN_CHECK_ENTITY_LIST.contains(entityType)) {
       try {
         EntityRepository<?> repository = Entity.getEntityRepository(entityType);
         result = repository.isSupportsDomains();
