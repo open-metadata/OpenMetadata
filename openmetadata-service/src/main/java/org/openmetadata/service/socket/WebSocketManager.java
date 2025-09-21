@@ -82,8 +82,9 @@ public class WebSocketManager {
                       remoteAddress);
                   UUID id = UUID.fromString(userId);
                   Map<String, SocketIoSocket> allUserConnection = activityFeedEndpoints.get(id);
-                  allUserConnection.remove(socket.getId());
-                  activityFeedEndpoints.put(id, allUserConnection);
+                  if (allUserConnection != null) {
+                    allUserConnection.remove(socket.getId());
+                  }
                 });
 
             // On Socket Connection Error
@@ -105,13 +106,9 @@ public class WebSocketManager {
                         remoteAddress));
 
             UUID id = UUID.fromString(userId);
-            Map<String, SocketIoSocket> userSocketConnections;
-            userSocketConnections =
-                activityFeedEndpoints.containsKey(id)
-                    ? activityFeedEndpoints.get(id)
-                    : new ConcurrentHashMap<>();
+            Map<String, SocketIoSocket> userSocketConnections =
+                activityFeedEndpoints.computeIfAbsent(id, k -> new ConcurrentHashMap<>());
             userSocketConnections.put(socket.getId(), socket);
-            activityFeedEndpoints.put(id, userSocketConnections);
           }
         });
     ns.on("error", args -> LOG.error("Connection error on the server"));
