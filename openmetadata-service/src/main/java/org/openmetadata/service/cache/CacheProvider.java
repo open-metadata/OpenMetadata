@@ -21,6 +21,8 @@ public interface CacheProvider extends AutoCloseable {
 
   boolean available();
 
+  Map<String, Object> getStats();
+
   @Override
   void close();
 }

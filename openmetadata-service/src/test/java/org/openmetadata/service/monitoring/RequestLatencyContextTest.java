@@ -16,20 +16,13 @@ class RequestLatencyContextTest {
 
   @BeforeEach
   void setUp() {
-    // Clear any existing registries
     Metrics.globalRegistry.clear();
-    // Clear all registries to avoid conflicts
     Metrics.globalRegistry.getRegistries().forEach(Metrics.globalRegistry::remove);
 
-    // Add a new simple registry for testing
     SimpleMeterRegistry registry = new SimpleMeterRegistry();
     Metrics.addRegistry(registry);
-
-    // Also ensure RequestLatencyContext is clean
-    // This is important because it uses static maps
     RequestLatencyContext.endRequest(); // Clean up any lingering context
 
-    // Clear the static maps in RequestLatencyContext via reflection if needed
     try {
       clearStaticMaps();
     } catch (Exception e) {
@@ -38,7 +31,6 @@ class RequestLatencyContextTest {
   }
 
   private void clearStaticMaps() throws Exception {
-    // Use reflection to clear static maps in RequestLatencyContext
     java.lang.reflect.Field requestTimersField =
         RequestLatencyContext.class.getDeclaredField("requestTimers");
     requestTimersField.setAccessible(true);
@@ -87,10 +79,7 @@ class RequestLatencyContextTest {
     String normalizedEndpoint = MetricUtils.normalizeUri(endpoint);
     RequestLatencyContext.endRequest();
 
-    // Debug: Log the normalized endpoint and all available metrics
     LOG.info("Original endpoint: {}, Normalized: {}", endpoint, normalizedEndpoint);
-
-    // List all meters to debug
     LOG.info("Available meters:");
     Metrics.globalRegistry
         .getMeters()
@@ -103,7 +92,6 @@ class RequestLatencyContextTest {
                   meter.getId().getTags());
             });
 
-    // Try different approaches to find the timer
     Timer totalTimer = null;
     Timer dbTimer = null;
     Timer internalTimer = null;

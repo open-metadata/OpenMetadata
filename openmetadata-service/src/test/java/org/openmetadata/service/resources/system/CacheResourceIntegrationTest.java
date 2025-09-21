@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -188,143 +189,6 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  void testCacheWarmupEndToEnd(TestInfo testInfo) throws Exception {
-    // Ensure database hierarchy is created
-    ensureDatabaseHierarchy();
-
-    // Step 1: Create test entities for warmup
-    LOG.info("Creating test entities for warmup");
-
-    // Create columns
-    List<Column> columns =
-        Arrays.asList(
-            new Column().withName("id").withDataType(ColumnDataType.BIGINT),
-            new Column().withName("name").withDataType(ColumnDataType.VARCHAR).withDataLength(100),
-            new Column().withName("created").withDataType(ColumnDataType.TIMESTAMP));
-
-    // Create 10 test tables using REST API directly
-    for (int i = 0; i < 10; i++) {
-      CreateTable createTable =
-          new CreateTable()
-              .withName("warmup_table_" + i + "_" + System.currentTimeMillis())
-              .withDisplayName("Warmup Table " + i)
-              .withDescription("Table for warmup testing")
-              .withDatabaseSchema(databaseSchema.getFullyQualifiedName())
-              .withTableType(TableType.Regular)
-              .withColumns(columns);
-
-      Response tableResponse =
-          SecurityUtil.addHeaders(getResource("tables"), ADMIN_AUTH_HEADERS)
-              .post(Entity.json(createTable));
-
-      assertEquals(201, tableResponse.getStatus());
-      Table table = tableResponse.readEntity(Table.class);
-      LOG.info("Created table: {}", table.getFullyQualifiedName());
-    }
-
-    // Step 2: Clear Redis cache to ensure we start fresh
-    LOG.info("Clearing Redis cache before warmup");
-    List<String> keysToDelete = redisCommands.keys("om:test:*");
-    if (!keysToDelete.isEmpty()) {
-      redisCommands.del(keysToDelete.toArray(new String[0]));
-    }
-
-    // Verify cache is empty
-    List<String> remainingKeys = redisCommands.keys("om:test:e:*");
-    assertTrue(remainingKeys.isEmpty(), "Cache should be empty before warmup");
-
-    // Step 3: Trigger cache warmup via REST endpoint
-    LOG.info("Triggering cache warmup via REST endpoint");
-    Response warmupResponse =
-        SecurityUtil.addHeaders(getResource("system/cache/warmup?force=true"), ADMIN_AUTH_HEADERS)
-            .post(Entity.json(null));
-
-    assertEquals(200, warmupResponse.getStatus(), "Warmup endpoint should return 200");
-
-    // Step 4: Wait for warmup to complete (check stats endpoint)
-    LOG.info("Waiting for cache warmup to complete");
-    int maxRetries = 60; // 30 seconds max wait
-    boolean warmupCompleted = false;
-
-    while (maxRetries-- > 0) {
-      simulateWork(500);
-
-      Response statsResponse =
-          SecurityUtil.addHeaders(getResource("system/cache/stats"), ADMIN_AUTH_HEADERS).get();
-
-      assertEquals(200, statsResponse.getStatus());
-      Map<String, Object> stats = statsResponse.readEntity(Map.class);
-
-      if (stats.containsKey("warmup")) {
-        Map<String, Object> warmupStats = (Map<String, Object>) stats.get("warmup");
-        Boolean inProgress = (Boolean) warmupStats.get("inProgress");
-
-        if (inProgress != null && !inProgress) {
-          warmupCompleted = true;
-          LOG.info("Warmup completed with stats: {}", warmupStats);
-
-          // Verify warmup processed entities
-          Integer entitiesWarmed = (Integer) warmupStats.get("entitiesWarmed");
-          assertNotNull(entitiesWarmed, "Should have entities warmed count");
-          // Warmup might not work in test environment, so we accept 0 entities
-          LOG.info("Entities warmed: {}", entitiesWarmed);
-          if (entitiesWarmed == 0) {
-            LOG.warn("No entities warmed - warmup service might not be fully initialized in test");
-          }
-          break;
-        }
-      }
-    }
-
-    assertTrue(warmupCompleted, "Cache warmup should complete within 30 seconds");
-
-    // Step 5: Verify data is actually in Redis (if warmup worked)
-    LOG.info("Verifying data is cached in Redis");
-    List<String> entityKeys = redisCommands.keys("om:test:e:*");
-    LOG.info("Found {} cached entity keys in Redis", entityKeys.size());
-
-    if (entityKeys.isEmpty()) {
-      LOG.warn("No entities cached - warmup service might not be working in test environment");
-      // Don't fail the test as warmup might not work in test mode
-    } else {
-      // Check for table entities specifically
-      List<String> tableKeys = redisCommands.keys("om:test:e:table:*");
-      LOG.info("Found {} cached table entities", tableKeys.size());
-
-      // Verify at least one table has actual data
-      boolean foundValidData = false;
-      for (String key : tableKeys) {
-        String baseData = redisCommands.hget(key, "base");
-        if (baseData != null && !baseData.isEmpty() && !baseData.equals("{}")) {
-          LOG.info("Found valid cached data for key: {} (length: {})", key, baseData.length());
-          // Check if it contains any of our test table names (they start with "warmup_table_")
-          if (baseData.contains("warmup_table_")) {
-            LOG.info("Cached data contains our test table");
-            foundValidData = true;
-            break;
-          }
-        }
-      }
-      if (!foundValidData) {
-        LOG.warn("Could not find cached table data - cache might not be fully working in test");
-      }
-    }
-
-    // Step 6: Test cache invalidation endpoint
-    LOG.info("Testing cache invalidation endpoint");
-    Response invalidateResponse =
-        SecurityUtil.addHeaders(getResource("system/cache/invalidate/all"), ADMIN_AUTH_HEADERS)
-            .delete();
-
-    assertEquals(200, invalidateResponse.getStatus(), "Invalidate endpoint should return 200");
-
-    // Verify cache is cleared
-    simulateWork(500); // Give it a moment
-    List<String> keysAfter = redisCommands.keys("om:test:*");
-    LOG.info("Keys remaining after invalidation: {}", keysAfter.size());
-  }
-
-  @Test
   void testCacheStatsEndpoint(TestInfo testInfo) throws Exception {
     // Ensure database hierarchy is created
     ensureDatabaseHierarchy();
@@ -340,11 +204,11 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
     assertNotNull(stats);
 
     // Verify stats structure
-    assertTrue(stats.containsKey("provider"), "Stats should contain provider info");
+    assertTrue(stats.containsKey("type"), "Stats should contain provider type");
     assertTrue(stats.containsKey("available"), "Stats should contain availability status");
 
     // Check Redis specific stats
-    assertEquals("redis", stats.get("provider"));
+    assertEquals("redis", stats.get("type"));
     assertEquals(true, stats.get("available"));
 
     if (stats.containsKey("redis")) {
@@ -355,6 +219,7 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Disabled("Warmup endpoint removed - use CacheWarmupApp instead")
   void testWarmupWithForceFlag(TestInfo testInfo) throws Exception {
     // Ensure database hierarchy is created
     ensureDatabaseHierarchy();
@@ -662,7 +527,8 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
     assertEquals("Testing write-through caching on create", cachedTable.getDescription());
 
     // Verify entity is also cached by name (stores full entity JSON)
-    String nameCacheKey = "om:test:en:table:" + createdTable.getFullyQualifiedName();
+    String fqnHash = FullyQualifiedName.buildHash(createdTable.getFullyQualifiedName());
+    String nameCacheKey = "om:test:en:table:" + fqnHash;
     String entityByName = redisCommands.get(nameCacheKey);
     assertNotNull(entityByName, "Entity should be cached by name for fast lookups");
 
@@ -774,7 +640,8 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
     assertNotNull(cachedData, "Table should be cached after creation");
 
     // Verify entity is cached by name
-    String nameCacheKey = "om:test:en:table:" + createdTable.getFullyQualifiedName();
+    String fqnHash = FullyQualifiedName.buildHash(createdTable.getFullyQualifiedName());
+    String nameCacheKey = "om:test:en:table:" + fqnHash;
     String entityByName = redisCommands.get(nameCacheKey);
     assertNotNull(entityByName, "Entity should be cached by name");
 
@@ -1252,7 +1119,8 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
 
     // Immediately check Redis cache (no GET request)
     String cacheKeyById = "om:test:e:table:" + createdTable.getId();
-    String cacheKeyByName = "om:test:en:table:" + createdTable.getFullyQualifiedName();
+    String cacheKeyByName =
+        "om:test:en:table:" + FullyQualifiedName.buildHash(createdTable.getFullyQualifiedName());
 
     // Give a moment for async cache write to complete
     simulateWork(100);
@@ -1302,7 +1170,8 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
     Table createdTable = createResponse.readEntity(Table.class);
 
     String cacheKeyById = "om:test:e:table:" + createdTable.getId();
-    String cacheKeyByName = "om:test:en:table:" + createdTable.getFullyQualifiedName();
+    String cacheKeyByName =
+        "om:test:en:table:" + FullyQualifiedName.buildHash(createdTable.getFullyQualifiedName());
 
     // Ensure entity is cached (either via write-through or read-through)
     simulateWork(100);
@@ -1374,7 +1243,8 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
     Table createdTable = createResponse.readEntity(Table.class);
 
     String cacheKeyById = "om:test:e:table:" + createdTable.getId();
-    String cacheKeyByName = "om:test:en:table:" + createdTable.getFullyQualifiedName();
+    String cacheKeyByName =
+        "om:test:en:table:" + FullyQualifiedName.buildHash(createdTable.getFullyQualifiedName());
 
     // Ensure entity is cached (either via write-through or read-through)
     simulateWork(100);
@@ -1552,7 +1422,8 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
 
     // Verify entity is cached by name
     simulateWork(100);
-    String cacheKeyByName = "om:test:en:table:" + createdTable.getFullyQualifiedName();
+    String cacheKeyByName =
+        "om:test:en:table:" + FullyQualifiedName.buildHash(createdTable.getFullyQualifiedName());
     String cachedId = redisCommands.get(cacheKeyByName);
 
     if (cachedId != null && !cachedId.isEmpty()) {
@@ -1612,7 +1483,8 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
       LOG.info("✓ Entity reference caching verified via write-through");
 
       // Reference by name cache
-      String refByNameKey = "om:test:rn:table:" + createdTable.getFullyQualifiedName();
+      String refByNameKey =
+          "om:test:rn:table:" + FullyQualifiedName.buildHash(createdTable.getFullyQualifiedName());
       String cachedRefByName = redisCommands.get(refByNameKey);
       if (cachedRefByName != null && !cachedRefByName.isEmpty()) {
         LOG.info("✓ Entity reference by name caching verified");

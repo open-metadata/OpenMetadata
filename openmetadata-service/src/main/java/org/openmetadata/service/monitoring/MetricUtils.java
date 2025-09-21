@@ -122,9 +122,9 @@ public class MetricUtils {
             // UUID patterns (e.g., /v1/tables/550e8400-e29b-41d4-a716-446655440000)
             .replaceAll(
                 "/[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
-                "/{id}")
+                "/{name}")
             // Numeric IDs (e.g., /v1/tables/123456)
-            .replaceAll("/\\d+", "/{id}")
+            .replaceAll("/\\d+", "/{name}")
             // Entity names that contain special characters or spaces (encoded)
             .replaceAll("/[^/]*%[0-9a-fA-F]{2}[^/]*", "/{name}")
             // Long alphanumeric strings that might be encoded names (but not 'name' literal)

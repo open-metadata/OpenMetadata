@@ -6,6 +6,7 @@ import io.lettuce.core.SetArgs;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
@@ -182,6 +183,59 @@ public class RedisCacheProvider implements CacheProvider {
   @Override
   public boolean available() {
     return available;
+  }
+
+  @Override
+  public Map<String, Object> getStats() {
+    Map<String, Object> stats = new HashMap<>();
+    stats.put("type", "redis");
+    stats.put("available", available);
+
+    if (available) {
+      try {
+        // Get Redis server info
+        String info = syncCommands.info("stats");
+        String[] lines = info.split("\r?\n");
+        for (String line : lines) {
+          if (line.startsWith("keyspace_hits:")) {
+            stats.put("hits", Long.parseLong(line.split(":")[1]));
+          } else if (line.startsWith("keyspace_misses:")) {
+            stats.put("misses", Long.parseLong(line.split(":")[1]));
+          } else if (line.startsWith("total_connections_received:")) {
+            stats.put("totalConnections", Long.parseLong(line.split(":")[1]));
+          }
+        }
+
+        // Get DB size
+        Long dbSize = syncCommands.dbsize();
+        stats.put("keys", dbSize);
+
+        // Calculate hit rate if we have hits and misses
+        Long hits = (Long) stats.get("hits");
+        Long misses = (Long) stats.get("misses");
+        if (hits != null && misses != null) {
+          long total = hits + misses;
+          if (total > 0) {
+            double hitRate = (double) hits / total * 100;
+            stats.put("hitRate", String.format("%.2f%%", hitRate));
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn("Failed to get Redis stats", e);
+        stats.put("error", "Failed to get stats: " + e.getMessage());
+      }
+    } else {
+      stats.put("status", "unavailable");
+    }
+
+    stats.put(
+        "config",
+        Map.of(
+            "keyspace", config.redis.keyspace,
+            "ttl", config.entityTtlSeconds,
+            "database", config.redis.database));
+
+    return stats;
   }
 
   @Override

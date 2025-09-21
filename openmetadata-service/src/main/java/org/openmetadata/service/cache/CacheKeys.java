@@ -11,24 +11,20 @@ public final class CacheKeys {
   }
 
   public String entity(String type, UUID id) {
-    String idHash = FullyQualifiedName.buildHash(id.toString());
-    return ns + ":e:" + type + ":" + idHash;
+    return ns + ":e:" + type + ":" + id.toString();
   }
 
   public String rel(String type, UUID id, String rel, String dir) {
-    String idHash = FullyQualifiedName.buildHash(id.toString());
-    return ns + ":rel:" + type + ":" + idHash + ":" + rel + ":" + dir;
+    return ns + ":rel:" + type + ":" + id.toString() + ":" + rel + ":" + dir;
   }
 
   public String tags(String type, UUID id) {
-    String idHash = FullyQualifiedName.buildHash(id.toString());
-    return ns + ":tags:" + type + ":" + idHash;
+    return ns + ":tags:" + type + ":" + id.toString();
   }
 
   public String ctags(String type, UUID id, String colFqn) {
-    String idHash = FullyQualifiedName.buildHash(id.toString());
     String colFqnHash = FullyQualifiedName.buildHash(colFqn);
-    return ns + ":ctags:" + type + ":" + idHash + ":" + colFqnHash;
+    return ns + ":ctags:" + type + ":" + id.toString() + ":" + colFqnHash;
   }
 
   public String entityByName(String type, String fqn) {

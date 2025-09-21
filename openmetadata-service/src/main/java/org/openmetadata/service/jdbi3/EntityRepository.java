@@ -1182,47 +1182,30 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   public final T setFieldsInternal(T entity, Fields fields) {
-    // Check if we need to fetch multiple relationships - if so, use optimized single query
-    int relationshipFieldCount = countRelationshipFields(fields);
-    boolean needsMultipleRelationships = relationshipFieldCount > 2;
-
-    LOG.debug(
-        "setFieldsInternal: entity={}, relationshipFields={}, useOptimized={}",
-        entity.getId(),
-        relationshipFieldCount,
-        needsMultipleRelationships);
-
-    if (needsMultipleRelationships) {
-      // OPTIMIZED: Fetch ALL relationships in a SINGLE query to avoid N+1 problem
-      setFieldsInternalOptimized(entity, fields);
-    } else {
-      // For single field requests, use individual fetchers (simpler and cleaner)
-      entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
-      entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
-      entity.setCertification(
-          fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
-              ? getCertification(entity)
-              : null);
-      entity.setExtension(
-          fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
-      // Always return domains of entity
-      entity.setDomains(getDomains(entity));
-      entity.setDataProducts(
-          fields.contains(FIELD_DATA_PRODUCTS)
-              ? getDataProducts(entity)
-              : entity.getDataProducts());
-      entity.setFollowers(
-          fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
-      entity.setChildren(
-          fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
-      entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
-      entity.setReviewers(
-          fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
-      entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
-      if (fields.contains(FIELD_ENTITY_STATUS)) {
-        if (entity.getEntityStatus() == null) {
-          entity.setEntityStatus(EntityStatus.APPROVED);
-        }
+    // Revert to original implementation without optimization logic
+    entity.setOwners(fields.contains(FIELD_OWNERS) ? getOwners(entity) : entity.getOwners());
+    entity.setTags(fields.contains(FIELD_TAGS) ? getTags(entity) : entity.getTags());
+    entity.setCertification(
+        fields.contains(FIELD_TAGS) || fields.contains(FIELD_CERTIFICATION)
+            ? getCertification(entity)
+            : null);
+    entity.setExtension(
+        fields.contains(FIELD_EXTENSION) ? getExtension(entity) : entity.getExtension());
+    // Always return domains of entity
+    entity.setDomains(getDomains(entity));
+    entity.setDataProducts(
+        fields.contains(FIELD_DATA_PRODUCTS) ? getDataProducts(entity) : entity.getDataProducts());
+    entity.setFollowers(
+        fields.contains(FIELD_FOLLOWERS) ? getFollowers(entity) : entity.getFollowers());
+    entity.setChildren(
+        fields.contains(FIELD_CHILDREN) ? getChildren(entity) : entity.getChildren());
+    entity.setExperts(fields.contains(FIELD_EXPERTS) ? getExperts(entity) : entity.getExperts());
+    entity.setReviewers(
+        fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
+    entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
+    if (fields.contains(FIELD_ENTITY_STATUS)) {
+      if (entity.getEntityStatus() == null) {
+        entity.setEntityStatus(EntityStatus.APPROVED);
       }
     }
     setFields(entity, fields);
@@ -1233,6 +1216,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Optimized version that fetches ALL relationships in a SINGLE database query
    * and then filters them in memory. This completely solves the N+1 query problem.
    */
+  // Commented out - using original setFieldsInternal instead to fix test failures
+  // TODO: Investigate why optimized version causes test failures with dataProducts field
+  /*
   private void setFieldsInternalOptimized(T entity, Fields fields) {
     // Fetch ALL relationships for this entity in ONE query
     List<CollectionDAO.EntityRelationshipObject> allRelationships =
@@ -1347,6 +1333,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setExtension(getExtension(entity));
     }
   }
+  */
 
   /**
    * Invalidate cache entries when entity is deleted
@@ -1519,12 +1506,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       if (update) {
-        // For updates, invalidate Redis cache to ensure consistency
-        cachedEntityDao.deleteBase(entityType, entity.getId());
-        if (entity.getFullyQualifiedName() != null) {
-          cachedEntityDao.deleteByName(entityType, entity.getFullyQualifiedName());
+        // For updates, repopulate Redis cache with the updated entity
+        String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
+        if (entityJson != null && !entityJson.isEmpty()) {
+          cachedEntityDao.putBase(entityType, entity.getId(), entityJson);
+          if (entity.getFullyQualifiedName() != null) {
+            cachedEntityDao.putByName(entityType, entity.getFullyQualifiedName(), entityJson);
+          }
+          LOG.debug("Updated Redis cache after PATCH: {} {}", entityType, entity.getId());
         }
-        LOG.debug("Invalidated Redis cache after update: {} {}", entityType, entity.getId());
       } else {
         // For creates, populate Redis cache with complete entity
         String entityJson = dao.findById(dao.getTableName(), entity.getId(), "");
@@ -5147,7 +5137,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     public final void storeUpdate() {
-      if (updateVersion(original.getVersion())) { // Update changed the entity version
+      boolean versionChanged = updateVersion(original.getVersion());
+      LOG.info(
+          "storeUpdate: versionChanged={}, entityChanged={}, entityType={}, id={}",
+          versionChanged,
+          entityChanged,
+          entityType,
+          updated.getId());
+
+      if (versionChanged) { // Update changed the entity version
         storeEntityHistory(); // Store old version for listing previous versions of the entity
         storeNewVersion(); // Store the update version of the entity
       } else if (entityChanged) {
@@ -5156,6 +5154,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         }
         storeNewVersion();
       } else { // Update did not change the entity version
+        LOG.info("No version change and entityChanged=false, checking previous");
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
@@ -5220,6 +5219,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     private void storeNewVersion() {
+      LOG.info("storeNewVersion called for entity: {} {}", entityType, updated.getId());
       EntityRepository.this.storeEntity(updated, true);
       // Write-through cache after update
       EntityRepository.this.writeThroughCache(updated, true);

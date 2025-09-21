@@ -228,10 +228,10 @@ public class MetricsErrorHandlingTest {
         normalized,
         normalized.length());
 
-    // The long endpoint gets normalized to /api/v1/tables/{name}/{subresource}/{name}/details
+    // The long endpoint gets normalized to /api/v1/tables/{name}/columns/{name}/details
     // This is shorter than 100 chars so no truncation happens
     assertEquals(
-        "/api/v1/tables/{name}/{subresource}/{name}/details",
+        "/api/v1/tables/{name}/columns/{name}/details",
         normalized,
         "Long endpoint should be normalized to use placeholders");
     assertTrue(normalized.length() <= 105, "Normalized endpoint should not be too long");

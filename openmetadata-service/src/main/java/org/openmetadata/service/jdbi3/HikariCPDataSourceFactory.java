@@ -74,7 +74,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
 
   @Override
   public ManagedDataSource build(MetricRegistry metricRegistry, String name) {
-    HikariConfig config = buildHikariConfig();
+    HikariConfig config = buildHikariConfig(name);
 
     if (metricRegistry != null) {
       config.setMetricRegistry(metricRegistry);
@@ -86,6 +86,10 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
   }
 
   private HikariConfig buildHikariConfig() {
+    return buildHikariConfig(poolName);
+  }
+
+  private HikariConfig buildHikariConfig(String poolNameToUse) {
     HikariConfig config = new HikariConfig();
 
     config.setJdbcUrl(getUrl());
@@ -99,7 +103,7 @@ public class HikariCPDataSourceFactory extends DataSourceFactory {
       config.setPassword(getPassword());
     }
 
-    config.setPoolName(poolName);
+    config.setPoolName(poolNameToUse);
     config.setMinimumIdle(minimumIdle);
     config.setMaximumPoolSize(getMaxSize());
 
