@@ -26,6 +26,8 @@ export default defineConfig({
         'react/jsx-runtime',
         '@mui/material',
         '@mui/system',
+        '@mui/material/styles',
+        '@mui/material/Chip',
         '@mui/icons-material',
         '@mui/x-date-pickers',
         '@emotion/react',
@@ -43,8 +45,8 @@ export default defineConfig({
         }
       }
     },
-    sourcemap: true,
-    minify: 'terser',
+    sourcemap: false,
+    minify: 'esbuild',
     target: 'es2020'
   },
   resolve: {

@@ -36,9 +36,24 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
-  formatDateTime: jest.fn((timestamp) =>
-    new Date(timestamp).toLocaleDateString()
-  ),
+  formatMonth: jest.fn((timestamp) => {
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return monthNames[new Date(timestamp).getMonth()];
+  }),
   getCurrentMillis: jest.fn(() => 1640995200000), // Fixed timestamp
   getEpochMillisForPastDays: jest.fn(
     (days) => 1640995200000 - days * 24 * 60 * 60 * 1000
@@ -110,9 +125,6 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
-        'label.contract-execution-history': 'Contract Execution History',
-        'message.contract-execution-history-description':
-          'View contract execution history over time',
         'label.success': 'Success',
         'label.failed': 'Failed',
         'label.aborted': 'Aborted',
@@ -163,10 +175,6 @@ describe('ContractExecutionChart', () => {
 
       render(<ContractExecutionChart contract={mockContract} />);
 
-      expect(screen.getByTestId('expandable-card')).toBeInTheDocument();
-      expect(
-        screen.getByText('Contract Execution History')
-      ).toBeInTheDocument();
       expect(screen.getByTestId('loader')).toBeInTheDocument();
     });
 
@@ -179,17 +187,6 @@ describe('ContractExecutionChart', () => {
 
       expect(screen.getByTestId('responsive-container')).toBeInTheDocument();
       expect(screen.getByTestId('bar-chart')).toBeInTheDocument();
-    });
-
-    it('should display chart title and description', () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      expect(
-        screen.getByText('Contract Execution History')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByText('View contract execution history over time')
-      ).toBeInTheDocument();
     });
   });
 
@@ -255,18 +252,33 @@ describe('ContractExecutionChart', () => {
           failed: 0,
           success: 1,
           aborted: 0,
+          data: {
+            contractExecutionStatus: 'Success',
+            id: 'result-1',
+            timestamp: 1640995200000,
+          },
         });
         expect(chartData[1]).toEqual({
           name: 1640995260000,
           failed: 1,
           success: 0,
           aborted: 0,
+          data: {
+            contractExecutionStatus: 'Failed',
+            id: 'result-2',
+            timestamp: 1640995260000,
+          },
         });
         expect(chartData[2]).toEqual({
           name: 1640995320000,
           failed: 0,
           success: 0,
           aborted: 1,
+          data: {
+            contractExecutionStatus: 'Aborted',
+            id: 'result-3',
+            timestamp: 1640995320000,
+          },
         });
       });
     });
@@ -297,15 +309,10 @@ describe('ContractExecutionChart', () => {
       expect(await screen.findByTestId('bar-chart')).toBeInTheDocument();
       expect(await screen.findByTestId('cartesian-grid')).toBeInTheDocument();
       expect(await screen.findByTestId('x-axis')).toBeInTheDocument();
-      expect(await screen.findByTestId('legend')).toBeInTheDocument();
     });
 
     it('should render bars for each status type', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
-
-      //   expect(screen.getByTestId('bar-success')).toBeInTheDocument();
-      //   expect(screen.getByTestId('bar-failed')).toBeInTheDocument();
-      //   expect(screen.getByTestId('bar-aborted')).toBeInTheDocument();
 
       expect(await screen.findByTestId('bar-success')).toHaveTextContent(
         'Success'
@@ -324,7 +331,7 @@ describe('ContractExecutionChart', () => {
       await waitFor(() => {
         expect(screen.getByTestId('bar-success')).toHaveAttribute(
           'data-fill',
-          '#48ca9e'
+          '#039855'
         );
         expect(screen.getByTestId('bar-failed')).toHaveAttribute(
           'data-fill',
@@ -332,7 +339,7 @@ describe('ContractExecutionChart', () => {
         );
         expect(screen.getByTestId('bar-aborted')).toHaveAttribute(
           'data-fill',
-          '#ffbe0e'
+          '#f79009'
         );
       });
     });
@@ -366,24 +373,6 @@ describe('ContractExecutionChart', () => {
     });
   });
 
-  describe('Component Structure', () => {
-    it('should have correct CSS classes', async () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      expect(screen.getByTestId('expandable-card')).toHaveClass(
-        'expandable-card-contract'
-      );
-    });
-
-    it('should display card title structure correctly', () => {
-      render(<ContractExecutionChart contract={mockContract} />);
-
-      const cardTitle = screen.getByTestId('card-title');
-
-      expect(cardTitle).toBeInTheDocument();
-    });
-  });
-
   describe('Loading States', () => {
     it('should show loading state during data fetch', () => {
       (getAllContractResults as jest.Mock).mockImplementation(
@@ -393,7 +382,6 @@ describe('ContractExecutionChart', () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
       expect(screen.getByTestId('loader')).toBeInTheDocument();
-      expect(screen.queryByTestId('date-picker-menu')).not.toBeInTheDocument();
     });
 
     it('should hide loading state after data is loaded', async () => {
