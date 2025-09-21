@@ -129,7 +129,6 @@ import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
-import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
@@ -866,22 +865,6 @@ export const getTableDetailPageBaseTabs = ({
           isTableDeleted={deleted}
           tableId={tableDetails?.id ?? ''}
         />
-      ),
-    },
-    {
-      label: (
-        <TabsLabel
-          id={EntityTabs.PROFILER + 'old'}
-          name={get(
-            labelMap,
-            EntityTabs.PROFILER,
-            t('label.data-observability')
-          )}
-        />
-      ),
-      key: EntityTabs.PROFILER + 'old',
-      children: (
-        <TableProfiler permissions={tablePermissions} table={tableDetails} />
       ),
     },
     {

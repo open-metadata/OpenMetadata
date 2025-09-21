@@ -10,33 +10,81 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Chip } from '@mui/material';
+import { Button, Chip, Grid, useTheme } from '@mui/material';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as RightArrowIcon } from '../../../../../assets/svg/right-arrow.svg';
 import { ReactComponent as NoDataIcon } from '../../../../../assets/svg/ticket-with-check.svg';
 import documentationLinksClassBase from '../../../../../utils/DocumentationLinksClassBase';
+import './no-profiler-banner.less';
 
 const NoProfilerBanner = () => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const profilerDocsLink =
     documentationLinksClassBase.getDocsURLS()
       .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;
 
   return (
-    <div data-testid="no-profiler-placeholder">
-      <Chip color="secondary" icon={<NoDataIcon />} variant="outlined" />
+    <Grid
+      container
+      className="no-profiler-banner-container"
+      data-testid="no-profiler-placeholder"
+      spacing={4}>
+      <Grid size="auto">
+        <Chip
+          color="secondary"
+          icon={<NoDataIcon />}
+          sx={{
+            backgroundColor: theme.palette.allShades.white,
+            height: '40px',
+            width: '40px',
+            borderRadius: '8px',
+            '.MuiChip-icon': {
+              m: 0,
+            },
+          }}
+          variant="outlined"
+        />
+      </Grid>
 
-      <p className="m-l-xs" data-testid="error-msg">
-        {t('message.no-profiler-message')}
+      <Grid size={9}>
+        <p className="profiler-title">{t('message.no-profiler-title')}</p>
+        <p className="profiler-description">
+          {t('message.no-profiler-message')}
+        </p>
+      </Grid>
+
+      <Grid
+        size="grow"
+        sx={{
+          display: 'flex',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+        }}>
         <a
           data-testid="documentation-link"
           href={profilerDocsLink}
           rel="noreferrer"
           target="_blank"
           title="data quality observability profiler workflow">
-          {`${t('label.here-lowercase')}.`}
+          <Button
+            endIcon={<RightArrowIcon />}
+            sx={(theme) => ({
+              color: theme.palette.primary.main,
+              fontWeight: 600,
+              '.MuiButton-endIcon>svg': {
+                width: '12px',
+                height: '12px',
+              },
+              '&:hover': {
+                color: theme.palette.primary.main,
+              },
+            })}>
+            {t('label.learn-more')}
+          </Button>
         </a>
-      </p>
-    </div>
+      </Grid>
+    </Grid>
   );
 };
 

@@ -2241,6 +2241,7 @@
     "no-persona-assigned": "No persona assigned",
     "no-persona-message": "Personas are necessary to customize the landing page. Please create a persona from <0>{{link}}</0>",
     "no-profiler-card-message-with-link": "Enable the profiler to discover valuable insights about your table. Visit our documentation for setup steps <0>here</0>",
+    "no-profiler-title": "Run Profiler to Unlock Table Insights",
     "no-profiler-message": "Explore your table's metrics by running the profiler workflow. You'll see Row Count, Table Updates, Volume Changes, and more. Visit our documentation for setup steps ",
     "no-recently-viewed-date": "You haven't viewed any data assets recently. Explore to find something interesting!",
     "no-reference-available": "No references available.",

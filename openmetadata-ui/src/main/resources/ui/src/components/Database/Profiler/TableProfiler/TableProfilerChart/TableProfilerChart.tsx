@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Grid } from '@mui/material';
 import { Col, Row } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -39,7 +39,7 @@ import {
 } from '../../../../../utils/TableProfilerUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
+import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
 import OperationDateBarChart from '../../../../Visualisations/Chart/OperationDateBarChart';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -225,23 +225,21 @@ const TableProfilerChart = ({
             </Col>
           )}
           <Col span={24}>
-            <NoProfilerBanner />
-          </Col>
-          <Col span={24}>
-            <Row wrap className="justify-between" gutter={[16, 16]}>
+            <Grid container spacing={5}>
               {overallSummary?.map((summary) => (
-                <Col key={summary.title}>
-                  <SummaryCard
+                <Grid key={summary.title} size="grow">
+                  {/* <SummaryCard
                     className={classNames(summary.className, 'h-full')}
                     isLoading={isSummaryLoading}
                     showProgressBar={false}
                     title={summary.title}
                     total={0}
                     value={summary.value}
-                  />
-                </Col>
+                  /> */}
+                  <SummaryCardV1 />
+                </Grid>
               ))}
-            </Row>
+            </Grid>
           </Col>
         </>
       )}
