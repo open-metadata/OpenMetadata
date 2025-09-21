@@ -245,7 +245,7 @@ class TestSDKFluentAPI:
         created_term = GlossaryTerms.create(term_request)
         assert created_term.name == "customer"
 
-    @patch.object(Tables, "_get_client")
+    @patch.object(DatabaseSchemas, "_get_client")
     def test_database_schemas_search(self, mock_get_client):
         """Test searching database schemas using DatabaseSchemas SDK"""
         mock_get_client.return_value = self.mock_ometa

@@ -179,15 +179,17 @@ class TestMetricEntity(unittest.TestCase):
         updated_metric.id = UUID(self.metric_id)
         updated_metric.followers = user_ids
 
-        # Mock the put_follow and get_by_id calls
-        self.mock_ometa.put_follow = MagicMock()
+        # Mock the client.put and get_by_id calls
+        self.mock_ometa.client = MagicMock()
+        self.mock_ometa.client.put = MagicMock()
+        self.mock_ometa.get_suffix = MagicMock(return_value="/api/v1/metrics")
         self.mock_ometa.get_by_id.return_value = updated_metric
 
         result = Metrics.add_followers(self.metric_id, user_ids)
 
         self.assertEqual(result.followers, user_ids)
-        # Verify put_follow was called for each user
-        assert self.mock_ometa.put_follow.call_count == len(user_ids)
+        # Verify client.put was called for each user
+        assert self.mock_ometa.client.put.call_count == len(user_ids)
 
     def test_get_versions(self):
         """Test getting all versions of a metric"""

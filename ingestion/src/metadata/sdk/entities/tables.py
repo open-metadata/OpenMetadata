@@ -95,12 +95,15 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
         Returns:
             Updated table
         """
+        # pylint: disable=import-outside-toplevel
         from metadata.generated.schema.type.tagLabel import (
             LabelType,
             State,
             TagLabel,
             TagSource,
         )
+
+        # pylint: enable=import-outside-toplevel
 
         client = cls._get_client()
         # Get current table

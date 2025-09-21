@@ -28,17 +28,14 @@ class ApiStatus(Enum):
     SUCCESS = "success"
     STARTED = "started"
     FAILED = "failed"
+    FAILURE = "failure"
+    PARTIAL = "partial"
 
 
 # Type variable for entity types
+# pylint: disable=invalid-name
 TEntity = TypeVar("TEntity", bound=BaseModel)
-
-
-class ApiStatus(Enum):
-    SUCCESS = "success"
-    FAILURE = "failure"
-    PARTIAL = "partial"
-    STARTED = "started"
+# pylint: enable=invalid-name
 
 
 @dataclass
@@ -235,12 +232,10 @@ class BaseCsvExporter(ABC):
     @abstractmethod
     def perform_sync_export(self) -> str:
         """Perform synchronous export"""
-        pass
 
     @abstractmethod
     def perform_async_export(self) -> str:
         """Perform asynchronous export and return job ID"""
-        pass
 
     def execute(self) -> str:
         """Execute the export operation"""
@@ -320,7 +315,7 @@ class BaseCsvImporter(ABC):
 
     def from_file(self, file_path: str) -> "BaseCsvImporter":
         """Load CSV from file"""
-        with open(file_path, "r") as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             self.csv_data = f.read()
         return self
 
@@ -362,12 +357,10 @@ class BaseCsvImporter(ABC):
     @abstractmethod
     def perform_sync_import(self) -> str:
         """Perform synchronous import"""
-        pass
 
     @abstractmethod
     def perform_async_import(self) -> str:
         """Perform asynchronous import and return job ID"""
-        pass
 
     def execute(self) -> Union[str, CsvImportResult]:
         """Execute the import operation"""

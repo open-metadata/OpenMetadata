@@ -439,9 +439,13 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             Updated entity
         """
         client = cls._get_client()
+        entity_endpoint = client.get_suffix(cls.entity_type())
+
         for follower_id in follower_ids:
-            client.put_follow(
-                entity=cls.entity_type(), entity_id=entity_id, user_id=follower_id
+            # PUT request to /{entity}/{id}/followers with userId in body
+            client.client.put(
+                f"{entity_endpoint}/{entity_id}/followers",
+                data=follower_id,  # The API expects just the userId as a string
             )
         result = client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
         return cast(Optional[TEntity], result)
@@ -461,9 +465,12 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
             Updated entity
         """
         client = cls._get_client()
+        entity_endpoint = client.get_suffix(cls.entity_type())
+
         for follower_id in follower_ids:
-            client.delete_follow(
-                entity=cls.entity_type(), entity_id=entity_id, user_id=follower_id
+            # DELETE request to /{entity}/{id}/followers/{userId}
+            client.client.delete(
+                f"{entity_endpoint}/{entity_id}/followers/{follower_id}"
             )
         result = client.get_by_id(entity=cls.entity_type(), entity_id=entity_id)
         return cast(Optional[TEntity], result)
@@ -481,6 +488,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         """
         # pylint: disable=import-outside-toplevel,cyclic-import
         from metadata.sdk.entities.custom_properties import CustomProperties
+
         # pylint: enable=import-outside-toplevel,cyclic-import
 
         return CustomProperties.update(cls.entity_type(), entity_id, cls._get_client())
@@ -498,6 +506,7 @@ class BaseEntity(ABC, Generic[TEntity, TCreateRequest]):
         """
         # pylint: disable=import-outside-toplevel,cyclic-import
         from metadata.sdk.entities.custom_properties import CustomProperties
+
         # pylint: enable=import-outside-toplevel,cyclic-import
 
         return CustomProperties.update_by_name(

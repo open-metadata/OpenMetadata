@@ -190,15 +190,17 @@ class TestChartEntity(unittest.TestCase):
         updated_chart.id = UUID(self.chart_id)
         updated_chart.followers = user_ids
 
-        # Mock the put_follow and get_by_id calls
-        self.mock_ometa.put_follow = MagicMock()
+        # Mock the client.put and get_by_id calls
+        self.mock_ometa.client = MagicMock()
+        self.mock_ometa.client.put = MagicMock()
+        self.mock_ometa.get_suffix = MagicMock(return_value="/api/v1/charts")
         self.mock_ometa.get_by_id.return_value = updated_chart
 
         result = Charts.add_followers(self.chart_id, user_ids)
 
         self.assertEqual(result.followers, user_ids)
-        # Verify put_follow was called for each user
-        assert self.mock_ometa.put_follow.call_count == len(user_ids)
+        # Verify client.put was called for each user
+        assert self.mock_ometa.client.put.call_count == len(user_ids)
 
     def test_remove_followers(self):
         """Test removing followers from a chart"""
@@ -208,15 +210,17 @@ class TestChartEntity(unittest.TestCase):
         updated_chart.id = UUID(self.chart_id)
         updated_chart.followers = ["user2-uuid"]
 
-        # Mock the delete_follow and get_by_id calls
-        self.mock_ometa.delete_follow = MagicMock()
+        # Mock the client.delete and get_by_id calls
+        self.mock_ometa.client = MagicMock()
+        self.mock_ometa.client.delete = MagicMock()
+        self.mock_ometa.get_suffix = MagicMock(return_value="/api/v1/charts")
         self.mock_ometa.get_by_id.return_value = updated_chart
 
         result = Charts.remove_followers(self.chart_id, user_ids)
 
         self.assertEqual(result.followers, ["user2-uuid"])
-        # Verify delete_follow was called for each user
-        assert self.mock_ometa.delete_follow.call_count == len(user_ids)
+        # Verify client.delete was called for each user
+        assert self.mock_ometa.client.delete.call_count == len(user_ids)
 
     def test_get_versions(self):
         """Test getting all versions of a chart"""
