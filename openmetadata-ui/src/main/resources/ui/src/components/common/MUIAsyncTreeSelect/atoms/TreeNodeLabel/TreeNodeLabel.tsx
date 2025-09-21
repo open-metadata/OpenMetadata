@@ -42,6 +42,7 @@ const TreeNodeLabel: FC<TreeNodeLabelProps> = ({
 }) => {
   return (
     <Box
+      data-nodeid={node.id}
       sx={{
         display: 'flex',
         alignItems: 'center',

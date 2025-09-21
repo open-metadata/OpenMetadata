@@ -48,6 +48,7 @@ export enum FieldTypes {
   USER_TEAM_SELECT_MUI = 'user_team_select_mui',
   COLOR_PICKER = 'color_picker',
   DOMAIN_SELECT = 'domain_select',
+  DOMAIN_SELECT_MUI = 'domain_select_mui',
   CRON_EDITOR = 'cron_editor',
   TREE_ASYNC_SELECT_LIST = 'tree_async_select_list',
 }

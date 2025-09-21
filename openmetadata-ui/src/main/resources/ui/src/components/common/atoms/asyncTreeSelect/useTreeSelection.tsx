@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { TreeNode, TreeSelectionState } from './types';
 
 interface UseTreeSelectionOptions<T> {
@@ -184,8 +184,11 @@ export const useTreeSelection = <T = unknown,>({
     }
   }, [treeData, multiple, onSelectionChange]);
 
-  // Simple getter - no dependency on treeData
-  const selectedData = Array.from(selectedNodes.values());
+  // Memoize selectedData to prevent unnecessary re-renders
+  const selectedData = useMemo(
+    () => Array.from(selectedNodes.values()),
+    [selectedNodes]
+  );
 
   const getSelectedNodes = useCallback(() => selectedData, [selectedData]);
 

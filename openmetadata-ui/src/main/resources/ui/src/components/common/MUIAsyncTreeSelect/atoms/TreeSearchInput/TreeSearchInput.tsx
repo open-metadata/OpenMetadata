@@ -89,7 +89,6 @@ const TreeSearchInput: FC<TreeSearchInputProps> = ({
         error={error}
         fullWidth={fullWidth}
         helperText={helperText}
-        inputProps={inputProps}
         inputRef={inputRef}
         label={label}
         placeholder={

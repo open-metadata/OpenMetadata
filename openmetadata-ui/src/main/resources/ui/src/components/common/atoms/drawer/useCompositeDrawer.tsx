@@ -12,7 +12,7 @@
  */
 
 import { Box } from '@mui/material';
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { DrawerConfig, useDrawer } from './useDrawer';
 import { DrawerBodyConfig, useDrawerBody } from './useDrawerBody';
 import { DrawerFooterConfig, useDrawerFooter } from './useDrawerFooter';
@@ -22,6 +22,7 @@ export interface CompositeDrawerConfig extends DrawerConfig {
   header?: DrawerHeaderConfig;
   body?: DrawerBodyConfig;
   footer?: DrawerFooterConfig;
+  onBeforeClose?: () => void;
 }
 
 /**
@@ -67,12 +68,29 @@ export interface CompositeDrawerConfig extends DrawerConfig {
  * ```
  */
 export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
-  const { header = {}, body = {}, footer = {}, ...drawerConfig } = config;
+  const {
+    header = {},
+    body = {},
+    footer = {},
+    onBeforeClose,
+    ...drawerConfig
+  } = config;
 
   const baseDrawer = useDrawer(drawerConfig);
+
+  // Create a wrapped close function that calls onBeforeClose first
+  const handleClose = useCallback(() => {
+    onBeforeClose?.();
+    if (header.onClose) {
+      header.onClose();
+    } else {
+      baseDrawer.closeDrawer();
+    }
+  }, [onBeforeClose, header.onClose, baseDrawer.closeDrawer]);
+
   const { drawerHeader } = useDrawerHeader({
     ...header,
-    onClose: header.onClose || baseDrawer.closeDrawer,
+    onClose: handleClose,
   });
   const { drawerBody } = useDrawerBody(body);
   const { drawerFooter } = useDrawerFooter(footer);

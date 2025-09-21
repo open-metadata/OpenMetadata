@@ -26,7 +26,10 @@ import {
   formatTeamsResponse,
   formatUsersResponse,
 } from '../../../utils/APIUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../utils/EntityUtils';
 import { ProfilePicture } from '../atoms/ProfilePicture';
 
 export interface MUIUserTeamSelectProps {
@@ -214,11 +217,21 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
         }
       }
 
-      const entities = finalSelection.map((opt) => opt.entity);
+      // Clean entities to valid EntityReference format
+      const entities = finalSelection.map((opt) =>
+        getEntityReferenceFromEntity(
+          opt.entity,
+          opt.isTeam ? EntityType.TEAM : EntityType.USER
+        )
+      );
       onChange(entities);
     } else if (newValue) {
-      // Single selection mode
-      onChange([newValue.entity]);
+      // Single selection mode - clean entity
+      const cleanEntity = getEntityReferenceFromEntity(
+        newValue.entity,
+        newValue.isTeam ? EntityType.TEAM : EntityType.USER
+      );
+      onChange([cleanEntity]);
     } else {
       onChange([]);
     }

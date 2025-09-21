@@ -41,6 +41,8 @@ import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
+import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
+import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUISelect from '../components/common/MUISelect/MUISelect';
@@ -309,6 +311,22 @@ export const getField = (field: FieldProp) => {
       }
 
       break;
+    case FieldTypes.DOMAIN_SELECT_MUI: {
+      const isRequired = fieldRules.some(
+        (rule) => (rule as RuleObject).required
+      );
+
+      return (
+        <Form.Item {...formProps}>
+          <MUIDomainSelect
+            {...(props as unknown as MUIDomainSelectProps)}
+            label={muiLabel as string}
+            placeholder={placeholder}
+            required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
     case FieldTypes.USER_TEAM_SELECT:
       {
         const { children, ...rest } = props;

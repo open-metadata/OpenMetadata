@@ -46,36 +46,7 @@ const DomainListPage = () => {
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (formData: any) => {
-    setIsLoading(true);
-    try {
-      await addDomains(formData);
-      showSuccessToast(
-        t('server.create-entity-success', {
-          entity: t('label.domain'),
-        })
-      );
-
-      domainListing.refetch();
-    } catch (error) {
-      showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.domain'),
-              entityPlural: 'domains',
-              name: formData.name,
-            })
-          : (error as AxiosError),
-        t('server.add-entity-error', {
-          entity: t('label.domain').toLowerCase(),
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const { formDrawer, openDrawer } = useFormDrawerWithRef({
+  const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.domain') }),
     anchor: 'right',
     width: 750,
@@ -89,11 +60,42 @@ const DomainListPage = () => {
         onCancel={() => {
           // No-op: Drawer close is handled by useFormDrawerWithRef
         }}
-        onSubmit={handleSubmit}
+        onSubmit={async (formData: any) => {
+          setIsLoading(true);
+          try {
+            await addDomains(formData);
+            showSuccessToast(
+              t('server.create-entity-success', {
+                entity: t('label.domain'),
+              })
+            );
+            // Close drawer only on successful creation
+            closeDrawer();
+            domainListing.refetch();
+          } catch (error) {
+            showErrorToast(
+              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+                ? t('server.entity-already-exist', {
+                    entity: t('label.domain'),
+                    entityPlural: 'domains',
+                    name: formData.name,
+                  })
+                : (error as AxiosError),
+              t('server.add-entity-error', {
+                entity: t('label.domain').toLowerCase(),
+              })
+            );
+          } finally {
+            setIsLoading(false);
+          }
+        }}
       />
     ),
     formRef: form,
-    onSubmit: handleSubmit,
+    onSubmit: () => {
+      // This is called by the drawer button, but actual submission
+      // happens via formRef.submit() which triggers form.onFinish
+    },
     loading: isLoading,
   });
 

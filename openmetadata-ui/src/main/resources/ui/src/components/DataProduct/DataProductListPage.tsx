@@ -47,35 +47,7 @@ const DataProductListPage = () => {
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (formData: CreateDataProduct) => {
-    setIsLoading(true);
-    try {
-      await addDataProducts(formData);
-      showSuccessToast(
-        t('server.create-entity-success', {
-          entity: t('label.data-product'),
-        })
-      );
-      dataProductListing.refetch();
-    } catch (error) {
-      showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.data-product'),
-              entityPlural: 'data-products',
-              name: formData.name,
-            })
-          : (error as AxiosError),
-        t('server.add-entity-error', {
-          entity: t('label.data-product').toLowerCase(),
-        })
-      );
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const { formDrawer, openDrawer } = useFormDrawerWithRef({
+  const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.data-product') }),
     anchor: 'right',
     width: 750,
@@ -89,11 +61,43 @@ const DataProductListPage = () => {
         onCancel={() => {
           // No-op: Drawer close is handled by useFormDrawerWithRef
         }}
-        onSubmit={handleSubmit}
+        onSubmit={async (formData: CreateDataProduct) => {
+          setIsLoading(true);
+          try {
+            await addDataProducts(formData);
+            showSuccessToast(
+              t('server.create-entity-success', {
+                entity: t('label.data-product'),
+              })
+            );
+            // Close drawer only on successful creation
+            closeDrawer();
+            dataProductListing.refetch();
+          } catch (error) {
+            showErrorToast(
+              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+                ? t('server.entity-already-exist', {
+                    entity: t('label.data-product'),
+                    entityPlural: 'data-products',
+                    name: formData.name,
+                  })
+                : (error as AxiosError),
+              t('server.add-entity-error', {
+                entity: t('label.data-product').toLowerCase(),
+              })
+            );
+            // Keep drawer open on error so user can fix and retry
+          } finally {
+            setIsLoading(false);
+          }
+        }}
       />
     ),
     formRef: form,
-    onSubmit: handleSubmit,
+    onSubmit: () => {
+      // This is called by the drawer button, but actual submission
+      // happens via formRef.submit() which triggers form.onFinish
+    },
     loading: isLoading,
   });
 

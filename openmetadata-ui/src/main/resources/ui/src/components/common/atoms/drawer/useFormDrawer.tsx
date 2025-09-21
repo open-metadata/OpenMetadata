@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { ReactNode, useCallback, useState } from 'react';
+import React, { ReactNode, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   CompositeDrawerConfig,
@@ -74,6 +74,11 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Create a mutable ref to hold the close function
+  const closeRef = React.useRef<() => void>(() => {
+    // Placeholder function until drawer is created
+  });
+
   const {
     title,
     form,
@@ -93,12 +98,10 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
   const compositeDrawer = useCompositeDrawer({
     ...drawerConfig,
     closeOnEscape,
+    onBeforeClose: onCancel, // Call onCancel before closing
     header: {
       title,
-      onClose: () => {
-        onCancel?.();
-        compositeDrawer?.closeDrawer();
-      },
+      // onClose will be handled by useCompositeDrawer with onBeforeClose
       actions: headerActions,
     },
     body: {
@@ -111,10 +114,7 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
         label: cancelLabel,
         variant: 'text',
         testId: cancelTestId,
-        onClick: () => {
-          onCancel?.();
-          compositeDrawer?.closeDrawer();
-        },
+        onClick: () => closeRef.current(),
       },
       primaryButton: {
         label: submitLabel,
@@ -126,7 +126,7 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
           try {
             setIsSubmitting(true);
             await onSubmit({} as T);
-            compositeDrawer?.closeDrawer();
+            // Don't close drawer here - let consumer handle it after successful API call
           } catch (error) {
             // Form submission error handled by caller
           } finally {
@@ -137,10 +137,16 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
     },
   });
 
+  // Now set the close function in the ref
+  closeRef.current = compositeDrawer.closeDrawer;
+
   return {
-    ...compositeDrawer,
     formDrawer: compositeDrawer.compositeDrawer,
     isSubmitting: loading || isSubmitting,
+    openDrawer: compositeDrawer.openDrawer,
+    closeDrawer: compositeDrawer.closeDrawer,
+    toggleDrawer: compositeDrawer.toggleDrawer,
+    isOpen: compositeDrawer.isOpen,
   };
 };
 

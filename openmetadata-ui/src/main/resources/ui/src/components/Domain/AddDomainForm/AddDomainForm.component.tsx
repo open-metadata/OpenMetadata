@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
 import { Button, Form, FormProps, Space } from 'antd';
 import { omit } from 'lodash';
 import { useMemo } from 'react';
@@ -169,24 +168,18 @@ const AddDomainForm = ({
       name: 'domains',
       required: true,
       label: t('label.domain'),
+      muiLabel: t('label.domain'),
       id: 'root/domains',
-      type: FieldTypes.DOMAIN_SELECT,
+      type: FieldTypes.DOMAIN_SELECT_MUI,
       props: {
         'data-testid': 'domain-select',
         hasPermission: true,
-        children: (
-          <Button
-            data-testid="select-domain"
-            icon={<PlusOutlined style={{ color: 'white', fontSize: '12px' }} />}
-            size="small"
-            type="primary"
-          />
-        ),
+        multiple: false,
       },
       formItemLayout: FormItemLayout.HORIZONTAL,
       formItemProps: {
-        valuePropName: 'selectedDomain',
-        trigger: 'onUpdate',
+        valuePropName: 'value',
+        trigger: 'onChange',
       },
     };
 
@@ -254,8 +247,8 @@ const AddDomainForm = ({
       formData,
       'color',
       'iconURL',
-      'glossaryTerms',
-      'domains'
+      'glossaryTerms'
+      // Don't exclude 'domains' - we need it for DataProducts
     );
     const style = {
       color: formData.color,
@@ -271,11 +264,20 @@ const AddDomainForm = ({
       tags: [...(formData.tags ?? []), ...(formData.glossaryTerms ?? [])],
     } as CreateDomain | CreateDataProduct;
 
-    // Add domains as array if present (for DataProduct)
-    if (formData.domains && 'domains' in data) {
-      (data as CreateDataProduct).domains = [
-        formData.domains.fullyQualifiedName,
-      ];
+    // Handle domains field based on form type
+    if (type === DomainFormType.DATA_PRODUCT) {
+      // For DataProduct, set domains as array
+      if (formData.domains) {
+        (data as CreateDataProduct).domains = [
+          formData.domains.fullyQualifiedName,
+        ];
+      } else if (parentDomain?.fullyQualifiedName) {
+        // If creating within a domain context, use parent domain
+        (data as CreateDataProduct).domains = [parentDomain.fullyQualifiedName];
+      }
+    } else {
+      // For Domain/SubDomain, remove domains field if it exists
+      delete (data as any).domains;
     }
 
     onSubmit(data);

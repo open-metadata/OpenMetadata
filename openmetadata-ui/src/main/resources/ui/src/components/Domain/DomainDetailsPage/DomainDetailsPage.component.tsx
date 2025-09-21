@@ -139,38 +139,6 @@ const DomainDetailsPage = ({
   const [subDomainForm] = Form.useForm();
   const [isSubDomainLoading, setIsSubDomainLoading] = useState(false);
 
-  const handleSubDomainSubmit = async (formData: any) => {
-    setIsSubDomainLoading(true);
-    try {
-      formData.parent = domain.fullyQualifiedName;
-      await addDomains(formData);
-      showSuccessToast(
-        t('server.create-entity-success', {
-          entity: t('label.sub-domain'),
-        })
-      );
-      fetchSubDomainsCount();
-      // Navigate to the subdomains tab
-      handleTabChange(EntityTabs.SUBDOMAINS);
-      closeSubDomainDrawer();
-    } catch (error) {
-      showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.sub-domain'),
-              entityPlural: 'sub-domains',
-              name: formData.name,
-            })
-          : (error as AxiosError),
-        t('server.add-entity-error', {
-          entity: t('label.sub-domain').toLowerCase(),
-        })
-      );
-    } finally {
-      setIsSubDomainLoading(false);
-    }
-  };
-
   const {
     formDrawer: subDomainDrawer,
     openDrawer: openSubDomainDrawer,
@@ -186,51 +154,53 @@ const DomainDetailsPage = ({
         formRef={subDomainForm}
         loading={isSubDomainLoading}
         type={DomainFormType.SUBDOMAIN}
-        onCancel={() => closeSubDomainDrawer()}
-        onSubmit={handleSubDomainSubmit}
+        onCancel={() => {
+          // No-op: Drawer close is handled by useFormDrawerWithRef
+        }}
+        onSubmit={async (formData: any) => {
+          setIsSubDomainLoading(true);
+          try {
+            formData.parent = domain.fullyQualifiedName;
+            await addDomains(formData);
+            showSuccessToast(
+              t('server.create-entity-success', {
+                entity: t('label.sub-domain'),
+              })
+            );
+            fetchSubDomainsCount();
+            // Navigate to the subdomains tab
+            handleTabChange(EntityTabs.SUBDOMAINS);
+            closeSubDomainDrawer();
+          } catch (error) {
+            showErrorToast(
+              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+                ? t('server.entity-already-exist', {
+                    entity: t('label.sub-domain'),
+                    entityPlural: 'sub-domains',
+                    name: formData.name,
+                  })
+                : (error as AxiosError),
+              t('server.add-entity-error', {
+                entity: t('label.sub-domain').toLowerCase(),
+              })
+            );
+          } finally {
+            setIsSubDomainLoading(false);
+          }
+        }}
       />
     ),
     formRef: subDomainForm,
-    onSubmit: handleSubDomainSubmit,
+    onSubmit: () => {
+      // This is called by the drawer button, but actual submission
+      // happens via formRef.submit() which triggers form.onFinish
+    },
     loading: isSubDomainLoading,
   });
 
   // Data product drawer implementation
   const [dataProductForm] = Form.useForm();
   const [isDataProductLoading, setIsDataProductLoading] = useState(false);
-
-  const handleDataProductSubmit = async (formData: any) => {
-    setIsDataProductLoading(true);
-    try {
-      formData.domains = [domain.fullyQualifiedName];
-      await addDataProducts(formData);
-      showSuccessToast(
-        t('server.create-entity-success', {
-          entity: t('label.data-product'),
-        })
-      );
-      fetchDataProducts();
-      // Navigate to the data products tab
-      handleTabChange(EntityTabs.DATA_PRODUCTS);
-      onUpdate?.(domain);
-      closeDataProductDrawer();
-    } catch (error) {
-      showErrorToast(
-        getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-          ? t('server.entity-already-exist', {
-              entity: t('label.data-product'),
-              entityPlural: 'data-products',
-              name: formData.name,
-            })
-          : (error as AxiosError),
-        t('server.add-entity-error', {
-          entity: t('label.data-product').toLowerCase(),
-        })
-      );
-    } finally {
-      setIsDataProductLoading(false);
-    }
-  };
 
   const {
     formDrawer: dataProductDrawer,
@@ -248,12 +218,48 @@ const DomainDetailsPage = ({
         loading={isDataProductLoading}
         parentDomain={domain}
         type={DomainFormType.DATA_PRODUCT}
-        onCancel={() => closeDataProductDrawer()}
-        onSubmit={handleDataProductSubmit}
+        onCancel={() => {
+          // No-op: Drawer close is handled by useFormDrawerWithRef
+        }}
+        onSubmit={async (formData: any) => {
+          setIsDataProductLoading(true);
+          try {
+            formData.domains = [domain.fullyQualifiedName];
+            await addDataProducts(formData);
+            showSuccessToast(
+              t('server.create-entity-success', {
+                entity: t('label.data-product'),
+              })
+            );
+            fetchDataProducts();
+            // Navigate to the data products tab
+            handleTabChange(EntityTabs.DATA_PRODUCTS);
+            onUpdate?.(domain);
+            closeDataProductDrawer();
+          } catch (error) {
+            showErrorToast(
+              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+                ? t('server.entity-already-exist', {
+                    entity: t('label.data-product'),
+                    entityPlural: 'data-products',
+                    name: formData.name,
+                  })
+                : (error as AxiosError),
+              t('server.add-entity-error', {
+                entity: t('label.data-product').toLowerCase(),
+              })
+            );
+          } finally {
+            setIsDataProductLoading(false);
+          }
+        }}
       />
     ),
     formRef: dataProductForm,
-    onSubmit: handleDataProductSubmit,
+    onSubmit: () => {
+      // This is called by the drawer button, but actual submission
+      // happens via formRef.submit() which triggers form.onFinish
+    },
     loading: isDataProductLoading,
   });
   const [showActions, setShowActions] = useState(false);

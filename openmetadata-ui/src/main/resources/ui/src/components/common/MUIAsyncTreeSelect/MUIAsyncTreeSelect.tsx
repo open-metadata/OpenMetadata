@@ -195,9 +195,20 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
       if (!disabled && node.allowSelection !== false) {
         toggleNodeSelection(node);
         maintainFocus();
+        // In single-select mode, clear search after selection to show all nodes again
+        if (!multiple) {
+          setInputValue('');
+          debouncedSetSearchTerm('');
+        }
       }
     },
-    [disabled, toggleNodeSelection, maintainFocus]
+    [
+      disabled,
+      toggleNodeSelection,
+      maintainFocus,
+      multiple,
+      debouncedSetSearchTerm,
+    ]
   );
 
   const { handleKeyDown } = useTreeKeyboardNavigation({
@@ -238,9 +249,16 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
     disableCloseOnSelect: multiple,
     clearOnEscape: true,
     disabled,
-    onInputChange: (_event, newInputValue) => {
+    onInputChange: (_event, newInputValue, reason) => {
+      // Always update inputValue
       setInputValue(newInputValue);
-      debouncedSetSearchTerm(newInputValue);
+
+      // Only trigger search when user is typing
+      if (reason === 'input') {
+        debouncedSetSearchTerm(newInputValue);
+      } else if (reason === 'clear') {
+        debouncedSetSearchTerm('');
+      }
     },
     onChange: (_event, newValue) => {
       if (newValue === null) {
@@ -289,6 +307,29 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
       }
     }
   }, [open, treeData, focusedItemId, getVisibleNodes, inputRef]);
+
+  // Scroll focused item into view manually
+  // IMPORTANT: Do NOT use treeApiRef.current.focusItem() here as it steals focus
+  // from the autocomplete input and breaks keyboard navigation
+  useEffect(() => {
+    if (focusedItemId && open) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        // Find the focused tree item element by data attribute
+        const focusedElement = document.querySelector(
+          `[data-nodeid="${focusedItemId}"]`
+        );
+
+        if (focusedElement) {
+          focusedElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'nearest',
+          });
+        }
+      });
+    }
+  }, [focusedItemId, open]);
 
   // Utility function to find a node in the tree
   const findNodeInTree = useCallback(
@@ -416,18 +457,6 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
     []
   );
 
-  // Handle item click in tree
-  const handleItemClick = useCallback(
-    (event: React.MouseEvent, itemId: string) => {
-      event.stopPropagation();
-      const node = treeData.find((n) => n.id === itemId);
-      if (node && node.allowSelection !== false) {
-        handleNodeClick(node);
-      }
-    },
-    [treeData, handleNodeClick]
-  );
-
   // Combined key down handler
   const handleInputKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -456,6 +485,24 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
       selectedData,
       removeLastSelectedOption,
     ]
+  );
+
+  // Handle input blur to restore selected value if no new selection
+  const handleInputBlur = useCallback(
+    (e: React.FocusEvent) => {
+      // Restore selected value in single-select if no new selection
+      if (!multiple && selectedOptions.length > 0) {
+        const selectedLabel = selectedOptions[0].label;
+        if (inputValue !== selectedLabel) {
+          setInputValue(selectedLabel);
+          debouncedSetSearchTerm(''); // Clear search to show all options
+        }
+      }
+
+      // Call existing blur handler for dropdown management
+      handleBlur(e);
+    },
+    [multiple, selectedOptions, inputValue, handleBlur, debouncedSetSearchTerm]
   );
 
   // Calculate if has clearable value
@@ -487,7 +534,7 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
         searchable={searchable}
         selectedOptions={selectedOptions}
         size={size}
-        onBlur={handleBlur}
+        onBlur={handleInputBlur}
         onClear={() => {
           clearSelection();
           setInputValue('');
@@ -518,7 +565,6 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
           noDataMessage={noDataMessage}
           selectedItems={null}
           onFocusedItemChange={handleTreeFocusedItemChange}
-          onItemClick={handleItemClick}
           onNodeToggle={handleNodeToggle}>
           {renderTreeNodes(treeData)}
         </TreeContent>
