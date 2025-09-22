@@ -390,6 +390,14 @@ export const fillGlossaryRowDetails = async (
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
   if (propertyListName) {
     await fillCustomPropertyDetails(page, propertyListName);
   }
