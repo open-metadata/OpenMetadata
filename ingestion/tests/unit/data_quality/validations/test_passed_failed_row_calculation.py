@@ -37,8 +37,7 @@ def calculate_passed_failed_rows(
 
             return max(0, passed_rows), max(0, failed_rows)
     else:
-      
-      
+
         raise NotImplementedError(
             "Use test_row_count_logic_with_total.py for total row count tests"
         )
@@ -61,9 +60,7 @@ class TestPassedFailedRowCalculation(unittest.TestCase):
             test_passed=False, operator=">", threshold=10, actual_rows=5
         )
         self.assertEqual(passed_rows, 5)
-        self.assertEqual(
-            failed_rows, 0
-        )
+        self.assertEqual(failed_rows, 0)
 
     def test_greater_than_equal_operator_success(self):
         """Test >= operator when test passes"""
@@ -79,9 +76,7 @@ class TestPassedFailedRowCalculation(unittest.TestCase):
             test_passed=False, operator=">=", threshold=15, actual_rows=8
         )
         self.assertEqual(passed_rows, 8)
-        self.assertEqual(
-            failed_rows, 0
-        )
+        self.assertEqual(failed_rows, 0)
 
     def test_less_than_operator_success(self):
         """Test < operator when test passes"""
@@ -157,7 +152,7 @@ class TestPassedFailedRowCalculation(unittest.TestCase):
 
     def test_edge_case_negative_protection_greater_than_equal(self):
         """Test protection against negative calculations for >= operator"""
-      
+
         passed_rows, failed_rows = calculate_passed_failed_rows(
             test_passed=True, operator=">=", threshold=5, actual_rows=10
         )
