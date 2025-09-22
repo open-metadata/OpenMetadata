@@ -174,9 +174,8 @@ test.describe('Domains', () => {
     });
 
     await test.step('Add assets to domain', async () => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await addAssetsToDomain(page, domain, assets);
+      await page.getByTestId('assets').click();
+      await addAssetsToDomain(page, domain, assets, false);
     });
 
     await test.step('Delete domain using delete modal', async () => {
