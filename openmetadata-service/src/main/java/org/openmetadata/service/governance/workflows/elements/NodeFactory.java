@@ -9,6 +9,8 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
@@ -17,6 +19,8 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.DataCompletenessTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.RollbackEntityTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTask;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.createAndRunIngestionPipeline.CreateAndRunIngestionPipelineTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.runApp.RunAppTask;
 import org.openmetadata.service.governance.workflows.elements.nodes.endEvent.EndEvent;
@@ -34,6 +38,10 @@ public class NodeFactory {
           (CheckEntityAttributesTaskDefinition) nodeDefinition, config);
       case SET_ENTITY_ATTRIBUTE_TASK -> new SetEntityAttributeTask(
           (SetEntityAttributeTaskDefinition) nodeDefinition, config);
+      case SET_ENTITY_CERTIFICATION_TASK -> new SetEntityCertificationTask(
+          (SetEntityCertificationTaskDefinition) nodeDefinition, config);
+      case SET_GLOSSARY_TERM_STATUS_TASK -> new SetGlossaryTermStatusTask(
+          (SetGlossaryTermStatusTaskDefinition) nodeDefinition, config);
       case USER_APPROVAL_TASK -> new UserApprovalTask(
           (UserApprovalTaskDefinition) nodeDefinition, config);
       case CREATE_AND_RUN_INGESTION_PIPELINE_TASK -> new CreateAndRunIngestionPipelineTask(
