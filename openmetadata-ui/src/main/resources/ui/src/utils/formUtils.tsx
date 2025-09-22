@@ -34,12 +34,14 @@ import { Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
+import { MUIColorPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
+import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
@@ -369,6 +371,17 @@ export const getField = (field: FieldProp) => {
 
       break;
 
+    case FieldTypes.COLOR_PICKER_MUI: {
+      return (
+        <Form.Item {...formProps}>
+          <MUIColorPicker
+            {...(props as Record<string, unknown>)}
+            label={muiLabel as string}
+          />
+        </Form.Item>
+      );
+    }
+
     case FieldTypes.USER_TEAM_SELECT_MUI: {
       const isRequired = fieldRules.some(
         (rule) => (rule as RuleObject).required
@@ -381,6 +394,17 @@ export const getField = (field: FieldProp) => {
             label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
+          />
+        </Form.Item>
+      );
+    }
+
+    case FieldTypes.ICON_PICKER_MUI: {
+      return (
+        <Form.Item {...formProps}>
+          <MUIIconPicker
+            {...(props as Record<string, unknown>)}
+            label={muiLabel as string}
           />
         </Form.Item>
       );

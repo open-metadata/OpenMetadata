@@ -12,11 +12,14 @@
  */
 
 import { Avatar, AvatarGroup, Box, Typography, useTheme } from '@mui/material';
-import { Cube01, Globe01 } from '@untitledui/icons';
 import { ReactNode, useMemo } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getEntityName } from '../../../../utils/EntityUtils';
+import {
+  getDefaultIconForEntityType,
+  ICON_MAP,
+} from '../../../../utils/IconUtils';
 import { ProfilePicture } from '../ProfilePicture';
 import { CellRenderer, ColumnConfig } from '../shared/types';
 import TagsCell from './TagsCell';
@@ -47,27 +50,67 @@ export const useCellRenderer = <
           const bgColor =
             entity.style?.color || theme.palette.allShades.brand[600];
 
+          // Check if it's a URL (for Avatar src prop)
+          const isUrl =
+            entity.style?.iconURL &&
+            (entity.style.iconURL.startsWith('http') ||
+              entity.style.iconURL.startsWith('/'));
+
+          if (isUrl) {
+            // For URLs, use Avatar's src prop
+            return (
+              <Avatar
+                alt={entity.name || entity.displayName}
+                className="entity-avatar"
+                src={entity.style?.iconURL}
+                sx={{
+                  width: 40,
+                  height: 40,
+                  backgroundColor: bgColor,
+                  color: theme.palette.allShades.white,
+                  '& .MuiAvatar-img': {
+                    width: 24,
+                    height: 24,
+                  },
+                }}
+              />
+            );
+          }
+
+          // For icon names, render the icon component
+          const IconComponent = entity.style?.iconURL
+            ? ICON_MAP[entity.style.iconURL]
+            : null;
+          if (IconComponent) {
+            return (
+              <Avatar
+                alt={entity.name || entity.displayName}
+                className="entity-avatar"
+                sx={{
+                  width: 40,
+                  height: 40,
+                  backgroundColor: bgColor,
+                  color: theme.palette.allShades.white,
+                }}>
+                <IconComponent size={24} style={{ strokeWidth: 1.5 }} />
+              </Avatar>
+            );
+          }
+
+          // Default icons when no iconURL is provided
+          const DefaultIcon = getDefaultIconForEntityType(entity.entityType);
+
           return (
             <Avatar
               alt={entity.name || entity.displayName}
               className="entity-avatar"
-              src={entity.style?.iconURL}
               sx={{
                 width: 40,
                 height: 40,
                 backgroundColor: bgColor,
                 color: theme.palette.allShades.white,
-                '& .MuiAvatar-img': {
-                  width: 24,
-                  height: 24,
-                },
               }}>
-              {!entity.style?.iconURL &&
-                (entity.entityType === 'dataProduct' ? (
-                  <Cube01 size={24} />
-                ) : (
-                  <Globe01 size={24} />
-                ))}
+              <DefaultIcon size={24} style={{ strokeWidth: 1.5 }} />
             </Avatar>
           );
         };

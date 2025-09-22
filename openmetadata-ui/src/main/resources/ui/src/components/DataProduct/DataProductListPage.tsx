@@ -50,7 +50,7 @@ const DataProductListPage = () => {
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.data-product') }),
     anchor: 'right',
-    width: 750,
+    width: 670,
     closeOnEscape: false,
     form: (
       <AddDomainForm

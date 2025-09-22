@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Form, FormProps, Space } from 'antd';
+import { Box } from '@mui/material';
+import { Button, Col, Form, FormProps, Row, Space } from 'antd';
 import { omit } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
-import { HEX_COLOR_CODE_REGEX } from '../../../constants/regex.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
@@ -55,136 +55,159 @@ const AddDomainForm = ({
     value: DomainType[key as keyof typeof DomainType],
   }));
 
-  const formFields: FieldProp[] = [
-    {
-      name: 'name',
-      id: 'root/name',
-      label: t('label.name'),
-      required: true,
-      placeholder: t('label.name'),
-      type: FieldTypes.TEXT_MUI,
-      props: {
-        'data-testid': 'name',
-      },
-      rules: NAME_FIELD_RULES,
-    },
-    {
-      name: 'displayName',
-      id: 'root/displayName',
-      label: t('label.display-name'),
-      required: false,
-      placeholder: t('label.display-name'),
-      type: FieldTypes.TEXT_MUI,
-      props: {
-        'data-testid': 'display-name',
-      },
-    },
-    {
-      name: 'description',
-      required: true,
-      label: t('label.description'),
-      id: 'root/description',
-      type: FieldTypes.DESCRIPTION,
-      props: {
-        'data-testid': 'description',
-        initialValue: '',
-        height: 'auto',
-      },
-    },
-    {
-      name: 'tags',
-      required: false,
-      label: t('label.tag-plural'),
-      id: 'root/tags',
-      type: FieldTypes.TAG_SUGGESTION_MUI,
-      props: {
-        selectProps: {
-          'data-testid': 'tags-container',
-        },
-      },
-    },
-    {
-      name: 'glossaryTerms',
-      required: false,
-      label: t('label.glossary-term-plural'),
-      id: 'root/glossaryTerms',
-      type: FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI,
-      props: {
-        placeholder: t('label.select-field', {
-          field: t('label.glossary-term-plural'),
-        }),
-      },
-    },
-    {
-      name: 'iconURL',
-      id: 'root/iconURL',
-      label: t('label.icon-url'),
-      required: false,
+  const selectedColor = Form.useWatch('color', form);
+
+  // Separate fields for custom layout
+  const iconField: FieldProp = {
+    name: 'iconURL',
+    id: 'root/iconURL',
+    label: t('label.icon'),
+    muiLabel: t('label.icon'),
+    required: false,
+    type: FieldTypes.ICON_PICKER_MUI,
+    props: {
+      'data-testid': 'icon-url',
+      allowUrl: true,
       placeholder: t('label.icon-url'),
-      type: FieldTypes.TEXT,
-      helperText: t('message.govern-url-size-message'),
-      props: {
-        'data-testid': 'icon-url',
-      },
+      backgroundColor: selectedColor,
     },
-    {
-      name: 'color',
-      id: 'root/color',
-      label: t('label.color'),
-      required: false,
-      type: FieldTypes.COLOR_PICKER,
-      rules: [
-        {
-          pattern: HEX_COLOR_CODE_REGEX,
-          message: t('message.hex-color-validation'),
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    formItemProps: {
+      valuePropName: 'value',
+      trigger: 'onChange',
+    },
+  };
+
+  const colorField: FieldProp = {
+    name: 'color',
+    id: 'root/color',
+    label: t('label.color'),
+    muiLabel: t('label.color'),
+    required: false,
+    type: FieldTypes.COLOR_PICKER_MUI,
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    formItemProps: {
+      valuePropName: 'value',
+      trigger: 'onChange',
+    },
+  };
+
+  const nameField: FieldProp = {
+    name: 'name',
+    id: 'root/name',
+    label: t('label.name'),
+    required: true,
+    placeholder: t('label.name'),
+    type: FieldTypes.TEXT_MUI,
+    props: {
+      'data-testid': 'name',
+    },
+    rules: NAME_FIELD_RULES,
+  };
+
+  const displayNameField: FieldProp = {
+    name: 'displayName',
+    id: 'root/displayName',
+    label: t('label.display-name'),
+    required: false,
+    placeholder: t('label.display-name'),
+    type: FieldTypes.TEXT_MUI,
+    props: {
+      'data-testid': 'display-name',
+    },
+  };
+
+  const formFields: FieldProp[] = useMemo(
+    () => [
+      {
+        name: 'description',
+        required: true,
+        label: t('label.description'),
+        id: 'root/description',
+        type: FieldTypes.DESCRIPTION,
+        props: {
+          'data-testid': 'description',
+          initialValue: '',
+          height: 'auto',
         },
-      ],
-    },
-  ];
-
-  if (type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN) {
-    const domainTypeField: FieldProp = {
-      name: 'domainType',
-      required: true,
-      label: t('label.domain-type'),
-      id: 'root/domainType',
-      type: FieldTypes.SELECT_MUI,
-      helperText: domainTypeTooltipDataRender(),
-      props: {
-        'data-testid': 'domainType',
-        options: domainTypeArray,
-        overlayClassName: 'domain-type-tooltip-container',
-        tooltipPlacement: 'top-start',
-        tooltipAlign: { targetOffset: [18, 0] },
       },
-    };
-
-    formFields.push(domainTypeField);
-  }
-
-  // Add domain selection field for Data Products ONLY when NOT in domain context
-  if (type === DomainFormType.DATA_PRODUCT && !parentDomain) {
-    const domainField: FieldProp = {
-      name: 'domains',
-      required: true,
-      label: t('label.domain'),
-      muiLabel: t('label.domain'),
-      id: 'root/domains',
-      type: FieldTypes.DOMAIN_SELECT_MUI,
-      props: {
-        'data-testid': 'domain-select',
-        hasPermission: true,
-        multiple: false,
+      {
+        name: 'tags',
+        required: false,
+        label: t('label.tag-plural'),
+        id: 'root/tags',
+        type: FieldTypes.TAG_SUGGESTION_MUI,
+        props: {
+          selectProps: {
+            'data-testid': 'tags-container',
+          },
+        },
       },
-      formItemLayout: FormItemLayout.HORIZONTAL,
-      formItemProps: {
-        valuePropName: 'value',
-        trigger: 'onChange',
+      {
+        name: 'glossaryTerms',
+        required: false,
+        label: t('label.glossary-term-plural'),
+        id: 'root/glossaryTerms',
+        type: FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI,
+        props: {
+          placeholder: t('label.select-field', {
+            field: t('label.glossary-term-plural'),
+          }),
+        },
       },
-    };
+    ],
+    [t]
+  );
 
-    formFields.push(domainField);
-  }
+  const additionalFields: FieldProp[] = useMemo(() => {
+    const fields: FieldProp[] = [];
+
+    if (type === DomainFormType.DOMAIN || type === DomainFormType.SUBDOMAIN) {
+      const domainTypeField: FieldProp = {
+        name: 'domainType',
+        required: true,
+        label: t('label.domain-type'),
+        id: 'root/domainType',
+        type: FieldTypes.SELECT_MUI,
+        helperText: domainTypeTooltipDataRender(),
+        props: {
+          'data-testid': 'domainType',
+          options: domainTypeArray,
+          overlayClassName: 'domain-type-tooltip-container',
+          tooltipPlacement: 'top-start',
+          tooltipAlign: { targetOffset: [18, 0] },
+        },
+      };
+
+      fields.push(domainTypeField);
+    }
+
+    // Add domain selection field for Data Products ONLY when NOT in domain context
+    if (type === DomainFormType.DATA_PRODUCT && !parentDomain) {
+      const domainField: FieldProp = {
+        name: 'domains',
+        required: true,
+        label: t('label.domain'),
+        muiLabel: t('label.domain'),
+        id: 'root/domains',
+        type: FieldTypes.DOMAIN_SELECT_MUI,
+        props: {
+          'data-testid': 'domain-select',
+          hasPermission: true,
+          multiple: false,
+        },
+        formItemLayout: FormItemLayout.HORIZONTAL,
+        formItemProps: {
+          valuePropName: 'value',
+          trigger: 'onChange',
+        },
+      };
+
+      fields.push(domainField);
+    }
+
+    return fields;
+  }, [type, parentDomain, domainTypeArray, t]);
 
   const ownerField: FieldProp = {
     name: 'owners',
@@ -277,7 +300,7 @@ const AddDomainForm = ({
       }
     } else {
       // For Domain/SubDomain, remove domains field if it exists
-      delete (data as any).domains;
+      delete (data as CreateDomain & { domains?: unknown }).domains;
     }
 
     onSubmit(data);
@@ -289,7 +312,20 @@ const AddDomainForm = ({
       form={form}
       layout="vertical"
       onFinish={handleFormSubmit}>
-      {generateFormFields(formFields)}
+      {/* Icon and Color row */}
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
+        <Box>{getField(iconField)}</Box>
+        <Box sx={{ ml: 'auto' }}>{getField(colorField)}</Box>
+      </Box>
+
+      {/* Name and Display Name row */}
+      <Row gutter={16}>
+        <Col span={12}>{getField(nameField)}</Col>
+        <Col span={12}>{getField(displayNameField)}</Col>
+      </Row>
+
+      {/* Remaining fields */}
+      {generateFormFields([...formFields, ...additionalFields])}
       <div className="m-t-xss">{getField(ownerField)}</div>
       <div className="m-t-xss">{getField(expertsField)}</div>
 

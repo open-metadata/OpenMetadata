@@ -49,7 +49,7 @@ const DomainListPage = () => {
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.domain') }),
     anchor: 'right',
-    width: 750,
+    width: 670,
     closeOnEscape: false,
     form: (
       <AddDomainForm

@@ -112,7 +112,8 @@ export const useDrawerFooter = (config: DrawerFooterConfig = {}) => {
       return (
         <Box
           sx={{
-            p: 3,
+            px: 6,
+            py: 4,
             borderTop: 1,
             borderColor: 'divider',
             boxShadow:
@@ -144,7 +145,8 @@ export const useDrawerFooter = (config: DrawerFooterConfig = {}) => {
     return (
       <Box
         sx={{
-          p: 3,
+          px: 6,
+          py: 4,
           borderTop: 1,
           borderColor: 'divider',
           display: 'flex',

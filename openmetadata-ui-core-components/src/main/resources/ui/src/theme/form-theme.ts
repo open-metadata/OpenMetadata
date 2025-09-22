@@ -257,6 +257,13 @@ export const formTheme = (colors: any) => ({
       },
     },
   },
+  MuiFormLabel: {
+    styleOverrides: {
+      root: {
+        color: colors.gray[700],
+      },
+    },
+  },
   MuiSelect: {
     styleOverrides: {
       root: {

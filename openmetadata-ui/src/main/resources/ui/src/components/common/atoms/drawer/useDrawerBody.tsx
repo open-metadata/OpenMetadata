@@ -53,7 +53,7 @@ export interface DrawerBodyConfig {
  * ```
  */
 export const useDrawerBody = (config: DrawerBodyConfig = {}) => {
-  const { children, loading, loadingMessage, padding = 3, sx = {} } = config;
+  const { children, loading, loadingMessage, padding = 6, sx = {} } = config;
 
   const drawerBody = useMemo(
     () => (

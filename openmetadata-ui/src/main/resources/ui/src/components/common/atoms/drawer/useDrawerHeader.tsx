@@ -60,7 +60,8 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
     () => (
       <Box
         sx={{
-          p: 3,
+          px: 6,
+          py: 4,
           borderBottom: 1,
           borderColor: 'divider',
           display: 'flex',
