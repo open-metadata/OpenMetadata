@@ -27,6 +27,7 @@ from metadata.generated.schema.type.patternRecognizer import PatternRecognizer
 from metadata.generated.schema.type.predefinedRecognizer import PredefinedRecognizer
 from metadata.generated.schema.type.recognizer import Recognizer
 from metadata.generated.schema.type.recognizers.regexFlags import RegexFlags
+from metadata.pii.algorithms.presidio_utils import apply_confidence_threshold
 from metadata.utils.logger import pii_logger
 
 logger = pii_logger()
@@ -55,28 +56,34 @@ class PresidioRecognizerFactory:
         config = recognizer_config.recognizerConfig.root
 
         if isinstance(config, PatternRecognizer):
-            return PresidioRecognizerFactory._create_pattern_recognizer(
+            recognizer = PresidioRecognizerFactory._create_pattern_recognizer(
                 config, recognizer_config, tag_name
             )
         elif isinstance(config, DenyListRecognizer):
-            return PresidioRecognizerFactory._create_deny_list_recognizer(
+            recognizer = PresidioRecognizerFactory._create_deny_list_recognizer(
                 config, recognizer_config, tag_name
             )
         elif isinstance(config, ContextRecognizer):
-            return PresidioRecognizerFactory._create_context_recognizer(
+            recognizer = PresidioRecognizerFactory._create_context_recognizer(
                 config, recognizer_config, tag_name
             )
         elif isinstance(config, CustomRecognizer):
-            return PresidioRecognizerFactory._create_custom_recognizer(
+            recognizer = PresidioRecognizerFactory._create_custom_recognizer(
                 config, recognizer_config, tag_name
             )
         elif isinstance(config, PredefinedRecognizer):
-            return PresidioRecognizerFactory._create_predefined_recognizer(
+            recognizer = PresidioRecognizerFactory._create_predefined_recognizer(
                 config, recognizer_config, tag_name
             )
         else:
             logger.warning(f"Unknown recognizer type for {recognizer_config.name}")
             return None
+
+        if recognizer and (threshold := recognizer_config.confidenceThreshold):
+            patch_analyze = apply_confidence_threshold(threshold)
+            recognizer = patch_analyze(recognizer)
+
+        return recognizer
 
     @staticmethod
     def _get_regex_flags(flags: Optional[RegexFlags]) -> Optional[int]:
