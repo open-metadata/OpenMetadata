@@ -581,6 +581,65 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
         () -> RuleEngine.getInstance().evaluate(table, List.of(mixedSourceRule), false, false));
   }
 
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContainsOperatorNegation(TestInfo test) {
+    Table table = getMockTable(test);
+
+    // Test case 1: Direct negation of contains - no tags should be in forbidden list
+    SemanticsRule notContainsRule =
+        new SemanticsRule()
+            .withName("Tag FQN must not be in forbidden list")
+            .withDescription(
+                "Validates that no tag FQN is contained in the forbidden list using direct negation")
+            .withRule(
+                "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Forbidden.Tag1\",\"Forbidden.Tag2\"]]}]}}");
+
+    // Test with allowed tag - rule should pass
+    TagLabel allowedTag =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(allowedTag));
+    RuleEngine.getInstance().evaluate(table, List.of(notContainsRule), false, false);
+
+    // Test with forbidden tag - rule should fail
+    TagLabel forbiddenTag =
+        new TagLabel().withTagFQN("Forbidden.Tag1").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(forbiddenTag));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(notContainsRule), false, false));
+
+    // Test case 2: Multiple forbidden values
+    SemanticsRule multipleNotContainsRule =
+        new SemanticsRule()
+            .withName("Tag FQN must not be any forbidden value")
+            .withDescription("Validates that no tag FQN is one of multiple forbidden values")
+            .withRule(
+                "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Forbidden.Tag1\",\"Forbidden.Tag2\",\"Forbidden.Tag3\"]]}]}}");
+
+    // Test with another forbidden tag
+    TagLabel anotherForbiddenTag =
+        new TagLabel().withTagFQN("Forbidden.Tag2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(anotherForbiddenTag));
+    assertThrows(
+        RuleValidationException.class,
+        () ->
+            RuleEngine.getInstance()
+                .evaluate(table, List.of(multipleNotContainsRule), false, false));
+
+    // Test with allowed tag - should pass
+    TagLabel anotherAllowedTag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(anotherAllowedTag));
+    RuleEngine.getInstance().evaluate(table, List.of(multipleNotContainsRule), false, false);
+
+    // Test case 3: Empty/null handling
+    table.withTags(List.of());
+    table.withDescription(null);
+    // Should pass when fields are empty/null since contains returns false for null/empty
+    RuleEngine.getInstance().evaluate(table, List.of(notContainsRule), false, false);
+  }
+
   /**
    * Helper method to create a real Domain entity for testing
    */
