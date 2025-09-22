@@ -5663,15 +5663,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Update the contract - this should remove all tests from test suite since all have results
     DataContract updatedContract = updateDataContract(create);
 
-    // Verify test suite is null or empty since all tests have results
-    if (updatedContract.getTestSuite() != null) {
-      TestSuite testSuite =
-          testSuiteResourceTest.getEntity(
-              updatedContract.getTestSuite().getId(), "*", ADMIN_AUTH_HEADERS);
-      assertTrue(
-          testSuite.getTests() == null || testSuite.getTests().isEmpty(),
-          "Test suite should be empty when all tests have results");
-    }
+    // Verify test suite is null since all tests have results - no test suite should be created
+    assertNull(
+        updatedContract.getTestSuite(),
+        "Test suite should be null when all tests already have results - no test suite should be created");
 
     // Call validate endpoint - should compile existing results without triggering new DQ validation
     DataContractResult result = runValidate(dataContract);

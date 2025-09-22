@@ -193,20 +193,27 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void postCreateOrUpdate(DataContract dataContract) {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
-      TestSuite testSuite = getOrCreateTestSuite(dataContract);
-      // Create the ingestion pipeline only if needed
-      if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
-        IngestionPipeline pipeline = createIngestionPipeline(testSuite);
-        EntityReference pipelineRef =
-            Entity.getEntityReference(
-                new EntityReference().withId(pipeline.getId()).withType(Entity.INGESTION_PIPELINE),
-                Include.NON_DELETED);
-        testSuite.setPipelines(List.of(pipelineRef));
-        TestSuiteRepository testSuiteRepository =
-            (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-        testSuiteRepository.createOrUpdate(null, testSuite, ADMIN_USER_NAME);
-        if (!pipeline.getDeployed()) {
-          prepareAndDeployIngestionPipeline(pipeline, testSuite);
+      // Create the test suite with only the tests pending to be executed
+      List<TestCase> tests = getTestsWithResults(dataContract);
+      List<TestCase> testsWithoutResults = filterTestsWithoutResults(tests);
+      if (!nullOrEmpty(testsWithoutResults)) {
+        TestSuite testSuite = getOrCreateTestSuite(dataContract);
+        // Create the ingestion pipeline only if needed
+        if (testSuite != null && nullOrEmpty(testSuite.getPipelines())) {
+          IngestionPipeline pipeline = createIngestionPipeline(testSuite);
+          EntityReference pipelineRef =
+              Entity.getEntityReference(
+                  new EntityReference()
+                      .withId(pipeline.getId())
+                      .withType(Entity.INGESTION_PIPELINE),
+                  Include.NON_DELETED);
+          testSuite.setPipelines(List.of(pipelineRef));
+          TestSuiteRepository testSuiteRepository =
+              (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
+          testSuiteRepository.createOrUpdate(null, testSuite, ADMIN_USER_NAME);
+          if (!pipeline.getDeployed()) {
+            prepareAndDeployIngestionPipeline(pipeline, testSuite);
+          }
         }
       }
     }
