@@ -29,6 +29,7 @@ public class LogicOps {
   public enum CustomLogicOps {
     LENGTH("length"),
     CONTAINS("contains"),
+    NOT_CONTAINS("not_contains"),
     IS_REVIEWER("isReviewer"),
     IS_OWNER("isOwner");
 
@@ -78,6 +79,31 @@ public class LogicOps {
             return Arrays.asList(array).contains(value);
           } else {
             return container.toString().contains(value.toString());
+          }
+        });
+
+    jsonLogic.addOperation(
+        "not_contains",
+        (args) -> {
+          if (nullOrEmpty(args) || args.length < 2) {
+            return true;
+          }
+
+          Object value = args[0];
+          Object container = args[1];
+
+          // If either value or container is null/empty, return true (not contained)
+          if (CommonUtil.nullOrEmpty(value) || CommonUtil.nullOrEmpty(container)) {
+            return true;
+          }
+
+          if (container instanceof List<?> list) {
+            return !list.contains(value);
+          } else if (container.getClass().isArray()) {
+            Object[] array = (Object[]) container;
+            return !Arrays.asList(array).contains(value);
+          } else {
+            return !container.toString().contains(value.toString());
           }
         });
 
