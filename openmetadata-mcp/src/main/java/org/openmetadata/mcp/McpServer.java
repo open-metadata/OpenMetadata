@@ -50,16 +50,16 @@ public class McpServer implements McpServerProvider {
       OpenMetadataApplicationConfig config) {
     this.jwtFilter =
         new JwtFilter(
-            SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
-            SecurityConfigurationManager.getInstance().getCurrentAuthzConfig());
+            SecurityConfigurationManager.getCurrentAuthConfig(),
+            SecurityConfigurationManager.getCurrentAuthzConfig());
     this.authorizer = authorizer;
     this.limits = limits;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
     McpAuthFilter authFilter =
         new McpAuthFilter(
             new JwtFilter(
-                SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
-                SecurityConfigurationManager.getInstance().getCurrentAuthzConfig()));
+                SecurityConfigurationManager.getCurrentAuthConfig(),
+                SecurityConfigurationManager.getCurrentAuthzConfig()));
     List<McpSchema.Tool> tools = getTools();
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, authFilter, tools, prompts);

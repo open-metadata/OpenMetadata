@@ -14,10 +14,8 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 @Slf4j
 public class AuthServeletHandlerFactory {
   public static AuthServeletHandler getHandler(OpenMetadataApplicationConfig config) {
-    AuthenticationConfiguration authConfig =
-        SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
-    AuthorizerConfiguration authzConfig =
-        SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
 
     if (authConfig == null) {
       LOG.warn("No authentication configuration found, using NoopAuthServeletHandler");

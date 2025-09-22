@@ -438,8 +438,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public void initializeUsers(OpenMetadataApplicationConfig config) {
-    AuthProvider authProvider =
-        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProvider();
+    AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
     // Create Admins
     Set<String> adminUsers =
         new HashSet<>(config.getAuthorizerConfiguration().getAdminPrincipals());

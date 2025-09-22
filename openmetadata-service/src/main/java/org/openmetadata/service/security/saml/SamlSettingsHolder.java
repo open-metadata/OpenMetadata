@@ -53,7 +53,7 @@ public class SamlSettingsHolder {
   public void initDefaultSettings(OpenMetadataApplicationConfig catalogApplicationConfig)
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
     SamlSSOClientConfig samlConfig =
-        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getSamlConfiguration();
+        SecurityConfigurationManager.getCurrentAuthConfig().getSamlConfiguration();
     if (samlData == null) {
       samlData = new HashMap<>();
     }
@@ -156,8 +156,7 @@ public class SamlSettingsHolder {
 
   public long getTokenValidity() {
     try {
-      AuthenticationConfiguration authConfig =
-          SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
+      AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
       LOG.debug("Retrieved auth config: {}", authConfig != null ? "present" : "null");
 
       if (authConfig == null) {
@@ -194,8 +193,7 @@ public class SamlSettingsHolder {
 
   public String getDomain() {
     try {
-      AuthorizerConfiguration authzConfig =
-          SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
+      AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
       LOG.debug("Retrieved authorizer config: {}", authzConfig != null ? "present" : "null");
 
       if (authzConfig == null) {

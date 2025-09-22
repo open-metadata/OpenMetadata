@@ -61,9 +61,8 @@ public class SamlLogoutServlet extends HttpServlet {
 
         // Get configuration dynamically
         AuthenticationConfiguration authConfig =
-            SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
-        AuthorizerConfiguration authzConfig =
-            SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
+            SecurityConfigurationManager.getCurrentAuthConfig();
+        AuthorizerConfiguration authzConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
         JwtFilter jwtFilter = new JwtFilter(authConfig, authzConfig);
         List<String> jwtPrincipalClaims = authConfig.getJwtPrincipalClaims();
         Map<String, String> jwtPrincipalClaimsMapping =

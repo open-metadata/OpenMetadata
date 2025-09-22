@@ -297,8 +297,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
   }
 
   private Set<String> getAdminPrincipals() {
-    AuthorizerConfiguration authorizerConfig =
-        SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
+    AuthorizerConfiguration authorizerConfig = SecurityConfigurationManager.getCurrentAuthzConfig();
     return new HashSet<>(authorizerConfig.getAdminPrincipals());
   }
 

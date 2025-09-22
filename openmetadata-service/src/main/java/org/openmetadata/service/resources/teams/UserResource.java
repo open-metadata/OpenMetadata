@@ -220,8 +220,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
     super.initialize(config);
-    this.authenticationConfiguration =
-        SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
+    this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
     this.authorizerConfiguration = config.getAuthorizerConfiguration();
     this.repository.initializeUsers(config);
     this.isSelfSignUpEnabled = authenticationConfiguration.getEnableSelfSignup();

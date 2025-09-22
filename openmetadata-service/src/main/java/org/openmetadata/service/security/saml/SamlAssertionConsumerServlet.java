@@ -170,7 +170,7 @@ public class SamlAssertionConsumerServlet extends HttpServlet {
 
   private Set<String> getAdmins() {
     AuthorizerConfiguration authorizerConfiguration =
-        SecurityConfigurationManager.getInstance().getCurrentAuthzConfig();
+        SecurityConfigurationManager.getCurrentAuthzConfig();
     return authorizerConfiguration.getAdminPrincipals();
   }
 }

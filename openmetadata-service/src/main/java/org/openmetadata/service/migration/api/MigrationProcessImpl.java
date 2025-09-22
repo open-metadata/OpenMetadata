@@ -46,8 +46,7 @@ public class MigrationProcessImpl implements MigrationProcess {
     this.collectionDAO = handle.attach(CollectionDAO.class);
     this.migrationDAO = handle.attach(MigrationDAO.class);
     this.openMetadataApplicationConfig = this.migrationFile.openMetadataApplicationConfig;
-    this.authenticationConfiguration =
-        SecurityConfigurationManager.getInstance().getCurrentAuthConfig();
+    this.authenticationConfiguration = SecurityConfigurationManager.getCurrentAuthConfig();
   }
 
   public void initializeWorkflowHandler() {

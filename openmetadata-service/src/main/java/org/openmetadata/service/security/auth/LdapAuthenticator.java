@@ -90,17 +90,11 @@ public class LdapAuthenticator implements AuthenticatorHandler {
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
-    if (SecurityConfigurationManager.getInstance()
-            .getCurrentAuthConfig()
-            .getProvider()
-            .equals(AuthProvider.LDAP)
-        && SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getLdapConfiguration()
-            != null) {
+    if (SecurityConfigurationManager.getCurrentAuthConfig().getProvider().equals(AuthProvider.LDAP)
+        && SecurityConfigurationManager.getCurrentAuthConfig().getLdapConfiguration() != null) {
       ldapLookupConnectionPool =
           getLdapConnectionPool(
-              SecurityConfigurationManager.getInstance()
-                  .getCurrentAuthConfig()
-                  .getLdapConfiguration());
+              SecurityConfigurationManager.getCurrentAuthConfig().getLdapConfiguration());
     } else {
       throw new IllegalStateException("Invalid or Missing Ldap Configuration.");
     }
@@ -108,9 +102,9 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     this.roleRepository = (RoleRepository) Entity.getEntityRepository(Entity.ROLE);
     this.tokenRepository = Entity.getTokenRepository();
     this.ldapConfiguration =
-        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getLdapConfiguration();
+        SecurityConfigurationManager.getCurrentAuthConfig().getLdapConfiguration();
     this.isSelfSignUpEnabled =
-        SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getEnableSelfSignup();
+        SecurityConfigurationManager.getCurrentAuthConfig().getEnableSelfSignup();
   }
 
   private LDAPConnectionPool getLdapConnectionPool(LdapConfiguration ldapConfiguration) {

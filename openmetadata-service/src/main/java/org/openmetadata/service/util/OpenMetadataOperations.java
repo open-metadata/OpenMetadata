@@ -432,8 +432,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
-      AuthProvider authProvider =
-          SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
@@ -590,8 +589,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       CollectionRegistry.initialize();
 
-      AuthProvider authProvider =
-          SecurityConfigurationManager.getInstance().getCurrentAuthConfig().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
       if (!authProvider.equals(AuthProvider.BASIC)) {

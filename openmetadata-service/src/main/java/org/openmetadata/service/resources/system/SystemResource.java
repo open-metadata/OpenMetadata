@@ -107,8 +107,8 @@ public class SystemResource {
 
     this.jwtFilter =
         new JwtFilter(
-            SecurityConfigurationManager.getInstance().getCurrentAuthConfig(),
-            SecurityConfigurationManager.getInstance().getCurrentAuthzConfig());
+            SecurityConfigurationManager.getCurrentAuthConfig(),
+            SecurityConfigurationManager.getCurrentAuthzConfig());
     this.isNlqEnabled =
         config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
             ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()

@@ -21,7 +21,9 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.AuthenticationException;
@@ -33,8 +35,8 @@ public class SecurityConfigurationManager {
     private static final SecurityConfigurationManager INSTANCE = new SecurityConfigurationManager();
   }
 
-  @Getter private AuthenticationConfiguration currentAuthConfig;
-  @Getter private AuthorizerConfiguration currentAuthzConfig;
+  private AuthenticationConfiguration currentAuthConfig;
+  private AuthorizerConfiguration currentAuthzConfig;
 
   public void setCurrentAuthConfig(AuthenticationConfiguration authConfig) {
     this.currentAuthConfig = authConfig;
@@ -56,6 +58,22 @@ public class SecurityConfigurationManager {
 
   public static SecurityConfigurationManager getInstance() {
     return Holder.INSTANCE;
+  }
+
+  public static AuthenticationConfiguration getCurrentAuthConfig() {
+    SecurityConfigurationManager instance = getInstance();
+    if (instance == null || instance.currentAuthConfig == null) {
+      throw new IllegalStateException("SecurityConfigurationManager not initialized");
+    }
+    return instance.currentAuthConfig;
+  }
+
+  public static AuthorizerConfiguration getCurrentAuthzConfig() {
+    SecurityConfigurationManager instance = getInstance();
+    if (instance == null || instance.currentAuthzConfig == null) {
+      throw new IllegalStateException("SecurityConfigurationManager not initialized");
+    }
+    return instance.currentAuthzConfig;
   }
 
   public void setAuthenticatorHandler(AuthenticatorHandler handler) {
@@ -81,14 +99,6 @@ public class SecurityConfigurationManager {
       currentAuthzConfig = config.getAuthorizerConfiguration();
       LOG.info("Using security configuration from YAML");
     }
-  }
-
-  public AuthenticationConfiguration getCurrentAuthConfig() {
-    return currentAuthConfig;
-  }
-
-  public AuthorizerConfiguration getCurrentAuthzConfig() {
-    return currentAuthzConfig;
   }
 
   public SecurityConfiguration getCurrentSecurityConfig() {
@@ -125,5 +135,40 @@ public class SecurityConfigurationManager {
       currentAuthzConfig = previousSecurityConfig.getAuthorizerConfiguration();
       LOG.info("Rolled back to previous security configuration");
     }
+  }
+
+  // Helper methods for checking authentication provider types
+  public static boolean isSaml() {
+    AuthenticationConfiguration authConfig = getCurrentAuthConfig();
+    return authConfig != null && AuthProvider.SAML.equals(authConfig.getProvider());
+  }
+
+  public static boolean isBasicAuth() {
+    AuthenticationConfiguration authConfig = getCurrentAuthConfig();
+    return authConfig != null && AuthProvider.BASIC.equals(authConfig.getProvider());
+  }
+
+  public static boolean isLdap() {
+    AuthenticationConfiguration authConfig = getCurrentAuthConfig();
+    return authConfig != null && AuthProvider.LDAP.equals(authConfig.getProvider());
+  }
+
+  public static boolean isOidc() {
+    AuthenticationConfiguration authConfig = getCurrentAuthConfig();
+    if (authConfig == null) {
+      return false;
+    }
+    AuthProvider provider = authConfig.getProvider();
+    return provider == AuthProvider.GOOGLE
+        || provider == AuthProvider.OKTA
+        || provider == AuthProvider.AUTH_0
+        || provider == AuthProvider.AZURE
+        || provider == AuthProvider.CUSTOM_OIDC
+        || provider == AuthProvider.AWS_COGNITO;
+  }
+
+  public static boolean isConfidentialClient() {
+    AuthenticationConfiguration authConfig = getCurrentAuthConfig();
+    return authConfig != null && ClientType.CONFIDENTIAL.equals(authConfig.getClientType());
   }
 }
