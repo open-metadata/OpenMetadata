@@ -359,6 +359,16 @@ pipelineServiceClientConfiguration:
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+  # logStorageConfiguration:
+  #   type: s3
+  #   bucketName: bucket-name
+  #   prefix: path/to/prefix
+  #   region: us-east-2
+  #   awsConfig:
+  #     awsAccessKeyId: <key-id>
+  #     awsSecretAccessKey: <secret-key>
+  #     awsRegion: us-east-2
+  #     awsSessionToken: "<session-token>"
 
   # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
   # Supported: noop, airflow, env
