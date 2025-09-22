@@ -28,13 +28,23 @@ import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
+import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import { patchChartDetails } from '../../../rest/chartsAPI';
 import {
   getDashboardByFqn,
   patchDashboardDetails,
 } from '../../../rest/dashboardAPI';
-import { getDatabaseDetailsByFQN } from '../../../rest/databaseAPI';
-import { getDataModelByFqn } from '../../../rest/dataModelsAPI';
+import {
+  getDatabaseDetailsByFQN,
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from '../../../rest/databaseAPI';
+import {
+  getDataModelByFqn,
+  patchDataModelDetails,
+} from '../../../rest/dataModelsAPI';
+import { patchDataProduct } from '../../../rest/dataProductAPI';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getMlModelByFQN, patchMlModelDetails } from '../../../rest/mlModelAPI';
@@ -42,8 +52,15 @@ import {
   getPipelineByFqn,
   patchPipelineDetails,
 } from '../../../rest/pipelineAPI';
-import { getSearchIndexDetailsByFQN } from '../../../rest/SearchIndexAPI';
-import { getStoredProceduresByFqn } from '../../../rest/storedProceduresAPI';
+import {
+  getSearchIndexDetailsByFQN,
+  patchSearchIndexDetails,
+} from '../../../rest/SearchIndexAPI';
+import { patchContainerDetails } from '../../../rest/storageAPI';
+import {
+  getStoredProceduresByFqn,
+  patchStoredProceduresDetails,
+} from '../../../rest/storedProceduresAPI';
 import {
   getTableDetailsByFQN,
   patchTableDetails,
@@ -682,9 +699,29 @@ export default function EntitySummaryPanel({
         return patchMlModelDetails;
       case EntityType.CHART:
         return patchChartDetails;
+      case EntityType.API_COLLECTION:
+        return patchApiCollection;
+      case EntityType.API_ENDPOINT:
+        return patchApiEndPoint;
+      case EntityType.DATABASE:
+        return patchDatabaseDetails;
+      case EntityType.DATABASE_SCHEMA:
+        return patchDatabaseSchemaDetails;
+      case EntityType.STORED_PROCEDURE:
+        return patchStoredProceduresDetails;
+      case EntityType.CONTAINER:
+        return patchContainerDetails;
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return patchDataModelDetails;
+      case EntityType.SEARCH_INDEX:
+        return patchSearchIndexDetails;
+      case EntityType.DATA_PRODUCT:
+        return patchDataProduct;
       default:
-        // Default to table API for backward compatibility
-        return patchTableDetails;
+        // For entity types without specific patch APIs, throw an error
+        throw new Error(
+          `No patch API available for entity type: ${entityType}`
+        );
     }
   };
 

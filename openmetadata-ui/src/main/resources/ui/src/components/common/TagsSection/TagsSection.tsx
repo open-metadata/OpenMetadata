@@ -19,8 +19,25 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { ReactComponent as TickIcon } from '../../../assets/svg/tick.svg';
+import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
+import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
+import { patchChartDetails } from '../../../rest/chartsAPI';
+import { patchDashboardDetails } from '../../../rest/dashboardAPI';
+import {
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from '../../../rest/databaseAPI';
+import { patchDataModelDetails } from '../../../rest/dataModelsAPI';
+import { patchDataProduct } from '../../../rest/dataProductAPI';
+import { patchMlModelDetails } from '../../../rest/mlModelAPI';
+import { patchPipelineDetails } from '../../../rest/pipelineAPI';
+import { patchSearchIndexDetails } from '../../../rest/SearchIndexAPI';
+import { patchContainerDetails } from '../../../rest/storageAPI';
+import { patchStoredProceduresDetails } from '../../../rest/storedProceduresAPI';
 import { patchTableDetails } from '../../../rest/tableAPI';
+import { patchTopicDetails } from '../../../rest/topicsAPI';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AsyncSelectList from '../AsyncSelectList/AsyncSelectList';
@@ -32,6 +49,7 @@ interface TagsSectionProps {
   maxDisplayCount?: number;
   hasPermission?: boolean;
   entityId?: string;
+  entityType?: EntityType;
   onTagsUpdate?: (updatedTags: TagLabel[]) => void;
 }
 
@@ -47,6 +65,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   maxDisplayCount = 3,
   hasPermission = false,
   entityId,
+  entityType,
   onTagsUpdate,
 }) => {
   const { t } = useTranslation();
@@ -90,6 +109,47 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         displayName: tag.displayName,
       } as any, // Type assertion to handle the data type mismatch
     }));
+  };
+
+  // Function to get the appropriate patch API based on entity type
+  const getPatchAPI = (entityType?: EntityType) => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        return patchTableDetails;
+      case EntityType.DASHBOARD:
+        return patchDashboardDetails;
+      case EntityType.TOPIC:
+        return patchTopicDetails;
+      case EntityType.PIPELINE:
+        return patchPipelineDetails;
+      case EntityType.MLMODEL:
+        return patchMlModelDetails;
+      case EntityType.CHART:
+        return patchChartDetails;
+      case EntityType.API_COLLECTION:
+        return patchApiCollection;
+      case EntityType.API_ENDPOINT:
+        return patchApiEndPoint;
+      case EntityType.DATABASE:
+        return patchDatabaseDetails;
+      case EntityType.DATABASE_SCHEMA:
+        return patchDatabaseSchemaDetails;
+      case EntityType.STORED_PROCEDURE:
+        return patchStoredProceduresDetails;
+      case EntityType.CONTAINER:
+        return patchContainerDetails;
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return patchDataModelDetails;
+      case EntityType.SEARCH_INDEX:
+        return patchSearchIndexDetails;
+      case EntityType.DATA_PRODUCT:
+        return patchDataProduct;
+      default:
+        // For entity types without specific patch APIs, throw an error
+        throw new Error(
+          `No patch API available for entity type: ${entityType}`
+        );
+    }
   };
 
   const handleEditClick = () => {
@@ -143,8 +203,9 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           return;
         }
 
-        // Make the API call
-        await patchTableDetails(idToUse, jsonPatch);
+        // Make the API call using the correct patch API for the entity type
+        const patchAPI = getPatchAPI(entityType);
+        await patchAPI(idToUse, jsonPatch);
 
         // Show success message
         showSuccessToast(
@@ -173,7 +234,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         );
       }
     },
-    [entityId, tags, onTagsUpdate, t]
+    [entityId, entityType, tags, onTagsUpdate, t]
   );
 
   const handleSave = () => {

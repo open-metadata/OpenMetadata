@@ -17,8 +17,25 @@ import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
+import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
+import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
+import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
+import { patchChartDetails } from '../../../rest/chartsAPI';
+import { patchDashboardDetails } from '../../../rest/dashboardAPI';
+import {
+  patchDatabaseDetails,
+  patchDatabaseSchemaDetails,
+} from '../../../rest/databaseAPI';
+import { patchDataModelDetails } from '../../../rest/dataModelsAPI';
+import { patchDataProduct } from '../../../rest/dataProductAPI';
+import { patchMlModelDetails } from '../../../rest/mlModelAPI';
+import { patchPipelineDetails } from '../../../rest/pipelineAPI';
+import { patchSearchIndexDetails } from '../../../rest/SearchIndexAPI';
+import { patchContainerDetails } from '../../../rest/storageAPI';
+import { patchStoredProceduresDetails } from '../../../rest/storedProceduresAPI';
 import { patchTableDetails } from '../../../rest/tableAPI';
+import { patchTopicDetails } from '../../../rest/topicsAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
 import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
@@ -29,6 +46,7 @@ interface OwnersSectionProps {
   showEditButton?: boolean;
   hasPermission?: boolean;
   entityId?: string;
+  entityType?: EntityType;
   onOwnerUpdate?: (updatedOwners: EntityReference[]) => void;
 }
 
@@ -37,12 +55,54 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   showEditButton = true,
   hasPermission = false,
   entityId,
+  entityType,
   onOwnerUpdate,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editingOwners, setEditingOwners] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Function to get the appropriate patch API based on entity type
+  const getPatchAPI = (entityType?: EntityType) => {
+    switch (entityType) {
+      case EntityType.TABLE:
+        return patchTableDetails;
+      case EntityType.DASHBOARD:
+        return patchDashboardDetails;
+      case EntityType.TOPIC:
+        return patchTopicDetails;
+      case EntityType.PIPELINE:
+        return patchPipelineDetails;
+      case EntityType.MLMODEL:
+        return patchMlModelDetails;
+      case EntityType.CHART:
+        return patchChartDetails;
+      case EntityType.API_COLLECTION:
+        return patchApiCollection;
+      case EntityType.API_ENDPOINT:
+        return patchApiEndPoint;
+      case EntityType.DATABASE:
+        return patchDatabaseDetails;
+      case EntityType.DATABASE_SCHEMA:
+        return patchDatabaseSchemaDetails;
+      case EntityType.STORED_PROCEDURE:
+        return patchStoredProceduresDetails;
+      case EntityType.CONTAINER:
+        return patchContainerDetails;
+      case EntityType.DASHBOARD_DATA_MODEL:
+        return patchDataModelDetails;
+      case EntityType.SEARCH_INDEX:
+        return patchSearchIndexDetails;
+      case EntityType.DATA_PRODUCT:
+        return patchDataProduct;
+      default:
+        // For entity types without specific patch APIs, throw an error
+        throw new Error(
+          `No patch API available for entity type: ${entityType}`
+        );
+    }
+  };
 
   const handleEditClick = () => {
     setEditingOwners(owners);
@@ -85,8 +145,9 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           return;
         }
 
-        // Make the API call
-        await patchTableDetails(idToUse, jsonPatch);
+        // Make the API call using the correct patch API for the entity type
+        const patchAPI = getPatchAPI(entityType);
+        await patchAPI(idToUse, jsonPatch);
 
         // Show success message
         showSuccessToast(
@@ -115,7 +176,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         );
       }
     },
-    [entityId, owners, onOwnerUpdate, t]
+    [entityId, entityType, owners, onOwnerUpdate, t]
   );
 
   const handleCancel = () => {
