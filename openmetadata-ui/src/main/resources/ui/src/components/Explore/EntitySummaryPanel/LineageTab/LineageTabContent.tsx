@@ -131,7 +131,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                 <div className="service-icon">
                   {getServiceLogo(
                     capitalize(item.entity.serviceType) ?? '',
-                    'h-5 w-5'
+                    'service-icon-lineage'
                   )}
                 </div>
                 <div className="lineage-item-direction">

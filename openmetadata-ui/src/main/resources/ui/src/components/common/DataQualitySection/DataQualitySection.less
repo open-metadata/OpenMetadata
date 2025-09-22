@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
 
 .data-quality-badge {
   border-radius: 6px;
@@ -32,7 +33,6 @@
   .data-quality-header {
     display: flex;
     justify-content: flex-end;
-    margin-bottom: 12px;
 
     .data-quality-badge {
       width: 20px;
@@ -66,17 +66,17 @@
         transition: width 0.3s ease;
 
         &.success {
-          background-color: #52c41a;
+          background-color: @green-500;
         }
 
         &.aborted {
-          background-color: #faad14;
-          margin-left: 2px;
-          margin-right: 2px;
+          background-color: @alert-warning;
+          margin-left: 1px;
+          margin-right: 1px;
         }
 
         &.failed {
-          background-color: #f5222d;
+          background-color: @red-15;
         }
       }
     }
@@ -85,7 +85,7 @@
   .data-quality-legend {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 14px;
 
     .legend-item {
       display: flex;
@@ -99,20 +99,20 @@
         flex-shrink: 0;
 
         &.success {
-          background-color: #52c41a;
+          background-color: @green-500;
         }
 
         &.aborted {
-          background-color: #faad14;
+          background-color: @alert-warning;
         }
 
         &.failed {
-          background-color: #f5222d;
+          background-color: @red-15;
         }
       }
 
       .legend-text {
-        font-size: 13px;
+        font-size: 12px;
         color: #181d27;
         line-height: 1.4;
         font-weight: 500;

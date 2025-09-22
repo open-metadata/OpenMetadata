@@ -554,7 +554,7 @@ export const DataAssetSummaryPanelV1 = ({
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(dataAsset)}>
-      <div className="d-flex flex-col gap-5">{commonEntitySummaryInfo}</div>
+      <div className="d-flex flex-col gap-6">{commonEntitySummaryInfo}</div>
     </SummaryPanelSkeleton>
   );
 };

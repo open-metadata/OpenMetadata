@@ -830,7 +830,7 @@ export default function EntitySummaryPanel({
   const renderTabContent = () => {
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
-        return <div className="p-x-md p-t-md">{summaryComponentV1}</div>;
+        return <div className="overview-tab-content">{summaryComponentV1}</div>;
       case EntityRightPanelTab.SCHEMA:
         return (
           <div className="entity-summary-panel-tab-content">
@@ -867,7 +867,7 @@ export default function EntitySummaryPanel({
         );
       case EntityRightPanelTab.DATA_QUALITY:
         return (
-          <div className="p-t-sm p-x-sm">
+          <div>
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
               entityType={entityType}
@@ -927,7 +927,11 @@ export default function EntitySummaryPanel({
       )}
       <div>
         <Card className="summary-panel-container">
-          <div style={{ width: '80%' }}>{renderTabContent()}</div>
+          <Card
+            className="content-area"
+            style={{ width: '80%', display: 'block' }}>
+            {renderTabContent()}
+          </Card>
           <EntityRightPanelVerticalNav
             activeTab={activeTab}
             entityType={entityType}

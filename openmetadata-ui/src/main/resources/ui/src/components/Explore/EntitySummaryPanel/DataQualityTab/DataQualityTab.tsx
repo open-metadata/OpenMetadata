@@ -445,7 +445,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
           <Typography.Text ellipsis className="test-title">
             {t('label.test-case-plural')}
           </Typography.Text>
-          <Row className="m-b-lg" gutter={[8, 8]}>
+          <Row className="m-b-sm" gutter={[8, 8]}>
             <Col span={8}>
               <Button
                 className={`filter-button success ${
@@ -548,7 +548,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
             <div className="incidents-cards">
               <Card className="incident-summary-card">
                 <div className="incident-summary-content">
-                  <Row className="incident-status-row-1" wrap={false}>
+                  <Row className="incident-status-row-1">
                     <Col className="incident-status-column" span={8}>
                       <div className="status-section">
                         <Typography.Text className="incident-count">

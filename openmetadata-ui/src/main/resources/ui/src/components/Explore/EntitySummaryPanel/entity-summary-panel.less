@@ -41,30 +41,22 @@
     }
   }
 }
-
+.overview-tab-content {
+  height: 100vh;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 16px;
+}
 .summary-panel-container {
   position: sticky;
   box-shadow: none;
   font-size: 14px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-  height: 100%;
+  overflow: hidden;
   border-bottom: none !important;
   border-radius: 0px !important;
   display: flex;
   border-color: #f2f3f9 !important;
   border-top: none !important;
-
-  /* Hide scrollbar but keep the space reserved to prevent layout shift */
-  &::-webkit-scrollbar {
-    width: 0px;
-    background: transparent;
-  }
-
-  /* Reserve space for scrollbar to prevent layout shift */
-  scrollbar-gutter: stable;
 
   .ant-card-head {
     border-bottom: none;
@@ -74,10 +66,29 @@
   .ant-card-body {
     padding-top: 0;
     padding: 0;
-    display: flex;
+    display: inherit;
     flex-direction: row;
     .scrollable-card-body();
     width: 100%;
+  }
+
+  .content-area {
+    max-height: 100vh;
+    padding-bottom: 80px;
+    overflow-y: auto;
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+    height: 100%;
+
+    &::-webkit-scrollbar {
+      width: 0px;
+      background: transparent;
+    }
+
+    scrollbar-gutter: stable;
   }
 
   .ant-divider {
@@ -176,6 +187,8 @@
 }
 
 .custom-properties-list {
+  padding-left: 16px;
+  padding-right: 16px;
   .custom-property-item {
     display: flex;
     flex-direction: column;
@@ -289,29 +302,38 @@
 
 // Lineage Tab Styles
 .lineage-filter-button-count {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
   background-color: #f2f5f9;
   border-radius: 9px;
   margin-left: 4px;
   color: #21263c;
-  font-size: 11px;
+  font-size: 10px;
+  display: flex;
   &.active {
     color: #3a8ce9;
   }
 }
 .service-icon {
   width: 31px;
-  height: 27px;
-  border-radius: 6px;
+  height: 28px;
+  border-radius: 5px;
   border: 1px solid #e3e8f0;
   background: #fff;
   justify-content: center;
   display: flex;
   align-items: center;
 }
+
+.service-icon-lineage {
+  width: 18px !important;
+  height: 18px !important;
+}
+
 .lineage-tab-content {
+  padding-left: 16px;
+  padding-right: 16px;
   .lineage-filter-buttons {
     display: flex;
     gap: 10px;
@@ -360,7 +382,7 @@
         font-size: 9px;
         text-transform: uppercase;
         font-weight: 600;
-        line-height: 22px;
+        line-height: 20px;
       }
       .lineage-item-header {
         display: flex;
@@ -376,13 +398,13 @@
         padding-right: 12px;
 
         .lineage-item-direction {
-          border-radius: 6px;
+          border-radius: 5px;
           border: 0.8px solid #e3e8f0;
           display: flex;
           align-items: center;
           justify-content: center;
           background: #fff;
-          padding: 3px 4px;
+          padding: 0px 4px;
           gap: 4px;
 
           .ant-badge {
@@ -395,16 +417,18 @@
       }
 
       .lineage-item-path {
+        display: flex;
         margin-bottom: 8px;
         padding: 0 7px;
-        justify-content: center;
+        width: 100%;
         align-items: center;
         border-radius: 5px;
         border: 1px solid #e3e8f0;
         background: #fff;
         .item-path-text {
           color: #364254;
-          font-size: 11px;
+          font-size: 10px;
+          line-height: 18px !important;
           text-transform: uppercase;
         }
 
