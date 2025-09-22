@@ -2089,6 +2089,7 @@
     "field-timeout-description": "接続タイムアウト時間",
     "field-use-aws-credentials-description": "AWS 上の OpenSearch 接続時に AWS 認証情報を使用するかどうかを指定します。",
     "field-use-ssl-description": "Elasticsearch に接続する際に SSL を使用するかを指定します（デフォルトでは SSL 設定は無視されます）。",
+    "field-value-updated-notification": "あなたの{{fieldName}}が{{fieldValue}}に変更されました",
     "field-verify-certs-description": "Elasticsearch への SSL 接続時に証明書を検証するかどうかを指定します。デフォルトでは無視され true になります。`CA Certificates` プロパティに証明書を渡してください。",
     "filter-pattern-include-exclude-info": "カンマ区切りの正規表現リストを追加することで、{{filterPattern}} を明示的に {{activity}} します。",
     "filter-pattern-info": "メタデータ取り込み時に {{filterPattern}} を含めるか除外するかを設定します。",

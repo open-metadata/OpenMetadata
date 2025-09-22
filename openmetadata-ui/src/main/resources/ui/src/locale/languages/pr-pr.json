@@ -2089,6 +2089,7 @@
     "field-timeout-description": "زمان انتظار اتصال",
     "field-use-aws-credentials-description": "مشخص می‌کند که آیا باید هنگام اتصال به OpenSearch در AWS از اعتبارنامه‌های AWS استفاده شود یا خیر.",
     "field-use-ssl-description": "این مشخص می‌کند که آیا هنگام اتصال به Elasticsearch باید از SSL استفاده کرد یا خیر. به‌طور پیش‌فرض، تنظیمات SSL نادیده گرفته می‌شود.",
+    "field-value-updated-notification": "{{fieldName}} شما به {{fieldValue}} تغییر کرد",
     "field-verify-certs-description": "این مشخص می‌کند که آیا باید هنگام استفاده از اتصال SSL گواهینامه‌ها را بررسی کرد یا خیر. به‌طور پیش‌فرض نادیده گرفته می‌شود و روی true تنظیم شده است. اطمینان حاصل کنید که گواهینامه‌ها را در ویژگی 'گواهینامه‌های CA' ارسال می‌کنید.",
     "filter-pattern-include-exclude-info": "{{activity}} {{filterPattern}} به‌طور صریح با افزودن لیستی از regex جدا شده با کاما.",
     "filter-pattern-info": "انتخاب کنید که آیا می‌خواهید {{filterPattern}} را به عنوان بخشی از استخراج متادیتا شامل کنید یا حذف کنید.",

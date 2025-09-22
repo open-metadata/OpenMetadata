@@ -2089,6 +2089,7 @@
     "field-timeout-description": "Connection Timeout",
     "field-use-aws-credentials-description": "Indicates whether to use AWS credentials when connecting to OpenSearch in AWS.",
     "field-use-ssl-description": "This indicates whether to use SSL when connecting to Elasticsearch. By default, we will ignore SSL settings.",
+    "field-value-updated-notification": "Your {{fieldName}} changed to {{fieldValue}}",
     "field-verify-certs-description": "This indicates whether to verify certificates when using SSL connection to Elasticsearch. It's ignored by default and is set to true. Ensure that you send the certificates in the property `CA Certificates`.",
     "filter-pattern-include-exclude-info": "Explicitly {{activity}} {{filterPattern}} by adding a list of comma-separated regex.",
     "filter-pattern-info": "Choose to include or exclude {{filterPattern}} as part of the metadata ingestion.",

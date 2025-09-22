@@ -2089,6 +2089,7 @@
     "field-timeout-description": "זמן קישור",
     "field-use-aws-credentials-description": "מציין האם להשתמש ב-Credentials של AWS בעת התחברות ל-OpenSearch ב-AWS.",
     "field-use-ssl-description": "מציין האם להשתמש ב-SSL בעת התחברות ל-Elasticsearch. לפי ברירת מחדל, נתעלם מהגדרות ה-SSL.",
+    "field-value-updated-notification": "{{fieldName}} שלך השתנה ל-{{fieldValue}}",
     "field-verify-certs-description": "מציין האם לאמת תעוזיות בעת שימוש בחיבור SSL ל-Elasticsearch. נתעלם מברירת המחדל ומוגדר ל-true. וודא שאתה שולח את התעוזיות במאפיין `CA Certificates`.",
     "filter-pattern-include-exclude-info": "הגדר {{activity}} באופן מפורש {{filterPattern}} על ידי הוספת רשימה של רגקס מופרדות בפסיקים.",
     "filter-pattern-info": "בחר לכלול או לא לכלול {{filterPattern}} כחלק מתהליך הקליטה של המטא-דאטה.",

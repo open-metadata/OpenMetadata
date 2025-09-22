@@ -2089,6 +2089,7 @@
     "field-timeout-description": "कनेक्शन टाइमआउट",
     "field-use-aws-credentials-description": "AWS मध्ये OpenSearch शी कनेक्ट करताना AWS क्रेडेन्शियल्स वापरायचे की नाही हे दर्शवते.",
     "field-use-ssl-description": "Elasticsearch शी कनेक्ट करताना SSL वापरायचे की नाही हे दर्शवते. डीफॉल्टनुसार, आम्ही SSL सेटिंग्ज दुर्लक्ष करू.",
+    "field-value-updated-notification": "तुमचे {{fieldName}} {{fieldValue}} मध्ये बदलले",
     "field-verify-certs-description": "Elasticsearch शी SSL कनेक्शन वापरताना प्रमाणपत्रे सत्यापित करायची की नाही हे दर्शवते. डीफॉल्टनुसार हे दुर्लक्ष केले जाते आणि ते सत्य आहे. कृपया 'CA प्रमाणपत्रे' गुणधर्मात प्रमाणपत्रे पाठवा.",
     "filter-pattern-include-exclude-info": "स्वल्पविराम-विभक्त regex यादी जोडून स्पष्टपणे {{activity}} {{filterPattern}}.",
     "filter-pattern-info": "मेटाडेटा अंतर्ग्रहणाचा भाग म्हणून {{filterPattern}} समाविष्ट किंवा वगळण्याचा पर्याय निवडा.",
