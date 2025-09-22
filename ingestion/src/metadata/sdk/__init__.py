@@ -54,7 +54,7 @@ def configure(
     :class:`OpenMetadataConfig` instance, a mapping, or keyword arguments.
     """
 
-    global _global_client
+    global _global_client  # pylint: disable=global-statement
 
     if config is not None and kwargs:
         raise TypeError("Pass either a config object or keyword arguments, not both")
@@ -84,74 +84,42 @@ def client() -> OpenMetadata:
 
 def reset() -> None:
     """Reset the SDK state, closing any cached client."""
-    global _global_client
+    global _global_client  # pylint: disable=global-statement
     OpenMetadata.reset()
     _global_client = None
 
 
-# Re-export resource facades following the Stripe convention
-BaseEntity = BaseEntity
-APICollections = APICollections
-APIEndpoints = APIEndpoints
-Charts = Charts
-Classifications = Classifications
-Containers = Containers
-DashboardDataModels = DashboardDataModels
-DashboardServices = DashboardServices
-Dashboards = Dashboards
-DataContracts = DataContracts
-DataProducts = DataProducts
-Databases = Databases
-DatabaseSchemas = DatabaseSchemas
-DatabaseServices = DatabaseServices
-Domains = Domains
-Glossaries = Glossaries
-GlossaryTerms = GlossaryTerms
-Metrics = Metrics
-MLModels = MLModels
-Pipelines = Pipelines
-Queries = Queries
-SearchIndexes = SearchIndexes
-StoredProcedures = StoredProcedures
-Tables = Tables
-Tags = Tags
-Teams = Teams
-TestCases = TestCases
-TestDefinitions = TestDefinitions
-TestSuites = TestSuites
-Users = Users
-
 # Optional lowercase aliases for convenience (similar to stripe.Charge vs stripe.charge)
-base_entity = BaseEntity
-api_collections = APICollections
-api_endpoints = APIEndpoints
-charts = Charts
-classifications = Classifications
-containers = Containers
-dashboard_data_models = DashboardDataModels
-dashboard_services = DashboardServices
-dashboards = Dashboards
-data_contracts = DataContracts
-data_products = DataProducts
-databases = Databases
-database_schemas = DatabaseSchemas
-database_services = DatabaseServices
-domains = Domains
-glossaries = Glossaries
-glossary_terms = GlossaryTerms
-metrics = Metrics
-mlmodels = MLModels
-pipelines = Pipelines
-queries = Queries
-search_indexes = SearchIndexes
-stored_procedures = StoredProcedures
-tables = Tables
-tags = Tags
-teams = Teams
-test_cases = TestCases
-test_definitions = TestDefinitions
-test_suites = TestSuites
-users = Users
+base_entity = BaseEntity  # pylint: disable=invalid-name
+api_collections = APICollections  # pylint: disable=invalid-name
+api_endpoints = APIEndpoints  # pylint: disable=invalid-name
+charts = Charts  # pylint: disable=invalid-name
+classifications = Classifications  # pylint: disable=invalid-name
+containers = Containers  # pylint: disable=invalid-name
+dashboard_data_models = DashboardDataModels  # pylint: disable=invalid-name
+dashboard_services = DashboardServices  # pylint: disable=invalid-name
+dashboards = Dashboards  # pylint: disable=invalid-name
+data_contracts = DataContracts  # pylint: disable=invalid-name
+data_products = DataProducts  # pylint: disable=invalid-name
+databases = Databases  # pylint: disable=invalid-name
+database_schemas = DatabaseSchemas  # pylint: disable=invalid-name
+database_services = DatabaseServices  # pylint: disable=invalid-name
+domains = Domains  # pylint: disable=invalid-name
+glossaries = Glossaries  # pylint: disable=invalid-name
+glossary_terms = GlossaryTerms  # pylint: disable=invalid-name
+metrics = Metrics  # pylint: disable=invalid-name
+mlmodels = MLModels  # pylint: disable=invalid-name
+pipelines = Pipelines  # pylint: disable=invalid-name
+queries = Queries  # pylint: disable=invalid-name
+search_indexes = SearchIndexes  # pylint: disable=invalid-name
+stored_procedures = StoredProcedures  # pylint: disable=invalid-name
+tables = Tables  # pylint: disable=invalid-name
+tags = Tags  # pylint: disable=invalid-name
+teams = Teams  # pylint: disable=invalid-name
+test_cases = TestCases  # pylint: disable=invalid-name
+test_definitions = TestDefinitions  # pylint: disable=invalid-name
+test_suites = TestSuites  # pylint: disable=invalid-name
+users = Users  # pylint: disable=invalid-name
 
 __all__ = [
     "OpenMetadata",

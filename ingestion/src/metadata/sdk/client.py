@@ -51,7 +51,7 @@ class OpenMetadata:
     def initialize(cls, config: OpenMetadataConfig) -> "OpenMetadata":
         """Initialize the default client instance."""
         cls._instance = cls(config)
-        cls._default_client = cls._instance._ometa
+        cls._default_client = cls._instance.ometa
         return cls._instance
 
     @classmethod

@@ -5,12 +5,14 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, Generic, Optional, Type, TypeVar, Union, cast
 from uuid import UUID
 
+from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type import basic
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.sdk.client import OpenMetadata
 from metadata.sdk.types import OMetaClient, UuidLike
 
-TEntity = TypeVar("TEntity", bound=BaseModel)
+TEntity = TypeVar("TEntity", bound=BaseModel)  # pylint: disable=invalid-name
 
 
 @dataclass
@@ -34,20 +36,24 @@ class CustomPropertyUpdater(Generic[TEntity]):
     # Mutation helpers
     # ------------------------------------------------------------------
     def with_property(self, key: str, value: Any) -> "CustomPropertyUpdater[TEntity]":
+        """Set a single custom property value."""
         self.properties[key] = value
         return self
 
     def with_properties(
         self, properties: Dict[str, Any]
     ) -> "CustomPropertyUpdater[TEntity]":
+        """Set multiple custom property values in one call."""
         self.properties.update(properties)
         return self
 
     def clear_property(self, key: str) -> "CustomPropertyUpdater[TEntity]":
+        """Unset a specific custom property."""
         self.properties[key] = None
         return self
 
     def clear_all(self) -> "CustomPropertyUpdater[TEntity]":
+        """Remove all custom properties from the entity."""
         self.clear_all_flag = True
         return self
 
@@ -60,6 +66,7 @@ class CustomPropertyUpdater(Generic[TEntity]):
     # Execution
     # ------------------------------------------------------------------
     def execute(self) -> TEntity:
+        """Persist the queued custom property changes and return the entity."""
         client = self._client_override or self._get_client()
         fields = ["extension"]
         if self.is_fqn:
@@ -101,6 +108,7 @@ class CustomProperties:
     def update(
         entity_type: Type[TEntity], identifier: Union[UuidLike, UUID]
     ) -> CustomPropertyUpdater[TEntity]:
+        """Create an updater targeting the provided entity identifier."""
         identifier_str = str(identifier)
         return CustomPropertyUpdater(entity_type, identifier_str, is_fqn=False)
 
@@ -108,6 +116,7 @@ class CustomProperties:
     def update_by_name(
         entity_type: Type[TEntity], fqn: str
     ) -> CustomPropertyUpdater[TEntity]:
+        """Create an updater referencing an entity by FQN."""
         return CustomPropertyUpdater(entity_type, fqn, is_fqn=True)
 
 
@@ -116,14 +125,10 @@ class TableCustomProperties:
 
     @staticmethod
     def update(identifier: Union[UuidLike, UUID]) -> CustomPropertyUpdater[Any]:
-        from metadata.generated.schema.entity.data.table import Table
-
         return CustomProperties.update(Table, identifier)
 
     @staticmethod
     def update_by_name(fqn: str) -> CustomPropertyUpdater[Any]:
-        from metadata.generated.schema.entity.data.table import Table
-
         return CustomProperties.update_by_name(Table, fqn)
 
 
@@ -132,12 +137,8 @@ class GlossaryCustomProperties:
 
     @staticmethod
     def update(identifier: Union[UuidLike, UUID]) -> CustomPropertyUpdater[Any]:
-        from metadata.generated.schema.entity.data.glossary import Glossary
-
         return CustomProperties.update(Glossary, identifier)
 
     @staticmethod
     def update_by_name(fqn: str) -> CustomPropertyUpdater[Any]:
-        from metadata.generated.schema.entity.data.glossary import Glossary
-
         return CustomProperties.update_by_name(Glossary, fqn)

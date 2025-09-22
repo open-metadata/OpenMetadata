@@ -17,6 +17,7 @@ from typing import (
 from urllib.parse import urlencode
 
 from metadata.ingestion.ometa.client import REST
+
 from ..client import OpenMetadata
 from ..types import JsonDict, OMetaClient
 
@@ -181,9 +182,7 @@ class Search:
         search_fn_raw = getattr(client, "es_search_from_es", None)
         if callable(search_fn_raw):
             search_callback: SearchCallback = cast(SearchCallback, search_fn_raw)
-            return search_callback(  # pylint: disable=not-callable
-                body=search_request
-            )
+            return search_callback(body=search_request)  # pylint: disable=not-callable
         return _http_post(client, "/search/query", search_request)
 
     @classmethod

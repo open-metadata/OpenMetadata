@@ -23,8 +23,8 @@ from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.sdk.client import OpenMetadata
 from metadata.sdk.types import JsonDict, OMetaClient, UuidLike
 
-TCreate = TypeVar("TCreate", bound=BaseModel)
-TEntity = TypeVar("TEntity", bound=BaseModel)
+TCreate = TypeVar("TCreate", bound=BaseModel)  # pylint: disable=invalid-name
+TEntity = TypeVar("TEntity", bound=BaseModel)  # pylint: disable=invalid-name
 
 
 @dataclass
@@ -155,6 +155,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         fields: Optional[Sequence[str]] = None,
         nullable: Optional[bool] = None,
     ) -> TEntity:
+        """Retrieve an entity by its unique identifier."""
         client = cls._get_client()
         entity_id_value = cls._stringify_identifier(entity_id)
         if nullable is None:
@@ -180,6 +181,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         fields: Optional[Sequence[str]] = None,
         nullable: Optional[bool] = None,
     ) -> TEntity:
+        """Retrieve an entity by its fully-qualified name."""
         client = cls._get_client()
         if nullable is None:
             entity = client.get_by_name(
@@ -238,6 +240,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         fields: Optional[Sequence[str]] = None,
         filters: Optional[Mapping[str, str]] = None,
     ) -> EntityList[TEntity]:
+        """Fetch a single page of entities from OpenMetadata."""
         client = cls._get_client()
         response = client.list_entities(
             entity=cls.entity_type(),
@@ -288,10 +291,14 @@ class BaseEntity(Generic[TEntity, TCreate]):
         search_fn = getattr(client, "es_search_from_fqn", None)
         if not callable(search_fn):
             raise AttributeError("OpenMetadata client does not support entity search")
-        results = search_fn(
-            entity_type=cls.entity_type(),
-            fqn_search_string=query,
-            size=size,
+        assert callable(search_fn)
+        results = cast(
+            Sequence[Any],
+            search_fn(  # pylint: disable=not-callable
+                entity_type=cls.entity_type(),
+                fqn_search_string=query,
+                size=size,
+            ),
         )
         coerced_results = cast(Sequence[Any], results or [])
         return [cls._coerce_entity(item) for item in coerced_results]
@@ -405,7 +412,9 @@ class BaseEntity(Generic[TEntity, TCreate]):
     def update_custom_properties(cls, identifier: UuidLike):
         """Convenience accessor for custom property updates by entity id."""
 
-        from metadata.sdk.entities.custom_properties import CustomProperties
+        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel
+            CustomProperties,
+        )
 
         updater = CustomProperties.update(cls.entity_type(), identifier)
         _ = updater.use_client(cls._get_client())
@@ -415,7 +424,9 @@ class BaseEntity(Generic[TEntity, TCreate]):
     def update_custom_properties_by_name(cls, fqn: str):
         """Convenience accessor for custom property updates by entity FQN."""
 
-        from metadata.sdk.entities.custom_properties import CustomProperties
+        from metadata.sdk.entities.custom_properties import (  # pylint: disable=import-outside-toplevel
+            CustomProperties,
+        )
 
         updater = CustomProperties.update_by_name(cls.entity_type(), fqn)
         _ = updater.use_client(cls._get_client())

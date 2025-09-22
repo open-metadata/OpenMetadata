@@ -18,6 +18,7 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
 
     @classmethod
     def add_tag(cls, table_id: UuidLike, tag_fqn: str) -> Table:
+        """Attach a classification or glossary tag to the table."""
         client = cls._get_client()
         current = client.get_by_id(
             entity=Table,
@@ -43,6 +44,7 @@ class Tables(BaseEntity[Table, CreateTableRequest]):
     def update_column_description(
         cls, table_id: UuidLike, column_name: str, description: str
     ) -> Table:
+        """Update the description for a specific column."""
         client = cls._get_client()
         current = client.get_by_id(
             entity=Table,
