@@ -52,6 +52,7 @@ import {
 import { DomainDetailPageTabProps } from './Domain/DomainClassBase';
 import { getEntityName, getEntityReferenceFromEntity } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { renderIcon } from './IconUtils';
 import { getPrioritizedEditPermission } from './PermissionsUtils';
 import { getDomainPath } from './RouterUtils';
 
@@ -513,15 +514,17 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 };
 
 export const getDomainIcon = (iconURL?: string) => {
-  if (iconURL) {
-    return (
-      <img
-        alt="domain icon"
-        className="domain-icon-url h-6 w-6"
-        src={iconURL}
-      />
-    );
+  // Try to render the icon using the utility (handles both URLs and icon names)
+  const iconElement = renderIcon(iconURL, {
+    size: 24,
+    className: 'domain-icon-url h-6 w-6',
+  });
+
+  // If we got an icon element, return it
+  if (iconElement) {
+    return iconElement;
   }
 
+  // Otherwise return the default domain icon
   return <DomainIcon className="domain-default-icon" />;
 };

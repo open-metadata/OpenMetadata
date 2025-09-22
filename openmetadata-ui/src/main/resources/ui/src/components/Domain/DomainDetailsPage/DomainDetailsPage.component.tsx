@@ -15,7 +15,7 @@ import {
   Button,
   Col,
   Dropdown,
-  Modal,
+  Form,
   Row,
   Space,
   Tabs,
@@ -23,7 +23,6 @@ import {
   Typography,
 } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
-import { useForm } from 'antd/lib/form/Form';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -95,8 +94,9 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
@@ -105,7 +105,6 @@ import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/Asset
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
-import AddSubDomainModal from '../AddSubDomainModal/AddSubDomainModal.component';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
@@ -121,7 +120,6 @@ const DomainDetailsPage = ({
   handleFollowingClick,
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
-  const [form] = useForm();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const navigate = useNavigate();
   const { tab: activeTab, version } = useRequiredParams<{
@@ -137,8 +135,133 @@ const DomainDetailsPage = ({
     DEFAULT_ENTITY_PERMISSION
   );
   const [assetModalVisible, setAssetModalVisible] = useState(false);
-  const [showAddDataProductModal, setShowAddDataProductModal] = useState(false);
-  const [showAddSubDomainModal, setShowAddSubDomainModal] = useState(false);
+  // Sub-domain drawer implementation
+  const [subDomainForm] = Form.useForm();
+  const [isSubDomainLoading, setIsSubDomainLoading] = useState(false);
+
+  const {
+    formDrawer: subDomainDrawer,
+    openDrawer: openSubDomainDrawer,
+    closeDrawer: closeSubDomainDrawer,
+  } = useFormDrawerWithRef({
+    title: t('label.add-entity', { entity: t('label.sub-domain') }),
+    anchor: 'right',
+    width: 750,
+    closeOnEscape: false,
+    form: (
+      <AddDomainForm
+        isFormInDialog
+        formRef={subDomainForm}
+        loading={isSubDomainLoading}
+        type={DomainFormType.SUBDOMAIN}
+        onCancel={() => {
+          // No-op: Drawer close is handled by useFormDrawerWithRef
+        }}
+        onSubmit={async (formData: any) => {
+          setIsSubDomainLoading(true);
+          try {
+            formData.parent = domain.fullyQualifiedName;
+            await addDomains(formData);
+            showSuccessToast(
+              t('server.create-entity-success', {
+                entity: t('label.sub-domain'),
+              })
+            );
+            fetchSubDomainsCount();
+            // Navigate to the subdomains tab
+            handleTabChange(EntityTabs.SUBDOMAINS);
+            closeSubDomainDrawer();
+          } catch (error) {
+            showErrorToast(
+              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+                ? t('server.entity-already-exist', {
+                    entity: t('label.sub-domain'),
+                    entityPlural: 'sub-domains',
+                    name: formData.name,
+                  })
+                : (error as AxiosError),
+              t('server.add-entity-error', {
+                entity: t('label.sub-domain').toLowerCase(),
+              })
+            );
+          } finally {
+            setIsSubDomainLoading(false);
+          }
+        }}
+      />
+    ),
+    formRef: subDomainForm,
+    onSubmit: () => {
+      // This is called by the drawer button, but actual submission
+      // happens via formRef.submit() which triggers form.onFinish
+    },
+    loading: isSubDomainLoading,
+  });
+
+  // Data product drawer implementation
+  const [dataProductForm] = Form.useForm();
+  const [isDataProductLoading, setIsDataProductLoading] = useState(false);
+
+  const {
+    formDrawer: dataProductDrawer,
+    openDrawer: openDataProductDrawer,
+    closeDrawer: closeDataProductDrawer,
+  } = useFormDrawerWithRef({
+    title: t('label.add-entity', { entity: t('label.data-product') }),
+    anchor: 'right',
+    width: 750,
+    closeOnEscape: false,
+    form: (
+      <AddDomainForm
+        isFormInDialog
+        formRef={dataProductForm}
+        loading={isDataProductLoading}
+        parentDomain={domain}
+        type={DomainFormType.DATA_PRODUCT}
+        onCancel={() => {
+          // No-op: Drawer close is handled by useFormDrawerWithRef
+        }}
+        onSubmit={async (formData: any) => {
+          setIsDataProductLoading(true);
+          try {
+            formData.domains = [domain.fullyQualifiedName];
+            await addDataProducts(formData);
+            showSuccessToast(
+              t('server.create-entity-success', {
+                entity: t('label.data-product'),
+              })
+            );
+            fetchDataProducts();
+            // Navigate to the data products tab
+            handleTabChange(EntityTabs.DATA_PRODUCTS);
+            onUpdate?.(domain);
+            closeDataProductDrawer();
+          } catch (error) {
+            showErrorToast(
+              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+                ? t('server.entity-already-exist', {
+                    entity: t('label.data-product'),
+                    entityPlural: 'data-products',
+                    name: formData.name,
+                  })
+                : (error as AxiosError),
+              t('server.add-entity-error', {
+                entity: t('label.data-product').toLowerCase(),
+              })
+            );
+          } finally {
+            setIsDataProductLoading(false);
+          }
+        }}
+      />
+    ),
+    formRef: dataProductForm,
+    onSubmit: () => {
+      // This is called by the drawer button, but actual submission
+      // happens via formRef.submit() which triggers form.onFinish
+    },
+    loading: isDataProductLoading,
+  });
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
@@ -171,7 +294,7 @@ const DomainDetailsPage = ({
     return [
       {
         name: 'Domains',
-        url: getDomainPath(arr[0]),
+        url: getDomainPath(), // Navigate to domains listing page
         activeTitle: false,
       },
       ...arr.slice(0, -1).map((d) => {
@@ -223,7 +346,7 @@ const DomainDetailsPage = ({
           {
             label: t('label.sub-domain-plural'),
             key: '2',
-            onClick: () => setShowAddSubDomainModal(true),
+            onClick: openSubDomainDrawer,
           },
         ]
       : []),
@@ -232,7 +355,7 @@ const DomainDetailsPage = ({
           {
             label: t('label.data-product-plural'),
             key: '3',
-            onClick: () => setShowAddDataProductModal(true),
+            onClick: openDataProductDrawer,
           },
         ]
       : []),
@@ -291,7 +414,7 @@ const DomainDetailsPage = ({
           })
         );
       } finally {
-        setShowAddSubDomainModal(false);
+        closeSubDomainDrawer();
       }
     },
     [domain, fetchSubDomainsCount]
@@ -330,7 +453,7 @@ const DomainDetailsPage = ({
           })
         );
       } finally {
-        setShowAddDataProductModal(false);
+        closeDataProductDrawer();
       }
     },
     [domain]
@@ -419,8 +542,8 @@ const DomainDetailsPage = ({
   };
 
   const onAddDataProduct = useCallback(() => {
-    setShowAddDataProductModal(true);
-  }, []);
+    openDataProductDrawer();
+  }, [openDataProductDrawer]);
 
   const onNameSave = (obj: { name: string; displayName?: string }) => {
     const { displayName } = obj;
@@ -460,11 +583,6 @@ const DomainDetailsPage = ({
     (asset?: EntityDetailsObjectInterface) => {
       setPreviewAsset(asset);
     },
-    []
-  );
-
-  const handleCloseDataProductModal = useCallback(
-    () => setShowAddDataProductModal(false),
     []
   );
 
@@ -564,9 +682,9 @@ const DomainDetailsPage = ({
       setAssetModalVisible,
       handleAssetClick,
       handleAssetSave,
-      setShowAddSubDomainModal,
+      setShowAddSubDomainModal: openSubDomainDrawer,
       onAddSubDomain: addSubDomain,
-      showAddSubDomainModal,
+      showAddSubDomainModal: false,
       labelMap: tabLabelMap,
     });
 
@@ -777,43 +895,7 @@ const DomainDetailsPage = ({
         </GenericProvider>
       </Row>
 
-      {showAddDataProductModal && (
-        <Modal
-          centered
-          cancelText={t('label.cancel')}
-          className="add-data-product-modal"
-          closable={false}
-          footer={[
-            <Button
-              key="cancel-btn"
-              type="link"
-              onClick={handleCloseDataProductModal}>
-              {t('label.cancel')}
-            </Button>,
-            <Button
-              data-testid="save-data-product"
-              key="save-btn"
-              type="primary"
-              onClick={() => form.submit()}>
-              {t('label.save')}
-            </Button>,
-          ]}
-          maskClosable={false}
-          okText={t('label.submit')}
-          open={showAddDataProductModal}
-          title={t('label.add-entity', { entity: t('label.data-product') })}
-          width={750}
-          onCancel={handleCloseDataProductModal}>
-          <AddDomainForm
-            isFormInDialog
-            formRef={form}
-            loading={false}
-            type={DomainFormType.DATA_PRODUCT}
-            onCancel={handleCloseDataProductModal}
-            onSubmit={addDataProduct}
-          />
-        </Modal>
-      )}
+      {dataProductDrawer}
       {assetModalVisible && (
         <AssetSelectionModal
           entityFqn={domainFqn}
@@ -853,13 +935,7 @@ const DomainDetailsPage = ({
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
       />
-      {showAddSubDomainModal && (
-        <AddSubDomainModal
-          open={showAddSubDomainModal}
-          onCancel={() => setShowAddSubDomainModal(false)}
-          onSubmit={(data: CreateDomain) => addSubDomain(data)}
-        />
-      )}
+      {subDomainDrawer}
     </>
   );
 };
