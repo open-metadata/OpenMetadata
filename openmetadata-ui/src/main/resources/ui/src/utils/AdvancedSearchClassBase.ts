@@ -44,7 +44,6 @@ import {
   renderAdvanceSearchButtons,
 } from './AdvancedSearchUtils';
 import { getEntityName } from './EntityUtils';
-import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
@@ -168,10 +167,12 @@ class AdvancedSearchClassBase {
     entityField: EntityFields | EntityReferenceFields;
     suggestField?: SuggestionField;
     isCaseInsensitive?: boolean;
+    q?: string;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     entityField,
     isCaseInsensitive = false,
+    q = '',
   }) => {
     let pendingResolve:
       | ((result: { values: any[]; hasMore: boolean }) => void)
@@ -185,7 +186,7 @@ class AdvancedSearchClassBase {
         searchIndex,
         entityField,
         search ?? '',
-        JSON.stringify(getCombinedQueryFilterObject()),
+        q,
         sourceFields
       )
         .then((response) => {
@@ -667,9 +668,8 @@ class AdvancedSearchClassBase {
 
   public getCommonConfig(args: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<ListValues>;
   }): Fields {
-    const { entitySearchIndex = [SearchIndex.TABLE], tierOptions } = args;
+    const { entitySearchIndex = [SearchIndex.TABLE] } = args;
 
     return {
       [EntityFields.DISPLAY_NAME_KEYWORD]: {
@@ -784,10 +784,9 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: entitySearchIndex ?? [
-              (SearchIndex.TAG, SearchIndex.GLOSSARY_TERM),
-            ],
-            entityField: EntityFields.TAG,
+            searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
+            entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            q: `name:* NOT classification.name:tier NOT classification.name:certification`,
           }),
           useAsyncSearch: true,
         },
@@ -799,8 +798,9 @@ class AdvancedSearchClassBase {
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
           asyncFetch: this.autocomplete({
-            searchIndex: [SearchIndex.DATA_ASSET],
-            entityField: EntityFields.CERTIFICATION,
+            searchIndex: [SearchIndex.TAG],
+            entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            q: `name:* AND classification.name:certification`,
           }),
           useAsyncSearch: true,
         },
@@ -811,7 +811,11 @@ class AdvancedSearchClassBase {
         type: 'select',
         mainWidgetProps: this.mainWidgetProps,
         fieldSettings: {
-          asyncFetch: this.autoCompleteTier(tierOptions),
+          asyncFetch: this.autocomplete({
+            searchIndex: [SearchIndex.TAG],
+            entityField: EntityFields.FULLY_QUALIFIED_NAME,
+            q: `name:* AND classification.name:tier`,
+          }),
           useAsyncSearch: true,
         },
       },
@@ -990,11 +994,9 @@ class AdvancedSearchClassBase {
    */
   public getQueryBuilderFields = ({
     entitySearchIndex = [SearchIndex.TABLE],
-    tierOptions,
     shouldAddServiceField = true,
   }: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<ListValues>;
     shouldAddServiceField?: boolean;
   }) => {
     const serviceQueryBuilderFields: Fields = {
@@ -1013,7 +1015,7 @@ class AdvancedSearchClassBase {
     };
 
     const fieldsConfig = {
-      ...this.getCommonConfig({ entitySearchIndex, tierOptions }),
+      ...this.getCommonConfig({ entitySearchIndex }),
       ...(shouldAddServiceField ? serviceQueryBuilderFields : {}),
       ...this.getEntitySpecificQueryBuilderFields(entitySearchIndex),
       ...this.getColumnConfig(entitySearchIndex),
@@ -1029,10 +1031,9 @@ class AdvancedSearchClassBase {
    * Builds search index specific configuration for the query builder
    */
   public getQbConfigs: (
-    tierOptions: Promise<ListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
-  ) => BasicConfig = (tierOptions, entitySearchIndex, isExplorePage) => {
+  ) => BasicConfig = (entitySearchIndex, isExplorePage) => {
     const searchIndexWithServices = [
       SearchIndex.DATA_ASSET,
       SearchIndex.TABLE,
@@ -1069,7 +1070,6 @@ class AdvancedSearchClassBase {
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,
-          tierOptions,
           shouldAddServiceField,
         }),
       },

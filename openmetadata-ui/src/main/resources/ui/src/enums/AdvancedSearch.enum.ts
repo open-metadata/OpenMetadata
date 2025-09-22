@@ -78,6 +78,7 @@ export enum EntityFields {
   TIER_LABEL_TYPE = 'tier.labelType',
   CREATED_BY = 'createdBy',
   DATA_PRODUCT = 'dataProducts.displayName.keyword',
+  FULLY_QUALIFIED_NAME = 'fullyQualifiedName',
 }
 
 export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
