@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import jsonLogicSearchClassBase from '../utils/JSONLogicSearchClassBase';
 
@@ -27,6 +28,7 @@ export enum DataContractTabMode {
 
 export enum EDataContractTab {
   CONTRACT_DETAIL,
+  TERMS_OF_SERVICE,
   SCHEMA,
   SEMANTICS,
   SECURITY,
@@ -51,3 +53,25 @@ export const SEMANTIC_OPERATORS = [
 ];
 
 export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';
+
+export enum DATA_CONTRACT_ACTION_DROPDOWN_KEY {
+  EDIT = 'edit',
+  RUN_NOW = 'run_now',
+  EXPORT = 'export',
+  DELETE = 'delete',
+}
+
+export enum DATA_CONTRACT_SLA {
+  REFRESH_FREQUENCY = 'refresh_frequency',
+  MAX_LATENCY = 'max_latency',
+  TIME_AVAILABILITY = 'time_availability',
+  RETENTION = 'retention',
+}
+
+export const DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS: {
+  maxBarSize: number;
+  radius: BarProps['radius'];
+} = {
+  maxBarSize: 12,
+  radius: [6, 6, 0, 0],
+};
