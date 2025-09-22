@@ -22,18 +22,19 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch.core.BulkResponse;
+import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
-import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
-import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
 import es.org.elasticsearch.action.get.GetRequest;
 import es.org.elasticsearch.action.get.GetResponse;
-import es.org.elasticsearch.action.index.IndexRequest;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.update.UpdateRequest;
@@ -1587,47 +1588,62 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void createEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      updateRequest.doc(doc, XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      updateElasticSearch(updateRequest);
+    if (isNewClientAvailable) {
+      try {
+        newClient.update(
+            u ->
+                u.index(indexName)
+                    .id(docId)
+                    .docAsUpsert(true)
+                    .refresh(Refresh.True)
+                    .doc(JsonData.fromJson(doc)),
+            Map.class);
+        LOG.info(
+            "Successfully created entity in ElasticSearch for index: {}, docId: {}",
+            indexName,
+            docId);
+      } catch (IOException e) {
+        LOG.error("Failed to create entity in ES for index: {}, docId: {} ", indexName, docId, e);
+        throw new RuntimeException("Failed to create entity in ElasticSearch", e);
+      }
     }
   }
 
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (isClientAvailable) {
-      BulkRequest bulkRequest = new BulkRequest();
-      for (Map<String, String> docAndId : docsAndIds) {
-        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
-        IndexRequest indexRequest =
-            new IndexRequest(indexName)
-                .id(entry.getKey())
-                .source(entry.getValue(), XContentType.JSON);
-        bulkRequest.add(indexRequest);
-      }
-      bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      ActionListener<BulkResponse> listener =
-          new ActionListener<BulkResponse>() {
-            @Override
-            public void onResponse(BulkResponse bulkItemResponses) {
-              if (bulkItemResponses.hasFailures()) {
-                LOG.error(
-                    "Failed to create entities in ElasticSearch: {}",
-                    bulkItemResponses.buildFailureMessage());
-              } else {
-                LOG.debug("Successfully created {} entities in ElasticSearch", docsAndIds.size());
-              }
-            }
+    if (isNewClientAvailable) {
+      try {
+        List<BulkOperation> operations = new ArrayList<>();
+        for (Map<String, String> docAndId : docsAndIds) {
+          Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
+          operations.add(
+              BulkOperation.of(
+                  b ->
+                      b.index(
+                          i ->
+                              i.index(indexName)
+                                  .id(entry.getKey())
+                                  .document(JsonData.fromJson(entry.getValue())))));
+        }
 
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Failed to create entities in ElasticSearch", e);
-            }
-          };
-      client.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
+        BulkResponse response =
+            newClient.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
+
+        if (response.errors()) {
+          String errorMessage =
+              response.items().stream()
+                  .filter(item -> item.error() != null)
+                  .map(
+                      item ->
+                          "Failed to index document " + item.id() + ": " + item.error().reason())
+                  .collect(Collectors.joining("; "));
+          LOG.error("Failed to create entities in ElasticSearch: {}", errorMessage);
+        } else {
+          LOG.info("Successfully created {} entities in ElasticSearch", docsAndIds.size());
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to create entities in ElasticSearch", e);
+      }
     }
   }
 
@@ -2004,7 +2020,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
+  public es.org.elasticsearch.action.bulk.BulkResponse bulk(
+      BulkRequest data, RequestOptions options) throws IOException {
     return client.bulk(data, RequestOptions.DEFAULT);
   }
 

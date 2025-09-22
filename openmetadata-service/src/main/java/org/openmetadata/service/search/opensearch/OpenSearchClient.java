@@ -32,8 +32,11 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import jakarta.json.JsonObject;
+import jakarta.json.spi.JsonProvider;
+import jakarta.json.stream.JsonParser;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -134,11 +137,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
-import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
-import os.org.opensearch.action.bulk.BulkRequest;
-import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
 import os.org.opensearch.action.get.GetRequest;
 import os.org.opensearch.action.get.GetResponse;
@@ -159,7 +159,12 @@ import os.org.opensearch.client.indices.GetDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamResponse;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
+import os.org.opensearch.client.json.JsonData;
+import os.org.opensearch.client.json.JsonpMapper;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.opensearch._types.Refresh;
+import os.org.opensearch.client.opensearch.core.BulkResponse;
+import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
 import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
@@ -1747,44 +1752,77 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void createEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      updateRequest.doc(doc, XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-      updateSearch(updateRequest);
+    if (isNewClientAvailable) {
+      try {
+        newClient.update(
+            u ->
+                u.index(indexName)
+                    .id(docId)
+                    .docAsUpsert(true)
+                    .refresh(Refresh.True)
+                    .doc(toJsonData(doc)),
+            Map.class);
+        LOG.info(
+            "Successfully created entity in OpenSearch for index: {}, docId: {}", indexName, docId);
+      } catch (IOException e) {
+        LOG.error("Failed to create entity in OS for index: {}, docId: {} ", indexName, docId, e);
+        throw new RuntimeException("Failed to create entity in OpenSearch", e);
+      }
     }
   }
 
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (isClientAvailable) {
-      BulkRequest bulkRequest = new BulkRequest();
-      for (Map<String, String> docAndId : docsAndIds) {
-        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
-        UpdateRequest updateRequest = new UpdateRequest(indexName, entry.getKey());
-        updateRequest.doc(entry.getValue(), XContentType.JSON);
-        bulkRequest.add(updateRequest);
-      }
-      bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      ActionListener<BulkResponse> listener =
-          new ActionListener<BulkResponse>() {
-            @Override
-            public void onResponse(BulkResponse bulkItemResponses) {
-              if (bulkItemResponses.hasFailures()) {
-                LOG.error(
-                    "Failed to create entities in ElasticSearch: {}",
-                    bulkItemResponses.buildFailureMessage());
-              } else {
-                LOG.debug("Successfully created {} entities in ElasticSearch", docsAndIds.size());
-              }
-            }
+    if (isNewClientAvailable) {
+      try {
+        List<BulkOperation> operations = new ArrayList<>();
 
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Failed to create entities in ElasticSearch", e);
-            }
-          };
-      client.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
+        for (Map<String, String> docAndId : docsAndIds) {
+          Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
+          String docId = entry.getKey();
+          String jsonString = entry.getValue();
+
+          // Add UpdateOperation to BulkOperation directly
+          operations.add(
+              BulkOperation.of(
+                  b ->
+                      b.update(
+                          u ->
+                              u.index(indexName)
+                                  .id(docId)
+                                  .document(toJsonData(jsonString))
+                                  .upsert(toJsonData(jsonString)))));
+        }
+
+        // Send bulk update request
+        BulkResponse response =
+            newClient.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
+
+        // Handle errors
+        if (response.errors()) {
+          StringBuilder errorMessage = new StringBuilder();
+          response
+              .items()
+              .forEach(
+                  item -> {
+                    if (item.error() != null) {
+                      errorMessage
+                          .append("Failed to index document ")
+                          .append(item.id())
+                          .append(": ")
+                          .append(item.error().reason())
+                          .append("; ");
+                    }
+                  });
+          LOG.error("Failed to create entities in OpenSearch: {}", errorMessage);
+        } else {
+          LOG.info("Successfully created {} entities in OpenSearch", docsAndIds.size());
+        }
+
+      } catch (IOException e) {
+        LOG.error("Failed to create entities in OpenSearch", e);
+        throw new RuntimeException("Failed to create entities in OpenSearch", e);
+      }
     }
   }
 
@@ -1920,7 +1958,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
     if (!references.isEmpty()) {
       // Process entities for reindex
-      BulkRequest bulkRequests = new BulkRequest();
+      os.org.opensearch.action.bulk.BulkRequest bulkRequests =
+          new os.org.opensearch.action.bulk.BulkRequest();
       // Build Bulk request
       for (EntityReference entityRef : references) {
         // Reindex entity
@@ -2154,8 +2193,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   public void close() {}
 
   @Override
-  public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
-    return client.bulk(data, RequestOptions.DEFAULT);
+  public os.org.opensearch.action.bulk.BulkResponse bulk(
+      os.org.opensearch.action.bulk.BulkRequest data,
+      os.org.opensearch.client.RequestOptions options)
+      throws IOException {
+    return client.bulk(data, os.org.opensearch.client.RequestOptions.DEFAULT);
   }
 
   @Override
@@ -3144,5 +3186,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
     }
     return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
+  }
+
+  private JsonData toJsonData(String json) {
+    JsonpMapper mapper = newClient._transport().jsonpMapper();
+    JsonParser parser = JsonProvider.provider().createParser(new StringReader(json));
+    return JsonData.from(parser, mapper);
   }
 }
