@@ -11,14 +11,17 @@
  *  limitations under the License.
  */
 
-import { omit } from 'lodash';
 import { CSVExportResponse } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../components/Entity/EntityLineage/EntityLineage.interface';
 import {
+  EdgeDetails,
   EntityLineageResponse,
   LineageData,
 } from '../components/Lineage/Lineage.interface';
-import { LineagePagingInfo } from '../components/LineageTable/useLineageTableState';
+import {
+  LineageNodeData,
+  LineagePagingInfo,
+} from '../components/LineageTable/LineageTable.interface';
 import { EntityType } from '../enums/entity.enum';
 
 import { AddLineage } from '../generated/api/lineage/addLineage';
@@ -146,13 +149,14 @@ export const getLineageByEntityCount = async (params: {
   nodeDepth: number;
   from: number;
   size: number;
-  queryFilter?: string;
+  query_filter?: string;
 }) => {
-  const response = await APIClient.get(`lineage/getLineageByEntityCount`, {
-    params: {
-      ...omit(params, ['queryFilter']),
-      query_filter: params.queryFilter,
-    },
+  const response = await APIClient.get<{
+    nodes: Record<string, LineageNodeData>;
+    upstreamEdges: Record<string, EdgeDetails>;
+    downstreamEdges: Record<string, EdgeDetails>;
+  }>(`lineage/getLineageByEntityCount`, {
+    params,
   });
 
   return response.data;
@@ -163,17 +167,14 @@ export const exportLineageByEntityCountAsync = async (params: {
   type: EntityType;
   direction: LineageDirection;
   nodeDepth: number;
-  from: number;
-  size: number;
-  queryFilter?: string;
+  from?: number;
+  size?: number;
+  query_filter?: string;
 }) => {
   const response = await APIClient.get<CSVExportResponse>(
     `lineage/exportByEntityCountAsync`,
     {
-      params: {
-        ...omit(params, ['queryFilter']),
-        query_filter: params.queryFilter,
-      },
+      params,
     }
   );
 
@@ -183,15 +184,12 @@ export const exportLineageByEntityCountAsync = async (params: {
 export const getLineagePagingData = async (params: {
   fqn: string;
   type?: EntityType;
-  queryFilter?: string;
+  query_filter?: string;
 }) => {
   const response = await APIClient.get<LineagePagingInfo>(
     `lineage/getPaginationInfo`,
     {
-      params: {
-        ...omit(params, ['queryFilter']),
-        query_filter: params.queryFilter,
-      },
+      params,
     }
   );
 

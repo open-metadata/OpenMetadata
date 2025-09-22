@@ -14,49 +14,12 @@
 import { useReducer } from 'react';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { LineageNode } from '../Lineage/Lineage.interface';
-import { EImpactLevel } from './LineageTable.interface';
-
-interface LineageTableState {
-  filterNodes: LineageNode[];
-  loading: boolean;
-  filterSelectionActive: boolean;
-  searchValue: string;
-  dialogVisible: boolean;
-  impactLevel: EImpactLevel;
-  upstreamColumnLineageNodes: LineageNode[];
-  downstreamColumnLineageNodes: LineageNode[];
-  lineageDirection: LineageDirection;
-  lineagePagingInfo: LineagePagingInfo | null;
-  nodeDepth?: number;
-}
-
-type LineageTableAction =
-  | { type: 'SET_FILTER_NODES'; payload: LineageNode[] }
-  | { type: 'SET_LOADING'; payload: boolean }
-  | { type: 'SET_FILTER_SELECTION_ACTIVE'; payload: boolean }
-  | { type: 'SET_SEARCH_VALUE'; payload: string }
-  | { type: 'SET_DIALOG_VISIBLE'; payload: boolean }
-  | { type: 'SET_IMPACT_LEVEL'; payload: EImpactLevel }
-  | { type: 'SET_UPSTREAM_COLUMN_LINEAGE_NODES'; payload: LineageNode[] }
-  | { type: 'SET_DOWNSTREAM_COLUMN_LINEAGE_NODES'; payload: LineageNode[] }
-  | {
-      type: 'SET_COLUMN_LINEAGE_NODES';
-      payload: { upstream: LineageNode[]; downstream: LineageNode[] };
-    }
-  | { type: 'SET_LINEAGE_DIRECTION'; payload: LineageDirection }
-  | { type: 'RESET_FILTERS' }
-  | { type: 'TOGGLE_FILTER_SELECTION' }
-  | { type: 'SET_LINEAGE_PAGING_INFO'; payload: LineagePagingInfo | null }
-  | { type: 'UPDATE_NODE_DEPTH'; payload: number };
-
-export interface LineagePagingInfo {
-  downstreamDepthInfo: { depth: number; entityCount: number }[];
-  upstreamDepthInfo: { depth: number; entityCount: number }[];
-  maxDownstreamDepth: number;
-  maxUpstreamDepth: number;
-  totalDownstreamEntities: number;
-  totalUpstreamEntities: number;
-}
+import {
+  EImpactLevel,
+  LineagePagingInfo,
+  LineageTableAction,
+  LineageTableState,
+} from './LineageTable.interface';
 
 const initialState: LineageTableState = {
   filterNodes: [],

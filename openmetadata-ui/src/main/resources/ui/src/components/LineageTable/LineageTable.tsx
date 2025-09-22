@@ -10,21 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-/* eslint-disable i18next/no-literal-string */
 import { SettingOutlined } from '@ant-design/icons';
-import {
-  Button,
-  Chip,
-  IconButton,
-  Menu,
-  MenuItem,
-  MenuProps,
-  styled,
-  ToggleButton,
-  ToggleButtonGroup,
-  Tooltip,
-  useTheme,
-} from '@mui/material';
+import Button from '@mui/material/Button';
+import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import MenuItem from '@mui/material/MenuItem';
+import { useTheme } from '@mui/material/styles';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import Tooltip from '@mui/material/Tooltip';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
 import classNames from 'classnames';
@@ -34,10 +28,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
-import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
 import { ReactComponent as FilterLinesIcon } from '../../assets/svg/ic-filter-lines.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
 import { NO_DATA, PAGE_SIZE_LARGE } from '../../constants/constants';
@@ -70,6 +62,7 @@ import {
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
 import {
   getSearchNameEsQuery,
+  LINEAGE_IMPACT_OPTIONS,
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
 } from '../../utils/Lineage/LineageUtils';
@@ -90,46 +83,8 @@ import { LineageNode } from '../Lineage/Lineage.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
 import './lineage-table.less';
 import { EImpactLevel } from './LineageTable.interface';
+import { StyledMenu } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
-
-export const ImpactOptions = [
-  { label: 'Table Level', key: EImpactLevel.TableLevel, icon: <TableIcon /> },
-  {
-    label: 'Column Level',
-    key: EImpactLevel.ColumnLevel,
-    icon: <ColumnIcon />,
-  },
-];
-
-const StyledMenu = styled((props: MenuProps) => <Menu {...props} />)(
-  ({ theme }) => ({
-    '& .MuiPaper-root': {
-      width: 'auto',
-      '& .MuiMenu-list': {
-        padding: '0',
-      },
-      '& .MuiMenuItem-root': {
-        margin: '0',
-        padding: '10px 16px',
-        borderRadius: '0px',
-        '& svg': {
-          height: 24,
-          marginRight: theme.spacing(1.5),
-        },
-        '&:active': {
-          backgroundColor: theme.palette.allShades.blue[25],
-        },
-        '&.Mui-selected': {
-          backgroundColor: theme.palette.allShades.blue[25],
-          color: theme.palette.allShades.blue[700],
-        },
-        '&:hover': {
-          backgroundColor: theme.palette.allShades.blue[25],
-        },
-      },
-    },
-  })
-);
 
 const LineageTable = () => {
   const {
@@ -382,9 +337,7 @@ const LineageTable = () => {
         type: entityType ?? '',
         direction: lineageDirection,
         nodeDepth: nodeDepth,
-        from: (currentPage - 1) * pageSize,
-        size: pageSize,
-        queryFilter,
+        query_filter: queryFilter,
       }),
     [
       fqn,
@@ -421,7 +374,7 @@ const LineageTable = () => {
           anchorEl={impactOnEl}
           open={Boolean(impactOnEl)}
           onClose={() => setImpactOnEl(null)}>
-          {ImpactOptions.map((option) => (
+          {LINEAGE_IMPACT_OPTIONS.map((option) => (
             <MenuItem
               key={option.key}
               selected={option.key === impactLevel}
@@ -468,7 +421,7 @@ const LineageTable = () => {
         nodeDepth: nodeDepth,
         from: (currentPage - 1) * pageSize,
         size: pageSize,
-        queryFilter,
+        query_filter: queryFilter,
       });
 
       delete res.nodes[fqn];
@@ -622,8 +575,8 @@ const LineageTable = () => {
               }}
               variant="text"
               onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
-              {t('label.node-depth')}
-              <span className="text-primary">: {nodeDepth}</span>
+              {`${t('label.node-depth')}: `}
+              <span className="text-primary">{nodeDepth}</span>
             </Button>
             <StyledMenu
               anchorEl={nodeDepthAnchorEl}
@@ -994,7 +947,7 @@ const LineageTable = () => {
       const lineagePagingData = await getLineagePagingData({
         fqn: fqn ?? '',
         type: entityType ?? '',
-        queryFilter,
+        query_filter: queryFilter,
       });
 
       setLineagePagingInfo(lineagePagingData);

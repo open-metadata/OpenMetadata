@@ -12,11 +12,13 @@
  */
 import { EntityType } from '../../enums/entity.enum';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { Table } from '../../generated/entity/data/table';
 import { EntityReference } from '../../generated/entity/type';
 import { TagLabel } from '../../generated/tests/testCase';
 import { ColumnLineage } from '../../generated/type/entityLineage';
-import { SearchSourceAlias } from '../../interface/search.interface';
+import {
+  SearchSourceAlias,
+  TableSearchSource,
+} from '../../interface/search.interface';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 
 export interface LineageProps {
@@ -56,7 +58,10 @@ export interface EdgeDetails {
 }
 
 export interface ColumnLevelLineageNode
-  extends Pick<Table, 'owners' | 'tags' | 'domains' | 'description'> {
+  extends Pick<
+    TableSearchSource,
+    'owners' | 'tags' | 'domains' | 'description' | 'id'
+  > {
   fromEntity: EdgeFromToData;
   toEntity: EdgeFromToData;
   pipeline?: EntityReference;
@@ -68,7 +73,9 @@ export interface ColumnLevelLineageNode
   docId?: string;
   extraInfo?: EdgeDetails;
   nodeDepth?: number;
-  tier?: TagLabel;
+  tier?: TagLabel | string;
+  name?: string;
+  entityType?: EntityType;
 }
 
 export type LineageSourceType = Omit<SourceType, 'service'> & {

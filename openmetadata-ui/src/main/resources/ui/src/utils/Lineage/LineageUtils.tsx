@@ -15,10 +15,31 @@ import { get, omit, pick } from 'lodash';
 import {
   ColumnLevelLineageNode,
   EdgeDetails,
-  LineageData,
 } from '../../components/Lineage/Lineage.interface';
 import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
+
+import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
+import {
+  EImpactLevel,
+  LineageNodeData,
+} from '../../components/LineageTable/LineageTable.interface';
+import { TableSearchSource } from '../../interface/search.interface';
+import i18n from '../i18next/LocalUtil';
+
+export const LINEAGE_IMPACT_OPTIONS = [
+  {
+    label: i18n.t('label.table-level'),
+    key: EImpactLevel.TableLevel,
+    icon: <TableIcon />,
+  },
+  {
+    label: i18n.t('label.column-level'),
+    key: EImpactLevel.ColumnLevel,
+    icon: <ColumnIcon />,
+  },
+];
 
 export const LINEAGE_DEPENDENCY_OPTIONS = [
   {
@@ -35,7 +56,7 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
 
 export const prepareColumnLevelNodesFromEdges = (
   edges: EdgeDetails[],
-  nodes: LineageData['nodes'],
+  nodes: Record<string, LineageNodeData>,
   direction: LineageDirection = LineageDirection.Downstream
 ) => {
   const entityKey =
@@ -46,8 +67,7 @@ export const prepareColumnLevelNodesFromEdges = (
       node.columns?.forEach((col) => {
         const entityData = get(
           nodes[node[entityKey].fullyQualifiedName ?? ''],
-          'entity',
-          {}
+          'entity'
         );
         const nodeDepth = get(
           nodes[node[entityKey].fullyQualifiedName ?? ''],
@@ -55,17 +75,24 @@ export const prepareColumnLevelNodesFromEdges = (
           0
         );
 
+        const picked = pick<LineageNodeData['entity']>(
+          entityData,
+          'owners',
+          'tier',
+          'tags',
+          'domains',
+          'description',
+          'id'
+        ) as Pick<
+          TableSearchSource,
+          'tags' | 'tier' | 'domains' | 'description' | 'owners' | 'id'
+        >; // Type assertion to Include type to ensure only these fields are
+
         acc.push({
           ...omit(node, 'columns'),
           column: col,
           nodeDepth,
-          ...pick(entityData, [
-            'owners',
-            'tier',
-            'tags',
-            'domains',
-            'description',
-          ]),
+          ...picked,
         });
       });
     }
@@ -76,7 +103,7 @@ export const prepareColumnLevelNodesFromEdges = (
 
 export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
   edges: EdgeDetails[],
-  nodes: LineageData['nodes']
+  nodes: Record<string, LineageNodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,
@@ -87,7 +114,7 @@ export const prepareDownstreamColumnLevelNodesFromDownstreamEdges = (
 
 export const prepareUpstreamColumnLevelNodesFromUpstreamEdges = (
   edges: EdgeDetails[],
-  nodes: LineageData['nodes']
+  nodes: Record<string, LineageNodeData>
 ) => {
   return prepareColumnLevelNodesFromEdges(
     edges,
