@@ -615,7 +615,7 @@ public class FileResourceTest extends EntityResourceTest<File, CreateFile> {
         driveServiceResourceTest
             .createRequest(test)
             .withName("driveForFileEmptyRootTest")
-            .withServiceType(CreateDriveService.DriveServiceType.SharePoint);
+            .withServiceType(CreateDriveService.DriveServiceType.GoogleDrive);
     DriveService service = driveServiceResourceTest.createEntity(createService, ADMIN_AUTH_HEADERS);
 
     // Create directories
