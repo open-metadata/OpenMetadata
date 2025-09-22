@@ -67,82 +67,210 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         statement: Statement = parsed[0]
         tokens = list(statement.tokens)
 
+        where_idx, where_end_idx, insert_before_idx = self._find_clause_positions(
+            tokens
+        )
+        new_tokens = self._build_new_tokens(
+            tokens, where_idx, where_end_idx, insert_before_idx, partition_expression
+        )
+
+        return "".join(str(token) for token in new_tokens)
+
+    def _find_clause_positions(
+        self, tokens: list
+    ) -> tuple[int | None, int | None, int | None]:
+        """Find positions of WHERE clause and insertion points in token list.
+
+        Args:
+            tokens: List of parsed SQL tokens
+
+        Returns:
+            Tuple of (where_idx, where_end_idx, insert_before_idx)
+        """
         where_idx = None
         where_end_idx = None
         insert_before_idx = None
         paren_depth = 0
 
-        i = 0
-        while i < len(tokens):
-            token = tokens[i]
-
-            if token.ttype is None and hasattr(token, "tokens"):
-                paren_count = str(token).count("(") - str(token).count(")")
-                paren_depth += paren_count
-            elif token.value == "(":
-                paren_depth += 1
-            elif token.value == ")":
-                paren_depth -= 1
+        for i, token in enumerate(tokens):
+            paren_depth = self._update_parentheses_depth(token, paren_depth)
 
             if isinstance(token, Where) and paren_depth == 0:
                 where_idx = i
                 where_end_idx = i + 1
                 break
 
-            if (
-                insert_before_idx is None
-                and token.ttype is Keyword
-                and any(
-                    keyword in token.value.upper()
-                    for keyword in (
-                        "GROUP BY",
-                        "ORDER BY",
-                        "HAVING",
-                        "LIMIT",
-                        "OFFSET",
-                        "UNION",
-                        "EXCEPT",
-                        "INTERSECT",
-                    )
-                )
-                and paren_depth == 0
-            ):
+            if self._should_insert_before_token(token, insert_before_idx, paren_depth):
                 insert_before_idx = i
 
-            i += 1
+        return where_idx, where_end_idx, insert_before_idx
 
+    def _update_parentheses_depth(self, token: Token, current_depth: int) -> int:
+        """Update parentheses depth based on token content.
+
+        Args:
+            token: SQL token to analyze
+            current_depth: Current parentheses depth
+
+        Returns:
+            Updated parentheses depth
+        """
+        if token.ttype is None and hasattr(token, "tokens"):
+            paren_count = str(token).count("(") - str(token).count(")")
+            return current_depth + paren_count
+        elif token.value == "(":
+            return current_depth + 1
+        elif token.value == ")":
+            return current_depth - 1
+        return current_depth
+
+    def _should_insert_before_token(
+        self, token: Token, insert_before_idx: int | None, paren_depth: int
+    ) -> bool:
+        """Check if WHERE clause should be inserted before this token.
+
+        Args:
+            token: SQL token to check
+            insert_before_idx: Current insertion index (None if not set)
+            paren_depth: Current parentheses depth
+
+        Returns:
+            True if WHERE should be inserted before this token
+        """
+        if insert_before_idx is not None or paren_depth != 0:
+            return False
+
+        if token.ttype is not Keyword:
+            return False
+
+        clause_keywords = {
+            "GROUP BY",
+            "ORDER BY",
+            "HAVING",
+            "LIMIT",
+            "OFFSET",
+            "UNION",
+            "EXCEPT",
+            "INTERSECT",
+        }
+
+        return any(keyword in token.value.upper() for keyword in clause_keywords)
+
+    def _build_new_tokens(
+        self,
+        tokens: list,
+        where_idx: int | None,
+        where_end_idx: int | None,
+        insert_before_idx: int | None,
+        partition_expression: str,
+    ) -> list:
+        """Build new token list with WHERE clause inserted or replaced.
+
+        Args:
+            tokens: Original token list
+            where_idx: Index of existing WHERE clause (None if not found)
+            where_end_idx: End index of existing WHERE clause
+            insert_before_idx: Index to insert WHERE before (None if append)
+            partition_expression: WHERE condition expression
+
+        Returns:
+            New list of tokens with WHERE clause
+        """
         if where_idx is not None:
-            original_where = str(tokens[where_idx])
-            trailing_whitespace = ""
-
-            where_content_end = original_where.rfind(original_where.split()[-1]) + len(
-                original_where.split()[-1]
-            )
-            if where_content_end < len(original_where):
-                trailing_whitespace = original_where[where_content_end:]
-
-            new_tokens = (
-                tokens[:where_idx]
-                + [
-                    Token(Keyword, "WHERE"),
-                    Token(None, f" {partition_expression}{trailing_whitespace}"),
-                ]
-                + tokens[where_end_idx:]
+            return self._replace_existing_where(
+                tokens, where_idx, where_end_idx, partition_expression
             )
         elif insert_before_idx is not None:
-            new_tokens = (
-                tokens[:insert_before_idx]
-                + [Token(Keyword, "WHERE"), Token(None, f" {partition_expression} ")]
-                + tokens[insert_before_idx:]
+            return self._insert_where_before_clause(
+                tokens, insert_before_idx, partition_expression
             )
         else:
-            new_tokens = tokens + [
-                Token(None, " "),
-                Token(Keyword, "WHERE"),
-                Token(None, f" {partition_expression}"),
-            ]
+            return self._append_where_clause(tokens, partition_expression)
 
-        return "".join(str(token) for token in new_tokens)
+    def _replace_existing_where(
+        self,
+        tokens: list,
+        where_idx: int,
+        where_end_idx: int,
+        partition_expression: str,
+    ) -> list:
+        """Replace existing WHERE clause with new expression.
+
+        Args:
+            tokens: Original token list
+            where_idx: Index of WHERE clause to replace
+            where_end_idx: End index of WHERE clause
+            partition_expression: New WHERE condition
+
+        Returns:
+            Token list with replaced WHERE clause
+        """
+        original_where = str(tokens[where_idx])
+        trailing_whitespace = self._extract_trailing_whitespace(original_where)
+
+        return (
+            tokens[:where_idx]
+            + [
+                Token(Keyword, "WHERE"),
+                Token(None, f" {partition_expression}{trailing_whitespace}"),
+            ]
+            + tokens[where_end_idx:]
+        )
+
+    def _insert_where_before_clause(
+        self, tokens: list, insert_before_idx: int, partition_expression: str
+    ) -> list:
+        """Insert WHERE clause before specified token index.
+
+        Args:
+            tokens: Original token list
+            insert_before_idx: Index to insert WHERE clause before
+            partition_expression: WHERE condition expression
+
+        Returns:
+            Token list with WHERE clause inserted
+        """
+        return (
+            tokens[:insert_before_idx]
+            + [Token(Keyword, "WHERE"), Token(None, f" {partition_expression} ")]
+            + tokens[insert_before_idx:]
+        )
+
+    def _append_where_clause(self, tokens: list, partition_expression: str) -> list:
+        """Append WHERE clause to end of token list.
+
+        Args:
+            tokens: Original token list
+            partition_expression: WHERE condition expression
+
+        Returns:
+            Token list with WHERE clause appended
+        """
+        return tokens + [
+            Token(None, " "),
+            Token(Keyword, "WHERE"),
+            Token(None, f" {partition_expression}"),
+        ]
+
+    def _extract_trailing_whitespace(self, where_clause: str) -> str:
+        """Extract trailing whitespace from WHERE clause string.
+
+        Args:
+            where_clause: Original WHERE clause string
+
+        Returns:
+            Trailing whitespace string
+        """
+        if not where_clause.split():
+            return ""
+
+        last_word = where_clause.split()[-1]
+        where_content_end = where_clause.rfind(last_word) + len(last_word)
+
+        if where_content_end < len(where_clause):
+            return where_clause[where_content_end:]
+
+        return ""
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case

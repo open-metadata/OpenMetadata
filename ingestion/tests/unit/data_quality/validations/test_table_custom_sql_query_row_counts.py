@@ -45,14 +45,14 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
                     "username": "test",
                     "password": "test",
                     "hostPort": "localhost:3306",
-                    "database": "test_db"
+                    "database": "test_db",
                 }
             },
             "entity": {
                 "id": "test-table-id",
                 "name": "test_table",
-                "fullyQualifiedName": "test.db.test_table"
-            }
+                "fullyQualifiedName": "test.db.test_table",
+            },
         }
 
         # Create parameter mocks with explicit name attributes
