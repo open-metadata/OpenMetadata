@@ -22,7 +22,7 @@ import Tooltip from '@mui/material/Tooltip';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
 import classNames from 'classnames';
-import { find, isEmpty, map, sortBy } from 'lodash';
+import { isEmpty, map, sortBy } from 'lodash';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,12 @@ import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg
 import { ReactComponent as FilterLinesIcon } from '../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
-import { NO_DATA, PAGE_SIZE_LARGE } from '../../constants/constants';
+import {
+  NO_DATA,
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
 import { ExportTypes } from '../../constants/Export.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
@@ -125,6 +130,7 @@ const LineageTable = () => {
     showPagination,
     handlePageChange,
     handlePagingChange,
+    handlePageSizeChange,
   } = usePaging(PAGE_SIZE_LARGE);
   const theme = useTheme();
 
@@ -210,15 +216,34 @@ const LineageTable = () => {
     }
 
     const upstreamCount =
-      find(
-        lineagePagingInfo?.upstreamDepthInfo,
-        (record) => record.depth === nodeDepth
-      )?.entityCount ?? 0;
+      lineagePagingInfo?.upstreamDepthInfo.reduce((acc, record) => {
+        // No need to count depth 0 nodes as they are not shown in the table
+        // Need count till nodeDepth - 1 as depth 0 nodes are not shown in the table
+        if (record.depth > nodeDepth || record.depth === 0) {
+          return acc;
+        }
+        acc += record.entityCount;
+
+        return acc;
+      }, 0) ?? 0;
     const downstreamCount =
-      find(
-        lineagePagingInfo?.downstreamDepthInfo,
-        (record) => record.depth === nodeDepth
-      )?.entityCount ?? 0;
+      lineagePagingInfo?.downstreamDepthInfo.reduce((acc, record) => {
+        // No need to count depth 0 nodes as they are not shown in the table
+        // Need count till nodeDepth - 1 as depth 0 nodes are not shown in the table
+        if (record.depth > nodeDepth || record.depth === 0) {
+          return acc;
+        }
+        acc += record.entityCount;
+
+        return acc;
+      }, 0) ?? 0;
+
+    handlePagingChange({
+      total:
+        lineageDirection === LineageDirection.Downstream
+          ? downstreamCount
+          : upstreamCount,
+    } as Paging);
 
     return { upstreamCount, downstreamCount };
   }, [
@@ -474,7 +499,7 @@ const LineageTable = () => {
   // Fetch Lineage data when dependencies change
   useEffect(() => {
     fetchNodes();
-  }, [queryFilter, nodeDepth, currentPage, lineageDirection]);
+  }, [queryFilter, nodeDepth, currentPage, lineageDirection, pageSize]);
 
   // Card header with search and filter options
   const cardHeader = useMemo(() => {
@@ -575,7 +600,7 @@ const LineageTable = () => {
               }}
               variant="text"
               onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
-              {`${t('label.node-depth')}: `}
+              {`${t('label.node-depth')}: `}{' '}
               <span className="text-primary">{nodeDepth}</span>
             </Button>
             <StyledMenu
@@ -887,7 +912,7 @@ const LineageTable = () => {
 
   // Determine columns and dataSource based on impactLevel
   const { columns, dataSource } = useMemo(() => {
-    if (impactLevel === 'table') {
+    if (impactLevel === EImpactLevel.TableLevel) {
       return {
         columns: tableColumns,
         dataSource: filterNodes,
@@ -913,20 +938,6 @@ const LineageTable = () => {
     upstreamColumnLineageNodes,
   ]);
 
-  // Update paging total when lineagePagingInfo, lineageDirection, or nodeDepth changes
-  useEffect(() => {
-    handlePagingChange({
-      total:
-        lineageDirection === LineageDirection.Downstream
-          ? lineagePagingInfo?.downstreamDepthInfo.find(
-              (info) => info.depth === nodeDepth
-            )?.entityCount
-          : lineagePagingInfo?.upstreamDepthInfo.find(
-              (info) => info.depth === nodeDepth
-            )?.entityCount,
-    } as Paging);
-  }, [lineagePagingInfo, lineageDirection, nodeDepth]);
-
   // Memoized paging props to avoid unnecessary re-renders
   const pagingProps = useMemo(() => {
     return {
@@ -935,6 +946,8 @@ const LineageTable = () => {
       currentPage,
       isNumberBased: true,
       showPagination,
+      onShowSizeChange: handlePageSizeChange,
+      pagesizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
       pagingHandler: (data: PagingHandlerParams) => {
         handlePageChange(data.currentPage);
       },
@@ -973,9 +986,14 @@ const LineageTable = () => {
           'column.fromColumns',
         ]}
         extraTableFilters={extraTableFilters}
+        key={`lineage-table-${impactLevel}`}
         loading={loading}
         pagination={false}
-        rowKey={impactLevel === 'table' ? 'fullyQualifiedName' : 'docId'}
+        rowKey={
+          impactLevel === EImpactLevel.TableLevel
+            ? 'fullyQualifiedName'
+            : 'docUniqueId'
+        }
         staticVisibleColumns={['name', 'column']}
       />
 

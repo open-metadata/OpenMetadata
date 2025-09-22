@@ -81,8 +81,7 @@ export const prepareColumnLevelNodesFromEdges = (
           'tier',
           'tags',
           'domains',
-          'description',
-          'id'
+          'description'
         ) as Pick<
           TableSearchSource,
           'tags' | 'tier' | 'domains' | 'description' | 'owners' | 'id'

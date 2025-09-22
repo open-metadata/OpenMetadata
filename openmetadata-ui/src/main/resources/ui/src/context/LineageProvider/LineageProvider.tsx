@@ -228,7 +228,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const queryFilter = useMemo(() => {
     const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
 
-    return JSON.stringify(quickFilterQuery);
+    return JSON.stringify(quickFilterQuery) ?? '';
   }, [selectedQuickFilters]);
 
   // Update entityFqn when decodedFqn changes (for backward compatibility)

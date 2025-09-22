@@ -124,7 +124,13 @@ export function useLineageTableState() {
   };
 
   const setImpactLevel = (level: EImpactLevel) => {
+    // Need to show loader when impact level changes
+    // as it show blank table in between
+    dispatch({ type: 'SET_LOADING', payload: true });
     dispatch({ type: 'SET_IMPACT_LEVEL', payload: level });
+    setTimeout(() => {
+      dispatch({ type: 'SET_LOADING', payload: false });
+    }, 0);
   };
 
   const setUpstreamColumnLineageNodes = (nodes: LineageNode[]) => {

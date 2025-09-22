@@ -27,11 +27,6 @@ import {
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
 } from './LineageUtils';
 
-// Mock i18n
-jest.mock('../i18next/LocalUtil', () => ({
-  t: (key: string) => key,
-}));
-
 describe('LineageUtils', () => {
   const mockNodes = {
     'test.table1': {
