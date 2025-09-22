@@ -13,7 +13,7 @@
 Validator for table custom SQL Query test case
 """
 
-from typing import Optional, cast
+from typing import Optional, Tuple, cast
 
 import sqlparse
 from sqlalchemy import text
@@ -44,7 +44,9 @@ logger = ingestion_logger()
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
 
-    def _replace_where_clause(self, sql_query: str, partition_expression: str) -> str:
+    def _replace_where_clause(
+        self, sql_query: str, partition_expression: str
+    ) -> Optional[str]:
         """Replace or add WHERE clause in SQL query using sqlparse.
 
         This method properly handles:
@@ -78,7 +80,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
 
     def _find_clause_positions(
         self, tokens: list
-    ) -> tuple[int | None, int | None, int | None]:
+    ) -> Tuple[Optional[int], Optional[int], Optional[int]]:
         """Find positions of WHERE clause and insertion points in token list.
 
         Args:
@@ -125,7 +127,7 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
         return current_depth
 
     def _should_insert_before_token(
-        self, token: Token, insert_before_idx: int | None, paren_depth: int
+        self, token: Token, insert_before_idx: Optional[int], paren_depth: int
     ) -> bool:
         """Check if WHERE clause should be inserted before this token.
 
@@ -159,9 +161,9 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
     def _build_new_tokens(
         self,
         tokens: list,
-        where_idx: int | None,
-        where_end_idx: int | None,
-        insert_before_idx: int | None,
+        where_idx: Optional[int],
+        where_end_idx: Optional[int],
+        insert_before_idx: Optional[int],
         partition_expression: str,
     ) -> list:
         """Build new token list with WHERE clause inserted or replaced.

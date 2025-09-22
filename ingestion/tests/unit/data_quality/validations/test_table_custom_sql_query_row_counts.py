@@ -105,8 +105,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
-        self.assertEqual(result.passedRows, 1000)
-        self.assertEqual(result.failedRows, 0)
+        self.assertEqual(result.passedRows, 10)
+        self.assertEqual(result.failedRows, 990)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -153,8 +153,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
-        self.assertEqual(result.passedRows, 1000)
-        self.assertEqual(result.failedRows, 0)
+        self.assertEqual(result.passedRows, 10)
+        self.assertEqual(result.failedRows, 990)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -201,8 +201,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
-        self.assertEqual(result.passedRows, 1000)
-        self.assertEqual(result.failedRows, 0)
+        self.assertEqual(result.passedRows, 995)
+        self.assertEqual(result.failedRows, 5)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -225,8 +225,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Failed)
-        self.assertEqual(result.passedRows, 993)
-        self.assertEqual(result.failedRows, 7)
+        self.assertEqual(result.passedRows, 988)
+        self.assertEqual(result.failedRows, 12)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -249,8 +249,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
-        self.assertEqual(result.passedRows, 1000)
-        self.assertEqual(result.failedRows, 0)
+        self.assertEqual(result.passedRows, 990)
+        self.assertEqual(result.failedRows, 10)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -273,8 +273,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Failed)
-        self.assertEqual(result.passedRows, 993)
-        self.assertEqual(result.failedRows, 7)
+        self.assertEqual(result.passedRows, 985)
+        self.assertEqual(result.failedRows, 15)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -297,8 +297,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
-        self.assertEqual(result.passedRows, 1000)
-        self.assertEqual(result.failedRows, 0)
+        self.assertEqual(result.passedRows, 10)
+        self.assertEqual(result.failedRows, 990)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -369,8 +369,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
-        self.assertEqual(result.passedRows, 1000)
-        self.assertEqual(result.failedRows, 0)
+        self.assertEqual(result.passedRows, 5)
+        self.assertEqual(result.failedRows, 995)
 
     @patch(
         "metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery.TableCustomSQLQueryValidator.get_runtime_parameters"
@@ -417,8 +417,8 @@ class TestTableCustomSQLQueryRowCounts(unittest.TestCase):
         result = self.validator.run_validation()
 
         self.assertEqual(result.testCaseStatus, TestCaseStatus.Success)
-        self.assertEqual(result.passedRows, 1000)
-        self.assertEqual(result.failedRows, 0)
+        self.assertEqual(result.passedRows, 10)
+        self.assertEqual(result.failedRows, 990)
 
 
 if __name__ == "__main__":

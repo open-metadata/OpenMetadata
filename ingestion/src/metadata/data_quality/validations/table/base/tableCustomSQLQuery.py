@@ -173,14 +173,14 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
     ) -> tuple[int, int]:
         """Calculate passed/failed rows when test passed"""
         if operator in (">", ">="):
-            passed_rows = row_count if row_count else len_rows
-            failed_rows = 0
+            passed_rows = len_rows
+            failed_rows = (row_count - len_rows) if row_count else 0
         elif operator in ("<", "<="):
-            passed_rows = row_count if row_count else len_rows
-            failed_rows = 0
+            passed_rows = row_count - len_rows
+            failed_rows = len_rows
         elif operator == "==":
-            passed_rows = row_count if row_count else len_rows
-            failed_rows = 0
+            passed_rows = len_rows
+            failed_rows = row_count - len_rows
         else:
             passed_rows = len_rows
             failed_rows = 0
@@ -194,7 +194,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         if operator in (">", ">="):
             return self._calculate_greater_than_failure(len_rows, row_count)
         if operator in ("<", "<="):
-            return self._calculate_less_than_failure(threshold, len_rows, row_count)
+            return self._calculate_less_than_failure(len_rows, row_count)
         if operator == "==":
             return self._calculate_equal_failure(threshold, len_rows, row_count)
 
@@ -210,19 +210,11 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
         return max(0, passed_rows), max(0, failed_rows)
 
     def _calculate_less_than_failure(
-        self, threshold: int, len_rows: int, row_count: int
+        self, len_rows: int, row_count: int
     ) -> tuple[int, int]:
         """Calculate rows for < or <= operator failure (expected fewer rows)"""
-        if threshold <= 0:
-            if row_count:
-                failed_rows = row_count
-                passed_rows = 0
-            else:
-                failed_rows = max(len_rows, 1)
-                passed_rows = 0
-        else:
-            failed_rows = max(0, len_rows - threshold)
-            passed_rows = (row_count - failed_rows) if row_count else threshold
+        failed_rows = len_rows
+        passed_rows = row_count - failed_rows
 
         return max(0, passed_rows), max(0, failed_rows)
 
