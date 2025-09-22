@@ -44,7 +44,6 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.service.security.AuthenticationException;
-import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class JWTTokenGenerator {
