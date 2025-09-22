@@ -403,8 +403,14 @@ export const getNameFromFQN = (fqn: string): string => {
   return arr[arr.length - 1];
 };
 
+export const getFirstAlphanumeric = (name: string) => {
+  const match = name.match(/[a-z0-9]/i);
+
+  return match ? match[0].toLowerCase() : '';
+};
+
 export const getRandomColor = (name: string) => {
-  const firstAlphabet = name.charAt(0).toLowerCase();
+  const firstAlphabet = getFirstAlphanumeric(name);
   // Convert the user's name to a numeric value
   let nameValue = 0;
   for (let i = 0; i < name.length; i++) {

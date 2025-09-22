@@ -13,6 +13,7 @@
 
 import {
   filterSelectOptions,
+  getFirstAlphanumeric,
   getTableFQNFromColumnFQN,
   isLinearGradient,
 } from './CommonUtils';
@@ -118,6 +119,34 @@ describe('Tests for CommonUtils', () => {
       expect(isLinearGradient('hsla(0, 100%, 50%, 0.5)')).toBe(false);
       expect(isLinearGradient('inherit')).toBe(false);
       expect(isLinearGradient('')).toBe(false);
+    });
+  });
+
+  describe('getFirstAlphanumeric', () => {
+    it('should return the first alphabet from name containing only alphabets', () => {
+      const firstAlphabet = getFirstAlphanumeric('John Doe');
+
+      expect(firstAlphabet).toBe('j');
+    });
+
+    it('should return the first alphanumeric character from name containing both alphabets and numbers', () => {
+      let firstAlphabet = getFirstAlphanumeric('3John Doe');
+
+      expect(firstAlphabet).toBe('3');
+
+      firstAlphabet = getFirstAlphanumeric('John3 Doe');
+
+      expect(firstAlphabet).toBe('j');
+    });
+
+    it('should return the first alphanumeric character from name containing special characters', () => {
+      let firstAlphabet = getFirstAlphanumeric('[Software Engineer] John Doe');
+
+      expect(firstAlphabet).toBe('s');
+
+      firstAlphabet = getFirstAlphanumeric('(Product Manager] Jane Doe');
+
+      expect(firstAlphabet).toBe('p');
     });
   });
 });
