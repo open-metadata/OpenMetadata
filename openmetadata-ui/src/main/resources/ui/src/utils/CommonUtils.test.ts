@@ -148,5 +148,11 @@ describe('Tests for CommonUtils', () => {
 
       expect(firstAlphabet).toBe('p');
     });
+
+    it('should fallback to the first character if there is no alphanumeric character found', () => {
+      const firstAlphabet = getFirstAlphanumeric('][/)([*');
+
+      expect(firstAlphabet).toBe(']');
+    });
   });
 });

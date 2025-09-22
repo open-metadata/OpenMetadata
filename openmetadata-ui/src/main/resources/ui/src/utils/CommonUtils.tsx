@@ -403,10 +403,10 @@ export const getNameFromFQN = (fqn: string): string => {
   return arr[arr.length - 1];
 };
 
-export const getFirstAlphanumeric = (name: string) => {
+export const getFirstAlphanumeric = (name: string): string => {
   const match = name.match(/[a-z0-9]/i);
 
-  return match ? match[0].toLowerCase() : '';
+  return match ? match[0].toLowerCase() : name.charAt(0).toLowerCase();
 };
 
 export const getRandomColor = (name: string) => {
