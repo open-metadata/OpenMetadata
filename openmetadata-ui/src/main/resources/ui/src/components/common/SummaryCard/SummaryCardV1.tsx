@@ -1,4 +1,4 @@
-import { Box, Card, Skeleton, Typography } from '@mui/material';
+import { Box, Card, Skeleton, Typography, useTheme } from '@mui/material';
 import { ReactNode } from 'react';
 import { ReactComponent as AddItemIcon } from '../../../assets/svg/add-item-icon.svg';
 
@@ -15,8 +15,10 @@ const SummaryCardV1 = ({
   icon?: SvgComponent;
   extra?: ReactNode;
 }) => {
+  const theme = useTheme();
+
   if (isLoading) {
-    return <Skeleton height={120} variant="rounded" width={210} />;
+    return <Skeleton height={100} variant="rounded" width={210} />;
   }
 
   const Icon = icon ?? AddItemIcon;
@@ -32,18 +34,27 @@ const SummaryCardV1 = ({
           display: 'flex',
           alignItems: 'center',
           gap: 3,
-          p: '20px',
+          p: '16px 20px',
           width: '100%',
         }}
         variant="outlined">
         <Icon height={40} width={40} />
         <Box>
-          <Typography sx={{ fontSize: '18px', fontWeight: 600 }} variant="h6">
+          <Typography
+            sx={{
+              color: theme.palette.grey[900],
+              fontSize: '18px',
+              fontWeight: 600,
+            }}
+            variant="h6">
             {value}
           </Typography>
           <Typography
-            color="text.secondary"
-            sx={{ fontSize: '14px', fontWeight: 500 }}>
+            sx={{
+              fontSize: '14px',
+              fontWeight: 500,
+              color: theme.palette.grey[700],
+            }}>
             {title}
           </Typography>
         </Box>
@@ -55,12 +66,17 @@ const SummaryCardV1 = ({
             mx: 2,
             px: 2,
             py: 1,
-            background: '#F8F9FC',
+            background: theme.palette.allShades.blueGray[50],
             borderRadius: '0 0 12px 12px',
             boxShadow: '0 4px 3px 0 rgba(235, 239, 250, 0.10)',
             border: 'none',
           }}>
-          <Typography sx={{ fontSize: 10, fontWeight: 500 }}>
+          <Typography
+            sx={{
+              fontSize: 10,
+              color: theme.palette.grey[900],
+              fontWeight: theme.typography.fontWeightMedium,
+            }}>
             {extra}
           </Typography>
         </Box>

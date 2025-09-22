@@ -77,6 +77,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
               width: 'auto',
               display: 'inline-flex',
               '.MuiTab-root': {
+                color: theme.palette.grey['700'],
                 transition: 'background-color 0.2s ease-in, color 0.2s ease-in',
                 borderRadius: '6px',
               },
@@ -88,11 +89,15 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                 backgroundColor: `${theme.palette.primary.main} !important`,
                 color: `${theme.palette.primary.contrastText} !important`,
               },
+              'MuiTabs-root': {
+                minHeight: 'none',
+              },
               '.MuiTabs-indicator': {
                 display: 'none',
               },
               '.MuiTabs-scroller': {
-                padding: '0 8px',
+                padding: '4px',
+                height: '100%',
               },
               '.MuiTab-root:not(:first-of-type)': {
                 marginLeft: '4px',

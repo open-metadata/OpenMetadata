@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Grid } from '@mui/material';
-import { Col, Row } from 'antd';
+import { Grid, Stack } from '@mui/material';
+import { Col } from 'antd';
 import { AxiosError } from 'axios';
 import { pick } from 'lodash';
 import { DateRangeObject } from 'Models';
@@ -216,7 +216,7 @@ const TableProfilerChart = ({
   }
 
   return (
-    <Row data-testid="table-profiler-chart-container" gutter={[16, 16]}>
+    <Stack data-testid="table-profiler-chart-container" spacing="30px">
       {showHeader && (
         <>
           {!isSummaryLoading && !isProfilingEnabled && (
@@ -277,7 +277,7 @@ const TableProfilerChart = ({
           isLoading={isTableProfilerLoading || isSummaryLoading}
         />
       </Col>
-    </Row>
+    </Stack>
   );
 };
 
