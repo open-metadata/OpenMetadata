@@ -17,16 +17,23 @@ from typing import (
 from urllib.parse import urlencode
 
 from metadata.ingestion.ometa.client import REST
-from metadata.sdk.client import OpenMetadata
-from metadata.sdk.types import JsonDict, OMetaClient
+from ..client import OpenMetadata
+from ..types import JsonDict, OMetaClient
 
 T = TypeVar("T")
+R = TypeVar("R")
+
+SearchCallback = Callable[..., JsonDict]
+SuggestCallback = Callable[..., List[str]]
+AggregateCallback = Callable[..., JsonDict]
+ReindexCallback = Callable[..., JsonDict]
+ReindexAllCallback = Callable[..., JsonDict]
 
 
-async def _run_async(callable_: Any, *args: Any, **kwargs: Any) -> Any:
+async def _run_async(function: Callable[..., R], *args: object, **kwargs: object) -> R:
     """Execute a blocking callable on the default executor."""
     loop = asyncio.get_running_loop()
-    func = partial(callable_, *args, **kwargs)
+    func = partial(function, *args, **kwargs)
     return await loop.run_in_executor(None, func)
 
 
@@ -42,7 +49,7 @@ def _http_get(client: OMetaClient, path: str, params: Mapping[str, Any]) -> Json
     response = getattr(client, "client", None)
     if not isinstance(response, REST):
         raise RuntimeError("OpenMetadata client does not expose a REST client")
-    payload = cast(Any, response).get(resource)
+    payload = response.get(resource)
     return cast(JsonDict, payload or {})
 
 
@@ -50,7 +57,7 @@ def _http_post(client: OMetaClient, path: str, body: JsonDict) -> JsonDict:
     response = getattr(client, "client", None)
     if not isinstance(response, REST):
         raise RuntimeError("OpenMetadata client does not expose a REST client")
-    payload = cast(Any, response).post(path, json=body)
+    payload = response.post(path, json=body)
     return cast(JsonDict, payload or {})
 
 
@@ -74,7 +81,7 @@ class Search:
         return cls._default_client
 
     @classmethod
-    def search(
+    def search(  # pylint: disable=too-many-arguments
         cls,
         query: str,
         index: Optional[str] = None,
@@ -97,10 +104,10 @@ class Search:
         if filters:
             params.update(filters)
 
-        search_fn = getattr(client, "es_search_from_es", None)
-        if callable(search_fn):
-            typed_search = cast(Callable[..., Any], search_fn)
-            return cast(JsonDict, typed_search(**params))
+        search_fn_raw = getattr(client, "es_search_from_es", None)
+        if callable(search_fn_raw):
+            search_callback: SearchCallback = cast(SearchCallback, search_fn_raw)
+            return search_callback(**params)  # pylint: disable=not-callable
 
         http_params = {
             "q": query,
@@ -123,12 +130,11 @@ class Search:
     ) -> List[str]:
         """Fetch entity suggestions."""
         client = cls._get_client()
-        suggest_fn = getattr(client, "get_suggest_entities", None)
-        if callable(suggest_fn):
-            typed_suggest = cast(Callable[..., Any], suggest_fn)
-            return cast(
-                List[str],
-                typed_suggest(query_string=query, field=field, size=size),
+        suggest_fn_raw = getattr(client, "get_suggest_entities", None)
+        if callable(suggest_fn_raw):
+            suggest_callback: SuggestCallback = cast(SuggestCallback, suggest_fn_raw)
+            return suggest_callback(  # pylint: disable=not-callable
+                query_string=query, field=field, size=size
             )
 
         http_params = {
@@ -149,15 +155,17 @@ class Search:
     ) -> JsonDict:
         """Perform aggregation query."""
         client = cls._get_client()
-        aggregate_fn = getattr(client, "es_aggregate", None)
+        aggregate_fn_raw = getattr(client, "es_aggregate", None)
         params = {
             "query": query,
             "index": index,
             "field": field,
         }
-        if callable(aggregate_fn):
-            typed_aggregate = cast(Callable[..., Any], aggregate_fn)
-            return cast(JsonDict, typed_aggregate(**params))
+        if callable(aggregate_fn_raw):
+            aggregate_callback: AggregateCallback = cast(
+                AggregateCallback, aggregate_fn_raw
+            )
+            return aggregate_callback(**params)  # pylint: disable=not-callable
 
         body: JsonDict = {
             "query": query,
@@ -170,30 +178,36 @@ class Search:
     def search_advanced(cls, search_request: JsonDict) -> JsonDict:
         """Perform advanced search with custom request body."""
         client = cls._get_client()
-        search_fn = getattr(client, "es_search_from_es", None)
-        if callable(search_fn):
-            typed_search = cast(Callable[..., Any], search_fn)
-            return cast(JsonDict, typed_search(body=search_request))
+        search_fn_raw = getattr(client, "es_search_from_es", None)
+        if callable(search_fn_raw):
+            search_callback: SearchCallback = cast(SearchCallback, search_fn_raw)
+            return search_callback(  # pylint: disable=not-callable
+                body=search_request
+            )
         return _http_post(client, "/search/query", search_request)
 
     @classmethod
     def reindex(cls, entity_type: str) -> JsonDict:
         """Trigger reindex for a specific entity type."""
         client = cls._get_client()
-        reindex_fn = getattr(client, "reindex", None)
-        if callable(reindex_fn):
-            typed_reindex = cast(Callable[..., Any], reindex_fn)
-            return cast(JsonDict, typed_reindex(entity_type=entity_type))
+        reindex_fn_raw = getattr(client, "reindex", None)
+        if callable(reindex_fn_raw):
+            reindex_callback: ReindexCallback = cast(ReindexCallback, reindex_fn_raw)
+            return reindex_callback(  # pylint: disable=not-callable
+                entity_type=entity_type
+            )
         return _http_post(client, f"/search/reindex/{entity_type}", {})
 
     @classmethod
     def reindex_all(cls) -> JsonDict:
         """Reindex all entities."""
         client = cls._get_client()
-        reindex_all_fn = getattr(client, "reindex_all", None)
-        if callable(reindex_all_fn):
-            typed_reindex_all = cast(Callable[..., Any], reindex_all_fn)
-            return cast(JsonDict, typed_reindex_all())
+        reindex_all_fn_raw = getattr(client, "reindex_all", None)
+        if callable(reindex_all_fn_raw):
+            reindex_all_callback: ReindexAllCallback = cast(
+                ReindexAllCallback, reindex_all_fn_raw
+            )
+            return reindex_all_callback()  # pylint: disable=not-callable
         return _http_post(client, "/search/reindex", {})
 
     @classmethod
