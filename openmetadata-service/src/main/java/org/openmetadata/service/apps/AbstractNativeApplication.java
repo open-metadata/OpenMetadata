@@ -206,10 +206,10 @@ public class AbstractNativeApplication implements NativeApplication {
     repository.update(null, original, updated, updatedBy);
   }
 
-    private void createAndBindIngestionPipeline(
-            App app,
-            IngestionPipelineRepository ingestionPipelineRepository,
-            Map<String, Object> config) {
+  private void createAndBindIngestionPipeline(
+      App app,
+      IngestionPipelineRepository ingestionPipelineRepository,
+      Map<String, Object> config) {
     Map<String, Object> decryptedConfig = decryptConfiguration(config);
     MetadataServiceRepository serviceEntityRepository =
         (MetadataServiceRepository) Entity.getEntityRepository(Entity.METADATA_SERVICE);
