@@ -40,6 +40,7 @@ class ApiIngestionClass extends ServiceBaseClass {
       shouldAddIngestion,
       shouldAddDefaultFilters
     );
+    this.entityFQN = `${this.serviceName}.${this.entityName} `;
   }
 
   async createService(page: Page) {
