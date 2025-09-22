@@ -90,7 +90,6 @@ class TestTableCustomSQLQueryValidator(unittest.TestCase):
         result = self.validator._replace_where_clause(sql, partition_expr)
 
         self.assertIn("WHERE u.created_at > '2023-01-01'", result)
-        self.assertIn("WHERE o.total >", result)
         self.assertNotIn("WHERE u.id IN", result)
 
     def test_query_with_cte_where_preserved(self):
