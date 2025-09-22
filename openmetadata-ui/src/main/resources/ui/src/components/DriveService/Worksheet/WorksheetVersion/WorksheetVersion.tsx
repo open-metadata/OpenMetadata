@@ -105,24 +105,29 @@ const WorksheetVersion = ({
     );
   }, [currentVersionData]);
 
-  const tags = useMemo(() => {
-    return getEntityVersionTags(currentVersionData, changeDescription);
-  }, [currentVersionData, changeDescription]);
-
-  const description = useMemo(() => {
-    return getEntityVersionByField(
-      changeDescription,
-      EntityField.DESCRIPTION,
-      currentVersionData.description
+  const { tags, description, displayName, columns } = useMemo(() => {
+    const colList = cloneDeep(
+      pruneEmptyChildren(currentVersionData?.columns ?? [])
     );
-  }, [currentVersionData, changeDescription]);
 
-  const displayName = useMemo(() => {
-    return getEntityVersionByField(
-      changeDescription,
-      EntityField.DISPLAYNAME,
-      currentVersionData.displayName
-    );
+    return {
+      tags: getEntityVersionTags(currentVersionData, changeDescription),
+      description: getEntityVersionByField(
+        changeDescription,
+        EntityField.DESCRIPTION,
+        currentVersionData.description
+      ),
+      displayName: getEntityVersionByField(
+        changeDescription,
+        EntityField.DISPLAYNAME,
+        currentVersionData.displayName
+      ),
+      columns: getColumnsDataWithVersionChanges<Column>(
+        changeDescription,
+        colList,
+        true
+      ),
+    };
   }, [currentVersionData, changeDescription]);
 
   const {
@@ -132,18 +137,6 @@ const WorksheetVersion = ({
     () => getConstraintChanges(changeDescription, EntityField.CONSTRAINT),
     [changeDescription]
   );
-
-  const columns = useMemo(() => {
-    const colList = cloneDeep(
-      pruneEmptyChildren(currentVersionData?.columns ?? [])
-    );
-
-    return getColumnsDataWithVersionChanges<Column>(
-      changeDescription,
-      colList,
-      true
-    );
-  }, [currentVersionData, changeDescription]);
 
   const tabItems: TabsProps['items'] = useMemo(
     () => [
