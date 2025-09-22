@@ -178,9 +178,8 @@ class JSONLogicSearchClassBase {
       label: t('label.not-contain-plural'),
       labelForFormat: t('label.not-contain-plural'),
       valueTypes: ['multiselect', 'select'],
-      cardinality: 1,
       valueSources: ['value'],
-      jsonLogic: 'not_contains',
+      reversedOp: 'array_contains',
     },
   };
 
