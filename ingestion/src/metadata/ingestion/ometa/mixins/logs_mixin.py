@@ -26,6 +26,7 @@ from typing import Optional
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ometa_logger
 
@@ -64,10 +65,10 @@ class OMetaLogsMixin:
         """
         try:
             # Extract the UUID string value from the object if it has a .root attribute
-            run_id_str = str(run_id.root) if hasattr(run_id, "root") else str(run_id)
-
             # Build the API endpoint
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id_str}"
+            url = (
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            )
 
             # Prepare log batch data matching Java LogBatch structure
             log_batch = {
@@ -167,12 +168,9 @@ class OMetaLogsMixin:
                 log_batch["logs"] = base64.b64encode(compressed_data).decode(UTF_8)
                 log_batch["compressed"] = True
 
-            # Extract the UUID string value from the object if it has a .root attribute
-            run_id_str = str(run_id.root) if hasattr(run_id, "root") else str(run_id)
-
             # Use the metadata client's REST interface directly
             self.client.post(
-                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id_str}",
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}",
                 data=json.dumps(log_batch),
             )
 
@@ -208,11 +206,9 @@ class OMetaLogsMixin:
             Optional[str]: Stream session ID if applicable, None otherwise
         """
         try:
-            # Extract the UUID string value from the object if it has a .root attribute
-            run_id_str = str(run_id.root) if hasattr(run_id, "root") else str(run_id)
 
             # Initialize log stream with the server
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id_str}/init"
+            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/init"
 
             init_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -257,10 +253,8 @@ class OMetaLogsMixin:
             bool: True if stream was closed successfully, False otherwise
         """
         try:
-            # Extract the UUID string value from the object if it has a .root attribute
-            run_id_str = str(run_id.root) if hasattr(run_id, "root") else str(run_id)
 
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id_str}/close"
+            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/close"
 
             close_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -305,10 +299,10 @@ class OMetaLogsMixin:
             Optional[str]: Log content if available, None otherwise
         """
         try:
-            # Extract the UUID string value from the object if it has a .root attribute
-            run_id_str = str(run_id.root) if hasattr(run_id, "root") else str(run_id)
 
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id_str}"
+            url = (
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            )
 
             params = {
                 "offset": offset,
