@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Space, Statistic, Typography } from 'antd';
+import { Box, Stack, Typography, useTheme } from '@mui/material';
 import { isUndefined } from 'lodash';
 import { getStatisticsDisplayValue } from '../../../../utils/CommonUtils';
 import '../ProfilerDashboard/profiler-dashboard.less';
@@ -21,7 +21,10 @@ const ProfilerLatestValue = ({
   information,
   tickFormatter,
   stringValue = false,
+  onClick,
 }: ProfilerLatestValueProps) => {
+  const theme = useTheme();
+
   const getLatestValue = (value?: number | string) => {
     if (isUndefined(value)) {
       return '--';
@@ -35,23 +38,50 @@ const ProfilerLatestValue = ({
   };
 
   return (
-    <Space data-testid="data-summary-container" direction="vertical" size={16}>
+    <Stack
+      data-testid="data-summary-container"
+      direction="row"
+      spacing={4}
+      sx={{
+        width: '100%',
+        backgroundColor: theme.palette.grey[50],
+        borderRadius: '10px',
+        p: '16px 30px',
+      }}>
       {information.map((info) => (
-        <Statistic
-          className="profiler-latest-value"
+        <Box
           key={info.title}
-          title={
-            <Typography.Text
-              className="text-grey-body break-all"
-              data-testid="title">
-              {info.title}
-            </Typography.Text>
-          }
-          value={getLatestValue(info.latestValue)}
-          valueStyle={{ color: info.color, fontSize: '18px', fontWeight: 700 }}
-        />
+          sx={{
+            cursor: onClick ? 'pointer' : 'default',
+          }}
+          onClick={() => onClick?.(info.dataKey)}>
+          <Typography
+            className="break-all"
+            data-testid="title"
+            sx={{
+              color: theme.palette.grey[700],
+              fontSize: '12px',
+              fontWeight: theme.typography.fontWeightBold,
+              borderLeft: `4px solid ${info.color}`,
+              paddingLeft: '8px',
+              lineHeight: '12px',
+              mb: 1,
+            }}>
+            {info.title}
+          </Typography>
+          <Typography
+            className="break-all"
+            data-testid="value"
+            sx={{
+              color: theme.palette.grey[900],
+              fontSize: '18px',
+              fontWeight: 700,
+            }}>
+            {getLatestValue(info.latestValue)}
+          </Typography>
+        </Box>
       ))}
-    </Space>
+    </Stack>
   );
 };
 

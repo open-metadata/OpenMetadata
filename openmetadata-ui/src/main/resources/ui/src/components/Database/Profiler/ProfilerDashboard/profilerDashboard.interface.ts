@@ -42,6 +42,7 @@ export interface ProfilerDetailsCardProps {
   isLoading?: boolean;
   noDataPlaceholderText?: ReactNode;
   children?: ReactNode;
+  chartType?: 'line' | 'area';
 }
 
 export enum TableProfilerTab {
@@ -78,6 +79,7 @@ export interface ProfilerLatestValueProps {
   information: MetricChartType['information'];
   tickFormatter?: string;
   stringValue?: boolean;
+  onClick?: (dataKey: string) => void;
 }
 
 export type TestCaseAction = {

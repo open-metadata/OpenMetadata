@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { Grid, Stack } from '@mui/material';
-import { Col } from 'antd';
+import { Box, Grid, Stack } from '@mui/material';
 import { AxiosError } from 'axios';
 import { pick } from 'lodash';
 import { DateRangeObject } from 'Models';
@@ -220,50 +219,49 @@ const TableProfilerChart = ({
       {showHeader && (
         <>
           {!isSummaryLoading && !isProfilingEnabled && (
-            <Col span={24}>
+            <Box>
               <NoProfilerBanner />
-            </Col>
+            </Box>
           )}
-          <Col span={24}>
-            <Grid container spacing={5}>
-              {overallSummary?.map((summary) => (
-                <Grid key={summary.title} size="grow">
-                  <SummaryCardV1
-                    extra={summary.extra}
-                    icon={summary.icon}
-                    isLoading={isSummaryLoading}
-                    title={summary.title}
-                    value={summary.value}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          </Col>
+
+          <Grid container spacing={5}>
+            {overallSummary?.map((summary) => (
+              <Grid key={summary.title} size="grow">
+                <SummaryCardV1
+                  extra={summary.extra}
+                  icon={summary.icon}
+                  isLoading={isSummaryLoading}
+                  title={summary.title}
+                  value={summary.value}
+                />
+              </Grid>
+            ))}
+          </Grid>
         </>
       )}
-      <Col data-testid="row-metrics" span={24}>
+      <Box data-testid="row-metrics">
         <ProfilerDetailsCard
           chartCollection={rowCountMetrics}
-          curveType="stepAfter"
+          chartType="area"
           isLoading={isTableProfilerLoading}
           name="rowCount"
           noDataPlaceholderText={noProfilerMessage}
           title={t('label.data-volume')}
         />
-      </Col>
+      </Box>
       {showSystemMetrics && (
         <>
-          <Col span={24}>{operationDateMetricsCard}</Col>
-          <Col span={24}>{operationMetricsCard}</Col>
+          <Box>{operationDateMetricsCard}</Box>
+          <Box>{operationMetricsCard}</Box>
         </>
       )}
-      <Col span={24}>
+      <Box>
         <CustomMetricGraphs
           customMetrics={customMetrics}
           customMetricsGraphData={tableCustomMetricsProfiling}
           isLoading={isTableProfilerLoading || isSummaryLoading}
         />
-      </Col>
+      </Box>
     </Stack>
   );
 };
