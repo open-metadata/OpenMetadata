@@ -154,5 +154,19 @@ describe('Tests for CommonUtils', () => {
 
       expect(firstAlphabet).toBe(']');
     });
+
+    it('should return the first alphabet from name when it is not in english language', () => {
+      let firstAlphabet = getFirstAlphanumeric('🚀Éclair');
+
+      expect(firstAlphabet).toBe('é');
+
+      firstAlphabet = getFirstAlphanumeric('ชานนท์');
+
+      expect(firstAlphabet).toBe('ช');
+
+      firstAlphabet = getFirstAlphanumeric('ño');
+
+      expect(firstAlphabet).toBe('ñ');
+    });
   });
 });

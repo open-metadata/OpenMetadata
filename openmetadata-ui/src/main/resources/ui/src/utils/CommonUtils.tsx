@@ -404,7 +404,12 @@ export const getNameFromFQN = (fqn: string): string => {
 };
 
 export const getFirstAlphanumeric = (name: string): string => {
-  const match = name.match(/[a-z0-9]/i);
+  /**
+   * \p{L} → matches any kind of letter from any language (Latin, Cyrillic, Chinese, etc.).
+   * \p{N} → matches any kind of numeric digit (Arabic-Indic, Roman numerals, etc.).
+   * u flag → required for Unicode property escapes to work.
+   */
+  const match = name.match(/[\p{L}\p{N}]/u);
 
   return match ? match[0].toLowerCase() : name.charAt(0).toLowerCase();
 };
