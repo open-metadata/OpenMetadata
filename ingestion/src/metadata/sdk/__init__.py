@@ -59,16 +59,19 @@ def configure(
     if config is not None and kwargs:
         raise TypeError("Pass either a config object or keyword arguments, not both")
 
+    config_obj: OpenMetadataConfig
     if config is None:
         if not kwargs:
             raise ValueError("Provide an OpenMetadataConfig or keyword arguments")
-        config = OpenMetadataConfig(**kwargs)  # type: ignore[arg-type]
+        config_obj = OpenMetadataConfig(**kwargs)
     elif isinstance(config, Mapping):
-        config = OpenMetadataConfig(**config)  # type: ignore[arg-type]
-    elif not isinstance(config, OpenMetadataConfig):
+        config_obj = OpenMetadataConfig(**dict(config))
+    elif isinstance(config, OpenMetadataConfig):
+        config_obj = config
+    else:
         raise TypeError("Unsupported configuration payload")
 
-    _global_client = OpenMetadata.initialize(config)
+    _global_client = OpenMetadata.initialize(config_obj)
     return _global_client
 
 

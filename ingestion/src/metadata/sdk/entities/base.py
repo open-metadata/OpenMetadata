@@ -6,6 +6,7 @@ from typing import (
     Any,
     Callable,
     ClassVar,
+    Dict,
     Generic,
     List,
     Mapping,
@@ -238,17 +239,14 @@ class BaseEntity(Generic[TEntity, TCreate]):
         filters: Optional[Mapping[str, str]] = None,
     ) -> EntityList[TEntity]:
         client = cls._get_client()
-        params = dict(filters) if filters else None
-        kwargs = {
-            "entity": cls.entity_type(),
-            "after": after,
-            "before": before,
-            "limit": limit,
-            "fields": list(fields) if fields else None,
-        }
-        if params:
-            kwargs["params"] = params
-        response = client.list_entities(**kwargs)
+        response = client.list_entities(
+            entity=cls.entity_type(),
+            fields=list(fields) if fields else None,
+            after=after,
+            before=before,
+            limit=limit,
+            params=dict(filters) if filters else None,
+        )
         raw_entities = cast(Sequence[Any], getattr(response, "entities", []) or [])
         entities = [cls._coerce_entity(item) for item in raw_entities]
         return EntityList(
@@ -410,7 +408,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         from metadata.sdk.entities.custom_properties import CustomProperties
 
         updater = CustomProperties.update(cls.entity_type(), identifier)
-        updater.use_client(cls._get_client())
+        _ = updater.use_client(cls._get_client())
         return updater
 
     @classmethod
@@ -420,7 +418,7 @@ class BaseEntity(Generic[TEntity, TCreate]):
         from metadata.sdk.entities.custom_properties import CustomProperties
 
         updater = CustomProperties.update_by_name(cls.entity_type(), fqn)
-        updater.use_client(cls._get_client())
+        _ = updater.use_client(cls._get_client())
         return updater
 
     # ------------------------------------------------------------------
@@ -434,7 +432,11 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, BaseModel):
             return cast(TEntity, payload)
         if isinstance(payload, dict):
-            return entity_cls.model_validate(payload)
+            model_validate = cast(
+                Callable[[Dict[str, Any]], TEntity],
+                getattr(entity_cls, "model_validate"),
+            )
+            return model_validate(payload)
         return cast(TEntity, payload)
 
     @classmethod
@@ -442,9 +444,10 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, dict):
             return cast(JsonDict, payload)
         if isinstance(payload, BaseModel):
-            json_result: JsonDict = payload.model_dump(
-                mode="json"
-            )  # pyright: ignore[reportUnknownMemberType]
+            model_dump = cast(
+                Callable[..., Dict[str, Any]], getattr(payload, "model_dump")
+            )
+            json_result: JsonDict = cast(JsonDict, model_dump(mode="json"))
             return json_result
         raise TypeError("Expected mapping-compatible payload")
 

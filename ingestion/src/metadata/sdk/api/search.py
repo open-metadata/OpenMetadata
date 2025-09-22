@@ -3,7 +3,17 @@ from __future__ import annotations
 
 import asyncio
 from functools import partial
-from typing import Any, ClassVar, List, Mapping, Optional, TypeVar, Union, cast
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    List,
+    Mapping,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+)
 from urllib.parse import urlencode
 
 from metadata.ingestion.ometa.client import REST
@@ -89,7 +99,8 @@ class Search:
 
         search_fn = getattr(client, "es_search_from_es", None)
         if callable(search_fn):
-            return cast(JsonDict, search_fn(**params))
+            typed_search = cast(Callable[..., Any], search_fn)
+            return cast(JsonDict, typed_search(**params))
 
         http_params = {
             "q": query,
@@ -114,8 +125,10 @@ class Search:
         client = cls._get_client()
         suggest_fn = getattr(client, "get_suggest_entities", None)
         if callable(suggest_fn):
+            typed_suggest = cast(Callable[..., Any], suggest_fn)
             return cast(
-                List[str], suggest_fn(query_string=query, field=field, size=size)
+                List[str],
+                typed_suggest(query_string=query, field=field, size=size),
             )
 
         http_params = {
@@ -143,7 +156,8 @@ class Search:
             "field": field,
         }
         if callable(aggregate_fn):
-            return cast(JsonDict, aggregate_fn(**params))
+            typed_aggregate = cast(Callable[..., Any], aggregate_fn)
+            return cast(JsonDict, typed_aggregate(**params))
 
         body: JsonDict = {
             "query": query,
@@ -158,7 +172,8 @@ class Search:
         client = cls._get_client()
         search_fn = getattr(client, "es_search_from_es", None)
         if callable(search_fn):
-            return cast(JsonDict, search_fn(body=search_request))
+            typed_search = cast(Callable[..., Any], search_fn)
+            return cast(JsonDict, typed_search(body=search_request))
         return _http_post(client, "/search/query", search_request)
 
     @classmethod
@@ -167,7 +182,8 @@ class Search:
         client = cls._get_client()
         reindex_fn = getattr(client, "reindex", None)
         if callable(reindex_fn):
-            return cast(JsonDict, reindex_fn(entity_type=entity_type))
+            typed_reindex = cast(Callable[..., Any], reindex_fn)
+            return cast(JsonDict, typed_reindex(entity_type=entity_type))
         return _http_post(client, f"/search/reindex/{entity_type}", {})
 
     @classmethod
@@ -176,11 +192,12 @@ class Search:
         client = cls._get_client()
         reindex_all_fn = getattr(client, "reindex_all", None)
         if callable(reindex_all_fn):
-            return cast(JsonDict, reindex_all_fn())
+            typed_reindex_all = cast(Callable[..., Any], reindex_all_fn)
+            return cast(JsonDict, typed_reindex_all())
         return _http_post(client, "/search/reindex", {})
 
     @classmethod
-    async def search_async(
+    async def search_async(  # pylint: disable=too-many-arguments
         cls,
         query: str,
         index: Optional[str] = None,

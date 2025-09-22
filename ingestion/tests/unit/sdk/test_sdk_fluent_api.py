@@ -170,7 +170,7 @@ class TestSDKFluentAPI:
         assert result.entities[0].name == "db1"
         assert result.entities[1].name == "db2"
         self.mock_ometa.list_entities.assert_called_once_with(
-            entity=Database, fields=None, after=None, before=None, limit=10
+            entity=Database, fields=None, after=None, before=None, limit=10, params=None
         )
 
     @patch.object(Teams, "_get_client")
