@@ -1,12 +1,8 @@
 package org.openmetadata.service.search.opensearch;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonParser;
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
@@ -23,6 +19,12 @@ import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesResponse;
 import os.org.opensearch.client.transport.endpoints.BooleanResponse;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * OpenSearch implementation of index management operations.
@@ -221,12 +223,62 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   }
 
   private IndexSettings parseIndexSettings(JsonNode settingsNode) {
+    // Transform Elasticsearch stemmer configuration to OpenSearch format
+    JsonNode transformedSettings = transformStemmerForOpenSearch(settingsNode);
+
     JsonParser parser =
         client
             ._transport()
             .jsonpMapper()
             .jsonProvider()
-            .createParser(new StringReader(settingsNode.toString()));
+            .createParser(new StringReader(transformedSettings.toString()));
     return IndexSettings._DESERIALIZER.deserialize(parser, client._transport().jsonpMapper());
+  }
+
+  private JsonNode transformStemmerForOpenSearch(JsonNode settingsNode) {
+    try {
+      // Clone the settings to avoid modifying the original
+      ObjectNode transformedNode = (ObjectNode) JsonUtils.readTree(settingsNode.toString());
+
+      // Navigate to the filters section if it exists
+      JsonNode analysisNode = transformedNode.path("analysis");
+      if (!analysisNode.isMissingNode() && analysisNode.isObject()) {
+        ObjectNode analysisObj = (ObjectNode) analysisNode;
+
+        JsonNode filtersNode = analysisObj.path("filter");
+        if (!filtersNode.isMissingNode() && filtersNode.isObject()) {
+          ObjectNode filtersObj = (ObjectNode) filtersNode;
+
+          // Check if om_stemmer exists and has "name": "kstem"
+          JsonNode omStemmerNode = filtersObj.path("om_stemmer");
+          if (!omStemmerNode.isMissingNode() && omStemmerNode.has("type")) {
+            String type = omStemmerNode.get("type").asText();
+            if ("stemmer".equals(type) && omStemmerNode.has("name")) {
+              String name = omStemmerNode.get("name").asText();
+              if ("kstem".equals(name)) {
+                // Create a new stemmer configuration for OpenSearch
+                ObjectNode newStemmerNode = JsonUtils.getObjectMapper().createObjectNode();
+                newStemmerNode.put("type", "stemmer");
+                newStemmerNode.put("language", "kstem");
+
+                // Replace the om_stemmer configuration
+                filtersObj.set("om_stemmer", newStemmerNode);
+              }
+            }
+          } else {
+            LOG.debug("No om_stemmer filter found in settings");
+          }
+        } else {
+          LOG.debug("No filter section found in analysis settings");
+        }
+      } else {
+        LOG.debug("No analysis section found in settings");
+      }
+
+      return transformedNode;
+    } catch (Exception e) {
+      LOG.warn("Failed to transform stemmer settings for OpenSearch, using original settings", e);
+      return settingsNode;
+    }
   }
 }
