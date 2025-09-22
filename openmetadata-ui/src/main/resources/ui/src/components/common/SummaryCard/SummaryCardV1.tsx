@@ -1,7 +1,26 @@
-import { Box, Card, Chip, Typography } from '@mui/material';
-import { ReactComponent as NoDataIcon } from '../../../assets/svg/ticket-with-check.svg';
+import { Box, Card, Skeleton, Typography } from '@mui/material';
+import { ReactNode } from 'react';
+import { ReactComponent as AddItemIcon } from '../../../assets/svg/add-item-icon.svg';
 
-const SummaryCardV1 = () => {
+const SummaryCardV1 = ({
+  isLoading,
+  title,
+  value,
+  icon,
+  extra,
+}: {
+  isLoading: boolean;
+  title: ReactNode;
+  value: string | number;
+  icon?: SvgComponent;
+  extra?: ReactNode;
+}) => {
+  if (isLoading) {
+    return <Skeleton height={120} variant="rounded" width={210} />;
+  }
+
+  const Icon = icon ?? AddItemIcon;
+
   return (
     <Box>
       <Card
@@ -17,46 +36,35 @@ const SummaryCardV1 = () => {
           width: '100%',
         }}
         variant="outlined">
-        <Chip
-          color="secondary"
-          icon={<NoDataIcon />}
-          sx={{
-            backgroundColor: 'white',
-            height: '40px',
-            width: '40px',
-            borderRadius: '8px',
-            '.MuiChip-icon': {
-              m: 0,
-            },
-          }}
-          variant="outlined"
-        />
+        <Icon height={40} width={40} />
         <Box>
           <Typography sx={{ fontSize: '18px', fontWeight: 600 }} variant="h6">
-            1245
+            {value}
           </Typography>
           <Typography
             color="text.secondary"
             sx={{ fontSize: '14px', fontWeight: 500 }}>
-            Row Count
+            {title}
           </Typography>
         </Box>
       </Card>
-      <Box
-        sx={{
-          mt: 0,
-          mx: 2,
-          px: 2,
-          py: 1,
-          background: '#F8F9FC',
-          borderRadius: '0 0 12px 12px',
-          boxShadow: '0 4px 3px 0 rgba(235, 239, 250, 0.10)',
-          border: 'none',
-        }}>
-        <Typography sx={{ fontSize: 10, fontWeight: 500 }}>
-          Last updated: Sep 17, 2025 12:34 PM
-        </Typography>
-      </Box>
+      {extra && (
+        <Box
+          sx={{
+            mt: 0,
+            mx: 2,
+            px: 2,
+            py: 1,
+            background: '#F8F9FC',
+            borderRadius: '0 0 12px 12px',
+            boxShadow: '0 4px 3px 0 rgba(235, 239, 250, 0.10)',
+            border: 'none',
+          }}>
+          <Typography sx={{ fontSize: 10, fontWeight: 500 }}>
+            {extra}
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 };

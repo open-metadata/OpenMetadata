@@ -228,18 +228,29 @@ const TableProfilerChart = ({
             <Grid container spacing={5}>
               {overallSummary?.map((summary) => (
                 <Grid key={summary.title} size="grow">
-                  {/* <SummaryCard
-                    className={classNames(summary.className, 'h-full')}
+                  <SummaryCardV1
+                    extra={summary.extra}
+                    icon={summary.icon}
                     isLoading={isSummaryLoading}
-                    showProgressBar={false}
                     title={summary.title}
-                    total={0}
                     value={summary.value}
-                  /> */}
-                  <SummaryCardV1 />
+                  />
                 </Grid>
               ))}
             </Grid>
+
+            {/* <div className="d-flex gap-4">
+              {overallSummary?.map((summary) => (
+                <SummaryCard
+                  className={classNames(summary.className, 'h-full')}
+                  isLoading={isSummaryLoading}
+                  showProgressBar={false}
+                  title={summary.title}
+                  total={0}
+                  value={summary.value}
+                />
+              ))}
+            </div> */}
           </Col>
         </>
       )}

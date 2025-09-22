@@ -93,7 +93,8 @@ export interface TestIndicatorProps {
 export type OverallTableSummaryType = {
   title: string;
   value: number | string;
-  className?: string;
+  icon?: SvgComponent;
+  extra?: ReactNode;
   key: string;
 };
 
