@@ -6,8 +6,10 @@ from metadata.sdk.entities.apiendpoints import APIEndpoints
 from metadata.sdk.entities.charts import Charts
 from metadata.sdk.entities.classifications import Classifications
 from metadata.sdk.entities.containers import Containers
+from metadata.sdk.entities.dashboard_services import DashboardServices
 from metadata.sdk.entities.dashboarddatamodels import DashboardDataModels
 from metadata.sdk.entities.dashboards import Dashboards
+from metadata.sdk.entities.database_services import DatabaseServices
 from metadata.sdk.entities.databases import Databases
 from metadata.sdk.entities.databaseschemas import DatabaseSchemas
 from metadata.sdk.entities.datacontracts import DataContracts
@@ -37,6 +39,8 @@ __all__ = [
     "Containers",
     "DashboardDataModels",
     "Dashboards",
+    "DatabaseServices",
+    "DashboardServices",
     "Databases",
     "DatabaseSchemas",
     "DataContracts",

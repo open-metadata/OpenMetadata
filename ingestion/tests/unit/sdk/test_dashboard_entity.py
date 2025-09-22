@@ -9,7 +9,7 @@ from metadata.generated.schema.api.data.createDashboard import CreateDashboardRe
 from metadata.generated.schema.entity.data.dashboard import Dashboard as DashboardEntity
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.usageDetails import UsageDetails
-from metadata.sdk.entities.dashboards import Dashboards
+from metadata.sdk import Dashboards
 
 
 class TestDashboardEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestDashboardEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Dashboards._default_client = self.mock_ometa
+        Dashboards.set_default_client(self.mock_ometa)
 
         # Test data
         self.dashboard_id = "750e8400-e29b-41d4-a716-446655440000"

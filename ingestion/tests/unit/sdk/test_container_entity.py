@@ -12,7 +12,7 @@ from metadata.generated.schema.entity.data.container import (
     FileFormat,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.containers import Containers
+from metadata.sdk import Containers
 
 
 class TestContainerEntity(unittest.TestCase):
@@ -23,7 +23,7 @@ class TestContainerEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Containers._default_client = self.mock_ometa
+        Containers.set_default_client(self.mock_ometa)
 
         # Test data
         self.container_id = "650e8400-e29b-41d4-a716-446655440000"

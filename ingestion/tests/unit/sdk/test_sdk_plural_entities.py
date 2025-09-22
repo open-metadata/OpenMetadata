@@ -13,14 +13,9 @@ from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.table import Table
-from metadata.sdk.entities.charts import Charts
-from metadata.sdk.entities.dashboards import Dashboards
-from metadata.sdk.entities.databases import Databases
-from metadata.sdk.entities.mlmodels import MLModels
-from metadata.sdk.entities.pipelines import Pipelines
 
 # Import plural SDK classes
-from metadata.sdk.entities.tables import Tables
+from metadata.sdk import Charts, Dashboards, Databases, MLModels, Pipelines, Tables
 
 
 class TestTablesSDK:
@@ -245,7 +240,7 @@ class TestSDKPluralNaming:
 
     def test_all_sdk_classes_are_plural(self):
         """Verify SDK classes use plural names"""
-        from metadata.sdk.entities import (
+        from metadata.sdk import (
             APICollections,
             APIEndpoints,
             Charts,
@@ -316,7 +311,7 @@ class TestSDKPluralNaming:
     def test_no_naming_conflicts(self):
         """Verify SDK classes don't conflict with generated entities"""
         from metadata.generated.schema.entity.data.table import Table
-        from metadata.sdk.entities.tables import Tables
+        from metadata.sdk import Tables
 
         # These should be different classes
         assert Tables != Table

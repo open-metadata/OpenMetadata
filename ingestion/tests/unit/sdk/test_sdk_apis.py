@@ -17,8 +17,8 @@ class TestSDKAPIs(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default clients for API classes
-        Search._default_client = self.mock_ometa
-        Lineage._default_client = self.mock_ometa
+        Search.set_default_client(self.mock_ometa)
+        Lineage.set_default_client(self.mock_ometa)
 
     def test_search_basic(self):
         """Test basic search"""

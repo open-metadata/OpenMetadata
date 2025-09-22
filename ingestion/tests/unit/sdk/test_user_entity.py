@@ -9,7 +9,7 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism
 from metadata.generated.schema.entity.teams.user import User as UserEntity
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.users import Users
+from metadata.sdk import Users
 
 
 class TestUserEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestUserEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Users._default_client = self.mock_ometa
+        Users.set_default_client(self.mock_ometa)
 
         # Test data
         self.user_id = "350e8400-e29b-41d4-a716-446655440000"

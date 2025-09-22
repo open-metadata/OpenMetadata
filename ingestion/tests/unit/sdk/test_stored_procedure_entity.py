@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createStoredProcedure import (
 from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure as StoredProcedureEntity,
 )
-from metadata.sdk.entities.storedprocedures import StoredProcedures
+from metadata.sdk import StoredProcedures
 
 
 class TestStoredProcedureEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestStoredProcedureEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        StoredProcedures._default_client = self.mock_ometa
+        StoredProcedures.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.stored_procedure.test_stored_procedure"

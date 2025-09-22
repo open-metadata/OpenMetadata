@@ -14,7 +14,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.pipelines import Pipelines
+from metadata.sdk import Pipelines
 
 
 class TestPipelineEntity(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestPipelineEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Pipelines._default_client = self.mock_ometa
+        Pipelines.set_default_client(self.mock_ometa)
 
         # Test data
         self.pipeline_id = "450e8400-e29b-41d4-a716-446655440000"

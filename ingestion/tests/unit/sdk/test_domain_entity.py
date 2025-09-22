@@ -7,7 +7,7 @@ from uuid import UUID
 
 from metadata.generated.schema.api.domains.createDomain import CreateDomainRequest
 from metadata.generated.schema.entity.domains.domain import Domain as DomainEntity
-from metadata.sdk.entities.domains import Domains
+from metadata.sdk import Domains
 
 
 class TestDomainEntity(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestDomainEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        Domains._default_client = self.mock_ometa
+        Domains.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.domain.test_domain"

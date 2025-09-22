@@ -9,7 +9,7 @@ from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequ
 from metadata.generated.schema.entity.data.database import Database as DatabaseEntity
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.sdk.entities.databases import Databases
+from metadata.sdk import Databases
 
 
 class TestDatabaseEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestDatabaseEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Databases._default_client = self.mock_ometa
+        Databases.set_default_client(self.mock_ometa)
 
         # Test data
         self.database_id = "450e8400-e29b-41d4-a716-446655440000"

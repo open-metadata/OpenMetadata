@@ -11,7 +11,7 @@ from metadata.generated.schema.api.classification.createClassification import (
 from metadata.generated.schema.entity.classification.classification import (
     Classification as ClassificationEntity,
 )
-from metadata.sdk.entities.classifications import Classifications
+from metadata.sdk import Classifications
 
 
 class TestClassificationEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestClassificationEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        Classifications._default_client = self.mock_ometa
+        Classifications.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.classification.test_classification"

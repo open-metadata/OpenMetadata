@@ -1,29 +1,64 @@
-"""
-Search API with fluent interface
-"""
-import asyncio
-from typing import ClassVar, Dict, List, Optional, Union
+"""Search API with fluent interface."""
+from __future__ import annotations
 
-from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
+import asyncio
+from functools import partial
+from typing import Any, ClassVar, List, Mapping, Optional, TypeVar, Union, cast
+from urllib.parse import urlencode
+
+from metadata.ingestion.ometa.client import REST
 from metadata.sdk.client import OpenMetadata
+from metadata.sdk.types import JsonDict, OMetaClient
+
+T = TypeVar("T")
+
+
+async def _run_async(callable_: Any, *args: Any, **kwargs: Any) -> Any:
+    """Execute a blocking callable on the default executor."""
+    loop = asyncio.get_running_loop()
+    func = partial(callable_, *args, **kwargs)
+    return await loop.run_in_executor(None, func)
+
+
+def _encode_params(params: Mapping[str, Any]) -> str:
+    """Utility to encode query parameters, skipping ``None`` values."""
+    filtered = {key: value for key, value in params.items() if value is not None}
+    return urlencode(filtered, doseq=True)
+
+
+def _http_get(client: OMetaClient, path: str, params: Mapping[str, Any]) -> JsonDict:
+    query = _encode_params(params)
+    resource = f"{path}?{query}" if query else path
+    response = getattr(client, "client", None)
+    if not isinstance(response, REST):
+        raise RuntimeError("OpenMetadata client does not expose a REST client")
+    payload = cast(Any, response).get(resource)
+    return cast(JsonDict, payload or {})
+
+
+def _http_post(client: OMetaClient, path: str, body: JsonDict) -> JsonDict:
+    response = getattr(client, "client", None)
+    if not isinstance(response, REST):
+        raise RuntimeError("OpenMetadata client does not expose a REST client")
+    payload = cast(Any, response).post(path, json=body)
+    return cast(JsonDict, payload or {})
 
 
 class Search:
-    """Static fluent API for search operations"""
+    """Static fluent API for search operations."""
 
-    _default_client: ClassVar[Optional[OMeta]] = None
-
-    @classmethod
-    def set_default_client(cls, client: Union[OpenMetadata, OMeta]):
-        """Set the default client for static methods"""
-        if isinstance(client, OpenMetadata):
-            cls._default_client = client.ometa
-        else:
-            cls._default_client = client
+    _default_client: ClassVar[Optional[OMetaClient]] = None
 
     @classmethod
-    def _get_client(cls) -> OMeta:
-        """Get the default client"""
+    def set_default_client(cls, client: Union[OpenMetadata, OMetaClient]) -> None:
+        """Set the default client for static methods."""
+        cls._default_client = (
+            client.ometa if isinstance(client, OpenMetadata) else client
+        )
+
+    @classmethod
+    def _get_client(cls) -> OMetaClient:
+        """Return the active OpenMetadata client."""
         if cls._default_client is None:
             cls._default_client = OpenMetadata.get_default_client()
         return cls._default_client
@@ -37,25 +72,36 @@ class Search:
         size: int = 10,
         sort_field: Optional[str] = None,
         sort_order: Optional[str] = None,
-        filters: Optional[Dict] = None,
-    ) -> Dict:
-        """Perform a search query"""
+        filters: Optional[Mapping[str, Any]] = None,
+    ) -> JsonDict:
+        """Perform a search query."""
         client = cls._get_client()
-        params = {
-            "q": query,
+        params: JsonDict = {
+            "query_string": query,
+            "index": index,
             "from": from_,
             "size": size,
+            "sort_field": sort_field,
+            "sort_order": sort_order,
         }
-        if index:
-            params["index"] = index
-        if sort_field:
-            params["sort_field"] = sort_field
-        if sort_order:
-            params["sort_order"] = sort_order
         if filters:
             params.update(filters)
 
-        return client.es_search_from_es(query_string=query, **params)
+        search_fn = getattr(client, "es_search_from_es", None)
+        if callable(search_fn):
+            return cast(JsonDict, search_fn(**params))
+
+        http_params = {
+            "q": query,
+            "from": from_,
+            "size": size,
+            "index": index,
+            "sort_field": sort_field,
+            "sort_order": sort_order,
+        }
+        if filters:
+            http_params.update(filters)
+        return _http_get(client, "/search/query", http_params)
 
     @classmethod
     def suggest(
@@ -64,9 +110,22 @@ class Search:
         field: Optional[str] = None,
         size: int = 5,
     ) -> List[str]:
-        """Get search suggestions"""
+        """Fetch entity suggestions."""
         client = cls._get_client()
-        return client.get_suggest_entities(query_string=query, field=field, size=size)
+        suggest_fn = getattr(client, "get_suggest_entities", None)
+        if callable(suggest_fn):
+            return cast(
+                List[str], suggest_fn(query_string=query, field=field, size=size)
+            )
+
+        http_params = {
+            "q": query,
+            "field": field,
+            "size": size,
+        }
+        response = _http_get(client, "/search/aggregate", http_params)
+        buckets = response.get("aggregations", {}).get("suggest", {}).get("buckets", [])
+        return [str(bucket.get("key")) for bucket in buckets if bucket.get("key")]
 
     @classmethod
     def aggregate(
@@ -74,34 +133,51 @@ class Search:
         query: str,
         index: Optional[str] = None,
         field: Optional[str] = None,
-    ) -> Dict:
-        """Perform aggregation query"""
+    ) -> JsonDict:
+        """Perform aggregation query."""
         client = cls._get_client()
-        params = {"q": query}
-        if index:
-            params["index"] = index
-        if field:
-            params["field"] = field
+        aggregate_fn = getattr(client, "es_aggregate", None)
+        params = {
+            "query": query,
+            "index": index,
+            "field": field,
+        }
+        if callable(aggregate_fn):
+            return cast(JsonDict, aggregate_fn(**params))
 
-        return client.es_aggregate(query=query, **params)
-
-    @classmethod
-    def search_advanced(cls, search_request: Dict) -> Dict:
-        """Perform advanced search with custom request body"""
-        client = cls._get_client()
-        return client.es_search_from_es(body=search_request)
-
-    @classmethod
-    def reindex(cls, entity_type: str) -> Dict:
-        """Reindex a specific entity type"""
-        client = cls._get_client()
-        return client.reindex(entity_type=entity_type)
+        body: JsonDict = {
+            "query": query,
+            "index": index or "table_search_index",
+            "fieldName": field,
+        }
+        return _http_post(client, "/search/aggregate", body)
 
     @classmethod
-    def reindex_all(cls) -> Dict:
-        """Reindex all entities"""
+    def search_advanced(cls, search_request: JsonDict) -> JsonDict:
+        """Perform advanced search with custom request body."""
         client = cls._get_client()
-        return client.reindex_all()
+        search_fn = getattr(client, "es_search_from_es", None)
+        if callable(search_fn):
+            return cast(JsonDict, search_fn(body=search_request))
+        return _http_post(client, "/search/query", search_request)
+
+    @classmethod
+    def reindex(cls, entity_type: str) -> JsonDict:
+        """Trigger reindex for a specific entity type."""
+        client = cls._get_client()
+        reindex_fn = getattr(client, "reindex", None)
+        if callable(reindex_fn):
+            return cast(JsonDict, reindex_fn(entity_type=entity_type))
+        return _http_post(client, f"/search/reindex/{entity_type}", {})
+
+    @classmethod
+    def reindex_all(cls) -> JsonDict:
+        """Reindex all entities."""
+        client = cls._get_client()
+        reindex_all_fn = getattr(client, "reindex_all", None)
+        if callable(reindex_all_fn):
+            return cast(JsonDict, reindex_all_fn())
+        return _http_post(client, "/search/reindex", {})
 
     @classmethod
     async def search_async(
@@ -112,12 +188,11 @@ class Search:
         size: int = 10,
         sort_field: Optional[str] = None,
         sort_order: Optional[str] = None,
-        filters: Optional[Dict] = None,
-    ) -> Dict:
-        """Async search"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            None, cls.search, query, index, from_, size, sort_field, sort_order, filters
+        filters: Optional[Mapping[str, Any]] = None,
+    ) -> JsonDict:
+        """Async variant of :meth:`search`."""
+        return await _run_async(
+            cls.search, query, index, from_, size, sort_field, sort_order, filters
         )
 
     @classmethod
@@ -127,9 +202,8 @@ class Search:
         field: Optional[str] = None,
         size: int = 5,
     ) -> List[str]:
-        """Async suggest"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.suggest, query, field, size)
+        """Async variant of :meth:`suggest`."""
+        return await _run_async(cls.suggest, query, field, size)
 
     @classmethod
     async def aggregate_async(
@@ -137,78 +211,75 @@ class Search:
         query: str,
         index: Optional[str] = None,
         field: Optional[str] = None,
-    ) -> Dict:
-        """Async aggregate"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.aggregate, query, index, field)
+    ) -> JsonDict:
+        """Async variant of :meth:`aggregate`."""
+        return await _run_async(cls.aggregate, query, index, field)
 
     @classmethod
-    async def reindex_async(cls, entity_type: str) -> Dict:
-        """Async reindex"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.reindex, entity_type)
+    async def reindex_async(cls, entity_type: str) -> JsonDict:
+        """Async variant of :meth:`reindex`."""
+        return await _run_async(cls.reindex, entity_type)
 
     @classmethod
-    async def reindex_all_async(cls) -> Dict:
-        """Async reindex all"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(None, cls.reindex_all)
+    async def reindex_all_async(cls) -> JsonDict:
+        """Async variant of :meth:`reindex_all`."""
+        return await _run_async(cls.reindex_all)
 
     @classmethod
     def builder(cls) -> "SearchBuilder":
-        """Create a search builder"""
+        """Create a search builder."""
         return SearchBuilder()
 
 
 class SearchBuilder:
-    """Builder for search queries"""
+    """Builder for search queries."""
 
-    def __init__(self):
-        self._query = None
-        self._index = None
-        self._from = 0
-        self._size = 10
-        self._sort_field = None
-        self._sort_order = None
-        self._filters = {}
+    def __init__(self) -> None:
+        self._query: Optional[str] = None
+        self._index: Optional[str] = None
+        self._from: int = 0
+        self._size: int = 10
+        self._sort_field: Optional[str] = None
+        self._sort_order: Optional[str] = None
+        self._filters: JsonDict = {}
 
-    def query(self, query: str):
-        """Set search query"""
+    def query(self, query: str) -> "SearchBuilder":
+        """Set search query."""
         self._query = query
         return self
 
-    def index(self, index: str):
-        """Set search index"""
+    def index(self, index: str) -> "SearchBuilder":
+        """Set search index."""
         self._index = index
         return self
 
-    def from_(self, from_: int):
-        """Set starting offset"""
+    def from_(self, from_: int) -> "SearchBuilder":
+        """Set starting offset."""
         self._from = from_
         return self
 
-    def size(self, size: int):
-        """Set result size"""
+    def size(self, size: int) -> "SearchBuilder":
+        """Set result size."""
         self._size = size
         return self
 
-    def sort_field(self, field: str):
-        """Set sort field"""
+    def sort_field(self, field: str) -> "SearchBuilder":
+        """Set sort field."""
         self._sort_field = field
         return self
 
-    def sort_order(self, order: str):
-        """Set sort order"""
+    def sort_order(self, order: str) -> "SearchBuilder":
+        """Set sort order."""
         self._sort_order = order
         return self
 
-    def filter(self, key: str, value):
-        """Add a filter"""
+    def filter(self, key: str, value: Any) -> "SearchBuilder":
+        """Add a filter."""
         self._filters[key] = value
         return self
 
-    def execute(self) -> Dict:
-        """Execute the search"""
+    def execute(self) -> JsonDict:
+        """Execute the search."""
         if not self._query:
             raise ValueError("Query is required")
 
@@ -222,8 +293,8 @@ class SearchBuilder:
             filters=self._filters,
         )
 
-    async def execute_async(self) -> Dict:
-        """Execute the search asynchronously"""
+    async def execute_async(self) -> JsonDict:
+        """Execute the search asynchronously."""
         if not self._query:
             raise ValueError("Query is required")
 

@@ -51,7 +51,7 @@ class TestImprovedTableEntity(unittest.TestCase):
         mock_ometa.create_or_update.return_value = expected_table
 
         # Import the improved entity
-        from metadata.sdk.entities.tables import Tables
+        from metadata.sdk import Tables
 
         # Act
         result = Tables.create(create_request)
@@ -77,7 +77,7 @@ class TestImprovedTableEntity(unittest.TestCase):
 
         mock_ometa.get_by_id.return_value = expected_table
 
-        from metadata.sdk.entities.tables import Tables
+        from metadata.sdk import Tables
 
         # Act
         result = Tables.retrieve(table_id)
@@ -96,7 +96,7 @@ class TestImprovedTableEntity(unittest.TestCase):
 
         table_id = "550e8400-e29b-41d4-a716-446655440000"
 
-        from metadata.sdk.entities.tables import Tables
+        from metadata.sdk import Tables
 
         # Act
         Tables.delete(table_id, recursive=True, hard_delete=False)
@@ -121,7 +121,7 @@ class TestImprovedTableEntity(unittest.TestCase):
 
         mock_ometa.list_entities.return_value = mock_response
 
-        from metadata.sdk.entities.tables import Tables
+        from metadata.sdk import Tables
 
         # Act
         result = Tables.list(limit=10)
@@ -151,7 +151,7 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_database
 
-        from metadata.sdk.entities.databases import Databases
+        from metadata.sdk import Databases
 
         # Act
         result = Databases.create(create_request)
@@ -175,7 +175,7 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
 
         mock_ometa.get_by_name.return_value = expected_database
 
-        from metadata.sdk.entities.databases import Databases
+        from metadata.sdk import Databases
 
         # Act
         result = Databases.retrieve_by_name(fqn)
@@ -204,7 +204,7 @@ class TestImprovedDatabaseEntity(unittest.TestCase):
         # Mock patch to return updated entity
         mock_ometa.patch.return_value = database_to_update
 
-        from metadata.sdk.entities.databases import Databases
+        from metadata.sdk import Databases
 
         # Act
         result = Databases.update(database_to_update)
@@ -239,7 +239,7 @@ class TestImprovedDashboardEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_dashboard
 
-        from metadata.sdk.entities.dashboards import Dashboards
+        from metadata.sdk import Dashboards
 
         # Act
         result = Dashboards.create(create_request)
@@ -270,7 +270,7 @@ class TestImprovedPipelineEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_pipeline
 
-        from metadata.sdk.entities.pipelines import Pipelines
+        from metadata.sdk import Pipelines
 
         # Act
         result = Pipelines.create(create_request)
@@ -297,7 +297,7 @@ class TestImprovedPipelineEntity(unittest.TestCase):
 
         mock_ometa.get_by_id.return_value = expected_pipeline
 
-        from metadata.sdk.entities.pipelines import Pipelines
+        from metadata.sdk import Pipelines
 
         # Act
         result = Pipelines.retrieve(pipeline_id, fields=["tasks"])
@@ -329,7 +329,7 @@ class TestImprovedTeamEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_team
 
-        from metadata.sdk.entities.teams import Teams
+        from metadata.sdk import Teams
 
         # Act
         result = Teams.create(create_request)
@@ -360,7 +360,7 @@ class TestImprovedUserEntity(unittest.TestCase):
 
         mock_ometa.create_or_update.return_value = expected_user
 
-        from metadata.sdk.entities.users import Users
+        from metadata.sdk import Users
 
         # Act
         result = Users.create(create_request)
@@ -379,7 +379,7 @@ class TestImprovedUserEntity(unittest.TestCase):
 
         user_id = "250e8400-e29b-41d4-a716-446655440000"
 
-        from metadata.sdk.entities.users import Users
+        from metadata.sdk import Users
 
         # Act
         Users.delete(user_id, hard_delete=True)

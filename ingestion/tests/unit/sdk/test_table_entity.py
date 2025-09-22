@@ -11,7 +11,7 @@ from metadata.generated.schema.entity.data.table import Table as TableEntity
 from metadata.generated.schema.entity.data.table import TableConstraint, TableType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
-from metadata.sdk.entities.tables import Tables
+from metadata.sdk import Tables
 
 
 class TestTableEntity(unittest.TestCase):
@@ -22,7 +22,7 @@ class TestTableEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Tables._default_client = self.mock_ometa
+        Tables.set_default_client(self.mock_ometa)
 
         # Test data
         self.table_id = "550e8400-e29b-41d4-a716-446655440000"

@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createDashboardDataModel import (
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel as DashboardDataModelEntity,
 )
-from metadata.sdk.entities.dashboarddatamodels import DashboardDataModels
+from metadata.sdk import DashboardDataModels
 
 
 class TestDashboardDataModelEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestDashboardDataModelEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        DashboardDataModels._default_client = self.mock_ometa
+        DashboardDataModels.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.dashboard_data_model.test_dashboard_data_model"

@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createAPIEndpoint import (
 from metadata.generated.schema.entity.data.apiEndpoint import (
     APIEndpoint as APIEndpointEntity,
 )
-from metadata.sdk.entities.apiendpoints import APIEndpoints
+from metadata.sdk import APIEndpoints
 
 
 class TestAPIEndpointEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestAPIEndpointEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        APIEndpoints._default_client = self.mock_ometa
+        APIEndpoints.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.api_endpoint.test_api_endpoint"

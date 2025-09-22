@@ -20,7 +20,7 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 
 # Import SDK plural entity classes
-from metadata.sdk.entities import (
+from metadata.sdk import (
     Databases,
     DatabaseSchemas,
     Glossaries,
@@ -273,7 +273,7 @@ class TestSDKEntityTypes:
 
     def test_all_entities_have_entity_type(self):
         """Verify all plural SDK entities implement entity_type method"""
-        from metadata.sdk.entities import (
+        from metadata.sdk import (
             APICollections,
             APIEndpoints,
             Charts,

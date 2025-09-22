@@ -48,7 +48,7 @@ class TestCsvMixinOperations(unittest.TestCase):
         # Verify
         assert result == mock_response
         self.mock_client.get.assert_called_once_with(
-            "glossaries/name/test_glossary/export"
+            "/glossaries/name/test_glossary/export"
         )
 
     def test_csv_mixin_export_async(self):
@@ -74,7 +74,7 @@ class TestCsvMixinOperations(unittest.TestCase):
         # Verify
         assert result == "export-job-123"
         self.mock_client.get.assert_called_once_with(
-            "glossaries/name/test_glossary/exportAsync"
+            "/glossaries/name/test_glossary/exportAsync"
         )
 
     def test_csv_mixin_import(self):
@@ -100,10 +100,9 @@ class TestCsvMixinOperations(unittest.TestCase):
         # Verify
         assert result == mock_response
         self.mock_client.put.assert_called_once_with(
-            path="glossaries/name/test_glossary/import",
-            data=csv_data,
+            "/glossaries/name/test_glossary/import",
+            csv_data,
             headers={"Content-Type": "text/plain"},
-            params={},
         )
 
     def test_csv_mixin_import_dry_run(self):
@@ -129,10 +128,9 @@ class TestCsvMixinOperations(unittest.TestCase):
         # Verify
         assert result == mock_response
         self.mock_client.put.assert_called_once_with(
-            path="glossaries/name/test_glossary/import",
-            data=csv_data,
+            "/glossaries/name/test_glossary/import?dryRun=true",
+            csv_data,
             headers={"Content-Type": "text/plain"},
-            params={"dryRun": "true"},
         )
 
     def test_csv_mixin_import_async(self):
@@ -158,15 +156,14 @@ class TestCsvMixinOperations(unittest.TestCase):
         # Verify
         assert result == "import-job-456"
         self.mock_client.put.assert_called_once_with(
-            path="glossaries/name/test_glossary/importAsync",
-            data=csv_data,
+            "/glossaries/name/test_glossary/importAsync",
+            csv_data,
             headers={"Content-Type": "text/plain"},
-            params={},
         )
 
     def test_base_entity_csv_export_integration(self):
         """Test BaseEntity export_csv method integration."""
-        from metadata.sdk.entities.base import BaseEntity
+        from metadata.sdk import BaseEntity
 
         # Create mock entity class
         class TestEntity(BaseEntity):
@@ -191,7 +188,7 @@ class TestCsvMixinOperations(unittest.TestCase):
 
     def test_base_entity_csv_import_integration(self):
         """Test BaseEntity import_csv method integration."""
-        from metadata.sdk.entities.base import BaseEntity
+        from metadata.sdk import BaseEntity
 
         # Create mock entity class
         class TestEntity(BaseEntity):

@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createAPICollection import (
 from metadata.generated.schema.entity.data.apiCollection import (
     APICollection as APICollectionEntity,
 )
-from metadata.sdk.entities.apicollections import APICollections
+from metadata.sdk import APICollections
 
 
 class TestAPICollectionEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestAPICollectionEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        APICollections._default_client = self.mock_ometa
+        APICollections.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.api_collection.test_api_collection"

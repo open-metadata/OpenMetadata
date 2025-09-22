@@ -15,8 +15,7 @@ from metadata.generated.schema.entity.data.glossaryTerm import (
 )
 from metadata.generated.schema.entity.data.glossaryTerm import TermReference
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.glossaries import Glossaries
-from metadata.sdk.entities.glossaryterms import GlossaryTerms
+from metadata.sdk import Glossaries, GlossaryTerms
 
 
 class TestGlossaryEntity(unittest.TestCase):
@@ -27,7 +26,7 @@ class TestGlossaryEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Glossaries._default_client = self.mock_ometa
+        Glossaries.set_default_client(self.mock_ometa)
 
         # Test data
         self.glossary_id = "150e8400-e29b-41d4-a716-446655440000"
@@ -166,7 +165,7 @@ class TestGlossaryTermEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        GlossaryTerms._default_client = self.mock_ometa
+        GlossaryTerms.set_default_client(self.mock_ometa)
 
         # Test data
         self.term_id = "250e8400-e29b-41d4-a716-446655440000"

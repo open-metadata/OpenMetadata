@@ -1,68 +1,49 @@
-"""
-Metrics entity SDK with fluent API
-"""
-from typing import List, Type
-from uuid import UUID
+"""Metrics entity SDK."""
+from __future__ import annotations
+
+from typing import Any, Sequence, Type, cast
 
 from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Metric
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk.entities.base import BaseEntity
+from metadata.sdk.types import UuidLike
 
 
 class Metrics(BaseEntity[Metric, CreateMetricRequest]):
-    """Metrics SDK class - plural to avoid conflict with generated Metric entity"""
+    """SDK facade for metric entities."""
 
     @classmethod
     def entity_type(cls) -> Type[Metric]:
-        """Return the Metric entity type"""
         return Metric
 
     @classmethod
     def add_related_metrics(
-        cls, metric_id: str, related_metric_ids: List[str]
+        cls, metric_id: UuidLike, related_metric_ids: Sequence[UuidLike]
     ) -> Metric:
-        """
-        Add related metrics to a metric.
+        """Attach related metrics to the provided metric identifier."""
 
-        Args:
-            metric_id: Metric UUID
-            related_metric_ids: List of related metric UUIDs
+        if not related_metric_ids:
+            return cls.retrieve(metric_id, fields=["relatedMetrics"])
 
-        Returns:
-            Updated metric
-        """
         client = cls._get_client()
-
-        # Get current metric
-        metric = client.get_by_id(
-            entity=Metric, entity_id=metric_id, fields=["relatedMetrics"]
+        current = client.get_by_id(
+            entity=Metric,
+            entity_id=cls._stringify_identifier(metric_id),
+            fields=["relatedMetrics"],
         )
 
-        # Create modified version with new related metrics
-        modified_metric = metric.model_copy(deep=True)
+        working = getattr(current, "model_copy", None)
+        working = working(deep=True) if callable(working) else current
 
-        if modified_metric.relatedMetrics is None:
-            modified_metric.relatedMetrics = []
-
-        # Add new related metrics
+        existing = list(getattr(working, "relatedMetrics", []) or [])
         for related_id in related_metric_ids:
-            # Parse UUID if it's a string
-            if isinstance(related_id, str):
-                try:
-                    related_uuid = UUID(related_id)
-                except ValueError:
-                    raise ValueError(
-                        f"Invalid UUID format for related metric: {related_id}"
-                    )
-            else:
-                related_uuid = related_id
+            payload = {"id": cls._stringify_identifier(related_id)}
+            existing.append(payload)
+        setattr(working, "relatedMetrics", existing)
 
-            # Check if not already related
-            if not any(rm.id == related_uuid for rm in modified_metric.relatedMetrics):
-                related_ref = EntityReference(id=related_uuid, type="metric")
-                modified_metric.relatedMetrics.append(related_ref)
-
-        # Apply patch using proper method signature
-        result = client.patch(entity=Metric, source=metric, destination=modified_metric)
-        return result  # type: ignore
+        updated = cast(Any, client).patch(
+            entity=Metric,
+            source=current,
+            destination=working,
+        )
+        return cls._coerce_entity(updated)

@@ -9,7 +9,7 @@ from metadata.generated.schema.api.teams.createTeam import CreateTeamRequest
 from metadata.generated.schema.entity.teams.team import Team as TeamEntity
 from metadata.generated.schema.entity.teams.team import TeamType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.teams import Teams
+from metadata.sdk import Teams
 
 
 class TestTeamEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestTeamEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        Teams._default_client = self.mock_ometa
+        Teams.set_default_client(self.mock_ometa)
 
         # Test data
         self.team_id = "950e8400-e29b-41d4-a716-446655440000"

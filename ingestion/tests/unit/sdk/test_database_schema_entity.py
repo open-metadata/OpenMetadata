@@ -12,7 +12,7 @@ from metadata.generated.schema.entity.data.databaseSchema import (
     DatabaseSchema as DatabaseSchemaEntity,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.databaseschemas import DatabaseSchemas
+from metadata.sdk import DatabaseSchemas
 
 
 class TestDatabaseSchemaEntity(unittest.TestCase):
@@ -23,7 +23,7 @@ class TestDatabaseSchemaEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set default client directly
-        DatabaseSchemas._default_client = self.mock_ometa
+        DatabaseSchemas.set_default_client(self.mock_ometa)
 
         # Test data
         self.schema_id = "850e8400-e29b-41d4-a716-446655440000"

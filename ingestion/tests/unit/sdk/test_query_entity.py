@@ -7,7 +7,7 @@ from uuid import UUID
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.entity.data.query import Query as QueryEntity
-from metadata.sdk.entities.queries import Queries
+from metadata.sdk import Queries
 
 
 class TestQueryEntity(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestQueryEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        Queries._default_client = self.mock_ometa
+        Queries.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.query.test_query"

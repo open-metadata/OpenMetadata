@@ -9,7 +9,7 @@ from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.entity.data.metric import Metric as MetricEntity
 from metadata.generated.schema.entity.data.metric import MetricGranularity, MetricType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.metrics import Metrics
+from metadata.sdk import Metrics
 
 
 class TestMetricEntity(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestMetricEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        Metrics._default_client = self.mock_ometa
+        Metrics.set_default_client(self.mock_ometa)
 
         self.metric_id = "250e8400-e29b-41d4-a716-446655440000"
         self.metric_fqn = "service.metric.revenue_metric"
@@ -234,7 +234,7 @@ class TestMetricEntity(unittest.TestCase):
         self.assertEqual(str(result.id.root), self.metric_id)
         self.assertFalse(result.deleted)
         self.mock_ometa.client.put.assert_called_once_with(
-            "metrics/restore", data={"id": self.metric_id}
+            "/metrics/restore", json={"id": self.metric_id}
         )
 
     def test_add_related_metrics(self):

@@ -242,7 +242,7 @@ class TestIntegrationWithBaseEntity:
     @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_update_custom_properties_from_base_entity(self, mock_get_client):
         """Test using custom properties through BaseEntity."""
-        from metadata.sdk.entities.tables import Tables
+        from metadata.sdk import Tables
 
         # Setup mock client
         mock_client = Mock()
@@ -266,7 +266,7 @@ class TestIntegrationWithBaseEntity:
     @patch("metadata.sdk.entities.base.BaseEntity._get_client")
     def test_update_custom_properties_by_name_from_base_entity(self, mock_get_client):
         """Test using custom properties by name through BaseEntity."""
-        from metadata.sdk.entities.tables import Tables
+        from metadata.sdk import Tables
 
         # Setup mock client
         mock_client = Mock()

@@ -11,7 +11,7 @@ from metadata.generated.schema.api.data.createSearchIndex import (
 from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex as SearchIndexEntity,
 )
-from metadata.sdk.entities.searchindexes import SearchIndexes
+from metadata.sdk import SearchIndexes
 
 
 class TestSearchIndexEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestSearchIndexEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        SearchIndexes._default_client = self.mock_ometa
+        SearchIndexes.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.search_index.test_search_index"

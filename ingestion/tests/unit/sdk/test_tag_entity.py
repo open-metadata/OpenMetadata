@@ -7,7 +7,7 @@ from uuid import UUID
 
 from metadata.generated.schema.api.classification.createTag import CreateTagRequest
 from metadata.generated.schema.entity.classification.tag import Tag as TagEntity
-from metadata.sdk.entities.tags import Tags
+from metadata.sdk import Tags
 
 
 class TestTagEntity(unittest.TestCase):
@@ -16,7 +16,7 @@ class TestTagEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        Tags._default_client = self.mock_ometa
+        Tags.set_default_client(self.mock_ometa)
 
         self.entity_id = "550e8400-e29b-41d4-a716-446655440000"
         self.entity_fqn = "service.tag.test_tag"

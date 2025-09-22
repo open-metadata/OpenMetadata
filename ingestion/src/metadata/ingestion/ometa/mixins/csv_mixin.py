@@ -4,7 +4,11 @@ CSV import/export mixin for OpenMetadata client.
 import logging
 from typing import Dict, Type, TypeVar
 
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.glossary import Glossary
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.ingestion.ometa.client import APIError
@@ -35,10 +39,14 @@ class CSVMixin:
         try:
             # Determine the API path based on entity type
             endpoint = self._get_csv_endpoint(entity)
-            path = f"{endpoint}/name/{name}/export"
+            path = f"/{endpoint}/name/{name}/export"
 
             response = self.client.get(path)
-            return response if isinstance(response, str) else response.get("data", "")
+            if isinstance(response, str):
+                return response
+            if isinstance(response, dict):
+                return response.get("data", "")
+            return getattr(response, "text", "")
         except APIError as err:
             logger.error(f"Failed to export CSV for {entity.__name__} '{name}': {err}")
             raise
@@ -56,13 +64,13 @@ class CSVMixin:
         """
         try:
             endpoint = self._get_csv_endpoint(entity)
-            path = f"{endpoint}/name/{name}/exportAsync"
+            path = f"/{endpoint}/name/{name}/exportAsync"
 
             response = self.client.get(path)
             # The async endpoint returns a job ID
             if isinstance(response, dict):
                 return response.get("jobId", "")
-            return str(response)
+            return getattr(response, "text", str(response))
         except APIError as err:
             logger.error(
                 f"Failed to start async CSV export for {entity.__name__} '{name}': {err}"
@@ -86,20 +94,21 @@ class CSVMixin:
         """
         try:
             endpoint = self._get_csv_endpoint(entity)
-            path = f"{endpoint}/name/{name}/import"
+            path = f"/{endpoint}/name/{name}/import"
+            if dry_run:
+                path = f"{path}?dryRun=true"
 
-            # Add dry_run parameter if needed
-            params = {"dryRun": "true"} if dry_run else {}
-
-            # The API expects text/plain content type for CSV
             response = self.client.put(
-                path=path,
-                data=csv_data,
+                path,
+                csv_data,
                 headers={"Content-Type": "text/plain"},
-                params=params,
             )
 
-            return response
+            if isinstance(response, dict):
+                return response
+            if isinstance(response, str):
+                return {"message": response}
+            return {"message": getattr(response, "text", "")}
         except APIError as err:
             logger.error(f"Failed to import CSV for {entity.__name__} '{name}': {err}")
             raise
@@ -121,21 +130,19 @@ class CSVMixin:
         """
         try:
             endpoint = self._get_csv_endpoint(entity)
-            path = f"{endpoint}/name/{name}/importAsync"
-
-            params = {"dryRun": "true"} if dry_run else {}
+            path = f"/{endpoint}/name/{name}/importAsync"
+            if dry_run:
+                path = f"{path}?dryRun=true"
 
             response = self.client.put(
-                path=path,
-                data=csv_data,
+                path,
+                csv_data,
                 headers={"Content-Type": "text/plain"},
-                params=params,
             )
 
-            # The async endpoint returns a job ID
             if isinstance(response, dict):
                 return response.get("jobId", "")
-            return str(response)
+            return getattr(response, "text", str(response))
         except APIError as err:
             logger.error(
                 f"Failed to start async CSV import for {entity.__name__} '{name}': {err}"
@@ -157,6 +164,10 @@ class CSVMixin:
             Glossary: "glossaries",
             Team: "teams",
             User: "users",
+            Table: "tables",
+            Database: "databases",
+            DatabaseSchema: "databaseSchemas",
+            DatabaseService: "databaseServices",
             # Add more entity types as needed
         }
 

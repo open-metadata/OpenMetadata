@@ -9,7 +9,7 @@ from uuid import UUID
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.entity.data.table import Table as TableEntity
-from metadata.sdk.entities.tables import Tables
+from metadata.sdk import Tables
 
 
 class TestBaseEntity(unittest.TestCase):
@@ -20,7 +20,7 @@ class TestBaseEntity(unittest.TestCase):
         self.mock_ometa = MagicMock()
 
         # Set the default client
-        Tables._default_client = self.mock_ometa
+        Tables.set_default_client(self.mock_ometa)
 
         # Test data
         self.table_id = "550e8400-e29b-41d4-a716-446655440000"
@@ -222,7 +222,7 @@ class TestAsyncOperations(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        Tables._default_client = self.mock_ometa
+        Tables.set_default_client(self.mock_ometa)
         self.table_id = "550e8400-e29b-41d4-a716-446655440000"
 
     def test_csv_export_async(self):

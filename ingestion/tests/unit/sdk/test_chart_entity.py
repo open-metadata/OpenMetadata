@@ -9,7 +9,7 @@ from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.entity.data.chart import Chart as ChartEntity
 from metadata.generated.schema.entity.data.chart import ChartType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.sdk.entities.charts import Charts
+from metadata.sdk import Charts
 
 
 class TestChartEntity(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestChartEntity(unittest.TestCase):
     def setUp(self):
         """Set up test fixtures"""
         self.mock_ometa = MagicMock()
-        Charts._default_client = self.mock_ometa
+        Charts.set_default_client(self.mock_ometa)
 
         self.chart_id = "150e8400-e29b-41d4-a716-446655440000"
         self.chart_fqn = "dashboard-service.dashboard.chart1"
@@ -285,7 +285,7 @@ class TestChartEntity(unittest.TestCase):
         self.assertEqual(str(result.id.root), self.chart_id)
         self.assertFalse(result.deleted)
         self.mock_ometa.client.put.assert_called_once_with(
-            "charts/restore", data={"id": self.chart_id}
+            "/charts/restore", json={"id": self.chart_id}
         )
 
     def test_export_charts_csv(self):
