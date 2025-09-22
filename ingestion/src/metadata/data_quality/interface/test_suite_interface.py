@@ -134,13 +134,15 @@ class TestSuiteInterface(ABC):
         try:
             return validator.run_validation()
         except Exception as err:
-            message = f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
+            message = (
+                f"Error executing {test_case.testDefinition.fullyQualifiedName} - {err}"
+            )
             logger.exception(message)
             return validator.get_test_case_result_object(
-                    validator.execution_date,
-                    TestCaseStatus.Aborted,
-                    message,
-                    [],
+                validator.execution_date,
+                TestCaseStatus.Aborted,
+                message,
+                [],
             )
 
     def _get_table_config(self):
