@@ -38,7 +38,7 @@ class TestSpacyModelLoading:
 
         mock_load_spacy.assert_called_once_with(SPACY_EN_MODEL)
         mock_nlp_engine_cls.assert_called_once_with(
-            models=[{"lang_code": SUPPORTED_LANG, "model": SPACY_EN_MODEL}]
+            models=[{"lang_code": SUPPORTED_LANG, "model_name": SPACY_EN_MODEL}]
         )
         assert result == mock_engine
 

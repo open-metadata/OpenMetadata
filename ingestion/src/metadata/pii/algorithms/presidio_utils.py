@@ -13,16 +13,17 @@ Utilities for working with the Presidio Library.
 """
 import inspect
 import logging
-from typing import Iterable, Type, Union
+from typing import Callable, Iterable, List, Type, Union
 
 import spacy
 from presidio_analyzer import (
     AnalyzerEngine,
     EntityRecognizer,
     PatternRecognizer,
+    RecognizerResult,
     predefined_recognizers,
 )
-from presidio_analyzer.nlp_engine import SpacyNlpEngine
+from presidio_analyzer.nlp_engine import NlpArtifacts, SpacyNlpEngine
 from spacy.cli.download import download  # pyright: ignore[reportUnknownVariableType]
 
 from metadata.pii.constants import PRESIDIO_LOGGER, SPACY_EN_MODEL, SUPPORTED_LANG
@@ -115,3 +116,24 @@ def _get_all_pattern_recognizers() -> Iterable[EntityRecognizer]:
         elif cls == predefined_recognizers.PhoneRecognizer:
             # Not a pattern recognizer, but pretty much the same
             yield predefined_recognizers.PhoneRecognizer()
+
+
+def apply_confidence_threshold(
+    threshold: float,
+) -> Callable[[EntityRecognizer], EntityRecognizer]:
+    def decorate_entity_recognizer(recognizer: EntityRecognizer) -> EntityRecognizer:
+        original_analyze = recognizer.analyze
+
+        def analyze(
+            instance: EntityRecognizer,  # pyright: ignore[reportUnusedParameter]
+            text: str,
+            entities: List[str],
+            nlp_artifacts: NlpArtifacts,
+        ) -> List[RecognizerResult]:
+            results = original_analyze(text, entities, nlp_artifacts)
+            return [result for result in results if result.score >= threshold]
+
+        recognizer.analyze = analyze.__get__(recognizer, type(recognizer))
+        return recognizer
+
+    return decorate_entity_recognizer
