@@ -376,6 +376,7 @@ public class ListFilter extends Filter<ListFilter> {
     }
 
     if (testSuiteId != null) {
+      queryParams.put("testSuiteId", testSuiteId);
       conditions.add(
           String.format(
               "id IN (SELECT toId FROM entity_relationship WHERE fromId=:testSuiteId AND toEntity='%s' AND relation=%d AND fromEntity='%s')",
