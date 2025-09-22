@@ -1689,4 +1689,8 @@ export const performExpandAll = async (page: Page) => {
   );
   await page.getByTestId('expand-collapse-all-button').click();
   await termRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
