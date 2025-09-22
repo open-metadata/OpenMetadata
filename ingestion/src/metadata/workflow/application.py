@@ -92,17 +92,13 @@ class AppRunner(Step, ABC):
                         "Successfully retrieved app private config from API using bot token"
                     )
                     return parsed_private_config
-                elif isinstance(
-                    fetched_private_config, str
-                ) and fetched_private_config.startswith("secret:"):
-                    # The bot gets the masked private config and fetch the secret from the secrets manager
-                    fetched_private_config = fetched_private_config.replace(
-                        "secret:", ""
-                    )
+                elif isinstance(fetched_private_config, str):
+                    # The user gets the masked private config and fetch the secret from the secrets manager
                     secrets_manager = SecretsManagerFactory().get_secrets_manager()
-                    fetched_private_config = secrets_manager.get_string_value(
+                    secret_id = secrets_manager.remove_secret_prefix(
                         fetched_private_config
                     )
+                    fetched_private_config = secrets_manager.get_string_value(secret_id)
                     if fetched_private_config:
                         parsed_private_config = json.loads(fetched_private_config)
                         parsed_private_config = self._mask_private_config_token(
