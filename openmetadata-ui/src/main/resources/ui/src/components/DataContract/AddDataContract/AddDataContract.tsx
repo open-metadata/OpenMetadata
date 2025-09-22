@@ -44,6 +44,7 @@ import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFo
 import { ContractSecurityFormTab } from '../ContractSecurityFormTab/ContractSecurityFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
 import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
+import ContractTermsOfService from '../ContractTermOfService/ContractTermsOfService.component';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -158,9 +159,28 @@ const AddDataContract: React.FC<{
         children: (
           <ContractDetailFormTab
             initialValues={contract}
-            nextLabel={t('label.schema')}
+            nextLabel={t('label.terms-of-service')}
             onChange={onFormChange}
             onNext={onNext}
+          />
+        ),
+      },
+      {
+        label: (
+          <div className="d-flex items-center">
+            <ContractIcon className="contract-tab-icon" />
+            <span>{t('label.terms-of-service')}</span>
+          </div>
+        ),
+        key: EDataContractTab.TERMS_OF_SERVICE.toString(),
+        children: (
+          <ContractTermsOfService
+            initialValues={contract}
+            nextLabel={t('label.schema')}
+            prevLabel={t('label.contract-detail-plural')}
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
           />
         ),
       },
@@ -175,7 +195,7 @@ const AddDataContract: React.FC<{
         children: (
           <ContractSchemaFormTab
             nextLabel={t('label.semantic-plural')}
-            prevLabel={t('label.contract-detail-plural')}
+            prevLabel={t('label.terms-of-service')}
             selectedSchema={contract?.schema ?? []}
             onChange={onFormChange}
             onNext={onNext}

@@ -620,7 +620,7 @@ public class DatabaseRepository extends EntityRepository<Database> {
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
       if (csvRecord == null) {
-        throw new IllegalArgumentException("Invalid Csv");
+        return; // Error has already been logged by getNextRecord, just skip this record
       }
 
       // Get entityType and fullyQualifiedName if provided
