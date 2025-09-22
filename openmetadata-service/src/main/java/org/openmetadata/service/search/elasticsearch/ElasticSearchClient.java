@@ -119,11 +119,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -234,6 +237,14 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
       Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
+
+  private static final Header[] defaultHeaders =
+      new Header[] {
+        new BasicHeader(
+            HttpHeaders.ACCEPT, "application/vnd.elasticsearch+json; compatible-with=7"),
+        new BasicHeader(
+            HttpHeaders.CONTENT_TYPE, "application/vnd.elasticsearch+json; compatible-with=7")
+      };
 
   // Add this field to the class
   private NLQService nlqService;
@@ -2410,6 +2421,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
         restClientBuilder.setCompressionEnabled(true);
+        restClientBuilder.setDefaultHeaders(
+            defaultHeaders); // 8.x client would work with 7.17x or higher server
         return restClientBuilder.build();
       } catch (Exception e) {
         LOG.error("Failed to create low level rest client ", e);
