@@ -15,7 +15,7 @@ DBT source methods.
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Iterable, List, Optional
+from typing import Any, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
@@ -444,7 +444,7 @@ class DbtSource(DbtServiceSource):
                 fetch_multiple_entities=True,
             )
             logger.debug(
-                f"Found table entities from {fqn_search_string}: {table_entities}"
+                f"Found table entities from {fqn_search_string}: {len(table_entities)} entities"
             )
             return (
                 next(iter(filter(None, table_entities)), None)
@@ -455,6 +455,10 @@ class DbtSource(DbtServiceSource):
         try:
             table_entity = search_table(table_fqn)
             if table_entity:
+                logger.debug(
+                    f"Using Table Entity: {table_entity.fullyQualifiedName.root}"
+                    f"with id {table_entity.id}"
+                )
                 return table_entity
 
             if self.source_config.searchAcrossDatabases:
@@ -620,7 +624,8 @@ class DbtSource(DbtServiceSource):
 
                     if table_entity := self._get_table_entity(table_fqn=table_fqn):
                         logger.debug(
-                            f"Using Table Entity for datamodel: {table_entity}"
+                            f"Using Table Entity for datamodel: {table_entity.fullyQualifiedName.root}"
+                            f"with id {table_entity.id}"
                         )
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
