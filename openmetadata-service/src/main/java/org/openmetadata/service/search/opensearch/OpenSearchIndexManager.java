@@ -3,6 +3,11 @@ package org.openmetadata.service.search.opensearch;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonParser;
+import java.io.IOException;
+import java.io.StringReader;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
@@ -19,12 +24,6 @@ import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesResponse;
 import os.org.opensearch.client.transport.endpoints.BooleanResponse;
-
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * OpenSearch implementation of index management operations.

@@ -85,7 +85,7 @@ public class ExpressionValidatorTest {
     // Test expressions with function names not in RuleEvaluator
     String[] invalidFunctions = {
       "deleteAllData()",
-      "queryDatabase('DELETE FROM users')",  // Changed from executeQuery to avoid 'exec' pattern
+      "queryDatabase('DELETE FROM users')", // Changed from executeQuery to avoid 'exec' pattern
       "runCommand('rm -rf /')",
       "customMethod()"
     };
