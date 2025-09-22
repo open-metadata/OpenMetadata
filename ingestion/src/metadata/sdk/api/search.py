@@ -10,13 +10,15 @@ from typing import (
     List,
     Mapping,
     Optional,
+    Protocol,
     TypeVar,
     Union,
     cast,
+    runtime_checkable,
 )
 from urllib.parse import urlencode
 
-from metadata.ingestion.ometa.client import REST
+from requests import Response
 
 from ..client import OpenMetadata
 from ..types import JsonDict, OMetaClient
@@ -44,22 +46,63 @@ def _encode_params(params: Mapping[str, Any]) -> str:
     return urlencode(filtered, doseq=True)
 
 
+RestReturn = Union[JsonDict, Response, None]
+
+
+@runtime_checkable
+class RestClientProtocol(Protocol):
+    """Structural protocol describing the REST client behaviour we use."""
+
+    def get(self, path: str, data: Mapping[str, Any] | None = None) -> RestReturn:
+        ...
+
+    def post(
+        self,
+        path: str,
+        data: Mapping[str, Any] | None = None,
+        json: JsonDict | None = None,
+    ) -> RestReturn:
+        ...
+
+
 def _http_get(client: OMetaClient, path: str, params: Mapping[str, Any]) -> JsonDict:
     query = _encode_params(params)
     resource = f"{path}?{query}" if query else path
     response = getattr(client, "client", None)
-    if not isinstance(response, REST):
+    if not isinstance(response, RestClientProtocol):
         raise RuntimeError("OpenMetadata client does not expose a REST client")
-    payload = response.get(resource)
-    return cast(JsonDict, payload or {})
+    rest_client: RestClientProtocol = response
+    payload = rest_client.get(resource)
+    if isinstance(payload, Response):
+        if not payload.text:
+            return {}
+        parsed = payload.json()
+        if not isinstance(parsed, Mapping):
+            raise TypeError("Expected JSON response body to be a mapping")
+        typed_parsed = cast(Mapping[str, Any], parsed)
+        return dict(typed_parsed)
+    if payload is None:
+        return {}
+    return payload
 
 
 def _http_post(client: OMetaClient, path: str, body: JsonDict) -> JsonDict:
     response = getattr(client, "client", None)
-    if not isinstance(response, REST):
+    if not isinstance(response, RestClientProtocol):
         raise RuntimeError("OpenMetadata client does not expose a REST client")
-    payload = response.post(path, json=body)
-    return cast(JsonDict, payload or {})
+    rest_client: RestClientProtocol = response
+    payload = rest_client.post(path, json=body)
+    if isinstance(payload, Response):
+        if not payload.text:
+            return {}
+        parsed = payload.json()
+        if not isinstance(parsed, Mapping):
+            raise TypeError("Expected JSON response body to be a mapping")
+        typed_parsed = cast(Mapping[str, Any], parsed)
+        return dict(typed_parsed)
+    if payload is None:
+        return {}
+    return payload
 
 
 class Search:

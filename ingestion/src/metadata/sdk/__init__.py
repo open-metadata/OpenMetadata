@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import Optional
+from typing import Any, Optional
 
 from metadata.sdk.client import OpenMetadata
 from metadata.sdk.config import OpenMetadataConfig
@@ -43,9 +43,9 @@ _global_client: Optional[OpenMetadata] = None
 
 
 def configure(
-    config: OpenMetadataConfig | Mapping[str, object] | None = None,
+    config: OpenMetadataConfig | Mapping[str, Any] | None = None,
     /,
-    **kwargs: object,
+    **kwargs: Any,
 ) -> OpenMetadata:
     """Configure the SDK with a connection to OpenMetadata.
 
@@ -66,10 +66,8 @@ def configure(
         config_obj = OpenMetadataConfig(**kwargs)
     elif isinstance(config, Mapping):
         config_obj = OpenMetadataConfig(**dict(config))
-    elif isinstance(config, OpenMetadataConfig):
-        config_obj = config
     else:
-        raise TypeError("Unsupported configuration payload")
+        config_obj = config
 
     _global_client = OpenMetadata.initialize(config_obj)
     return _global_client

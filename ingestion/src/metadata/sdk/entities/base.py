@@ -443,11 +443,11 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, BaseModel):
             return cast(TEntity, payload)
         if isinstance(payload, dict):
-            model_validate = cast(
-                Callable[[Dict[str, Any]], TEntity],
-                getattr(entity_cls, "model_validate"),
-            )
-            return model_validate(payload)
+            typed_payload = cast(Dict[str, Any], payload)
+            model_validate = getattr(entity_cls, "model_validate", None)
+            if not callable(model_validate):
+                raise TypeError("Entity type does not support model validation")
+            return cast(TEntity, model_validate(typed_payload))
         return cast(TEntity, payload)
 
     @classmethod
@@ -455,10 +455,11 @@ class BaseEntity(Generic[TEntity, TCreate]):
         if isinstance(payload, dict):
             return cast(JsonDict, payload)
         if isinstance(payload, BaseModel):
-            model_dump = cast(
-                Callable[..., Dict[str, Any]], getattr(payload, "model_dump")
+            json_result: Dict[
+                str, Any
+            ] = payload.model_dump(  # pyright: ignore[reportUnknownMemberType]
+                mode="json"
             )
-            json_result: JsonDict = cast(JsonDict, model_dump(mode="json"))
             return json_result
         raise TypeError("Expected mapping-compatible payload")
 

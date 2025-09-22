@@ -6,6 +6,8 @@ from functools import partial
 from typing import Any, Callable, ClassVar, Optional, TypeVar, Union, cast
 from uuid import UUID
 
+from pydantic import BaseModel
+
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, EntityLineage
@@ -186,10 +188,8 @@ class Lineage:
         )
         if lineage is None:
             return None
-        json_result: JsonDict = lineage.model_dump(
-            mode="json"
-        )  # pyright: ignore[reportUnknownMemberType]
-        return json_result
+        lineage_model = cast(BaseModel, lineage)
+        return lineage_model.model_dump(mode="json")
 
     @classmethod
     async def get_lineage_async(
