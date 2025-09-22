@@ -959,7 +959,15 @@ test.describe('Teams Page action as Owner of Team', () => {
   test('User as not owner should not have edit/create permission on Team', async ({
     ownerUserPage,
   }) => {
+    const teamListResponse = ownerUserPage.waitForResponse(
+      '/api/v1/teams?parentTeam=**'
+    );
     await teamNoOwner.visitTeamPage(ownerUserPage);
+    await teamListResponse;
+
+    await ownerUserPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(ownerUserPage.getByTestId('manage-button')).not.toBeVisible();
 
@@ -971,7 +979,7 @@ test.describe('Teams Page action as Owner of Team', () => {
 
     await expect(
       ownerUserPage.getByTestId('add-placeholder-button')
-    ).not.toBeVisible();
+    ).toBeDisabled();
   });
 
   test(`Add New Team in BusinessUnit Team`, async ({ ownerUserPage }) => {
