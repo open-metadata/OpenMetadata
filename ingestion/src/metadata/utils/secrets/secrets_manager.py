@@ -39,6 +39,10 @@ class SecretsManager(metaclass=Singleton):
     def remove_secret_prefix(self, secret_ref: str) -> str:
         """
         Remove the 'secret:' prefix from a secret reference string.
+        In case of external SM, secrets are stored in key,value pair
+        as {'my-secret-id': 'abc'}. secret-id comes with 'secret:' prefix
+
+        Before calling `get_string_value`, call this method to clean secret-id
 
         :param secret_ref: The secret reference string ('secret:my-secret-id')
         :return: The secret id without the prefix ('my-secret-id')
