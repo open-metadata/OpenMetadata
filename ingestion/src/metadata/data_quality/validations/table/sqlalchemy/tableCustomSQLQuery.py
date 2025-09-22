@@ -15,8 +15,11 @@ Validator for table custom SQL Query test case
 
 from typing import Optional, cast
 
+import sqlparse
 from sqlalchemy import text
 from sqlalchemy.sql import func, select
+from sqlparse.sql import Statement, Token, Where
+from sqlparse.tokens import Keyword
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
@@ -33,10 +36,113 @@ from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.functions.table_metric_computer import TableMetricComputer
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.helpers import is_safe_sql_query
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 
 class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidatorMixin):
     """Validator for table custom SQL Query test case"""
+
+    def _replace_where_clause(self, sql_query: str, partition_expression: str) -> str:
+        """Replace or add WHERE clause in SQL query using sqlparse.
+
+        This method properly handles:
+        - Queries with existing WHERE clause (replaces it)
+        - Queries without WHERE clause (adds it)
+        - Complex queries with joins, subqueries, CTEs
+        - Preserves GROUP BY, ORDER BY, LIMIT, etc.
+
+        Args:
+            sql_query: Original SQL query
+            partition_expression: New WHERE condition (without WHERE keyword)
+
+        Returns:
+            Modified SQL query with partition_expression as WHERE clause
+        """
+        parsed = sqlparse.parse(sql_query)
+        if not parsed or len(parsed) == 0:
+            return None
+
+        statement: Statement = parsed[0]
+        tokens = list(statement.tokens)
+
+        where_idx = None
+        where_end_idx = None
+        insert_before_idx = None
+        paren_depth = 0
+
+        i = 0
+        while i < len(tokens):
+            token = tokens[i]
+
+            if token.ttype is None and hasattr(token, "tokens"):
+                paren_count = str(token).count("(") - str(token).count(")")
+                paren_depth += paren_count
+            elif token.value == "(":
+                paren_depth += 1
+            elif token.value == ")":
+                paren_depth -= 1
+
+            if isinstance(token, Where) and paren_depth == 0:
+                where_idx = i
+                where_end_idx = i + 1
+                break
+
+            if (
+                insert_before_idx is None
+                and token.ttype is Keyword
+                and any(
+                    keyword in token.value.upper()
+                    for keyword in (
+                        "GROUP BY",
+                        "ORDER BY",
+                        "HAVING",
+                        "LIMIT",
+                        "OFFSET",
+                        "UNION",
+                        "EXCEPT",
+                        "INTERSECT",
+                    )
+                )
+                and paren_depth == 0
+            ):
+                insert_before_idx = i
+
+            i += 1
+
+        if where_idx is not None:
+            original_where = str(tokens[where_idx])
+            trailing_whitespace = ""
+
+            where_content_end = original_where.rfind(original_where.split()[-1]) + len(
+                original_where.split()[-1]
+            )
+            if where_content_end < len(original_where):
+                trailing_whitespace = original_where[where_content_end:]
+
+            new_tokens = (
+                tokens[:where_idx]
+                + [
+                    Token(Keyword, "WHERE"),
+                    Token(None, f" {partition_expression}{trailing_whitespace}"),
+                ]
+                + tokens[where_end_idx:]
+            )
+        elif insert_before_idx is not None:
+            new_tokens = (
+                tokens[:insert_before_idx]
+                + [Token(Keyword, "WHERE"), Token(None, f" {partition_expression} ")]
+                + tokens[insert_before_idx:]
+            )
+        else:
+            new_tokens = tokens + [
+                Token(None, " "),
+                Token(Keyword, "WHERE"),
+                Token(None, f" {partition_expression}"),
+            ]
+
+        return "".join(str(token) for token in new_tokens)
 
     def run_validation(self) -> TestCaseResult:
         """Run validation for the given test case
@@ -85,12 +191,39 @@ class TableCustomSQLQueryValidator(BaseTableCustomSQLQueryValidator, SQAValidato
             None,
         )
         if partition_expression:
-            stmt = (
-                select(func.count())
-                .select_from(self.runner.table)
-                .filter(text(partition_expression))
+            custom_sql = self.get_test_case_param_value(
+                self.test_case.parameterValues,  # type: ignore
+                "sqlExpression",
+                str,
             )
-            return self.runner.session.execute(stmt).scalar()
+
+            if custom_sql:
+                modified_query = self._replace_where_clause(
+                    custom_sql, partition_expression
+                )
+                if modified_query is None:
+                    return None
+                count_query = f"SELECT COUNT(*) FROM ({modified_query}) AS test_results"
+
+                try:
+                    result = self.runner.session.execute(text(count_query)).scalar()
+                    return result
+                except Exception as exc:
+                    logger.error(
+                        "Failed to execute custom SQL with partition expression. "
+                        f"Query: {count_query}\n"
+                        f"Error: {exc}\n",
+                        exc_info=True,
+                    )
+                    self.runner.session.rollback()
+                    raise exc
+            else:
+                stmt = (
+                    select(func.count())
+                    .select_from(self.runner.table)
+                    .filter(text(partition_expression))
+                )
+                return self.runner.session.execute(stmt).scalar()
 
         self.runner = cast(QueryRunner, self.runner)
         dialect = self.runner._session.get_bind().dialect.name
