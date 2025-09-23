@@ -16,11 +16,10 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../../components/Lineage/EntityLineageTab/EntityLineageTab';
 import MetricExpression from '../../components/Metric/MetricExpression/MetricExpression';
 import RelatedMetrics from '../../components/Metric/RelatedMetrics/RelatedMetrics';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { CSMode } from '../../enums/codemirror.enum';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
@@ -154,14 +153,12 @@ export const getMetricDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={metricDetails.deleted}
-            entity={metricDetails as SourceType}
-            entityType={EntityType.METRIC}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(metricDetails?.deleted)}
+          entity={metricDetails as SourceType}
+          entityType={EntityType.METRIC}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

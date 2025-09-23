@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Menu } from '@mui/material';
+import { IconButton, Menu, ToggleButtonGroup } from '@mui/material';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { ExportTypes } from '../../constants/Export.constants';
@@ -41,6 +41,8 @@ jest.mock('../../rest/lineageAPI');
 jest.mock('./LineageTable.styled', () => {
   return {
     StyledMenu: Menu,
+    StyledToggleButtonGroup: ToggleButtonGroup,
+    StyledIconButton: IconButton,
   };
 });
 jest.mock('react-router-dom', () => ({

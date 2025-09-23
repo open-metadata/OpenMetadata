@@ -480,7 +480,7 @@ const LineageTable = () => {
   const cardHeader = useMemo(() => {
     return (
       <>
-        <div className="d-flex justify-between items-center">
+        <div className="d-flex justify-between items-center p-x-xss">
           <div className="d-flex gap-2">
             <StyledIconButton
               color={filterSelectionActive ? 'primary' : 'default'}
@@ -623,7 +623,7 @@ const LineageTable = () => {
       <Link
         to={getEntityLinkFromType(
           record.fullyQualifiedName ?? '',
-          EntityType.TABLE,
+          record.entityType as EntityType,
           record
         )}>
         {stringToHTML(highlightSearchText(getEntityName(record), searchValue))}
@@ -664,7 +664,7 @@ const LineageTable = () => {
             domains={domains}
             entityFqn=""
             entityId=""
-            entityType={EntityType.TABLE}
+            entityType={entityType}
             showDomainHeading={false}
           />
         ),
@@ -763,7 +763,7 @@ const LineageTable = () => {
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
-              EntityType.TABLE,
+              record?.entityType as EntityType,
               record
             )}>
             {stringToHTML(
@@ -805,7 +805,7 @@ const LineageTable = () => {
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
-              EntityType.TABLE,
+              record?.entityType as EntityType,
               record
             )}>
             {stringToHTML(
