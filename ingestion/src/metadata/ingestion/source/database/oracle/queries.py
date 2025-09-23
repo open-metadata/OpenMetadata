@@ -139,29 +139,17 @@ CHECK_ACCESS_TO_ALL = "SELECT table_name FROM DBA_TABLES where ROWNUM < 2"
 
 TEST_MATERIALIZED_VIEWS = textwrap.dedent(
     """
-SELECT
-    mview_name,
-    owner,
-    query
-FROM
-    DBA_MVIEWS
-WHERE
-    owner NOT IN ('SYSTEM', 'SYS')
-    AND ROWNUM <= 2
+SELECT COUNT(*) as count
+FROM DBA_MVIEWS
+WHERE ROWNUM = 1
 """
 )
 
 TEST_QUERY_HISTORY = textwrap.dedent(
     """
-SELECT
-    sql_text,
-    parsing_schema_name,
-    first_load_time
-FROM
-    gv$sql
-WHERE
-    ROWNUM <= 2
-    AND parsing_schema_name IS NOT NULL
+SELECT COUNT(*) as count
+FROM gv$sql
+WHERE ROWNUM = 1
 """
 )
 

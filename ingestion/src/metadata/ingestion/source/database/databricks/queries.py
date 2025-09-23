@@ -128,76 +128,48 @@ TEST_VIEW_DEFINITIONS = textwrap.dedent(
 
 TEST_CATALOG_TAGS = textwrap.dedent(
     """
-    SELECT
-        catalog_name,
-        tag_name,
-        tag_value
+    SELECT COUNT(*) as count
     FROM `{database_name}`.information_schema.catalog_tags
-    LIMIT 1
+    WHERE 1=0
     """
 )
 
 TEST_SCHEMA_TAGS = textwrap.dedent(
     """
-    SELECT
-        catalog_name,
-        schema_name,
-        tag_name,
-        tag_value
+    SELECT COUNT(*) as count
     FROM `{database_name}`.information_schema.schema_tags
-    LIMIT 1
+    WHERE 1=0
     """
 )
 
 TEST_TABLE_TAGS = textwrap.dedent(
     """
-    SELECT
-        catalog_name,
-        schema_name,
-        table_name,
-        tag_name,
-        tag_value
+    SELECT COUNT(*) as count
     FROM `{database_name}`.information_schema.table_tags
-    LIMIT 1
+    WHERE 1=0
     """
 )
 
 TEST_COLUMN_TAGS = textwrap.dedent(
     """
-    SELECT
-        catalog_name,
-        schema_name,
-        table_name,
-        column_name,
-        tag_name,
-        tag_value
+    SELECT COUNT(*) as count
     FROM `{database_name}`.information_schema.column_tags
-    LIMIT 1
+    WHERE 1=0
     """
 )
 
 TEST_TABLE_LINEAGE = textwrap.dedent(
     """
-    SELECT
-        entity_id,
-        entity_type,
-        source_table_full_name,
-        target_table_full_name
+    SELECT COUNT(*) as count
     FROM system.access.table_lineage
-    LIMIT 1
+    WHERE 1=0
     """
 )
 
 TEST_COLUMN_LINEAGE = textwrap.dedent(
     """
-    SELECT
-        entity_id,
-        entity_type,
-        source_table_full_name,
-        source_column_name,
-        target_table_full_name,
-        target_column_name
+    SELECT COUNT(*) as count
     FROM system.access.column_lineage
-    LIMIT 1
+    WHERE 1=0
     """
 )
