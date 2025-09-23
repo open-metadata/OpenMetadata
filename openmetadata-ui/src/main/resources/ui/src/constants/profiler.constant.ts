@@ -35,7 +35,7 @@ import {
   getEpochMillisForPastDays,
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
-import { GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
+import { BLUE_50, BLUE_500, GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
 
 export const PROFILER_METRIC = [
   'valuesCount',
@@ -241,7 +241,8 @@ export const INITIAL_ROW_METRIC_VALUE = {
         entity: t('label.row'),
       }),
       dataKey: 'rowCount',
-      color: GREEN_3,
+      color: BLUE_500,
+      fill: BLUE_50,
     },
   ],
   data: [],

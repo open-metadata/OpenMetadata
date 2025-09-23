@@ -21,7 +21,6 @@ const ProfilerLatestValue = ({
   information,
   tickFormatter,
   stringValue = false,
-  onClick,
 }: ProfilerLatestValueProps) => {
   const theme = useTheme();
 
@@ -49,18 +48,13 @@ const ProfilerLatestValue = ({
         p: '16px 30px',
       }}>
       {information.map((info) => (
-        <Box
-          key={info.title}
-          sx={{
-            cursor: onClick ? 'pointer' : 'default',
-          }}
-          onClick={() => onClick?.(info.dataKey)}>
+        <Box key={info.title}>
           <Typography
             className="break-all"
             data-testid="title"
             sx={{
               color: theme.palette.grey[700],
-              fontSize: '12px',
+              fontSize: '11px',
               fontWeight: theme.typography.fontWeightBold,
               borderLeft: `4px solid ${info.color}`,
               paddingLeft: '8px',
@@ -74,7 +68,7 @@ const ProfilerLatestValue = ({
             data-testid="value"
             sx={{
               color: theme.palette.grey[900],
-              fontSize: '18px',
+              fontSize: '17px',
               fontWeight: 700,
             }}>
             {getLatestValue(info.latestValue)}

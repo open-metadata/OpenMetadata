@@ -27,6 +27,7 @@ export type MetricChartType = {
     dataKey: string;
     stackId?: string;
     color: string;
+    fill?: string;
     latestValue?: string | number;
   }[];
   data: Record<string, string | number | undefined>[];
@@ -79,7 +80,6 @@ export interface ProfilerLatestValueProps {
   information: MetricChartType['information'];
   tickFormatter?: string;
   stringValue?: boolean;
-  onClick?: (dataKey: string) => void;
 }
 
 export type TestCaseAction = {

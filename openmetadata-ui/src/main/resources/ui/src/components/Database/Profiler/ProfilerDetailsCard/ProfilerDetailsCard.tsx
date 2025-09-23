@@ -25,6 +25,8 @@ import {
   Brush,
   CartesianGrid,
   ComposedChart,
+  Legend,
+  LegendProps,
   Line,
   ResponsiveContainer,
   Tooltip,
@@ -38,7 +40,7 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
-import { CustomTooltip } from '../../../../utils/DataInsightUtils';
+import { CustomDQTooltip } from '../../../../utils/DataQuality/DataQualityUtils';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -65,9 +67,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
     };
   }, [data]);
 
-  const handleClick = (dataKey: string) => {
+  const handleClick: LegendProps['onClick'] = (event) => {
     setActiveKeys((prevActiveKeys) =>
-      updateActiveChartFilter(dataKey, prevActiveKeys)
+      updateActiveChartFilter(event.dataKey, prevActiveKeys)
     );
   };
 
@@ -101,7 +103,6 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
           <ProfilerLatestValue
             information={information}
             tickFormatter={tickFormatter}
-            onClick={handleClick}
           />
 
           {data.length > 0 ? (
@@ -142,7 +143,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                 />
                 <Tooltip
                   content={
-                    <CustomTooltip
+                    <CustomDQTooltip
                       dateTimeFormatter={formatDateTimeLong}
                       timeStampKey="timestamp"
                       valueFormatter={(value) =>
@@ -150,14 +151,18 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                       }
                     />
                   }
+                  cursor={{
+                    stroke: theme.palette.grey[200],
+                    strokeDasharray: '3 3',
+                  }}
                 />
                 {information.map((info) => (
                   <Fragment key={info.dataKey}>
                     {chartType === 'area' && (
                       <Area
                         dataKey={info.dataKey}
-                        fill={info.color}
-                        fillOpacity={0.1}
+                        fill={info.fill ?? info.color}
+                        fillOpacity={info.fill ? 1 : 0.1}
                         hide={
                           activeKeys.length
                             ? !activeKeys.includes(info.dataKey)
@@ -183,6 +188,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     />
                   </Fragment>
                 ))}
+                {chartType === 'line' && <Legend onClick={handleClick} />}
                 {showBrush && (
                   <Brush
                     data={data}
