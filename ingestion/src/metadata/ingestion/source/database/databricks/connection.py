@@ -207,30 +207,22 @@ def test_connection(
         "GetCatalogTags": partial(
             test_database_query,
             engine=connection,
-            statement=TEST_CATALOG_TAGS.format(
-                database_name=get_first_catalog()
-            ),
+            statement=TEST_CATALOG_TAGS.format(database_name=get_first_catalog()),
         ),
         "GetSchemaTags": partial(
             test_database_query,
             engine=connection,
-            statement=TEST_SCHEMA_TAGS.format(
-                database_name=get_first_catalog()
-            ),
+            statement=TEST_SCHEMA_TAGS.format(database_name=get_first_catalog()),
         ),
         "GetTableTags": partial(
             test_database_query,
             engine=connection,
-            statement=TEST_TABLE_TAGS.format(
-                database_name=get_first_catalog()
-            ),
+            statement=TEST_TABLE_TAGS.format(database_name=get_first_catalog()),
         ),
         "GetColumnTags": partial(
             test_database_query,
             engine=connection,
-            statement=TEST_COLUMN_TAGS.format(
-                database_name=get_first_catalog()
-            ),
+            statement=TEST_COLUMN_TAGS.format(database_name=get_first_catalog()),
         ),
         "GetTableLineage": partial(
             test_database_query,
