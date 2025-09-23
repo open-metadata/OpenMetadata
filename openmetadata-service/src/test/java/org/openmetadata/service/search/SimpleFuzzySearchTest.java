@@ -13,6 +13,11 @@
 
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
 import lombok.extern.slf4j.Slf4j;
@@ -20,11 +25,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.security.SecurityUtil;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 
 @Slf4j
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
