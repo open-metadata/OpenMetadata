@@ -14,6 +14,8 @@
 import { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 
+export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
+
 export enum DataContractMode {
   YAML,
   UI,
