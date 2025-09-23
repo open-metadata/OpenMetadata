@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -75,6 +76,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
   private static IngestionPipeline testPipeline;
   private static S3LogStorage s3LogStorage;
   private static StreamableLogsMetrics metrics;
+  private static String minioEndpoint;
   private static boolean initialized = false;
 
   @BeforeEach
@@ -109,7 +111,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
       return;
     }
     TestUtils.simulateWork(2000);
-    String minioEndpoint =
+    minioEndpoint =
         String.format("http://%s:%d", minioContainer.getHost(), minioContainer.getMappedPort(9000));
     LOG.info("Connecting to MinIO at: {}", minioEndpoint);
 
@@ -247,6 +249,13 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
   @Test
   void testMaxConcurrentStreamsLimit() throws Exception {
     setupTestData();
+    // Initialize S3LogStorage with MinIO configuration
+    org.openmetadata.schema.security.credentials.AWSCredentials awsCreds =
+        new org.openmetadata.schema.security.credentials.AWSCredentials()
+            .withAwsAccessKeyId(MINIO_ACCESS_KEY)
+            .withAwsSecretAccessKey(MINIO_SECRET_KEY)
+            .withAwsRegion("us-east-1")
+            .withEndPointURL(new URI(minioEndpoint));
 
     // Create a storage with low max concurrent streams for testing
     LogStorageConfiguration limitedConfig =
@@ -254,6 +263,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName(TEST_BUCKET)
             .withRegion("us-east-1")
+            .withAwsConfig(awsCreds)
             .withPrefix("limited-test")
             .withMaxConcurrentStreams(2); // Very low limit
 
