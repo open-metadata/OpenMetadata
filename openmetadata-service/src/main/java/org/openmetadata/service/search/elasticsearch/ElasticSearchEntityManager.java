@@ -52,7 +52,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             e);
       }
     } else {
-      LOG.warn("ElasticSearch client is not available. Cannot create entity.");
+      LOG.error("ElasticSearch client is not available. Cannot create entity.");
     }
   }
 
@@ -92,7 +92,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to create entities in ElasticSearch for index: {} ", indexName, e);
       }
     } else {
-      LOG.warn("ElasticSearch client is not available. Cannot create entities.");
+      LOG.error("ElasticSearch client is not available. Cannot create entities.");
     }
   }
 
@@ -120,7 +120,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             e);
       }
     } else {
-      LOG.warn("ElasticSearch client is not available. Cannot create time series entity.");
+      LOG.error("ElasticSearch client is not available. Cannot create time series entity.");
     }
   }
 
@@ -144,7 +144,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             e);
       }
     } else {
-      LOG.warn("ElasticSearch client is not available. Cannot delete entity.");
+      LOG.error("ElasticSearch client is not available. Cannot delete entity.");
     }
   }
 }

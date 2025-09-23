@@ -51,7 +51,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             "Failed to create entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
       }
     } else {
-      LOG.warn("OpenSearch client is not available. Cannot create entity.");
+      LOG.error("OpenSearch client is not available. Cannot create entity.");
     }
   }
 
@@ -101,7 +101,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("Failed to create entities in OpenSearch for index: {} ", indexName, e);
       }
     } else {
-      LOG.warn("OpenSearch client is not available. Cannot create entities.");
+      LOG.error("OpenSearch client is not available. Cannot create entities.");
     }
   }
 
@@ -129,7 +129,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             e);
       }
     } else {
-      LOG.warn("OpenSearch client is not available. Cannot create time series entity.");
+      LOG.error("OpenSearch client is not available. Cannot create time series entity.");
     }
   }
 
@@ -153,7 +153,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             e);
       }
     } else {
-      LOG.warn("OpenSearch client is not available. Cannot delete entity.");
+      LOG.error("OpenSearch client is not available. Cannot delete entity.");
     }
   }
 
