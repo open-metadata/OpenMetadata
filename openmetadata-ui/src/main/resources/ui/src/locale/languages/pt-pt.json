@@ -2093,6 +2093,7 @@
     "field-timeout-description": "Tempo Limite de Conexão",
     "field-use-aws-credentials-description": "Indica se deve usar credenciais AWS ao conectar ao OpenSearch na AWS.",
     "field-use-ssl-description": "Isso indica se deve usar SSL ao conectar ao Elasticsearch. Por padrão, ignoraremos as configurações de SSL.",
+    "field-value-updated-notification": "O seu {{fieldName}} mudou para {{fieldValue}}",
     "field-verify-certs-description": "Isso indica se deve verificar certificados ao usar conexão SSL com o Elasticsearch. É ignorado por padrão e está definido como verdadeiro. Certifique-se de enviar os certificados na propriedade `Certificados CA`.",
     "filter-pattern-include-exclude-info": "Explicitamente {{activity}} {{filterPattern}} adicionando uma lista de regex separados por vírgula.",
     "filter-pattern-info": "Escolha incluir ou excluir {{filterPattern}} como parte da ingestão de metadados.",

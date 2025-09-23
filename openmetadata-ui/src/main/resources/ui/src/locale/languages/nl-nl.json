@@ -2093,6 +2093,7 @@
     "field-timeout-description": "Verbindingstime-out",
     "field-use-aws-credentials-description": "Geeft aan of AWS-inloggegevens moeten worden gebruikt bij het verbinden met OpenSearch in AWS.",
     "field-use-ssl-description": "Dit geeft aan of SSL moet worden gebruikt bij het verbinden met Elasticsearch. Standaard negeren we SSL-instellingen.",
+    "field-value-updated-notification": "Uw {{fieldName}} is gewijzigd naar {{fieldValue}}",
     "field-verify-certs-description": "Dit geeft aan of certificaten moeten worden geverifieerd bij het gebruik van een SSL-connectie met Elasticsearch. Het wordt standaard genegeerd en is ingesteld op true. Zorg ervoor dat je de certificaten in de eigenschap 'CA-certificaten' verzendt.",
     "filter-pattern-include-exclude-info": "Expliciet {{activity}} {{filterPattern}} door een lijst met door komma's gescheiden regex toe te voegen.",
     "filter-pattern-info": "Kies ervoor om {{filterPattern}} wel of niet op te nemen als onderdeel van de metadataingestie.",
