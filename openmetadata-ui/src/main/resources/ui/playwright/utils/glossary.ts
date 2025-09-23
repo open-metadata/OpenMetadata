@@ -1682,3 +1682,15 @@ export const setupGlossaryDenyPermissionTest = async (
     cleanup,
   };
 };
+
+export const performExpandAll = async (page: Page) => {
+  const termRes = page.waitForResponse(
+    '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers*'
+  );
+  await page.getByTestId('expand-collapse-all-button').click();
+  await termRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+};
