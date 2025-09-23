@@ -1628,18 +1628,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteEntityByFields(
-      List<String> indexName, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
-      es.org.elasticsearch.index.query.BoolQueryBuilder queryBuilder =
-          new es.org.elasticsearch.index.query.BoolQueryBuilder();
-      DeleteByQueryRequest deleteByQueryRequest =
-          new DeleteByQueryRequest(indexName.toArray(new String[0]));
-      for (Pair<String, String> p : fieldAndValue) {
-        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
-      }
-      deleteByQueryRequest.setQuery(queryBuilder);
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-    }
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
+    entityManager.deleteEntityByFields(indexNames, fieldAndValue);
   }
 
   @Override

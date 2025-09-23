@@ -488,8 +488,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
 
   void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params);
 
-  void deleteEntityByFields(List<String> indexName, List<Pair<String, String>> fieldAndValue);
-
   void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
 
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);

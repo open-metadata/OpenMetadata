@@ -8,12 +8,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.service.search.EntityManagementClient;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.Refresh;
+import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.BulkRequest;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
+import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 
@@ -154,6 +159,37 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
     } else {
       LOG.error("OpenSearch client is not available. Cannot delete entity.");
+    }
+  }
+
+  @Override
+  public void deleteEntityByFields(
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
+    if (isClientAvailable) {
+      try {
+        // Build the query using the new OpenSearch client API
+        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+
+        for (Pair<String, String> p : fieldAndValue) {
+          boolQueryBuilder.must(
+              Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+        }
+
+        // Execute delete by query using the new client
+        DeleteByQueryResponse response =
+            client.deleteByQuery(
+                d ->
+                    d.index(indexNames).query(q -> q.bool(boolQueryBuilder.build())).refresh(true));
+
+        LOG.info(
+            "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
+            response.deleted(),
+            response.failures().size());
+      } catch (IOException e) {
+        LOG.error("Failed to delete entities by fields using new OpenSearch client", e);
+      }
+    } else {
+      LOG.error("OpenSearch client is not available. Cannot delete entities by fields.");
     }
   }
 

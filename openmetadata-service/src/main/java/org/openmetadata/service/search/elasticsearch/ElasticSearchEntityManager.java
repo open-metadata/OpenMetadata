@@ -2,7 +2,10 @@ package org.openmetadata.service.search.elasticsearch;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
+import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.json.JsonData;
@@ -12,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.service.search.EntityManagementClient;
 
 /**
@@ -145,6 +149,34 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
     } else {
       LOG.error("ElasticSearch client is not available. Cannot delete entity.");
+    }
+  }
+
+  @Override
+  public void deleteEntityByFields(
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
+    if (isClientAvailable) {
+      try {
+        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+        for (Pair<String, String> p : fieldAndValue) {
+          boolQueryBuilder.must(
+              Query.of(q -> q.term(t -> t.field(p.getKey()).value(p.getValue()))));
+        }
+
+        DeleteByQueryResponse response =
+            client.deleteByQuery(
+                d ->
+                    d.index(indexNames).query(q -> q.bool(boolQueryBuilder.build())).refresh(true));
+
+        LOG.info(
+            "DeleteByQuery response From ES - Deleted: {}, Failures: {}",
+            response.deleted(),
+            response.failures().size());
+      } catch (IOException e) {
+        LOG.error("Failed to delete entities by fields using new ES client", e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot delete entities by fields.");
     }
   }
 }

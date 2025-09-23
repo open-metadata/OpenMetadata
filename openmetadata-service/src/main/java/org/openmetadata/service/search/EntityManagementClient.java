@@ -3,6 +3,7 @@ package org.openmetadata.service.search;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang3.tuple.Pair;
 
 /**
  * Interface for entity management operations in search.
@@ -45,4 +46,12 @@ public interface EntityManagementClient {
    * @param docId the document ID to delete
    */
   void deleteEntity(String indexName, String docId);
+
+  /**
+   * Deletes entities from indices based on field values.
+   *
+   * @param indexNames the list of index names
+   * @param fieldAndValue list of field-value pairs to match for deletion
+   */
+  void deleteEntityByFields(List<String> indexNames, List<Pair<String, String>> fieldAndValue);
 }
