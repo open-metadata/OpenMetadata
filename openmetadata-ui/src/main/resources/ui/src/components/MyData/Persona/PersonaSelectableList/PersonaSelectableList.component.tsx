@@ -218,7 +218,7 @@ export const PersonaSelectableList = ({
               tagRender={TagRenderer}
               onChange={(selectedIds) => {
                 const selectedPersonasList = selectOptions.filter((persona) =>
-                  selectedIds.includes(persona.id)
+                  selectedIds?.includes(persona.id)
                 );
                 setCurrentlySelectedPersonas(selectedPersonasList);
               }}

@@ -117,8 +117,8 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String ES_MISSING_DATA =
       "Entity Details is unavailable in Elastic Search. Please reindex to get more Information.";
-  private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms";
-  private static final String PATCH_FIELDS = "references,relatedTerms,synonyms";
+  private static final String UPDATE_FIELDS = "references,relatedTerms,synonyms,style";
+  private static final String PATCH_FIELDS = "references,relatedTerms,synonyms,style";
 
   final FeedRepository feedRepository = Entity.getFeedRepository();
 
