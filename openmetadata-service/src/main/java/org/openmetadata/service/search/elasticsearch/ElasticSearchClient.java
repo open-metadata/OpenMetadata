@@ -1634,12 +1634,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
-    if (isClientAvailable) {
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-      deleteByQueryRequest.setQuery(
-          new PrefixQueryBuilder("fullyQualifiedName.keyword", fqnPrefix.toLowerCase()));
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-    }
+    entityManager.deleteEntityByFQNPrefix(indexName, fqnPrefix);
   }
 
   @Override

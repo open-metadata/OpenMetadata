@@ -54,4 +54,12 @@ public interface EntityManagementClient {
    * @param fieldAndValue list of field-value pairs to match for deletion
    */
   void deleteEntityByFields(List<String> indexNames, List<Pair<String, String>> fieldAndValue);
+
+  /**
+   * Deletes entities from an index by FQN prefix.
+   *
+   * @param indexName the name of the index
+   * @param fqnPrefix the FQN prefix to match for deletion
+   */
+  void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
 }

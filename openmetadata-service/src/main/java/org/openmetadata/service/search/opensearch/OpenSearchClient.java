@@ -1777,12 +1777,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
-    if (isClientAvailable) {
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-      deleteByQueryRequest.setQuery(
-          new PrefixQueryBuilder("fullyQualifiedName.keyword", fqnPrefix.toLowerCase()));
-      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
-    }
+    entityManager.deleteEntityByFQNPrefix(indexName, fqnPrefix);
   }
 
   @Override

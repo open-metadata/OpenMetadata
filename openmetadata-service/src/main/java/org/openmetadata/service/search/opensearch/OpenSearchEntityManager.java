@@ -193,6 +193,35 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
   }
 
+  @Override
+  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
+    if (isClientAvailable) {
+      try {
+        // Build prefix query using the new OpenSearch client API
+        DeleteByQueryResponse response =
+            client.deleteByQuery(
+                d ->
+                    d.index(indexName)
+                        .query(
+                            q ->
+                                q.prefix(
+                                    p ->
+                                        p.field("fullyQualifiedName.keyword")
+                                            .value(fqnPrefix.toLowerCase())))
+                        .refresh(true));
+
+        LOG.info(
+            "DeleteByQuery by FQN prefix response from OS - Deleted: {}, Failures: {}",
+            response.deleted(),
+            response.failures().size());
+      } catch (IOException e) {
+        LOG.error("Failed to delete entities by FQN prefix using OpenSearch client", e);
+      }
+    } else {
+      LOG.error("OpenSearch client is not available. Cannot delete entities by FQN prefix.");
+    }
+  }
+
   private JsonData toJsonData(String doc) {
     Map<String, Object> docMap;
     try {

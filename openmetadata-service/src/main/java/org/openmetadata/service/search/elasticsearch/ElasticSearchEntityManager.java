@@ -179,4 +179,32 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error("ElasticSearch client is not available. Cannot delete entities by fields.");
     }
   }
+
+  @Override
+  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
+    if (isClientAvailable) {
+      try {
+        DeleteByQueryResponse response =
+            client.deleteByQuery(
+                d ->
+                    d.index(indexName)
+                        .query(
+                            q ->
+                                q.prefix(
+                                    p ->
+                                        p.field("fullyQualifiedName.keyword")
+                                            .value(fqnPrefix.toLowerCase())))
+                        .refresh(true));
+
+        LOG.info(
+            "DeleteByQuery by FQN prefix response from ES - Deleted: {}, Failures: {}",
+            response.deleted(),
+            response.failures().size());
+      } catch (IOException e) {
+        LOG.error("Failed to delete entities by FQN prefix using ES client", e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot delete entities by FQN prefix.");
+    }
+  }
 }
