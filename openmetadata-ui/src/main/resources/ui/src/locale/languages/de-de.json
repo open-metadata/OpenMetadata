@@ -2093,6 +2093,7 @@
     "field-timeout-description": "Verbindungszeitüberschreitung",
     "field-use-aws-credentials-description": "Gibt an, ob AWS-Anmeldeinformationen verwendet werden sollen, wenn eine Verbindung zu OpenSearch in AWS hergestellt wird.",
     "field-use-ssl-description": "Dies gibt an, ob SSL bei der Verbindung mit Elasticsearch verwendet werden soll. Standardmäßig werden SSL-Einstellungen ignoriert.",
+    "field-value-updated-notification": "Ihr {{fieldName}} wurde zu {{fieldValue}} geändert",
     "field-verify-certs-description": "Dies gibt an, ob Zertifikate bei Verwendung einer SSL-Verbindung zu Elasticsearch überprüft werden sollen. Standardmäßig wird dies ignoriert und auf true gesetzt. Stellen Sie sicher, dass Sie die Zertifikate in der Eigenschaft 'CA-Zertifikate' senden.",
     "filter-pattern-include-exclude-info": "Schließen Sie explizit {{filterPattern}} durch Hinzufügen einer Liste von durch Kommas getrennten regulären Ausdrücken {{activity}} ein oder aus.",
     "filter-pattern-info": "Wählen Sie aus, ob {{filterPattern}} als Teil der Metadaten-Erfassung ein- oder ausgeschlossen werden soll.",
