@@ -325,6 +325,36 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
   }
 
+  @Override
+  public void updateEntity(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    if (isClientAvailable) {
+      try {
+        Map<String, JsonData> params =
+            doc.entrySet().stream()
+                .collect(
+                    Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+
+        client.update(
+            u ->
+                u.index(indexName)
+                    .id(docId)
+                    .refresh(Refresh.True)
+                    .scriptedUpsert(true)
+                    .script(s -> s.inline(inline -> inline.source(scriptTxt).params(params))),
+            Map.class);
+
+        LOG.info(
+            "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
+      } catch (IOException e) {
+        LOG.error(
+            "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
+      }
+    } else {
+      LOG.error("OpenSearch client is not available. Cannot update entity.");
+    }
+  }
+
   private JsonData toJsonData(String doc) {
     Map<String, Object> docMap;
     try {

@@ -1795,15 +1795,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void updateEntity(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-      updateRequest.scriptedUpsert(true);
-      updateRequest.script(script);
-      updateOpenSearch(updateRequest);
-    }
+    entityManager.updateEntity(indexName, docId, doc, scriptTxt);
   }
 
   @Override

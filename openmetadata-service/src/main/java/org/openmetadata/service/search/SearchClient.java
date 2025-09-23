@@ -481,8 +481,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
-  void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
-
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 

@@ -18,6 +18,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.EntityManagementClient;
 
 /**
@@ -310,6 +311,41 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
     } else {
       LOG.error("ElasticSearch client is not available. Cannot soft delete/restore children.");
+    }
+  }
+
+  @Override
+  public void updateEntity(
+      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
+    if (isClientAvailable) {
+      try {
+        Map<String, JsonData> params =
+            JsonUtils.getMap(doc).entrySet().stream()
+                .collect(
+                    Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+
+        client.update(
+            u ->
+                u.index(indexName)
+                    .id(docId)
+                    .refresh(Refresh.True)
+                    .scriptedUpsert(true)
+                    .script(s -> s.inline(inline -> inline.source(scriptTxt).params(params))),
+            Map.class);
+
+        LOG.info(
+            "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
+            indexName,
+            docId);
+      } catch (IOException e) {
+        LOG.error(
+            "Failed to update entity in ElasticSearch for index: {}, docId: {}",
+            indexName,
+            docId,
+            e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot update entity.");
     }
   }
 }
