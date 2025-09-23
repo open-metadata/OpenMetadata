@@ -136,6 +136,7 @@ public class OIDCAuthCompleteFlowTest extends OpenMetadataApplicationTest {
     oidcConfig.put("callbackUrl", getServerUrl() + "/callback");
     oidcConfig.put("maxAge", "0");
     oidcConfig.put("prompt", "");
+    oidcConfig.put("tenant", "");
 
     // Create the authentication configuration
     Map<String, Object> authConfig = new HashMap<>();

@@ -256,9 +256,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance()
         .init(
-            SecurityConfigurationManager.getInstance()
-                .getCurrentAuthConfig()
-                .getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
             catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
@@ -527,8 +525,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Ensure we have a session handler
     if (SecurityConfigurationManager.getCurrentAuthConfig() != null
-        && SecurityConfigurationManager.getInstance()
-            .getCurrentAuthConfig()
+        && SecurityConfigurationManager.getCurrentAuthConfig()
             .getProvider()
             .equals(AuthProvider.SAML)) {
       MutableServletContextHandler contextHandler = environment.getApplicationContext();

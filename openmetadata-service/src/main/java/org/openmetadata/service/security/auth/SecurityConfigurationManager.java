@@ -61,19 +61,11 @@ public class SecurityConfigurationManager {
   }
 
   public static AuthenticationConfiguration getCurrentAuthConfig() {
-    SecurityConfigurationManager instance = getInstance();
-    if (instance == null || instance.currentAuthConfig == null) {
-      throw new IllegalStateException("SecurityConfigurationManager not initialized");
-    }
-    return instance.currentAuthConfig;
+    return getInstance().currentAuthConfig;
   }
 
   public static AuthorizerConfiguration getCurrentAuthzConfig() {
-    SecurityConfigurationManager instance = getInstance();
-    if (instance == null || instance.currentAuthzConfig == null) {
-      throw new IllegalStateException("SecurityConfigurationManager not initialized");
-    }
-    return instance.currentAuthzConfig;
+    return getInstance().currentAuthzConfig;
   }
 
   public void setAuthenticatorHandler(AuthenticatorHandler handler) {
