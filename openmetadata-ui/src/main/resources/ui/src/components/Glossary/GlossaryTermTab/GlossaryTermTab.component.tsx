@@ -193,7 +193,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   });
 
   const debouncedSetSearchTerm = useMemo(
-    () => debounce((value: string) => setSearchTerm(value), 300),
+    () => debounce((value: string) => setSearchTerm(value), 800),
     []
   );
 
