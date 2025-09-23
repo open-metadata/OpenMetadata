@@ -16,5 +16,6 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(collectionDAO);
     migrationUtil.migrateEntityStatusForExistingEntities(handle);
+    migrationUtil.migrateTestCaseDataContractReferences(handle);
   }
 }
