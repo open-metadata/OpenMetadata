@@ -11,6 +11,7 @@ import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.json.JsonData;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -246,6 +247,34 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
     } else {
       LOG.error("ElasticSearch client is not available. Cannot delete entities by script.");
+    }
+  }
+
+  @Override
+  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt) {
+    if (isClientAvailable) {
+      try {
+        client.update(
+            u ->
+                u.index(indexName)
+                    .id(docId)
+                    .refresh(Refresh.True)
+                    .script(
+                        s -> s.inline(inline -> inline.source(scriptTxt).params(new HashMap<>()))),
+            Map.class);
+        LOG.info(
+            "Successfully soft deleted/restored entity in ElasticSearch for index: {}, docId: {}",
+            indexName,
+            docId);
+      } catch (IOException e) {
+        LOG.error(
+            "Failed to soft delete/restore entity in ElasticSearch for index: {}, docId: {}",
+            indexName,
+            docId,
+            e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot soft delete/restore entity.");
     }
   }
 }

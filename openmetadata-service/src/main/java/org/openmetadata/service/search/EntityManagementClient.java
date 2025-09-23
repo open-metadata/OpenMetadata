@@ -71,4 +71,13 @@ public interface EntityManagementClient {
    * @param params the parameters for the script
    */
   void deleteByScript(String indexName, String scriptTxt, java.util.Map<String, Object> params);
+
+  /**
+   * Soft deletes or restores an entity using a script update.
+   *
+   * @param indexName the name of the index
+   * @param docId the document ID to update
+   * @param scriptTxt the script text for the update operation
+   */
+  void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 }
