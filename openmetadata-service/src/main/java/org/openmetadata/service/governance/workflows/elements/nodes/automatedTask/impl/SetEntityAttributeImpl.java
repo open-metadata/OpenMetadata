@@ -44,11 +44,16 @@ public class SetEntityAttributeImpl implements JavaDelegate {
       String entityType = entityLink.getEntityType();
       EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
 
-      String fieldName = (String) fieldNameExpr.getValue(execution);
-      String fieldValue =
-          fieldValueExpr.getValue(execution) != null
-              ? (String) fieldValueExpr.getValue(execution)
-              : null;
+      String fieldName = fieldNameExpr != null ? (String) fieldNameExpr.getValue(execution) : "";
+
+      // Simple null check - if fieldValueExpr is null, treat as empty/null value
+      String fieldValue = null;
+      if (fieldValueExpr != null) {
+        Object value = fieldValueExpr.getValue(execution);
+        if (value != null && !value.toString().isEmpty()) {
+          fieldValue = value.toString();
+        }
+      }
 
       String updatedByNamespace = (String) inputNamespaceMap.get(UPDATED_BY_VARIABLE);
       String user =
@@ -57,6 +62,7 @@ public class SetEntityAttributeImpl implements JavaDelegate {
               .orElse("governance-bot");
 
       // Apply the field change using shared utility
+      // Note: fieldValue can be null to clear/remove a field value
       EntityFieldUtils.setEntityField(entity, entityType, user, fieldName, fieldValue, true);
 
     } catch (Exception exc) {

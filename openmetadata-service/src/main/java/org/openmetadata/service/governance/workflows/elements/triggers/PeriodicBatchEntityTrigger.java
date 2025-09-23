@@ -189,28 +189,27 @@ public class PeriodicBatchEntityTrigger implements TriggerInterface {
       return null;
     }
 
-    if (filtersObj instanceof String) {
-      LOG.warn(
-          "DEPRECATED: String filter format is deprecated. Use entity-specific filter map instead.");
-      return (String) filtersObj;
-    }
-
-    // Handle new map format with entity-specific filters
+    // Handle map format with entity-specific filters (values are JSON strings)
     if (filtersObj instanceof Map) {
       @SuppressWarnings("unchecked")
       Map<String, String> filterMap = (Map<String, String>) filtersObj;
 
       // First check for entity-specific filter
       String specificFilter = filterMap.get(entityType.toLowerCase());
-      if (specificFilter != null) {
+      if (specificFilter != null && !specificFilter.isEmpty()) {
         return specificFilter;
       }
 
       // Fall back to default filter if no specific filter found
-      return filterMap.get("default");
+      String defaultFilter = filterMap.get("default");
+      if (defaultFilter != null && !defaultFilter.isEmpty()) {
+        return defaultFilter;
+      }
+
+      return null;
     }
 
-    // If it's neither string nor map, try to convert to string
+    // If it's not a map, try to convert to string
     return JsonUtils.pojoToJson(filtersObj);
   }
 

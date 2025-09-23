@@ -12,6 +12,8 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RollbackEntityTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RunAppTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityAttributeTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetEntityCertificationTaskDefinition;
+import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.SetGlossaryTermStatusTaskDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.endEvent.EndEventDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.gateway.ParallelGatewayDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.startEvent.StartEventDefinition;
@@ -23,12 +25,18 @@ import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.User
       value = CheckEntityAttributesTaskDefinition.class,
       name = "checkEntityAttributesTask"),
   @JsonSubTypes.Type(
+      value = SetEntityCertificationTaskDefinition.class,
+      name = "setEntityCertificationTask"),
+  @JsonSubTypes.Type(
       value = SetEntityAttributeTaskDefinition.class,
       name = "setEntityAttributeTask"),
   @JsonSubTypes.Type(value = RollbackEntityTaskDefinition.class, name = "rollbackEntityTask"),
   @JsonSubTypes.Type(value = DataCompletenessTaskDefinition.class, name = "dataCompletenessTask"),
   @JsonSubTypes.Type(value = StartEventDefinition.class, name = "startEvent"),
   @JsonSubTypes.Type(value = EndEventDefinition.class, name = "endEvent"),
+  @JsonSubTypes.Type(
+      value = SetGlossaryTermStatusTaskDefinition.class,
+      name = "setGlossaryTermStatusTask"),
   @JsonSubTypes.Type(value = UserApprovalTaskDefinition.class, name = "userApprovalTask"),
   @JsonSubTypes.Type(
       value = CreateAndRunIngestionPipelineTaskDefinition.class,

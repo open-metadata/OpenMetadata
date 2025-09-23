@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -200,8 +201,12 @@ public class WorkflowTransactionManager {
     WorkflowDefinition existing = null;
     try {
       existing =
-          repository.findByName(
-              entity.getFullyQualifiedName(), org.openmetadata.schema.type.Include.ALL);
+          repository.getByName(
+              uriInfo,
+              entity.getFullyQualifiedName(),
+              repository.getFields("*"),
+              Include.NON_DELETED,
+              false);
     } catch (EntityNotFoundException e) {
       // Entity doesn't exist, will create
     }

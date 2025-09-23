@@ -222,7 +222,7 @@ public class EventBasedEntityTrigger implements TriggerInterface {
         serviceTask.getFieldExtensions().add(excludedFilterExpr);
       }
       if (triggerConfig.getFilter() != null) {
-        // Pass the entire filter configuration (string or object with entity-specific filters)
+        // Filter is now a map of entity-specific filters
         FieldExtension filterExpr =
             new FieldExtensionBuilder()
                 .fieldName("filterExpr")

@@ -868,26 +868,32 @@ public class MigrationUtil {
                   String filterStr = filterNode.asText();
                   ObjectNode newFilterObj = mapper.createObjectNode();
 
-                  // If the filter string is not empty, add it to specific entity types
-                  if (filterStr != null && !filterStr.trim().isEmpty()) {
-                    // Get entity types to create specific filters
-                    if (configObj.has("entityTypes")) {
-                      JsonNode entityTypesNode = configObj.get("entityTypes");
-                      if (entityTypesNode.isArray()) {
-                        for (JsonNode entityTypeNode : entityTypesNode) {
-                          String entityType = entityTypeNode.asText();
-                          // Apply the filter to this specific entity type
-                          newFilterObj.put(entityType.toLowerCase(), filterStr);
-                        }
+                  // Get entity types to create specific filters
+                  if (configObj.has("entityTypes")) {
+                    JsonNode entityTypesNode = configObj.get("entityTypes");
+                    if (entityTypesNode.isArray()) {
+                      for (JsonNode entityTypeNode : entityTypesNode) {
+                        String entityType = entityTypeNode.asText();
+                        // Apply the filter string to this specific entity type
+                        // Keep the filter value as a string (it contains JSON Logic)
+                        // PeriodicBatchEntityTrigger
+                        newFilterObj.put(entityType, filterStr);
                       }
                     }
-                    LOG.info("Migrated non-empty filter to entity-specific object format");
-                  } else {
-                    // For empty filters, just leave the object empty
-                    LOG.info("Migrated empty string filter to empty object format");
                   }
 
-                  // Replace the string filter with object filter (empty or populated)
+                  // Add a default filter as well for fallback
+                  newFilterObj.put("default", filterStr);
+
+                  if (filterStr != null && !filterStr.trim().isEmpty()) {
+                    LOG.info(
+                        "Migrated filter to entity-specific object format with filter: {}",
+                        filterStr);
+                  } else {
+                    LOG.info("Migrated empty filter to entity-specific object format");
+                  }
+
+                  // Replace the string filter with object filter
                   configObj.set("filter", newFilterObj);
                   triggerModified = true;
                 }

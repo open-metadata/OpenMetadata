@@ -179,7 +179,99 @@ public class WorkflowHandler {
 
   public void deploy(Workflow workflow) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
+    ManagementService managementService = processEngine.getManagementService();
     BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
+
+    // Before deploying, check if this is an update and handle timer jobs
+    String triggerWorkflowKey = workflow.getTriggerWorkflow().getWorkflowName();
+    String workflowName = workflow.getWorkflowDefinition().getName();
+
+    // For scheduled workflows (periodicBatchEntity), terminate old instances and cancel timer jobs
+    // This prevents both duplicate executions and errors from schema changes
+    if (workflow.getWorkflowDefinition().getTrigger() != null
+        && "periodicBatchEntity".equals(workflow.getWorkflowDefinition().getTrigger().getType())) {
+
+      RuntimeService runtimeService = processEngine.getRuntimeService();
+
+      // Step 1: Terminate all old running instances
+      // Necessary when workflow task definitions change (e.g., setEntityCertificationTask ->
+      // setEntityAttributeTask)
+      try {
+        // Terminate main workflow instances
+        List<ProcessInstance> runningInstances =
+            runtimeService.createProcessInstanceQuery().processDefinitionKey(workflowName).list();
+
+        if (!runningInstances.isEmpty()) {
+          LOG.info(
+              "Terminating {} old running instances of {} before redeployment",
+              runningInstances.size(),
+              workflowName);
+          for (ProcessInstance instance : runningInstances) {
+            runtimeService.deleteProcessInstance(
+                instance.getId(), "Terminated for redeployment of periodicBatchEntity workflow");
+          }
+        }
+
+        // Terminate trigger workflow instances
+        List<ProcessInstance> triggerInstances =
+            runtimeService
+                .createProcessInstanceQuery()
+                .processDefinitionKey(triggerWorkflowKey)
+                .list();
+
+        if (!triggerInstances.isEmpty()) {
+          LOG.info(
+              "Terminating {} old trigger instances of {} before redeployment",
+              triggerInstances.size(),
+              triggerWorkflowKey);
+          for (ProcessInstance instance : triggerInstances) {
+            runtimeService.deleteProcessInstance(
+                instance.getId(), "Terminated for redeployment of periodicBatchEntity workflow");
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Error terminating old workflow instances for {}: {}", workflowName, e.getMessage());
+      }
+
+      // Step 2: Cancel old timer jobs to prevent duplicate scheduled executions
+      try {
+        // Find and delete timer jobs for the old deployment
+        List<Job> timerJobs =
+            managementService.createTimerJobQuery().processDefinitionKey(triggerWorkflowKey).list();
+
+        for (Job timerJob : timerJobs) {
+          LOG.info(
+              "Cancelling old timer job {} for workflow {}", timerJob.getId(), triggerWorkflowKey);
+          managementService.deleteJob(timerJob.getId());
+        }
+
+        // Also check for entity-specific timer jobs (e.g.,
+        // TableEntityCertificationWorkflowTrigger-table)
+        // These are created when workflows target specific entity types
+        List<Job> allTimerJobs = managementService.createTimerJobQuery().list();
+        for (Job timerJob : allTimerJobs) {
+          // Get the process definition ID and extract the key
+          String processDefId = timerJob.getProcessDefinitionId();
+          if (processDefId != null) {
+            // Process definition ID format: key:version:id
+            String jobKey = processDefId.split(":")[0];
+            if (jobKey.startsWith(triggerWorkflowKey + "-")) {
+              LOG.info(
+                  "Cancelling old entity-specific timer job {} for workflow {}",
+                  timerJob.getId(),
+                  jobKey);
+              managementService.deleteJob(timerJob.getId());
+            }
+          }
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Error cancelling old timer jobs for workflow {}: {}",
+            triggerWorkflowKey,
+            e.getMessage());
+      }
+    }
 
     // Deploy Main Workflow
     byte[] bpmnMainWorkflowBytes =
@@ -238,17 +330,38 @@ public class WorkflowHandler {
   public ProcessInstance triggerByKey(
       String processDefinitionKey, String businessKey, Map<String, Object> variables) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
+    RepositoryService repositoryService = processEngine.getRepositoryService();
     LOG.debug(
         "[WorkflowTrigger] START: processKey='{}' businessKey='{}' variables={}",
         processDefinitionKey,
         businessKey,
         variables);
     try {
-      ProcessInstance instance =
-          runtimeService.startProcessInstanceByKey(processDefinitionKey, businessKey, variables);
+      // Always use the latest version of the process definition
+      ProcessDefinition latestDefinition =
+          repositoryService
+              .createProcessDefinitionQuery()
+              .processDefinitionKey(processDefinitionKey)
+              .latestVersion()
+              .singleResult();
+
+      if (latestDefinition == null) {
+        throw new IllegalStateException(
+            String.format("No process definition found for key: %s", processDefinitionKey));
+      }
+
       LOG.debug(
-          "[WorkflowTrigger] SUCCESS: processKey='{}' instanceId='{}' businessKey='{}'",
+          "[WorkflowTrigger] Using latest version {} of process '{}'",
+          latestDefinition.getVersion(),
+          processDefinitionKey);
+
+      // Start process instance using the specific process definition ID (ensures latest version)
+      ProcessInstance instance =
+          runtimeService.startProcessInstanceById(latestDefinition.getId(), businessKey, variables);
+      LOG.debug(
+          "[WorkflowTrigger] SUCCESS: processKey='{}' version='{}' instanceId='{}' businessKey='{}'",
           processDefinitionKey,
+          latestDefinition.getVersion(),
           instance.getId(),
           businessKey);
       return instance;

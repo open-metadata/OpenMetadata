@@ -114,7 +114,7 @@ public class FilterEntityImpl implements JavaDelegate {
     }
 
     // First check for entity-specific filter
-    String specificFilter = filterMap.get(entityType.toLowerCase());
+    String specificFilter = filterMap.get(entityType);
     if (specificFilter != null && !specificFilter.trim().isEmpty()) {
       return specificFilter;
     }

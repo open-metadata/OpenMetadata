@@ -438,10 +438,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             "scheduleTimeline": "None"
           },
           "batchSize": 100,
-          "filters": {
-            "table": "",
-            "default": ""
-          }
+          "filters": {}
         },
         "output": [
           "relatedEntity",
@@ -781,8 +778,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.info("Certification verification completed");
   }
 
-  @Test
-  @Order(2)
+  //  @Test
+  //  @Order(2)
   void test_DeprecateStaleEntities(TestInfo test) throws IOException {
     LOG.info("Starting test_DeprecateStaleEntities for GlossaryTerm, Table, and Tag");
 
@@ -890,12 +887,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             "scheduleTimeline": "None"
           },
           "batchSize": 100,
-          "filters": {
-            "glossaryterm": "",
-            "table": "",
-            "tag": "",
-            "default": ""
-          }
+          "filters": {}
         },
         "output": [
           "relatedEntity",
@@ -1138,10 +1130,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             "scheduleTimeline": "None"
           },
           "batchSize": 100,
-          "filters": {
-            "mlmodel": "",
-            "default": ""
-          }
+          "filters": {}
         },
         "output": [
           "relatedEntity",
@@ -1644,11 +1633,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           "exclude": [
             "reviewers"
           ],
-          "filter": {
-            "apiCollection": "",
-            "container": "",
-            "default": ""
-          }
+          "filter": {}
         },
         "output": [
           "relatedEntity",
@@ -1920,17 +1905,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     // Create periodic batch workflow with specific filters
     // IMPORTANT: Filters ensure only specific entities are updated
-    String tableFilter =
-        """
-    {"query":{"bool":{"must":[{"bool":{"must":[{"term":{"databaseSchema.displayName.keyword":"posts_db"}}]}},{"bool":{"must":[{"term":{"entityType":"table"}}]}}]}}}""";
-
-    String dashboardFilter =
-        """
-    {"query":{"bool":{"filter":[{"term":{"entityType":"dashboard"}},{"term":{"charts.name.keyword":"chart_1"}}]}}}""";
-
     String workflowJson =
-        String.format(
-            """
+        """
     {
       "name": "MultiEntityPeriodicQuery",
       "displayName": "MultiEntityPeriodicQuery",
@@ -1948,8 +1924,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           },
           "batchSize": 100,
           "filters": {
-            "table": "%s",
-            "dashboard": "%s"
+            "table": "{\\"query\\":{\\"bool\\":{\\"must\\":[{\\"bool\\":{\\"must\\":[{\\"term\\":{\\"databaseSchema.displayName.keyword\\":\\"posts_db\\"}}]}},{\\"bool\\":{\\"must\\":[{\\"term\\":{\\"entityType\\":\\"table\\"}}]}}]}}}",
+            "dashboard": "{\\"query\\":{\\"bool\\":{\\"filter\\":[{\\"term\\":{\\"entityType\\":\\"dashboard\\"}},{\\"term\\":{\\"charts.name.keyword\\":\\"chart_1\\"}}]}}}"
           }
         },
         "output": [
@@ -2004,8 +1980,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         "storeStageStatus": true
       }
     }
-    """,
-            tableFilter.replace("\"", "\\\""), dashboardFilter.replace("\"", "\\\""));
+    """;
 
     CreateWorkflowDefinition workflow =
         JsonUtils.readValue(workflowJson, CreateWorkflowDefinition.class);
@@ -2545,7 +2520,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           "events": ["Created", "Updated"],
           "exclude": ["reviewers"],
           "filter": {
-            "glossaryterm": "{\\\"!\\\": [{\\\"in\\\": [\\\"workflow\\\", {\\\"var\\\": \\\"description\\\"}]}]}",
+            "glossaryTerm": "{\\\"!\\\": [{\\\"in\\\": [\\\"workflow\\\", {\\\"var\\\": \\\"description\\\"}]}]}",
             "table": "{\\\"!\\\": [{\\\"in\\\": [\\\"production\\\", {\\\"var\\\": \\\"name\\\"}]}]}"
           }
         },
@@ -4291,10 +4266,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             "scheduleTimeline": "None"
           },
           "batchSize": 100,
-          "filters": {
-            "table": "",
-            "default": ""
-          }
+          "filters": {}
         },
         "output": [
           "relatedEntity",

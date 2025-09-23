@@ -24,8 +24,10 @@ public class Workflow {
   public static final String FAILURE_RESULT = "failure";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
+  private final WorkflowDefinition workflowDefinition;
 
   public Workflow(WorkflowDefinition workflowDefinition) {
+    this.workflowDefinition = workflowDefinition;
     this.triggerWorkflow = new TriggerWorkflow(workflowDefinition);
     this.mainWorkflow = new MainWorkflow(workflowDefinition);
   }
