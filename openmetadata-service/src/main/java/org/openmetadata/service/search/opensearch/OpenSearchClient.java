@@ -32,11 +32,8 @@ import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProce
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import jakarta.json.JsonObject;
-import jakarta.json.spi.JsonProvider;
-import jakarta.json.stream.JsonParser;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -159,13 +156,7 @@ import os.org.opensearch.client.indices.GetDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamResponse;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
-import os.org.opensearch.client.json.JsonData;
-import os.org.opensearch.client.json.JsonpMapper;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
-import os.org.opensearch.client.opensearch._types.Refresh;
-import os.org.opensearch.client.opensearch.core.BulkResponse;
-import os.org.opensearch.client.opensearch.core.DeleteResponse;
-import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
 import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
@@ -238,6 +229,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   private final String clusterAlias;
   private final OpenSearchIndexManager indexManager;
+  private final OpenSearchEntityManager entityManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -280,6 +272,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     lineageGraphBuilder = new OSLineageGraphBuilder(client);
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
+    entityManager = new OpenSearchEntityManager(newClient);
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
@@ -1753,105 +1746,17 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void createEntity(String indexName, String docId, String doc) {
-    if (isNewClientAvailable) {
-      try {
-        newClient.update(
-            u ->
-                u.index(indexName)
-                    .id(docId)
-                    .docAsUpsert(true)
-                    .refresh(Refresh.True)
-                    .doc(toJsonData(doc)),
-            Map.class);
-        LOG.info(
-            "Successfully created entity in OpenSearch for index: {}, docId: {}", indexName, docId);
-      } catch (IOException e) {
-        LOG.error("Failed to create entity in OS for index: {}, docId: {} ", indexName, docId, e);
-        throw new RuntimeException("Failed to create entity in OpenSearch", e);
-      }
-    }
+    entityManager.createEntity(indexName, docId, doc);
   }
 
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (isNewClientAvailable) {
-      try {
-        List<BulkOperation> operations = new ArrayList<>();
-
-        for (Map<String, String> docAndId : docsAndIds) {
-          Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
-          String docId = entry.getKey();
-          String jsonString = entry.getValue();
-
-          // Add UpdateOperation to BulkOperation directly
-          operations.add(
-              BulkOperation.of(
-                  b ->
-                      b.update(
-                          u ->
-                              u.index(indexName)
-                                  .id(docId)
-                                  .document(toJsonData(jsonString))
-                                  .upsert(toJsonData(jsonString)))));
-        }
-
-        // Send bulk update request
-        BulkResponse response =
-            newClient.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
-
-        // Handle errors
-        if (response.errors()) {
-          StringBuilder errorMessage = new StringBuilder();
-          response
-              .items()
-              .forEach(
-                  item -> {
-                    if (item.error() != null) {
-                      errorMessage
-                          .append("Failed to index document ")
-                          .append(item.id())
-                          .append(": ")
-                          .append(item.error().reason())
-                          .append("; ");
-                    }
-                  });
-          LOG.error("Failed to create entities in OpenSearch: {}", errorMessage);
-        } else {
-          LOG.info("Successfully created {} entities in OpenSearch", docsAndIds.size());
-        }
-
-      } catch (IOException e) {
-        LOG.error("Failed to create entities in OpenSearch", e);
-        throw new RuntimeException("Failed to create entities in OpenSearch", e);
-      }
-    }
+    entityManager.createEntities(indexName, docsAndIds);
   }
 
   @Override
   public void createTimeSeriesEntity(String indexName, String docId, String doc) {
-    if (isNewClientAvailable) {
-      try {
-        newClient.update(
-            u ->
-                u.index(indexName)
-                    .id(docId)
-                    .docAsUpsert(true)
-                    .refresh(Refresh.True)
-                    .doc(toJsonData(doc)),
-            Map.class);
-        LOG.info(
-            "Successfully created time series entity in OpenSearch for index: {}, docId: {}",
-            indexName,
-            docId);
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to create time series entity in OpenSearch for index: {}, docId: {}, error: {}",
-            indexName,
-            docId,
-            e.getMessage(),
-            e);
-      }
-    }
+    entityManager.createTimeSeriesEntity(indexName, docId, doc);
   }
 
   @Override
@@ -1867,24 +1772,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteEntity(String indexName, String docId) {
-    if (isNewClientAvailable) {
-      try {
-        DeleteResponse response =
-            newClient.delete(d -> d.index(indexName).id(docId).refresh(Refresh.WaitFor));
-        LOG.info(
-            "Successfully deleted entity from OpenSearch for index: {}, docId: {}, result: {}",
-            indexName,
-            docId,
-            response.result());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to delete entity from OpenSearch for index: {}, docId: {}, error: {}",
-            indexName,
-            docId,
-            e.getMessage(),
-            e);
-      }
-    }
+    entityManager.deleteEntity(indexName, docId);
   }
 
   @Override
@@ -3218,11 +3106,5 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
     }
     return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
-  }
-
-  private JsonData toJsonData(String json) {
-    JsonpMapper mapper = newClient._transport().jsonpMapper();
-    JsonParser parser = JsonProvider.provider().createParser(new StringReader(json));
-    return JsonData.from(parser, mapper);
   }
 }

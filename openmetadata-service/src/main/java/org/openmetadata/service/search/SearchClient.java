@@ -36,7 +36,7 @@ import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
-public interface SearchClient<T> extends IndexManagementClient {
+public interface SearchClient<T> extends IndexManagementClient, EntityManagementClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
@@ -481,20 +481,12 @@ public interface SearchClient<T> extends IndexManagementClient {
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
-  void createEntity(String indexName, String docId, String doc);
-
-  void createEntities(String indexName, List<Map<String, String>> docsAndIds) throws IOException;
-
-  void createTimeSeriesEntity(String indexName, String docId, String doc);
-
   void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
 
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
   void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params);
-
-  void deleteEntity(String indexName, String docId);
 
   void deleteEntityByFields(List<String> indexName, List<Pair<String, String>> fieldAndValue);
 

@@ -23,10 +23,7 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
-import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
-import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
-import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
@@ -223,6 +220,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private final ESLineageGraphBuilder lineageGraphBuilder;
   private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
   private final ElasticSearchIndexManager indexManager;
+  private final ElasticSearchEntityManager entityManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -263,6 +261,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     lineageGraphBuilder = new ESLineageGraphBuilder(client);
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
+    entityManager = new ElasticSearchEntityManager(newClient);
     nlqService = null;
   }
 
@@ -1600,90 +1599,17 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void createEntity(String indexName, String docId, String doc) {
-    if (isNewClientAvailable) {
-      try {
-        newClient.update(
-            u ->
-                u.index(indexName)
-                    .id(docId)
-                    .docAsUpsert(true)
-                    .refresh(Refresh.True)
-                    .doc(JsonData.fromJson(doc)),
-            Map.class);
-        LOG.info(
-            "Successfully created entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId);
-      } catch (IOException e) {
-        LOG.error("Failed to create entity in ES for index: {}, docId: {} ", indexName, docId, e);
-        throw new RuntimeException("Failed to create entity in ElasticSearch", e);
-      }
-    }
+    entityManager.createEntity(indexName, docId, doc);
   }
 
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (isNewClientAvailable) {
-      try {
-        List<BulkOperation> operations = new ArrayList<>();
-        for (Map<String, String> docAndId : docsAndIds) {
-          Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
-          operations.add(
-              BulkOperation.of(
-                  b ->
-                      b.index(
-                          i ->
-                              i.index(indexName)
-                                  .id(entry.getKey())
-                                  .document(JsonData.fromJson(entry.getValue())))));
-        }
-
-        BulkResponse response =
-            newClient.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
-
-        if (response.errors()) {
-          String errorMessage =
-              response.items().stream()
-                  .filter(item -> item.error() != null)
-                  .map(
-                      item ->
-                          "Failed to index document " + item.id() + ": " + item.error().reason())
-                  .collect(Collectors.joining("; "));
-          LOG.error("Failed to create entities in ElasticSearch: {}", errorMessage);
-        } else {
-          LOG.info("Successfully created {} entities in ElasticSearch", docsAndIds.size());
-        }
-      } catch (IOException e) {
-        LOG.error("Failed to create entities in ElasticSearch", e);
-      }
-    }
+    entityManager.createEntities(indexName, docsAndIds);
   }
 
   @Override
   public void createTimeSeriesEntity(String indexName, String docId, String doc) {
-    if (isNewClientAvailable) {
-      try {
-        newClient.update(
-            u ->
-                u.index(indexName)
-                    .id(docId)
-                    .docAsUpsert(true)
-                    .refresh(Refresh.True)
-                    .doc(JsonData.fromJson(doc)),
-            Map.class);
-        LOG.info(
-            "Successfully created time series entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId);
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to create time series entity in ElasticSearch for index: {}, docId: {}, error: {}",
-            indexName,
-            docId,
-            e.getMessage(),
-            e);
-      }
-    }
+    entityManager.createTimeSeriesEntity(indexName, docId, doc);
   }
 
   @Override
