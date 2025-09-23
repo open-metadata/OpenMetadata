@@ -1322,6 +1322,15 @@ public interface CollectionDAO {
       return findToBatchAllTypesWithCondition(fromIds, relation, condition);
     }
 
+    default List<EntityRelationshipObject> findToBatchExcludingType(
+        List<String> fromIds, int relation, String excludeEntityType) {
+      String condition = "";
+      if (excludeEntityType != null && !excludeEntityType.isEmpty()) {
+        condition += " AND toEntity <> '" + excludeEntityType.replace("'", "''") + "'";
+      }
+      return findToBatchAllTypesWithCondition(fromIds, relation, condition);
+    }
+
     @SqlQuery(
         "SELECT toId, toEntity, json FROM entity_relationship "
             + "WHERE fromId = :fromId AND fromEntity = :fromEntity AND relation = :relation AND toEntity = :toEntity")

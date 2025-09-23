@@ -160,7 +160,12 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private List<EntityReference> getAssets(Domain entity) {
-    return findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
+    // Get all entities with HAS relationship but exclude DataProducts
+    // DataProducts have their own tab and shouldn't be shown as assets
+    List<EntityReference> allAssets = findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
+    return allAssets.stream()
+        .filter(asset -> !Entity.DATA_PRODUCT.equals(asset.getType()))
+        .collect(Collectors.toList());
   }
 
   private List<EntityReference> getAllAssets(Domain entity) {
@@ -377,8 +382,8 @@ public class DomainRepository extends EntityRepository<Domain> {
     var records =
         daoCollection
             .relationshipDAO()
-            .findToBatchAllTypes(
-                entityListToStrings(domains), Relationship.HAS.ordinal(), Include.ALL);
+            .findToBatchExcludingType(
+                entityListToStrings(domains), Relationship.HAS.ordinal(), DATA_PRODUCT);
 
     // Group assets by domain ID
     records.forEach(
@@ -452,10 +457,10 @@ public class DomainRepository extends EntityRepository<Domain> {
     var records =
         daoCollection
             .relationshipDAO()
-            .findToBatchAllTypes(
+            .findToBatchExcludingType(
                 allDomainIds.stream().map(UUID::toString).collect(Collectors.toList()),
                 Relationship.HAS.ordinal(),
-                Include.ALL);
+                DATA_PRODUCT);
 
     // Collect unique assets
     var uniqueAssets = new LinkedHashSet<EntityReference>();
@@ -504,10 +509,10 @@ public class DomainRepository extends EntityRepository<Domain> {
           var records =
               daoCollection
                   .relationshipDAO()
-                  .findToBatchAllTypes(
+                  .findToBatchExcludingType(
                       allDomainIds.stream().map(UUID::toString).collect(Collectors.toList()),
                       Relationship.HAS.ordinal(),
-                      Include.ALL);
+                      DATA_PRODUCT);
 
           // Collect unique assets
           var uniqueAssets = new LinkedHashSet<EntityReference>();
