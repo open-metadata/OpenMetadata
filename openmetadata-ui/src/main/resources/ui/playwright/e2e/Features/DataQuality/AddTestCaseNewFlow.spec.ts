@@ -13,6 +13,7 @@
 import { expect, Page, Response } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { visitDataQualityTab } from '../../../utils/testCases';
 import { test } from '../../fixtures/pages';
 
@@ -168,13 +169,13 @@ test.describe('Add TestCase New Flow', () => {
     });
     await testCaseDoc;
     await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
   };
 
   const visitDataQualityPage = async (page: Page) => {
     await page.goto('/data-quality/test-cases');
-    await page.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
   };
 
   test.beforeEach(async ({ page }) => {
@@ -390,7 +391,7 @@ test.describe('Add TestCase New Flow', () => {
     for (const page of [dataConsumerPage, dataStewardPage]) {
       await visitDataQualityPage(page);
 
-      await page.getByTestId('add-test-case-btn').click();
+      await openTestCaseForm(page);
 
       await selectTable(page, table);
 

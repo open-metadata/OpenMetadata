@@ -23,6 +23,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   redirectToHomePage,
+  toastNotification,
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
@@ -949,6 +950,9 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .click();
     await adminPage.waitForResponse('/api/v1/users/*');
 
+    // Verify NO notification appears when removing default persona
+    await expect(adminPage.getByTestId('alert-bar')).not.toBeVisible();
+
     // Verify "No default persona" message appears
     await expect(adminPage.getByText('No default persona')).toBeVisible();
 
@@ -1174,6 +1178,13 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Wait for the API call to complete and default persona to appear
       await adminPage.waitForResponse('/api/v1/users/*');
+
+      // Check that success notification appears with correct message
+      await toastNotification(
+        adminPage,
+        `Your Default Persona changed to ${persona1.data.displayName}`
+      );
+
       await adminPage.waitForSelector(
         '.default-persona-text [data-testid="tag-chip"]'
       );
@@ -1239,6 +1250,9 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Wait for the API call to complete and verify no default persona is shown
       await defaultPersonaChangeResponse;
+
+      // Verify NO notification appears when removing default persona
+      await expect(adminPage.getByTestId('alert-bar')).not.toBeVisible();
 
       await expect(adminPage.getByText('No default persona')).toBeVisible();
     });
