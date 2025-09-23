@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Typography } from 'antd';
+import {
+  Box,
+  Card,
+  Skeleton,
+  Stack,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import ProfilerLatestValue from '../ProfilerLatestValue/ProfilerLatestValue';
 import { ProfilerStateWrapperProps } from './ProfilerStateWrapper.interface';
 
@@ -21,21 +28,40 @@ const ProfilerStateWrapper = ({
   profilerLatestValueProps,
   dataTestId,
 }: ProfilerStateWrapperProps) => {
+  const theme = useTheme();
+
+  if (isLoading) {
+    return <Skeleton height={380} variant="rounded" width="100%" />;
+  }
+
   return (
-    <Card
-      className="shadow-none global-border-radius"
-      data-testid={dataTestId ?? 'profiler-details-card-container'}
-      loading={isLoading}>
-      <Row gutter={[16, 16]}>
-        <Col span={24}>
-          <Typography.Title level={5}>{title}</Typography.Title>
-        </Col>
-        <Col span={4}>
+    <Box>
+      {title && (
+        <Typography
+          sx={{
+            fontSize: '16px',
+            color: theme.palette.grey[900],
+            fontWeight: theme.typography.fontWeightBold,
+            mb: 3,
+          }}
+          variant="h6">
+          {title}
+        </Typography>
+      )}
+      <Card
+        data-testid={dataTestId ?? 'profiler-details-card-container'}
+        sx={{
+          p: 4,
+          borderRadius: '10px',
+          border: `1px solid ${theme.palette.grey[200]}`,
+          boxShadow: 'none',
+        }}>
+        <Stack spacing={4}>
           <ProfilerLatestValue {...profilerLatestValueProps} />
-        </Col>
-        <Col span={20}>{children}</Col>
-      </Row>
-    </Card>
+          <Box flexGrow={1}>{children}</Box>
+        </Stack>
+      </Card>
+    </Box>
   );
 };
 

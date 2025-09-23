@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Stack, Typography, useTheme } from '@mui/material';
+import { Box, Divider, Stack, Typography, useTheme } from '@mui/material';
 import { isUndefined } from 'lodash';
 import { getStatisticsDisplayValue } from '../../../../utils/CommonUtils';
 import '../ProfilerDashboard/profiler-dashboard.less';
@@ -40,7 +40,7 @@ const ProfilerLatestValue = ({
     <Stack
       data-testid="data-summary-container"
       direction="row"
-      spacing={4}
+      spacing={20}
       sx={{
         width: '100%',
         backgroundColor: theme.palette.grey[50],
@@ -54,7 +54,7 @@ const ProfilerLatestValue = ({
             data-testid="title"
             sx={{
               color: theme.palette.grey[700],
-              fontSize: '11px',
+              fontSize: theme.typography.pxToRem(11),
               fontWeight: theme.typography.fontWeightBold,
               borderLeft: `4px solid ${info.color}`,
               paddingLeft: '8px',
@@ -68,11 +68,31 @@ const ProfilerLatestValue = ({
             data-testid="value"
             sx={{
               color: theme.palette.grey[900],
-              fontSize: '17px',
+              fontSize: theme.typography.pxToRem(17),
               fontWeight: 700,
             }}>
             {getLatestValue(info.latestValue)}
           </Typography>
+          {info.extra && (
+            <>
+              <Divider
+                sx={{
+                  my: 2,
+                  borderStyle: 'dashed',
+                  borderColor: theme.palette.allShades.gray[300],
+                }}
+              />
+              <Typography
+                className="break-all"
+                data-testid="extra"
+                sx={{
+                  color: theme.palette.grey[900],
+                  fontSize: theme.typography.pxToRem(11),
+                }}>
+                {info.extra}
+              </Typography>
+            </>
+          )}
         </Box>
       ))}
     </Stack>

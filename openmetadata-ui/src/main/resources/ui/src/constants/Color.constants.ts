@@ -32,6 +32,7 @@ export const INDIGO_1 = '#3538CD';
 export const PRIMARY_COLOR = DEFAULT_THEME.primaryColor;
 export const BLUE_2 = '#3ca2f4';
 export const BLUE_500 = '#2E90FA';
+export const BLUE_800 = '#1849A9';
 export const BLUE_50 = '#EFF8FF';
 export const CHART_BLUE_1 = '#1890FF';
 export const RIPTIDE = '#76E9C6';

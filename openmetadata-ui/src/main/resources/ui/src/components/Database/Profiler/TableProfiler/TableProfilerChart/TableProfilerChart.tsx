@@ -40,7 +40,6 @@ import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
-import OperationDateBarChart from '../../../../Visualisations/Chart/OperationDateBarChart';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from '../../ProfilerDetailsCard/ProfilerDetailsCard';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
@@ -77,11 +76,9 @@ const TableProfilerChart = ({
   const [operationMetrics, setOperationMetrics] = useState<MetricChartType>(
     INITIAL_OPERATION_METRIC_VALUE
   );
-  const [operationDateMetrics, setOperationDateMetrics] =
-    useState<MetricChartType>(INITIAL_OPERATION_METRIC_VALUE);
   const [isTableProfilerLoading, setIsTableProfilerLoading] = useState(true);
   const [isSystemProfilerLoading, setIsSystemProfilerLoading] = useState(true);
-  const [showSystemMetrics, setshowSystemMetrics] = useState(false);
+  const [showSystemMetrics, setShowSystemMetrics] = useState(false);
   const [profileMetrics, setProfileMetrics] = useState<TableProfile[]>([]);
   const profilerDocsLink =
     documentationLinksClassBase.getDocsURLS()
@@ -132,11 +129,9 @@ const TableProfilerChart = ({
       try {
         const { data } = await getSystemProfileList(fqn, dateRangeObj);
         if (data.length > 0) {
-          setshowSystemMetrics(true);
-          const { operationMetrics: metricsData, operationDateMetrics } =
-            calculateSystemMetrics(data, operationMetrics);
+          setShowSystemMetrics(true);
+          const metricsData = calculateSystemMetrics(data, operationMetrics);
 
-          setOperationDateMetrics(operationDateMetrics);
           setOperationMetrics(metricsData);
         }
       } catch (error) {
@@ -145,7 +140,7 @@ const TableProfilerChart = ({
         setIsSystemProfilerLoading(false);
       }
     },
-    [operationMetrics, operationDateMetrics]
+    [operationMetrics]
   );
 
   const fetchProfilerData = useCallback(
@@ -166,43 +161,6 @@ const TableProfilerChart = ({
     }
   }, [datasetFQN, dateRangeObject, entityFqn]);
 
-  const operationDateMetricsCard = useMemo(() => {
-    return (
-      <ProfilerStateWrapper
-        dataTestId="operation-date-metrics"
-        isLoading={isSystemProfilerLoading}
-        profilerLatestValueProps={{
-          information: operationDateMetrics.information,
-          stringValue: true,
-        }}
-        title={t('label.table-update-plural')}>
-        <OperationDateBarChart
-          chartCollection={operationDateMetrics}
-          name="operationDateMetrics"
-          noDataPlaceholderText={noProfilerMessage}
-        />
-      </ProfilerStateWrapper>
-    );
-  }, [isSystemProfilerLoading, operationDateMetrics, noProfilerMessage]);
-
-  const operationMetricsCard = useMemo(() => {
-    return (
-      <ProfilerStateWrapper
-        dataTestId="operation-metrics"
-        isLoading={isSystemProfilerLoading}
-        profilerLatestValueProps={{
-          information: operationMetrics.information,
-        }}
-        title={t('label.volume-change')}>
-        <CustomBarChart
-          chartCollection={operationMetrics}
-          name="operationMetrics"
-          noDataPlaceholderText={noProfilerMessage}
-        />
-      </ProfilerStateWrapper>
-    );
-  }, [isSystemProfilerLoading, operationMetrics, noProfilerMessage]);
-
   if (permissions && !permissions?.ViewDataProfile) {
     return (
       <ErrorPlaceHolder
@@ -215,7 +173,7 @@ const TableProfilerChart = ({
   }
 
   return (
-    <Stack data-testid="table-profiler-chart-container" spacing="30px">
+    <Stack data-testid="table-profiler-chart-container">
       {showHeader && (
         <>
           {!isSummaryLoading && !isProfilingEnabled && (
@@ -239,29 +197,42 @@ const TableProfilerChart = ({
           </Grid>
         </>
       )}
-      <Box data-testid="row-metrics">
-        <ProfilerDetailsCard
-          chartCollection={rowCountMetrics}
-          chartType="area"
-          isLoading={isTableProfilerLoading}
-          name="rowCount"
-          noDataPlaceholderText={noProfilerMessage}
-          title={t('label.data-volume')}
-        />
-      </Box>
-      {showSystemMetrics && (
-        <>
-          <Box>{operationDateMetricsCard}</Box>
-          <Box>{operationMetricsCard}</Box>
-        </>
-      )}
-      <Box>
-        <CustomMetricGraphs
-          customMetrics={customMetrics}
-          customMetricsGraphData={tableCustomMetricsProfiling}
-          isLoading={isTableProfilerLoading || isSummaryLoading}
-        />
-      </Box>
+      <Stack data-testid="table-profiler-chart-container" spacing="30px">
+        <Box data-testid="row-metrics">
+          <ProfilerDetailsCard
+            chartCollection={rowCountMetrics}
+            chartType="area"
+            isLoading={isTableProfilerLoading}
+            name="rowCount"
+            noDataPlaceholderText={noProfilerMessage}
+            title={t('label.data-volume')}
+          />
+        </Box>
+        {showSystemMetrics && (
+          <Box>
+            <ProfilerStateWrapper
+              dataTestId="operation-metrics"
+              isLoading={isSystemProfilerLoading}
+              profilerLatestValueProps={{
+                information: operationMetrics.information,
+              }}
+              title={t('label.volume-change')}>
+              <CustomBarChart
+                chartCollection={operationMetrics}
+                name="operationMetrics"
+                noDataPlaceholderText={noProfilerMessage}
+              />
+            </ProfilerStateWrapper>
+          </Box>
+        )}
+        <Box>
+          <CustomMetricGraphs
+            customMetrics={customMetrics}
+            customMetricsGraphData={tableCustomMetricsProfiling}
+            isLoading={isTableProfilerLoading || isSummaryLoading}
+          />
+        </Box>
+      </Stack>
     </Stack>
   );
 };

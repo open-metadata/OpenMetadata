@@ -29,6 +29,7 @@ export type MetricChartType = {
     color: string;
     fill?: string;
     latestValue?: string | number;
+    extra?: string;
   }[];
   data: Record<string, string | number | undefined>[];
 };

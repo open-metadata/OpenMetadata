@@ -35,7 +35,7 @@ import {
   getEpochMillisForPastDays,
 } from '../utils/date-time/DateTimeUtils';
 import { t } from '../utils/i18next/LocalUtil';
-import { BLUE_50, BLUE_500, GREEN_3, PURPLE_2, RED_3 } from './Color.constants';
+import { BLUE_50, BLUE_500, BLUE_800, YELLOW_3 } from './Color.constants';
 
 export const PROFILER_METRIC = [
   'valuesCount',
@@ -253,17 +253,20 @@ export const INITIAL_OPERATION_METRIC_VALUE = {
     {
       title: t('label.insert'),
       dataKey: DMLOperationType.Insert,
-      color: GREEN_3,
+      color: BLUE_800,
+      stackId: 'operation-metrics',
     },
     {
       title: t('label.update'),
       dataKey: DMLOperationType.Update,
-      color: PURPLE_2,
+      color: BLUE_500,
+      stackId: 'operation-metrics',
     },
     {
       title: t('label.delete'),
       dataKey: DMLOperationType.Delete,
-      color: RED_3,
+      color: YELLOW_3,
+      stackId: 'operation-metrics',
     },
   ],
   data: [],
