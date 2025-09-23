@@ -100,10 +100,15 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
             status = TestCaseStatus.Failed
             result_value = len_rows
 
-        row_count = self._get_total_row_count_if_needed()
-        passed_rows, failed_rows = self._calculate_passed_failed_rows(
-            test_passed, operator, threshold, len_rows, row_count
-        )
+        if self.test_case.computePassedFailedRowCount:
+            row_count = self._get_total_row_count_if_needed()
+            passed_rows, failed_rows = self._calculate_passed_failed_rows(
+                test_passed, operator, threshold, len_rows, row_count
+            )
+        else:
+            passed_rows = None
+            failed_rows = None
+            row_count = None
 
         return self.get_test_case_result_object(
             self.execution_date,
@@ -138,9 +143,7 @@ class BaseTableCustomSQLQueryValidator(BaseTestValidator):
 
     def _get_total_row_count_if_needed(self) -> int:
         """Get total row count if computePassedFailedRowCount is enabled"""
-        if self.test_case.computePassedFailedRowCount:
-            return self.get_row_count()
-        return None
+        return self.get_row_count()
 
     def _calculate_passed_failed_rows(
         self,
