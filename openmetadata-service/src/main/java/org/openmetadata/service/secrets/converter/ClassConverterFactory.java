@@ -29,7 +29,6 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.CockroachConnection;
-import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
 import org.openmetadata.schema.services.connections.database.GreenplumConnection;
@@ -101,7 +100,6 @@ public final class ClassConverterFactory {
             Map.entry(MatillionConnection.class, new MatillionConnectionClassConverter()),
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
             Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
-            Map.entry(DatabricksConnection.class, new DatabricksConnectionClassConverter()),
             Map.entry(RangerConnection.class, new RangerConnectionClassConverter()));
     Map.entry(Workflow.class, new WorkflowClassConverter());
     Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
