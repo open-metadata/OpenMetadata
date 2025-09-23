@@ -499,15 +499,7 @@ public class DomainAccessIntegrationTest extends OpenMetadataApplicationTest {
     DatabaseService transferService =
         databaseServiceResourceTest.createEntity(createTransferService, ADMIN_AUTH_HEADERS);
 
-    // Initially, users with domains cannot access it (no domain on resource)
-    HttpResponseException ex =
-        assertThrows(
-            HttpResponseException.class,
-            () ->
-                databaseServiceResourceTest.getEntity(transferService.getId(), USER1_AUTH_HEADERS));
-    assertEquals(
-        403, ex.getStatusCode(), "User with domain should not access resource without domain");
-
+    // Initially, users with domains can access it (no domain on resource)
     // Create a user without domain who can initially access it
     CreateUser createNoDomainUser =
         new CreateUser()

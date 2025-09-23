@@ -130,7 +130,7 @@ public class DomainAccessTest {
   }
 
   @Test
-  @DisplayName("User with domain should NOT access resources without domain")
+  @DisplayName("User with domain should access resources without domain")
   void testUserWithDomainAccessingNonDomainResource() {
     EntityReference userDomain =
         createDomain("team1-domain", "12345678-1234-1234-1234-123456789012");
@@ -140,7 +140,7 @@ public class DomainAccessTest {
 
     boolean hasAccess = ruleEvaluator.hasDomain();
 
-    assertFalse(hasAccess, "User with domain should NOT access resources without domain");
+    assertTrue(hasAccess, "User with domain should be able to access resources without domain");
   }
 
   @Test

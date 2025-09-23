@@ -88,13 +88,6 @@ public class RuleEvaluator {
       return false;
     }
 
-    // Check domain bypass list
-    String resourceType = resourceContext.getResource();
-    if (resourceType != null && Entity.SKIP_DOMAIN_CHECK_ENTITY_LIST.contains(resourceType)) {
-      LOG.info("hasDomain() - Entity '{}' is in domain bypass list, returning true", resourceType);
-      return true;
-    }
-
     if (resourceContext.getEntity() == null || resourceContext.getEntity().getId() == null) {
       LOG.info(
           "hasDomain() - List operation detected (no specific resource), returning true for post-filtering");
@@ -131,17 +124,15 @@ public class RuleEvaluator {
             ? resourceContext.getEntity().getFullyQualifiedName()
             : "unknown");
 
-    if (nullOrEmpty(userDomains) && nullOrEmpty(resourceDomains)) {
-      LOG.info("hasDomain() - Both have no domains, returning true");
+    // If resource has no domains, allow access to everyone - should be restricted with other
+    // controlled policies
+    if (nullOrEmpty(resourceDomains)) {
+      LOG.info("hasDomain() - Resource has no domains, returning true");
       return true;
     }
 
-    if (!nullOrEmpty(userDomains) && nullOrEmpty(resourceDomains)) {
-      LOG.info("hasDomain() - User has domains but resource doesn't, returning false");
-      return false;
-    }
-
-    if (nullOrEmpty(userDomains) && !nullOrEmpty(resourceDomains)) {
+    // Resource has domains, check if user has domains
+    if (nullOrEmpty(userDomains)) {
       LOG.info("hasDomain() - Resource has domains but user doesn't, returning false");
       return false;
     }

@@ -334,19 +334,6 @@ public final class Entity {
             SPREADSHEET));
   }
 
-  /**
-   * Entities that skip domain checks - includes system-provided entities and entities where domain field is not fully supported.
-   */
-  public static final Set<String> SKIP_DOMAIN_CHECK_ENTITY_LIST =
-      Set.of(
-          TEST_DEFINITION,
-          KPI,
-          METRIC,
-          INGESTION_PIPELINE,
-          DATA_INSIGHT_CHART,
-          DATA_INSIGHT_CUSTOM_CHART,
-          METADATA_SERVICE);
-
   private Entity() {}
 
   public static void initializeRepositories(OpenMetadataApplicationConfig config, Jdbi jdbi) {
