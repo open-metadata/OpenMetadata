@@ -108,7 +108,7 @@ class OpenMetadataValidationAction1xx(ValidationAction):
                 table_entity = self._get_table_entity(
                     self.database_name,
                     check_point_spec.get("schema_name", self.schema_name),
-                    check_point_spec.get("table_name"),
+                    check_point_spec.get("table_name", self.table_name),
                 )
 
             else:
