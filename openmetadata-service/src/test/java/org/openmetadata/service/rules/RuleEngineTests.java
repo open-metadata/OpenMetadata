@@ -586,122 +586,154 @@ public class RuleEngineTests extends OpenMetadataApplicationTest {
   void testContainsOperatorNegation(TestInfo test) {
     Table table = getMockTable(test);
 
-    // Test case 1: Using "!" negation with contains - no tags should be in forbidden list
-    SemanticsRule bangNotContainsRule =
+    // Rule using proper negation logic: NO tag should be forbidden
+    // {"!":{"some":[{"var":"tags"},{"contains":[{"var":"tagFQN"},["Forbidden.Tag1"]]}]}}
+    SemanticsRule noForbiddenTagsRule =
         new SemanticsRule()
-            .withName("Tag FQN must not be in forbidden list using ! negation")
+            .withName("No forbidden tags allowed")
             .withDescription(
-                "Validates that no tag FQN is contained in the forbidden list using ! negation")
+                "Validates that no tag is forbidden - fails if ANY tag is in the forbidden list")
             .withRule(
                 "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Forbidden.Tag1\",\"Forbidden.Tag2\"]]}]}}");
 
-    // Test case 2: Using not_contains operator with some - all tags should not be in forbidden list
-    SemanticsRule notContainsRule =
-        new SemanticsRule()
-            .withName("All tags must not be in forbidden list using not_contains")
-            .withDescription(
-                "Validates that all tag FQNs are not contained in the forbidden list using not_contains operator")
-            .withRule(
-                "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"!\":{\"not_contains\":[{\"var\":\"tagFQN\"},[\"Forbidden.Tag1\",\"Forbidden.Tag2\"]]}}]}}");
-
-    // Test case 3: Using not_contains with some - simpler version
-    SemanticsRule someNotContainsRule =
-        new SemanticsRule()
-            .withName("Tags must not be forbidden")
-            .withDescription(
-                "Validates that tags are not in forbidden list using some with not_contains")
-            .withRule(
-                "{\"some\":[{\"var\":\"tags\"},{\"not_contains\":[{\"var\":\"tagFQN\"},[\"Forbidden.Tag1\",\"Forbidden.Tag2\",\"Forbidden.Tag3\"]]}]}");
-
-    // Test with allowed tag - all rules should pass
-    TagLabel allowedTag =
+    // Test with allowed tags only - should PASS
+    TagLabel allowedTag1 =
         new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
-    table.withTags(List.of(allowedTag));
-    RuleEngine.getInstance().evaluate(table, List.of(bangNotContainsRule), false, false);
-    RuleEngine.getInstance().evaluate(table, List.of(notContainsRule), false, false);
-    RuleEngine.getInstance().evaluate(table, List.of(someNotContainsRule), false, false);
+    TagLabel allowedTag2 =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(allowedTag1, allowedTag2));
+    RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false);
 
-    // Test with forbidden tag - bangNotContainsRule and notContainsRule should fail,
-    // someNotContainsRule should pass (since it checks if "some" tag is not forbidden, not "all")
+    // Test with forbidden tag only - should FAIL
     TagLabel forbiddenTag =
         new TagLabel().withTagFQN("Forbidden.Tag1").withSource(TagLabel.TagSource.CLASSIFICATION);
     table.withTags(List.of(forbiddenTag));
     assertThrows(
         RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(table, List.of(bangNotContainsRule), false, false));
+        () -> RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false));
+
+    // Test with mixed: one valid tag and one forbidden tag - should FAIL
+    // This is the key test case requested
+    table.withTags(List.of(allowedTag1, forbiddenTag));
     assertThrows(
         RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(table, List.of(notContainsRule), false, false));
-    // someNotContainsRule returns false because no tag satisfies not_contains (all are forbidden)
-    assertThrows(
-        RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(table, List.of(someNotContainsRule), false, false));
+        () -> RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false));
 
-    // Test case 4: Multiple forbidden values with not_contains - ensure ALL tags are not forbidden
-    SemanticsRule allNotContainsRule =
-        new SemanticsRule()
-            .withName("All tags must not be forbidden values")
-            .withDescription("Validates that all tag FQNs are not forbidden using every/all logic")
-            .withRule(
-                "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Forbidden.Tag1\",\"Forbidden.Tag2\",\"Forbidden.Tag3\"]]}]}}");
+    // Test with empty tags - should PASS (no forbidden tags)
+    table.withTags(List.of());
+    RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false);
 
-    // Test with another forbidden tag
+    // Test with multiple forbidden tags - should FAIL
     TagLabel anotherForbiddenTag =
         new TagLabel().withTagFQN("Forbidden.Tag2").withSource(TagLabel.TagSource.CLASSIFICATION);
-    table.withTags(List.of(anotherForbiddenTag));
+    table.withTags(List.of(forbiddenTag, anotherForbiddenTag));
     assertThrows(
         RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(table, List.of(allNotContainsRule), false, false));
+        () -> RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false));
+  }
 
-    // Test with allowed & forbidden mixed - allNotContainsRule should fail, someNotContainsRule
-    // should pass
-    TagLabel anotherAllowedTag =
-        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
-    table.withTags(List.of(anotherAllowedTag, forbiddenTag));
-    assertThrows(
-        RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(table, List.of(allNotContainsRule), false, false));
-    // someNotContainsRule should pass because at least one tag (anotherAllowedTag) is not forbidden
-    RuleEngine.getInstance().evaluate(table, List.of(someNotContainsRule), false, false);
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testNegationLogicForForbiddenTags(TestInfo test) {
+    Table table = getMockTable(test);
 
-    // Test with only allowed tags - all rules should pass
-    table.withTags(List.of(allowedTag, anotherAllowedTag));
-    RuleEngine.getInstance().evaluate(table, List.of(allNotContainsRule), false, false);
-    RuleEngine.getInstance().evaluate(table, List.of(someNotContainsRule), false, false);
-
-    // Test case 5: Empty/null handling
-    table.withTags(List.of());
-    // bangNotContainsRule and allNotContainsRule should pass when tags are empty (no forbidden
-    // tags)
-    RuleEngine.getInstance().evaluate(table, List.of(bangNotContainsRule), false, false);
-    RuleEngine.getInstance().evaluate(table, List.of(notContainsRule), false, false);
-    RuleEngine.getInstance().evaluate(table, List.of(allNotContainsRule), false, false);
-    // someNotContainsRule will fail with empty tags since "some" needs at least one element
-    assertThrows(
-        RuleValidationException.class,
-        () -> RuleEngine.getInstance().evaluate(table, List.of(someNotContainsRule), false, false));
-
-    // Test case 6: String not_contains validation
-    SemanticsRule stringNotContainsRule =
+    // Rule that validates NO tag should be forbidden using correct negation logic
+    // {"!":{"some":[{"var":"tags"},{"contains":[{"var":"tagFQN"},["Tier.Tier1"]]}]}}
+    // This means: NOT(some tag contains forbidden value) = no forbidden tags allowed
+    SemanticsRule noForbiddenTagsRule =
         new SemanticsRule()
-            .withName("Description must not contain forbidden words")
-            .withDescription("Validates that description does not contain forbidden substrings")
-            .withRule("{\"not_contains\":[\"sensitive\",{\"var\":\"description\"}]}");
+            .withName("No forbidden tags allowed")
+            .withDescription(
+                "Validates that no tag is forbidden - fails if ANY tag is in the forbidden list")
+            .withRule(
+                "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Tier.Tier1\"]]}]}}");
 
-    // Test with description not containing forbidden word - should pass
-    table.withDescription("This is a normal description");
-    RuleEngine.getInstance().evaluate(table, List.of(stringNotContainsRule), false, false);
+    // Test scenario 1: ALL tags are valid (not forbidden) - should PASS
+    TagLabel validTag1 =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel validTag2 =
+        new TagLabel().withTagFQN("Tier.Tier3").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(validTag1, validTag2));
+    RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false);
 
-    // Test with description containing forbidden word - should fail
-    table.withDescription("This contains sensitive information");
+    // Test scenario 2: Mixed - ONE valid tag and ONE forbidden tag - should FAIL
+    // This is the key test case you requested
+    TagLabel forbiddenTag =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel validTag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(forbiddenTag, validTag));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false));
+
+    // Test scenario 3: ALL tags are forbidden - should FAIL
+    TagLabel anotherForbiddenTag =
+        new TagLabel().withTagFQN("Tier.Tier1").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(forbiddenTag, anotherForbiddenTag));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false));
+
+    // Test scenario 4: Single valid tag - should PASS
+    table.withTags(List.of(validTag1));
+    RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false);
+
+    // Test scenario 5: Single forbidden tag - should FAIL
+    table.withTags(List.of(forbiddenTag));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false));
+
+    // Test scenario 6: Empty tags list - should PASS (no tags = no forbidden tags)
+    table.withTags(List.of());
+    RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false);
+
+    // Test scenario 7: Multiple forbidden values
+    SemanticsRule multipleForbiddenRule =
+        new SemanticsRule()
+            .withName("No tags should be Tier1 or Tier2")
+            .withDescription("Validates that no tag is Tier1 or Tier2")
+            .withRule(
+                "{\"!\":{\"some\":[{\"var\":\"tags\"},{\"contains\":[{\"var\":\"tagFQN\"},[\"Tier.Tier1\",\"Tier.Tier2\"]]}]}}");
+
+    // All valid tags (not in forbidden list) - should PASS
+    TagLabel validTag3 =
+        new TagLabel().withTagFQN("Tier.Tier3").withSource(TagLabel.TagSource.CLASSIFICATION);
+    TagLabel validTag4 =
+        new TagLabel().withTagFQN("Tier.Tier4").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(validTag3, validTag4));
+    RuleEngine.getInstance().evaluate(table, List.of(multipleForbiddenRule), false, false);
+
+    // Mix of valid and forbidden - should FAIL (any forbidden tag fails)
+    TagLabel tier2Tag =
+        new TagLabel().withTagFQN("Tier.Tier2").withSource(TagLabel.TagSource.CLASSIFICATION);
+    table.withTags(List.of(validTag3, tier2Tag, validTag4));
     assertThrows(
         RuleValidationException.class,
         () ->
-            RuleEngine.getInstance().evaluate(table, List.of(stringNotContainsRule), false, false));
+            RuleEngine.getInstance().evaluate(table, List.of(multipleForbiddenRule), false, false));
 
-    // Test with null description - should pass (not_contains returns true for null)
-    table.withDescription(null);
-    RuleEngine.getInstance().evaluate(table, List.of(stringNotContainsRule), false, false);
+    // All forbidden tags - should FAIL
+    table.withTags(List.of(forbiddenTag, tier2Tag));
+    assertThrows(
+        RuleValidationException.class,
+        () ->
+            RuleEngine.getInstance().evaluate(table, List.of(multipleForbiddenRule), false, false));
+
+    // Test scenario 8: Mixed tag sources (Classification and Glossary)
+    TagLabel glossaryTag =
+        new TagLabel().withTagFQN("Glossary.Term1").withSource(TagLabel.TagSource.GLOSSARY);
+
+    // Valid glossary tag with forbidden classification tag - should FAIL
+    table.withTags(List.of(forbiddenTag, glossaryTag));
+    assertThrows(
+        RuleValidationException.class,
+        () -> RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false));
+
+    // Only valid tags from different sources - should PASS
+    table.withTags(List.of(validTag1, glossaryTag));
+    RuleEngine.getInstance().evaluate(table, List.of(noForbiddenTagsRule), false, false);
   }
 
   /**
