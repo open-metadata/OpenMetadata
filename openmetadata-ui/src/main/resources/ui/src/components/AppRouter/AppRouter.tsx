@@ -27,6 +27,8 @@ import SignUpPage from '../../pages/SignUp/SignUpPage';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import AppContainer from '../AppContainer/AppContainer';
 import Loader from '../common/Loader/Loader';
+import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 
 const AppRouter = () => {
   const location = useCustomLocation();
@@ -41,6 +43,7 @@ const AppRouter = () => {
     isApplicationLoading,
     isAuthenticating,
   } = useApplicationStore();
+  const { plugins } = useApplicationsProvider();
 
   useEffect(() => {
     const { pathname } = location;
@@ -110,6 +113,22 @@ const AppRouter = () => {
        */}
       <Route element={<SamlCallback />} path={ROUTES.SAML_CALLBACK} />
       <Route element={<SamlCallback />} path={ROUTES.AUTH_CALLBACK} />
+
+      {/* Render APP position plugin routes (they handle their own layouts) */}
+      {isAuthenticated &&
+        plugins.flatMap((plugin) => {
+          const routes = plugin.getRoutes?.() || [];
+          // Filter routes with APP position
+          const appRoutes = routes.filter(
+            (route) => route.position === RoutePosition.APP
+          );
+
+          return appRoutes.map((route, idx) => (
+            <Route key={`${plugin.name}-app-${idx}`} {...route} />
+          ));
+        })}
+
+      {/* Default authenticated and unauthenticated routes */}
       {isAuthenticated ? (
         <Route element={<AppContainer />} path="*" />
       ) : (
