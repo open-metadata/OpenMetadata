@@ -224,9 +224,10 @@ class SSLManager:
                 "ssl.key.location": getattr(self, "key_consumer_config", None),
                 "ssl.certificate.location": getattr(self, "cert_consumer_config", None),
             }
-        connection.schemaRegistryConfig["ssl.ca.location"] = (
-            getattr(self, "ca_schema_registry", None),
+        connection.schemaRegistryConfig["ssl.ca.location"] = getattr(
+            self, "ca_schema_registry", None
         )
+
         connection.schemaRegistryConfig["ssl.key.location"] = getattr(
             self, "key_schema_registry", None
         )
