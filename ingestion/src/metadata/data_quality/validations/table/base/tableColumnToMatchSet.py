@@ -20,11 +20,11 @@ from typing import List
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
-    DimensionResult,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()

@@ -287,6 +287,12 @@
         "failedRowsPercentage": {
           "description": "Percentage of rows that failed for this dimension combination",
           "type": "number"
+        },
+        "impactScore": {
+          "description": "Impact score indicating the significance of this dimension for revealing data quality variations. Higher scores indicate dimensions with more significant quality issues considering both failure rate and data volume.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       },
       "required": ["id", "testCaseResultId", "timestamp", "dimensionValues", "dimensionKey", "testCaseStatus"],

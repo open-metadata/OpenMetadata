@@ -42,6 +42,12 @@
     "failedRowsPercentage": {
       "description": "Percentage of rows that failed for this dimension",
       "type": "number"
+    },
+    "impactScore": {
+      "description": "Impact score indicating the significance of this dimension for revealing data quality variations. Higher scores indicate dimensions with more variance in test results.",
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
     }
   },
   "required": ["dimensionValues", "testCaseStatus"],

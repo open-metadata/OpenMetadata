@@ -14,10 +14,22 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import Dict, Optional
+from typing import Optional
 
+import pandas as pd
+
+from metadata.data_quality.validations.base_test_handler import (
+    DIMENSION_FAILED_COUNT_KEY,
+    DIMENSION_NULL_LABEL,
+    DIMENSION_TOTAL_COUNT_KEY,
+)
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
+)
+from metadata.data_quality.validations.impact_score import (
+    DEFAULT_TOP_DIMENSIONS,
+    aggregate_others_pandas,
+    calculate_impact_score_pandas,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
@@ -80,11 +92,8 @@ class ColumnValuesToBeUniqueValidator(
         column: SQALikeColumn,
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
-    ) -> Dict[str, DimensionResult]:
-        """Execute dimensional query for column values to be unique using Pandas
-
-        This method now uses the pandas mixin's dimensional results method for a single dimension,
-        following the same pattern as _run_results for consistency and reusability.
+    ) -> list[DimensionResult]:
+        """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Args:
             column: The column being validated
@@ -92,47 +101,94 @@ class ColumnValuesToBeUniqueValidator(
             metrics_to_compute: Dictionary mapping metric names to Metrics objects
 
         Returns:
-            Dict[str, DimensionResult]: Dictionary mapping dimension values to results
+            List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
-        dimension_results = {}
+        dimension_results = []
 
         try:
-            # Use the mixin's dimensional results method for a single dimension
-            dimensional_data = self.run_dataframe_single_dimensional_results(
-                runner=self.runner,
-                metrics_to_compute=metrics_to_compute,
-                column=column,
-                dimension_column=dimension_col.name,
-            )
+            # Get the dataframe
+            dfs = self.runner if isinstance(self.runner, list) else [self.runner]
+            df = dfs[0]
 
-            # Process results - each item contains dimension_value and metrics for single dimension
-            for dimension_value, metrics in dimensional_data.items():
-                # Extract the specific metrics we need for uniqueness test
-                total_count = metrics.get("count", 0)
-                unique_count = metrics.get("unique_count", 0)
+            # Group by dimension column
+            grouped = df.groupby(dimension_col.name, dropna=False)
 
-                # Create dimension result using the helper method
-                dimension_result = self.get_dimension_result_object(
-                    dimension_values={dimension_col.name: dimension_value},
-                    test_case_status=self.get_test_case_status(
-                        total_count == unique_count
-                    ),
-                    result=f"Dimension {dimension_col.name}={dimension_value}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
-                    test_result_value=[
-                        TestResultValue(name="valuesCount", value=str(total_count)),
-                        TestResultValue(name="uniqueCount", value=str(unique_count)),
-                    ],
-                    total_rows=total_count,
-                    passed_rows=unique_count,
-                    # failed_rows will be auto-calculated as (total_count - unique_count)
+            # Prepare results dataframe
+            results_data = []
+
+            for dimension_value, group_df in grouped:
+                # Handle NULL values
+                if pd.isna(dimension_value):
+                    dimension_value = DIMENSION_NULL_LABEL
+                else:
+                    dimension_value = str(dimension_value)
+
+                # Calculate metrics for this group
+                total_count = len(group_df)
+                unique_count = group_df[column.name].nunique()
+                duplicate_count = total_count - unique_count
+
+                results_data.append(
+                    {
+                        "dimension": dimension_value,
+                        "count": total_count,
+                        "unique_count": unique_count,
+                        DIMENSION_TOTAL_COUNT_KEY: total_count,
+                        DIMENSION_FAILED_COUNT_KEY: duplicate_count,
+                    }
                 )
 
-                # Add to results dictionary with dimension value as key
-                dimension_results[dimension_value] = dimension_result
+            # Create DataFrame with results
+            results_df = pd.DataFrame(results_data)
+
+            if not results_df.empty:
+                # Calculate impact scores
+                results_df = calculate_impact_score_pandas(
+                    results_df,
+                    failed_column=DIMENSION_FAILED_COUNT_KEY,
+                    total_column=DIMENSION_TOTAL_COUNT_KEY,
+                )
+
+                # Aggregate Others
+                results_df = aggregate_others_pandas(
+                    results_df,
+                    dimension_column="dimension",
+                    top_n=DEFAULT_TOP_DIMENSIONS,
+                )
+
+                # Process results into DimensionResult objects
+                for _, row in results_df.iterrows():
+                    dimension_value = row["dimension"]
+
+                    # Extract metric values
+                    total_count = int(row.get("count", 0))
+                    unique_count = int(row.get("unique_count", 0))
+                    duplicate_count = int(row.get(DIMENSION_FAILED_COUNT_KEY, 0))
+                    matched = total_count == unique_count
+
+                    impact_score = float(row.get("impact_score", 0.0))
+
+                    # Create dimension result
+                    dimension_result = self.get_dimension_result_object(
+                        dimension_values={dimension_col.name: dimension_value},
+                        test_case_status=self.get_test_case_status(matched),
+                        result=f"Dimension {dimension_col.name}={dimension_value}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
+                        test_result_value=[
+                            TestResultValue(name="valuesCount", value=str(total_count)),
+                            TestResultValue(
+                                name="uniqueCount", value=str(unique_count)
+                            ),
+                        ],
+                        total_rows=total_count,
+                        passed_rows=unique_count,
+                        failed_rows=duplicate_count,
+                        impact_score=impact_score,
+                    )
+
+                    dimension_results.append(dimension_result)
 
         except Exception as exc:
-            # Use the same error handling pattern as _run_results
             logger.warning(f"Error executing dimensional query: {exc}")
-            # Return empty dict on error (test continues without dimensions)
+            logger.debug("Full error details: ", exc_info=True)
 
         return dimension_results

@@ -660,23 +660,50 @@ def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
     assert test_handler.is_dimensional_test()
 
     # Mock the main query result and dimensional query results
+    # Simulate realistic data: John and Jane are in the allowed set, Alice is not
     mock_dimensional_data = [
-        ("John", 1),  # name=John, count_in_set=1
-        ("Jane", 1),  # name=Jane, count_in_set=1
-        ("Bob", 1),  # name=Bob, count_in_set=1
+        {
+            "dimension_value": "John",
+            "count_in_set": 2,
+            "impact_score": 0.3,
+        },  # 2 Johns in allowed set
+        {
+            "dimension_value": "Jane",
+            "count_in_set": 1,
+            "impact_score": 0.15,
+        },  # 1 Jane in allowed set
+        {
+            "dimension_value": "Alice",
+            "count_in_set": 0,
+            "impact_score": 0.0,
+        },  # Alice not in allowed set
     ]
 
     with patch.object(test_handler, "_run_results", return_value=23), patch.object(
-        test_handler.runner,
-        "select_all_from_sample",
+        test_handler,
+        "_execute_with_others_aggregation",
         return_value=mock_dimensional_data,
     ), patch.object(test_handler, "_get_column_name") as mock_get_column:
 
         # Mock column objects with required attributes for COUNT_IN_SET metric
-        from sqlalchemy import String
+        from unittest.mock import MagicMock
 
-        mock_main_column = type("Column", (), {"name": "nickname", "type": String()})()
-        mock_name_column = type("Column", (), {"name": "name", "type": String()})()
+        from sqlalchemy import Column, String
+
+        # Create proper SQLAlchemy Column mocks
+        mock_main_column = MagicMock(spec=Column)
+        mock_main_column.name = "nickname"
+        mock_main_column.type = String()
+        mock_main_column.label = MagicMock(
+            return_value=mock_main_column
+        )  # Add label method
+
+        mock_name_column = MagicMock(spec=Column)
+        mock_name_column.name = "name"
+        mock_name_column.type = String()
+        mock_name_column.label = MagicMock(
+            return_value=mock_name_column
+        )  # Add label method
 
         def mock_get_column_side_effect(column_name=None):
             if column_name == "name":
@@ -684,6 +711,11 @@ def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
             return mock_main_column
 
         mock_get_column.side_effect = mock_get_column_side_effect
+
+        # Also mock get_dimension_column for dimensional validation
+        test_handler.get_dimension_column = MagicMock(
+            side_effect=mock_get_column_side_effect
+        )
 
         res = test_handler.run_validation()
 
@@ -695,16 +727,40 @@ def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
 
     # Verify dimensional results exist
     assert res.dimensionResults is not None
-    assert len(res.dimensionResults) == 3  # Three dimension values: John, Jane, Bob
+    assert len(res.dimensionResults) == 3  # Three dimension values: John, Jane, Alice
 
-    # Verify first dimensional result structure
-    dim_result = res.dimensionResults[0]
-    assert "name" in dim_result.dimensionValues
-    assert dim_result.dimensionKey.startswith("name=")
-    assert dim_result.testCaseStatus in [TestCaseStatus.Success, TestCaseStatus.Failed]
-    assert dim_result.testResultValue is not None
-    assert len(dim_result.testResultValue) == 1
-    assert dim_result.testResultValue[0].name == "allowedValueCount"
+    # Create a map for easier verification
+    dimension_results_map = {
+        dr.dimensionValues[0].value: dr for dr in res.dimensionResults
+    }
+
+    # Verify John's results (2 matches - should pass)
+    john_result = dimension_results_map["John"]
+    assert john_result.dimensionKey == "name=John"
+    assert (
+        john_result.testCaseStatus == TestCaseStatus.Success
+    )  # Has matches, so success
+    assert john_result.passedRows == 2  # 2 Johns in allowed set
+    assert john_result.failedRows == 0  # No failures for non-enum mode
+    assert john_result.testResultValue[0].value == "2"  # count_in_set = 2
+
+    # Verify Jane's results (1 match - should pass)
+    jane_result = dimension_results_map["Jane"]
+    assert jane_result.dimensionKey == "name=Jane"
+    assert (
+        jane_result.testCaseStatus == TestCaseStatus.Success
+    )  # Has matches, so success
+    assert jane_result.passedRows == 1  # 1 Jane in allowed set
+    assert jane_result.failedRows == 0  # No failures for non-enum mode
+    assert jane_result.testResultValue[0].value == "1"  # count_in_set = 1
+
+    # Verify Alice's results (0 matches - should fail)
+    alice_result = dimension_results_map["Alice"]
+    assert alice_result.dimensionKey == "name=Alice"
+    assert alice_result.testCaseStatus == TestCaseStatus.Failed  # No matches, so failed
+    assert alice_result.passedRows == 0  # 0 Alices in allowed set
+    assert alice_result.failedRows == 0  # No failures tracked in non-enum mode
+    assert alice_result.testResultValue[0].value == "0"  # count_in_set = 0
 
 
 def test_column_values_to_be_in_set_invalid_dimension_column(create_sqlite_table):
@@ -744,19 +800,39 @@ def test_column_values_to_be_in_set_invalid_dimension_column(create_sqlite_table
     # Mock column resolution to raise ValueError for invalid column
     with patch.object(test_handler, "_run_results", return_value=23), patch.object(
         test_handler, "_get_column_name"
-    ) as mock_get_column:
+    ) as mock_get_column, patch.object(
+        test_handler, "get_dimension_column"
+    ) as mock_get_dimension_column:
 
-        def mock_get_column_side_effect(column_name=None):
+        # Mock main column resolution
+        from unittest.mock import MagicMock
+
+        from sqlalchemy import Column, String
+
+        mock_main_column = MagicMock(spec=Column)
+        mock_main_column.name = "nickname"
+        mock_main_column.type = String()
+        mock_get_column.return_value = mock_main_column
+
+        # Mock dimension column resolution to raise error for invalid column
+        def mock_get_dimension_column_side_effect(column_name):
             if column_name == "invalid_column":
-                raise ValueError(f"Cannot find column {column_name}")
-            return type("Column", (), {"name": "address_id"})()
+                raise ValueError(f"Column {column_name} not found in table")
+            # This shouldn't be called for other columns in this test
+            raise AssertionError(f"Unexpected column: {column_name}")
 
-        mock_get_column.side_effect = mock_get_column_side_effect
+        mock_get_dimension_column.side_effect = mock_get_dimension_column_side_effect
 
         res = test_handler.run_validation()
 
-    # Should return aborted status due to invalid dimension column
+    # Main test should still succeed even when dimension columns are invalid
     assert isinstance(res, TestCaseResult)
-    assert res.testCaseStatus == TestCaseStatus.Aborted
-    assert "Dimensional validation failed" in res.result
-    assert "invalid_column" in res.result
+    assert res.testCaseStatus == TestCaseStatus.Success  # Main test succeeds
+
+    # Dimensional results should be None due to invalid columns
+    assert res.dimensionResults is None
+
+    # Main test result should still be valid
+    assert len(res.testResultValue) == 1
+    assert res.testResultValue[0].name == "allowedValueCount"
+    assert res.testResultValue[0].value == "23"  # From mock _run_results

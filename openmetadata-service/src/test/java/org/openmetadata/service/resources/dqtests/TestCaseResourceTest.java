@@ -4064,10 +4064,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     // Create a test case that will have dimensional results
     CreateTestCase create = createRequest(test);
     create
-            .withEntityLink(TABLE_COLUMN_LINK)
-            .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
-            .withParameterValues(
-                    List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
+        .withEntityLink(TABLE_COLUMN_LINK)
+        .withTestDefinition(TEST_DEFINITION3.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("missingCountValue")));
     TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
 
     // Create test case results with dimensional data
@@ -4078,116 +4078,112 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       // Add dimensional results for different columns
       for (String column : List.of("address", "email", "phone")) {
         List<DimensionValue> dimensionValues =
-                List.of(new DimensionValue().withName("column").withValue(column));
+            List.of(new DimensionValue().withName("column").withValue(column));
 
         TestCaseDimensionResult dimResult =
-                new TestCaseDimensionResult()
-                        .withId(UUID.randomUUID())
-                        .withTestCaseResultId(testCaseResultId) // Link to parent result
-                        .withDimensionValues(dimensionValues)
-                        .withDimensionKey("column=" + column)
-                        .withTestCaseStatus(
-                                column.equals("email") && day == 2
-                                        ? TestCaseStatus.Failed
-                                        : TestCaseStatus.Success)
-                        .withTimestamp(dateToTimestamp("2024-01-0" + day))
-                        .withTestResultValue(
-                                List.of(
-                                        new TestResultValue()
-                                                .withName("missingCount")
-                                                .withValue(column.equals("email") && day == 2 ? "10" : "0")))
-                        .withPassedRows(column.equals("email") && day == 2 ? 90 : 100)
-                        .withFailedRows(column.equals("email") && day == 2 ? 10 : 0);
+            new TestCaseDimensionResult()
+                .withId(UUID.randomUUID())
+                .withTestCaseResultId(testCaseResultId) // Link to parent result
+                .withDimensionValues(dimensionValues)
+                .withDimensionKey("column=" + column)
+                .withTestCaseStatus(
+                    column.equals("email") && day == 2
+                        ? TestCaseStatus.Failed
+                        : TestCaseStatus.Success)
+                .withTimestamp(dateToTimestamp("2024-01-0" + day))
+                .withTestResultValue(
+                    List.of(
+                        new TestResultValue()
+                            .withName("missingCount")
+                            .withValue(column.equals("email") && day == 2 ? "10" : "0")))
+                .withPassedRows(column.equals("email") && day == 2 ? 90 : 100)
+                .withFailedRows(column.equals("email") && day == 2 ? 10 : 0);
         dimensionResults.add(dimResult);
       }
 
       CreateTestCaseResult createResult =
-              new CreateTestCaseResult()
-                      .withResult("tested")
-                      .withTestCaseStatus(day == 2 ? TestCaseStatus.Failed : TestCaseStatus.Success)
-                      .withTimestamp(dateToTimestamp("2024-01-0" + day))
-                      .withTestResultValue(
-                              List.of(
-                                      new TestResultValue()
-                                              .withName("missingCount")
-                                              .withValue(day == 2 ? "10" : "0")))
-                      .withDimensionResults(dimensionResults);
+          new CreateTestCaseResult()
+              .withResult("tested")
+              .withTestCaseStatus(day == 2 ? TestCaseStatus.Failed : TestCaseStatus.Success)
+              .withTimestamp(dateToTimestamp("2024-01-0" + day))
+              .withTestResultValue(
+                  List.of(
+                      new TestResultValue()
+                          .withName("missingCount")
+                          .withValue(day == 2 ? "10" : "0")))
+              .withDimensionResults(dimensionResults);
 
       postTestCaseResult(testCase.getFullyQualifiedName(), createResult, ADMIN_AUTH_HEADERS);
     }
 
     // Test 1: List all dimensional results
     WebTarget target =
-            getResource("dataQuality/testCases/dimensionResults")
-                    .path("/" + testCase.getFullyQualifiedName());
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName());
     jakarta.ws.rs.core.Response response =
-            SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+        SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     assertEquals(OK.getStatusCode(), response.getStatus());
 
     String json = response.readEntity(String.class);
     ResultList<TestCaseDimensionResult> allResults =
-            JsonUtils.readValue(
-                    json,
-                    new com.fasterxml.jackson.core.type.TypeReference<
-                            ResultList<TestCaseDimensionResult>>() {
-                    });
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<TestCaseDimensionResult>>() {});
 
     assertNotNull(allResults);
     assertEquals(9, allResults.getData().size()); // 3 days × 3 columns
 
     // Test 2: Filter by time range
     target =
-            getResource("dataQuality/testCases/dimensionResults")
-                    .path("/" + testCase.getFullyQualifiedName())
-                    .queryParam("startTs", dateToTimestamp("2024-01-02"))
-                    .queryParam("endTs", dateToTimestamp("2024-01-02"));
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName())
+            .queryParam("startTs", dateToTimestamp("2024-01-02"))
+            .queryParam("endTs", dateToTimestamp("2024-01-02"));
     response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     assertEquals(OK.getStatusCode(), response.getStatus());
 
     json = response.readEntity(String.class);
     ResultList<TestCaseDimensionResult> filteredResults =
-            JsonUtils.readValue(
-                    json,
-                    new com.fasterxml.jackson.core.type.TypeReference<
-                            ResultList<TestCaseDimensionResult>>() {
-                    });
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<TestCaseDimensionResult>>() {});
 
     assertEquals(3, filteredResults.getData().size()); // Only day 2 results
 
     // Test 3: Filter by specific dimension
     target =
-            getResource("dataQuality/testCases/dimensionResults")
-                    .path("/" + testCase.getFullyQualifiedName())
-                    .queryParam("dimensionalityKey", "column=email");
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName())
+            .queryParam("dimensionalityKey", "column=email");
     response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     assertEquals(OK.getStatusCode(), response.getStatus());
 
     json = response.readEntity(String.class);
     ResultList<TestCaseDimensionResult> emailResults =
-            JsonUtils.readValue(
-                    json,
-                    new com.fasterxml.jackson.core.type.TypeReference<
-                            ResultList<TestCaseDimensionResult>>() {
-                    });
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<
+                ResultList<TestCaseDimensionResult>>() {});
 
     assertEquals(3, emailResults.getData().size()); // 3 days for email column
     assertTrue(
-            emailResults.getData().stream().allMatch(r -> r.getDimensionKey().equals("column=email")));
+        emailResults.getData().stream().allMatch(r -> r.getDimensionKey().equals("column=email")));
 
     // Test 4: List available dimensions
     target =
-            getResource("dataQuality/testCases/dimensionResults")
-                    .path("/" + testCase.getFullyQualifiedName())
-                    .path("/dimensions");
+        getResource("dataQuality/testCases/dimensionResults")
+            .path("/" + testCase.getFullyQualifiedName())
+            .path("/dimensions");
     response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
     assertEquals(OK.getStatusCode(), response.getStatus());
 
     json = response.readEntity(String.class);
     Map<String, List<String>> dimensions =
-            JsonUtils.readValue(
-                    json,
-                    new com.fasterxml.jackson.core.type.TypeReference<Map<String, List<String>>>() {
-                    });
+        JsonUtils.readValue(
+            json,
+            new com.fasterxml.jackson.core.type.TypeReference<Map<String, List<String>>>() {});
 
     assertNotNull(dimensions);
     assertEquals(1, dimensions.size());

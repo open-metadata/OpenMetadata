@@ -111,10 +111,10 @@ class ColumnValuesToBeUniqueValidator(
     def _execute_dimensional_query(
         self, column: Column, dimension_col: Column, metrics_to_compute: dict
     ) -> List[DimensionResult]:
-        """Execute dimensional query for column values to be unique using SQLAlchemy
+        """Execute dimensional query with impact scoring and Others aggregation
 
-        This method follows the same pattern as _run_results but executes a GROUP BY query
-        for a single dimension column.
+        Calculates impact scores for all dimension values and aggregates
+        low-impact dimensions into "Others" category using CTEs.
 
         Args:
             column: The column being validated
@@ -122,86 +122,79 @@ class ColumnValuesToBeUniqueValidator(
             metrics_to_compute: Dictionary mapping metric names to Metrics objects
 
         Returns:
-            List[DimensionResult]: List of dimension results for this dimension column
+            List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
+        from sqlalchemy import func
+
+        from metadata.data_quality.validations.impact_score import (
+            DEFAULT_TOP_DIMENSIONS,
+        )
+
         dimension_results = []
 
         try:
-
-            # Build the SELECT clause with dimension column and metrics
-            # Following the same pattern as _run_results but with GROUP BY
-            select_entities = []
-
-            # Add dimension column first (single Column object)
-            select_entities.append(dimension_col)
-
-            # Add metrics - iterate through the metrics passed from the parent
-            # Handle different metric types appropriately (StaticMetric vs QueryMetric)
+            # Build metric expressions dictionary
+            metric_expressions = {}
             for metric_name, metric in metrics_to_compute.items():
                 metric_instance = metric.value(column)
 
-                # Check if metric has fn method (StaticMetric) or query method (QueryMetric)
-                if hasattr(metric_instance, "fn"):
-                    # StaticMetric - use fn() method (works correctly with GROUP BY)
-                    select_entities.append(metric_instance.fn().label(metric_name))
-                elif hasattr(metric_instance, "query"):
-                    # QueryMetric - for dimensional queries, we need to use the aggregate function
-                    # instead of subqueries to ensure metrics are calculated per group
-                    if metric_name == "unique_count":
-                        # For UNIQUE_COUNT in dimensional context, use COUNT(DISTINCT column)
-                        # This ensures we get unique count within each dimension group
-                        from sqlalchemy import func
-
-                        select_entities.append(
-                            func.count(func.distinct(column)).label(metric_name)
-                        )
-                    else:
-                        # For other QueryMetrics, use the subquery approach
-                        query_result = metric_instance.query(
-                            sample=self.runner.dataset,
-                            session=self.runner._session,  # pylint: disable=protected-access
-                        )
-                        if query_result:
-                            select_entities.append(
-                                query_result.scalar_subquery().label(metric_name)
-                            )
-                        else:
-                            # Handle case where query returns None
-                            logger.warning(
-                                f"Query for metric {metric_name} returned None"
-                            )
-                            continue
+                if metric_name == "unique_count":
+                    # For UNIQUE_COUNT in dimensional context, use COUNT(DISTINCT column)
+                    metric_expressions[metric_name] = func.count(func.distinct(column))
+                elif hasattr(metric_instance, "fn"):
+                    # StaticMetric - use fn() method
+                    metric_expressions[metric_name] = metric_instance.fn()
                 else:
-                    # Unknown metric type - log warning and skip
-                    logger.warning(f"Unknown metric type for {metric_name}, skipping")
+                    # Skip unsupported metrics
+                    logger.warning(
+                        f"Unsupported metric type for {metric_name}, skipping"
+                    )
                     continue
 
-            # Execute the dimensional query using GROUP BY
-            # This follows the same pattern as _run_results but uses select_all_from_sample
-            # with query_group_by_ parameter for GROUP BY functionality
-            dimensional_data = self.runner.select_all_from_sample(
-                *select_entities,
-                query_group_by_=[
-                    dimension_col
-                ],  # This enables GROUP BY on single dimension column
+            # Add standardized keys for impact scoring
+            from metadata.data_quality.validations.base_test_handler import (
+                DIMENSION_FAILED_COUNT_KEY,
+                DIMENSION_TOTAL_COUNT_KEY,
             )
 
-            # Process results - each row represents a different value of the dimension
-            for row in dimensional_data:
-                # Extract dimension value (first column is the dimension value)
-                dimension_value = str(row[0])
+            # For uniqueness test: failed = total - unique (duplicates)
+            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions["count"]
+            metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
+                metric_expressions["count"] - metric_expressions["unique_count"]
+            )
 
-                # Extract metric results - we know the exact order:
-                # [dimension_value, count, unique_count]
-                total_count = row[1]  # count column
-                unique_count = row[2]  # unique_count column
+            # Execute with Others aggregation (always use CTEs for impact scoring)
+            result_rows = self._execute_with_others_aggregation(
+                dimension_col, metric_expressions, DEFAULT_TOP_DIMENSIONS
+            )
 
-                # Create dimension result using the helper method (similar to get_test_case_result_object)
+            # Process results into DimensionResult objects
+            for row in result_rows:
+                # Extract values using dictionary keys
+                from metadata.data_quality.validations.base_test_handler import (
+                    DIMENSION_NULL_LABEL,
+                )
+
+                dimension_value = (
+                    str(row["dimension_value"])
+                    if row["dimension_value"] is not None
+                    else DIMENSION_NULL_LABEL
+                )
+
+                # Extract metric results
+                total_count = row.get("count", 0) or 0
+                unique_count = row.get("unique_count", 0) or 0
+
+                # Calculate duplicate count (failed rows for uniqueness test)
+                duplicate_count = total_count - unique_count
+                matched = total_count == unique_count
+
+                impact_score = row.get("impact_score", 0.0)
+
+                # Create dimension result using the helper method
                 dimension_result = self.get_dimension_result_object(
                     dimension_values={dimension_col.name: dimension_value},
-                    test_case_status=self.get_test_case_status(
-                        total_count == unique_count
-                    ),
+                    test_case_status=self.get_test_case_status(matched),
                     result=f"Dimension {dimension_col.name}={dimension_value}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
                     test_result_value=[
                         TestResultValue(name="valuesCount", value=str(total_count)),
@@ -209,7 +202,8 @@ class ColumnValuesToBeUniqueValidator(
                     ],
                     total_rows=total_count,
                     passed_rows=unique_count,
-                    # failed_rows will be auto-calculated as (total_count - unique_count)
+                    failed_rows=duplicate_count,
+                    impact_score=impact_score,
                 )
 
                 # Add to results list
@@ -218,6 +212,7 @@ class ColumnValuesToBeUniqueValidator(
         except Exception as exc:
             # Use the same error handling pattern as _run_results
             logger.warning(f"Error executing dimensional query: {exc}")
+            logger.debug("Full error details: ", exc_info=True)
             # Return empty list on error (test continues without dimensions)
 
         return dimension_results

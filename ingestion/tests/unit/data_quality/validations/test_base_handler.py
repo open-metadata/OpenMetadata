@@ -4,11 +4,13 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from metadata.data_quality.validations.base_test_handler import (
-    BaseTestValidator,
-    DimensionResultsDict,
+from metadata.data_quality.validations.base_test_handler import BaseTestValidator
+from metadata.generated.schema.tests.basic import (
+    DimensionValue,
+    TestCaseDimensionResult,
+    TestCaseResult,
+    TestCaseStatus,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.utils.logger import test_suite_logger
@@ -49,13 +51,15 @@ class MockTestValidator(BaseTestValidator):
 
     def _run_validation(self) -> TestCaseResult:
         """Mock implementation of _run_validation"""
-        # Create a mock TestCaseResult to avoid complex schema validation issues
-        mock_result = MagicMock(spec=TestCaseResult)
-        mock_result.testCaseStatus = TestCaseStatus.Success
-        mock_result.dimensionResults = {}
-        return mock_result
+        # Return a real TestCaseResult object that the base class can modify
+        return TestCaseResult(
+            timestamp=self.execution_date,
+            testCaseStatus=TestCaseStatus.Success,
+            result="Test passed",
+            testResultValue=[],
+        )
 
-    def _run_dimensional_validation(self) -> DimensionResultsDict:
+    def _run_dimensional_validation(self) -> list:
         """Execute dimensional validation for this test
 
         This method should implement the dimensional logic specific to each test type.
@@ -63,14 +67,23 @@ class MockTestValidator(BaseTestValidator):
         are configured in the test case.
 
         Returns:
-            DimensionResultsDict: Dictionary structure with results per dimension
+            List[DimensionResult]: List of dimension results
         """
-        # Default implementation returns empty dict
-        return {}
+        # Default implementation returns empty list
+        return []
 
     def _get_column_name(self):
         """Mock implementation of _get_column_name"""
         return None
+
+    def get_dimension_column(self, column_name: str):
+        """Mock implementation of get_dimension_column for dimensional validation"""
+        # Return a mock column object
+        from unittest.mock import MagicMock
+
+        mock_column = MagicMock()
+        mock_column.name = column_name
+        return mock_column
 
 
 class TestBaseTestValidator:
@@ -87,7 +100,7 @@ class TestBaseTestValidator:
     @pytest.fixture
     def mock_execution_date(self):
         """Create a mock execution date"""
-        return datetime.now()
+        return int(datetime.now().timestamp())
 
     @pytest.fixture
     def validator(self, mock_test_case, mock_execution_date):
@@ -114,41 +127,6 @@ class TestBaseTestValidator:
 
         result = validator.is_dimensional_test()
         assert result == expected
-
-    @pytest.mark.parametrize(
-        "has_dimensions,expected_dimension_results",
-        [
-            (False, []),
-            (True, []),
-        ],
-    )
-    def test_run_validation_flow(
-        self, validator, mock_test_case, has_dimensions, expected_dimension_results
-    ):
-        """Test the run_validation template method flow"""
-        # Set up dimension columns
-        mock_test_case.dimensionColumns = ["col1", "col2"] if has_dimensions else None
-
-        # Mock the dimensional validation to return expected results
-        if has_dimensions:
-            validator._run_dimensional_validation = MagicMock(
-                return_value=expected_dimension_results
-            )
-
-        # Execute the template method
-        result = validator.run_validation()
-
-        # Verify the result structure
-        assert isinstance(result, TestCaseResult)
-        assert result.testCaseStatus == TestCaseStatus.Success
-
-        # Verify dimensional results are set correctly
-        if has_dimensions:
-            assert result.dimensionResults == expected_dimension_results
-            # Verify that _run_dimensional_validation was called
-            validator._run_dimensional_validation.assert_called_once()
-        else:
-            assert result.dimensionResults is None or result.dimensionResults == []
 
     @pytest.mark.parametrize(
         "dimension_values,passed_rows,failed_rows,total_rows,expected_percentages",
@@ -183,7 +161,13 @@ class TestBaseTestValidator:
 
         # Verify the result structure
         assert isinstance(result, DimensionResult)
-        assert result.dimensionValues == dimension_values
+
+        # Verify dimension values were converted to DimensionValue objects
+        assert len(result.dimensionValues) == len(dimension_values)
+        for dim_val in result.dimensionValues:
+            assert isinstance(dim_val, DimensionValue)
+            assert dimension_values[dim_val.name] == dim_val.value
+
         assert result.passedRows == passed_rows
         assert result.failedRows == failed_rows
 
@@ -227,40 +211,174 @@ class TestBaseTestValidator:
         assert result.passedRowsPercentage == expected_passed_pct
         assert result.failedRowsPercentage == expected_failed_pct
 
-    def test_run_validation_calls_abstract_methods(self, validator, mock_test_case):
-        """Test that run_validation properly calls the abstract methods"""
-        # Mock the abstract methods
-        validator._run_validation = MagicMock(
-            return_value=MagicMock(spec=TestCaseResult)
-        )
+    @pytest.mark.parametrize(
+        "dimension_columns,test_description",
+        [
+            (None, "no dimensions configured"),
+            ([], "empty dimensions list"),
+        ],
+    )
+    def test_run_validation_no_dimensions_skip_dimensional(
+        self, validator, mock_test_case, dimension_columns, test_description
+    ):
+        """Test: When no dimensions are configured, dimensional validation should not run"""
+        # Setup: Set dimension columns
+        mock_test_case.dimensionColumns = dimension_columns
+
+        # Mock _run_dimensional_validation to track if it's called
         validator._run_dimensional_validation = MagicMock(return_value=[])
 
-        # Set up test case with dimensions
-        mock_test_case.dimensionColumns = ["col1"]
-
         # Execute
-        validator.run_validation()
+        result = validator.run_validation()
 
-        # Verify abstract methods were called
-        validator._run_validation.assert_called_once()
-        validator._run_dimensional_validation.assert_called_once()
+        # Verify
+        assert isinstance(result, TestCaseResult)
+        assert result.testCaseStatus == TestCaseStatus.Success
+        assert result.dimensionResults is None
 
-    def test_run_validation_no_dimensions_skips_dimensional_validation(
+        # Verify dimensional validation was NOT called
+        validator._run_dimensional_validation.assert_not_called()
+
+    def test_run_validation_dimensions_configured_no_results(
         self, validator, mock_test_case
     ):
-        """Test that run_validation skips dimensional validation when no dimensions are set"""
-        # Mock the abstract methods
-        validator._run_validation = MagicMock(
-            return_value=MagicMock(spec=TestCaseResult)
-        )
+        """Test: When dimensions configured but returns empty results, dimensionResults should be None"""
+        # Setup: Configure dimension columns
+        mock_test_case.dimensionColumns = ["region", "category"]
+
+        # Mock _run_dimensional_validation to return empty list
         validator._run_dimensional_validation = MagicMock(return_value=[])
 
-        # Set up test case without dimensions
-        mock_test_case.dimensionColumns = None
+        # Execute
+        result = validator.run_validation()
+
+        # Verify
+        assert isinstance(result, TestCaseResult)
+        assert result.testCaseStatus == TestCaseStatus.Success
+
+        # When dimensional validation returns empty list, dimensionResults remains None
+        assert result.dimensionResults is None
+
+        # Verify dimensional validation WAS called
+        validator._run_dimensional_validation.assert_called_once()
+
+    def test_run_validation_dimensions_configured_with_results(
+        self, validator, mock_test_case
+    ):
+        """Test: When dimensions configured and returns results, dimensionResults should contain them"""
+        # Setup: Configure dimension columns
+        mock_test_case.dimensionColumns = ["region", "category"]
+
+        # Create mock DimensionResult objects with all required fields
+        mock_dimension_result_1 = MagicMock(spec=DimensionResult)
+        mock_dimension_result_1.dimensionValues = [
+            DimensionValue(name="region", value="US"),
+            DimensionValue(name="category", value="A"),
+        ]
+        mock_dimension_result_1.testCaseStatus = TestCaseStatus.Success
+        mock_dimension_result_1.passedRows = 80
+        mock_dimension_result_1.failedRows = 20
+        mock_dimension_result_1.passedRowsPercentage = 80.0
+        mock_dimension_result_1.failedRowsPercentage = 20.0
+        mock_dimension_result_1.result = "Passed: 80, Failed: 20"
+        mock_dimension_result_1.testResultValue = []
+        mock_dimension_result_1.impactScore = None
+
+        mock_dimension_result_2 = MagicMock(spec=DimensionResult)
+        mock_dimension_result_2.dimensionValues = [
+            DimensionValue(name="region", value="EU"),
+            DimensionValue(name="category", value="B"),
+        ]
+        mock_dimension_result_2.testCaseStatus = TestCaseStatus.Failed
+        mock_dimension_result_2.passedRows = 50
+        mock_dimension_result_2.failedRows = 50
+        mock_dimension_result_2.passedRowsPercentage = 50.0
+        mock_dimension_result_2.failedRowsPercentage = 50.0
+        mock_dimension_result_2.result = "Passed: 50, Failed: 50"
+        mock_dimension_result_2.testResultValue = []
+        mock_dimension_result_2.impactScore = None
+
+        # Mock _run_dimensional_validation to return DimensionResult objects
+        validator._run_dimensional_validation = MagicMock(
+            return_value=[mock_dimension_result_1, mock_dimension_result_2]
+        )
 
         # Execute
-        validator.run_validation()
+        result = validator.run_validation()
 
-        # Verify only _run_validation was called
-        validator._run_validation.assert_called_once()
-        validator._run_dimensional_validation.assert_not_called()
+        # Verify
+        assert isinstance(result, TestCaseResult)
+        assert result.testCaseStatus == TestCaseStatus.Success
+
+        # When dimensional validation returns results, they should be converted to TestCaseDimensionResult
+        assert result.dimensionResults is not None
+        assert len(result.dimensionResults) == 2
+
+        # Verify the dimension results are TestCaseDimensionResult instances
+        for dim_result in result.dimensionResults:
+            assert isinstance(dim_result, TestCaseDimensionResult)
+
+        # Verify the first dimension result has correct values
+        first_result = result.dimensionResults[0]
+        assert first_result.dimensionKey == "region=US,category=A"
+        assert first_result.testCaseStatus == TestCaseStatus.Success
+        assert first_result.passedRows == 80
+        assert first_result.failedRows == 20
+
+        # Verify the second dimension result has correct values
+        second_result = result.dimensionResults[1]
+        assert second_result.dimensionKey == "region=EU,category=B"
+        assert second_result.testCaseStatus == TestCaseStatus.Failed
+        assert second_result.passedRows == 50
+        assert second_result.failedRows == 50
+
+        # Verify dimensional validation WAS called
+        validator._run_dimensional_validation.assert_called_once()
+
+    def test_run_validation_dimensional_not_implemented(
+        self, validator, mock_test_case
+    ):
+        """Test: When dimensional validation raises NotImplementedError, main test still succeeds"""
+        # Setup: Configure dimension columns
+        mock_test_case.dimensionColumns = ["region"]
+
+        # Mock _run_dimensional_validation to raise NotImplementedError
+        validator._run_dimensional_validation = MagicMock(
+            side_effect=NotImplementedError("Dimensional validation not implemented")
+        )
+
+        # Execute
+        result = validator.run_validation()
+
+        # Verify: Main test should still succeed despite NotImplementedError
+        assert isinstance(result, TestCaseResult)
+        assert result.testCaseStatus == TestCaseStatus.Success
+        assert (
+            result.dimensionResults is None
+        )  # No dimension results due to NotImplementedError
+
+        # Verify dimensional validation WAS attempted
+        validator._run_dimensional_validation.assert_called_once()
+
+    def test_run_validation_dimensional_raises_exception(
+        self, validator, mock_test_case
+    ):
+        """Test: When dimensional validation raises Exception, main test still succeeds"""
+        # Setup: Configure dimension columns
+        mock_test_case.dimensionColumns = ["region", "category"]
+
+        # Mock _run_dimensional_validation to raise a general exception
+        validator._run_dimensional_validation = MagicMock(
+            side_effect=RuntimeError("Something went wrong in dimensional validation")
+        )
+
+        # Execute
+        result = validator.run_validation()
+
+        # Verify: Main test should still succeed despite the exception
+        assert isinstance(result, TestCaseResult)
+        assert result.testCaseStatus == TestCaseStatus.Success
+        assert result.dimensionResults is None  # No dimension results due to exception
+
+        # Verify dimensional validation WAS attempted
+        validator._run_dimensional_validation.assert_called_once()

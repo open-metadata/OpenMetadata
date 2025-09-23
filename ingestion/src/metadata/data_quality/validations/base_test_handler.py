@@ -45,6 +45,14 @@ T = TypeVar("T", bound=Callable)
 R = TypeVar("R")
 S = TypeVar("S", bound=BaseModel)
 
+# Constants for dimensional validation
+DIMENSION_OTHERS_LABEL = "Others"
+DIMENSION_NULL_LABEL = "NULL"
+DIMENSION_VALUE_KEY = "dimension_value"
+DIMENSION_IMPACT_SCORE_KEY = "impact_score"
+DIMENSION_FAILED_COUNT_KEY = "failed_count"
+DIMENSION_TOTAL_COUNT_KEY = "total_count"
+
 
 class BaseTestValidator(ABC):
     """Abstract class for test case handlers
@@ -100,13 +108,10 @@ class BaseTestValidator(ABC):
             # Validate dimension columns exist in the target table
             validation_error = self.validate_dimension_columns()
             if validation_error:
-                logger.warning(f"Dimensional validation aborted: {validation_error}")
-                return self.get_test_case_result_object(
-                    self.execution_date,
-                    TestCaseStatus.Aborted,
-                    f"Dimensional validation failed: {validation_error}",
-                    test_result.testResultValue or [],
-                )
+                logger.warning(f"Dimensional validation skipped: {validation_error}")
+                # Don't abort the main test, just skip dimensional validation
+                # The main test result is still valid
+                return test_result
 
             try:
                 dimension_results = self._run_dimensional_validation()
@@ -266,6 +271,7 @@ class BaseTestValidator(ABC):
                 failedRows=dim_result.failedRows,
                 passedRowsPercentage=dim_result.passedRowsPercentage,
                 failedRowsPercentage=dim_result.failedRowsPercentage,
+                impactScore=dim_result.impactScore,  # Include the impact score
             )
 
             test_case_dimension_results.append(test_case_dim_result)
@@ -311,6 +317,7 @@ class BaseTestValidator(ABC):
         total_rows: int,
         passed_rows: int,
         failed_rows: Optional[int] = None,
+        impact_score: Optional[float] = None,
     ) -> "DimensionResult":
         """Returns a DimensionResult object with automatic percentage calculations
 
@@ -322,6 +329,7 @@ class BaseTestValidator(ABC):
             total_rows: Total number of rows in this dimension
             passed_rows: Number of rows that passed for this dimension
             failed_rows: Number of rows that failed for this dimension (auto-calculated if None)
+            impact_score: Optional impact score for this dimension (0-1 range)
 
         Returns:
             DimensionResult: Dimension result object with calculated percentages
@@ -332,12 +340,12 @@ class BaseTestValidator(ABC):
         if failed_rows is None:
             failed_rows = total_rows - passed_rows
 
-        # Calculate percentages
+        # Calculate percentages with rounding to 2 decimal places
         passed_rows_percentage = (
-            (passed_rows / total_rows * 100) if total_rows > 0 else 0
+            round(passed_rows / total_rows * 100, 2) if total_rows > 0 else 0
         )
         failed_rows_percentage = (
-            (failed_rows / total_rows * 100) if total_rows > 0 else 0
+            round(failed_rows / total_rows * 100, 2) if total_rows > 0 else 0
         )
 
         # Convert dictionary to array of DimensionValue objects
@@ -355,6 +363,9 @@ class BaseTestValidator(ABC):
             failedRows=failed_rows,
             passedRowsPercentage=passed_rows_percentage,
             failedRowsPercentage=failed_rows_percentage,
+            impactScore=round(impact_score, 4)
+            if impact_score is not None
+            else None,  # Round to 4 decimal places
         )
 
         return dimension_result

@@ -15,7 +15,7 @@ Validator for column value to be in set test case
 
 from typing import Optional
 
-from sqlalchemy import Column, inspect
+from sqlalchemy import Column, func, inspect
 
 from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
     BaseColumnValuesToBeInSetValidator,
@@ -82,10 +82,10 @@ class ColumnValuesToBeInSetValidator(
     def _execute_dimensional_query(
         self, column, dimension_col, metrics_to_compute, test_params
     ):
-        """Execute dimensional query for column values to be in set using SQLAlchemy
+        """Execute dimensional query with impact scoring and Others aggregation
 
-        This method follows the same pattern as _run_results but executes a GROUP BY query
-        for a single dimension column, following the columnValuesToBeUnique pattern.
+        Calculates impact scores for all dimension values and aggregates
+        low-impact dimensions into "Others" category using CTEs.
 
         Args:
             column: The column being validated
@@ -94,10 +94,15 @@ class ColumnValuesToBeInSetValidator(
             test_params: Dictionary with test-specific parameters (allowed_values, match_enum)
 
         Returns:
-            List[DimensionResult]: List of dimension results for this dimension column
+            List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
+        from sqlalchemy import func
+
         from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
             ALLOWED_VALUE_COUNT,
+        )
+        from metadata.data_quality.validations.impact_score import (
+            DEFAULT_TOP_DIMENSIONS,
         )
         from metadata.generated.schema.tests.basic import TestResultValue
 
@@ -108,49 +113,70 @@ class ColumnValuesToBeInSetValidator(
             allowed_values = test_params["allowed_values"]
             match_enum = test_params["match_enum"]
 
-            # Build the SELECT clause with dimension column and metrics
-            # Following the same pattern as _run_results but with GROUP BY
-            select_entities = []
-
-            # Add dimension column first (single Column object)
-            select_entities.append(dimension_col)
-
-            # Add metrics - iterate through the metrics passed from the parent
+            # Build metric expressions dictionary
+            metric_expressions = {}
             for metric_name, metric in metrics_to_compute.items():
                 metric_instance = metric.value(column)
-
                 if metric_name == "count_in_set":
-                    # Add COUNT_IN_SET with allowed values parameter
                     metric_instance.values = allowed_values
-                    select_entities.append(metric_instance.fn().label(metric_name))
-                else:
-                    # Add other metrics (like row_count)
-                    select_entities.append(metric_instance.fn().label(metric_name))
+                metric_expressions[metric_name] = metric_instance.fn()
 
-            # Execute the dimensional query using GROUP BY
-            dimensional_data = self.runner.select_all_from_sample(
-                *select_entities,
-                query_group_by_=[
-                    dimension_col
-                ],  # This enables GROUP BY on single dimension column
+            # Add standardized keys for impact scoring
+            from metadata.data_quality.validations.base_test_handler import (
+                DIMENSION_FAILED_COUNT_KEY,
+                DIMENSION_TOTAL_COUNT_KEY,
             )
 
-            # Process results - each row represents a different value of the dimension
-            for row in dimensional_data:
-                # Extract dimension value (first column is the dimension value)
-                dimension_value = str(row[0])
+            if match_enum and "row_count" in metric_expressions:
+                # Enum mode: failed = total - matched
+                metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[
+                    "row_count"
+                ]
+                metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
+                    metric_expressions["row_count"] - metric_expressions["count_in_set"]
+                )
+            else:
+                # Non-enum mode: no real concept of failure, use count_in_set for ordering
+                metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[
+                    "count_in_set"
+                ]
+                metric_expressions[DIMENSION_FAILED_COUNT_KEY] = func.literal(0)
 
-                # Extract metric results - we know the exact order based on select_entities
-                count_in_set = row[1]  # count_in_set column
+            # Execute with Others aggregation (always use CTEs for impact scoring)
+            result_rows = self._execute_with_others_aggregation(
+                dimension_col, metric_expressions, DEFAULT_TOP_DIMENSIONS
+            )
 
-                if match_enum and len(row) > 2:
-                    total_count = row[2]  # row_count column
-                    matched = total_count - count_in_set == 0
+            # Process results into DimensionResult objects
+            for row in result_rows:
+                # Extract values using dictionary keys
+                from metadata.data_quality.validations.base_test_handler import (
+                    DIMENSION_NULL_LABEL,
+                )
+
+                dimension_value = (
+                    str(row["dimension_value"])
+                    if row["dimension_value"] is not None
+                    else DIMENSION_NULL_LABEL
+                )
+
+                # Extract metric results - preserve original logic
+                count_in_set = row.get("count_in_set", 0) or 0
+
+                # PRESERVE ORIGINAL LOGIC: match_enum determines how we get total_count
+                if match_enum and "row_count" in row:
+                    total_count = row.get("row_count", 0) or 0
+                    failed_count = total_count - count_in_set
+                    matched = (
+                        total_count - count_in_set == 0
+                    )  # All must be in set for enum
                 else:
+                    # Non-enum mode: we only care about matches
                     matched = count_in_set > 0
-                    total_count = (
-                        count_in_set  # For non-enum mode, we only care about matches
-                    )
+                    total_count = count_in_set  # Original behavior preserved
+                    failed_count = 0  # In non-enum mode, we don't track failures
+
+                impact_score = row.get("impact_score", 0.0)
 
                 # Create dimension result using the helper method
                 dimension_result = self.get_dimension_result_object(
@@ -164,6 +190,10 @@ class ColumnValuesToBeInSetValidator(
                     ],
                     total_rows=total_count,
                     passed_rows=count_in_set,
+                    failed_rows=failed_count if match_enum else None,
+                    impact_score=impact_score
+                    if match_enum
+                    else None,  # Only include impact score when we have full metrics
                 )
 
                 # Add to results list
@@ -172,6 +202,7 @@ class ColumnValuesToBeInSetValidator(
         except Exception as exc:
             # Use the same error handling pattern as _run_results
             logger.warning(f"Error executing dimensional query: {exc}")
+            logger.debug("Full error details: ", exc_info=True)
             # Return empty list on error (test continues without dimensions)
 
         return dimension_results
