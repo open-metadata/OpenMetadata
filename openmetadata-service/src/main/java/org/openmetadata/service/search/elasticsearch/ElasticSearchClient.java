@@ -120,11 +120,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -235,6 +238,14 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
       Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
           .toList();
+
+  private static final Header[] defaultHeaders =
+      new Header[] {
+        new BasicHeader(
+            HttpHeaders.ACCEPT, "application/vnd.elasticsearch+json; compatible-with=7"),
+        new BasicHeader(
+            HttpHeaders.CONTENT_TYPE, "application/vnd.elasticsearch+json; compatible-with=7")
+      };
 
   // Add this field to the class
   private NLQService nlqService;
@@ -2427,6 +2438,17 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
         restClientBuilder.setCompressionEnabled(true);
+
+        // Build client without default headers first to check version
+        RestClient tempClient = restClientBuilder.build();
+        boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
+        tempClient.close();
+
+        // Only set default headers for ES 7.x server
+        if (isElasticsearch7) {
+          restClientBuilder.setDefaultHeaders(defaultHeaders);
+        }
+
         return restClientBuilder.build();
       } catch (Exception e) {
         LOG.error("Failed to create low level rest client ", e);
@@ -2996,6 +3018,23 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
           entityRelationshipRequest);
     }
+  }
+
+  private boolean isElasticsearch7Version(RestClient restClient) {
+    try {
+      Request request = new Request("GET", "/");
+      es.org.elasticsearch.client.Response response = restClient.performRequest(request);
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode jsonNode = JsonUtils.readTree(responseBody);
+      JsonNode versionNode = jsonNode.get("version");
+      if (versionNode != null && versionNode.get("number") != null) {
+        String version = versionNode.get("number").asText();
+        return version.startsWith("7.");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to detect Elasticsearch version, assuming non-7.x", e);
+    }
+    return false;
   }
 
   @Override
