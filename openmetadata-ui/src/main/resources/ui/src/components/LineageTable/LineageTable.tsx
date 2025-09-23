@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { SettingOutlined } from '@ant-design/icons';
+import { ListItemIcon, ListItemText } from '@mui/material';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import MenuItem from '@mui/material/MenuItem';
@@ -383,8 +384,8 @@ const LineageTable = () => {
                 handlePageChange(currentPage);
                 setImpactOnEl(null);
               }}>
-              {option.icon}
-              {option.label}
+              <ListItemIcon>{option.icon}</ListItemIcon>
+              <ListItemText>{option.label}</ListItemText>
             </MenuItem>
           ))}
         </StyledMenu>
@@ -476,6 +477,10 @@ const LineageTable = () => {
     fetchNodes();
   }, [queryFilter, nodeDepth, currentPage, lineageDirection, pageSize]);
 
+  const handleClearAllFilters = useCallback(() => {
+    setSelectedQuickFilters([]);
+  }, [setSelectedQuickFilters]);
+
   // Card header with search and filter options
   const cardHeader = useMemo(() => {
     return (
@@ -492,8 +497,9 @@ const LineageTable = () => {
 
             <Searchbar
               removeMargin
+              inputClassName="w-80"
               placeholder={t('label.search-for-type', {
-                type: t('label.entity'),
+                type: t('label.asset-or-column'),
               })}
               searchValue={searchValue}
               typingInterval={0}
@@ -520,6 +526,7 @@ const LineageTable = () => {
                   outlineColor: theme.palette.allShades.blue[100],
                   backgroundColor: theme.palette.allShades.blue[100],
                   color: theme.palette.allShades.blue[700],
+                  boxShadow: 'none',
                 },
               }}
               variant="outlined"
@@ -543,57 +550,66 @@ const LineageTable = () => {
           </div>
         </div>
         {filterSelectionActive ? (
-          <div className="m-t-sm">
+          <div className="m-t-sm d-flex items-center justify-between">
+            <div>
+              <Button
+                endIcon={<DropdownIcon />}
+                sx={{
+                  '& .MuiButton-endIcon': {
+                    svg: {
+                      height: 12,
+                    },
+                  },
+                }}
+                variant="text"
+                onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
+                {`${t('label.node-depth')}:`}{' '}
+                <span className="text-primary m-l-xss">{nodeDepth}</span>
+              </Button>
+              <StyledMenu
+                anchorEl={nodeDepthAnchorEl}
+                open={Boolean(nodeDepthAnchorEl)}
+                slotProps={{
+                  paper: {
+                    style: {
+                      maxHeight: 48 * 4.5,
+                      width: '10ch',
+                    },
+                  },
+                  list: {
+                    'aria-labelledby': 'long-button',
+                  },
+                }}
+                onClose={() => setNodeDepthAnchorEl(null)}>
+                {lineagePagingInfo?.downstreamDepthInfo.map(({ depth }) => (
+                  <MenuItem
+                    key={depth}
+                    selected={depth === nodeDepth}
+                    onClick={() => {
+                      handlePageChange(1);
+                      updateURLParams({ depth });
+                    }}>
+                    {depth}
+                  </MenuItem>
+                ))}
+              </StyledMenu>
+              <ExploreQuickFilters
+                independent
+                aggregations={{}}
+                defaultQueryFilter={defaultQueryFilter}
+                fields={selectedQuickFilters}
+                index={SearchIndex.ALL}
+                showDeleted={false}
+                onFieldValueSelect={handleQuickFiltersValueSelect}
+              />
+            </div>
             <Button
-              endIcon={<DropdownIcon />}
-              sx={{
-                '& .MuiButton-endIcon': {
-                  svg: {
-                    height: 12,
-                  },
-                },
-              }}
+              className="m-l-auto"
+              size="small"
               variant="text"
-              onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
-              {`${t('label.node-depth')}: `}{' '}
-              <span className="text-primary">{nodeDepth}</span>
+              onClick={handleClearAllFilters}>
+              {t('label.clear-entity', { entity: t('label.all') })}
             </Button>
-            <StyledMenu
-              anchorEl={nodeDepthAnchorEl}
-              open={Boolean(nodeDepthAnchorEl)}
-              slotProps={{
-                paper: {
-                  style: {
-                    maxHeight: 48 * 4.5,
-                    width: '10ch',
-                  },
-                },
-                list: {
-                  'aria-labelledby': 'long-button',
-                },
-              }}
-              onClose={() => setNodeDepthAnchorEl(null)}>
-              {lineagePagingInfo?.downstreamDepthInfo.map(({ depth }) => (
-                <MenuItem
-                  key={depth}
-                  selected={depth === nodeDepth}
-                  onClick={() => {
-                    handlePageChange(1);
-                    updateURLParams({ depth });
-                  }}>
-                  {depth}
-                </MenuItem>
-              ))}
-            </StyledMenu>
-            <ExploreQuickFilters
-              independent
-              aggregations={{}}
-              defaultQueryFilter={defaultQueryFilter}
-              fields={selectedQuickFilters}
-              index={SearchIndex.ALL}
-              showDeleted={false}
-              onFieldValueSelect={handleQuickFiltersValueSelect}
-            />
           </div>
         ) : (
           <></>
@@ -614,6 +630,7 @@ const LineageTable = () => {
     lineagePagingInfo,
     nodeDepthAnchorEl,
     navigate,
+    handleClearAllFilters,
     t,
   ]);
 

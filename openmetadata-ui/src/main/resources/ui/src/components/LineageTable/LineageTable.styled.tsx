@@ -32,7 +32,7 @@ export const StyledMenu = styled((props: MenuProps) => <Menu {...props} />)(
         padding: '10px 16px',
         borderRadius: '0px',
         '& svg': {
-          height: 24,
+          height: 20,
           marginRight: theme.spacing(1.5),
         },
         '&:active': {
@@ -86,19 +86,21 @@ export const StyledToggleButtonGroup = styled(
 export const StyledIconButton = styled((props: IconButtonProps) => (
   <IconButton {...props} />
 ))(({ theme }) => ({
-  padding: '11px 8px',
+  height: 40,
+  width: 40,
+
   '& svg': {
-    height: 18,
+    height: 20,
+    width: 20,
     color: theme.palette.allShades.gray[500],
   },
   boxShadow: 'none',
-  outline: '1px solid',
-  outlineColor: theme.palette.allShades.gray[300],
+  borderColor: theme.palette.allShades.gray[300],
   backgroundColor: theme.palette.allShades.gray[50],
+  border: '1px solid',
 
   '&.MuiIconButton-colorPrimary': {
-    outline: '1px solid',
-    outlineColor: theme.palette.allShades.blue[700],
+    borderColor: theme.palette.allShades.blue[700],
     backgroundColor: theme.palette.allShades.blue[50],
 
     '& svg': {

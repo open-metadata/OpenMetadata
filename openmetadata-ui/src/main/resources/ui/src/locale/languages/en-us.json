@@ -131,6 +131,7 @@
     "as-lowercase": "as",
     "asset": "Asset",
     "asset-lowercase": "asset",
+    "asset-or-column": "Asset or Column",
     "asset-plural": "Assets",
     "asset-plural-lowercase": "assets",
     "assigned": "Assigned",
