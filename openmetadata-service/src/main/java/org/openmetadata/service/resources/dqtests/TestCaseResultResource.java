@@ -1,5 +1,6 @@
 package org.openmetadata.service.resources.dqtests;
 
+import static org.openmetadata.service.Entity.DATA_CONTRACT;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_SUITE;
@@ -263,6 +264,11 @@ public class TestCaseResultResource
           @QueryParam("entityFQN")
           String entityFQN,
       @Parameter(
+              description = "Data Contract Id the test case belongs to",
+              schema = @Schema(type = "string"))
+          @QueryParam("dataContractId")
+          String dataContractId,
+      @Parameter(
               description =
                   "Get the latest test case result for each test case -- requires `testSuiteId`. Offset and limit are ignored",
               schema =
@@ -327,11 +333,14 @@ public class TestCaseResultResource
     Optional.ofNullable(testSuiteId)
         .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
     Optional.ofNullable(entityFQN).ifPresent(ef -> searchListFilter.addQueryParam("entityFQN", ef));
+    Optional.ofNullable(dataContractId)
+        .ifPresent(dci -> searchListFilter.addQueryParam("dataContractId", dci));
     Optional.ofNullable(type).ifPresent(t -> searchListFilter.addQueryParam("testCaseType", t));
     Optional.ofNullable(dataQualityDimension)
         .ifPresent(dqd -> searchListFilter.addQueryParam("dataQualityDimension", dqd));
 
-    List<AuthRequest> authRequests = getAuthRequestsForListOps(testCaseFQN, testSuiteId);
+    List<AuthRequest> authRequests =
+        getAuthRequestsForListOps(testCaseFQN, testSuiteId, dataContractId);
     if (latest.equals("true")) {
       return listLatestFromSearch(
           securityContext,
@@ -398,6 +407,11 @@ public class TestCaseResultResource
           @QueryParam("testSuiteId")
           String testSuiteId,
       @Parameter(
+              description = "Data Contract Id the test case belongs to",
+              schema = @Schema(type = "string"))
+          @QueryParam("dataContractId")
+          String dataContractId,
+      @Parameter(
               description = "search query term to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("q")
@@ -411,8 +425,11 @@ public class TestCaseResultResource
         .ifPresent(tcf -> searchListFilter.addQueryParam("testCaseFQN", tcf));
     Optional.ofNullable(testSuiteId)
         .ifPresent(tsi -> searchListFilter.addQueryParam("testSuiteId", tsi));
+    Optional.ofNullable(dataContractId)
+        .ifPresent(dci -> searchListFilter.addQueryParam("dataContractId", dci));
 
-    List<AuthRequest> authRequests = getAuthRequestsForListOps(testCaseFQN, testSuiteId);
+    List<AuthRequest> authRequests =
+        getAuthRequestsForListOps(testCaseFQN, testSuiteId, dataContractId);
 
     return super.latestInternalFromSearch(
         securityContext, fields, searchListFilter, q, authRequests, AuthorizationLogic.ANY);
@@ -530,7 +547,8 @@ public class TestCaseResultResource
     return resourceContext;
   }
 
-  private List<AuthRequest> getAuthRequestsForListOps(String testCaseFQN, String testSuiteId) {
+  private List<AuthRequest> getAuthRequestsForListOps(
+      String testCaseFQN, String testSuiteId, String dataContractId) {
     List<AuthRequest> authRequests = new ArrayList<>();
     if (testCaseFQN != null) {
       TestCase testCase = getTestCase(testCaseFQN);
@@ -559,6 +577,14 @@ public class TestCaseResultResource
       OperationContext testSuiteOperationContext =
           new OperationContext(TEST_SUITE, MetadataOperation.VIEW_ALL);
       authRequests.add(new AuthRequest(testSuiteOperationContext, testSuiteResourceContext));
+    }
+
+    if (dataContractId != null) {
+      ResourceContextInterface dataContractResourceContext =
+          new ResourceContext<>(DATA_CONTRACT, UUID.fromString(dataContractId), null);
+      OperationContext dataContractOperationContext =
+          new OperationContext(DATA_CONTRACT, MetadataOperation.VIEW_ALL);
+      authRequests.add(new AuthRequest(dataContractOperationContext, dataContractResourceContext));
     }
 
     return authRequests;

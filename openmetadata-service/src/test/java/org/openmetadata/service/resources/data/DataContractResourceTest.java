@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.data;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -116,6 +117,7 @@ import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
+import org.openmetadata.service.resources.dqtests.TestCaseResultResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
@@ -5892,5 +5894,234 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     double expectedScore = (2.0 / 3.0) * 100;
     assertEquals(expectedScore, finalResult.getQualityValidation().getQualityScore(), 0.01);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testSearchListEndpointWithDataContractIdFilter(TestInfo test) throws IOException {
+    // Create two unique tables for test isolation
+    Table table1 = createUniqueTable(test.getDisplayName() + "_1");
+    Table table2 = createUniqueTable(test.getDisplayName() + "_2");
+
+    String table1Link = String.format("<#E::table::%s>", table1.getFullyQualifiedName());
+    String table2Link = String.format("<#E::table::%s>", table2.getFullyQualifiedName());
+
+    // Create first data contract with test cases
+    CreateDataContract createContract1 =
+        createDataContractRequest("testSearchContract1_" + test.getDisplayName(), table1);
+
+    // Create second data contract with different test cases
+    CreateDataContract createContract2 =
+        createDataContractRequest("testSearchContract2_" + test.getDisplayName(), table2);
+
+    // First create the data contracts
+    DataContract dataContract1 = createDataContract(createContract1);
+    DataContract dataContract2 = createDataContract(createContract2);
+
+    // Then create test cases associated with the data contracts
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("search_test_case_1_" + test.getDisplayName())
+            .withEntityLink(table1Link)
+            .withDataContract(dataContract1.getFullyQualifiedName());
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("search_test_case_2_" + test.getDisplayName())
+            .withEntityLink(table1Link)
+            .withDataContract(dataContract1.getFullyQualifiedName());
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase3 =
+        testCaseResourceTest
+            .createRequest("search_test_case_3_" + test.getDisplayName())
+            .withEntityLink(table2Link)
+            .withDataContract(dataContract2.getFullyQualifiedName());
+    TestCase testCase3 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    // Create test case results for all test cases
+    CreateTestCaseResult result1 =
+        new CreateTestCaseResult()
+            .withResult("Test passed successfully")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase1.getFullyQualifiedName(), result1);
+
+    CreateTestCaseResult result2 =
+        new CreateTestCaseResult()
+            .withResult("Test failed due to data quality issue")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase2.getFullyQualifiedName(), result2);
+
+    CreateTestCaseResult result3 =
+        new CreateTestCaseResult()
+            .withResult("Test passed with warnings")
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withTimestamp(System.currentTimeMillis());
+    postTestCaseResult(testCase3.getFullyQualifiedName(), result3);
+
+    // Test 1: Filter by dataContract1 ID - should return results for testCase1 and testCase2
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    ResultList<TestCaseResult> testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        2, testCaseResults.getData().size(), "Should return exactly 2 results for dataContract1");
+
+    List<String> returnedTestCaseFQNs =
+        testCaseResults.getData().stream()
+            .map(TestCaseResult::getTestCaseFQN)
+            .collect(Collectors.toList());
+
+    assertTrue(
+        returnedTestCaseFQNs.contains(testCase1.getFullyQualifiedName()),
+        "Results should include testCase1");
+    assertTrue(
+        returnedTestCaseFQNs.contains(testCase2.getFullyQualifiedName()),
+        "Results should include testCase2");
+
+    // Verify result content and completeness
+    for (TestCaseResult result : testCaseResults.getData()) {
+      assertNotNull(result.getId(), "Result should have an ID");
+      assertNotNull(result.getTestCaseFQN(), "Result should have test case FQN");
+      assertNotNull(result.getTestCaseStatus(), "Result should have status");
+      assertNotNull(result.getTimestamp(), "Result should have timestamp");
+      assertNotNull(result.getResult(), "Result should have result content");
+    }
+
+    // Test 2: Filter by dataContract2 ID - should return result for testCase3 only
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract2.getId().toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        1, testCaseResults.getData().size(), "Should return exactly 1 result for dataContract2");
+    assertEquals(
+        testCase3.getFullyQualifiedName(),
+        testCaseResults.getData().get(0).getTestCaseFQN(),
+        "Should return result for testCase3");
+    assertEquals(
+        TestCaseStatus.Success,
+        testCaseResults.getData().get(0).getTestCaseStatus(),
+        "testCase3 result should have Success status");
+
+    // Test 3: Edge case - filter with non-existent dataContractId
+    queryParams.clear();
+    queryParams.put("dataContractId", UUID.randomUUID().toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        0,
+        testCaseResults.getData().size(),
+        "Should return no results for non-existent dataContractId");
+
+    // Test 4: Combine dataContractId filter with status filter
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    queryParams.put("testCaseStatus", TestCaseStatus.Success.toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        1, testCaseResults.getData().size(), "Should return 1 successful result for dataContract1");
+    assertEquals(
+        testCase1.getFullyQualifiedName(),
+        testCaseResults.getData().get(0).getTestCaseFQN(),
+        "Should return successful testCase1 result");
+    assertEquals(
+        TestCaseStatus.Success,
+        testCaseResults.getData().get(0).getTestCaseStatus(),
+        "Returned result should have Success status");
+
+    // Test 5: Combine dataContractId filter with conflicting status filter
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract2.getId().toString());
+    queryParams.put("testCaseStatus", TestCaseStatus.Failed.toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        0,
+        testCaseResults.getData().size(),
+        "Should return no results when dataContract2 has no failed tests");
+
+    // Test 6: Test with fields parameter to verify returned data is complete
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    queryParams.put("fields", "testCase,testDefinition");
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 10, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(
+        2, testCaseResults.getData().size(), "Should return 2 results with requested fields");
+
+    for (TestCaseResult result : testCaseResults.getData()) {
+      assertNotNull(result.getTestCase(), "Result should include testCase field");
+      assertNotNull(result.getTestDefinition(), "Result should include testDefinition field");
+    }
+
+    // Test 7: Test pagination with dataContractId filter
+    queryParams.clear();
+    queryParams.put("dataContractId", dataContract1.getId().toString());
+    testCaseResults =
+        listTestCaseResultsFromSearch(
+            queryParams, 1, 0, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(1, testCaseResults.getData().size(), "Should return 1 result with limit=1");
+    assertNotNull(testCaseResults.getPaging(), "Should include paging information");
+
+    ResultList<TestCaseResult> secondPage =
+        listTestCaseResultsFromSearch(
+            queryParams, 1, 1, "/testCaseResults/search/list", ADMIN_AUTH_HEADERS);
+
+    assertEquals(1, secondPage.getData().size(), "Should return 1 result on second page");
+
+    // Verify different results on different pages
+    assertNotEquals(
+        testCaseResults.getData().get(0).getId(),
+        secondPage.getData().get(0).getId(),
+        "Different pages should return different results");
+  }
+
+  private ResultList<TestCaseResult> listTestCaseResultsFromSearch(
+      Map<String, String> queryParams,
+      Integer limit,
+      Integer offset,
+      String path,
+      Map<String, String> authHeader)
+      throws HttpResponseException {
+    WebTarget target =
+        APP.client()
+            .target(
+                String.format(
+                    "http://localhost:%s/api/v1/dataQuality/testCases/", APP.getLocalPort()))
+            .path(path);
+
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+
+    if (limit != null) {
+      target = target.queryParam("limit", limit);
+    }
+    if (offset != null) {
+      target = target.queryParam("offset", offset);
+    }
+
+    return TestUtils.get(target, TestCaseResultResource.TestCaseResultList.class, authHeader);
   }
 }

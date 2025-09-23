@@ -66,6 +66,10 @@
         "$ref": "./testSuite.json"
       }
     },
+    "dataContract": {
+      "description": "Data Contract that this test case is associated with.",
+      "$ref": "../type/entityReference.json"
+    },
     "parameterValues": {
       "type": "array",
       "items": {
