@@ -234,7 +234,11 @@ public class SearchRepository {
 
   public void createIndexes() {
     RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
-    recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    RecreateIndexHandler.ReindexContext context =
+        recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    if (context != null) {
+      recreateIndexHandler.finalizeReindex(context, true);
+    }
   }
 
   public void updateIndexes() {
@@ -266,12 +270,24 @@ public class SearchRepository {
   }
 
   public boolean indexExists(IndexMapping indexMapping) {
-    return searchClient.indexExists(indexMapping.getIndexName(clusterAlias));
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    if (searchClient.indexExists(indexName)) {
+      return true;
+    }
+    return !searchClient.getIndicesByAlias(indexName).isEmpty();
   }
 
   public void createIndex(IndexMapping indexMapping) {
     try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
       if (!indexExists(indexMapping)) {
+        // Clean up any lingering alias with the same name
+        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+        for (String target : aliasTargets) {
+          searchClient.removeAliases(target, Set.of(indexName));
+          searchClient.deleteIndex(target);
+        }
+
         String indexMappingContent = getIndexMapping(indexMapping);
         searchClient.createIndex(indexMapping, indexMappingContent);
         searchClient.createAliases(indexMapping);
@@ -300,8 +316,15 @@ public class SearchRepository {
 
   public void deleteIndex(IndexMapping indexMapping) {
     try {
-      if (indexExists(indexMapping)) {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      if (searchClient.indexExists(indexName)) {
         searchClient.deleteIndex(indexMapping);
+      } else {
+        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+        for (String target : aliasTargets) {
+          searchClient.removeAliases(target, Set.of(indexName));
+          searchClient.deleteIndex(target);
+        }
       }
     } catch (Exception e) {
       LOG.error(
@@ -323,6 +346,10 @@ public class SearchRepository {
       LOG.error("Failed to read index Mapping file due to ", e);
     }
     return null;
+  }
+
+  public String readIndexMapping(IndexMapping indexMapping) {
+    return getIndexMapping(indexMapping);
   }
 
   /**

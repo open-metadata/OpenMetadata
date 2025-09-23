@@ -329,6 +329,129 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
+  public void createIndex(String indexName, String indexMappingContent) {
+    if (!isClientAvailable) {
+      LOG.error(
+          "Failed to create Elastic Search index as client is not property configured, Please check your OpenMetadata configuration");
+      return;
+    }
+    try {
+      CreateIndexRequest request = new CreateIndexRequest(indexName);
+      request.source(indexMappingContent, XContentType.JSON);
+      client.indices().create(request, RequestOptions.DEFAULT);
+      LOG.debug("Created staged index {}", indexName);
+    } catch (Exception e) {
+      LOG.error(String.format("Failed to create staged index %s due to", indexName), e);
+    }
+  }
+
+  @Override
+  public void deleteIndex(String indexName) {
+    if (!isClientAvailable) {
+      return;
+    }
+    try {
+      DeleteIndexRequest request = new DeleteIndexRequest(indexName);
+      client.indices().delete(request, RequestOptions.DEFAULT);
+      LOG.debug("Deleted index {}", indexName);
+    } catch (Exception e) {
+      LOG.error(String.format("Failed to delete index %s due to", indexName), e);
+    }
+  }
+
+  @Override
+  public Set<String> getAliases(String indexName) {
+    Set<String> aliases = new HashSet<>();
+    if (!isClientAvailable) {
+      return aliases;
+    }
+    try {
+      Request request = new Request("GET", String.format("/%s/_alias", indexName));
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode root = JsonUtils.readTree(responseBody);
+      JsonNode indexNode = root.get(indexName);
+      if (indexNode != null && indexNode.has("aliases")) {
+        JsonNode aliasesNode = indexNode.get("aliases");
+        aliasesNode.fieldNames().forEachRemaining(aliases::add);
+      }
+    } catch (Exception e) {
+      LOG.warn(String.format("Failed to retrieve aliases for index %s", indexName), e);
+    }
+    return aliases;
+  }
+
+  @Override
+  public void addAliases(String indexName, Set<String> aliases) {
+    if (!isClientAvailable || nullOrEmpty(aliases)) {
+      return;
+    }
+    try {
+      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+      for (String alias : aliases) {
+        aliasesRequest.addAliasAction(
+            IndicesAliasesRequest.AliasActions.add().index(indexName).alias(alias));
+      }
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+      LOG.debug("Added aliases {} to index {}", aliases, indexName);
+    } catch (Exception e) {
+      LOG.error(String.format("Failed to add aliases %s to index %s", aliases, indexName), e);
+    }
+  }
+
+  @Override
+  public void removeAliases(String indexName, Set<String> aliases) {
+    if (!isClientAvailable || nullOrEmpty(aliases)) {
+      return;
+    }
+    try {
+      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+      for (String alias : aliases) {
+        aliasesRequest.addAliasAction(
+            IndicesAliasesRequest.AliasActions.remove().index(indexName).alias(alias));
+      }
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+      LOG.debug("Removed aliases {} from index {}", aliases, indexName);
+    } catch (Exception e) {
+      if (e instanceof ResponseException responseException
+          && responseException.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.debug(
+            "Aliases {} not present on index {} while attempting removal (ignored).",
+            aliases,
+            indexName);
+        return;
+      }
+      LOG.error(String.format("Failed to remove aliases %s from index %s", aliases, indexName), e);
+    }
+  }
+
+  @Override
+  public Set<String> getIndicesByAlias(String aliasName) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable || aliasName == null || aliasName.isBlank()) {
+      return indices;
+    }
+    try {
+      Request request = new Request("GET", String.format("/_alias/%s", aliasName));
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode root = JsonUtils.readTree(responseBody);
+      root.fieldNames().forEachRemaining(indices::add);
+    } catch (ResponseException ex) {
+      if (ex.getResponse() != null && ex.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.debug("Alias '{}' not found while resolving indices.", aliasName);
+      } else {
+        LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), ex);
+      }
+    } catch (Exception e) {
+      LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), e);
+    }
+    return indices;
+  }
+
+  @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     try {
       PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName(clusterAlias));

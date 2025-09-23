@@ -37,6 +37,8 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 @Slf4j
 public class ElasticSearchBulkSink implements BulkSink {
 
+  private static final String TARGET_INDEX_KEY = "targetIndex";
+
   private final ElasticSearchClient searchClient;
   protected final SearchRepository searchRepository;
   private final BulkProcessor bulkProcessor;
@@ -199,7 +201,10 @@ public class ElasticSearchBulkSink implements BulkSink {
       LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
       return;
     }
-    String indexName = indexMapping.getIndexName(searchRepository.getClusterAlias());
+    String indexName =
+        (String)
+            contextData.getOrDefault(
+                TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
       // Check if these are time series entities
