@@ -233,6 +233,53 @@ public interface SearchClient<T> {
       }
       """;
 
+  // Script for propagating followers to TestCases from their parent tables.
+  // TestCases can only have inherited followers (no direct followers allowed),
+  // so we always replace the entire followers list when propagating.
+  // Followers are stored as UUID strings in the search index for efficiency.
+  // This script only applies to TestCases - does nothing for other entity types.
+  String ADD_FOLLOWERS_SCRIPT =
+      """
+      if (ctx._source.containsKey('entityType') && ctx._source.entityType == 'testCase') {
+        // TestCases can only have inherited followers - always replace
+        if (params.containsKey('updatedFollowers') && params.updatedFollowers != null) {
+          List followerIds = new ArrayList();
+          for (def follower : params.updatedFollowers) {
+            if (follower != null && follower.containsKey('id')) {
+              followerIds.add(follower.id.toString());
+            }
+          }
+          ctx._source.followers = followerIds;
+        }
+      }
+      // Do nothing for other entity types
+      """;
+
+  // Script for removing followers from TestCases when removed from their parent tables.
+  // TestCases can only have inherited followers, so when the parent loses followers,
+  // we need to update the TestCase's follower list accordingly.
+  // Note: deletedFollowers contains the REMAINING followers after deletion, not the deleted ones.
+  // This script only applies to TestCases - does nothing for other entity types.
+  String REMOVE_FOLLOWERS_SCRIPT =
+      """
+      if (ctx._source.containsKey('entityType') && ctx._source.entityType == 'testCase') {
+        // For TestCases, replace with the updated follower list (already has removed followers filtered out)
+        if (params.containsKey('deletedFollowers') && params.deletedFollowers != null) {
+          List followerIds = new ArrayList();
+          for (def follower : params.deletedFollowers) {
+            if (follower != null && follower.containsKey('id')) {
+              followerIds.add(follower.id.toString());
+            }
+          }
+          ctx._source.followers = followerIds;
+        } else {
+          // If no followers remain, clear the list
+          ctx._source.followers = new ArrayList();
+        }
+      }
+      // Do nothing for other entity types
+      """;
+
   String UPDATE_TAGS_FIELD_SCRIPT =
       """
       if (ctx._source.tags != null) {
