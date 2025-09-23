@@ -718,9 +718,14 @@ class DatabricksConnectionTest(TestCase):
 
     # pylint: disable=too-many-locals
     @patch(
+        "metadata.ingestion.source.database.databricks.connection.DatabricksEngineWrapper"
+    )
+    @patch(
         "metadata.ingestion.source.database.databricks.connection.test_connection_steps"
     )
-    def test_test_connection_function(self, mock_test_connection_steps):
+    def test_test_connection_function(
+        self, mock_test_connection_steps, mock_engine_wrapper_class
+    ):
         """Test the test_connection function"""
         from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
             DatabricksConnection,
@@ -769,7 +774,13 @@ class DatabricksConnectionTest(TestCase):
             queryHistoryTable="test_table",
         )
 
+        # Mock the DatabricksEngineWrapper instance to avoid context manager error
+        mock_wrapper_instance = Mock()
+        mock_wrapper_instance.get_catalogs.return_value = ["main"]
+        mock_engine_wrapper_class.return_value = mock_wrapper_instance
+
         mock_engine = Mock()
+        mock_engine.connect.return_value = Mock()
         mock_metadata = Mock()
 
         # Test the function
@@ -795,6 +806,13 @@ class DatabricksConnectionTest(TestCase):
             "GetViews",
             "GetDatabases",
             "GetQueries",
+            "GetViewDefinitions",
+            "GetCatalogTags",
+            "GetSchemaTags",
+            "GetTableTags",
+            "GetColumnTags",
+            "GetTableLineage",
+            "GetColumnLineage",
         ]
         for key in expected_keys:
             self.assertIn(key, test_fn)
