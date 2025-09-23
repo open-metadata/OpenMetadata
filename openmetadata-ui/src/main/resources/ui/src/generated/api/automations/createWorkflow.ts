@@ -180,7 +180,7 @@ export interface TestServiceConnectionRequest {
  * Security Connection.
  */
 export interface RequestConnection {
-    config?: MetabaseConnection;
+    config?: ConfigClass;
 }
 
 /**
@@ -405,7 +405,7 @@ export interface RequestConnection {
  *
  * Apache Ranger Connection Config
  */
-export interface MetabaseConnection {
+export interface ConfigClass {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */

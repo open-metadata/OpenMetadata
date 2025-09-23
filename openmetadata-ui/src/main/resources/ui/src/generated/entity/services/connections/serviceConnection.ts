@@ -47,7 +47,7 @@ export interface ServiceConnection {
  * Drive Connection.
  */
 export interface ServiceConnectionClass {
-    config?: MetabaseConnection;
+    config?: ConfigClass;
 }
 
 /**
@@ -278,7 +278,7 @@ export interface ServiceConnectionClass {
  *
  * Custom Drive Connection to build a source that is not supported.
  */
-export interface MetabaseConnection {
+export interface ConfigClass {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */

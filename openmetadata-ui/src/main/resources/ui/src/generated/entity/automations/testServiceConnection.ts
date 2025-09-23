@@ -62,7 +62,7 @@ export interface TestServiceConnection {
  * Security Connection.
  */
 export interface TestServiceConnectionConnection {
-    config?: MetabaseConnection;
+    config?: ConfigClass;
 }
 
 /**
@@ -287,7 +287,7 @@ export interface TestServiceConnectionConnection {
  *
  * Apache Ranger Connection Config
  */
-export interface MetabaseConnection {
+export interface ConfigClass {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */

@@ -54,7 +54,7 @@ export interface CreateDashboardService {
  * Dashboard Connection.
  */
 export interface DashboardConnection {
-    config?: MetabaseConnection;
+    config?: Connection;
 }
 
 /**
@@ -95,7 +95,7 @@ export interface DashboardConnection {
  *
  * Grafana Connection Config
  */
-export interface MetabaseConnection {
+export interface Connection {
     /**
      * Regex exclude or include charts that matches the pattern.
      */
