@@ -19,6 +19,7 @@ export enum StatusType {
   Started = 'started',
   Stopped = 'stopped',
   Pending = 'pending',
+  Aborted = 'aborted',
   InReview = 'inReview',
   Deprecated = 'deprecated',
   Version = 'version',

@@ -55,8 +55,8 @@ import {
   DeleteIconButton,
   EditIconButton,
 } from '../../../common/IconButtons/EditIconButton';
-import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
+import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
 import Table from '../../../common/Table/Table';
 import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -162,7 +162,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         width: 120,
         render: (result: TestCaseResult, record) => {
           return result?.testCaseStatus ? (
-            <StatusBadge
+            <StatusBadgeV2
               dataTestId={`status-badge-${record.name}`}
               label={result.testCaseStatus}
               status={toLower(result.testCaseStatus) as StatusType}

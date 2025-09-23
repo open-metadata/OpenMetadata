@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Avatar, Badge, Button, Card, Col, Row, Tabs, Typography } from 'antd';
+import { Avatar, Button, Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -34,8 +34,8 @@ import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection';
 import Loader from '../../../common/Loader/Loader';
-import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
+import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
 import './DataQualityTab.less';
 
 interface DataQualityTabProps {
@@ -125,13 +125,17 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
             </Typography.Text>
           </div>
           <div className="test-case-status-section">
-            <StatusBadge
+            <StatusBadgeV2
               label={status || 'Unknown'}
               status={
                 isIncidentMode
                   ? getStatusBadgeType(status as TestCaseResolutionStatusTypes)
                   : status?.toLowerCase() === 'failed'
                   ? StatusType.Failure
+                  : status?.toLowerCase() === 'success'
+                  ? StatusType.Success
+                  : status?.toLowerCase() === 'aborted'
+                  ? StatusType.Aborted
                   : (status?.toLowerCase() as StatusType)
               }
             />
@@ -531,18 +535,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
               <Typography.Title className="incidents-title" level={5}>
                 {t('label.incident-plural')}
               </Typography.Title>
-              <Badge
-                className="data-quality-badge"
-                color="#F9FAFC"
-                count={incidentCounts.total}
-                style={{
-                  color: '#364254',
-                  marginLeft: '8px',
-                  fontWeight: 500,
-                  border: '1px solid #E3E8F0',
-                  fontSize: '10px',
-                }}
-              />
+              <div className="total-incidents-badge">
+                <Typography.Text className="total-incidents-badge-text">
+                  {incidentCounts.total}
+                </Typography.Text>
+              </div>
             </div>
 
             <div className="incidents-cards">
