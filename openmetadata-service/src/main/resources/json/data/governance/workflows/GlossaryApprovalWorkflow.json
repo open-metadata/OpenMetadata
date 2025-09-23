@@ -181,8 +181,7 @@
           "addReviewers": true
         },
         "approvalThreshold": 1,
-        "rejectionThreshold": 1,
-        "supportsSuggestions": true
+        "rejectionThreshold": 1
       },
       "inputNamespaceMap": {
         "relatedEntity": "global"

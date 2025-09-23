@@ -56,7 +56,6 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -72,7 +71,6 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.TagResource;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -578,73 +576,13 @@ public class TagRepository extends EntityRepository<Tag> {
 
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
-      boolean isApproved = false;
-
-      // Check for new structured fieldUpdates format first
-      if (resolveTask.getFieldUpdates() != null
-          && !resolveTask.getFieldUpdates().getAdditionalProperties().isEmpty()) {
-        // Use structured format
-        isApproved = !"reject".equals(resolveTask.getResolution());
-
-        if (isApproved) {
-          // Apply field updates using the helper method
-          applyFieldUpdates(
-              tag, Entity.TAG, user, resolveTask.getFieldUpdates().getAdditionalProperties());
-        }
-      } else if (resolveTask.getNewValue() != null) {
-        // Fall back to old string-based format for backward compatibility
-        String newValue = resolveTask.getNewValue();
-        boolean hasEditedContent = false;
-
-        // Check if it's a simple approval/rejection
-        if (newValue.equalsIgnoreCase("approved")
-            || newValue.equalsIgnoreCase("entityStatus: approved")) {
-          isApproved = true;
-          hasEditedContent = false;
-        } else if (newValue.equalsIgnoreCase("rejected")
-            || newValue.equalsIgnoreCase("entityStatus: rejected")) {
-          isApproved = false;
-          hasEditedContent = false;
-        } else {
-          // Treat as edited content that implies approval
-          isApproved = true;
-          hasEditedContent = true;
-        }
-
-        // If user provided edited content, apply it to the entity
-        if (hasEditedContent && isApproved) {
-          applyEditedChanges(tag, newValue, threadContext.getThread().getTask(), user);
-        }
-      }
-
-      variables.put(RESULT_VARIABLE, isApproved);
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put(UPDATED_BY_VARIABLE, user);
-
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       workflowHandler.resolveTask(
           taskId, workflowHandler.transformToNodeVariables(taskId, variables));
 
       return tag;
-    }
-
-    private void applyEditedChanges(Tag tag, String editedValue, TaskDetails task, String user) {
-      try {
-        String entityType = TAG;
-
-        // Check if the task has old/new value format (for DetailedUserApprovalTask)
-        if (task.getOldValue() != null && task.getOldValue().contains(":")) {
-          // Parse the edited value using field-specific format
-          EntityFieldUtils.applyFieldBasedEdits(tag, entityType, user, editedValue);
-        } else {
-          // Fallback: assume it's a description edit for backward compatibility
-          EntityFieldUtils.setEntityField(tag, entityType, user, "description", editedValue, false);
-        }
-        EntityFieldUtils.updateEntityMetadata(tag, user);
-
-      } catch (Exception e) {
-        LOG.error("Failed to apply edited changes to tag", e);
-        // Don't throw - just log the error and continue with approval
-      }
     }
   }
 

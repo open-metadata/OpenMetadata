@@ -89,7 +89,6 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.TermReference;
-import org.openmetadata.schema.api.feed.FieldUpdates;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.classification.Classification;
@@ -2717,25 +2716,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     Thread updateTask = threads.getData().getFirst();
     int updateTaskId = updateTask.getTask().getId();
 
-    // Reviewer suggests changes and approves with modifications using new structured format
-    String suggestedDescription = "Multi Approver Term Updated By Reviewer [Don't update Further]";
-    FieldUpdates fieldUpdates = new FieldUpdates();
-    fieldUpdates.withAdditionalProperty("description", "<p>" + suggestedDescription + "</p>");
-    fieldUpdates.withAdditionalProperty("status", "approved");
-    ResolveTask resolveWithSuggestion =
-        new ResolveTask()
-            .withFieldUpdates(fieldUpdates)
-            .withResolution(ResolveTask.Resolution.APPROVE);
-    taskTest.resolveTask(updateTaskId, resolveWithSuggestion, authHeaders(reviewer.getName()));
+    // Reviewer simply approves the term without suggestions
+    approveTask = new ResolveTask().withNewValue("approved");
+    taskTest.resolveTask(updateTaskId, approveTask, authHeaders(reviewer.getName()));
 
     java.lang.Thread.sleep(2000);
     GlossaryTerm finalTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
 
-    // Verify the term has the suggested description and is approved
+    // Verify the term is approved with the original update description
     assertEquals(EntityStatus.APPROVED, finalTerm.getEntityStatus());
-    assertTrue(
-        finalTerm.getDescription().contains(suggestedDescription),
-        "Term should have the reviewer's suggested description");
+    assertEquals(updateDescription, finalTerm.getDescription());
   }
 
   /**

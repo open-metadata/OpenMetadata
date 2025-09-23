@@ -81,12 +81,6 @@ public class UserApprovalTask implements NodeInterface {
             .fieldValue(String.valueOf(nodeDefinition.getConfig().getRejectionThreshold()))
             .build();
 
-    FieldExtension supportsSuggestionsExpr =
-        new FieldExtensionBuilder()
-            .fieldName("supportsSuggestionsExpr")
-            .fieldValue(String.valueOf(nodeDefinition.getConfig().getSupportsSuggestions()))
-            .build();
-
     SubProcess subProcess = new SubProcessBuilder().id(subProcessId).build();
 
     StartEvent startEvent =
@@ -114,8 +108,7 @@ public class UserApprovalTask implements NodeInterface {
             assigneesVarNameExpr,
             inputNamespaceMapExpr,
             approvalThresholdExpr,
-            rejectionThresholdExpr,
-            supportsSuggestionsExpr);
+            rejectionThresholdExpr);
 
     // Auto-approve service task for when there are no assignees
     ServiceTask autoApproveTask =
@@ -217,8 +210,7 @@ public class UserApprovalTask implements NodeInterface {
       FieldExtension assigneesVarNameExpr,
       FieldExtension inputNamespaceMapExpr,
       FieldExtension approvalThresholdExpr,
-      FieldExtension rejectionThresholdExpr,
-      FieldExtension supportsSuggestionsExpr) {
+      FieldExtension rejectionThresholdExpr) {
     FlowableListener setCandidateUsersListener =
         new FlowableListenerBuilder()
             .event("create")
@@ -233,7 +225,6 @@ public class UserApprovalTask implements NodeInterface {
             .addFieldExtension(inputNamespaceMapExpr)
             .addFieldExtension(approvalThresholdExpr)
             .addFieldExtension(rejectionThresholdExpr)
-            .addFieldExtension(supportsSuggestionsExpr)
             .build();
 
     FlowableListener completionValidatorListener =

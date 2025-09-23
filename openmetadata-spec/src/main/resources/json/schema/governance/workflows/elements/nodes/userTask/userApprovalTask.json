@@ -62,12 +62,6 @@
           "type": "integer",
           "minimum": 1,
           "default": 1
-        },
-        "supportsSuggestions": {
-          "title": "Supports Suggestions",
-          "description": "When true, reviewers can provide suggestions for changes. This is typically enabled for entity updates where reviewers can propose modifications.",
-          "type": "boolean",
-          "default": false
         }
       },
       "required": ["assignees"],

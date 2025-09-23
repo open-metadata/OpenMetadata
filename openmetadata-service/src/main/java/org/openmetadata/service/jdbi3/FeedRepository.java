@@ -48,7 +48,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
@@ -99,7 +98,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -216,31 +214,6 @@ public class FeedRepository {
     }
 
     public abstract EntityInterface performTask(String user, ResolveTask resolveTask);
-
-    /**
-     * Helper method to apply field updates using EntityFieldUtils.
-     * This provides a clean way to update entity fields from structured fieldUpdates.
-     */
-    protected EntityInterface applyFieldUpdates(
-        EntityInterface entity, String entityType, String user, Map<String, String> fieldUpdates) {
-
-      // Apply each field update using EntityFieldUtils
-      for (Map.Entry<String, String> entry : fieldUpdates.entrySet()) {
-        EntityFieldUtils.setEntityField(
-            entity,
-            entityType,
-            user,
-            entry.getKey(),
-            entry.getValue(),
-            false // Don't patch individually - will be patched once at the end
-            );
-      }
-
-      // Update metadata
-      EntityFieldUtils.updateEntityMetadata(entity, user);
-
-      return entity;
-    }
 
     @SuppressWarnings("unused")
     protected void closeTask(String user, CloseTask closeTask) {}

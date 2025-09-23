@@ -1712,7 +1712,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     }
 
     // Give some time for the workflow to be ready
-    java.lang.Thread.sleep(2000);
+    java.lang.Thread.sleep(10000);
 
     // Store IDs before updating for use in lambda expressions
     final UUID apiCollectionId = apiCollection.getId();
@@ -2824,104 +2824,6 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           responseBody);
       throw new RuntimeException("Failed to create workflow: " + responseBody);
     }
-  }
-
-  @Test
-  @Order(10)
-  void test_UserApprovalTaskWithSuggestionsWithoutReviewerSupport() {
-    LOG.info("Starting test_UserApprovalTaskWithSuggestionsWithoutReviewerSupport");
-
-    // Create a workflow with user approval task (with suggestions) for multiple entity types,
-    // including one that doesn't support reviewers
-    String invalidWorkflowJson =
-        """
-    {
-      "name": "multiEntityUserApprovalWorkflow",
-      "displayName": "Multi-Entity User Approval Workflow",
-      "description": "Invalid workflow with user approval task (with suggestions) for entities without reviewer support",
-      "trigger": {
-        "type": "periodicBatchEntity",
-        "config": {
-          "entityTypes": ["table", "dashboard"],
-          "schedule": {
-            "scheduleTimeline": "None"
-          },
-          "batchSize": 10
-        }
-      },
-      "nodes": [
-        {
-          "name": "start",
-          "displayName": "Start",
-          "type": "startEvent",
-          "subType": "startEvent"
-        },
-        {
-          "name": "ReviewChanges",
-          "displayName": "Review Changes",
-          "type": "userTask",
-          "subType": "userApprovalTask",
-          "config": {
-            "assignees": {
-              "addReviewers": true
-            },
-            "approvalThreshold": 1,
-            "rejectionThreshold": 1,
-            "supportsSuggestions": true
-          }
-        },
-        {
-          "name": "end",
-          "displayName": "End",
-          "type": "endEvent",
-          "subType": "endEvent"
-        }
-      ],
-      "edges": [
-        {
-          "from": "start",
-          "to": "ReviewChanges"
-        },
-        {
-          "from": "ReviewChanges",
-          "to": "end"
-        }
-      ],
-      "config": {
-        "storeStageStatus": true
-      }
-    }
-    """;
-
-    CreateWorkflowDefinition invalidWorkflow =
-        JsonUtils.readValue(invalidWorkflowJson, CreateWorkflowDefinition.class);
-
-    // Try to create the workflow with user approval task (with suggestions) for entities without
-    // reviewer support
-    Response response =
-        SecurityUtil.addHeaders(getResource("governance/workflowDefinitions"), ADMIN_AUTH_HEADERS)
-            .post(Entity.json(invalidWorkflow));
-
-    // Should return error status (400 Bad Request or similar)
-    assertNotEquals(Response.Status.CREATED.getStatusCode(), response.getStatus());
-    assertNotEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-    assertTrue(
-        response.getStatus() >= 400,
-        "Expected error status code >= 400, got: " + response.getStatus());
-
-    LOG.debug(
-        "Workflow with user approval task (with suggestions) for non-reviewer entities failed as expected with status: {}",
-        response.getStatus());
-
-    // Verify error message contains expected validation error
-    String errorResponse = response.readEntity(String.class);
-    assertTrue(
-        errorResponse.contains("does not support reviewers")
-            || errorResponse.contains("User approval tasks"),
-        "Error message should mention reviewer support issue. Got: " + errorResponse);
-    LOG.debug("Error message: {}", errorResponse);
-
-    LOG.info("test_UserApprovalTaskWithSuggestionsWithoutReviewerSupport completed successfully");
   }
 
   @Test

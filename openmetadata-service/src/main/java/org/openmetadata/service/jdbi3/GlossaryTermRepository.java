@@ -86,7 +86,6 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
-import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -105,7 +104,6 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.security.AuthorizationException;
-import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -671,82 +669,23 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     @Override
     public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      // TODO: Resolve this outside
       GlossaryTerm glossaryTerm = (GlossaryTerm) threadContext.getAboutEntity();
       checkUpdatedByReviewer(glossaryTerm, user);
 
       UUID taskId = threadContext.getThread().getId();
       Map<String, Object> variables = new HashMap<>();
-      boolean isApproved = false;
-
-      // Check for new structured fieldUpdates format first
-      if (resolveTask.getFieldUpdates() != null
-          && !resolveTask.getFieldUpdates().getAdditionalProperties().isEmpty()) {
-        // Use structured format
-        isApproved = !"reject".equals(resolveTask.getResolution());
-
-        if (isApproved) {
-          // Apply field updates using the helper method
-          applyFieldUpdates(
-              glossaryTerm,
-              Entity.GLOSSARY_TERM,
-              user,
-              resolveTask.getFieldUpdates().getAdditionalProperties());
-        }
-      } else if (resolveTask.getNewValue() != null) {
-        // Fall back to old string-based format for backward compatibility
-        String newValue = resolveTask.getNewValue();
-        boolean hasEditedContent = false;
-
-        // Check if it's a simple approval/rejection
-        if (newValue.equalsIgnoreCase("approved")
-            || newValue.equalsIgnoreCase("entityStatus: approved")) {
-          isApproved = true;
-          hasEditedContent = false;
-        } else if (newValue.equalsIgnoreCase("rejected")
-            || newValue.equalsIgnoreCase("entityStatus: rejected")) {
-          isApproved = false;
-          hasEditedContent = false;
-        } else {
-          // Treat as edited content that implies approval
-          isApproved = true;
-          hasEditedContent = true;
-        }
-
-        // If user provided edited content, apply it to the entity
-        if (hasEditedContent && isApproved) {
-          applyEditedChanges(glossaryTerm, newValue, threadContext.getThread().getTask(), user);
-        }
-      }
-
-      variables.put(RESULT_VARIABLE, isApproved);
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
       variables.put(UPDATED_BY_VARIABLE, user);
-
       WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
       workflowHandler.resolveTask(
           taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+      // ---
 
+      // TODO: performTask returns the updated Entity and the flow applies the new value.
+      // This should be changed with the new Governance Workflows.
+      //      glossaryTerm.setStatus(Status.APPROVED);
       return glossaryTerm;
-    }
-
-    private void applyEditedChanges(
-        GlossaryTerm glossaryTerm, String editedValue, TaskDetails task, String user) {
-      try {
-        String entityType = GLOSSARY_TERM;
-        // Check if the task has old/new value format (for DetailedUserApprovalTask)
-        if (task.getOldValue() != null && task.getOldValue().contains(":")) {
-          // Parse the edited value using field-specific format
-          EntityFieldUtils.applyFieldBasedEdits(glossaryTerm, entityType, user, editedValue);
-        } else {
-          // Fallback: assume it's a description edit for backward compatibility
-          EntityFieldUtils.setEntityField(
-              glossaryTerm, entityType, user, "description", editedValue, false);
-        }
-        EntityFieldUtils.updateEntityMetadata(glossaryTerm, user);
-
-      } catch (Exception e) {
-        LOG.error("Failed to apply edited changes to glossary term", e);
-        // Don't throw - just log the error and continue with approval
-      }
     }
   }
 
@@ -838,14 +777,15 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private void closeApprovalTask(GlossaryTerm entity, String comment) {
     EntityLink about = new EntityLink(GLOSSARY_TERM, entity.getFullyQualifiedName());
     FeedRepository feedRepository = Entity.getFeedRepository();
-
-    // Close User Tasks
     try {
       Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
       feedRepository.closeTask(
           taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
     } catch (EntityNotFoundException ex) {
-      LOG.info("No approval task found for glossary term {}", entity.getFullyQualifiedName());
+      LOG.info(
+          "{} Task not found for glossary term {}",
+          TaskType.RequestApproval,
+          entity.getFullyQualifiedName());
     }
   }
 
