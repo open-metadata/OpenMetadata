@@ -71,8 +71,7 @@ export interface QueryFieldInterface {
     | FieldValue
     | EsTermsQuery
     | EsExistsQuery
-    | EsWildCard
-    | undefined;
+    | EsWildCard;
 }
 
 export interface QueryFilterInterface {

@@ -53,10 +53,7 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
     [deleted, entity, entityType, hasEditAccess]
   );
 
-  const lineageTable = useMemo(
-    () => <LineageTable />,
-    [deleted, entity, entityType, hasEditAccess]
-  );
+  const lineageTable = useMemo(() => <LineageTable />, []);
 
   return (
     <LineageProvider>

@@ -98,6 +98,10 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
     redraw?.();
   }, [redraw]);
 
+  const handleExportClick = useCallback(() => {
+    onExportClick?.();
+  }, [onExportClick]);
+
   return (
     <>
       <div className="lineage-control-buttons">
@@ -146,7 +150,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
           }
           title={t('label.export-entity', { entity: t('label.lineage') })}
           type="text"
-          onClick={() => onExportClick()}
+          onClick={handleExportClick}
         />
 
         {handleFullScreenViewClick && (

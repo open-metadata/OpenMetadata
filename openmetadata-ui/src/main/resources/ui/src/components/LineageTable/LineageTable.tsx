@@ -13,11 +13,9 @@
 import { SettingOutlined } from '@ant-design/icons';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
-import IconButton from '@mui/material/IconButton';
 import MenuItem from '@mui/material/MenuItem';
 import { useTheme } from '@mui/material/styles';
 import ToggleButton from '@mui/material/ToggleButton';
-import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import Tooltip from '@mui/material/Tooltip';
 import { ColumnsType } from 'antd/es/table';
 import Card from 'antd/lib/card/Card';
@@ -39,6 +37,10 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { ExportTypes } from '../../constants/Export.constants';
+import {
+  IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
+  IMPACT_ANALYSIS_STATIC_COLUMNS,
+} from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { EntityType, FqnPart } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -86,9 +88,12 @@ import { ExploreQuickFilterField } from '../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../Explore/ExploreQuickFilters';
 import { LineageNode } from '../Lineage/Lineage.interface';
 import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
-import './lineage-table.less';
 import { EImpactLevel } from './LineageTable.interface';
-import { StyledMenu } from './LineageTable.styled';
+import {
+  StyledIconButton,
+  StyledMenu,
+  StyledToggleButtonGroup,
+} from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
 
 const LineageTable = () => {
@@ -252,6 +257,7 @@ const LineageTable = () => {
     impactLevel,
     upstreamColumnLineageNodes,
     downstreamColumnLineageNodes,
+    lineageDirection,
   ]);
 
   const radioGroupOptions = useMemo(() => {
@@ -279,40 +285,9 @@ const LineageTable = () => {
 
   const streamButtonGroup = useMemo(() => {
     return (
-      <ToggleButtonGroup
+      <StyledToggleButtonGroup
         exclusive
-        className="lineage-button-group"
         size="small"
-        sx={{
-          '.MuiToggleButton-root': {
-            padding: theme.spacing(2, 4),
-            '&.Mui-selected': {
-              outlineColor: theme.palette.allShades.blue[700],
-              backgroundColor: theme.palette.allShades.blue[50],
-              color: theme.palette.allShades.blue[700],
-
-              '.MuiChip-root': {
-                color: theme.palette.allShades.blue[700],
-                backgroundColor: theme.palette.allShades.blue[100],
-              },
-              '&:hover': {
-                backgroundColor: theme.palette.allShades.blue[100],
-              },
-            },
-            '&:hover': {
-              outlineColor: theme.palette.allShades.blue[100],
-              backgroundColor: theme.palette.allShades.blue[100],
-              color: theme.palette.allShades.blue[700],
-            },
-            color: theme.palette.allShades.gray[700],
-            '.MuiChip-root': {
-              marginLeft: theme.spacing(1.5),
-              border: 'none',
-              borderRadius: theme.spacing(4),
-              backgroundColor: theme.palette.allShades.gray[100],
-            },
-          },
-        }}
         value={lineageDirection}
         onChange={(_, value) => {
           handlePageChange(1);
@@ -326,7 +301,7 @@ const LineageTable = () => {
             {option.label}
           </ToggleButton>
         ))}
-      </ToggleButtonGroup>
+      </StyledToggleButtonGroup>
     );
   }, [lineageDirection, radioGroupOptions]);
 
@@ -507,22 +482,13 @@ const LineageTable = () => {
       <>
         <div className="d-flex justify-between items-center">
           <div className="d-flex gap-2">
-            <IconButton
-              className={classNames('filter-icon-button', {
-                active: filterSelectionActive,
-              })}
+            <StyledIconButton
+              color={filterSelectionActive ? 'primary' : 'default'}
               size="large"
-              sx={{
-                padding: '11px 8px',
-                '& svg': {
-                  height: 18,
-                  color: '#535862',
-                },
-              }}
               title={t('label.filter-plural')}
               onClick={toggleFilterSelection}>
               <FilterLinesIcon />
-            </IconButton>
+            </StyledIconButton>
 
             <Searchbar
               removeMargin
@@ -547,6 +513,9 @@ const LineageTable = () => {
                 outlineColor: theme.palette.allShades.blue[700],
                 backgroundColor: theme.palette.allShades.blue[50],
                 color: theme.palette.allShades.blue[700],
+                outline: '1px solid',
+                boxShadow: 'none',
+
                 '&:hover': {
                   outlineColor: theme.palette.allShades.blue[100],
                   backgroundColor: theme.palette.allShades.blue[100],
@@ -558,33 +527,19 @@ const LineageTable = () => {
               {t('label.impact-analysis')}
             </Button>
             <Tooltip title="Export as CSV">
-              <IconButton
+              <StyledIconButton
                 size="large"
-                sx={{
-                  padding: '11px 8px',
-                  '& svg': {
-                    height: 18,
-                    color: '#535862',
-                  },
-                }}
                 onClick={() =>
                   onExportClick([ExportTypes.CSV], handleExportClick)
                 }>
                 <DownloadIcon />
-              </IconButton>
+              </StyledIconButton>
             </Tooltip>
-            <IconButton
+            <StyledIconButton
               size="large"
-              sx={{
-                padding: '11px 8px',
-                '& svg': {
-                  height: 18,
-                  color: '#535862',
-                },
-              }}
               onClick={() => setDialogVisible(true)}>
               <SettingOutlined />
-            </IconButton>
+            </StyledIconButton>
           </div>
         </div>
         {filterSelectionActive ? (
@@ -652,7 +607,6 @@ const LineageTable = () => {
     filterSelectionActive,
     handleQuickFiltersValueSelect,
     toggleFilterSelection,
-    filterSelectionActive,
     handleExportClick,
     onExportClick,
     updateURLParams,
@@ -952,7 +906,7 @@ const LineageTable = () => {
         handlePageChange(data.currentPage);
       },
     };
-  }, [nodeDepth, pageSize, currentPage, showPagination]);
+  }, [pageSize, currentPage, showPagination, paging, handlePageSizeChange]);
 
   // Fetch paging data when fqn, entityType, or queryFilter changes
   useEffect(() => {
@@ -976,15 +930,8 @@ const LineageTable = () => {
         columns={columns}
         customPaginationProps={pagingProps}
         dataSource={dataSource}
-        defaultVisibleColumns={[
-          'name',
-          'owners',
-          'nodeDepth',
-          'toEntity',
-          'fromEntity',
-          'column.toColumn',
-          'column.fromColumns',
-        ]}
+        defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
+        entityType="impact_analysis"
         extraTableFilters={extraTableFilters}
         key={`lineage-table-${impactLevel}`}
         loading={loading}
@@ -994,7 +941,7 @@ const LineageTable = () => {
             ? 'fullyQualifiedName'
             : 'docUniqueId'
         }
-        staticVisibleColumns={['name', 'column']}
+        staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
       />
 
       <LineageConfigModal

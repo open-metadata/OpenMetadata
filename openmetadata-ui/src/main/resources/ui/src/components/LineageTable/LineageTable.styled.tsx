@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { styled } from '@mui/material';
+import {
+  IconButton,
+  IconButtonProps,
+  styled,
+  ToggleButtonGroup,
+  ToggleButtonGroupProps,
+} from '@mui/material';
 import type { MenuProps } from '@mui/material/Menu';
 import Menu from '@mui/material/Menu';
 
@@ -43,3 +49,60 @@ export const StyledMenu = styled((props: MenuProps) => <Menu {...props} />)(
     },
   })
 );
+
+export const StyledToggleButtonGroup = styled(
+  (props: ToggleButtonGroupProps) => <ToggleButtonGroup {...props} />
+)(({ theme }) => ({
+  '.MuiToggleButton-root': {
+    padding: theme.spacing(2, 4),
+    '&.Mui-selected': {
+      outlineColor: theme.palette.allShades.blue[700],
+      backgroundColor: theme.palette.allShades.blue[50],
+      color: theme.palette.allShades.blue[700],
+
+      '.MuiChip-root': {
+        color: theme.palette.allShades.blue[700],
+        backgroundColor: theme.palette.allShades.blue[100],
+      },
+      '&:hover': {
+        backgroundColor: theme.palette.allShades.blue[100],
+      },
+    },
+    '&:hover': {
+      outlineColor: theme.palette.allShades.blue[100],
+      backgroundColor: theme.palette.allShades.blue[100],
+      color: theme.palette.allShades.blue[700],
+    },
+    color: theme.palette.allShades.gray[700],
+    '.MuiChip-root': {
+      marginLeft: theme.spacing(1.5),
+      border: 'none',
+      borderRadius: theme.spacing(4),
+      backgroundColor: theme.palette.allShades.gray[100],
+    },
+  },
+}));
+
+export const StyledIconButton = styled((props: IconButtonProps) => (
+  <IconButton {...props} />
+))(({ theme }) => ({
+  padding: '11px 8px',
+  '& svg': {
+    height: 18,
+    color: theme.palette.allShades.gray[500],
+  },
+  boxShadow: 'none',
+  outline: '1px solid',
+  outlineColor: theme.palette.allShades.gray[300],
+  backgroundColor: theme.palette.allShades.gray[50],
+
+  '&.MuiIconButton-colorPrimary': {
+    outline: '1px solid',
+    outlineColor: theme.palette.allShades.blue[700],
+    backgroundColor: theme.palette.allShades.blue[50],
+
+    '& svg': {
+      color: theme.palette.allShades.blue[700],
+    },
+  },
+}));

@@ -1,4 +1,3 @@
-/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,10 +12,18 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Menu, MenuItem, useTheme } from '@mui/material';
+import { Button, MenuItem, useTheme } from '@mui/material';
 import { Space } from 'antd';
 import classNames from 'classnames';
-import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  memo,
+  MouseEventHandler,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
@@ -26,6 +33,7 @@ import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { StyledMenu } from '../../LineageTable/LineageTable.styled';
 import { LineageControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
@@ -41,10 +49,6 @@ const CustomControls: FC<LineageControlProps> = ({
   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
   const navigate = useNavigate();
   const theme = useTheme();
-
-  const handleMenuClick = (key: string) => {
-    setSelectedFilter((prevSelected) => [...prevSelected, key]);
-  };
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
@@ -121,6 +125,38 @@ const CustomControls: FC<LineageControlProps> = ({
     }
   }, [selectedFilter, selectedQuickFilters, filters]);
 
+  const handleAdvancedClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (e) => setAdvanceEl(e.currentTarget),
+    []
+  );
+
+  const handleCloseAdvance = useCallback(() => setAdvanceEl(null), []);
+
+  const handleImpactAnalysisClick = useCallback(() => {
+    navigate({ search: '?mode=impact_analysis' });
+  }, [navigate]);
+
+  const filterMenu = useMemo(() => {
+    return filters.map((item) => (
+      <MenuItem
+        data-key={item.key}
+        key={item.key}
+        selected={selectedFilter.includes(item.key)}
+        onClick={() => {
+          setSelectedFilter((pre) => {
+            if (pre.includes(item.key)) {
+              return pre.filter((key) => key !== item.key);
+            } else {
+              return [...pre, item.key];
+            }
+          });
+          setAdvanceEl(null);
+        }}>
+        {item.label}
+      </MenuItem>
+    ));
+  }, [filters]);
+
   return (
     <div
       className={classNames(
@@ -134,38 +170,16 @@ const CustomControls: FC<LineageControlProps> = ({
             <Button
               className="expand-btn"
               variant="outlined"
-              onClick={(e) => setAdvanceEl(e.currentTarget)}>
+              onClick={handleAdvancedClick}>
               {t('label.advanced')}
               <RightOutlined />
             </Button>
-            <Menu
+            <StyledMenu
               anchorEl={advanceEl}
               open={Boolean(advanceEl)}
-              onClose={() => setAdvanceEl(null)}>
-              {filters.map((item) => (
-                <MenuItem
-                  key={item.key}
-                  selected={selectedFilter.includes(item.key)}
-                  sx={{
-                    '&.Mui-selected': {
-                      color: 'var(--ant-primary-color)',
-                      backgroundColor: 'var(--ant-primary-1)',
-                    },
-                    '&.Mui-selected:hover': {
-                      backgroundColor: 'var(--ant-primary-1)',
-                    },
-                    '&.MuiMenuItem-root': {
-                      margin: '0',
-                      padding: '4px 12px',
-                      borderRadius: '0px',
-                    },
-                  }}
-                  value={item.key}
-                  onClick={() => handleMenuClick(item.key)}>
-                  {item.label}
-                </MenuItem>
-              ))}
-            </Menu>
+              onClose={handleCloseAdvance}>
+              {filterMenu}
+            </StyledMenu>
 
             <ExploreQuickFilters
               independent
@@ -198,7 +212,7 @@ const CustomControls: FC<LineageControlProps> = ({
         <Button
           className="font-semibold"
           variant="outlined"
-          onClick={() => navigate({ search: '?mode=impact_analysis' })}>
+          onClick={handleImpactAnalysisClick}>
           {t('label.impact-analysis')}
         </Button>
       </div>
