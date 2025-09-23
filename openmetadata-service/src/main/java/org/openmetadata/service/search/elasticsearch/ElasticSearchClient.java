@@ -2421,8 +2421,17 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
         restClientBuilder.setCompressionEnabled(true);
-        restClientBuilder.setDefaultHeaders(
-            defaultHeaders); // 8.x client would work with 7.17x or higher server
+
+        // Build client without default headers first to check version
+        RestClient tempClient = restClientBuilder.build();
+        boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
+        tempClient.close();
+
+        // Only set default headers for ES 7.x server
+        if (isElasticsearch7) {
+          restClientBuilder.setDefaultHeaders(defaultHeaders);
+        }
+
         return restClientBuilder.build();
       } catch (Exception e) {
         LOG.error("Failed to create low level rest client ", e);
@@ -2992,6 +3001,23 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
           entityRelationshipRequest);
     }
+  }
+
+  private boolean isElasticsearch7Version(RestClient restClient) {
+    try {
+      Request request = new Request("GET", "/");
+      es.org.elasticsearch.client.Response response = restClient.performRequest(request);
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode jsonNode = JsonUtils.readTree(responseBody);
+      JsonNode versionNode = jsonNode.get("version");
+      if (versionNode != null && versionNode.get("number") != null) {
+        String version = versionNode.get("number").asText();
+        return version.startsWith("7.");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to detect Elasticsearch version, assuming non-7.x", e);
+    }
+    return false;
   }
 
   @Override
