@@ -195,6 +195,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         "dataQuality/testCases",
         TestCaseResource.FIELDS);
     supportsTags = false; // Test cases do not support setting tags directly (inherits from Entity)
+    supportsFollowers =
+        false; // Test cases do not support setting followers directly (inherits from parent table)
     testCaseResultsCollectionName = "dataQuality/testCases/testCaseResults";
     supportsEtag = false;
   }
@@ -3321,6 +3323,21 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResultResource.TestCaseResultList.class, authHeader);
   }
 
+  public ResultList<TestCase> listTestCasesFromSearch(
+      Map<String, String> queryParams,
+      Integer limit,
+      Integer offset,
+      Map<String, String> authHeader)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/search/list");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = offset != null ? target.queryParam("offset", offset) : target;
+    return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeader);
+  }
+
   protected void validateListTestCaseResultsFromSearchWithPagination(
       Map<String, String> queryParams, Integer maxEntities, String path) throws IOException {
     // List all entities and use it for checking pagination
@@ -4311,6 +4328,165 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     assertNull(nullValueResult.getPassedRows(), "Passed rows should be null when not set");
     assertNull(nullValueResult.getFailedRows(), "Failed rows should be null when not set");
+  }
+
+  @Test
+  void test_testCaseFollowerInheritance(TestInfo testInfo)
+      throws IOException, InterruptedException {
+    // Create a table with a follower
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    // Add USER1 as follower to the table
+    tableResourceTest.addFollower(table.getId(), USER1_REF.getId(), OK, ADMIN_AUTH_HEADERS);
+
+    // Create a test case for this table
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("10").withName("minValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Wait for search index sync
+    Map<String, Object> sourceAsMap =
+        waitForSyncAndGetFromSearchIndex(
+            testCase.getUpdatedAt(), testCase.getId(), Entity.TEST_CASE);
+
+    // Verify the test case inherited the follower from the table
+    List<String> followers = (List<String>) sourceAsMap.get("followers");
+    assertNotNull(followers);
+    assertEquals(1, followers.size());
+    assertEquals(USER1.getId().toString(), followers.get(0));
+  }
+
+  @Test
+  void test_listTestCasesWithFollowedByFilter(TestInfo testInfo)
+      throws IOException, InterruptedException {
+    // Create two tables with different followers
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq1 =
+        tableResourceTest
+            .createRequest(testInfo, 1)
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table1 = tableResourceTest.createAndCheckEntity(tableReq1, ADMIN_AUTH_HEADERS);
+
+    CreateTable tableReq2 =
+        tableResourceTest
+            .createRequest(testInfo, 2)
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table2 = tableResourceTest.createAndCheckEntity(tableReq2, ADMIN_AUTH_HEADERS);
+
+    // Add USER1 as follower to table1
+    tableResourceTest.addFollower(table1.getId(), USER1_REF.getId(), OK, ADMIN_AUTH_HEADERS);
+
+    // Add USER2 as follower to table2
+    tableResourceTest.addFollower(table2.getId(), USER2_REF.getId(), OK, ADMIN_AUTH_HEADERS);
+
+    // Create test cases for both tables
+    CreateTestCase create1 =
+        createRequest(testInfo, 1)
+            .withEntityLink(String.format("<#E::table::%s>", table1.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("10").withName("minValue")));
+    TestCase testCase1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase create2 =
+        createRequest(testInfo, 2)
+            .withEntityLink(String.format("<#E::table::%s>", table2.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("10").withName("minValue")));
+    TestCase testCase2 = createAndCheckEntity(create2, ADMIN_AUTH_HEADERS);
+
+    // Wait for test cases to be properly indexed with their inherited followers
+    // TestCase1 should inherit USER1 from table1
+    waitForFieldInSearchIndex(
+        testCase1.getId(), Entity.TEST_CASE, "followers", List.of(USER1.getId().toString()));
+
+    // TestCase2 should inherit USER2 from table2
+    waitForFieldInSearchIndex(
+        testCase2.getId(), Entity.TEST_CASE, "followers", List.of(USER2.getId().toString()));
+
+    // Test filtering by USER1
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("followedBy", USER1.getName());
+    ResultList<TestCase> results = listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    // Should find test cases from table1 (followed by USER1)
+    assertTrue(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase1.getFullyQualifiedName())),
+        "TestCase1 should be found when filtering by USER1");
+    assertFalse(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase2.getFullyQualifiedName())),
+        "TestCase2 should not be found when filtering by USER1");
+
+    // Test filtering by USER2
+    queryParams.put("followedBy", USER2.getName());
+    results = listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    // Should find test cases from table2 (followed by USER2)
+    assertFalse(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase1.getFullyQualifiedName())),
+        "TestCase1 should not be found when filtering by USER2");
+    assertTrue(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase2.getFullyQualifiedName())),
+        "TestCase2 should be found when filtering by USER2");
+  }
+
+  @Test
+  void test_followerInheritanceAfterTableUpdate(TestInfo testInfo)
+      throws IOException, InterruptedException {
+    // Create a table without followers
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    // Create a test case for this table
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("10").withName("minValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Wait for initial sync
+    waitForSyncAndGetFromSearchIndex(testCase.getUpdatedAt(), testCase.getId(), Entity.TEST_CASE);
+
+    // Now add USER1 as follower to the table
+    tableResourceTest.addFollower(table.getId(), USER1_REF.getId(), OK, ADMIN_AUTH_HEADERS);
+
+    // Wait for the follower to propagate to the test case in the search index
+    List<String> expectedFollowers = List.of(USER1.getId().toString());
+    waitForFieldInSearchIndex(testCase.getId(), Entity.TEST_CASE, "followers", expectedFollowers);
+
+    // Verify test cases now show up when filtering by USER1
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("followedBy", USER1.getName());
+    ResultList<TestCase> results = listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertTrue(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase.getFullyQualifiedName())),
+        "Test case should be found after table follower update");
   }
 
   @Test

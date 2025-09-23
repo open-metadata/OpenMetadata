@@ -65,6 +65,13 @@ public class IngestionPipelineLogStreamingTest extends OpenMetadataApplicationTe
     if (!bucketExists) {
       minioClient.makeBucket(MakeBucketArgs.builder().bucket(TEST_BUCKET).build());
     }
+    // Initialize S3LogStorage with MinIO configuration
+    org.openmetadata.schema.security.credentials.AWSCredentials awsCreds =
+        new org.openmetadata.schema.security.credentials.AWSCredentials()
+            .withAwsAccessKeyId("minioadmin")
+            .withAwsSecretAccessKey("minioadmin")
+            .withAwsRegion("us-east-1")
+            .withEndPointURL(java.net.URI.create(endpoint));
 
     LogStorageConfiguration config = new LogStorageConfiguration();
     config.setType(LogStorageConfiguration.Type.S_3);
@@ -74,6 +81,7 @@ public class IngestionPipelineLogStreamingTest extends OpenMetadataApplicationTe
     config.setMaxConcurrentStreams(10);
     config.setStreamTimeoutMinutes(5);
     config.setAsyncBufferSizeMB(5);
+    config.setAwsConfig(awsCreds);
 
     // Create config map as expected by S3LogStorage
     Map<String, Object> configMap = new HashMap<>();

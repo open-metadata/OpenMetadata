@@ -15,6 +15,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { uuid } from '../../utils/common';
 import { settingClick } from '../../utils/sidebar';
 import { searchTeam } from '../../utils/team';
+import { EntityReference } from '../entity/Entity.interface';
 type ResponseDataType = {
   name: string;
   displayName: string;
@@ -25,6 +26,7 @@ type ResponseDataType = {
   users?: string[];
   defaultRoles?: string[];
   policies?: string[];
+  owners?: EntityReference[];
 };
 
 export class TeamClass {
