@@ -74,6 +74,9 @@
       "oneOf": [
         {
           "$ref": "metadataExporterConnectors/snowflakeConnection.json"
+        },
+        {
+          "$ref": "metadataExporterConnectors/databricksConnection.json"
         }
       ]
     },

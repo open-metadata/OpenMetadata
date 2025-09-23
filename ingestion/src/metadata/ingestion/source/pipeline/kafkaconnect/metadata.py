@@ -36,7 +36,12 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, SourceUrl, Timestamp
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    Markdown,
+    SourceUrl,
+    Timestamp,
+)
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
@@ -65,7 +70,7 @@ STATUS_MAP = {
 
 class KafkaconnectSource(PipelineServiceSource):
     """
-    Implements the necessary methods ot extract
+    Implements the necessary methods to extract
     Pipeline metadata from Kafka Connect
     """
 
@@ -100,6 +105,9 @@ class KafkaconnectSource(PipelineServiceSource):
                     for task in pipeline_details.tasks or []
                 ],
                 service=self.context.get().pipeline_service,
+                description=Markdown(pipeline_details.description)
+                if pipeline_details.description
+                else None,
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
@@ -119,17 +127,12 @@ class KafkaconnectSource(PipelineServiceSource):
         Get lineage dataset entity
         """
         try:
-            dataset_details = self.client.get_connector_dataset_info(
-                connector=pipeline_details.name
-            )
+            dataset_details = pipeline_details.dataset
             if dataset_details:
-                if (
-                    isinstance(dataset_details.dataset_type, type(Table))
-                    and self.source_config.lineageInformation.dbServiceNames
-                ):
-                    for dbservicename in (
-                        self.source_config.lineageInformation.dbServiceNames or []
-                    ):
+                if dataset_details.dataset_type == Table:
+                    for (
+                        dbservicename
+                    ) in self.source_config.lineageInformation.dbServiceNames or ["*"]:
                         dataset_entity = self.metadata.get_by_name(
                             entity=dataset_details.dataset_type,
                             fqn=fqn.build(
@@ -145,25 +148,25 @@ class KafkaconnectSource(PipelineServiceSource):
                         if dataset_entity:
                             return dataset_entity
 
-                if (
-                    isinstance(dataset_details.dataset_type, type(Container))
-                    and self.source_config.lineageInformation.storageServiceNames
-                ):
-                    for storageservicename in (
-                        self.source_config.lineageInformation.storageServiceNames or []
-                    ):
-                        dataset_entity = self.metadata.get_by_name(
+                if dataset_details.dataset_type == Container:
+                    for (
+                        storageservicename
+                    ) in self.source_config.lineageInformation.storageServiceNames or [
+                        "*"
+                    ]:
+                        storage_entity = self.metadata.get_by_name(
                             entity=dataset_details.dataset_type,
                             fqn=fqn.build(
                                 metadata=self.metadata,
                                 entity_type=dataset_details.dataset_type,
                                 container_name=dataset_details.container_name,
                                 service_name=storageservicename,
+                                parent_container=None,
                             ),
                         )
 
-                        if dataset_entity:
-                            return dataset_entity
+                        if storage_entity:
+                            return storage_entity
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -180,7 +183,7 @@ class KafkaconnectSource(PipelineServiceSource):
         try:
             if not self.service_connection.messagingServiceName:
                 logger.debug("Kafka messagingServiceName not found")
-                return None
+                return
 
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
@@ -246,8 +249,6 @@ class KafkaconnectSource(PipelineServiceSource):
                 )
             )
 
-        return None
-
     def get_pipelines_list(self) -> Iterable[KafkaConnectPipelineDetails]:
         """
         Get List of all pipelines
@@ -300,6 +301,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 service_name=self.context.get().pipeline_service,
                 pipeline_name=self.context.get().pipeline,
             )
+
             yield Either(
                 right=OMetaPipelineStatus(
                     pipeline_fqn=pipeline_fqn,

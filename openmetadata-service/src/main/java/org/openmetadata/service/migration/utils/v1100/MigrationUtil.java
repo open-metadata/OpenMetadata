@@ -60,7 +60,8 @@ public class MigrationUtil {
       "tag",
       "classification",
       "glossary_term_entity",
-      "data_contract_entity"
+      "data_contract_entity",
+      "test_case"
     };
 
     int totalEntitiesMigrated = 0;

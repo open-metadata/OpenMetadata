@@ -31,7 +31,7 @@ jest.mock('../../../Customization/GenericProvider/GenericProvider', () => ({
 }));
 
 jest.mock('../../../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue({}),
+  ownerTableObject: jest.fn().mockReturnValue([{}]),
 }));
 
 describe('GlossaryTermReferences', () => {

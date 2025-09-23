@@ -535,6 +535,8 @@ export enum VerifySSL {
  *
  * Apply a set of operations on a service
  *
+ * Query Runner Request
+ *
  * Test Spark Engine Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnectionRequest {
@@ -576,6 +578,14 @@ export interface TestServiceConnectionRequest {
      * Pipeline type
      */
     type?: ReverseIngestionType;
+    /**
+     * Query to be executed.
+     */
+    query?: string;
+    /**
+     * Optional value to indicate if the query should be transpiled.
+     */
+    transpile?: boolean;
     /**
      * Spark Engine Configuration.
      */
@@ -1355,6 +1365,18 @@ export interface ConfigObject {
      */
     secure?: boolean;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     *
+     * Types of methods used to authenticate to the tableau instance
+     *
+     * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -1436,16 +1458,6 @@ export interface ConfigObject {
      * Authentication mode to connect to Impala.
      */
     authMechanism?: AuthMechanismEnum;
-    /**
-     * Choose Auth Config Type.
-     *
-     * Types of methods used to authenticate to the tableau instance
-     *
-     * Types of methods used to authenticate to the alation instance
-     *
-     * Authentication type to connect to Apache Ranger.
-     */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
     /**
      * Use slow logs to extract lineage.
      */
@@ -2362,6 +2374,16 @@ export enum AuthMechanismEnum {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -2394,7 +2416,34 @@ export enum AuthMechanismEnum {
  *
  * Configuration for connecting to Ranger Basic Auth.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
      *
@@ -3300,7 +3349,7 @@ export interface ConfigConnection {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -3371,7 +3420,7 @@ export interface ConfigConnection {
  *
  * Azure Database Connection Config
  */
-export interface ConnectionAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -3777,7 +3826,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -4657,6 +4706,8 @@ export enum ReverseIngestionType {
  * connection steps.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Response
  */
 export interface TestConnectionResult {
     /**
@@ -4665,6 +4716,8 @@ export interface TestConnectionResult {
     lastUpdatedAt?: number;
     /**
      * Test Connection Result computation status.
+     *
+     * Status of the query execution
      */
     status?: StatusType;
     /**
@@ -4677,8 +4730,10 @@ export interface TestConnectionResult {
     message?: string;
     /**
      * List of operations to be performed on the service
+     *
+     * Results of the query execution
      */
-    results?: ReverseIngestionOperationResult[];
+    results?: ReverseIngestionOperationResult[] | TableData;
     /**
      * The id of the service to be modified
      */
@@ -4688,6 +4743,14 @@ export interface TestConnectionResult {
      * connection issues.
      */
     success?: boolean;
+    /**
+     * Duration of the query execution in seconds
+     */
+    duration?: number;
+    /**
+     * Detailed error log in case of failure
+     */
+    errorLog?: string;
 }
 
 export interface ReverseIngestionOperationResult {
@@ -4707,9 +4770,29 @@ export interface ReverseIngestionOperationResult {
 }
 
 /**
+ * Results of the query execution
+ *
+ * This schema defines the type to capture rows of sample data for a table.
+ */
+export interface TableData {
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
+}
+
+/**
  * Test Connection Result computation status.
  *
  * Enum defining possible Test Connection Result status
+ *
+ * Status of the query execution
+ *
+ * Enum defining possible Query Runner status
  */
 export enum StatusType {
     Failed = "Failed",
@@ -4763,6 +4846,7 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
+    QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
     TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",

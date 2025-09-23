@@ -50,9 +50,18 @@ export interface TestCase {
      */
     entityLink: string;
     /**
+     * Current status of the test case.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Sample of failed rows for this test case.
      */
     failedRowsSample?: TableData;
+    /**
+     * Followers of this test case. When not set, the test case inherits the followers from the
+     * table it belongs to.
+     */
+    followers?: EntityReference[];
     /**
      * FullyQualifiedName same as `name`.
      */
@@ -86,6 +95,10 @@ export interface TestCase {
      */
     owners?:          EntityReference[];
     parameterValues?: TestCaseParameterValue[];
+    /**
+     * List of reviewers for this entity.
+     */
+    reviewers?: EntityReference[];
     /**
      * Tags for this test case. This is an inherited field from the parent entity and is not set
      * directly on the test case.
@@ -267,6 +280,20 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Current status of the test case.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
 }
 
 /**
@@ -579,6 +606,10 @@ export interface TestSuite {
      * References to pipelines deployed for this Test Suite to execute the tests.
      */
     pipelines?: EntityReference[];
+    /**
+     * List of reviewers for this entity.
+     */
+    reviewers?: EntityReference[];
     /**
      * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
      */

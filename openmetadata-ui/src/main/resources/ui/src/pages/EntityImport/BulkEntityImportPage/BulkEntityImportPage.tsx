@@ -14,7 +14,7 @@ import { Button, Card, Col, Row, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import DataGrid, { Column } from 'react-data-grid';
+import DataGrid, { Column, ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
@@ -108,7 +108,7 @@ const BulkEntityImportPage = () => {
 
   const {
     handleCopy,
-    handlePaste,
+    handlePaste: actualHandlePaste,
     pushToUndoStack,
     handleOnRowsChange,
     setGridContainer,
@@ -118,6 +118,11 @@ const BulkEntityImportPage = () => {
     setDataSource,
     columns: filterColumns,
   });
+
+  const handlePaste = actualHandlePaste as unknown as () => Record<
+    string,
+    string
+  >;
 
   const fetchEntityData = useCallback(async () => {
     try {
@@ -455,7 +460,12 @@ const BulkEntityImportPage = () => {
       <div className="om-rdg" ref={setGridContainer}>
         <DataGrid
           className="rdg-light"
-          columns={filterColumns}
+          columns={
+            filterColumns as unknown as ColumnOrColumnGroup<
+              NoInfer<Record<string, string>>,
+              unknown
+            >[]
+          }
           rows={dataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}
@@ -483,7 +493,7 @@ const BulkEntityImportPage = () => {
             activeAsyncImportJob={activeAsyncImportJob}
             activeStep={activeStep}
             breadcrumbList={breadcrumbList}
-            columns={filterColumns as Column<Record<string, string>[]>[]}
+            columns={filterColumns}
             dataSource={dataSource}
             handleBack={handleBack}
             handleCopy={handleCopy}

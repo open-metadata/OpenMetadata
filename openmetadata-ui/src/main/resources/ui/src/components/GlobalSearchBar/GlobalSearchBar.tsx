@@ -47,7 +47,7 @@ export const GlobalSearchBar = () => {
   const { isNLPEnabled, isNLPActive, setNLPActive, setNLPEnabled } =
     useSearchStore();
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [isSearchBlur, setIsSearchBlur] = useState<boolean>(true);
   const [suggestionSearch, setSuggestionSearch] = useState<string>('');
   const location = useCustomLocation();
@@ -89,7 +89,7 @@ export const GlobalSearchBar = () => {
         ))}
       </Select>
     ),
-    [searchCriteria]
+    [searchCriteria, i18n.language]
   );
 
   const handleSelectOption = useCallback((text: string) => {

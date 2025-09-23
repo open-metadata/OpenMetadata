@@ -36,8 +36,8 @@ import React from 'react';
 import ReactDOMServer from 'react-dom/server';
 import CopyIcon from '../../../../assets/svg/icon-copy.svg';
 import {
-  MARKDOWN_MATCH_ID,
   markdownTextAndIdRegex,
+  MARKDOWN_MATCH_ID,
 } from '../../../../constants/regex.constants';
 import { MarkdownToHTMLConverter } from '../../../../utils/FeedUtils';
 import i18n from '../../../../utils/i18next/LocalUtil';
@@ -97,6 +97,12 @@ export const customHTMLRenderer: CustomHTMLRenderer = {
   },
   info(node) {
     return getHTMLTokens(node);
+  },
+  htmlInline(_, { origin }) {
+    // This handles inline HTML elements like <span data-id="value">
+    const originResult = origin && origin();
+
+    return originResult || null;
   },
   tip(node) {
     return getHTMLTokens(node);

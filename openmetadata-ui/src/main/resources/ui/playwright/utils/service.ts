@@ -11,13 +11,18 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { escapeESReservedCharacters, getEncodedFqn } from './entity';
 import { settingClick, SettingOptionsType } from './sidebar';
 
 export const searchServiceFromSettingPage = async (
   page: Page,
   service: string
 ) => {
-  const serviceResponse = page.waitForResponse(`/api/v1/search/query?q=*`);
+  const serviceResponse = page.waitForResponse(
+    `/api/v1/search/query?q=**${getEncodedFqn(
+      escapeESReservedCharacters(service)
+    )}**`
+  );
   await page.fill('[data-testid="searchbar"]', service);
 
   await serviceResponse;

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { DATA_ASSETS_SORT } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -97,23 +97,11 @@ test.describe('Explore Sort Order Filter', () => {
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
 
-      await page.getByTestId('search-dropdown-Data Assets').click();
+      const clearFilters = page.getByTestId('clear-filters');
 
-      await page.waitForSelector(
-        '[data-testid="drop-down-menu"] [data-testid="loader"]',
-        {
-          state: 'detached',
-        }
-      );
+      expect(clearFilters).toBeVisible();
 
-      await page.waitForSelector(
-        `[data-testid="${filter.toLowerCase()}-checkbox"]`,
-        {
-          state: 'visible',
-        }
-      );
-      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).uncheck();
-      await page.getByTestId('update-btn').click();
+      await clearFilters.click();
 
       await afterAction();
     });

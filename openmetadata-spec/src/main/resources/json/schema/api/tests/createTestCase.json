@@ -40,6 +40,10 @@
       "description": "Data Contract that this test case is associated with. Fully qualified name of the data contract.",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
+    "reviewers": {
+      "description": "Reviewers of this test",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "computePassedFailedRowCount": {
       "description": "Compute the passed and failed row count for the test case.",
       "type": "boolean",

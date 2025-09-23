@@ -264,6 +264,12 @@ export const PAGE_HEADERS = {
       entity: i18n.t('label.metric-plural'),
     }),
   },
+  CHARTS_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.chart-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.chart-plural'),
+    }),
+  },
   PLATFORM_LINEAGE: {
     header: i18n.t('label.lineage'),
     subHeader: i18n.t('message.page-sub-header-for-platform-lineage'),
