@@ -1,0 +1,776 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  LineageData,
+  LineageEntityReference,
+} from '../../../../components/Lineage/Lineage.interface';
+import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
+import LineageTabContent from './LineageTabContent';
+
+// Mock react-i18next
+jest.mock('react-i18next', () => ({
+  useTranslation: jest.fn().mockReturnValue({
+    t: (key: string) => key,
+  }),
+}));
+
+// Mock antd components
+jest.mock('antd', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, onClick, className, size, ...props }) => (
+      <button
+        className={className}
+        data-size={size}
+        data-testid="button"
+        onClick={onClick}
+        {...props}>
+        {children}
+      </button>
+    )),
+  Typography: {
+    Text: jest.fn().mockImplementation(({ children, className, ...props }) => (
+      <span className={className} data-testid="typography-text" {...props}>
+        {children}
+      </span>
+    )),
+  },
+}));
+
+// Mock SVG components
+jest.mock('../../../../assets/svg/downstream.svg', () => ({
+  ReactComponent: () => <div data-testid="downstream-icon">DownstreamIcon</div>,
+}));
+
+jest.mock('../../../../assets/svg/upstream.svg', () => ({
+  ReactComponent: () => <div data-testid="upstream-icon">UpstreamIcon</div>,
+}));
+
+// Mock utility functions
+jest.mock('../../../../utils/CommonUtils', () => ({
+  getServiceLogo: jest
+    .fn()
+    .mockReturnValue(<div data-testid="service-logo">ServiceLogo</div>),
+}));
+
+jest.mock('../../../../utils/EntityLineageUtils', () => ({
+  getUpstreamDownstreamNodesEdges: jest.fn(),
+}));
+
+// Mock data
+const mockUpstreamEntity: LineageEntityReference = {
+  id: 'upstream-1',
+  type: 'table',
+  name: 'upstream_table',
+  displayName: 'Upstream Table',
+  fullyQualifiedName: 'service.database.schema.upstream_table',
+  serviceType: FormattedDatabaseServiceType.BigQuery,
+};
+
+const mockDownstreamEntity: LineageEntityReference = {
+  id: 'downstream-1',
+  type: 'table',
+  name: 'downstream_table',
+  displayName: 'Downstream Table',
+  fullyQualifiedName: 'service.database.schema.downstream_table',
+  serviceType: FormattedDatabaseServiceType.Snowflake,
+};
+
+const mockLineageData: LineageData = {
+  nodes: {
+    'upstream-1': {
+      entity: mockUpstreamEntity,
+      paging: { entityUpstreamCount: 1 },
+    },
+    'downstream-1': {
+      entity: mockDownstreamEntity,
+      paging: { entityDownstreamCount: 1 },
+    },
+  },
+  upstreamEdges: {
+    'edge-1': {
+      fromEntity: mockUpstreamEntity,
+      toEntity: { id: 'current-entity', type: 'table' },
+    },
+  },
+  downstreamEdges: {
+    'edge-2': {
+      fromEntity: {
+        id: 'current-entity',
+        type: 'table',
+      },
+      toEntity: mockDownstreamEntity,
+    },
+  },
+};
+
+const defaultProps = {
+  entityFqn: 'service.database.schema.current_table',
+  filter: 'upstream' as const,
+  lineageData: mockLineageData,
+  onFilterChange: jest.fn(),
+};
+
+describe('LineageTabContent', () => {
+  const mockGetUpstreamDownstreamNodesEdges = jest.requireMock(
+    '../../../../utils/EntityLineageUtils'
+  ).getUpstreamDownstreamNodesEdges;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Setup default mock implementation
+    mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+      upstreamNodes: [mockUpstreamEntity],
+      downstreamNodes: [mockDownstreamEntity],
+    });
+  });
+
+  describe('Component Rendering', () => {
+    it('should render without crashing', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      const buttons = screen.getAllByTestId('button');
+
+      expect(buttons).toHaveLength(2);
+    });
+
+    it('should render with correct CSS classes', () => {
+      const { container } = render(<LineageTabContent {...defaultProps} />);
+
+      expect(
+        container.querySelector('.lineage-tab-content')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('.lineage-filter-buttons')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('.lineage-items-list')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Filter Buttons', () => {
+    it('should render upstream and downstream filter buttons', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      const buttons = screen.getAllByTestId('button');
+
+      expect(buttons).toHaveLength(2);
+      expect(
+        screen.getByText('label.upstream', { selector: 'button' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('label.downstream', { selector: 'button' })
+      ).toBeInTheDocument();
+    });
+
+    it('should show correct counts in filter buttons', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      const countElements = screen.getAllByText('1');
+
+      expect(countElements).toHaveLength(2); // upstream and downstream counts
+    });
+
+    it('should highlight active filter button', () => {
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      const upstreamButton = screen.getByText('label.upstream', {
+        selector: 'button',
+      });
+
+      expect(upstreamButton).toHaveClass('active');
+    });
+
+    it('should highlight downstream filter when active', () => {
+      render(<LineageTabContent {...defaultProps} filter="downstream" />);
+
+      const downstreamButton = screen.getByText('label.downstream', {
+        selector: 'button',
+      });
+
+      expect(downstreamButton).toHaveClass('active');
+    });
+
+    it('should call onFilterChange when upstream button is clicked', () => {
+      const mockOnFilterChange = jest.fn();
+      render(
+        <LineageTabContent
+          {...defaultProps}
+          onFilterChange={mockOnFilterChange}
+        />
+      );
+
+      const upstreamButton = screen.getByText('label.upstream', {
+        selector: 'button',
+      });
+      fireEvent.click(upstreamButton);
+
+      expect(mockOnFilterChange).toHaveBeenCalledWith('upstream');
+    });
+
+    it('should call onFilterChange when downstream button is clicked', () => {
+      const mockOnFilterChange = jest.fn();
+      render(
+        <LineageTabContent
+          {...defaultProps}
+          onFilterChange={mockOnFilterChange}
+        />
+      );
+
+      const downstreamButton = screen.getByText('label.downstream', {
+        selector: 'button',
+      });
+      fireEvent.click(downstreamButton);
+
+      expect(mockOnFilterChange).toHaveBeenCalledWith('downstream');
+    });
+
+    it('should render buttons with correct size', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      const buttons = screen.getAllByTestId('button');
+      buttons.forEach((button) => {
+        expect(button).toHaveAttribute('data-size', 'small');
+      });
+    });
+  });
+
+  describe('Upstream Filter', () => {
+    it('should render upstream lineage items when filter is upstream', () => {
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+      expect(
+        screen.getByText('service / database / schema')
+      ).toBeInTheDocument();
+    });
+
+    it('should render upstream icon for upstream items', () => {
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.getByTestId('upstream-icon')).toBeInTheDocument();
+    });
+
+    it('should render upstream direction text', () => {
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(
+        screen.getByText('label.upstream', { selector: '.item-direction-text' })
+      ).toBeInTheDocument();
+    });
+
+    it('should render service logo for upstream items', () => {
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.getByTestId('service-logo')).toBeInTheDocument();
+    });
+
+    it('should not render downstream items when filter is upstream', () => {
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.queryByText('Downstream Table')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Downstream Filter', () => {
+    it('should render downstream lineage items when filter is downstream', () => {
+      render(<LineageTabContent {...defaultProps} filter="downstream" />);
+
+      expect(screen.getByText('Downstream Table')).toBeInTheDocument();
+      expect(
+        screen.getByText('service / database / schema')
+      ).toBeInTheDocument();
+    });
+
+    it('should render downstream direction text', () => {
+      render(<LineageTabContent {...defaultProps} filter="downstream" />);
+
+      expect(
+        screen.getByText('label.downstream', {
+          selector: '.item-direction-text',
+        })
+      ).toBeInTheDocument();
+    });
+
+    it('should render service logo for downstream items', () => {
+      render(<LineageTabContent {...defaultProps} filter="downstream" />);
+
+      expect(screen.getByTestId('service-logo')).toBeInTheDocument();
+    });
+
+    it('should not render upstream items when filter is downstream', () => {
+      render(<LineageTabContent {...defaultProps} filter="downstream" />);
+
+      expect(screen.queryByText('Upstream Table')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Lineage Items Structure', () => {
+    it('should render lineage item cards with correct structure', () => {
+      const { container } = render(<LineageTabContent {...defaultProps} />);
+
+      const lineageCards = container.querySelectorAll('.lineage-item-card');
+
+      expect(lineageCards.length).toBeGreaterThan(0);
+
+      lineageCards.forEach((card) => {
+        expect(card.querySelector('.lineage-item-header')).toBeInTheDocument();
+        expect(card.querySelector('.lineage-card-content')).toBeInTheDocument();
+      });
+    });
+
+    it('should render service icon in lineage item header', () => {
+      const { container } = render(<LineageTabContent {...defaultProps} />);
+
+      const serviceIcons = container.querySelectorAll('.service-icon');
+
+      expect(serviceIcons.length).toBeGreaterThan(0);
+    });
+
+    it('should render lineage item direction in header', () => {
+      const { container } = render(<LineageTabContent {...defaultProps} />);
+
+      const directionElements = container.querySelectorAll(
+        '.lineage-item-direction'
+      );
+
+      expect(directionElements.length).toBeGreaterThan(0);
+    });
+
+    it('should render entity path when available', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      expect(
+        screen.getByText('service / database / schema')
+      ).toBeInTheDocument();
+    });
+
+    it('should render entity display name or name', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+    });
+  });
+
+  describe('No Data State', () => {
+    it('should render no data found message when no lineage items', () => {
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [],
+        downstreamNodes: [],
+      });
+
+      render(<LineageTabContent {...defaultProps} />);
+
+      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+    });
+
+    it('should render no data found message with correct CSS classes', () => {
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [],
+        downstreamNodes: [],
+      });
+
+      const { container } = render(<LineageTabContent {...defaultProps} />);
+
+      const noDataElement = container.querySelector(
+        '.text-center.text-grey-muted.p-lg'
+      );
+
+      expect(noDataElement).toBeInTheDocument();
+    });
+  });
+
+  describe('Entity Filtering', () => {
+    it('should exclude current entity from upstream items', () => {
+      const currentEntityFqn = 'service.database.schema.current_table';
+      const lineageDataWithCurrentEntity = {
+        ...mockLineageData,
+        nodes: {
+          ...mockLineageData.nodes,
+          'current-entity': {
+            entity: {
+              id: 'current-entity',
+              type: 'table',
+              name: 'current_table',
+              displayName: 'Current Table',
+              fullyQualifiedName: currentEntityFqn,
+              serviceType: FormattedDatabaseServiceType.BigQuery,
+            },
+            paging: { entityUpstreamCount: 1 },
+          },
+        },
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [
+          mockUpstreamEntity,
+          {
+            id: 'current-entity',
+            type: 'table',
+            name: 'current_table',
+            displayName: 'Current Table',
+            fullyQualifiedName: currentEntityFqn,
+            serviceType: FormattedDatabaseServiceType.BigQuery,
+          },
+        ],
+        downstreamNodes: [mockDownstreamEntity],
+      });
+
+      render(
+        <LineageTabContent
+          {...defaultProps}
+          entityFqn={currentEntityFqn}
+          lineageData={lineageDataWithCurrentEntity}
+        />
+      );
+
+      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+      expect(screen.queryByText('Current Table')).not.toBeInTheDocument();
+    });
+
+    it('should exclude current entity from downstream items', () => {
+      const currentEntityFqn = 'service.database.schema.current_table';
+      const lineageDataWithCurrentEntity = {
+        ...mockLineageData,
+        nodes: {
+          ...mockLineageData.nodes,
+          'current-entity': {
+            entity: {
+              id: 'current-entity',
+              type: 'table',
+              name: 'current_table',
+              displayName: 'Current Table',
+              fullyQualifiedName: currentEntityFqn,
+              serviceType: FormattedDatabaseServiceType.BigQuery,
+            },
+            paging: { entityUpstreamCount: 1 },
+          },
+        },
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [mockUpstreamEntity],
+        downstreamNodes: [
+          mockDownstreamEntity,
+          {
+            id: 'current-entity',
+            type: 'table',
+            name: 'current_table',
+            displayName: 'Current Table',
+            fullyQualifiedName: currentEntityFqn,
+            serviceType: FormattedDatabaseServiceType.BigQuery,
+          },
+        ],
+      });
+
+      render(
+        <LineageTabContent
+          {...defaultProps}
+          entityFqn={currentEntityFqn}
+          filter="downstream"
+          lineageData={lineageDataWithCurrentEntity}
+        />
+      );
+
+      expect(screen.getByText('Downstream Table')).toBeInTheDocument();
+      expect(screen.queryByText('Current Table')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('Path Generation', () => {
+    it('should generate correct path from fullyQualifiedName', () => {
+      const entityWithLongPath = {
+        ...mockUpstreamEntity,
+        fullyQualifiedName: 'service.database.schema.table.column',
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [entityWithLongPath],
+        downstreamNodes: [],
+      });
+
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(
+        screen.getByText('service / database / schema / table')
+      ).toBeInTheDocument();
+    });
+
+    it('should handle entities without fullyQualifiedName', () => {
+      const entityWithoutFqn = {
+        ...mockUpstreamEntity,
+        fullyQualifiedName: undefined,
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [entityWithoutFqn],
+        downstreamNodes: [],
+      });
+
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+    });
+
+    it('should handle entities with empty fullyQualifiedName', () => {
+      const entityWithEmptyFqn = {
+        ...mockUpstreamEntity,
+        fullyQualifiedName: '',
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [entityWithEmptyFqn],
+        downstreamNodes: [],
+      });
+
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+    });
+  });
+
+  describe('Entity Name Display', () => {
+    it('should display displayName when available', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+    });
+
+    it('should fallback to name when displayName is not available', () => {
+      const entityWithoutDisplayName = {
+        ...mockUpstreamEntity,
+        displayName: undefined,
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [entityWithoutDisplayName],
+        downstreamNodes: [],
+      });
+
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.getByText('upstream_table')).toBeInTheDocument();
+    });
+
+    it('should fallback to name when displayName is empty', () => {
+      const entityWithEmptyDisplayName = {
+        ...mockUpstreamEntity,
+        displayName: '',
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [entityWithEmptyDisplayName],
+        downstreamNodes: [],
+      });
+
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.getByText('upstream_table')).toBeInTheDocument();
+    });
+  });
+
+  describe('Service Logo Integration', () => {
+    it('should call getServiceLogo with correct parameters', () => {
+      const { getServiceLogo } = jest.requireMock(
+        '../../../../utils/CommonUtils'
+      );
+
+      render(<LineageTabContent {...defaultProps} />);
+
+      expect(getServiceLogo).toHaveBeenCalledWith(
+        'Big query',
+        'service-icon-lineage'
+      );
+    });
+
+    it('should handle entities without serviceType', () => {
+      const entityWithoutServiceType = {
+        ...mockUpstreamEntity,
+        serviceType: undefined,
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [entityWithoutServiceType],
+        downstreamNodes: [],
+      });
+
+      const { getServiceLogo } = jest.requireMock(
+        '../../../../utils/CommonUtils'
+      );
+
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(getServiceLogo).toHaveBeenCalledWith('', 'service-icon-lineage');
+    });
+  });
+
+  describe('Utility Function Integration', () => {
+    it('should call getUpstreamDownstreamNodesEdges with correct parameters', () => {
+      render(<LineageTabContent {...defaultProps} />);
+
+      expect(mockGetUpstreamDownstreamNodesEdges).toHaveBeenCalledWith(
+        [
+          ...Object.values(mockLineageData.downstreamEdges || {}),
+          ...Object.values(mockLineageData.upstreamEdges || {}),
+        ],
+        Object.values(mockLineageData.nodes || {}).map(
+          (nodeData) => nodeData.entity
+        ),
+        defaultProps.entityFqn
+      );
+    });
+
+    it('should handle empty lineage data', () => {
+      const emptyLineageData: LineageData = {
+        nodes: {},
+        upstreamEdges: {},
+        downstreamEdges: {},
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [],
+        downstreamNodes: [],
+      });
+
+      render(
+        <LineageTabContent {...defaultProps} lineageData={emptyLineageData} />
+      );
+
+      expect(mockGetUpstreamDownstreamNodesEdges).toHaveBeenCalledWith(
+        [],
+        [],
+        defaultProps.entityFqn
+      );
+    });
+  });
+
+  describe('Multiple Items', () => {
+    it('should render multiple upstream items', () => {
+      const multipleUpstreamEntities = [
+        mockUpstreamEntity,
+        {
+          id: 'upstream-2',
+          type: 'table',
+          name: 'upstream_table_2',
+          displayName: 'Upstream Table 2',
+          fullyQualifiedName: 'service.database.schema.upstream_table_2',
+          serviceType: FormattedDatabaseServiceType.Postgres,
+        },
+      ];
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: multipleUpstreamEntities,
+        downstreamNodes: [],
+      });
+
+      render(<LineageTabContent {...defaultProps} filter="upstream" />);
+
+      expect(screen.getByText('Upstream Table')).toBeInTheDocument();
+      expect(screen.getByText('Upstream Table 2')).toBeInTheDocument();
+    });
+
+    it('should render multiple downstream items', () => {
+      const multipleDownstreamEntities = [
+        mockDownstreamEntity,
+        {
+          id: 'downstream-2',
+          type: 'table',
+          name: 'downstream_table_2',
+          displayName: 'Downstream Table 2',
+          fullyQualifiedName: 'service.database.schema.downstream_table_2',
+          serviceType: FormattedDatabaseServiceType.Mysql,
+        },
+      ];
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [],
+        downstreamNodes: multipleDownstreamEntities,
+      });
+
+      render(<LineageTabContent {...defaultProps} filter="downstream" />);
+
+      expect(screen.getByText('Downstream Table')).toBeInTheDocument();
+      expect(screen.getByText('Downstream Table 2')).toBeInTheDocument();
+    });
+  });
+
+  describe('Edge Cases', () => {
+    it('should handle missing lineage data gracefully', () => {
+      // Set up mock to handle empty lineage data
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValueOnce({
+        upstreamNodes: [],
+        downstreamNodes: [],
+      });
+
+      const emptyLineageData = {
+        nodes: {},
+        upstreamEdges: {},
+        downstreamEdges: {},
+      };
+
+      const { container } = render(
+        <LineageTabContent {...defaultProps} lineageData={emptyLineageData} />
+      );
+
+      expect(
+        container.querySelector('.lineage-tab-content')
+      ).toBeInTheDocument();
+    });
+
+    it('should handle missing nodes in lineage data', () => {
+      const lineageDataWithoutNodes = {
+        ...mockLineageData,
+        nodes: {},
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [],
+        downstreamNodes: [],
+      });
+
+      render(
+        <LineageTabContent
+          {...defaultProps}
+          lineageData={lineageDataWithoutNodes}
+        />
+      );
+
+      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+    });
+
+    it('should handle missing edges in lineage data', () => {
+      const lineageDataWithoutEdges = {
+        ...mockLineageData,
+        upstreamEdges: {},
+        downstreamEdges: {},
+      };
+
+      mockGetUpstreamDownstreamNodesEdges.mockReturnValue({
+        upstreamNodes: [],
+        downstreamNodes: [],
+      });
+
+      render(
+        <LineageTabContent
+          {...defaultProps}
+          lineageData={lineageDataWithoutEdges}
+        />
+      );
+
+      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+    });
+  });
+});
