@@ -249,3 +249,42 @@ WHERE
     prokind = 'f'
     and pg_namespace.nspname = '{schema_name}';
 """
+
+TEST_COLUMN_METADATA = """
+SELECT
+    a.attname,
+    pg_catalog.format_type(a.atttypid, a.atttypmod),
+    a.attnotnull,
+    pgd.description as comment
+FROM pg_catalog.pg_attribute a
+LEFT JOIN pg_catalog.pg_description pgd ON (
+    pgd.objoid = a.attrelid AND pgd.objsubid = a.attnum)
+WHERE a.attnum > 0 AND NOT a.attisdropped
+LIMIT 1
+"""
+
+TEST_TABLE_COMMENTS = """
+SELECT
+    n.nspname as schema,
+    c.relname as table_name,
+    pgd.description as table_comment
+FROM pg_catalog.pg_class c
+LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace
+LEFT JOIN pg_catalog.pg_description pgd ON pgd.objsubid = 0 AND pgd.objoid = c.oid
+WHERE c.relkind in ('r', 'v', 'm', 'f', 'p')
+  AND pgd.description IS NOT NULL
+  AND n.nspname <> 'pg_catalog'
+LIMIT 1
+"""
+
+TEST_INFORMATION_SCHEMA_COLUMNS = """
+SELECT
+    table_schema,
+    table_name,
+    column_name,
+    data_type,
+    character_maximum_length
+FROM information_schema.columns
+WHERE table_schema NOT IN ('pg_catalog', 'information_schema')
+LIMIT 1
+"""
