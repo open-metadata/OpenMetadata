@@ -55,8 +55,8 @@ import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -473,6 +473,13 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
         fieldSortBuilder.unmappedType("integer");
       }
       searchSourceBuilder.sort(fieldSortBuilder);
+
+      // Add tiebreaker sort for stable pagination when sorting by score
+      // This ensures consistent ordering when multiple documents have identical scores
+      if (request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        searchSourceBuilder.sort(
+            SortBuilders.fieldSort("name.keyword").order(SortOrder.ASC).unmappedType("keyword"));
+      }
     }
 
     buildHierarchyQuery(request, searchSourceBuilder, client);
@@ -577,6 +584,41 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       }
     } else {
       return fallbackToBasicSearch(request, subjectContext);
+    }
+  }
+
+  @Override
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    LOG.info("Executing direct OpenSearch query: {}", request.getQueryFilter());
+    try {
+      XContentParser parser = createXContentParser(request.getQueryFilter());
+      SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+      searchSourceBuilder.from(request.getFrom());
+      searchSourceBuilder.size(request.getSize());
+
+      // Apply RBAC constraints
+      buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
+      // Add aggregations if needed
+      OpenSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
+      sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
+
+      os.org.opensearch.action.search.SearchRequest osRequest =
+          new os.org.opensearch.action.search.SearchRequest(request.getIndex());
+      osRequest.source(searchSourceBuilder);
+      // Use DFS Query Then Fetch for consistent scoring across shards
+      osRequest.searchType(SearchType.DFS_QUERY_THEN_FETCH);
+
+      SearchResponse response = client.search(osRequest, OPENSEARCH_REQUEST_OPTIONS);
+
+      LOG.debug("Direct query search completed successfully");
+      return Response.status(Response.Status.OK).entity(response.toString()).build();
+    } catch (Exception e) {
+      LOG.error("Error executing direct query search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute direct query search: %s", e.getMessage()))
+          .build();
     }
   }
 

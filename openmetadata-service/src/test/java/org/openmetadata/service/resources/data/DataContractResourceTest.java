@@ -71,6 +71,7 @@ import org.openmetadata.schema.api.services.CreateMessagingService;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.entity.data.APIEndpoint;
+import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -108,12 +109,14 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.apis.APIEndpointResourceTest;
+import org.openmetadata.service.resources.charts.ChartResourceTest;
 import org.openmetadata.service.resources.dashboards.DashboardResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResourceTest;
 import org.openmetadata.service.resources.dqtests.TestCaseResourceTest;
 import org.openmetadata.service.resources.dqtests.TestSuiteResourceTest;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResourceTest;
+import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 
@@ -138,6 +141,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   private static TestCaseResourceTest testCaseResourceTest;
   private static IngestionPipelineResourceTest ingestionPipelineResourceTest;
   private static TestSuiteResourceTest testSuiteResourceTest;
+  private static ChartResourceTest chartResourceTest;
   private static DashboardResourceTest dashboardResourceTest;
   private static APIEndpointResourceTest apiEndpointResourceTest;
   private static DashboardDataModelResourceTest dashboardDataModelResourceTest;
@@ -160,6 +164,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   public void setup(TestInfo test) throws URISyntaxException, IOException {
     testCaseResourceTest = new TestCaseResourceTest();
     testSuiteResourceTest = new TestSuiteResourceTest();
+    chartResourceTest = new ChartResourceTest();
     dashboardResourceTest = new DashboardResourceTest();
     apiEndpointResourceTest = new APIEndpointResourceTest();
     dashboardDataModelResourceTest = new DashboardDataModelResourceTest();
@@ -588,6 +593,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
    * Creates a unique topic for testing data contracts
    */
   private Topic createUniqueTopic(String testName) throws IOException {
+    return createUniqueTopic(testName, null);
+  }
+
+  /**
+   * Creates a unique topic for testing data contracts with specific schema fields
+   */
+  private Topic createUniqueTopic(String testName, List<Field> customFields) throws IOException {
     // Ensure we have a messaging service to work with
     String messagingServiceName = ensureMessagingService();
 
@@ -610,24 +622,27 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
             + uniqueId.substring(0, 8);
 
     // Create message schema for the topic
-    List<Field> fields =
-        List.of(
-            new Field()
-                .withName("messageId")
-                .withDisplayName("Message ID")
-                .withDataType(FieldDataType.STRING),
-            new Field()
-                .withName("eventType")
-                .withDisplayName("Event Type")
-                .withDataType(FieldDataType.STRING),
-            new Field()
-                .withName("payload")
-                .withDisplayName("Payload")
-                .withDataType(FieldDataType.STRING),
-            new Field()
-                .withName("timestamp")
-                .withDisplayName("Timestamp")
-                .withDataType(FieldDataType.TIMESTAMP));
+    List<Field> fields = customFields;
+    if (fields == null) {
+      fields =
+          List.of(
+              new Field()
+                  .withName("messageId")
+                  .withDisplayName("Message ID")
+                  .withDataType(FieldDataType.STRING),
+              new Field()
+                  .withName("eventType")
+                  .withDisplayName("Event Type")
+                  .withDataType(FieldDataType.STRING),
+              new Field()
+                  .withName("payload")
+                  .withDisplayName("Payload")
+                  .withDataType(FieldDataType.STRING),
+              new Field()
+                  .withName("timestamp")
+                  .withDisplayName("Timestamp")
+                  .withDataType(FieldDataType.TIMESTAMP));
+    }
 
     MessageSchema messageSchema =
         new MessageSchema()
@@ -657,6 +672,17 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
    * Creates a unique API endpoint for testing data contracts
    */
   private APIEndpoint createUniqueApiEndpoint(String testName) throws IOException {
+    return createUniqueApiEndpoint(testName, null, null);
+  }
+
+  /**
+   * Creates a unique API endpoint for testing data contracts with specific schema fields
+   */
+  private APIEndpoint createUniqueApiEndpoint(
+      String testName,
+      List<org.openmetadata.schema.type.Field> requestFields,
+      List<org.openmetadata.schema.type.Field> responseFields)
+      throws IOException {
     // Use multiple entropy sources for absolute uniqueness
     long counter = tableCounter.incrementAndGet();
     long timestamp = System.nanoTime();
@@ -675,6 +701,19 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
             + uniqueId;
 
     CreateAPIEndpoint createApiEndpoint = apiEndpointResourceTest.createRequest(apiEndpointName);
+
+    if (requestFields != null && !requestFields.isEmpty()) {
+      org.openmetadata.schema.type.APISchema requestSchema =
+          new org.openmetadata.schema.type.APISchema().withSchemaFields(requestFields);
+      createApiEndpoint.withRequestSchema(requestSchema);
+    }
+
+    if (responseFields != null && !responseFields.isEmpty()) {
+      org.openmetadata.schema.type.APISchema responseSchema =
+          new org.openmetadata.schema.type.APISchema().withSchemaFields(responseFields);
+      createApiEndpoint.withResponseSchema(responseSchema);
+    }
+
     WebTarget target = APP.client().target(getApiEndpointUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createApiEndpoint));
@@ -688,6 +727,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
    * Creates a unique dashboard data model for testing data contracts
    */
   private DashboardDataModel createUniqueDashboardDataModel(String testName) throws IOException {
+    return createUniqueDashboardDataModel(testName, null);
+  }
+
+  /**
+   * Creates a unique dashboard data model for testing data contracts with specific columns
+   */
+  private DashboardDataModel createUniqueDashboardDataModel(
+      String testName, List<org.openmetadata.schema.type.Column> columns) throws IOException {
     // Use multiple entropy sources for absolute uniqueness
     long counter = tableCounter.incrementAndGet();
     long timestamp = System.nanoTime();
@@ -707,6 +754,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     CreateDashboardDataModel createDataModel =
         dashboardDataModelResourceTest.createRequest(dataModelName);
+
+    if (columns != null && !columns.isEmpty()) {
+      createDataModel.withColumns(columns);
+    }
+
     WebTarget target = APP.client().target(getDashboardDataModelUri());
     Response response =
         SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).post(Entity.json(createDataModel));
@@ -1703,6 +1755,138 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Verify deletion
     assertThrows(HttpResponseException.class, () -> getDataContract(created.getId(), null));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtFieldsOnCreation(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    long beforeCreation = System.currentTimeMillis();
+
+    DataContract created = createDataContract(create);
+
+    long afterCreation = System.currentTimeMillis();
+
+    // Verify createdAt is set and within reasonable bounds
+    assertNotNull(created.getCreatedAt());
+    assertTrue(created.getCreatedAt() >= beforeCreation);
+    assertTrue(created.getCreatedAt() <= afterCreation);
+
+    // Verify createdBy is always set
+    assertNotNull(created.getCreatedBy());
+    assertEquals("admin", created.getCreatedBy());
+
+    // Get with fields parameter to ensure fields are persisted
+    DataContract retrieved = getDataContract(created.getId(), "createdBy,createdAt");
+    assertNotNull(retrieved.getCreatedAt());
+    assertNotNull(retrieved.getCreatedBy());
+    assertEquals(created.getCreatedAt(), retrieved.getCreatedAt());
+    assertEquals(created.getCreatedBy(), retrieved.getCreatedBy());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtPreservedOnUpdate(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Store original creation metadata
+    Long originalCreatedAt = created.getCreatedAt();
+    String originalCreatedBy = created.getCreatedBy();
+
+    // Update the contract
+    create.withEntityStatus(EntityStatus.APPROVED).withDescription("Updated description");
+    DataContract updated = updateDataContract(create);
+
+    // Verify creation fields are preserved
+    assertNotNull(updated.getCreatedAt());
+    assertNotNull(updated.getCreatedBy());
+    assertEquals(originalCreatedAt, updated.getCreatedAt());
+    assertEquals(originalCreatedBy, updated.getCreatedBy());
+
+    // Verify updatedAt exists
+    assertNotNull(updated.getUpdatedAt());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtPreservedOnPatch(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    String originalJson = JsonUtils.pojoToJson(created);
+
+    // Store original creation metadata
+    Long originalCreatedAt = created.getCreatedAt();
+    String originalCreatedBy = created.getCreatedBy();
+
+    // Apply patch
+    created.setEntityStatus(EntityStatus.APPROVED);
+    created.setDescription("Patched description");
+
+    DataContract patched = patchDataContract(created.getId(), originalJson, created);
+
+    // Verify creation fields are preserved
+    assertEquals(originalCreatedAt, patched.getCreatedAt());
+    assertEquals(originalCreatedBy, patched.getCreatedBy());
+
+    // Verify the patch was applied
+    assertEquals(EntityStatus.APPROVED, patched.getEntityStatus());
+    assertEquals("Patched description", patched.getDescription());
+
+    // Verify updatedAt is different from createdAt (updatedAt should be newer or equal)
+    assertNotNull(patched.getUpdatedAt());
+    assertTrue(patched.getUpdatedAt() >= patched.getCreatedAt());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtInGetByEntityId(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Get by entity ID with fields parameter
+    DataContract retrieved =
+        getDataContractByEntityId(
+            table.getId(), org.openmetadata.service.Entity.TABLE, "createdBy,createdAt");
+
+    // Verify creation fields are returned
+    assertNotNull(retrieved.getCreatedAt());
+    assertNotNull(retrieved.getCreatedBy());
+    assertEquals(created.getCreatedAt(), retrieved.getCreatedAt());
+    assertEquals(created.getCreatedBy(), retrieved.getCreatedBy());
+
+    // Get by entity ID without fields parameter should still return creation fields (they're audit
+    // fields)
+    DataContract retrievedNoFields =
+        getDataContractByEntityId(table.getId(), org.openmetadata.service.Entity.TABLE);
+    assertNotNull(retrievedNoFields.getCreatedBy());
+    assertNotNull(retrievedNoFields.getCreatedAt());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testCreatedByAndCreatedAtInGetByName(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
+    DataContract created = createDataContract(create);
+
+    // Get by name with fields parameter
+    DataContract retrieved =
+        getDataContractByName(created.getFullyQualifiedName(), "createdBy,createdAt");
+
+    // Verify creation fields are returned
+    assertNotNull(retrieved.getCreatedAt());
+    assertEquals(created.getCreatedAt(), retrieved.getCreatedAt());
+
+    // createdBy should always be set
+    assertNotNull(created.getCreatedBy());
+    assertNotNull(retrieved.getCreatedBy());
+    assertEquals(created.getCreatedBy(), retrieved.getCreatedBy());
   }
 
   // ===================== Business Logic Tests =====================
@@ -3648,6 +3832,97 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractWithChartAndSemanticsOnly(TestInfo test) throws IOException {
+    // Create a chart entity to use for the data contract
+    Chart chart =
+        chartResourceTest.createEntity(
+            chartResourceTest.createRequest(test.getDisplayName()), ADMIN_AUTH_HEADERS);
+
+    // Test 1: Chart with schema validation should fail (charts don't support schema validation)
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("testField")
+                .withDescription("Test field")
+                .withDataType(ColumnDataType.STRING));
+
+    CreateDataContract createWithSchema =
+        createDataContractRequestForEntity(test.getDisplayName() + "_schema", chart)
+            .withSchema(columns);
+
+    assertResponseContains(
+        () -> createDataContract(createWithSchema),
+        BAD_REQUEST,
+        "Schema validation is not supported for chart entities. Only table, topic, apiEndpoint, and dashboardDataModel entities support schema validation");
+
+    // Test 2: Chart with semantics validation only should succeed
+    // Create semantics rules only (no quality expectations or schema)
+    List<SemanticsRule> semanticsRules =
+        List.of(
+            new SemanticsRule()
+                .withName("Chart Display Name Check")
+                .withDescription("Ensures chart has a valid display name")
+                .withRule("{ \"!!\": { \"var\": \"displayName\" } }"),
+            new SemanticsRule()
+                .withName("Chart Type Check")
+                .withDescription("Ensures chart has a valid chart type")
+                .withRule("{ \"!!\": { \"var\": \"chartType\" } }"));
+
+    // Create data contract for the chart with semantics rules only
+    CreateDataContract create =
+        createDataContractRequestForEntity(test.getDisplayName(), chart)
+            .withDescription("Data contract for chart with semantics validation")
+            .withSemantics(semanticsRules)
+            .withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Verify the data contract was created successfully
+    assertNotNull(dataContract);
+    assertNotNull(dataContract.getId());
+    assertEquals(create.getName(), dataContract.getName());
+    assertEquals(create.getEntityStatus(), dataContract.getEntityStatus());
+    assertEquals(chart.getId(), dataContract.getEntity().getId());
+    assertEquals("chart", dataContract.getEntity().getType());
+
+    // Verify semantics rules are properly set
+    assertNotNull(dataContract.getSemantics());
+    assertEquals(2, dataContract.getSemantics().size());
+    assertSemantics(create.getSemantics(), dataContract.getSemantics());
+
+    // Verify no quality expectations or schema are set (semantics only)
+    assertNull(dataContract.getQualityExpectations());
+    assertNull(dataContract.getSchema());
+
+    // Verify FQN follows expected pattern
+    String expectedFQN = chart.getFullyQualifiedName() + ".dataContract_" + create.getName();
+    assertEquals(expectedFQN, dataContract.getFullyQualifiedName());
+
+    // Test the validate method and verify contract status
+    DataContractResult validationResult = runValidate(dataContract);
+
+    // Verify the validation result
+    assertNotNull(validationResult);
+    assertNotNull(validationResult.getContractExecutionStatus());
+
+    // Verify semantics validation was performed
+    assertNotNull(validationResult.getSemanticsValidation());
+    assertEquals(2, validationResult.getSemanticsValidation().getTotal().intValue());
+
+    assertTrue(validationResult.getSemanticsValidation().getTotal() > 0);
+
+    // Verify no schema or quality validation was performed (semantics only)
+    assertNull(validationResult.getSchemaValidation());
+    assertNull(validationResult.getQualityValidation());
+
+    // Retrieve the contract and verify the latest result is stored
+    DataContract retrievedContract = getDataContract(dataContract.getId(), "");
+    assertNotNull(retrievedContract.getLatestResult());
+    assertEquals(validationResult.getId(), retrievedContract.getLatestResult().getResultId());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void testDashboardEntityConstraints(TestInfo test) throws IOException {
     Dashboard dashboard =
         dashboardResourceTest.createEntity(
@@ -3720,8 +3995,20 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   @Test
   @Execution(ExecutionMode.CONCURRENT)
   void testTopicEntityConstraints(TestInfo test) throws IOException {
+    // Define message schema fields that match the data contract columns
+    List<Field> messageSchemaFields =
+        List.of(
+            new Field()
+                .withName("messageId")
+                .withDisplayName("Message ID")
+                .withDataType(FieldDataType.STRING),
+            new Field()
+                .withName("eventType")
+                .withDisplayName("Event Type")
+                .withDataType(FieldDataType.STRING));
+
     // Test 1: Topic with schema should succeed (topics support schema validation)
-    Topic schemaTopic = createUniqueTopic(test.getDisplayName() + "_schema");
+    Topic schemaTopic = createUniqueTopic(test.getDisplayName() + "_schema", messageSchemaFields);
 
     List<Column> columns =
         List.of(
@@ -3748,10 +4035,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals("messageId", schemaContract.getSchema().get(0).getName());
     assertEquals("eventType", schemaContract.getSchema().get(1).getName());
 
-    // Test validation works for schema
+    // Test validation works for schema - should pass when schema fields match
     DataContractResult schemaValidationResult = runValidate(schemaContract);
     assertNotNull(schemaValidationResult);
+    assertEquals(
+        ContractExecutionStatus.Success, schemaValidationResult.getContractExecutionStatus());
     assertNotNull(schemaValidationResult.getSchemaValidation());
+    assertEquals(0, schemaValidationResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getPassed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getTotal().intValue());
 
     // Test 2: Topic with semantics should succeed
     Topic semanticsTopic = createUniqueTopic(test.getDisplayName() + "_semantics");
@@ -3778,7 +4070,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(semanticsValidationResult.getSemanticsValidation());
 
     // Test 3: Topic with both schema and semantics should succeed
-    Topic bothTopic = createUniqueTopic(test.getDisplayName() + "_both");
+    Topic bothTopic = createUniqueTopic(test.getDisplayName() + "_both", messageSchemaFields);
 
     CreateDataContract createBoth =
         createDataContractRequestForEntity(test.getDisplayName() + "_both", bothTopic)
@@ -3828,9 +4120,124 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void testTopicSchemaValidationFailure(TestInfo test) throws IOException {
+    // Create topic message schema fields that match what the data contract will expect initially
+    List<Field> messageSchemaFields =
+        List.of(
+            new Field()
+                .withName("messageId")
+                .withDisplayName("Message ID")
+                .withDataType(FieldDataType.STRING),
+            new Field()
+                .withName("eventType")
+                .withDisplayName("Event Type")
+                .withDataType(FieldDataType.STRING));
+
+    Topic schemaTopic =
+        createUniqueTopic(test.getDisplayName() + "_schema_fail", messageSchemaFields);
+
+    // Create data contract with schema fields that match the topic's message schema
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("messageId")
+                .withDescription("Message ID")
+                .withDataType(ColumnDataType.STRING),
+            new Column()
+                .withName("eventType")
+                .withDescription("Event Type")
+                .withDataType(ColumnDataType.STRING));
+
+    CreateDataContract createWithSchema =
+        createDataContractRequestForEntity(test.getDisplayName() + "_schema_fail", schemaTopic)
+            .withSchema(columns);
+
+    // Create data contract with schema that matches the topic's message schema
+    DataContract schemaContract = createDataContract(createWithSchema);
+    assertNotNull(schemaContract);
+    assertNotNull(schemaContract.getSchema());
+    assertEquals(2, schemaContract.getSchema().size());
+
+    // First, validate the contract when the schema is still valid - should pass
+    DataContractResult initialResult = runValidate(schemaContract);
+    assertNotNull(initialResult);
+    assertEquals(ContractExecutionStatus.Success, initialResult.getContractExecutionStatus());
+    assertEquals(0, initialResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, initialResult.getSchemaValidation().getPassed().intValue());
+
+    // Now let's "break" the topic by removing one of the fields that the contract expects
+    // We'll simulate this by updating the topic's message schema to have fewer fields
+    String originalTopicJson = JsonUtils.pojoToJson(schemaTopic);
+
+    // Remove the "eventType" field from the topic's message schema
+    List<Field> updatedFields = new ArrayList<>();
+    for (Field field : schemaTopic.getMessageSchema().getSchemaFields()) {
+      if (!"eventType".equals(field.getName())) {
+        updatedFields.add(field);
+      }
+    }
+    MessageSchema updatedMessageSchema =
+        schemaTopic.getMessageSchema().withSchemaFields(updatedFields);
+    schemaTopic.setMessageSchema(updatedMessageSchema);
+
+    // Patch the topic to remove the eventType field using TopicResourceTest
+    TopicResourceTest topicResourceTest = new TopicResourceTest();
+    Topic patchedTopic =
+        topicResourceTest.patchEntity(
+            schemaTopic.getId(), originalTopicJson, schemaTopic, ADMIN_AUTH_HEADERS);
+
+    // Verify the eventType field was removed from message schema
+    assertEquals(1, patchedTopic.getMessageSchema().getSchemaFields().size());
+    assertNull(
+        patchedTopic.getMessageSchema().getSchemaFields().stream()
+            .filter(field -> "eventType".equals(field.getName()))
+            .findFirst()
+            .orElse(null));
+
+    // Now validate the data contract - it should fail schema validation
+    DataContractResult result = runValidate(schemaContract);
+
+    // Verify the validation result shows failure due to schema validation
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
+
+    // Verify schema validation details
+    assertNotNull(result.getSchemaValidation());
+    assertEquals(
+        1, result.getSchemaValidation().getFailed().intValue()); // 1 field failed (eventType)
+    assertEquals(
+        1, result.getSchemaValidation().getPassed().intValue()); // 1 field passed (messageId)
+    assertEquals(
+        2, result.getSchemaValidation().getTotal().intValue()); // 2 total fields in contract
+
+    // Verify the failed field is the eventType field
+    assertNotNull(result.getSchemaValidation().getFailedFields());
+    assertEquals(1, result.getSchemaValidation().getFailedFields().size());
+    assertEquals("eventType", result.getSchemaValidation().getFailedFields().get(0));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void testApiEndpointEntityConstraints(TestInfo test) throws IOException {
     // Test 1: API Endpoint with schema should succeed (apiEndpoint supports schema validation)
-    APIEndpoint schemaApiEndpoint = createUniqueApiEndpoint(test.getDisplayName() + "_schema");
+    // Create schema fields for the API endpoint that match what the data contract expects
+    List<Field> requestSchemaFields =
+        List.of(
+            new Field()
+                .withName("requestId")
+                .withDataType(FieldDataType.STRING)
+                .withDescription("Request ID"));
+    List<Field> responseSchemaFields =
+        List.of(
+            new Field()
+                .withName("responseCode")
+                .withDataType(FieldDataType.INT)
+                .withDescription("Response Code"));
+
+    APIEndpoint schemaApiEndpoint =
+        createUniqueApiEndpoint(
+            test.getDisplayName() + "_schema", requestSchemaFields, responseSchemaFields);
+
     List<Column> columns =
         List.of(
             new Column()
@@ -3852,10 +4259,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the schema fields match what we provided
     assertEquals("requestId", schemaContract.getSchema().get(0).getName());
     assertEquals("responseCode", schemaContract.getSchema().get(1).getName());
-    // Test validation works for schema
+    // Test validation works for schema - should pass when schema fields match
     DataContractResult schemaValidationResult = runValidate(schemaContract);
     assertNotNull(schemaValidationResult);
+    assertEquals(
+        ContractExecutionStatus.Success, schemaValidationResult.getContractExecutionStatus());
     assertNotNull(schemaValidationResult.getSchemaValidation());
+    assertEquals(0, schemaValidationResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getPassed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getTotal().intValue());
 
     // Test 2: API Endpoint with semantics should succeed
     APIEndpoint semanticsApiEndpoint =
@@ -3880,7 +4292,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(semanticsValidationResult.getSemanticsValidation());
 
     // Test 3: API Endpoint with both schema and semantics should succeed
-    APIEndpoint bothApiEndpoint = createUniqueApiEndpoint(test.getDisplayName() + "_both");
+    APIEndpoint bothApiEndpoint =
+        createUniqueApiEndpoint(
+            test.getDisplayName() + "_both", requestSchemaFields, responseSchemaFields);
     CreateDataContract createBoth =
         createDataContractRequestForEntity(test.getDisplayName() + "_both", bothApiEndpoint)
             .withSchema(columns)
@@ -3924,11 +4338,123 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  void testApiEndpointSchemaValidationFailure(TestInfo test) throws IOException {
+    // Create schema fields for the API endpoint that match what the data contract expects initially
+    List<Field> requestSchemaFields =
+        List.of(
+            new Field()
+                .withName("requestId")
+                .withDataType(FieldDataType.STRING)
+                .withDescription("Request ID"));
+    List<Field> responseSchemaFields =
+        List.of(
+            new Field()
+                .withName("responseCode")
+                .withDataType(FieldDataType.INT)
+                .withDescription("Response Code"));
+
+    APIEndpoint schemaApiEndpoint =
+        createUniqueApiEndpoint(
+            test.getDisplayName() + "_schema", requestSchemaFields, responseSchemaFields);
+
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("requestId")
+                .withDescription("Request ID")
+                .withDataType(ColumnDataType.STRING),
+            new Column()
+                .withName("responseCode")
+                .withDescription("Response Code")
+                .withDataType(ColumnDataType.INT));
+
+    CreateDataContract createWithSchema =
+        createDataContractRequestForEntity(test.getDisplayName() + "_schema", schemaApiEndpoint)
+            .withSchema(columns);
+
+    // Create data contract with schema that matches the API endpoint
+    DataContract schemaContract = createDataContract(createWithSchema);
+    assertNotNull(schemaContract);
+    assertNotNull(schemaContract.getSchema());
+    assertEquals(2, schemaContract.getSchema().size());
+
+    // First, validate the contract when the schema is still valid - should pass
+    DataContractResult initialResult = runValidate(schemaContract);
+    assertNotNull(initialResult);
+    assertEquals(ContractExecutionStatus.Success, initialResult.getContractExecutionStatus());
+    assertEquals(0, initialResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, initialResult.getSchemaValidation().getPassed().intValue());
+
+    // Now let's "break" the API endpoint by removing one of the fields that the contract expects
+    // We'll simulate this by updating the API endpoint to have fewer response fields
+    String originalApiEndpointJson = JsonUtils.pojoToJson(schemaApiEndpoint);
+
+    // Remove the "responseCode" field from the response schema
+    List<Field> updatedResponseFields = new ArrayList<>();
+    for (Field field : schemaApiEndpoint.getResponseSchema().getSchemaFields()) {
+      if (!"responseCode".equals(field.getName())) {
+        updatedResponseFields.add(field);
+      }
+    }
+    schemaApiEndpoint.getResponseSchema().setSchemaFields(updatedResponseFields);
+
+    // Patch the API endpoint to remove the responseCode field using APIEndpointResourceTest
+    APIEndpointResourceTest apiEndpointResourceTest = new APIEndpointResourceTest();
+    APIEndpoint patchedApiEndpoint =
+        apiEndpointResourceTest.patchEntity(
+            schemaApiEndpoint.getId(),
+            originalApiEndpointJson,
+            schemaApiEndpoint,
+            ADMIN_AUTH_HEADERS);
+
+    // Verify the responseCode field was removed from response schema
+    assertEquals(0, patchedApiEndpoint.getResponseSchema().getSchemaFields().size());
+    assertNull(
+        patchedApiEndpoint.getResponseSchema().getSchemaFields().stream()
+            .filter(field -> "responseCode".equals(field.getName()))
+            .findFirst()
+            .orElse(null));
+
+    // Now validate the data contract - it should fail schema validation
+    DataContractResult result = runValidate(schemaContract);
+
+    // Verify the validation result shows failure due to schema validation
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
+
+    // Verify schema validation details
+    assertNotNull(result.getSchemaValidation());
+    assertEquals(
+        1, result.getSchemaValidation().getFailed().intValue()); // 1 field failed (responseCode)
+    assertEquals(
+        1, result.getSchemaValidation().getPassed().intValue()); // 1 field passed (requestId)
+    assertEquals(
+        2, result.getSchemaValidation().getTotal().intValue()); // 2 total fields in contract
+
+    // Verify the failed field is the responseCode field
+    assertNotNull(result.getSchemaValidation().getFailedFields());
+    assertEquals(1, result.getSchemaValidation().getFailedFields().size());
+    assertEquals("responseCode", result.getSchemaValidation().getFailedFields().get(0));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
   void testDashboardDataModelEntityConstraints(TestInfo test) throws IOException {
     // Test 1: Dashboard Data Model with schema should succeed (dashboardDataModel supports schema
     // validation)
-    DashboardDataModel schemaDataModel =
-        createUniqueDashboardDataModel(test.getDisplayName() + "_schema");
+    // Create columns that match what the data contract will expect
+    List<org.openmetadata.schema.type.Column> dataModelColumns =
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("metricId")
+                .withDescription("Metric ID")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING),
+            new org.openmetadata.schema.type.Column()
+                .withName("metricValue")
+                .withDescription("Metric Value")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.DOUBLE));
+
+    // Create corresponding data contract columns
     List<Column> columns =
         List.of(
             new Column()
@@ -3939,6 +4465,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                 .withName("metricValue")
                 .withDescription("Metric Value")
                 .withDataType(ColumnDataType.DOUBLE));
+
+    DashboardDataModel schemaDataModel =
+        createUniqueDashboardDataModel(test.getDisplayName() + "_schema", dataModelColumns);
+
     CreateDataContract createWithSchema =
         createDataContractRequestForEntity(test.getDisplayName() + "_schema", schemaDataModel)
             .withSchema(columns);
@@ -3950,10 +4480,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     // Verify the schema fields match what we provided
     assertEquals("metricId", schemaContract.getSchema().get(0).getName());
     assertEquals("metricValue", schemaContract.getSchema().get(1).getName());
-    // Test validation works for schema
+    // Test validation works for schema - should pass when schema fields match
     DataContractResult schemaValidationResult = runValidate(schemaContract);
     assertNotNull(schemaValidationResult);
+    assertEquals(
+        ContractExecutionStatus.Success, schemaValidationResult.getContractExecutionStatus());
     assertNotNull(schemaValidationResult.getSchemaValidation());
+    assertEquals(0, schemaValidationResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getPassed().intValue());
+    assertEquals(2, schemaValidationResult.getSchemaValidation().getTotal().intValue());
 
     // Test 2: Dashboard Data Model with semantics should succeed
     DashboardDataModel semanticsDataModel =
@@ -3978,7 +4513,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Test 3: Dashboard Data Model with both schema and semantics should succeed
     DashboardDataModel bothDataModel =
-        createUniqueDashboardDataModel(test.getDisplayName() + "_both");
+        createUniqueDashboardDataModel(test.getDisplayName() + "_both", dataModelColumns);
     CreateDataContract createBoth =
         createDataContractRequestForEntity(test.getDisplayName() + "_both", bothDataModel)
             .withSchema(columns)
@@ -4019,6 +4554,102 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(schemaDataModel.getId(), schemaContract.getEntity().getId());
     assertEquals("dashboardDataModel", schemaContract.getEntity().getType());
     assertEquals(schemaDataModel.getName(), schemaContract.getEntity().getName());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDashboardDataModelSchemaValidationFailure(TestInfo test) throws IOException {
+    // Create columns that match what the data contract will expect initially
+    List<org.openmetadata.schema.type.Column> dataModelColumns =
+        List.of(
+            new org.openmetadata.schema.type.Column()
+                .withName("metricId")
+                .withDescription("Metric ID")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.STRING),
+            new org.openmetadata.schema.type.Column()
+                .withName("metricValue")
+                .withDescription("Metric Value")
+                .withDataType(org.openmetadata.schema.type.ColumnDataType.DOUBLE));
+
+    // Create corresponding data contract columns
+    List<Column> columns =
+        List.of(
+            new Column()
+                .withName("metricId")
+                .withDescription("Metric ID")
+                .withDataType(ColumnDataType.STRING),
+            new Column()
+                .withName("metricValue")
+                .withDescription("Metric Value")
+                .withDataType(ColumnDataType.DOUBLE));
+
+    DashboardDataModel schemaDataModel =
+        createUniqueDashboardDataModel(test.getDisplayName() + "_schema", dataModelColumns);
+
+    CreateDataContract createWithSchema =
+        createDataContractRequestForEntity(test.getDisplayName() + "_schema", schemaDataModel)
+            .withSchema(columns);
+
+    // Create data contract with schema that matches the data model
+    DataContract schemaContract = createDataContract(createWithSchema);
+    assertNotNull(schemaContract);
+    assertNotNull(schemaContract.getSchema());
+    assertEquals(2, schemaContract.getSchema().size());
+
+    // First, validate the contract when the schema is still valid - should pass
+    DataContractResult initialResult = runValidate(schemaContract);
+    assertNotNull(initialResult);
+    assertEquals(ContractExecutionStatus.Success, initialResult.getContractExecutionStatus());
+    assertEquals(0, initialResult.getSchemaValidation().getFailed().intValue());
+    assertEquals(2, initialResult.getSchemaValidation().getPassed().intValue());
+
+    // Now let's "break" the data model by removing one of the columns that the contract expects
+    // We'll simulate this by updating the data model to have fewer columns
+    String originalDataModelJson = JsonUtils.pojoToJson(schemaDataModel);
+
+    // Remove the "metricValue" column from the data model columns
+    List<org.openmetadata.schema.type.Column> updatedColumns = new ArrayList<>();
+    for (org.openmetadata.schema.type.Column col : schemaDataModel.getColumns()) {
+      if (!"metricValue".equals(col.getName())) {
+        updatedColumns.add(col);
+      }
+    }
+    schemaDataModel.setColumns(updatedColumns);
+
+    // Patch the data model to remove the metricValue column using DashboardDataModelResourceTest
+    DashboardDataModelResourceTest dataModelResourceTest = new DashboardDataModelResourceTest();
+    DashboardDataModel patchedDataModel =
+        dataModelResourceTest.patchEntity(
+            schemaDataModel.getId(), originalDataModelJson, schemaDataModel, ADMIN_AUTH_HEADERS);
+
+    // Verify the metricValue column was removed
+    assertEquals(1, patchedDataModel.getColumns().size());
+    assertNull(
+        patchedDataModel.getColumns().stream()
+            .filter(col -> "metricValue".equals(col.getName()))
+            .findFirst()
+            .orElse(null));
+
+    // Now validate the data contract - it should fail schema validation
+    DataContractResult result = runValidate(schemaContract);
+
+    // Verify the validation result shows failure due to schema validation
+    assertNotNull(result);
+    assertEquals(ContractExecutionStatus.Failed, result.getContractExecutionStatus());
+
+    // Verify schema validation details
+    assertNotNull(result.getSchemaValidation());
+    assertEquals(
+        1, result.getSchemaValidation().getFailed().intValue()); // 1 field failed (metricValue)
+    assertEquals(
+        1, result.getSchemaValidation().getPassed().intValue()); // 1 field passed (metricId)
+    assertEquals(
+        2, result.getSchemaValidation().getTotal().intValue()); // 2 total fields in contract
+
+    // Verify the failed field is the metricValue column
+    assertNotNull(result.getSchemaValidation().getFailedFields());
+    assertEquals(1, result.getSchemaValidation().getFailedFields().size());
+    assertEquals("metricValue", result.getSchemaValidation().getFailedFields().get(0));
   }
 
   @Test
@@ -4372,10 +5003,20 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     String termsOfUse =
         "# Terms of Use\n\nThis data is for internal use only.\n\n## Usage Guidelines\n- Do not share externally\n- Must comply with GDPR";
 
+    org.openmetadata.schema.api.data.DataConsumers consumer1 =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("internal-only-policy")
+            .withIdentities(List.of("engineering-team", "data-team"))
+            .withRowFilters(
+                List.of(
+                    new org.openmetadata.schema.api.data.RowFilter()
+                        .withColumnName("region")
+                        .withValues(List.of("US", "EU"))));
+
     org.openmetadata.schema.api.data.ContractSecurity security =
         new org.openmetadata.schema.api.data.ContractSecurity()
-            .withAccessPolicy("internal-only-policy")
-            .withDataClassification("Confidential");
+            .withDataClassification("Confidential")
+            .withConsumers(List.of(consumer1));
 
     org.openmetadata.schema.api.data.ContractSLA sla =
         new org.openmetadata.schema.api.data.ContractSLA()
@@ -4404,8 +5045,18 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertNotNull(created);
     assertEquals(termsOfUse, created.getTermsOfUse());
     assertNotNull(created.getSecurity());
-    assertEquals("internal-only-policy", created.getSecurity().getAccessPolicy());
     assertEquals("Confidential", created.getSecurity().getDataClassification());
+    assertNotNull(created.getSecurity().getConsumers());
+    assertEquals(1, created.getSecurity().getConsumers().size());
+    assertEquals(
+        "internal-only-policy", created.getSecurity().getConsumers().get(0).getAccessPolicy());
+    assertEquals(2, created.getSecurity().getConsumers().get(0).getIdentities().size());
+    assertEquals(
+        "engineering-team", created.getSecurity().getConsumers().get(0).getIdentities().get(0));
+    assertEquals(1, created.getSecurity().getConsumers().get(0).getRowFilters().size());
+    assertEquals(
+        "region",
+        created.getSecurity().getConsumers().get(0).getRowFilters().get(0).getColumnName());
     assertNotNull(created.getSla());
     assertEquals(Integer.valueOf(1), created.getSla().getRefreshFrequency().getInterval());
     assertEquals(
@@ -4425,8 +5076,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract retrieved = getDataContract(created.getId(), null);
     assertEquals(termsOfUse, retrieved.getTermsOfUse());
     assertNotNull(retrieved.getSecurity());
-    assertEquals("internal-only-policy", retrieved.getSecurity().getAccessPolicy());
     assertEquals("Confidential", retrieved.getSecurity().getDataClassification());
+    assertNotNull(retrieved.getSecurity().getConsumers());
+    assertEquals(1, retrieved.getSecurity().getConsumers().size());
+    assertEquals(
+        "internal-only-policy", retrieved.getSecurity().getConsumers().get(0).getAccessPolicy());
     assertNotNull(retrieved.getSla());
     assertEquals(Integer.valueOf(1), retrieved.getSla().getRefreshFrequency().getInterval());
     assertEquals(
@@ -4435,10 +5089,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Test 3: Update properties using PUT
     String updatedTermsOfUse = "# Updated Terms\n\nNew terms apply from today.";
+    org.openmetadata.schema.api.data.DataConsumers updatedConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("public-policy")
+            .withIdentities(List.of("all-users"));
+
     org.openmetadata.schema.api.data.ContractSecurity updatedSecurity =
         new org.openmetadata.schema.api.data.ContractSecurity()
-            .withAccessPolicy("public-policy")
-            .withDataClassification("Public");
+            .withDataClassification("Public")
+            .withConsumers(List.of(updatedConsumer));
 
     org.openmetadata.schema.api.data.ContractSLA updatedSla =
         new org.openmetadata.schema.api.data.ContractSLA()
@@ -4456,8 +5115,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     DataContract updated = updateDataContract(create);
     assertEquals(updatedTermsOfUse, updated.getTermsOfUse());
-    assertEquals("public-policy", updated.getSecurity().getAccessPolicy());
     assertEquals("Public", updated.getSecurity().getDataClassification());
+    assertNotNull(updated.getSecurity().getConsumers());
+    assertEquals(1, updated.getSecurity().getConsumers().size());
+    assertEquals("public-policy", updated.getSecurity().getConsumers().get(0).getAccessPolicy());
+    assertEquals("all-users", updated.getSecurity().getConsumers().get(0).getIdentities().get(0));
     assertEquals(Integer.valueOf(2), updated.getSla().getRefreshFrequency().getInterval());
     assertEquals(
         org.openmetadata.schema.api.data.RefreshFrequency.Unit.HOUR,
@@ -4474,7 +5136,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract patched = patchDataContract(created.getId(), originalJson, updated);
     assertEquals(patchedTermsOfUse, patched.getTermsOfUse());
     // Verify other properties remain unchanged
-    assertEquals("public-policy", patched.getSecurity().getAccessPolicy());
+    assertNotNull(patched.getSecurity().getConsumers());
+    assertEquals("public-policy", patched.getSecurity().getConsumers().get(0).getAccessPolicy());
     assertEquals(Integer.valueOf(2), patched.getSla().getRefreshFrequency().getInterval());
 
     // Test 5: Patch to remove properties (set to null)
@@ -4537,5 +5200,468 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(
         org.openmetadata.schema.api.data.Retention.Unit.YEAR,
         complex.getSla().getRetention().getUnit());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContractSecurityWithMultipleConsumers(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    org.openmetadata.schema.api.data.DataConsumers consumer1 =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("read-only-policy")
+            .withIdentities(List.of("data-analysts", "reporting-team"))
+            .withRowFilters(
+                List.of(
+                    new org.openmetadata.schema.api.data.RowFilter()
+                        .withColumnName("country")
+                        .withValues(List.of("USA", "Canada")),
+                    new org.openmetadata.schema.api.data.RowFilter()
+                        .withColumnName("department")
+                        .withValues(List.of("Sales", "Marketing"))));
+
+    org.openmetadata.schema.api.data.DataConsumers consumer2 =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("full-access-policy")
+            .withIdentities(List.of("admin-team", "data-engineers"))
+            .withRowFilters(
+                List.of(
+                    new org.openmetadata.schema.api.data.RowFilter()
+                        .withColumnName("status")
+                        .withValues(List.of("active", "pending", "completed"))));
+
+    org.openmetadata.schema.api.data.DataConsumers consumer3 =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("restricted-policy")
+            .withIdentities(List.of("external-partners"));
+
+    org.openmetadata.schema.api.data.ContractSecurity security =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withDataClassification("Highly Confidential")
+            .withConsumers(List.of(consumer1, consumer2, consumer3));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
+
+    DataContract created = createDataContract(create);
+    assertNotNull(created.getSecurity());
+    assertEquals("Highly Confidential", created.getSecurity().getDataClassification());
+    assertEquals(3, created.getSecurity().getConsumers().size());
+
+    // Verify first consumer
+    var firstConsumer = created.getSecurity().getConsumers().get(0);
+    assertEquals("read-only-policy", firstConsumer.getAccessPolicy());
+    assertEquals(2, firstConsumer.getIdentities().size());
+    assertTrue(firstConsumer.getIdentities().contains("data-analysts"));
+    assertTrue(firstConsumer.getIdentities().contains("reporting-team"));
+    assertEquals(2, firstConsumer.getRowFilters().size());
+
+    // Verify second consumer
+    var secondConsumer = created.getSecurity().getConsumers().get(1);
+    assertEquals("full-access-policy", secondConsumer.getAccessPolicy());
+    assertEquals(2, secondConsumer.getIdentities().size());
+    assertEquals(1, secondConsumer.getRowFilters().size());
+    assertEquals("status", secondConsumer.getRowFilters().get(0).getColumnName());
+    assertEquals(3, secondConsumer.getRowFilters().get(0).getValues().size());
+
+    // Verify third consumer (no row filters)
+    var thirdConsumer = created.getSecurity().getConsumers().get(2);
+    assertEquals("restricted-policy", thirdConsumer.getAccessPolicy());
+    assertEquals(1, thirdConsumer.getIdentities().size());
+    assertNull(thirdConsumer.getRowFilters());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContractSecurityWithEmptyConsumersList(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    org.openmetadata.schema.api.data.ContractSecurity security =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withDataClassification("Public")
+            .withConsumers(new ArrayList<>());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
+
+    DataContract created = createDataContract(create);
+    assertNotNull(created.getSecurity());
+    assertEquals("Public", created.getSecurity().getDataClassification());
+    assertNotNull(created.getSecurity().getConsumers());
+    assertTrue(created.getSecurity().getConsumers().isEmpty());
+
+    // Verify the contract can be retrieved and still has empty consumers
+    DataContract retrieved = getDataContract(created.getId(), null);
+    assertNotNull(retrieved.getSecurity());
+    assertEquals("Public", retrieved.getSecurity().getDataClassification());
+    assertTrue(retrieved.getSecurity().getConsumers().isEmpty());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContractSecurityConsumersWithNoIdentitiesOrFilters(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Consumer with only access policy (no identities, no row filters)
+    org.openmetadata.schema.api.data.DataConsumers minimalConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("minimal-access-policy");
+
+    // Consumer with access policy and empty identities list
+    org.openmetadata.schema.api.data.DataConsumers emptyIdentitiesConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("empty-identities-policy")
+            .withIdentities(new ArrayList<>());
+
+    // Consumer with access policy and empty row filters list
+    org.openmetadata.schema.api.data.DataConsumers emptyFiltersConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("empty-filters-policy")
+            .withIdentities(List.of("some-team"))
+            .withRowFilters(new ArrayList<>());
+
+    org.openmetadata.schema.api.data.ContractSecurity security =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withDataClassification("Internal")
+            .withConsumers(List.of(minimalConsumer, emptyIdentitiesConsumer, emptyFiltersConsumer));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
+
+    DataContract created = createDataContract(create);
+    assertNotNull(created.getSecurity());
+    assertEquals(3, created.getSecurity().getConsumers().size());
+
+    // Verify minimal consumer
+    var consumer1 = created.getSecurity().getConsumers().get(0);
+    assertEquals("minimal-access-policy", consumer1.getAccessPolicy());
+    assertNull(consumer1.getIdentities());
+    assertNull(consumer1.getRowFilters());
+
+    // Verify empty identities consumer
+    var consumer2 = created.getSecurity().getConsumers().get(1);
+    assertEquals("empty-identities-policy", consumer2.getAccessPolicy());
+    assertNotNull(consumer2.getIdentities());
+    assertTrue(consumer2.getIdentities().isEmpty());
+    assertNull(consumer2.getRowFilters());
+
+    // Verify empty filters consumer
+    var consumer3 = created.getSecurity().getConsumers().get(2);
+    assertEquals("empty-filters-policy", consumer3.getAccessPolicy());
+    assertEquals(1, consumer3.getIdentities().size());
+    assertNotNull(consumer3.getRowFilters());
+    assertTrue(consumer3.getRowFilters().isEmpty());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContractSecurityWithComplexRowFilters(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create row filters with multiple columns and many values
+    List<org.openmetadata.schema.api.data.RowFilter> complexFilters = new ArrayList<>();
+
+    // Filter 1: Geographic regions
+    complexFilters.add(
+        new org.openmetadata.schema.api.data.RowFilter()
+            .withColumnName("region")
+            .withValues(List.of("NA", "EMEA", "APAC", "LATAM", "ANZ")));
+
+    // Filter 2: Product categories
+    complexFilters.add(
+        new org.openmetadata.schema.api.data.RowFilter()
+            .withColumnName("product_category")
+            .withValues(List.of("Electronics", "Clothing", "Food", "Books", "Toys", "Sports")));
+
+    // Filter 3: Customer segments
+    complexFilters.add(
+        new org.openmetadata.schema.api.data.RowFilter()
+            .withColumnName("customer_segment")
+            .withValues(List.of("Premium", "Standard", "Basic")));
+
+    // Filter 4: Date ranges (as strings)
+    complexFilters.add(
+        new org.openmetadata.schema.api.data.RowFilter()
+            .withColumnName("date_range")
+            .withValues(List.of("2024-Q1", "2024-Q2", "2024-Q3", "2024-Q4")));
+
+    // Filter 5: Status codes
+    complexFilters.add(
+        new org.openmetadata.schema.api.data.RowFilter()
+            .withColumnName("status_code")
+            .withValues(
+                List.of("200", "201", "204", "301", "302", "400", "401", "403", "404", "500")));
+
+    org.openmetadata.schema.api.data.DataConsumers complexConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("complex-filtering-policy")
+            .withIdentities(List.of("analytics-team", "bi-team", "data-science-team"))
+            .withRowFilters(complexFilters);
+
+    org.openmetadata.schema.api.data.ContractSecurity security =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withDataClassification("Sensitive")
+            .withConsumers(List.of(complexConsumer));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
+
+    DataContract created = createDataContract(create);
+    assertNotNull(created.getSecurity());
+    assertEquals(1, created.getSecurity().getConsumers().size());
+
+    var consumer = created.getSecurity().getConsumers().get(0);
+    assertEquals("complex-filtering-policy", consumer.getAccessPolicy());
+    assertEquals(3, consumer.getIdentities().size());
+    assertEquals(5, consumer.getRowFilters().size());
+
+    // Verify each filter
+    Map<String, List<String>> filterMap = new HashMap<>();
+    for (var filter : consumer.getRowFilters()) {
+      filterMap.put(filter.getColumnName(), filter.getValues());
+    }
+
+    assertEquals(5, filterMap.get("region").size());
+    assertEquals(6, filterMap.get("product_category").size());
+    assertEquals(3, filterMap.get("customer_segment").size());
+    assertEquals(4, filterMap.get("date_range").size());
+    assertEquals(10, filterMap.get("status_code").size());
+    assertTrue(filterMap.get("region").contains("EMEA"));
+    assertTrue(filterMap.get("product_category").contains("Electronics"));
+    assertTrue(filterMap.get("status_code").contains("404"));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContractWithNullSecurityObject(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSecurity(null);
+
+    DataContract created = createDataContract(create);
+    assertNotNull(created);
+    assertNull(created.getSecurity());
+
+    // Verify retrieval also returns null security
+    DataContract retrieved = getDataContract(created.getId(), null);
+    assertNull(retrieved.getSecurity());
+
+    // Update to add security
+    org.openmetadata.schema.api.data.ContractSecurity newSecurity =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withDataClassification("Confidential");
+
+    create.withSecurity(newSecurity);
+    DataContract updated = updateDataContract(create);
+    assertNotNull(updated.getSecurity());
+    assertEquals("Confidential", updated.getSecurity().getDataClassification());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContractSecurityWithOnlyDataClassification(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Security with only data classification, no consumers
+    org.openmetadata.schema.api.data.ContractSecurity security =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withDataClassification("Restricted");
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
+
+    DataContract created = createDataContract(create);
+    assertNotNull(created.getSecurity());
+    assertEquals("Restricted", created.getSecurity().getDataClassification());
+    // Consumers list should be initialized but empty
+    assertNotNull(created.getSecurity().getConsumers());
+    assertTrue(created.getSecurity().getConsumers().isEmpty());
+
+    // Verify we can update to add consumers later
+    org.openmetadata.schema.api.data.DataConsumers newConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("new-policy")
+            .withIdentities(List.of("new-team"));
+
+    security.withConsumers(List.of(newConsumer));
+    create.withSecurity(security);
+    DataContract updated = updateDataContract(create);
+    assertEquals("Restricted", updated.getSecurity().getDataClassification());
+    assertEquals(1, updated.getSecurity().getConsumers().size());
+    assertEquals("new-policy", updated.getSecurity().getConsumers().get(0).getAccessPolicy());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testPatchContractSecurityNestedProperties(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create initial contract with security
+    org.openmetadata.schema.api.data.DataConsumers initialConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("initial-policy")
+            .withIdentities(List.of("initial-team"))
+            .withRowFilters(
+                List.of(
+                    new org.openmetadata.schema.api.data.RowFilter()
+                        .withColumnName("initial_column")
+                        .withValues(List.of("value1", "value2"))));
+
+    org.openmetadata.schema.api.data.ContractSecurity initialSecurity =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withDataClassification("Private")
+            .withConsumers(List.of(initialConsumer));
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSecurity(initialSecurity);
+
+    DataContract created = createDataContract(create);
+    String originalJson = JsonUtils.pojoToJson(created);
+
+    // Test 1: Patch to update only data classification
+    created.getSecurity().setDataClassification("Public");
+    DataContract patched1 = patchDataContract(created.getId(), originalJson, created);
+    assertEquals("Public", patched1.getSecurity().getDataClassification());
+    // Verify consumers unchanged
+    assertEquals(1, patched1.getSecurity().getConsumers().size());
+    assertEquals("initial-policy", patched1.getSecurity().getConsumers().get(0).getAccessPolicy());
+
+    // Test 2: Patch to add a new consumer
+    originalJson = JsonUtils.pojoToJson(patched1);
+    org.openmetadata.schema.api.data.DataConsumers additionalConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("additional-policy")
+            .withIdentities(List.of("additional-team"));
+
+    patched1.getSecurity().getConsumers().add(additionalConsumer);
+    DataContract patched2 = patchDataContract(created.getId(), originalJson, patched1);
+    assertEquals(2, patched2.getSecurity().getConsumers().size());
+    assertEquals(
+        "additional-policy", patched2.getSecurity().getConsumers().get(1).getAccessPolicy());
+
+    // Test 3: Patch to modify existing consumer's row filters
+    originalJson = JsonUtils.pojoToJson(patched2);
+    patched2
+        .getSecurity()
+        .getConsumers()
+        .get(0)
+        .setRowFilters(
+            List.of(
+                new org.openmetadata.schema.api.data.RowFilter()
+                    .withColumnName("updated_column")
+                    .withValues(List.of("new_value1", "new_value2", "new_value3"))));
+
+    DataContract patched3 = patchDataContract(created.getId(), originalJson, patched2);
+    var updatedFilters = patched3.getSecurity().getConsumers().get(0).getRowFilters();
+    assertEquals(1, updatedFilters.size());
+    assertEquals("updated_column", updatedFilters.get(0).getColumnName());
+    assertEquals(3, updatedFilters.get(0).getValues().size());
+
+    // Test 4: Patch to remove row filters from a consumer
+    originalJson = JsonUtils.pojoToJson(patched3);
+    patched3.getSecurity().getConsumers().get(0).setRowFilters(null);
+    DataContract patched4 = patchDataContract(created.getId(), originalJson, patched3);
+    assertNull(patched4.getSecurity().getConsumers().get(0).getRowFilters());
+    // Verify other properties remain
+    assertEquals("initial-policy", patched4.getSecurity().getConsumers().get(0).getAccessPolicy());
+    assertEquals(1, patched4.getSecurity().getConsumers().get(0).getIdentities().size());
+
+    // Test 5: Patch to clear all consumers
+    originalJson = JsonUtils.pojoToJson(patched4);
+    patched4.getSecurity().setConsumers(new ArrayList<>());
+    DataContract patched5 = patchDataContract(created.getId(), originalJson, patched4);
+    assertTrue(patched5.getSecurity().getConsumers().isEmpty());
+    assertEquals("Public", patched5.getSecurity().getDataClassification());
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testContractSecurityConsumerDataIntegrityOnUpdates(TestInfo test) throws IOException {
+    Table table = createUniqueTable(test.getDisplayName());
+
+    // Create initial contract with multiple consumers
+    List<org.openmetadata.schema.api.data.DataConsumers> initialConsumers = new ArrayList<>();
+    for (int i = 1; i <= 3; i++) {
+      initialConsumers.add(
+          new org.openmetadata.schema.api.data.DataConsumers()
+              .withAccessPolicy("policy-" + i)
+              .withIdentities(List.of("team-" + i, "group-" + i))
+              .withRowFilters(
+                  List.of(
+                      new org.openmetadata.schema.api.data.RowFilter()
+                          .withColumnName("column-" + i)
+                          .withValues(List.of("val-" + i + "-a", "val-" + i + "-b")))));
+    }
+
+    org.openmetadata.schema.api.data.ContractSecurity security =
+        new org.openmetadata.schema.api.data.ContractSecurity()
+            .withDataClassification("Confidential")
+            .withConsumers(initialConsumers);
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
+
+    DataContract created = createDataContract(create);
+    assertEquals(3, created.getSecurity().getConsumers().size());
+
+    // Test 1: Update with reordered consumers - should maintain all data
+    List<org.openmetadata.schema.api.data.DataConsumers> reorderedConsumers = new ArrayList<>();
+    reorderedConsumers.add(initialConsumers.get(2));
+    reorderedConsumers.add(initialConsumers.get(0));
+    reorderedConsumers.add(initialConsumers.get(1));
+
+    security.setConsumers(reorderedConsumers);
+    create.withSecurity(security);
+    DataContract updated1 = updateDataContract(create);
+
+    // Verify reordering worked and all data is intact
+    assertEquals("policy-3", updated1.getSecurity().getConsumers().get(0).getAccessPolicy());
+    assertEquals("policy-1", updated1.getSecurity().getConsumers().get(1).getAccessPolicy());
+    assertEquals("policy-2", updated1.getSecurity().getConsumers().get(2).getAccessPolicy());
+
+    // Verify detailed data integrity for first consumer (was third)
+    var firstConsumer = updated1.getSecurity().getConsumers().get(0);
+    assertEquals(2, firstConsumer.getIdentities().size());
+    assertTrue(firstConsumer.getIdentities().contains("team-3"));
+    assertEquals("column-3", firstConsumer.getRowFilters().get(0).getColumnName());
+
+    // Test 2: Update with partial consumer list - should only keep specified consumers
+    List<org.openmetadata.schema.api.data.DataConsumers> partialConsumers = new ArrayList<>();
+    partialConsumers.add(initialConsumers.get(1)); // Only keep second consumer
+
+    security.setConsumers(partialConsumers);
+    create.withSecurity(security);
+    DataContract updated2 = updateDataContract(create);
+
+    assertEquals(1, updated2.getSecurity().getConsumers().size());
+    assertEquals("policy-2", updated2.getSecurity().getConsumers().get(0).getAccessPolicy());
+
+    // Test 3: Update with modified consumer properties
+    var modifiedConsumer =
+        new org.openmetadata.schema.api.data.DataConsumers()
+            .withAccessPolicy("policy-2") // Same policy
+            .withIdentities(List.of("team-2", "group-2", "new-group")) // Added identity
+            .withRowFilters(
+                List.of(
+                    new org.openmetadata.schema.api.data.RowFilter()
+                        .withColumnName("column-2")
+                        .withValues(List.of("val-2-a", "val-2-b", "val-2-c")))); // Added value
+
+    security.setConsumers(List.of(modifiedConsumer));
+    create.withSecurity(security);
+    DataContract updated3 = updateDataContract(create);
+
+    assertEquals(1, updated3.getSecurity().getConsumers().size());
+    var updatedConsumer = updated3.getSecurity().getConsumers().get(0);
+    assertEquals(3, updatedConsumer.getIdentities().size());
+    assertTrue(updatedConsumer.getIdentities().contains("new-group"));
+    assertEquals(3, updatedConsumer.getRowFilters().get(0).getValues().size());
+    assertTrue(updatedConsumer.getRowFilters().get(0).getValues().contains("val-2-c"));
+
+    // Final verification - retrieve and check final state
+    DataContract finalState = getDataContract(created.getId(), null);
+    assertEquals(1, finalState.getSecurity().getConsumers().size());
+    assertEquals("policy-2", finalState.getSecurity().getConsumers().get(0).getAccessPolicy());
   }
 }

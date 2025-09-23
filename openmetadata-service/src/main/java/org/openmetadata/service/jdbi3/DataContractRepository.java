@@ -136,6 +136,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!update) {
       validateEntityReference(entityRef);
+      dataContract.setCreatedAt(dataContract.getUpdatedAt());
+      dataContract.setCreatedBy(dataContract.getUpdatedBy());
     }
 
     // Validate schema fields and throw exception if there are failures
@@ -228,6 +230,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       case Entity.TOPIC:
         failedFields = validateFieldsAgainstTopic(dataContract, entityRef);
         break;
+      case Entity.API_ENDPOINT:
+        failedFields = validateFieldsAgainstApiEndpoint(dataContract, entityRef);
+        break;
+      case Entity.DASHBOARD_DATA_MODEL:
+        failedFields = validateFieldsAgainstDashboardDataModel(dataContract, entityRef);
+        break;
       default:
         break;
     }
@@ -245,52 +253,98 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private List<String> validateFieldsAgainstTable(
       DataContract dataContract, EntityReference tableRef) {
-    List<String> failedFields = new ArrayList<>();
     org.openmetadata.schema.entity.data.Table table =
         Entity.getEntity(Entity.TABLE, tableRef.getId(), "columns", Include.NON_DELETED);
 
     if (table.getColumns() == null || table.getColumns().isEmpty()) {
-      // If table has no columns, all contract fields fail validation
-      return dataContract.getSchema().stream()
-          .map(org.openmetadata.schema.type.Column::getName)
-          .collect(Collectors.toList());
+      return getAllContractFieldNames(dataContract);
     }
 
     Set<String> tableColumnNames =
         table.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
 
-    for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
-      if (!tableColumnNames.contains(column.getName())) {
-        failedFields.add(column.getName());
-      }
-    }
-
-    return failedFields;
+    return validateContractFieldsAgainstNames(dataContract, tableColumnNames);
   }
 
   private List<String> validateFieldsAgainstTopic(
       DataContract dataContract, EntityReference topicRef) {
-    List<String> failedFields = new ArrayList<>();
     Topic topic =
         Entity.getEntity(Entity.TOPIC, topicRef.getId(), "messageSchema", Include.NON_DELETED);
 
     if (topic.getMessageSchema() == null
         || topic.getMessageSchema().getSchemaFields() == null
         || topic.getMessageSchema().getSchemaFields().isEmpty()) {
-      // If topic has no schema, all contract fields fail validation
-      return dataContract.getSchema().stream()
-          .map(org.openmetadata.schema.type.Column::getName)
-          .collect(Collectors.toList());
+      return getAllContractFieldNames(dataContract);
     }
 
     Set<String> topicFieldNames = extractFieldNames(topic.getMessageSchema().getSchemaFields());
 
+    return validateContractFieldsAgainstNames(dataContract, topicFieldNames);
+  }
+
+  private List<String> validateFieldsAgainstApiEndpoint(
+      DataContract dataContract, EntityReference apiEndpointRef) {
+    org.openmetadata.schema.entity.data.APIEndpoint apiEndpoint =
+        Entity.getEntity(
+            Entity.API_ENDPOINT,
+            apiEndpointRef.getId(),
+            "requestSchema,responseSchema",
+            Include.NON_DELETED);
+
+    Set<String> apiFieldNames = new HashSet<>();
+
+    if (apiEndpoint.getRequestSchema() != null
+        && apiEndpoint.getRequestSchema().getSchemaFields() != null
+        && !apiEndpoint.getRequestSchema().getSchemaFields().isEmpty()) {
+      apiFieldNames.addAll(extractFieldNames(apiEndpoint.getRequestSchema().getSchemaFields()));
+    }
+
+    if (apiEndpoint.getResponseSchema() != null
+        && apiEndpoint.getResponseSchema().getSchemaFields() != null
+        && !apiEndpoint.getResponseSchema().getSchemaFields().isEmpty()) {
+      apiFieldNames.addAll(extractFieldNames(apiEndpoint.getResponseSchema().getSchemaFields()));
+    }
+
+    if (apiFieldNames.isEmpty()) {
+      return getAllContractFieldNames(dataContract);
+    }
+
+    return validateContractFieldsAgainstNames(dataContract, apiFieldNames);
+  }
+
+  private List<String> validateFieldsAgainstDashboardDataModel(
+      DataContract dataContract, EntityReference dashboardDataModelRef) {
+    org.openmetadata.schema.entity.data.DashboardDataModel dashboardDataModel =
+        Entity.getEntity(
+            Entity.DASHBOARD_DATA_MODEL,
+            dashboardDataModelRef.getId(),
+            "columns",
+            Include.NON_DELETED);
+
+    if (dashboardDataModel.getColumns() == null || dashboardDataModel.getColumns().isEmpty()) {
+      return getAllContractFieldNames(dataContract);
+    }
+
+    Set<String> dataModelColumnNames =
+        dashboardDataModel.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
+
+    return validateContractFieldsAgainstNames(dataContract, dataModelColumnNames);
+  }
+
+  private List<String> getAllContractFieldNames(DataContract dataContract) {
+    return dataContract.getSchema().stream()
+        .map(org.openmetadata.schema.type.Column::getName)
+        .collect(Collectors.toList());
+  }
+
+  private List<String> validateContractFieldsAgainstNames(
+      DataContract dataContract, Set<String> entityFieldNames) {
+    List<String> failedFields = new ArrayList<>();
     for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
-      if (!topicFieldNames.contains(column.getName())) {
+      if (!entityFieldNames.contains(column.getName())) {
         failedFields.add(column.getName());
       }
     }
-
     return failedFields;
   }
 
@@ -369,6 +423,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
             Entity.DATABASE,
             Entity.DATABASE_SCHEMA,
             Entity.DASHBOARD,
+            Entity.CHART,
             Entity.DASHBOARD_DATA_MODEL,
             Entity.PIPELINE,
             Entity.TOPIC,
@@ -883,6 +938,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       updateSchema(original, updated);
       updateQualityExpectations(original, updated);
       updateSemantics(original, updated);
+      // Preserve immutable creation fields
+      updated.setCreatedAt(original.getCreatedAt());
+      updated.setCreatedBy(original.getCreatedBy());
     }
 
     private void updateSchema(DataContract original, DataContract updated) {
@@ -995,8 +1053,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         .withId(original.getId())
         .withName(original.getName())
         .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withUpdatedAt(original.getUpdatedAt())
-        .withUpdatedBy(original.getUpdatedBy());
+        .withCreatedAt(original.getCreatedAt())
+        .withCreatedBy(original.getCreatedBy());
   }
 
   private void validateEntityReference(EntityReference entity) {

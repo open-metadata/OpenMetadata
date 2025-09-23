@@ -13,7 +13,7 @@
 import { Button, Col, Row } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo } from 'react';
-import DataGrid from 'react-data-grid';
+import DataGrid, { ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { useTranslation } from 'react-i18next';
 import { readString } from 'react-papaparse';
@@ -98,7 +98,12 @@ const BulkEditEntity = ({
       <div className="om-rdg" ref={setGridContainer}>
         <DataGrid
           className="rdg-light"
-          columns={columns}
+          columns={
+            columns as unknown as ColumnOrColumnGroup<
+              NoInfer<Record<string, string>>,
+              unknown
+            >[]
+          }
           rows={dataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}

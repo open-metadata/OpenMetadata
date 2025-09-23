@@ -116,6 +116,7 @@ import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FailedEvent;
 import org.openmetadata.schema.entity.events.FailedEventResponse;
+import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.services.ApiService;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -296,6 +297,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   EventSubscriptionDAO eventSubscriptionDAO();
+
+  @CreateSqlObject
+  NotificationTemplateDAO notificationTemplateDAO();
 
   @CreateSqlObject
   PolicyDAO policyDAO();
@@ -2971,6 +2975,23 @@ public interface CollectionDAO {
         @Bind("eventSubscriptionId") String eventSubscriptionId);
   }
 
+  interface NotificationTemplateDAO extends EntityDAO<NotificationTemplate> {
+    @Override
+    default String getTableName() {
+      return "notification_template_entity";
+    }
+
+    @Override
+    default Class<NotificationTemplate> getEntityClass() {
+      return NotificationTemplate.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
   interface ChartDAO extends EntityDAO<Chart> {
     @Override
     default String getTableName() {
@@ -3069,6 +3090,26 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT customUnitOfMeasurement AS customUnit "
+                + "FROM metric_entity "
+                + "WHERE customUnitOfMeasurement IS NOT NULL "
+                + "AND customUnitOfMeasurement != '' "
+                + "AND deleted = false "
+                + "ORDER BY customUnitOfMeasurement",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT DISTINCT customUnitOfMeasurement AS customUnit "
+                + "FROM metric_entity "
+                + "WHERE customUnitOfMeasurement IS NOT NULL "
+                + "AND customUnitOfMeasurement != '' "
+                + "AND deleted = false "
+                + "ORDER BY customUnitOfMeasurement",
+        connectionType = POSTGRES)
+    List<String> getDistinctCustomUnitsOfMeasurement();
   }
 
   interface MlModelDAO extends EntityDAO<MlModel> {
