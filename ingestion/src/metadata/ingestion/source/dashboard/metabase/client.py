@@ -62,7 +62,7 @@ class MetabaseClient:
             # If API token is provided, return None as we don't need a session
             if self.config.apiKey:
                 return None
-                
+
             # Otherwise use username/password authentication
             params = {USERNAME_HEADER: self.config.username}
             if self.config.password:
@@ -88,7 +88,7 @@ class MetabaseClient:
         config: MetabaseConnection,
     ):
         self.config = config
-        
+
         # Determine authentication method and set headers accordingly
         if self.config.apiKey:
             # Use API token authentication
@@ -97,7 +97,9 @@ class MetabaseClient:
                 api_version=API_VERSION,
                 auth_header=AUTHORIZATION_HEADER,
                 auth_token=lambda: (NO_ACCESS_TOKEN, 0),
-                extra_headers={METABASE_API_HEADER: self.config.apiKey.get_secret_value()},
+                extra_headers={
+                    METABASE_API_HEADER: self.config.apiKey.get_secret_value()
+                },
             )
         else:
             # Use session-based authentication
@@ -109,7 +111,7 @@ class MetabaseClient:
                 auth_token=lambda: (NO_ACCESS_TOKEN, 0),
                 extra_headers={METABASE_SESSION_HEADER: session_token},
             )
-        
+
         self.client = REST(client_config)
 
     def get_dashboards_list(
