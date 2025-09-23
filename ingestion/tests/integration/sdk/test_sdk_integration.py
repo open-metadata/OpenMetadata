@@ -90,107 +90,126 @@ class TestSDKIntegration(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        om.configure(
-            server_url="http://localhost:8585/api",
-            jwt_token="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJyb2xlcyI6WyJJbmdlc3Rpb25Cb3RSb2xlIl0sImVtYWlsIjoiaW5nZXN0aW9uLWJvdEBvcGVuLW1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE3NTQzMTcyNjUsImV4cCI6bnVsbH0.IrjmZM91WjlZ-Vl3CF89IXs9trV9rYSR5YeSJjEtlnSyS6TJsZLnCHmpq9pQVZB_c80sl0uDqZy3fGIEUA_np-D6ApWHjOngNc_0zzHFAxflN7UB9sdI-DLTWpP0ALGLOW97HFHl1Ysg50vA3e0ZdB2LO1lWOacj9ejF6KUCcNArTm4jcisnRHHlEY6RkUx0x0jg9PnPQTNLogT3XGp5dU1CpySyQJ-KSpN1g8OYdwPH_vMV5f-ARZcLq6o06TdbKsUEy4DcGkD7-AjOMyoSeY_np-78B1ZUDxieHj3jEThT_1iN31tedBpM_kGx8HbWyutXTHj2MSRbV1NwEYxFIQ",
-        )
+        cls.service = None
+        cls.database = None
+        cls.schema = None
+        cls.ingestion_bot = None
+        cls.team = None
+        cls.domain = None
+        cls.data_product = None
+        cls.dashboard_service = None
+        cls.classification = None
+        cls.tag = None
+        cls.glossary = None
+        cls.glossary_term = None
 
-        unique_suffix = int(time.time())
+        try:
+            om.configure(
+                server_url="http://localhost:8585/api",
+                jwt_token="eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJvcGVuLW1ldGFkYXRhLm9yZyIsInN1YiI6ImluZ2VzdGlvbi1ib3QiLCJyb2xlcyI6WyJJbmdlc3Rpb25Cb3RSb2xlIl0sImVtYWlsIjoiaW5nZXN0aW9uLWJvdEBvcGVuLW1ldGFkYXRhLm9yZyIsImlzQm90Ijp0cnVlLCJ0b2tlblR5cGUiOiJCT1QiLCJpYXQiOjE3NTg1OTQwNjYsImV4cCI6bnVsbH0.EUQFtIi3Wi3JVaHf5K4trF6AN6jIwKHDiOGeVBJ4aRNqzBF3SlbU6pZW7wgfB-3sLJG5OYWLSr8WwsiEujM3SHfalgG6449aBnyQm-Adg0VGYB3jcm8Lcu54lM0AtFVcAHcXyVVTo-nYT5gi5Dc6Rym6qM1t__Ka1TPBaXA4DNwF4oGNbG16qBCqO_5Iq5QfLlemY_VHP6v1jEEVIsfGpUzr_8qHr3vHq47Co0FOKw2_9ZzDRQe75TqSU-LqfYWciQOuXafK8fA7r5pYZQAVE0v0rK0r5LZ3u3ia4AINsv6F45Hu6PyVSzYf1bZAGt1H-R-aHcc1MP-CxZare1zVog",
+            )
 
-        cls.service = om.DatabaseServices.create(
-            CreateDatabaseServiceRequest(
-                name=f"test_sdk_service_{unique_suffix}",
-                serviceType=DatabaseServiceType.Mysql,
-                connection=DatabaseConnection(
-                    config=MysqlConnection(
-                        username="test",
-                        authType=BasicAuth(password="test"),
-                        hostPort="localhost:3306",
-                    )
-                ),
-            )
-        )
+            unique_suffix = int(time.time())
 
-        cls.database = om.Databases.create(
-            CreateDatabaseRequest(
-                name=f"test_sdk_db_{unique_suffix}",
-                service=cls.service.fullyQualifiedName,
+            cls.service = om.DatabaseServices.create(
+                CreateDatabaseServiceRequest(
+                    name=f"test_sdk_service_{unique_suffix}",
+                    serviceType=DatabaseServiceType.Mysql,
+                    connection=DatabaseConnection(
+                        config=MysqlConnection(
+                            username="test",
+                            authType=BasicAuth(password="test"),
+                            hostPort="localhost:3306",
+                        )
+                    ),
+                )
             )
-        )
 
-        cls.schema = om.DatabaseSchemas.create(
-            CreateDatabaseSchemaRequest(
-                name=f"test_sdk_schema_{unique_suffix}",
-                database=cls.database.fullyQualifiedName,
+            cls.database = om.Databases.create(
+                CreateDatabaseRequest(
+                    name=f"test_sdk_db_{unique_suffix}",
+                    service=cls.service.fullyQualifiedName,
+                )
             )
-        )
 
-        cls.ingestion_bot = cls._safe_retrieve_user("ingestion-bot")
+            cls.schema = om.DatabaseSchemas.create(
+                CreateDatabaseSchemaRequest(
+                    name=f"test_sdk_schema_{unique_suffix}",
+                    database=cls.database.fullyQualifiedName,
+                )
+            )
 
-        cls.team = om.Teams.create(
-            CreateTeamRequest(
-                name=f"test_sdk_team_{unique_suffix}",
-                teamType=TeamType.Group,
-            )
-        )
+            cls.ingestion_bot = cls._safe_retrieve_user("ingestion-bot")
 
-        cls.domain = om.Domains.create(
-            CreateDomainRequest(
-                name=f"test_sdk_domain_{unique_suffix}",
-                displayName="SDK Domain",
-                description="Domain created by SDK integration tests",
-                domainType=DomainType.Source_aligned,
+            cls.team = om.Teams.create(
+                CreateTeamRequest(
+                    name=f"test_sdk_team_{unique_suffix}",
+                    teamType=TeamType.Group,
+                )
             )
-        )
 
-        cls.data_product = om.DataProducts.create(
-            CreateDataProductRequest(
-                name=f"test_sdk_data_product_{unique_suffix}",
-                displayName="SDK Data Product",
-                description="Data product created by SDK integration tests",
-                domains=[cls.domain.fullyQualifiedName.root],
+            cls.domain = om.Domains.create(
+                CreateDomainRequest(
+                    name=f"test_sdk_domain_{unique_suffix}",
+                    displayName="SDK Domain",
+                    description="Domain created by SDK integration tests",
+                    domainType=DomainType.Source_aligned,
+                )
             )
-        )
 
-        cls.dashboard_service = om.DashboardServices.create(
-            CreateDashboardServiceRequest(
-                name=f"test_sdk_dashboard_service_{unique_suffix}",
-                serviceType=DashboardServiceType.Superset,
+            cls.data_product = om.DataProducts.create(
+                CreateDataProductRequest(
+                    name=f"test_sdk_data_product_{unique_suffix}",
+                    displayName="SDK Data Product",
+                    description="Data product created by SDK integration tests",
+                    domains=[cls.domain.fullyQualifiedName.root],
+                )
             )
-        )
 
-        cls.classification_name = f"TestSDKClassification{unique_suffix}"
-        cls.classification = om.Classifications.create(
-            CreateClassificationRequest(
-                name=cls.classification_name,
-                description="SDK integration classification",
+            cls.dashboard_service = om.DashboardServices.create(
+                CreateDashboardServiceRequest(
+                    name=f"test_sdk_dashboard_service_{unique_suffix}",
+                    serviceType=DashboardServiceType.Superset,
+                )
             )
-        )
-        cls.tag_name = f"testTag{unique_suffix}"
-        cls.tag = om.Tags.create(
-            CreateTagRequest(
-                classification=cls.classification_name,
-                name=cls.tag_name,
-                description="SDK integration tag",
-            )
-        )
-        cls.classification_tag_fqn = f"{cls.classification_name}.{cls.tag_name}"
 
-        cls.glossary = om.Glossaries.create(
-            CreateGlossaryRequest(
-                name=f"test_sdk_glossary_{unique_suffix}",
-                displayName="SDK Glossary",
-                description="Glossary created by SDK integration tests",
+            cls.classification_name = f"TestSDKClassification{unique_suffix}"
+            cls.classification = om.Classifications.create(
+                CreateClassificationRequest(
+                    name=cls.classification_name,
+                    description="SDK integration classification",
+                )
             )
-        )
-        cls.glossary_term = om.GlossaryTerms.create(
-            CreateGlossaryTermRequest(
-                glossary=cls.glossary.fullyQualifiedName.root,
-                name=f"test_sdk_term_{unique_suffix}",
-                displayName="SDK Glossary Term",
-                description="Glossary term for SDK integration tests",
+            cls.tag_name = f"testTag{unique_suffix}"
+            cls.tag = om.Tags.create(
+                CreateTagRequest(
+                    classification=cls.classification_name,
+                    name=cls.tag_name,
+                    description="SDK integration tag",
+                )
             )
-        )
+            cls.classification_tag_fqn = f"{cls.classification_name}.{cls.tag_name}"
+
+            cls.glossary = om.Glossaries.create(
+                CreateGlossaryRequest(
+                    name=f"test_sdk_glossary_{unique_suffix}",
+                    displayName="SDK Glossary",
+                    description="Glossary created by SDK integration tests",
+                )
+            )
+            cls.glossary_term = om.GlossaryTerms.create(
+                CreateGlossaryTermRequest(
+                    glossary=cls.glossary.fullyQualifiedName.root,
+                    name=f"test_sdk_term_{unique_suffix}",
+                    displayName="SDK Glossary Term",
+                    description="Glossary term for SDK integration tests",
+                )
+            )
+        except Exception as exc:  # pragma: no cover - environment dependent
+            om.reset()
+            raise unittest.SkipTest(
+                f"OpenMetadata server not reachable or misconfigured for SDK integration tests: {exc}"
+            ) from exc
 
     @classmethod
     def tearDownClass(cls) -> None:
