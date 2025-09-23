@@ -1639,20 +1639,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void softDeleteOrRestoreChildren(
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable && !nullOrEmpty(indexName)) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[0]));
-      es.org.elasticsearch.index.query.BoolQueryBuilder queryBuilder =
-          new es.org.elasticsearch.index.query.BoolQueryBuilder();
-      for (Pair<String, String> p : fieldAndValue) {
-        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
-      }
-      updateByQueryRequest.setQuery(queryBuilder);
-      Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-      updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
-    }
+    entityManager.softDeleteOrRestoreChildren(indexName, scriptTxt, fieldAndValue);
   }
 
   @Override

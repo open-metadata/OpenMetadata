@@ -80,4 +80,14 @@ public interface EntityManagementClient {
    * @param scriptTxt the script text for the update operation
    */
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
+
+  /**
+   * Soft deletes or restores child entities using a script update.
+   *
+   * @param indexNames the list of index names
+   * @param scriptTxt the script text for the update operation
+   * @param fieldAndValue list of field-value pairs to match for the update
+   */
+  void softDeleteOrRestoreChildren(
+      List<String> indexNames, String scriptTxt, List<Pair<String, String>> fieldAndValue);
 }

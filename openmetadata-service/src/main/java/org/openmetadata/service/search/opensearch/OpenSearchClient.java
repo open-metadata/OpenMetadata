@@ -1789,19 +1789,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void softDeleteOrRestoreChildren(
       List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[0]));
-      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      for (Pair<String, String> p : fieldAndValue) {
-        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
-      }
-      updateByQueryRequest.setQuery(queryBuilder);
-      Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-      updateByQueryRequest.setScript(script);
-      updateOpenSearchByQuery(updateByQueryRequest);
-    }
+    entityManager.softDeleteOrRestoreChildren(indexName, scriptTxt, fieldAndValue);
   }
 
   @Override

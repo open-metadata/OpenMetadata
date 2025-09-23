@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -275,6 +276,40 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
     } else {
       LOG.error("ElasticSearch client is not available. Cannot soft delete/restore entity.");
+    }
+  }
+
+  @Override
+  public void softDeleteOrRestoreChildren(
+      List<String> indexNames, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
+    if (isClientAvailable) {
+      try {
+        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+
+        for (Pair<String, String> p : fieldAndValue) {
+          boolQueryBuilder.must(
+              Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+        }
+
+        client.updateByQuery(
+            u ->
+                u.index(indexNames)
+                    .query(q -> q.bool(boolQueryBuilder.build()))
+                    .script(
+                        s -> s.inline(inline -> inline.source(scriptTxt).params(new HashMap<>())))
+                    .refresh(true));
+
+        LOG.info(
+            "Successfully soft deleted/restored children in ElasticSearch for indices: {}",
+            indexNames);
+      } catch (IOException e) {
+        LOG.error(
+            "Failed to soft delete/restore children in ElasticSearch for indices: {}",
+            indexNames,
+            e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot soft delete/restore children.");
     }
   }
 }
