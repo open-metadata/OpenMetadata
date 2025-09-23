@@ -24,6 +24,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
+import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
@@ -1660,12 +1661,28 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void createTimeSeriesEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      updateRequest.doc(doc, XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      updateElasticSearch(updateRequest);
+    if (isNewClientAvailable) {
+      try {
+        newClient.update(
+            u ->
+                u.index(indexName)
+                    .id(docId)
+                    .docAsUpsert(true)
+                    .refresh(Refresh.True)
+                    .doc(JsonData.fromJson(doc)),
+            Map.class);
+        LOG.info(
+            "Successfully created time series entity in ElasticSearch for index: {}, docId: {}",
+            indexName,
+            docId);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to create time series entity in ElasticSearch for index: {}, docId: {}, error: {}",
+            indexName,
+            docId,
+            e.getMessage(),
+            e);
+      }
     }
   }
 
@@ -1682,9 +1699,23 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteEntity(String indexName, String docId) {
-    if (isClientAvailable) {
-      DeleteRequest deleteRequest = new DeleteRequest(indexName, docId);
-      deleteEntityFromElasticSearch(deleteRequest);
+    if (isNewClientAvailable) {
+      try {
+        DeleteResponse response =
+            newClient.delete(d -> d.index(indexName).id(docId).refresh(Refresh.WaitFor));
+        LOG.info(
+            "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
+            indexName,
+            docId,
+            response.result());
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to delete entity from ElasticSearch for index: {}, docId: {}, error: {}",
+            indexName,
+            docId,
+            e.getMessage(),
+            e);
+      }
     }
   }
 
@@ -3029,6 +3060,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       JsonNode versionNode = jsonNode.get("version");
       if (versionNode != null && versionNode.get("number") != null) {
         String version = versionNode.get("number").asText();
+        LOG.info("ES Server version is running on: {}", version);
         return version.startsWith("7.");
       }
     } catch (Exception e) {
