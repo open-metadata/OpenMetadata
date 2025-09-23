@@ -300,6 +300,9 @@ export const ROUTES = {
   // Entity Bulk Edit
   BULK_EDIT_ENTITY: `/bulk/edit`,
   BULK_EDIT_ENTITY_WITH_FQN: `/bulk/edit/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Settings
+  SETTINGS_SSO: '/settings/sso',
 };
 
 export const SOCKET_EVENTS = {
@@ -432,6 +435,10 @@ export const STATUS_LABEL = {
 
 export const INITIAL_TABLE_FILTERS = {
   showDeletedTables: false,
+};
+
+export const INITIAL_CHART_FILTERS = {
+  showDeletedCharts: false,
 };
 
 export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;

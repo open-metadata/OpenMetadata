@@ -26,6 +26,7 @@ import org.openmetadata.DefaultOperationalConfigProvider;
 import org.openmetadata.schema.api.configuration.dataQuality.DataQualityConfiguration;
 import org.openmetadata.schema.api.configuration.events.EventHandlerConfiguration;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
+import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.fernet.FernetConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -154,6 +155,9 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("aiPlatformConfiguration")
   private AiPlatformConfiguration aiPlatformConfiguration;
+
+  @JsonProperty("rdf")
+  private RdfConfiguration rdfConfiguration = new RdfConfiguration();
 
   @Override
   public String toString() {

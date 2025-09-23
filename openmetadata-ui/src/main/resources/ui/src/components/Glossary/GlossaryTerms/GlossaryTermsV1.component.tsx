@@ -12,7 +12,6 @@
  */
 
 import { Col, Row, Tabs } from 'antd';
-
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -26,8 +25,8 @@ import {
   Glossary,
 } from '../../../generated/entity/data/glossary';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../../generated/system/ui/page';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -95,16 +94,16 @@ const GlossaryTermsV1 = ({
     FEED_COUNT_INITIAL_DATA
   );
   const [assetCount, setAssetCount] = useState<number>(0);
-  const { glossaryChildTerms, onAddGlossaryTerm } = useGlossaryStore();
+  const { onAddGlossaryTerm } = useGlossaryStore();
   const { permissions } = useGenericContext<GlossaryTerm>();
-  const childGlossaryTerms = glossaryChildTerms ?? [];
   const { customizedPage, isLoading } = useCustomPages(PageType.GlossaryTerm);
   const { t } = useTranslation();
 
   const assetPermissions = useMemo(() => {
-    const glossaryTermStatus = glossaryTerm.status ?? Status.Approved;
+    const glossaryTermStatus =
+      glossaryTerm.entityStatus ?? EntityStatus.Approved;
 
-    return glossaryTermStatus === Status.Approved
+    return glossaryTermStatus === EntityStatus.Approved
       ? permissions
       : MOCK_GLOSSARY_NO_PERMISSIONS;
   }, [glossaryTerm, permissions]);
@@ -158,7 +157,7 @@ const GlossaryTermsV1 = ({
   const handleAssetSave = useCallback(() => {
     fetchGlossaryTermAssets();
     assetTabRef.current?.refreshAssets();
-    activeTab !== 'assets' && activeTabHandler('assets');
+    activeTab !== EntityTabs.ASSETS && activeTabHandler(EntityTabs.ASSETS);
   }, [assetTabRef, activeTab]);
 
   const onExtensionUpdate = useCallback(
@@ -202,14 +201,14 @@ const GlossaryTermsV1 = ({
                     t('label.glossary-term-plural')}
                   <span className="p-l-xs ">
                     {getCountBadge(
-                      childGlossaryTerms.length,
+                      glossaryTerm.childrenCount || 0,
                       '',
-                      activeTab === EntityTabs.TERMS
+                      activeTab === EntityTabs.GLOSSARY_TERMS
                     )}
                   </span>
                 </div>
               ),
-              key: EntityTabs.TERMS,
+              key: EntityTabs.GLOSSARY_TERMS,
               children: (
                 <GlossaryTermTab
                   className="p-md glossary-term-table-container"
@@ -295,7 +294,8 @@ const GlossaryTermsV1 = ({
     return getDetailsTabWithNewLabel(
       items,
       customizedPage?.tabs,
-      EntityTabs.OVERVIEW
+      EntityTabs.OVERVIEW,
+      isVersionView
     );
   }, [
     customizedPage?.tabs,

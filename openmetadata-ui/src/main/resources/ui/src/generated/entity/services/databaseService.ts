@@ -174,7 +174,7 @@ export interface FieldChange {
  * Database Connection.
  */
 export interface DatabaseConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -270,8 +270,10 @@ export interface DatabaseConnection {
  * SSAS Metadata Database Connection Config
  *
  * Epic FHIR Connection Config
+ *
+ * ServiceNow Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Billing Project ID
      */
@@ -349,6 +351,8 @@ export interface ConfigClass {
      * Host and port of the Azure Synapse service.
      *
      * Host and port of the Cockrooach service.
+     *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      */
     hostPort?:                string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
@@ -530,6 +534,8 @@ export interface ConfigClass {
      * Password to connect to Exasol.
      *
      * Password
+     *
+     * Password to connect to ServiceNow.
      */
     password?: string;
     /**
@@ -621,6 +627,9 @@ export interface ConfigClass {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      */
     username?: string;
     /**
@@ -653,6 +662,12 @@ export interface ConfigClass {
      */
     secure?: boolean;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -676,10 +691,6 @@ export interface ConfigClass {
      * Table name to fetch the query history.
      */
     queryHistoryTable?: string;
-    /**
-     * Generated Token to connect to Databricks.
-     */
-    token?: string;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -718,21 +729,20 @@ export interface ConfigClass {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
+     * SSL Configuration details.
      */
-    authMechanism?: AuthMechanismEnum;
+    sslConfig?: Config;
     /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
     /**
-     * Choose Auth Config Type.
+     * Authentication mode to connect to Impala.
      */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
-     * SSL Configuration details.
-     */
-    sslConfig?: Config;
+    authMechanism?: AuthMechanismEnum;
     /**
      * Use slow logs to extract lineage.
      */
@@ -835,6 +845,10 @@ export interface ConfigClass {
      */
     snowflakePrivatekeyPassphrase?: string;
     /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
+    /**
      * Snowflake warehouse.
      */
     warehouse?: string;
@@ -892,6 +906,10 @@ export interface ConfigClass {
      * Hostname of the Couchbase service.
      */
     hostport?: string;
+    /**
+     * Generated Token to connect to Databricks.
+     */
+    token?: string;
     /**
      * Enable dataflow for ingestion
      */
@@ -972,6 +990,17 @@ export interface ConfigClass {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
+    [property: string]: any;
 }
 
 /**
@@ -1001,6 +1030,16 @@ export enum AuthMechanismEnum {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -1011,7 +1050,34 @@ export enum AuthMechanismEnum {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
      */
@@ -1747,7 +1813,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: HiveMetastoreConnectionDetailsAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -1839,7 +1905,7 @@ export interface HiveMetastoreConnectionDetails {
  *
  * Azure Database Connection Config
  */
-export interface HiveMetastoreConnectionDetailsAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -2115,6 +2181,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
@@ -2236,6 +2303,7 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",

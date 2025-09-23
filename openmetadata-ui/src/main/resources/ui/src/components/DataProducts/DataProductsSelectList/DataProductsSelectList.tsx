@@ -15,6 +15,7 @@ import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Paging } from '../../../generated/type/paging';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -127,7 +128,10 @@ const DataProductsSelectList = ({
     <>
       {menu}
       {hasContentLoading ? <Loader size="small" /> : null}
-      <Space className="p-sm p-b-xss p-l-xs custom-dropdown-render" size={8}>
+      <Space
+        className="p-sm p-b-xss p-l-xs custom-dropdown-render"
+        data-testid="data-product-dropdown-actions"
+        size={8}>
         <Button
           className="update-btn"
           data-testid="saveAssociatedTag"
@@ -151,6 +155,12 @@ const DataProductsSelectList = ({
       const option = options.find((option) => option.label === item);
       if (option) {
         result.push(option.value);
+      } else {
+        result.push({
+          fullyQualifiedName: item,
+          name: item,
+          type: EntityType.DATA_PRODUCT,
+        } as unknown as DataProduct);
       }
 
       return result;

@@ -35,9 +35,11 @@ server:
   gzip:
     syncFlush: true
 
-  maxThreads: ${SERVER_MAX_THREADS:-50}
-  minThreads: ${SERVER_MIN_THREADS:-10}
+  maxThreads: ${SERVER_MAX_THREADS:-150}
+  minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
+  maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
 
 # Above configuration for running http is fine for dev and testing.
 # For production setup, where UI app will hit apis through DPS it
@@ -357,6 +359,18 @@ pipelineServiceClientConfiguration:
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+  logStorageConfiguration:
+    type: ${PIPELINE_SERVICE_CLIENT_LOG_TYPE:-"default"} # Possible values are "default", "s3"
+    # if type is s3, provide the following configuration
+    bucketName: ${PIPELINE_SERVICE_CLIENT_LOG_BUCKET_NAME:-""}
+    # optional path within the bucket to store the logs
+    prefix: ${PIPELINE_SERVICE_CLIENT_LOG_PREFIX:-""}
+    region: ${PIPELINE_SERVICE_CLIENT_LOG_REGION:-""}
+    awsConfig:
+      awsAccessKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_ACCESS_KEY_ID:-""}
+      awsSecretAccessKey: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_SECRET_ACCESS_KEY:-""}
+      awsRegion: ${PIPELINE_SERVICE_CLIENT_LOG_REGION:-""}
+      awsSessionToken: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_SESSION_TOKEN:-""}
 
   # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
   # Supported: noop, airflow, env
@@ -447,7 +461,13 @@ web:
 
 operationalConfig:
   enable: ${OPERATIONAL_CONFIG_ENABLED:-true}
-  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}  
-    
-    
-  
+  operationsConfigFile: ${OPERATIONAL_CONFIG_FILE:-"./conf/operations.yaml"}
+
+rdf:
+  enabled: ${RDF_ENABLED:-false}
+  baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
+  storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
+  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  username: ${RDF_REMOTE_USERNAME:-"admin"}
+  password: ${RDF_REMOTE_PASSWORD:-"admin"}
+  dataset: ${RDF_DATASET:-"openmetadata"}

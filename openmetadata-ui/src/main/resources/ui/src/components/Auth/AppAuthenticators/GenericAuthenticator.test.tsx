@@ -36,7 +36,7 @@ jest.mock('../../../rest/LoginAPI', () => ({
   renewToken: () => renewToken(),
 }));
 
-jest.mock('../../../utils/LocalStorageUtils', () => ({
+jest.mock('../../../utils/SwTokenStorageUtils', () => ({
   setOidcToken: (token: string) => setOidcToken(token),
 }));
 

@@ -5,7 +5,7 @@
   <parent>
     <artifactId>platform</artifactId>
     <groupId>org.open-metadata</groupId>
-    <version>1.9.0-SNAPSHOT</version>
+    <version>1.10.0-SNAPSHOT</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>openmetadata-service</artifactId>
@@ -136,6 +136,22 @@
       <groupId>net.minidev</groupId>
       <artifactId>json-smart</artifactId>
       <version>${json-smart.version}</version>
+    </dependency>
+    <!-- Google OAuth Client Library -->
+    <dependency>
+      <groupId>com.google.api-client</groupId>
+      <artifactId>google-api-client</artifactId>
+      <version>2.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client</artifactId>
+      <version>1.34.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client-jackson2</artifactId>
+      <version>1.43.3</version>
     </dependency>
     <dependency>
       <groupId>org.open-metadata</groupId>
@@ -304,11 +320,6 @@
     <dependency>
       <groupId>io.dropwizard</groupId>
       <artifactId>dropwizard-json-logging</artifactId>
-    </dependency>
-    <dependency>
-      <groupId>commons-lang</groupId>
-      <artifactId>commons-lang</artifactId>
-      <version>${commons-lang.version}</version>
     </dependency>
     <dependency>
       <groupId>commons-io</groupId>
@@ -508,11 +519,36 @@
       <groupId>software.amazon.awssdk</groupId>
       <artifactId>cloudwatch</artifactId>
     </dependency>
+    
+    <!-- Dependencies for S3 log storage -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>s3</artifactId>
+    </dependency>
 
     <!--test dependencies-->
     <dependency>
       <groupId>org.glassfish.jersey.core</groupId>
       <artifactId>jersey-client</artifactId>
+    </dependency>
+    <!-- MinIO for S3 testing -->
+    <dependency>
+      <groupId>io.minio</groupId>
+      <artifactId>minio</artifactId>
+      <version>8.5.7</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>testcontainers</artifactId>
+      <version>1.19.3</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.testcontainers</groupId>
+      <artifactId>minio</artifactId>
+      <version>1.19.3</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>org.awaitility</groupId>
@@ -897,6 +933,11 @@
       <artifactId>client-java</artifactId>
       <version>${kubernetes-client.version}</version>
     </dependency>
+    <!-- Handlebars Template Engine -->
+    <dependency>
+      <groupId>com.github.jknack</groupId>
+      <artifactId>handlebars</artifactId>
+    </dependency>
     <dependency>
       <groupId>com.slack.api</groupId>
       <artifactId>bolt-servlet</artifactId>
@@ -977,6 +1018,42 @@
       <groupId>org.opensearch.client</groupId>
       <artifactId>opensearch-rest-high-level-client</artifactId>
       <scope>test</scope>
+    </dependency>
+
+    <!-- Apache Jena RDF Dependencies -->
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>apache-jena-libs</artifactId>
+      <version>4.10.0</version>
+      <type>pom</type>
+    </dependency>
+    
+    <!-- Apache Calcite for SQL parsing -->
+    <dependency>
+      <groupId>org.apache.calcite</groupId>
+      <artifactId>calcite-core</artifactId>
+      <version>1.36.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>commons-lang</groupId>
+          <artifactId>commons-lang</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>com.apicatalog</groupId>
+      <artifactId>titanium-json-ld</artifactId>
+      <version>1.4.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.glassfish</groupId>
+      <artifactId>jakarta.json</artifactId>
+      <version>2.0.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.jsqlparser</groupId>
+      <artifactId>jsqlparser</artifactId>
+      <version>4.9</version>
     </dependency>
   </dependencies>
 
@@ -1075,10 +1152,10 @@
         </build>
       </profile>
       <profile>
+        <id>mysql-tests</id>
         <activation>
           <activeByDefault>true</activeByDefault>
         </activation>
-        <id>mysql-tests</id>
         <build>
           <plugins>
             <plugin>
@@ -1157,6 +1234,45 @@
                       <include>**/*Test.java</include>
                       <include>**/*ResourceTest.java</include>
                       <include>**/cache/*Test.java</include>
+                    </includes>
+                  </configuration>
+                </execution>
+              </executions>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+      <profile>
+        <id>postgres-rdf-tests</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-surefire-plugin</artifactId>
+              <version>${maven-surefire.version}</version>
+              <configuration>
+                <reuseForks>false</reuseForks>
+                <parallel>classes</parallel>
+                <forkCount>1C</forkCount>
+                <argLine>-Xmx2G</argLine>
+                <systemPropertyVariables>
+                  <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
+                  <jdbcContainerImage>postgres:15</jdbcContainerImage>
+                  <elasticSearchContainerClassName>docker.elastic.co/elasticsearch/elasticsearch:8.11.4</elasticSearchContainerClassName>
+                  <openSearchContainerClassName>opensearchproject/opensearch:2.7.0</openSearchContainerClassName>
+                  <runESTestCases>false</runESTestCases>
+                  <enableRdf>true</enableRdf>
+                  <rdfContainerImage>stain/jena-fuseki:latest</rdfContainerImage>
+                </systemPropertyVariables>
+              </configuration>
+              <executions>
+                <execution>
+                  <id>postgres-rdf-integration-tests</id>
+                  <phase>test</phase>
+                  <configuration>
+                    <includes>
+                      <include>**/*Test.java</include>
+                      <include>**/*ResourceTest.java</include>
                     </includes>
                   </configuration>
                 </execution>

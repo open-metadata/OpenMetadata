@@ -25,12 +25,12 @@ import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/testCaseResults";
@@ -74,8 +74,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
             TestCaseResult.class);
-    return new ResultList<>(
-        testCaseResults, String.valueOf(startTs), String.valueOf(endTs), testCaseResults.size());
+    return new ResultList<>(testCaseResults, null, null, testCaseResults.size());
   }
 
   public Response addTestCaseResult(
@@ -127,8 +126,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   @Override
-  protected void postDelete(TestCaseResult entity) {
-    super.postDelete(entity);
+  protected void postDelete(TestCaseResult entity, boolean hardDelete) {
+    super.postDelete(entity, hardDelete);
     updateTestCaseStatus(entity, OperationType.DELETE);
   }
 
@@ -155,7 +154,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     if (storedTestCaseResult != null) {
       timeSeriesDao.deleteAtTimestamp(fqn, TESTCASE_RESULT_EXTENSION, timestamp);
       searchRepository.deleteTimeSeriesEntityById(storedTestCaseResult);
-      postDelete(storedTestCaseResult);
+      postDelete(storedTestCaseResult, true); // Hard delete for specific timestamp
       return new RestUtil.DeleteResponse<>(storedTestCaseResult, ENTITY_DELETED);
     }
     throw new EntityNotFoundException(

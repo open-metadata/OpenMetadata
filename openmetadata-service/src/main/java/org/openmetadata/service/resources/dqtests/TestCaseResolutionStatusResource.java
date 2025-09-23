@@ -28,6 +28,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.beans.IntrospectionException;
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,12 +40,15 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
@@ -52,9 +56,9 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/dataQuality/testCases/testCaseIncidentStatus")
@@ -151,7 +155,10 @@ public class TestCaseResolutionStatusResource
               description = "Origin entity for which the incident was opened for",
               schema = @Schema(type = "String"))
           @QueryParam("originEntityFQN")
-          String originEntityFQN) {
+          String originEntityFQN,
+      @Parameter(description = "Filter incidents by domain", schema = @Schema(type = "String"))
+          @QueryParam("domain")
+          String domain) {
     List<AuthRequest> requests = new ArrayList<>();
     OperationContext testCaseOperationContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
@@ -171,6 +178,7 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("assignee", assignee);
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
+    filter.addQueryParam("domain", domain);
 
     return repository.list(offset, startTs, endTs, limitParam, filter, latest);
   }
@@ -304,6 +312,142 @@ public class TestCaseResolutionStatusResource
     RestUtil.PatchResponse<TestCaseResolutionStatus> response =
         repository.patch(id, patch, securityContext.getUserPrincipal().getName());
     return response.toResponse();
+  }
+
+  @GET
+  @Path("/search/list")
+  @Operation(
+      operationId = "listTestCaseResolutionStatusFromSearchService",
+      summary = "List test case resolution status using search service",
+      description =
+          "Get a list of test case resolution status using the search service. "
+              + "Use cursor-based pagination to limit the number of "
+              + "entries in the list using `limit` and `offset` query params.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of test case resolution status",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TestCaseResolutionStatusResultList.class)))
+      })
+  public ResultList<TestCaseResolutionStatus> listFromSearch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Limit the number of incidents returned. (1 to 1000000, default = 10)")
+          @DefaultValue("10")
+          @QueryParam("limit")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 1000000, message = "must be less than or equal to 1000000")
+          int limit,
+      @Parameter(
+              description = "Returns list of incidents after this offset",
+              schema = @Schema(type = "string"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          int offset,
+      @Parameter(
+              description = "Filter test case statuses after the given start timestamp",
+              schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(
+              description = "Filter test case statuses before the given end timestamp",
+              schema = @Schema(type = "number"))
+          @NonNull
+          @QueryParam("endTs")
+          Long endTs,
+      @Parameter(
+              description = "Filter test case statuses by status",
+              schema = @Schema(implementation = TestCaseResolutionStatusTypes.class))
+          @QueryParam("testCaseResolutionStatusType")
+          String testCaseResolutionStatusType,
+      @Parameter(description = "Only list the latest statuses", schema = @Schema(type = "Boolean"))
+          @DefaultValue("false")
+          @QueryParam("latest")
+          Boolean latest,
+      @Parameter(
+              description = "Filter test case statuses by assignee",
+              schema = @Schema(type = "String"))
+          @QueryParam("assignee")
+          String assignee,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(description = "Test case fully qualified name", schema = @Schema(type = "String"))
+          @QueryParam("testCaseFQN")
+          String testCaseFQN,
+      @Parameter(
+              description = "Origin entity for which the incident was opened for",
+              schema = @Schema(type = "String"))
+          @QueryParam("originEntityFQN")
+          String originEntityFQN,
+      @Parameter(description = "domain filter to use in list", schema = @Schema(type = "string"))
+          @QueryParam("domain")
+          String domain,
+      @Parameter(
+              description = "Field used to sort the incidents listing",
+              schema = @Schema(type = "string"))
+          @QueryParam("sortField")
+          String sortField,
+      @Parameter(
+              description = "Sort type",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortType")
+          @DefaultValue("desc")
+          String sortType)
+      throws IOException {
+
+    // Use updatedAt as default sort field for TestCaseResolutionStatus since it doesn't have a name
+    // field
+    String defaultSortField = sortField != null ? sortField : "updatedAt";
+    SearchSortFilter searchSortFilter =
+        new SearchSortFilter(defaultSortField, sortType, null, null);
+    SearchListFilter searchListFilter = new SearchListFilter(include);
+    searchListFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
+    searchListFilter.addQueryParam("assignee", assignee);
+    searchListFilter.addQueryParam("testCaseFqn", testCaseFQN);
+    searchListFilter.addQueryParam("originEntityFQN", originEntityFQN);
+    searchListFilter.addQueryParam("domains", domain);
+
+    OperationContext testCaseOperationContext =
+        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
+    ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
+
+    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
+
+    if (latest) {
+      // For latest results, use aggregation grouped by test case to get the latest status per test
+      // case
+      return repository.listLatestFromSearch(
+          Fields.EMPTY_FIELDS,
+          searchListFilter,
+          "testCase.fullyQualifiedName.keyword", // Group by test case to get latest status per test
+          // case
+          null);
+    } else {
+      return super.listInternalFromSearch(
+          securityContext,
+          new Fields(null),
+          searchListFilter,
+          limit,
+          offset,
+          searchSortFilter,
+          null,
+          null,
+          testCaseOperationContext,
+          testCaseResourceContext);
+    }
   }
 
   protected static ResourceContextInterface getEntityResourceContext(

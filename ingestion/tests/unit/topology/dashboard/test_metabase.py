@@ -13,6 +13,7 @@
 Test Domo Dashboard using the topology
 """
 
+import json
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest import TestCase
@@ -363,3 +364,68 @@ class MetabaseUnitTest(TestCase):
         # Test with includeOwners = False
         self.metabase.source_config.includeOwners = False
         self.assertFalse(self.metabase.source_config.includeOwners)
+=======
+    def test_dataset_query_string_parsing(self):
+        """
+        Test that dataset_query field can handle both string and dict inputs
+        """
+        # Test 1: dataset_query as a proper dict
+        chart_with_dict = MetabaseChart(
+            name="test_chart_dict",
+            id="100",
+            dataset_query={
+                "type": "native",
+                "native": {"query": "SELECT * FROM users"},
+            },
+        )
+        self.assertIsNotNone(chart_with_dict.dataset_query)
+        self.assertEqual(chart_with_dict.dataset_query.type, "native")
+        self.assertEqual(
+            chart_with_dict.dataset_query.native.query, "SELECT * FROM users"
+        )
+
+        # Test 2: dataset_query as a JSON string
+        dataset_query_json = json.dumps(
+            {"type": "query", "database": 1, "query": {"source-table": 2}}
+        )
+        chart_with_json_string = MetabaseChart(
+            name="test_chart_json", id="101", dataset_query=dataset_query_json
+        )
+        self.assertIsNotNone(chart_with_json_string.dataset_query)
+        self.assertEqual(chart_with_json_string.dataset_query.type, "query")
+
+        # Test 3: dataset_query as a Python dict string (single quotes)
+        dataset_query_str = (
+            "{'type': 'native', 'native': {'query': 'SELECT COUNT(*) FROM orders'}}"
+        )
+        chart_with_dict_string = MetabaseChart(
+            name="test_chart_dict_str", id="102", dataset_query=dataset_query_str
+        )
+        self.assertIsNotNone(chart_with_dict_string.dataset_query)
+        self.assertEqual(chart_with_dict_string.dataset_query.type, "native")
+        self.assertEqual(
+            chart_with_dict_string.dataset_query.native.query,
+            "SELECT COUNT(*) FROM orders",
+        )
+
+        # Test 4: dataset_query with None values as string
+        dataset_query_with_none = "{'type': 'query', 'native': None, 'database': 1}"
+        chart_with_none = MetabaseChart(
+            name="test_chart_none", id="103", dataset_query=dataset_query_with_none
+        )
+        self.assertIsNotNone(chart_with_none.dataset_query)
+        self.assertEqual(chart_with_none.dataset_query.type, "query")
+        self.assertIsNone(chart_with_none.dataset_query.native)
+
+        # Test 5: Invalid dataset_query string should return None
+        invalid_dataset_query = "this is not valid json or dict"
+        chart_with_invalid = MetabaseChart(
+            name="test_chart_invalid", id="104", dataset_query=invalid_dataset_query
+        )
+        self.assertIsNone(chart_with_invalid.dataset_query)
+
+        # Test 6: dataset_query as None
+        chart_with_none_value = MetabaseChart(
+            name="test_chart_none_value", id="105", dataset_query=None
+        )
+        self.assertIsNone(chart_with_none_value.dataset_query)

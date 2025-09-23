@@ -71,6 +71,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -104,6 +105,7 @@ import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
@@ -145,7 +147,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
@@ -430,7 +432,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
@@ -496,7 +498,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getInstance()
+                .getCurrentAuthConfig()
+                .getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -585,7 +589,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       CollectionRegistry.initialize();
 
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
       if (!authProvider.equals(AuthProvider.BASIC)) {
@@ -1274,6 +1278,80 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
+  @Command(name = "reindex-rdf", description = "Re-index all entities into RDF triple store.")
+  public Integer reIndexRdf(
+      @Option(
+              names = {"-r", "--recreate"},
+              defaultValue = "true",
+              description = "Clear and recreate all RDF data.")
+          boolean recreate,
+      @Option(
+              names = {"-e", "--entity-type"},
+              description =
+                  "Specific entity type to process (optional). Use 'all' for all entities.")
+          String entityType,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "100",
+              description = "Number of records to process in each batch.")
+          int batchSize) {
+    try {
+      LOG.info("Starting RDF reindexing...");
+      parseConfig();
+
+      // Check if RDF is enabled
+      if (config.getRdfConfiguration() == null
+          || !Boolean.TRUE.equals(config.getRdfConfiguration().getEnabled())) {
+        LOG.error("RDF is not enabled in configuration. Please set rdf.enabled=true");
+        return 1;
+      }
+
+      // Get entities to process
+      Set<String> entities = new HashSet<>();
+      if (entityType == null || "all".equalsIgnoreCase(entityType)) {
+        entities.add("all");
+      } else {
+        entities.add(entityType);
+      }
+
+      return executeRdfReindexApp(entities, batchSize, recreate);
+    } catch (Exception e) {
+      LOG.error("Failed to reindex RDF due to", e);
+      return 1;
+    }
+  }
+
+  private int executeRdfReindexApp(Set<String> entities, int batchSize, boolean recreateIndexes) {
+    try {
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      App app = appRepository.getByName(null, "RdfIndexApp", appRepository.getFields("id"));
+
+      EventPublisherJob config =
+          new EventPublisherJob()
+              .withEntities(entities)
+              .withBatchSize(batchSize)
+              .withRecreateIndex(recreateIndexes);
+
+      LOG.info("Triggering RDF reindex application");
+      LOG.info("  Entities: {}", entities);
+      LOG.info("  Batch size: {}", batchSize);
+      LOG.info("  Recreate indexes: {}", recreateIndexes);
+
+      // Trigger Application
+      long currentTime = System.currentTimeMillis();
+      AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+
+      // Wait for completion and return status
+      return waitAndReturnReindexingAppStatus(app, currentTime, null);
+    } catch (EntityNotFoundException e) {
+      LOG.error("RdfIndexApp not found. Please ensure the RDF indexing application is registered.");
+      return 1;
+    } catch (Exception e) {
+      LOG.error("Failed to execute RDF reindex app", e);
+      return 1;
+    }
+  }
+
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
   public Integer deployPipelines() {
     try {
@@ -1325,15 +1403,43 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Dropping all indexes from search engine...");
       parseConfig();
+
+      // Drop regular search repository indexes
       for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
         LOG.info("Dropping index for entity type: {}", entityType);
         searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
       }
+
+      // Drop data streams and data quality indexes created by DataInsightsApp
+      dropDataInsightsIndexes();
+
       LOG.info("All indexes dropped successfully.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop indexes due to ", e);
       return 1;
+    }
+  }
+
+  private void dropDataInsightsIndexes() {
+    try {
+      LOG.info("Dropping Data Insights data streams and indexes...");
+
+      // Create a DataInsightsApp instance to access its cleanup methods
+      DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
+
+      // Drop data assets data streams
+      LOG.info("Dropping data assets data streams...");
+      dataInsightsApp.deleteDataAssetsDataStream();
+
+      // Drop data quality indexes
+      LOG.info("Dropping data quality indexes...");
+      dataInsightsApp.deleteDataQualityDataIndex();
+
+      LOG.info("Data Insights indexes and data streams dropped successfully.");
+    } catch (Exception e) {
+      LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
+      LOG.debug("Data Insights index cleanup error details: ", e);
     }
   }
 
@@ -1502,7 +1608,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(true);
   }
 
   private void initOrganization() {

@@ -52,6 +52,7 @@ import {
   StorageConnection,
   StorageService,
 } from '../generated/entity/services/storageService';
+import { EntityReference } from '../generated/entity/type';
 import { Paging } from '../generated/type/paging';
 
 export interface IngestionSchedule {
@@ -130,6 +131,7 @@ export type IngestionWorkflowData = Pipeline & {
   enableDebugLog?: boolean;
   displayName?: string;
   raiseOnError?: boolean;
+  rootProcessingEngine?: EntityReference;
 };
 
 export interface IngestionWorkflowFormProps {

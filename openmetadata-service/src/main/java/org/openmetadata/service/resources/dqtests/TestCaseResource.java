@@ -53,6 +53,7 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -78,7 +79,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 @Path("/v1/dataQuality/testCases")
@@ -94,9 +94,10 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases";
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
-  static final String FIELDS = "owners,testSuite,testDefinition,testSuites,incidentId,domains,tags";
+  static final String FIELDS =
+      "owners,reviewers,entityStatus,testSuite,testDefinition,testSuites,incidentId,domains,tags,followers";
   static final String SEARCH_FIELDS_EXCLUDE =
-      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN";
+      "testPlatforms,table,database,databaseSchema,service,testSuite,dataQualityDimension,testCaseType,originEntityFQN,followers";
 
   @Override
   public TestCase addHref(UriInfo uriInfo, TestCase test) {
@@ -415,81 +416,52 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "Filter test cases by the user who created them",
               schema = @Schema(type = "string"))
           @QueryParam("createdBy")
-          String createdBy)
+          String createdBy,
+      @Parameter(
+              description = "Filter test cases by entities followed by a user",
+              schema = @Schema(type = "string"))
+          @QueryParam("followedBy")
+          String followedBy)
       throws IOException {
-    if ((startTimestamp == null && endTimestamp != null)
-        || (startTimestamp != null && endTimestamp == null)) {
-      throw new IllegalArgumentException("startTimestamp and endTimestamp must be used together");
-    }
+    // Validate parameters
+    validateTimestamps(startTimestamp, endTimestamp);
+
+    // Build search filters
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(sortField, sortType, sortNestedPath, sortNestedMode);
-    SearchListFilter searchListFilter = new SearchListFilter(include);
-    searchListFilter.addQueryParam("testSuiteId", testSuiteId);
-    searchListFilter.addQueryParam("includeAllTests", includeAllTests.toString());
-    searchListFilter.addQueryParam("testCaseStatus", status);
-    searchListFilter.addQueryParam("testCaseType", type);
-    searchListFilter.addQueryParam("testPlatforms", testPlatforms);
-    searchListFilter.addQueryParam("dataQualityDimension", dataQualityDimension);
-    searchListFilter.addQueryParam("q", q);
-    searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
-    searchListFilter.addQueryParam("includeFields", includeFields);
-    searchListFilter.addQueryParam("domains", domain);
-    searchListFilter.addQueryParam("tags", tags);
-    searchListFilter.addQueryParam("tier", tier);
-    searchListFilter.addQueryParam("serviceName", serviceName);
-    searchListFilter.addQueryParam("createdBy", createdBy);
-    if (!nullOrEmpty(owner)) {
-      EntityInterface entity;
-      StringBuilder owners = new StringBuilder();
-      try {
-        User user = Entity.getEntityByName(Entity.USER, owner, "teams", ALL);
-        owners.append(user.getId().toString());
-        if (!nullOrEmpty(user.getTeams())) {
-          owners
-              .append(",")
-              .append(
-                  user.getTeams().stream()
-                      .map(t -> t.getId().toString())
-                      .collect(Collectors.joining(",")));
-        }
-      } catch (Exception e) {
-        // If the owner is not a user, then we'll try to get team
-        entity = Entity.getEntityByName(Entity.TEAM, owner, "", ALL);
-        owners.append(entity.getId().toString());
-      }
-      searchListFilter.addQueryParam("owners", owners.toString());
-    }
-
-    if (startTimestamp != null) {
-      if (startTimestamp > endTimestamp) {
-        throw new IllegalArgumentException("startTimestamp must be less than endTimestamp");
-      }
-      searchListFilter.addQueryParam("startTimestamp", startTimestamp.toString());
-      searchListFilter.addQueryParam("endTimestamp", endTimestamp.toString());
-    }
-
-    ResourceContextInterface resourceContextInterface =
-        getResourceContext(entityLink, searchListFilter);
-    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
-    // VIEW_TESTS
-    OperationContext operationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-    Fields fields = getFields(fieldsParam);
-
-    ResultList<TestCase> tests =
-        super.listInternalFromSearch(
-            uriInfo,
-            securityContext,
-            fields,
-            searchListFilter,
-            limit,
-            offset,
-            searchSortFilter,
+    SearchListFilter searchListFilter =
+        buildSearchListFilter(
+            include,
+            testSuiteId,
+            includeAllTests,
+            status,
+            type,
+            testPlatforms,
+            dataQualityDimension,
             q,
-            queryString,
-            operationContext,
-            resourceContextInterface);
-    return PIIMasker.getTestCases(tests, authorizer, securityContext);
+            includeFields,
+            domain,
+            tags,
+            tier,
+            serviceName,
+            createdBy,
+            owner,
+            followedBy,
+            startTimestamp,
+            endTimestamp);
+
+    // Execute search
+    return executeTestCaseSearch(
+        uriInfo,
+        securityContext,
+        fieldsParam,
+        entityLink,
+        searchListFilter,
+        searchSortFilter,
+        limit,
+        offset,
+        q,
+        queryString);
   }
 
   @GET
@@ -1155,5 +1127,141 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       resourceContext = TestCaseResourceContext.builder().build();
     }
     return resourceContext;
+  }
+
+  private static String resolveUserOrTeamIds(String userOrTeamName, boolean includeTeamMembers) {
+    if (nullOrEmpty(userOrTeamName)) {
+      return null;
+    }
+
+    StringBuilder ids = new StringBuilder();
+    try {
+      // Try to resolve as a user first
+      User user =
+          Entity.getEntityByName(
+              Entity.USER, userOrTeamName, includeTeamMembers ? "teams" : "", ALL);
+      ids.append(user.getId().toString());
+
+      // If includeTeamMembers is true and user has teams, add team IDs
+      if (includeTeamMembers && !nullOrEmpty(user.getTeams())) {
+        ids.append(",")
+            .append(
+                user.getTeams().stream()
+                    .map(t -> t.getId().toString())
+                    .collect(Collectors.joining(",")));
+      }
+    } catch (Exception e) {
+      // If not a user, try to resolve as a team
+      EntityInterface entity = Entity.getEntityByName(Entity.TEAM, userOrTeamName, "", ALL);
+      ids.append(entity.getId().toString());
+    }
+
+    return ids.toString();
+  }
+
+  private static void validateTimestamps(Long startTimestamp, Long endTimestamp) {
+    if ((startTimestamp == null && endTimestamp != null)
+        || (startTimestamp != null && endTimestamp == null)) {
+      throw new IllegalArgumentException("startTimestamp and endTimestamp must be used together");
+    }
+    if (startTimestamp != null && startTimestamp > endTimestamp) {
+      throw new IllegalArgumentException("startTimestamp must be less than endTimestamp");
+    }
+  }
+
+  private static SearchListFilter buildSearchListFilter(
+      Include include,
+      String testSuiteId,
+      Boolean includeAllTests,
+      String status,
+      String type,
+      String testPlatforms,
+      String dataQualityDimension,
+      String q,
+      String includeFields,
+      String domain,
+      String tags,
+      String tier,
+      String serviceName,
+      String createdBy,
+      String owner,
+      String followedBy,
+      Long startTimestamp,
+      Long endTimestamp) {
+
+    SearchListFilter searchListFilter = new SearchListFilter(include);
+
+    // Add basic parameters
+    searchListFilter.addQueryParam("testSuiteId", testSuiteId);
+    searchListFilter.addQueryParam("includeAllTests", includeAllTests.toString());
+    searchListFilter.addQueryParam("testCaseStatus", status);
+    searchListFilter.addQueryParam("testCaseType", type);
+    searchListFilter.addQueryParam("testPlatforms", testPlatforms);
+    searchListFilter.addQueryParam("dataQualityDimension", dataQualityDimension);
+    searchListFilter.addQueryParam("q", q);
+    searchListFilter.addQueryParam("excludeFields", SEARCH_FIELDS_EXCLUDE);
+    searchListFilter.addQueryParam("includeFields", includeFields);
+    searchListFilter.addQueryParam("domains", domain);
+    searchListFilter.addQueryParam("tags", tags);
+    searchListFilter.addQueryParam("tier", tier);
+    searchListFilter.addQueryParam("serviceName", serviceName);
+    searchListFilter.addQueryParam("createdBy", createdBy);
+
+    // Handle owner and followedBy parameters
+    if (!nullOrEmpty(owner)) {
+      String ownerIds = resolveUserOrTeamIds(owner, true); // include team members
+      searchListFilter.addQueryParam("owners", ownerIds);
+    }
+    if (!nullOrEmpty(followedBy)) {
+      String followerIds = resolveUserOrTeamIds(followedBy, false); // don't include team members
+      searchListFilter.addQueryParam("followedBy", followerIds);
+    }
+
+    // Add timestamp parameters
+    if (startTimestamp != null) {
+      searchListFilter.addQueryParam("startTimestamp", startTimestamp.toString());
+      searchListFilter.addQueryParam("endTimestamp", endTimestamp.toString());
+    }
+
+    return searchListFilter;
+  }
+
+  private ResultList<TestCase> executeTestCaseSearch(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String fieldsParam,
+      String entityLink,
+      SearchListFilter searchListFilter,
+      SearchSortFilter searchSortFilter,
+      int limit,
+      int offset,
+      String q,
+      String queryString)
+      throws IOException {
+
+    ResourceContextInterface resourceContextInterface =
+        getResourceContext(entityLink, searchListFilter);
+
+    // Override OperationContext to change the entity to table and operation from VIEW_ALL to
+    // VIEW_TESTS
+    OperationContext operationContext =
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
+    Fields fields = getFields(fieldsParam);
+
+    ResultList<TestCase> tests =
+        super.listInternalFromSearch(
+            uriInfo,
+            securityContext,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            queryString,
+            operationContext,
+            resourceContextInterface);
+
+    return PIIMasker.getTestCases(tests, authorizer, securityContext);
   }
 }

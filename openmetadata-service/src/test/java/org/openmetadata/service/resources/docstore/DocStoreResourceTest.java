@@ -46,10 +46,10 @@ import org.openmetadata.schema.system.ui.PageType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDocument> {
@@ -265,7 +265,7 @@ public class DocStoreResourceTest extends EntityResourceTest<Document, CreateDoc
     queryParams.put(
         "fqnPrefix", FullyQualifiedName.build(knowledgePanel.getEntityType().toString()));
     ResultList<Document> panelList = listEntities(queryParams, ADMIN_AUTH_HEADERS);
-    assertEquals(panelDocs.size() + 10, panelList.getPaging().getTotal());
+    assertEquals(panelDocs.size() + 11, panelList.getPaging().getTotal());
 
     // docs
     List<Document> pageDocs = new ArrayList<>();

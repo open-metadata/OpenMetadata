@@ -60,8 +60,7 @@ public class EmailPublisher implements Destination<ChangeEvent> {
   @Override
   public void sendMessage(ChangeEvent event) throws EventPublisherException {
     try {
-      Set<String> receivers =
-          getTargetsForAlert(emailAlertConfig, subscriptionDestination.getCategory(), EMAIL, event);
+      Set<String> receivers = getTargetsForAlert(emailAlertConfig, subscriptionDestination, event);
       EmailMessage emailMessage =
           emailDecorator.buildOutgoingMessage(getDisplayNameOrFqn(eventSubscription), event);
       for (String email : receivers) {

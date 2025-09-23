@@ -16,6 +16,7 @@ import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
@@ -28,6 +29,7 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
+import static org.openmetadata.service.search.SearchClient.REMOVE_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
@@ -77,7 +79,7 @@ import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.EntityInterface;
@@ -139,6 +141,7 @@ public class SearchRepository {
       List.of(
           FIELD_OWNERS,
           FIELD_DOMAINS,
+          FIELD_FOLLOWERS,
           Entity.FIELD_DISABLED,
           Entity.FIELD_TEST_SUITES,
           FIELD_DISPLAY_NAME);
@@ -781,6 +784,12 @@ public class SearchRepository {
               fieldData.put("deletedDomains", inheritedDomains);
               scriptTxt.append(REMOVE_DOMAINS_SCRIPT);
               scriptTxt.append(" ");
+            } else if (field.getName().equals(FIELD_FOLLOWERS)) {
+              List<EntityReference> inheritedFollowers =
+                  copyWithInheritedFlag(entity.getFollowers());
+              fieldData.put("deletedFollowers", inheritedFollowers);
+              scriptTxt.append(REMOVE_FOLLOWERS_SCRIPT);
+              scriptTxt.append(" ");
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
@@ -852,6 +861,11 @@ public class SearchRepository {
               }
               fieldData.put("updatedDomains", inheritedDomains);
               scriptTxt.append(ADD_DOMAINS_SCRIPT);
+            } else if (field.getName().equals(FIELD_FOLLOWERS)) {
+              List<EntityReference> inheritedFollowers =
+                  copyWithInheritedFlag(entity.getFollowers());
+              fieldData.put("updatedFollowers", inheritedFollowers);
+              scriptTxt.append(ADD_FOLLOWERS_SCRIPT);
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
@@ -1060,7 +1074,9 @@ public class SearchRepository {
           searchClient.updateChildren(
               indexMapping.getChildAliases(clusterAlias),
               new ImmutablePair<>("testSuites.id", testSuite.getId().toString()),
-              new ImmutablePair<>(REMOVE_TEST_SUITE_CHILDREN_SCRIPT, null));
+              new ImmutablePair<>(
+                  REMOVE_TEST_SUITE_CHILDREN_SCRIPT,
+                  Collections.singletonMap("suiteId", testSuite.getId().toString())));
         }
       }
       case Entity.DASHBOARD_SERVICE,
@@ -1195,6 +1211,11 @@ public class SearchRepository {
   public Response searchWithNLQ(SearchRequest request, SubjectContext subjectContext)
       throws IOException {
     return searchClient.searchWithNLQ(request, subjectContext);
+  }
+
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    return searchClient.searchWithDirectQuery(request, subjectContext);
   }
 
   public Response getDocument(String indexName, UUID entityId) throws IOException {
@@ -1408,7 +1429,8 @@ public class SearchRepository {
     searchClient.updateChildren(
         GLOBAL_SEARCH_ALIAS,
         new ImmutablePair<>("upstreamEntityRelationship.docId.keyword", relationDocId),
-        new ImmutablePair<>(String.format(REMOVE_ENTITY_RELATIONSHIP, relationDocId), null));
+        new ImmutablePair<>(
+            REMOVE_ENTITY_RELATIONSHIP, Collections.singletonMap("docId", relationDocId)));
   }
 
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
@@ -1488,5 +1510,15 @@ public class SearchRepository {
           throws IOException {
     return searchClient.getSchemaEntityRelationship(
         schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  private static List<EntityReference> copyWithInheritedFlag(List<EntityReference> references) {
+    if (references == null || references.isEmpty()) {
+      return new ArrayList<>();
+    }
+    List<EntityReference> inheritedReferences =
+        JsonUtils.deepCopyList(references, EntityReference.class);
+    inheritedReferences.forEach(ref -> ref.setInherited(true));
+    return inheritedReferences;
   }
 }

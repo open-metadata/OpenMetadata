@@ -266,8 +266,8 @@ test('Permissions', async ({ userPage, adminPage }) => {
     );
     await userPage.getByTestId(`edit-${testCaseName}`).click();
     await testDefinitionResponse;
-    await userPage.locator('#tableTestForm_displayName').clear();
-    await userPage.fill('#tableTestForm_displayName', 'Update_display_name');
+    await userPage.locator('[id="root\\/displayName"]').clear();
+    await userPage.fill('[id="root\\/displayName"]', 'Update_display_name');
     const saveTestResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );

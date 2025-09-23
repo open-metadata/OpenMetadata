@@ -346,22 +346,25 @@ public class FormatterUtil {
     if (entityTimeSeries instanceof DataContractResult) {
       DataContractResult result =
           JsonUtils.readOrConvertValue(entityTimeSeries, DataContractResult.class);
-      DataContract contract =
-          Entity.getEntityByName(
-              Entity.DATA_CONTRACT, result.getDataContractFQN(), "", Include.ALL);
-      ChangeEvent changeEvent =
-          getChangeEvent(updateBy, eventType, contract.getEntityReference().getType(), contract);
-
-      return changeEvent
-          .withChangeDescription(
-              new ChangeDescription()
-                  .withFieldsUpdated(
-                      List.of(
-                          new FieldChange().withName(DATA_CONTRACT_RESULT).withNewValue(result))))
-          .withEntity(contract)
-          .withEntityFullyQualifiedName(contract.getFullyQualifiedName());
+      return getDataContractResultEvent(result, updateBy, eventType);
     }
     return null;
+  }
+
+  public static ChangeEvent getDataContractResultEvent(
+      DataContractResult result, String updateBy, EventType eventType) {
+    DataContract contract =
+        Entity.getEntityByName(Entity.DATA_CONTRACT, result.getDataContractFQN(), "", Include.ALL);
+    ChangeEvent changeEvent =
+        getChangeEvent(updateBy, eventType, contract.getEntityReference().getType(), contract);
+
+    return changeEvent
+        .withChangeDescription(
+            new ChangeDescription()
+                .withFieldsUpdated(
+                    List.of(new FieldChange().withName(DATA_CONTRACT_RESULT).withNewValue(result))))
+        .withEntity(contract)
+        .withEntityFullyQualifiedName(contract.getFullyQualifiedName());
   }
 
   private static ChangeEvent getChangeEventForThread(

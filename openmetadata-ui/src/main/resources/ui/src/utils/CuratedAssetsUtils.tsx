@@ -12,7 +12,7 @@
  */
 
 import { InfoCircleOutlined } from '@ant-design/icons';
-import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
+import { Config, Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { Alert } from 'antd';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
@@ -22,8 +22,12 @@ import { CURATED_ASSETS_LIST } from '../constants/AdvancedSearch.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Bucket } from '../interface/search.interface';
+import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../rest/searchAPI';
-import { getJsonTreeFromQueryFilter } from './QueryBuilderUtils';
+import {
+  getEntityTypeAggregationFilter,
+  getJsonTreeFromQueryFilter,
+} from './QueryBuilderUtils';
 import { getExplorePath } from './RouterUtils';
 
 export interface CuratedAssetsFormSelectedAssetsInfo {
@@ -39,12 +43,138 @@ export const EMPTY_QUERY_FILTER_STRINGS = [
   '',
 ];
 
+interface ElasticsearchCondition {
+  term?: Record<string, unknown>;
+  terms?: Record<string, unknown[]>;
+  exists?: { field: string };
+  bool?: ElasticsearchBoolQuery;
+}
+
+interface ElasticsearchBoolQuery {
+  must?: ElasticsearchCondition[];
+  should?: ElasticsearchCondition[];
+  must_not?: ElasticsearchCondition | ElasticsearchCondition[];
+}
+
+// Simple validation functions using function declarations for hoisting
+function isValidCondition(condition: ElasticsearchCondition): boolean {
+  if (!condition) {
+    return false;
+  }
+
+  // Check term conditions - must have non-empty field names
+  if (condition.term) {
+    const termKeys = Object.keys(condition.term);
+
+    return (
+      termKeys.length > 0 && termKeys.every((field) => field.trim() !== '')
+    );
+  }
+
+  // Check terms conditions - must have non-empty field names
+  if (condition.terms) {
+    const termsKeys = Object.keys(condition.terms);
+
+    return (
+      termsKeys.length > 0 && termsKeys.every((field) => field.trim() !== '')
+    );
+  }
+
+  // Check exists conditions - must have non-empty field
+  if (condition.exists) {
+    return Boolean(
+      condition.exists.field && condition.exists.field.trim() !== ''
+    );
+  }
+
+  // Check nested bool conditions
+  if (condition.bool) {
+    return isValidBoolQuery(condition.bool);
+  }
+
+  return true;
+}
+
+function isValidBoolQuery(boolQuery: ElasticsearchBoolQuery): boolean {
+  if (!boolQuery) {
+    return false;
+  }
+
+  const { must, should, must_not } = boolQuery;
+
+  // Validate must conditions (AND)
+  if (Array.isArray(must)) {
+    if (must.length === 0) {
+      return false;
+    }
+    if (!must.every(isValidCondition)) {
+      return false;
+    }
+  }
+
+  // Validate should conditions (OR)
+  if (Array.isArray(should)) {
+    if (should.length === 0) {
+      return false;
+    }
+    if (!should.every(isValidCondition)) {
+      return false;
+    }
+  }
+
+  // Validate must_not conditions
+  if (Array.isArray(must_not)) {
+    if (!must_not.every(isValidCondition)) {
+      return false;
+    }
+  } else if (must_not) {
+    if (!isValidCondition(must_not)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+// Main validation function for queryFilter string
+export const isValidElasticsearchQuery = (
+  queryFilterString: string
+): boolean => {
+  if (
+    !queryFilterString ||
+    EMPTY_QUERY_FILTER_STRINGS.includes(queryFilterString)
+  ) {
+    return false;
+  }
+
+  try {
+    const queryFilter = JSON.parse(queryFilterString);
+
+    // Check if it has query structure
+    if (!queryFilter.query) {
+      return false;
+    }
+
+    // Validate the bool query structure
+    if (queryFilter.query.bool) {
+      return isValidBoolQuery(queryFilter.query.bool);
+    }
+
+    // For other query types, assume valid
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const AlertMessage = ({
   assetCount,
   href = '#',
+  target,
 }: {
   assetCount?: number;
   href?: string;
+  target?: string;
 }) => {
   const { t } = useTranslation();
 
@@ -60,7 +190,10 @@ export const AlertMessage = ({
               count: assetCount,
             })}
             &nbsp;
-            <a className="text-primary hover:underline" href={href}>
+            <a
+              className="text-primary hover:underline"
+              href={href}
+              target={target}>
               {t('label.view-in-explore-page')}
             </a>
           </span>
@@ -151,14 +284,19 @@ export const getSelectedResourceCount = async ({
 };
 
 export const getModifiedQueryFilterWithSelectedAssets = (
-  queryFilterObject: Record<string, any>,
+  queryFilterObject: QueryFilterInterface,
   selectedResource?: Array<string>
 ) => {
+  // If no resources selected or resources include 'all', return original query without entity type filter
+  if (!selectedResource?.length || selectedResource.includes(EntityType.ALL)) {
+    return queryFilterObject;
+  }
+
   // Create entityType filter for selected resources
   const entityTypeFilter = {
     bool: {
       should: [
-        ...(selectedResource ?? []).map((resource) => ({
+        ...selectedResource.map((resource) => ({
           term: { entityType: resource },
         })),
       ],
@@ -190,6 +328,114 @@ export const getModifiedQueryFilterWithSelectedAssets = (
   };
 };
 
+export const getExpandedResourceList = (resources: Array<string>) => {
+  if (resources.includes(EntityType.ALL)) {
+    // Return all entity types except 'all' itself
+    return CURATED_ASSETS_LIST.filter((type) => type !== EntityType.ALL);
+  }
+
+  return resources;
+};
+
+export const getSimpleExploreURLForAssetTypes = (
+  selectedResource: Array<string>
+) => {
+  if (isEmpty(selectedResource)) {
+    return getExplorePath({});
+  }
+
+  const expandedResources = getExpandedResourceList(selectedResource);
+
+  // Create query filter with the correct structure for quickFilter
+  const quickFilter = {
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: expandedResources.map((resource) => ({
+                term: { entityType: resource },
+              })),
+            },
+          },
+        ],
+      },
+    },
+  };
+
+  const queryString = Qs.stringify({
+    page: 1,
+    size: 15,
+    quickFilter: JSON.stringify(quickFilter),
+  });
+
+  return `${getExplorePath({})}?${queryString}`;
+};
+
+export const getExploreURLForAdvancedFilter = ({
+  queryFilter,
+  selectedResource,
+  config,
+}: {
+  queryFilter: string;
+  selectedResource: Array<string>;
+  config: Config;
+}) => {
+  try {
+    if (isEmpty(selectedResource)) {
+      return getExplorePath({});
+    }
+
+    const expandedResources = getExpandedResourceList(selectedResource);
+
+    // Create quickFilter for entity types only - this handles the OR logic between entity types
+    const quickFilter = {
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: expandedResources.map((resource) => ({
+                  term: { entityType: resource },
+                })),
+              },
+            },
+          ],
+        },
+      },
+    };
+
+    // Parse the queryFilter WITHOUT adding entity type filters
+    // This preserves the original query builder tree structure
+    const queryFilterObject = JSON.parse(queryFilter || '{}');
+
+    const params: Record<string, unknown> = {
+      page: 1,
+      size: 15,
+      quickFilter: JSON.stringify(quickFilter),
+    };
+
+    // Only add queryFilter if there's an actual query (not just empty object)
+    if (!isEmpty(queryFilterObject) && queryFilterObject.query) {
+      // Convert elasticsearch query to tree format using the fixed function
+      const tree = QbUtils.sanitizeTree(
+        QbUtils.loadTree(getJsonTreeFromQueryFilter(queryFilterObject)),
+        config
+      ).fixedTree;
+
+      if (!isEmpty(tree)) {
+        params.queryFilter = JSON.stringify(tree);
+      }
+    }
+
+    const queryString = Qs.stringify(params);
+
+    return `${getExplorePath({})}?${queryString}`;
+  } catch {
+    return getExplorePath({});
+  }
+};
+
 export const getExploreURLWithFilters = ({
   queryFilter,
   selectedResource,
@@ -197,22 +443,22 @@ export const getExploreURLWithFilters = ({
 }: {
   queryFilter: string;
   selectedResource: Array<string>;
-  config: any;
+  config: Config;
 }) => {
   try {
+    const expandedResources = getExpandedResourceList(selectedResource);
+
     const queryFilterObject = JSON.parse(queryFilter || '{}');
 
-    const modifiedQueryFilter = getModifiedQueryFilterWithSelectedAssets(
-      queryFilterObject,
-      selectedResource
+    const qFilter = getEntityTypeAggregationFilter(
+      queryFilterObject as unknown as QueryFilterInterface,
+      expandedResources
     );
 
-    const tree = QbUtils.checkTree(
-      QbUtils.loadTree(
-        getJsonTreeFromQueryFilter(modifiedQueryFilter) as JsonTree
-      ),
+    const tree = QbUtils.sanitizeTree(
+      QbUtils.loadTree(getJsonTreeFromQueryFilter(qFilter)),
       config
-    );
+    ).fixedTree;
 
     const queryFilterString = !isEmpty(tree)
       ? Qs.stringify({ queryFilter: JSON.stringify(tree) })
@@ -220,6 +466,6 @@ export const getExploreURLWithFilters = ({
 
     return `${getExplorePath({})}${queryFilterString}`;
   } catch {
-    return '';
+    return getExplorePath({});
   }
 };

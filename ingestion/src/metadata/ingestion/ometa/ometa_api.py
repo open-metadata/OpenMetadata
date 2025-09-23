@@ -44,9 +44,11 @@ from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
+from metadata.ingestion.ometa.mixins.logs_mixin import OMetaLogsMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.profile_mixin import OMetaProfileMixin
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
@@ -122,6 +124,7 @@ class OpenMetadata(
     OMetaTestsMixin,
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
+    OMetaLogsMixin,
     OMetaUserMixin,
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
@@ -129,6 +132,7 @@ class OpenMetadata(
     OMetaCustomPropertyMixin,
     OMetaSuggestionsMixin,
     OMetaDomainMixin,
+    OMetaProfileMixin,
     Generic[T, C],
 ):
     """
@@ -337,7 +341,22 @@ class OpenMetadata(
         return entity_class(**resp)
 
     def create_or_update(self, data: C) -> T:
-        """Run a PUT requesting via create request C"""
+        """
+        Run a PUT request via create request C.
+
+        Note: This method uses PUT operations with server-side business rules that may prevent
+        certain field overwrites across various entity types for data integrity reasons. If you
+        need to override existing metadata fields, consider using patch methods instead:
+
+        - For descriptions: Use patch_description(force=True)
+        - For general metadata: Use patch(override_metadata=True)
+
+        Args:
+            data: Create request object
+
+        Returns:
+            Updated or created entity
+        """
         return self._create(data=data, method="put")
 
     def create(self, data: C) -> T:
