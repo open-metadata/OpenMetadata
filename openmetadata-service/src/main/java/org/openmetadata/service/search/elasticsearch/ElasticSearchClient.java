@@ -58,7 +58,6 @@ import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
-import es.org.elasticsearch.index.query.ScriptQueryBuilder;
 import es.org.elasticsearch.index.query.TermQueryBuilder;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.ReindexRequest;
@@ -1612,13 +1611,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
-    if (isClientAvailable) {
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
-      ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-      deleteByQueryRequest.setQuery(scriptQuery);
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-    }
+    entityManager.deleteByScript(indexName, scriptTxt, params);
   }
 
   @Override

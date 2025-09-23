@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.service.search.EntityManagementClient;
@@ -219,6 +220,47 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       }
     } else {
       LOG.error("OpenSearch client is not available. Cannot delete entities by FQN prefix.");
+    }
+  }
+
+  @Override
+  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
+    if (isClientAvailable) {
+      try {
+        DeleteByQueryResponse response =
+            client.deleteByQuery(
+                d ->
+                    d.index(indexName)
+                        .query(
+                            q ->
+                                q.script(
+                                    s ->
+                                        s.script(
+                                            script ->
+                                                script.inline(
+                                                    inline ->
+                                                        inline
+                                                            .source(scriptTxt)
+                                                            .params(
+                                                                params.entrySet().stream()
+                                                                    .collect(
+                                                                        Collectors.toMap(
+                                                                            Map.Entry::getKey,
+                                                                            entry ->
+                                                                                JsonData.of(
+                                                                                    entry
+                                                                                        .getValue()))))))))
+                        .refresh(true));
+
+        LOG.info(
+            "DeleteByQuery by script response from OS - Deleted: {}, Failures: {}",
+            response.deleted(),
+            response.failures().size());
+      } catch (IOException e) {
+        LOG.error("Failed to delete entities by script using OpenSearch client", e);
+      }
+    } else {
+      LOG.error("OpenSearch client is not available. Cannot delete entities by script.");
     }
   }
 

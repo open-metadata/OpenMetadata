@@ -207,4 +207,45 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error("ElasticSearch client is not available. Cannot delete entities by FQN prefix.");
     }
   }
+
+  @Override
+  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
+    if (isClientAvailable) {
+      try {
+        DeleteByQueryResponse response =
+            client.deleteByQuery(
+                d ->
+                    d.index(indexName)
+                        .query(
+                            q ->
+                                q.script(
+                                    s ->
+                                        s.script(
+                                            script ->
+                                                script.inline(
+                                                    inline ->
+                                                        inline
+                                                            .source(scriptTxt)
+                                                            .params(
+                                                                params.entrySet().stream()
+                                                                    .collect(
+                                                                        Collectors.toMap(
+                                                                            Map.Entry::getKey,
+                                                                            entry ->
+                                                                                JsonData.of(
+                                                                                    entry
+                                                                                        .getValue()))))))))
+                        .refresh(true));
+
+        LOG.info(
+            "DeleteByQuery by script response from ES - Deleted: {}, Failures: {}",
+            response.deleted(),
+            response.failures().size());
+      } catch (IOException e) {
+        LOG.error("Failed to delete entities by script using ES client", e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot delete entities by script.");
+    }
+  }
 }

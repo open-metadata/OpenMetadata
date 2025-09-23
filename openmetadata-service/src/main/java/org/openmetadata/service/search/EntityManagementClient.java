@@ -62,4 +62,13 @@ public interface EntityManagementClient {
    * @param fqnPrefix the FQN prefix to match for deletion
    */
   void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
+
+  /**
+   * Deletes entities from an index using a script query.
+   *
+   * @param indexName the name of the index
+   * @param scriptTxt the script text for the deletion query
+   * @param params the parameters for the script
+   */
+  void deleteByScript(String indexName, String scriptTxt, java.util.Map<String, Object> params);
 }

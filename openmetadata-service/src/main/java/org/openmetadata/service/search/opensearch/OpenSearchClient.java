@@ -181,7 +181,6 @@ import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
-import os.org.opensearch.index.query.ScriptQueryBuilder;
 import os.org.opensearch.index.query.TermQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
@@ -1761,13 +1760,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
-    if (isClientAvailable) {
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
-      ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-      deleteByQueryRequest.setQuery(scriptQuery);
-      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
-    }
+    entityManager.deleteByScript(indexName, scriptTxt, params);
   }
 
   @Override
