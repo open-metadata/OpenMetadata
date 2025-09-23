@@ -2743,6 +2743,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -3017,6 +3018,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -3024,6 +3026,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_validity_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -3140,6 +3143,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -3147,6 +3151,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_validity_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -3479,6 +3484,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_completeness_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -3486,6 +3492,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_validity_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -3608,6 +3615,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_quality_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -3836,6 +3844,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_dashboard_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -4558,6 +4567,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_table_all_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -4657,6 +4667,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_quality_constraint_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -4677,6 +4688,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase tableTestCase =
         testCaseResourceTest
             .createRequest("test_case_table_quality_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(realTableLink);
     TestCase tableTest =
         testCaseResourceTest.createAndCheckEntity(tableTestCase, ADMIN_AUTH_HEADERS);
@@ -4783,6 +4795,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase =
         testCaseResourceTest
             .createRequest("test_case_multiple_errors_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase =
         testCaseResourceTest.createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -5564,6 +5577,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_1_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -5571,6 +5585,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -5578,6 +5593,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase3 =
         testCaseResourceTest
             .createRequest("test_case_3_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase3 =
         testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
@@ -5621,6 +5637,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_all_results_1_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -5628,6 +5645,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_all_results_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -5698,6 +5716,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_update_1_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -5705,6 +5724,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_update_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -5712,6 +5732,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase3 =
         testCaseResourceTest
             .createRequest("test_case_update_3_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase3 =
         testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
@@ -5794,6 +5815,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase1 =
         testCaseResourceTest
             .createRequest("test_case_workflow_1_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -5801,6 +5823,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase2 =
         testCaseResourceTest
             .createRequest("test_case_workflow_2_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -5808,6 +5831,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateTestCase createTestCase3 =
         testCaseResourceTest
             .createRequest("test_case_workflow_3_" + test.getDisplayName())
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withEntityLink(tableLink);
     TestCase testCase3 =
         testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
@@ -5923,6 +5947,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         testCaseResourceTest
             .createRequest("search_test_case_1_" + test.getDisplayName())
             .withEntityLink(table1Link)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withDataContract(dataContract1.getFullyQualifiedName());
     TestCase testCase1 =
         testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
@@ -5931,6 +5956,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         testCaseResourceTest
             .createRequest("search_test_case_2_" + test.getDisplayName())
             .withEntityLink(table1Link)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withDataContract(dataContract1.getFullyQualifiedName());
     TestCase testCase2 =
         testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
@@ -5939,6 +5965,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         testCaseResourceTest
             .createRequest("search_test_case_3_" + test.getDisplayName())
             .withEntityLink(table2Link)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
             .withDataContract(dataContract2.getFullyQualifiedName());
     TestCase testCase3 =
         testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
@@ -6123,5 +6150,149 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     }
 
     return TestUtils.get(target, TestCaseResultResource.TestCaseResultList.class, authHeader);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractTestCaseReferencesLifecycle(TestInfo test) throws IOException {
+    // Test that test cases get dataContract references when contracts are created/updated/deleted
+    Table table = createUniqueTable(test.getDisplayName());
+    String tableLink = String.format("<#E::table::%s>", table.getFullyQualifiedName());
+
+    // Create test cases
+    CreateTestCase createTestCase1 =
+        testCaseResourceTest
+            .createRequest("test_case_lifecycle_1_" + test.getDisplayName())
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase testCase1 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase2 =
+        testCaseResourceTest
+            .createRequest("test_case_lifecycle_2_" + test.getDisplayName())
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase testCase2 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase2, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase3 =
+        testCaseResourceTest
+            .createRequest("test_case_lifecycle_3_" + test.getDisplayName())
+            .withEntityLink(tableLink)
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName());
+    TestCase testCase3 =
+        testCaseResourceTest.createAndCheckEntity(createTestCase3, ADMIN_AUTH_HEADERS);
+
+    // Verify test cases initially don't have dataContract references
+    TestCase initialTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase initialTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase initialTestCase3 =
+        testCaseResourceTest.getEntity(testCase3.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+
+    assertNull(
+        initialTestCase1.getDataContract(),
+        "Test case 1 should not have dataContract reference initially");
+    assertNull(
+        initialTestCase2.getDataContract(),
+        "Test case 2 should not have dataContract reference initially");
+    assertNull(
+        initialTestCase3.getDataContract(),
+        "Test case 3 should not have dataContract reference initially");
+
+    // Step 1: Create data contract with quality expectations (testCase1, testCase2)
+    List<EntityReference> initialQualityExpectations =
+        List.of(testCase1.getEntityReference(), testCase2.getEntityReference());
+
+    CreateDataContract create =
+        createDataContractRequest(test.getDisplayName(), table)
+            .withQualityExpectations(initialQualityExpectations);
+
+    DataContract dataContract = createDataContract(create);
+
+    // Verify test cases 1 and 2 now have dataContract references after creation
+    TestCase afterCreateTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterCreateTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterCreateTestCase3 =
+        testCaseResourceTest.getEntity(testCase3.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+
+    assertNotNull(
+        afterCreateTestCase1.getDataContract(),
+        "Test case 1 should have dataContract reference after contract creation");
+    assertEquals(
+        dataContract.getId(),
+        afterCreateTestCase1.getDataContract().getId(),
+        "Test case 1 should reference the correct data contract");
+    assertEquals(
+        dataContract.getFullyQualifiedName(),
+        afterCreateTestCase1.getDataContract().getFullyQualifiedName());
+
+    assertNotNull(
+        afterCreateTestCase2.getDataContract(),
+        "Test case 2 should have dataContract reference after contract creation");
+    assertEquals(
+        dataContract.getId(),
+        afterCreateTestCase2.getDataContract().getId(),
+        "Test case 2 should reference the correct data contract");
+
+    assertNull(
+        afterCreateTestCase3.getDataContract(),
+        "Test case 3 should not have dataContract reference (not in quality expectations)");
+
+    // Step 2: Update data contract to include testCase3 and remove testCase1
+    List<EntityReference> updatedQualityExpectations =
+        List.of(testCase2.getEntityReference(), testCase3.getEntityReference());
+
+    String originalJson = JsonUtils.pojoToJson(dataContract);
+    dataContract.setQualityExpectations(updatedQualityExpectations);
+    DataContract updatedDataContract =
+        patchDataContract(dataContract.getId(), originalJson, dataContract);
+
+    // Verify test case references after update
+    TestCase afterUpdateTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterUpdateTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterUpdateTestCase3 =
+        testCaseResourceTest.getEntity(testCase3.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+
+    assertNull(
+        afterUpdateTestCase1.getDataContract(),
+        "Test case 1 should no longer have dataContract reference (removed from quality expectations)");
+
+    assertNotNull(
+        afterUpdateTestCase2.getDataContract(),
+        "Test case 2 should still have dataContract reference");
+    assertEquals(dataContract.getId(), afterUpdateTestCase2.getDataContract().getId());
+
+    assertNotNull(
+        afterUpdateTestCase3.getDataContract(),
+        "Test case 3 should now have dataContract reference (added to quality expectations)");
+    assertEquals(dataContract.getId(), afterUpdateTestCase3.getDataContract().getId());
+
+    // Step 3: Delete data contract
+    deleteDataContract(dataContract.getId());
+
+    // Verify all test case references are removed after deletion
+    TestCase afterDeleteTestCase1 =
+        testCaseResourceTest.getEntity(testCase1.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterDeleteTestCase2 =
+        testCaseResourceTest.getEntity(testCase2.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+    TestCase afterDeleteTestCase3 =
+        testCaseResourceTest.getEntity(testCase3.getId(), "dataContract", ADMIN_AUTH_HEADERS);
+
+    assertNull(
+        afterDeleteTestCase1.getDataContract(),
+        "Test case 1 should not have dataContract reference after contract deletion");
+    assertNull(
+        afterDeleteTestCase2.getDataContract(),
+        "Test case 2 should not have dataContract reference after contract deletion");
+    assertNull(
+        afterDeleteTestCase3.getDataContract(),
+        "Test case 3 should not have dataContract reference after contract deletion");
   }
 }

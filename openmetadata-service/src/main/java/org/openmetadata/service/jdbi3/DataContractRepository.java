@@ -170,6 +170,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   protected void postCreate(DataContract dataContract) {
     super.postCreate(dataContract);
     postCreateOrUpdate(dataContract);
+    // Update test cases with dataContract reference
+    updateTestCasesWithDataContract(dataContract);
   }
 
   // If we update the contract adding DQ validation, add the pipeline if needed
@@ -177,6 +179,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   protected void postUpdate(DataContract original, DataContract updated) {
     super.postUpdate(original, updated);
     postCreateOrUpdate(updated);
+    // Update test cases with dataContract reference for new/updated quality expectations
+    updateTestCasesWithDataContract(updated);
+    // Remove dataContract reference from test cases no longer in quality expectations
+    removeDataContractFromOldTestCases(original, updated);
   }
 
   @Override
@@ -185,6 +191,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       deleteTestSuite(dataContract);
     }
+    // Remove dataContract reference from all associated test cases
+    removeDataContractFromTestCases(dataContract);
     // Clean status
     daoCollection
         .entityExtensionTimeSeriesDao()
@@ -1188,6 +1196,116 @@ public class DataContractRepository extends EntityRepository<DataContract> {
           String.format(
               "A data contract already exists for entity '%s' with ID %s",
               entity.getType(), entity.getId()));
+    }
+  }
+
+  private void updateTestCasesWithDataContract(DataContract dataContract) {
+    if (nullOrEmpty(dataContract.getQualityExpectations())) {
+      return;
+    }
+
+    for (EntityReference testCaseRef : dataContract.getQualityExpectations()) {
+      try {
+        // Get the existing test case to check if it already has a dataContract
+        TestCase existingTestCase = daoCollection.testCaseDAO().findEntityById(testCaseRef.getId());
+        if (existingTestCase == null) {
+          LOG.warn("Test case {} not found, skipping dataContract update", testCaseRef.getId());
+          continue;
+        }
+
+        // Only update if the test case doesn't have a dataContract or has a different dataContract
+        // ID
+        boolean shouldUpdate =
+            existingTestCase.getDataContract() == null
+                || !existingTestCase.getDataContract().getId().equals(dataContract.getId());
+
+        if (shouldUpdate) {
+          // Create the dataContract EntityReference
+          EntityReference dataContractRef =
+              new EntityReference()
+                  .withId(dataContract.getId())
+                  .withType(Entity.DATA_CONTRACT)
+                  .withFullyQualifiedName(dataContract.getFullyQualifiedName());
+
+          // Use testCase DAO to update the dataContract field directly
+          daoCollection
+              .testCaseDAO()
+              .updateTestCaseDataContract(
+                  testCaseRef.getId().toString(), JsonUtils.pojoToJson(dataContractRef));
+
+          LOG.debug(
+              "Updated test case {} with dataContract reference to {}",
+              testCaseRef.getId(),
+              dataContract.getFullyQualifiedName());
+        } else {
+          LOG.debug(
+              "Test case {} already has the same dataContract reference, skipping update",
+              testCaseRef.getId());
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to update test case {} with dataContract reference: {}",
+            testCaseRef.getId(),
+            e.getMessage());
+      }
+    }
+  }
+
+  private void removeDataContractFromTestCases(DataContract dataContract) {
+    if (nullOrEmpty(dataContract.getQualityExpectations())) {
+      return;
+    }
+
+    for (EntityReference testCaseRef : dataContract.getQualityExpectations()) {
+      try {
+        // Use testCase DAO to remove the dataContract field
+        daoCollection.testCaseDAO().removeTestCaseDataContract(testCaseRef.getId().toString());
+
+        LOG.debug("Removed dataContract reference from test case {}", testCaseRef.getId());
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to remove dataContract reference from test case {}: {}",
+            testCaseRef.getId(),
+            e.getMessage());
+      }
+    }
+  }
+
+  private void removeDataContractFromOldTestCases(DataContract original, DataContract updated) {
+    // Find test cases that were in the original but not in the updated quality expectations
+    if (nullOrEmpty(original.getQualityExpectations())) {
+      return;
+    }
+
+    Set<UUID> updatedTestCaseIds =
+        nullOrEmpty(updated.getQualityExpectations())
+            ? Collections.emptySet()
+            : updated.getQualityExpectations().stream()
+                .map(EntityReference::getId)
+                .collect(Collectors.toSet());
+
+    for (EntityReference testCaseRef : original.getQualityExpectations()) {
+      // If this test case is no longer in the updated quality expectations, remove dataContract
+      // reference
+      if (!updatedTestCaseIds.contains(testCaseRef.getId())) {
+        try {
+          // Use testCase DAO to remove the dataContract field only if it points to this data
+          // contract
+          daoCollection
+              .testCaseDAO()
+              .removeTestCaseDataContractForSpecificContract(
+                  testCaseRef.getId().toString(), original.getId().toString());
+
+          LOG.debug(
+              "Removed dataContract reference from test case {} (no longer in quality expectations)",
+              testCaseRef.getId());
+        } catch (Exception e) {
+          LOG.warn(
+              "Failed to remove dataContract reference from old test case {}: {}",
+              testCaseRef.getId(),
+              e.getMessage());
+        }
+      }
     }
   }
 }
