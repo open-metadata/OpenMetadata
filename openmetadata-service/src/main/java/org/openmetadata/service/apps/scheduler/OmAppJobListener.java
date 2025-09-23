@@ -55,6 +55,13 @@ public class OmAppJobListener implements JobListener {
       String appName = (String) jobExecutionContext.getJobDetail().getJobDataMap().get(APP_NAME);
       App jobApp = repository.findByName(appName, Include.NON_DELETED);
 
+      // Debug logging to check if App ID is present
+      if (jobApp.getId() == null) {
+        LOG.info("App {} has null ID after findByName", appName);
+      } else {
+        LOG.info("App {} has ID: {}", appName, jobApp.getId());
+      }
+
       ApplicationConfig appConfig =
           JsonUtils.convertValue(jobApp.getAppConfiguration(), ApplicationConfig.class);
       ApplicationConfig overrideConfig =

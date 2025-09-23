@@ -310,6 +310,7 @@ export const SOCKET_EVENTS = {
   CSV_EXPORT_CHANNEL: 'csvExportChannel',
   SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
   DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
+  CACHE_WARMUP_JOB_BROADCAST_CHANNEL: 'cacheWarmupJobStatus',
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',

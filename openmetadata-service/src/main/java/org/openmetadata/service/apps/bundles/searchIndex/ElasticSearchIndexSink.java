@@ -3,7 +3,6 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.openmetadata.schema.system.IndexingError.ErrorSource.SINK;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.getUpdatedStats;
 
-import es.org.elasticsearch.ElasticsearchException;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.DocWriteRequest;
 import es.org.elasticsearch.action.bulk.BulkItemResponse;
@@ -12,16 +11,13 @@ import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestHighLevelClient;
-import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.xcontent.XContentType;
 import java.io.Closeable;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpHeaders;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
@@ -321,21 +317,14 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
                 public void onFailure(Exception e) {
                   try {
                     LOG.error("Bulk request failed asynchronously", e);
-                    if (isRetriableException(e)) {
-                      retryBulkRequest(bulkRequest, entityErrorList, 1);
-                    } else {
-                      handleNonRetriableException(requests.size(), e);
-                    }
-                  } catch (Exception ex) {
                     entityErrorList.add(
                         new EntityError()
                             .withMessage(
                                 String.format(
                                     "Bulk request failed: %s, StackTrace: %s",
-                                    ex.getMessage(),
-                                    ExceptionUtils.exceptionStackTraceAsString(ex)))
+                                    e.getMessage(), ExceptionUtils.exceptionStackTraceAsString(e)))
                             .withEntity(requests.toString()));
-                    LOG.error("Bulk request retry attempt {}/{} failed", 1, maxRetries, ex);
+                    updateStats(0, requests.size());
                   } finally {
                     semaphore.release();
                     LOG.debug(
@@ -349,140 +338,6 @@ public class ElasticSearchIndexSink implements BulkSink, Closeable {
       LOG.error("Bulk request interrupted", e);
       throw new SearchIndexException(createIndexingError(requests.size(), e));
     }
-  }
-
-  private void retryBulkRequest(
-      BulkRequest bulkRequest, List<EntityError> entityErrorList, int attempt)
-      throws SearchIndexException {
-    if (attempt > maxRetries) {
-      LOG.error("Exceeded maximum retries for bulk request");
-      throw new SearchIndexException(
-          new IndexingError()
-              .withErrorSource(SINK)
-              .withSubmittedCount(bulkRequest.numberOfActions())
-              .withSuccessCount(0)
-              .withFailedCount(bulkRequest.numberOfActions())
-              .withMessage("Exceeded maximum retries for bulk request"));
-    }
-
-    long backoffMillis =
-        Math.min(initialBackoffMillis * (long) Math.pow(2, attempt - 1), maxBackoffMillis);
-    LOG.info(
-        "Retrying bulk request (attempt {}/{}) after {} ms", attempt, maxRetries, backoffMillis);
-
-    try {
-      Thread.sleep(backoffMillis + ThreadLocalRandom.current().nextLong(0, backoffMillis));
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOG.error("Sleep interrupted during backoff", e);
-      throw new SearchIndexException(createIndexingError(bulkRequest.numberOfActions(), e));
-    }
-
-    try {
-      semaphore.acquire();
-      LOG.debug(
-          "Semaphore acquired for retry attempt {}/{}. Available permits: {}",
-          attempt,
-          maxRetries,
-          semaphore.availablePermits());
-      ((RestHighLevelClient) client.getClient())
-          .bulkAsync(
-              bulkRequest,
-              RequestOptions.DEFAULT,
-              new ActionListener<BulkResponse>() {
-                @Override
-                public void onResponse(BulkResponse response) {
-                  try {
-                    for (int i = 0; i < response.getItems().length; i++) {
-                      BulkItemResponse itemResponse = response.getItems()[i];
-                      if (itemResponse.isFailed()) {
-                        String failureMessage = itemResponse.getFailureMessage();
-                        String entityData = bulkRequest.requests().get(i).toString();
-                        entityErrorList.add(
-                            new EntityError().withMessage(failureMessage).withEntity(entityData));
-                        LOG.warn("Bulk item failed on retry {}: {}", attempt, failureMessage);
-                      }
-                    }
-
-                    int success = response.getItems().length;
-                    int failed = 0;
-                    for (BulkItemResponse item : response.getItems()) {
-                      if (item.isFailed()) {
-                        failed++;
-                      }
-                    }
-                    success -= failed;
-                    updateStats(success, failed);
-
-                    if (response.hasFailures()) {
-                      LOG.warn(
-                          "Bulk request retry attempt {}/{} completed with {} failures.",
-                          attempt,
-                          maxRetries,
-                          failed);
-                    } else {
-                      LOG.debug(
-                          "Bulk request retry attempt {}/{} successful with {} operations.",
-                          attempt,
-                          maxRetries,
-                          success);
-                    }
-                  } finally {
-                    semaphore.release();
-                    LOG.debug(
-                        "Semaphore released after retry. Available permits: {}",
-                        semaphore.availablePermits());
-                  }
-                }
-
-                @Override
-                public void onFailure(Exception e) {
-                  try {
-                    LOG.error("Bulk request retry attempt {}/{} failed", attempt, maxRetries, e);
-                    if (isRetriableException(e)) {
-                      retryBulkRequest(bulkRequest, entityErrorList, attempt + 1);
-                    } else {
-                      handleNonRetriableException(bulkRequest.numberOfActions(), e);
-                    }
-                  } catch (Exception ex) {
-                    LOG.error("Bulk request retry attempt {}/{} failed", attempt, maxRetries, ex);
-                  } finally {
-                    semaphore.release();
-                    LOG.debug(
-                        "Semaphore released after retry failure. Available permits: {}",
-                        semaphore.availablePermits());
-                  }
-                }
-              });
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      LOG.error("Bulk request retry interrupted", e);
-      throw new SearchIndexException(createIndexingError(bulkRequest.numberOfActions(), e));
-    }
-  }
-
-  private void handleNonRetriableException(int requestCount, Exception e)
-      throws SearchIndexException {
-    throw new SearchIndexException(
-        new IndexingError()
-            .withErrorSource(SINK)
-            .withSubmittedCount(requestCount)
-            .withSuccessCount(0)
-            .withFailedCount(requestCount)
-            .withMessage(String.format("Issue in Sink to Elasticsearch: %s", e.getMessage()))
-            .withStackTrace(ExceptionUtils.exceptionStackTraceAsString(e)));
-  }
-
-  private boolean isRetriableException(Exception e) {
-    return e instanceof IOException
-        || (e instanceof ElasticsearchException
-            && isRetriableStatusCode(((ElasticsearchException) e).status()));
-  }
-
-  private boolean isRetriableStatusCode(RestStatus status) {
-    return status == RestStatus.TOO_MANY_REQUESTS
-        || status == RestStatus.SERVICE_UNAVAILABLE
-        || status == RestStatus.GATEWAY_TIMEOUT;
   }
 
   private long estimateRequestSizeInBytes(DocWriteRequest<?> request) {

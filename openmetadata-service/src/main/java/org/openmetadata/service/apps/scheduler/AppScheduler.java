@@ -287,7 +287,8 @@ public class AppScheduler {
       JobDetail newJobDetail =
           jobBuilder(application, String.format("%s-%s", application.getName(), ON_DEMAND_JOB));
       newJobDetail.getJobDataMap().put("triggerType", ON_DEMAND_JOB);
-      newJobDetail.getJobDataMap().put(APP_NAME, application.getFullyQualifiedName());
+      // Use the application name for lookup consistency in OmAppJobListener
+      newJobDetail.getJobDataMap().put(APP_NAME, application.getName());
       newJobDetail.getJobDataMap().put(APP_CONFIG_KEY, config);
       Trigger trigger =
           TriggerBuilder.newTrigger()

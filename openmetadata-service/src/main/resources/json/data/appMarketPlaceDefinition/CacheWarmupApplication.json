@@ -1,0 +1,27 @@
+{
+  "name": "CacheWarmupApplication",
+  "displayName": "Cache Warmup",
+  "description": "OpenMetadata uses Redis cache to improve performance for frequently accessed entities. This application pre-loads entities into the cache to optimize read performance.",
+  "features": "Pre-warm Redis cache with entity data, references, and tags. Supports distributed locking to ensure only one instance runs across multiple servers.",
+  "appType": "internal",
+  "appScreenshots": [],
+  "developer": "OpenMetadata",
+  "developerUrl": "https://open-metadata.org",
+  "privacyPolicyUrl": "https://open-metadata.org",
+  "supportEmail": "support@open-metadata.org",
+  "scheduleType": "ScheduledOrManual",
+  "permission": "All",
+  "className": "org.openmetadata.service.apps.bundles.cache.CacheWarmupApp",
+  "runtime": {
+    "enabled": true
+  },
+  "supportsInterrupt": true,
+  "appConfiguration": {
+    "entities": [
+      "all"
+    ],
+    "batchSize": 100,
+    "consumerThreads": 4,
+    "queueSize": 1000
+  }
+}

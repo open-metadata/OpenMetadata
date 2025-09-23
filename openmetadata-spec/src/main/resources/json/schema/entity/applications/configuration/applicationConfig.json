@@ -26,6 +26,9 @@
           "$ref": "internal/searchIndexingAppConfig.json"
         },
         {
+          "$ref": "internal/cacheWarmupAppConfig.json"
+        },
+        {
           "$ref": "internal/collateAIQualityAgentAppConfig.json"
         },
         {
