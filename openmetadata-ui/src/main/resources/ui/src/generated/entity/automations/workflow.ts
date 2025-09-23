@@ -1209,10 +1209,9 @@ export interface ConfigObject {
      *
      * Password
      *
-     * Password to connect to Metabase. Required for basic authentication.
      * Password to connect to ServiceNow.
      *
-     * Password to connect to Metabase.
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -1315,12 +1314,10 @@ export interface ConfigObject {
      *
      * Username
      *
-     * Username to connect to Metabase. Required for basic authentication.
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
      *
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *

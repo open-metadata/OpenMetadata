@@ -559,6 +559,8 @@ export interface ConfigObject {
      * API key to authenticate with the SAP ERP APIs.
      *
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -773,23 +775,6 @@ export interface ConfigObject {
      * Web Portal Virtual Directory Name.
      */
     webPortalVirtualDirectory?: string;
-    /**
-     * API key of the redash instance to access.
-     *
-     * The personal access token you can generate in the Lightdash app under the user settings
-     *
-     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
-     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
-     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
-     * Admin role for full metadata extraction.
-     *
-     * API key to authenticate with the SAP ERP APIs.
-     *
-     * Fivetran API Secret.
-     *
-     * API Key for Snowplow Console API
-     */
-    apiKey?: string;
     /**
      * Version of the Redash instance
      */
