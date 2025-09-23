@@ -5,3 +5,18 @@
 UPDATE profiler_data_time_series
 SET json = JSON_SET(json, '$.profileData', json->'$.profileData.profileData')
 WHERE json->>'$.profileData.profileData' IS NOT NULL;
+
+-- Migration script to restructure Databricks connection configuration
+-- Move 'token' field from connection.config.token to connection.config.authType.token
+UPDATE dbservice_entity
+SET
+    json = JSON_SET (
+        JSON_REMOVE (json, '$.connection.config.token'),
+        '$.connection.config.authType',
+        JSON_OBJECT (
+            'token',
+            JSON_EXTRACT (json, '$.connection.config.token')
+        )
+    )
+WHERE
+    serviceType = 'Databricks';
