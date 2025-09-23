@@ -44,9 +44,11 @@ from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
+from metadata.ingestion.ometa.mixins.logs_mixin import OMetaLogsMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
+from metadata.ingestion.ometa.mixins.profile_mixin import OMetaProfileMixin
 from metadata.ingestion.ometa.mixins.query_mixin import OMetaQueryMixin
 from metadata.ingestion.ometa.mixins.role_policy_mixin import OMetaRolePolicyMixin
 from metadata.ingestion.ometa.mixins.search_index_mixin import OMetaSearchIndexMixin
@@ -122,6 +124,7 @@ class OpenMetadata(
     OMetaTestsMixin,
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
+    OMetaLogsMixin,
     OMetaUserMixin,
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
@@ -129,6 +132,7 @@ class OpenMetadata(
     OMetaCustomPropertyMixin,
     OMetaSuggestionsMixin,
     OMetaDomainMixin,
+    OMetaProfileMixin,
     Generic[T, C],
 ):
     """

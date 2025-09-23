@@ -10,13 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { AxiosResponse } from 'axios';
+import { Operation } from 'fast-json-patch';
 import {
   ContractAllResult,
   ContractResultFilter,
 } from '../components/DataContract/ContractDetailTab/contract.interface';
 import { EntityType } from '../enums/entity.enum';
 import { CreateDataContract } from '../generated/api/data/createDataContract';
-import { DataContract } from '../generated/entity/data/dataContract';
+import {
+  DataContract,
+  EntityStatus,
+} from '../generated/entity/data/dataContract';
 import { DataContractResult } from '../generated/entity/datacontract/dataContractResult';
 import { ListParams } from '../interface/API.interface';
 import APIClient from './index';
@@ -27,7 +32,7 @@ interface ListContractsParams extends ListParams {
   /**
    * status of the contract
    */
-  status?: 'Active';
+  status?: EntityStatus;
   /**
    * entity ID to filter by
    */
@@ -44,7 +49,7 @@ export const listContracts = async (params: ListContractsParams) => {
 
 export const getContract = async (fqn: string) => {
   const response = await APIClient.get<CreateDataContract>(
-    `/data-contracts/${fqn}`
+    `/dataContracts/name/${fqn}`
   );
 
   return response.data;
@@ -59,11 +64,11 @@ export const createContract = async (contract: CreateDataContract) => {
   return response.data;
 };
 
-export const updateContract = async (contract: CreateDataContract) => {
-  const response = await APIClient.put<CreateDataContract>(
-    `/dataContracts`,
-    contract
-  );
+export const updateContract = async (id: string, data: Operation[]) => {
+  const response = await APIClient.patch<
+    Operation[],
+    AxiosResponse<CreateDataContract>
+  >(`/dataContracts/${id}`, data);
 
   return response.data;
 };

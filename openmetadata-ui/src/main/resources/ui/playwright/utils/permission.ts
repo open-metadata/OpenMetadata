@@ -171,7 +171,18 @@ export const validateViewPermissions = async (
     .getByTestId('loader')
     .waitFor({ state: 'detached' });
   await page.waitForLoadState('domcontentloaded');
-  await page.getByText('Data Quality').click();
+
+  await page.waitForSelector('[data-testid="profiler-tab-left-panel"]', {
+    state: 'visible',
+  });
+  await page
+    .getByTestId('profiler-tab-left-panel')
+    .getByText('Data Quality')
+    .waitFor({ state: 'visible' });
+  await page
+    .getByTestId('profiler-tab-left-panel')
+    .getByText('Data Quality')
+    .click();
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(
     page,

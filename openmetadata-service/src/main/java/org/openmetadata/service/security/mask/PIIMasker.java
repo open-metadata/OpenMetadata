@@ -29,12 +29,13 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 
 public class PIIMasker {
   public static final String SENSITIVE_PII_TAG = "PII.Sensitive";
@@ -136,15 +137,6 @@ public class PIIMasker {
     Table table = Entity.getEntityByName(Entity.TABLE, fqn, "owners", Include.ALL);
     List<EntityReference> owners = table.getOwners();
     boolean authorizePII = authorizer.authorizePII(securityContext, owners);
-    return maskColumnsIfNotAuthorized(columns, authorizePII);
-  }
-
-  public static List<Column> getTableProfile(List<Column> columns, boolean authorizePII) {
-    return maskColumnsIfNotAuthorized(columns, authorizePII);
-  }
-
-  private static List<Column> maskColumnsIfNotAuthorized(
-      List<Column> columns, boolean authorizePII) {
     if (authorizePII) return columns;
     for (Column c : listOrEmpty(columns)) {
       if (hasPiiSensitiveTag(c)) {
@@ -174,6 +166,22 @@ public class PIIMasker {
       return Collections.nCopies(columnProfiles.size(), new ColumnProfile());
     }
     return columnProfiles;
+  }
+
+  public static ColumnProfile maskColumnProfile(String fqn, ColumnProfile columnProfile) {
+    Table table = Entity.getEntityByName(Entity.TABLE, fqn, "columns,tags", Include.ALL);
+    Column columnObj = EntityUtil.getColumn(table, columnProfile.getName());
+    String columnFQN = columnObj.getFullyQualifiedName();
+    Column column =
+        table.getColumns().stream()
+            .filter(c -> c.getFullyQualifiedName().equals(columnFQN))
+            .findFirst()
+            .orElse(null);
+
+    if (column != null && hasPiiSensitiveTag(column)) {
+      return new ColumnProfile().withName(columnProfile.getName());
+    }
+    return columnProfile;
   }
 
   private static TestCase getTestCase(Column column, TestCase testCase) {

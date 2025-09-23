@@ -11,15 +11,38 @@
 """
 Test SAP Hana source
 """
+import xml.etree.ElementTree as ET
 from pathlib import Path
+from unittest.mock import MagicMock, Mock, create_autospec, patch
 
+from metadata.generated.schema.entity.services.connections.database.sapHana.sapHanaSQLConnection import (
+    SapHanaSQLConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.sapHanaConnection import (
+    SapHanaConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
+from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
+    DatabaseServiceMetadataPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import (
+    Source as WorkflowSource,
+)
+from metadata.generated.schema.metadataIngestion.workflow import SourceConfig
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.saphana.cdata_parser import (
     ColumnMapping,
     DataSource,
+    DataSourceMapping,
+    ParentSource,
     ParsedLineage,
     ViewType,
+    _parse_cv_data_sources,
+    _traverse_ds_with_columns,
     parse_registry,
 )
+from metadata.ingestion.source.database.saphana.lineage import SaphanaLineageSource
 
 RESOURCES_DIR = Path(__file__).parent.parent.parent / "resources" / "saphana"
 
@@ -152,7 +175,8 @@ def test_parse_cv() -> None:
 
     assert parsed_lineage
     # Even though we have 9 unique columns, some come from 2 tables, so we have two mappings
-    assert len(parsed_lineage.mappings) == 13
+    # + 2 for the USAGE_PCT formula (SEATSOCC_ALL and SEATSMAX_ALL)
+    assert len(parsed_lineage.mappings) == 15
     assert parsed_lineage.sources == {ds_sbook, ds_sflight}
 
     # We can validate that MANDT comes from 2 sources
@@ -165,8 +189,6 @@ def test_parse_cv() -> None:
 
 def test_schema_mapping_in_datasource():
     """Test that DataSource correctly handles schema mapping for DATA_BASE_TABLE type"""
-    from unittest.mock import MagicMock, patch
-
     # Create a mock engine and connection
     mock_engine = MagicMock()
     mock_conn = MagicMock()
@@ -222,7 +244,6 @@ def test_schema_mapping_in_datasource():
 
 def test_parsed_lineage_with_schema_mapping():
     """Test that ParsedLineage.to_request passes engine parameter correctly"""
-    from unittest.mock import MagicMock, patch
 
     # Create a simple parsed lineage
     ds = DataSource(
@@ -430,3 +451,461 @@ def test_analytic_view_formula_column_source_mapping() -> None:
         # CUSTOMER_ID_1 maps from CUSTOMER_ID in CUSTOMER_DATA table
         expected_source = "CUSTOMER_ID" if col_name == "CUSTOMER_ID_1" else col_name
         assert col_mappings[0].sources == [expected_source]
+
+
+def test_formula_columns_reference_correct_layer():
+    """Test that formula columns reference the correct calculation view layer"""
+    # Load the complex star join view XML
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
+    ) as file:
+        xml = file.read()
+
+    ns = {
+        "Calculation": "http://www.sap.com/ndb/BiModelCalculation.ecore",
+        "xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    }
+
+    tree = ET.fromstring(xml)
+    datasource_map = _parse_cv_data_sources(tree=tree, ns=ns)
+
+    # Test Join_1 calculated attributes
+    join_1 = datasource_map.get("Join_1")
+    assert join_1 is not None
+    assert join_1.mapping is not None
+
+    # TOTAL_JOIN_1 should reference PRICE and QUANTITY from Join_1 itself
+    total_join_1 = join_1.mapping.get("TOTAL_JOIN_1")
+    assert total_join_1 is not None
+    assert len(total_join_1.parents) == 2
+
+    # Check that both source columns come from Join_1
+    for parent in total_join_1.parents:
+        assert parent.parent == "Join_1"
+
+    # Check the specific columns
+    source_columns = {parent.source for parent in total_join_1.parents}
+    assert source_columns == {"PRICE", "QUANTITY"}
+
+    # TOTAL2_JOIN_1 should reference AMOUNT and PRODUCT from Join_1
+    total2_join_1 = join_1.mapping.get("TOTAL2_JOIN_1")
+    assert total2_join_1 is not None
+    assert len(total2_join_1.parents) == 2
+
+    for parent in total2_join_1.parents:
+        assert parent.parent == "Join_1"
+
+    source_columns = {parent.source for parent in total2_join_1.parents}
+    assert source_columns == {"AMOUNT", "PRODUCT"}
+
+
+def test_projection_formula_columns():
+    """Test that projection view formula columns reference the correct layer"""
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
+    ) as file:
+        xml = file.read()
+
+    ns = {
+        "Calculation": "http://www.sap.com/ndb/BiModelCalculation.ecore",
+        "xsi": "http://www.w3.org/2001/XMLSchema-instance",
+    }
+
+    tree = ET.fromstring(xml)
+    datasource_map = _parse_cv_data_sources(tree=tree, ns=ns)
+
+    # Test Projection_1 calculated attributes
+    proj_1 = datasource_map.get("Projection_1")
+    assert proj_1 is not None
+    assert proj_1.mapping is not None
+
+    total_proj_1 = proj_1.mapping.get("TOTAL_PROJ_1")
+    assert total_proj_1 is not None
+    assert len(total_proj_1.parents) == 2
+
+    for parent in total_proj_1.parents:
+        assert parent.parent == "Projection_1"
+
+    source_columns = {parent.source for parent in total_proj_1.parents}
+    assert source_columns == {"PRICE", "QUANTITY"}
+
+    # Test Projection_3 with string concatenation formula
+    proj_3 = datasource_map.get("Projection_3")
+    assert proj_3 is not None
+    assert proj_3.mapping is not None
+
+    total_proj_3 = proj_3.mapping.get("TOTAL_PROJ_3")
+    assert total_proj_3 is not None
+    assert len(total_proj_3.parents) == 2
+
+    for parent in total_proj_3.parents:
+        assert parent.parent == "Projection_3"
+
+    source_columns = {parent.source for parent in total_proj_3.parents}
+    assert source_columns == {"AMOUNT", "PRODUCT"}
+
+
+def test_formula_columns_in_final_lineage():
+    """Test that formula columns are correctly resolved in the final lineage"""
+    with open(
+        RESOURCES_DIR / "custom" / "cdata_calculation_view_star_join_complex.xml"
+    ) as file:
+        cdata = file.read()
+        parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+        parsed = parse_fn(cdata)
+
+    # Test that formulas from multiple layers are preserved
+    formula_tests = [
+        ("TOTAL_JOIN_1", '"PRICE" * "QUANTITY"'),
+        ("TOTAL2_JOIN_1", 'string("AMOUNT") + \' , \' + "PRODUCT"'),
+        ("TOTAL_PROJ_1", '"PRICE" *  "QUANTITY"'),  # Note: extra space in original
+        ("TOTAL_PROJ_2", '"PRICE" * "QUANTITY"'),
+        (
+            "TOTAL_PROJ_3",
+            'string("AMOUNT") + \' , \' +  "PRODUCT"',
+        ),  # Note: extra space
+    ]
+
+    for col_name, expected_formula in formula_tests:
+        mappings = [m for m in parsed.mappings if m.target == col_name]
+        assert len(mappings) > 0, f"{col_name} not found in star join mappings"
+
+        # Verify formula is preserved through all layers
+        has_formula = any(m.formula == expected_formula for m in mappings)
+        assert has_formula, (
+            f"Formula for {col_name} not preserved in star join. "
+            f"Expected: {expected_formula}, Got: {[m.formula for m in mappings]}"
+        )
+
+
+def test_formula_parsing_comprehensive():
+    """Comprehensive test for formula parsing covering all critical scenarios"""
+
+    # Scenario 1: Logical model formulas (the original issue reported)
+    logical_model_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore" 
+    schemaVersion="2.3" id="CV_BASIC" calculationScenarioType="TREE_BASED">
+  <dataSources>
+    <DataSource id="CV_BASE" type="CALCULATION_VIEW">
+      <resourceUri>/my-package/calculationviews/CV_BASE</resourceUri>
+    </DataSource>
+  </dataSources>
+  <calculationViews/>
+  <logicalModel id="CV_BASE">
+    <calculatedAttributes>
+      <calculatedAttribute id="CALCULATED_PRICE">
+        <keyCalculation datatype="DOUBLE">
+          <formula>&quot;PRICE&quot;</formula>
+        </keyCalculation>
+      </calculatedAttribute>
+    </calculatedAttributes>
+    <baseMeasures>
+      <measure id="PRICE" aggregationType="sum">
+        <measureMapping columnObjectName="CV_BASE" columnName="PRICE"/>
+      </measure>
+      <measure id="QUANTITY" aggregationType="sum">
+        <measureMapping columnObjectName="CV_BASE" columnName="QUANTITY"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures>
+      <measure id="TOTAL" aggregationType="sum">
+        <formula>&quot;QUANTITY&quot; * &quot;PRICE&quot;</formula>
+      </measure>
+    </calculatedMeasures>
+  </logicalModel>
+</Calculation:scenario>"""
+
+    parse_fn = parse_registry.registry.get(ViewType.CALCULATION_VIEW.value)
+    parsed = parse_fn(logical_model_xml)
+
+    # Test logical model calculated attribute
+    calc_price = next(
+        (m for m in parsed.mappings if m.target == "CALCULATED_PRICE"), None
+    )
+    assert (
+        calc_price and calc_price.formula == '"PRICE"'
+    ), "Logical model calculated attribute formula missing"
+
+    # Test logical model calculated measure
+    total = next((m for m in parsed.mappings if m.target == "TOTAL"), None)
+    assert (
+        total and total.formula == '"QUANTITY" * "PRICE"'
+    ), "Logical model calculated measure formula missing"
+
+    # Scenario 2: Nested calculation view formulas (the deeper layer issue we found)
+    nested_view_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    schemaVersion="2.3" id="TEST_CV" calculationScenarioType="TREE_BASED">
+  <dataSources>
+    <DataSource id="TEST_TABLE" type="DATA_BASE_TABLE">
+      <columnObject columnObjectName="TEST_TABLE" schemaName="TEST_SCHEMA"/>
+    </DataSource>
+  </dataSources>
+  <calculationViews>
+    <calculationView xsi:type="Calculation:ProjectionView" id="Projection_1">
+      <viewAttributes>
+        <viewAttribute id="PRICE"/>
+        <viewAttribute id="QUANTITY"/>
+      </viewAttributes>
+      <calculatedViewAttributes>
+        <calculatedViewAttribute id="PROJ_TOTAL" datatype="DECIMAL">
+          <formula>&quot;PRICE&quot; * &quot;QUANTITY&quot;</formula>
+        </calculatedViewAttribute>
+      </calculatedViewAttributes>
+      <input node="#TEST_TABLE">
+        <mapping xsi:type="Calculation:AttributeMapping" target="PRICE" source="PRICE"/>
+        <mapping xsi:type="Calculation:AttributeMapping" target="QUANTITY" source="QUANTITY"/>
+      </input>
+    </calculationView>
+  </calculationViews>
+  <logicalModel id="Projection_1">
+    <attributes>
+      <attribute id="PROJ_TOTAL">
+        <keyMapping columnObjectName="Projection_1" columnName="PROJ_TOTAL"/>
+      </attribute>
+    </attributes>
+  </logicalModel>
+</Calculation:scenario>"""
+
+    parsed = parse_fn(nested_view_xml)
+
+    # Critical test: Formula from calculation view must propagate through logical model
+    proj_total = [m for m in parsed.mappings if m.target == "PROJ_TOTAL"]
+    assert len(proj_total) > 0, "PROJ_TOTAL not found in mappings"
+    assert any(
+        m.formula == '"PRICE" * "QUANTITY"' for m in proj_total
+    ), f"Nested calculation view formula not propagated. Got: {[(m.formula, m.sources) for m in proj_total]}"
+
+    # Scenario 3: Multiple formula types and edge cases
+    edge_cases_xml = """<?xml version="1.0" encoding="UTF-8"?>
+<Calculation:scenario xmlns:Calculation="http://www.sap.com/ndb/BiModelCalculation.ecore"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    schemaVersion="2.3" id="TEST_CV" calculationScenarioType="TREE_BASED">
+  <dataSources>
+    <DataSource id="TEST_TABLE" type="DATA_BASE_TABLE">
+      <columnObject columnObjectName="TEST_TABLE" schemaName="TEST_SCHEMA"/>
+    </DataSource>
+  </dataSources>
+  <calculationViews/>
+  <logicalModel id="TEST_TABLE">
+    <calculatedAttributes>
+      <calculatedAttribute id="CONSTANT_ATTR">
+        <keyCalculation datatype="INTEGER">
+          <formula>1234</formula>
+        </keyCalculation>
+      </calculatedAttribute>
+      <calculatedAttribute id="STRING_FORMULA">
+        <keyCalculation datatype="NVARCHAR">
+          <formula>string(&quot;PRICE&quot;) + ' USD'</formula>
+        </keyCalculation>
+      </calculatedAttribute>
+    </calculatedAttributes>
+    <baseMeasures>
+      <measure id="PRICE" aggregationType="sum">
+        <measureMapping columnObjectName="TEST_TABLE" columnName="PRICE"/>
+      </measure>
+    </baseMeasures>
+    <calculatedMeasures>
+      <measure id="COMPLEX_CALC" aggregationType="sum">
+        <formula>&quot;PRICE&quot; * 1.1 + 10</formula>
+      </measure>
+    </calculatedMeasures>
+  </logicalModel>
+</Calculation:scenario>"""
+
+    parsed = parse_fn(edge_cases_xml)
+
+    # Test constant formulas don't create mappings
+    targets = {m.target for m in parsed.mappings}
+    assert "CONSTANT_ATTR" not in targets, "Constant formula should not create mapping"
+
+    # Test string formulas work
+    string_formula = next(
+        (m for m in parsed.mappings if m.target == "STRING_FORMULA"), None
+    )
+    assert (
+        string_formula and "string(" in string_formula.formula
+    ), "String formula not preserved"
+
+    # Test complex formulas with constants
+    complex_calc = next(
+        (m for m in parsed.mappings if m.target == "COMPLEX_CALC"), None
+    )
+    assert (
+        complex_calc and complex_calc.formula == '"PRICE" * 1.1 + 10'
+    ), "Complex formula not preserved"
+
+
+def test_circular_reference_prevention() -> None:
+    """Test that we handle circular references without infinite recursion
+
+    While SAP HANA doesn't actually create circular references in calculation views,
+    this test ensures our visited tracking works properly. The same mechanism that
+    prevents infinite loops here also prevents exponential processing in complex
+    calculation view hierarchies.
+
+    TODO: Add test for the actual exponential processing scenario
+    """
+    # Create a scenario with circular dependencies
+    datasource_map = {
+        "TestView": DataSource(
+            name="TestView",
+            location=None,
+            source_type=ViewType.LOGICAL,
+            mapping={
+                "ColumnA": DataSourceMapping(
+                    target="ColumnA",
+                    parents=[ParentSource(source="ColumnB", parent="TestView")],
+                    formula='"ColumnB" + 1',
+                ),
+                "ColumnB": DataSourceMapping(
+                    target="ColumnB",
+                    parents=[ParentSource(source="ColumnA", parent="TestView")],
+                    formula='"ColumnA" - 1',
+                ),
+            },
+        ),
+    }
+
+    # Track function calls
+    call_count = 0
+    original_traverse = _traverse_ds_with_columns
+
+    def counting_traverse(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return original_traverse(*args, **kwargs)
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.cdata_parser._traverse_ds_with_columns",
+        side_effect=counting_traverse,
+    ):
+        ds_origin_list = []
+        current_ds = datasource_map["TestView"]
+        _traverse_ds_with_columns(
+            current_column="ColumnA",
+            ds_origin_list=ds_origin_list,
+            current_ds=current_ds,
+            datasource_map=datasource_map,
+        )
+
+        # With circular reference prevention, should visit each node only once
+        # Without prevention, this would recurse infinitely
+        assert (
+            call_count <= 3
+        ), f"Too many function calls: {call_count} (indicates circular recursion)"
+
+
+def test_sap_hana_lineage_filter_pattern() -> None:
+    """
+    Test that SAP HANA lineage source filters views based on
+    the full package_id/object_name format.
+    """
+    mock_metadata = create_autospec(OpenMetadata)
+    mock_metadata.get_by_name = Mock(return_value=None)
+    mock_config = WorkflowSource(
+        type="saphana-lineage",
+        serviceName="test_sap_hana",
+        serviceConnection=DatabaseConnection(
+            config=SapHanaConnection(
+                connection=SapHanaSQLConnection(
+                    username="test", password="test", hostPort="localhost:39015"
+                )
+            )
+        ),
+        sourceConfig=SourceConfig(
+            config=DatabaseServiceMetadataPipeline(
+                tableFilterPattern=FilterPattern(
+                    includes=["com.example.package/CV_INCLUDE.*"],
+                    excludes=[".*/CV_EXCLUDE.*"],
+                )
+            )
+        ),
+    )
+
+    with patch(
+        "metadata.ingestion.source.database.saphana.lineage.get_ssl_connection"
+    ) as mock_get_engine:
+        mock_engine = MagicMock()
+        mock_connection = MagicMock()
+        mock_get_engine.return_value = mock_engine
+        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+        mock_engine.connect.return_value.__exit__ = Mock()
+
+        mock_rows = [
+            {
+                "PACKAGE_ID": "com.example.package",
+                "OBJECT_NAME": "CV_INCLUDE_VIEW",
+                "OBJECT_SUFFIX": "calculationview",
+                "CDATA": "<dummy/>",
+            },
+            {
+                "PACKAGE_ID": "com.example.package",
+                "OBJECT_NAME": "CV_EXCLUDE_VIEW",
+                "OBJECT_SUFFIX": "calculationview",
+                "CDATA": "<dummy/>",
+            },
+            {
+                "PACKAGE_ID": "com.example.package",
+                "OBJECT_NAME": "CV_OTHER_VIEW",
+                "OBJECT_SUFFIX": "calculationview",
+                "CDATA": "<dummy/>",
+            },
+            {
+                "PACKAGE_ID": "com.example.package",
+                "OBJECT_NAME": "CV_INCLUDE_ANOTHER",
+                "OBJECT_SUFFIX": "calculationview",
+                "CDATA": "<dummy/>",
+            },
+        ]
+
+        mock_result = []
+        for row_dict in mock_rows:
+
+            class MockRow(dict):
+                def __init__(self, data):
+                    lowercase_data = {k.lower(): v for k, v in data.items()}
+                    super().__init__(lowercase_data)
+                    self._data = data
+
+                def __getitem__(self, key):
+                    if key in self._data:
+                        return self._data[key]
+                    return super().__getitem__(key.lower())
+
+                def keys(self):
+                    return [k.lower() for k in self._data.keys()]
+
+                def get(self, key, default=None):
+                    try:
+                        return self[key]
+                    except KeyError:
+                        return default
+
+            mock_result.append(MockRow(row_dict))
+
+        mock_execution = MagicMock()
+        mock_execution.__iter__ = Mock(return_value=iter(mock_result))
+        mock_connection.execution_options.return_value.execute.return_value = (
+            mock_execution
+        )
+
+        source = SaphanaLineageSource(config=mock_config, metadata=mock_metadata)
+
+        processed_views = []
+
+        def mock_parse_cdata(metadata, lineage_model):
+            processed_views.append(lineage_model.object_name)
+            return iter([])
+
+        with patch.object(source, "parse_cdata", side_effect=mock_parse_cdata):
+            list(source._iter())
+
+        assert "CV_INCLUDE_VIEW" in processed_views
+        assert "CV_INCLUDE_ANOTHER" in processed_views
+        assert "CV_EXCLUDE_VIEW" not in processed_views
+        assert "CV_OTHER_VIEW" not in processed_views
+
+        assert len(processed_views) == 2
+        assert len(source.status.filtered) == 2

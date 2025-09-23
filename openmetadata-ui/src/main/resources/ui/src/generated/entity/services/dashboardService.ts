@@ -507,6 +507,7 @@ export interface Connection {
      * Page size for pagination in API requests. Default is 100.
      */
     pageSize?: number;
+    [property: string]: any;
 }
 
 /**

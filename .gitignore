@@ -29,6 +29,7 @@ catalog-services/catalog-services.iml
 docker/development/docker-volume
 docker-volume
 docker/docker-compose-quickstart/docker-volume
+docker/docker-compose-quickstart/docker-volumes
 # Java template
 *.class
 venv
@@ -88,9 +89,7 @@ openmetadata-ui/src/main/resources/ui/playwright/.auth
 openmetadata-ui/src/main/resources/ui/blob-report
 
 #UI - Dereferenced Schemas
-openmetadata-ui/src/main/resources/ui/src/jsons/connectionSchemas
-openmetadata-ui/src/main/resources/ui/src/jsons/ingestionSchemas
-openmetadata-ui/src/main/resources/ui/src/jsons/governanceSchemas
+openmetadata-ui/src/main/resources/ui/src/jsons/*
 
 
 #vscode
