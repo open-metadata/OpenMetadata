@@ -22,8 +22,6 @@ import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
-import es.co.elastic.clients.elasticsearch._types.Refresh;
-import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
@@ -1625,24 +1623,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteEntity(String indexName, String docId) {
-    if (isNewClientAvailable) {
-      try {
-        DeleteResponse response =
-            newClient.delete(d -> d.index(indexName).id(docId).refresh(Refresh.WaitFor));
-        LOG.info(
-            "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
-            indexName,
-            docId,
-            response.result());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to delete entity from ElasticSearch for index: {}, docId: {}, error: {}",
-            indexName,
-            docId,
-            e.getMessage(),
-            e);
-      }
-    }
+    entityManager.deleteEntity(indexName, docId);
   }
 
   @Override
