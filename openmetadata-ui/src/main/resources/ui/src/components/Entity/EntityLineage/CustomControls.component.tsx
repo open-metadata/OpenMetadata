@@ -200,10 +200,14 @@ const CustomControls: FC<LineageControlProps> = ({
             outlineColor: theme.palette.allShades.blue[700],
             backgroundColor: theme.palette.allShades.blue[50],
             color: theme.palette.allShades.blue[700],
+            outline: '1px solid',
+            boxShadow: 'none',
+
             '&:hover': {
               outlineColor: theme.palette.allShades.blue[100],
               backgroundColor: theme.palette.allShades.blue[100],
               color: theme.palette.allShades.blue[700],
+              boxShadow: 'none',
             },
           }}
           variant="outlined">

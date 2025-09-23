@@ -12,10 +12,10 @@
  */
 
 import { act, renderHook } from '@testing-library/react';
-import { EntityType } from '../../../enums/entity.enum';
-import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
-import { EImpactLevel } from '../LineageTable.interface';
-import { useLineageTableState } from '../useLineageTableState';
+import { EntityType } from '../../enums/entity.enum';
+import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
+import { EImpactLevel } from './LineageTable.interface';
+import { useLineageTableState } from './useLineageTableState';
 
 describe('useLineageTableState Hook', () => {
   it('should initialize with default state', () => {

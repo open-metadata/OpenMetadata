@@ -300,9 +300,9 @@ const Table = <T extends Record<string, unknown>>(
                     data-testid="column-dropdown"
                     icon={<ColumnIcon />}
                     size="small"
-                    title="Show / Hide Columns"
+                    title={t('label.show-or-hide-column-plural')}
                     type="text">
-                    {t('Customize')}
+                    {t('label.customize')}
                   </Button>
                 </Dropdown>
               )}
