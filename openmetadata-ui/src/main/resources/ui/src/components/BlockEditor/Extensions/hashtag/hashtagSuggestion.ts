@@ -17,8 +17,8 @@ import tippy, { Instance, Props } from 'tippy.js';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { searchData } from '../../../../rest/miscAPI';
-import { getEntityBreadcrumbs } from '../../../../utils/EntityUtils';
 import { buildMentionLink } from '../../../../utils/FeedUtils';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExtensionRef } from '../../BlockEditor.interface';
 import HashList from './HashList';
 
@@ -45,7 +45,7 @@ export const hashtagSuggestion = () => ({
         hit._source.fullyQualifiedName ?? ''
       ),
       type: hit._source.entityType,
-      breadcrumbs: getEntityBreadcrumbs(
+      breadcrumbs: searchClassBase.getEntityBreadcrumbs(
         hit._source,
         hit._source.entityType as EntityType,
         false
