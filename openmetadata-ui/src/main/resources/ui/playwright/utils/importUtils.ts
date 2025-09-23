@@ -390,9 +390,16 @@ export const fillGlossaryRowDetails = async (
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
+  await fillTextInputDetails(page, "#ccc")
+
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
+
+  const base64Src =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+  await fillTextInputDetails(page, base64Src)
 
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)
