@@ -486,8 +486,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
-  void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params);
-
   void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
 
   void softDeleteOrRestoreChildren(
