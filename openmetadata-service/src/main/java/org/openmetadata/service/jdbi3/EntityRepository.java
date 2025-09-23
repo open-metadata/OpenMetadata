@@ -1773,6 +1773,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     entity.setIncrementalChangeDescription(change);
     entity.setChangeDescription(change);
+    // Populate followers before postUpdate to ensure propagation to children
+    entity.setFollowers(getFollowers(entity));
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
@@ -2251,6 +2253,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     entity.setChangeDescription(change);
     entity.setIncrementalChangeDescription(change);
+    // Populate followers before postUpdate to ensure propagation to children
+    entity.setFollowers(getFollowers(entity));
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
@@ -3420,6 +3424,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setDomains(
           !nullOrEmpty(parent.getDomains()) ? parent.getDomains() : Collections.emptyList());
       listOrEmpty(entity.getDomains()).forEach(domain -> domain.setInherited(true));
+    }
+  }
+
+  public final void inheritFollowers(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_FOLLOWERS) && nullOrEmpty(entity.getFollowers()) && parent != null) {
+      entity.setFollowers(
+          Optional.ofNullable(parent.getFollowers())
+              .filter(list -> !list.isEmpty())
+              .orElse(Collections.emptyList()));
+      listOrEmpty(entity.getFollowers()).forEach(follower -> follower.setInherited(true));
     }
   }
 
