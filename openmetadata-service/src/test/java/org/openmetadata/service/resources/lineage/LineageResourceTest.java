@@ -691,11 +691,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(upstreamZeroResult);
     // Debug output
-    // For depth=0, expect starting node + immediate upstreams
-    assertEquals(2, upstreamZeroResult.getNodes().size());
-    assertTrue(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    // For depth=1, expect starting node + nothing else
+    assertEquals(1, upstreamZeroResult.getNodes().size());
+    assertFalse(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
     assertTrue(upstreamZeroResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
-    assertEquals(1, upstreamZeroResult.getUpstreamEdges().size());
+    assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
     assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
 
     // Test DOWNSTREAM direction for tableB (should find B -> C)
