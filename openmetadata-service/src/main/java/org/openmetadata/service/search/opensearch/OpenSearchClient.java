@@ -136,6 +136,8 @@ import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
+import os.org.opensearch.action.bulk.BulkRequest;
+import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
 import os.org.opensearch.action.get.GetRequest;
 import os.org.opensearch.action.get.GetResponse;
@@ -1851,8 +1853,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
     if (!references.isEmpty()) {
       // Process entities for reindex
-      os.org.opensearch.action.bulk.BulkRequest bulkRequests =
-          new os.org.opensearch.action.bulk.BulkRequest();
+      BulkRequest bulkRequests = new BulkRequest();
       // Build Bulk request
       for (EntityReference entityRef : references) {
         // Reindex entity
@@ -2086,11 +2087,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   public void close() {}
 
   @Override
-  public os.org.opensearch.action.bulk.BulkResponse bulk(
-      os.org.opensearch.action.bulk.BulkRequest data,
-      os.org.opensearch.client.RequestOptions options)
-      throws IOException {
-    return client.bulk(data, os.org.opensearch.client.RequestOptions.DEFAULT);
+  public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
+    return client.bulk(data, RequestOptions.DEFAULT);
   }
 
   @Override

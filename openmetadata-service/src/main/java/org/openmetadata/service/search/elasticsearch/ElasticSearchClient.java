@@ -28,6 +28,7 @@ import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
+import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
 import es.org.elasticsearch.action.get.GetRequest;
 import es.org.elasticsearch.action.get.GetResponse;
@@ -1632,7 +1633,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt) {
-
     entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt);
   }
 
@@ -1942,8 +1942,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public es.org.elasticsearch.action.bulk.BulkResponse bulk(
-      BulkRequest data, RequestOptions options) throws IOException {
+  public BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     return client.bulk(data, RequestOptions.DEFAULT);
   }
 
