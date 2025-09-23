@@ -120,18 +120,24 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   vertical={false}
                 />
                 <XAxis
+                  axisLine={{
+                    stroke: theme.palette.grey[200],
+                  }}
                   dataKey="name"
                   padding={{ left: 16, right: 16 }}
                   tick={{ fontSize: 12 }}
+                  tickLine={false}
                 />
 
                 <YAxis
                   allowDataOverflow
+                  axisLine={false}
                   padding={{ top: 16, bottom: 16 }}
                   tick={{ fontSize: 12 }}
                   tickFormatter={(props) =>
                     axisTickFormatter(props, tickFormatter)
                   }
+                  tickLine={false}
                   type={showYAxisCategory ? 'category' : 'number'}
                 />
                 <Tooltip
