@@ -2095,6 +2095,7 @@
     "field-timeout-description": "Время соединения вышло",
     "field-use-aws-credentials-description": "Указывает, следует ли использовать учетные данные AWS при подключении к OpenSearch в AWS.",
     "field-use-ssl-description": "Указывает, следует ли использовать SSL при подключении к Elasticsearch. По умолчанию мы будем игнорировать настройки SSL.",
+    "field-value-updated-notification": "Ваш {{fieldName}} изменен на {{fieldValue}}",
     "field-verify-certs-description": "Указывает, следует ли проверять сертификаты при использовании SSL-подключения к Elasticsearch. По умолчанию игнорируется и имеет значение true. Убедитесь, что вы отправляете сертификаты в свойстве «Сертификаты ЦС».",
     "filter-pattern-include-exclude-info": "{{activity}} {{filterPattern}} путем добавления списка регулярных выражений, разделенных запятыми.",
     "filter-pattern-info": "Выберите, следует ли включить или исключить {{filterPattern}} при приеме метаданных.",
