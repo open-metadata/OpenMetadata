@@ -2063,6 +2063,7 @@
     "field-timeout-description": "连接超时",
     "field-use-aws-credentials-description": "指示连接到 AWS 中的 OpenSearch 时是否使用 AWS 凭证",
     "field-use-ssl-description": "指示在连接到 Elasticsearch 时是否使用 SSL, 默认情况下忽略 SSL 设置",
+    "field-value-updated-notification": "您的{{fieldName}}已更改为{{fieldValue}}",
     "field-verify-certs-description": "指示在使用 SSL 连接到 Elasticsearch 时是否验证证书, 默认情况下忽略。如果设置为 true, 请确保将证书设置到“CA 证书”属性中",
     "filter-pattern-include-exclude-info": "通过添加逗号分隔的正则表达式列表明确{{activity}} {{filterPattern}}",
     "filter-pattern-info": "选择包含或排除{{filterPattern}}作为元数据提取的一部分",

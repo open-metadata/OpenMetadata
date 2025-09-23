@@ -2063,6 +2063,7 @@
     "field-timeout-description": "หมดเวลาการเชื่อมต่อ",
     "field-use-aws-credentials-description": "บ่งชี้ว่าต้องการใช้ข้อมูลประจำตัว AWS เมื่อเชื่อมต่อกับ OpenSearch ใน AWS หรือไม่",
     "field-use-ssl-description": "บ่งชี้ว่าต้องการใช้ SSL เมื่อเชื่อมต่อกับ Elasticsearch หรือไม่ โดยค่าเริ่มต้น เราจะไม่สนใจการตั้งค่า SSL",
+    "field-value-updated-notification": "{{fieldName}} ของคุณเปลี่ยนเป็น {{fieldValue}}",
     "field-verify-certs-description": "บ่งชี้ว่าต้องการตรวจสอบใบรับรองเมื่อใช้การเชื่อมต่อ SSL กับ Elasticsearch หรือไม่ โดยค่าเริ่มต้นมันจะถูกละเลยและตั้งค่าเป็น true ตรวจสอบให้แน่ใจว่าคุณได้ส่งใบรับรองในคุณสมบัติ `CA Certificates`",
     "filter-pattern-include-exclude-info": "เพิ่มหรือเรียงลำดับ {{activity}} {{filterPattern}} โดยการเพิ่มรายการของ regex ที่แยกด้วยเครื่องหมายจุลภาค",
     "filter-pattern-info": "เลือกที่จะรวมเข้าหรือยกเว้น {{filterPattern}} เป็นส่วนหนึ่งของการนำเข้าข้อมูลเมตา",

@@ -2063,6 +2063,7 @@
     "field-timeout-description": "Bağlantı Zaman Aşımı",
     "field-use-aws-credentials-description": "AWS'deki OpenSearch'e bağlanırken AWS kimlik bilgilerinin kullanılıp kullanılmayacağını gösterir.",
     "field-use-ssl-description": "Bu, Elasticsearch'e bağlanırken SSL kullanılıp kullanılmayacağını gösterir. Varsayılan olarak SSL ayarlarını yok sayacağız.",
+    "field-value-updated-notification": "{{fieldName}} değeriniz {{fieldValue}} olarak değişti",
     "field-verify-certs-description": "Bu, Elasticsearch'e SSL bağlantısı kullanılırken sertifikaların doğrulanıp doğrulanmayacağını gösterir. Varsayılan olarak yok sayılır ve true olarak ayarlanır. Sertifikaları `CA Sertifikaları` özelliğinde gönderdiğinizden emin olun.",
     "filter-pattern-include-exclude-info": "Virgülle ayrılmış bir regex listesi ekleyerek {{filterPattern}} öğesini açıkça {{activity}}.",
     "filter-pattern-info": "Metadata alımının bir parçası olarak {{filterPattern}} dahil etmeyi veya hariç tutmayı seçin.",
