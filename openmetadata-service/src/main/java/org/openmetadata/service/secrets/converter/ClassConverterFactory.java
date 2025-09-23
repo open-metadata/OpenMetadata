@@ -105,6 +105,7 @@ public final class ClassConverterFactory {
             Map.entry(RangerConnection.class, new RangerConnectionClassConverter()));
     Map.entry(Workflow.class, new WorkflowClassConverter());
     Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter());
+    Map.entry(SSISConnection.class, new SsisConnectionClassConverter());
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
