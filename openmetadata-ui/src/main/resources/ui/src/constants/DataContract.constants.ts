@@ -15,6 +15,8 @@ import { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import jsonLogicSearchClassBase from '../utils/JSONLogicSearchClassBase';
 
+export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
+
 export enum DataContractMode {
   YAML,
   UI,
