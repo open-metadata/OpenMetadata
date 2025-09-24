@@ -45,13 +45,12 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       const element = containerRef.current;
       // Look for the markdown-parser element within the rich-text-editor-container
       const markdownParser = element.querySelector('.markdown-parser');
-      if (markdownParser) {
-        // Check if the element's scroll height is greater than its client height
-        // This indicates that the text is being truncated by CSS
-        const isTruncated =
-          markdownParser.scrollHeight > markdownParser.clientHeight;
-        setShouldShowButton(isTruncated);
-      }
+      // Fallback to the container itself if markdown parser is not found
+      const measureNode = (markdownParser as HTMLElement) || element;
+      // Check if the element's scroll height is greater than its client height
+      // This indicates that the text is being truncated by CSS
+      const isTruncated = measureNode.scrollHeight > measureNode.clientHeight;
+      setShouldShowButton(isTruncated);
     }
   }, []);
 

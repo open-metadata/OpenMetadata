@@ -40,7 +40,7 @@ interface DomainsSectionProps {
 }
 
 const DomainsSection: React.FC<DomainsSectionProps> = ({
-  domains = [],
+  domains,
   showEditButton = true,
   entityType,
   entityFqn,
@@ -56,15 +56,22 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
 
   // Sync activeDomains with domains prop, similar to DomainLabel
   useEffect(() => {
-    if (domains) {
-      if (Array.isArray(domains)) {
-        setActiveDomains(domains);
-      } else {
-        setActiveDomains([domains]);
+    const nextActiveDomains = domains
+      ? Array.isArray(domains)
+        ? domains
+        : [domains]
+      : [];
+
+    setActiveDomains((prev) => {
+      if (
+        prev.length === nextActiveDomains.length &&
+        prev.every((item, index) => item === nextActiveDomains[index])
+      ) {
+        return prev;
       }
-    } else {
-      setActiveDomains([]);
-    }
+
+      return nextActiveDomains;
+    });
   }, [domains]);
 
   const handleEditClick = () => {

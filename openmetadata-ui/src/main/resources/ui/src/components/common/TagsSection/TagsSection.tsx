@@ -266,16 +266,25 @@ const TagsSection: React.FC<TagsSectionProps> = ({
             {t('label.tag-plural')}
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="cursor-pointer" onClick={handleEditClick}>
+            <span
+              className="cursor-pointer"
+              data-testid="edit-icon"
+              onClick={handleEditClick}>
               <EditIcon />
             </span>
           )}
           {isEditing && !isLoading && (
             <div className="edit-actions">
-              <span className="cursor-pointer" onClick={handleCancel}>
+              <span
+                className="cursor-pointer"
+                data-testid="close-icon"
+                onClick={handleCancel}>
                 <CloseIcon />
               </span>
-              <span className="cursor-pointer" onClick={handleSave}>
+              <span
+                className="cursor-pointer"
+                data-testid="tick-icon"
+                onClick={handleSave}>
                 <TickIcon />
               </span>
             </div>
@@ -320,16 +329,25 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           {t('label.tag-plural')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span className="cursor-pointer" onClick={handleEditClick}>
+          <span
+            className="cursor-pointer"
+            data-testid="edit-icon"
+            onClick={handleEditClick}>
             <EditIcon />
           </span>
         )}
         {isEditing && !isLoading && (
           <div className="edit-actions">
-            <span className="cursor-pointer" onClick={handleCancel}>
+            <span
+              className="cursor-pointer"
+              data-testid="close-icon"
+              onClick={handleCancel}>
               <CloseIcon />
             </span>
-            <span className="cursor-pointer" onClick={handleSave}>
+            <span
+              className="cursor-pointer"
+              data-testid="tick-icon"
+              onClick={handleSave}>
               <TickIcon />
             </span>
           </div>
