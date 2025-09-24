@@ -182,6 +182,7 @@ function ServiceMainTabContent({
       storageServices: permissions.storageService,
       searchServices: permissions.searchService,
       apiServices: permissions.apiService,
+      driveServices: permissions.driveService,
     };
 
     const currentPermission =
