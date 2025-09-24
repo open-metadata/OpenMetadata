@@ -116,6 +116,7 @@ export default forwardRef<
             className={classNames('w-full cursor-pointer hashtag-item', {
               'bg-grey-2': index === selectedIndex,
             })}
+            data-testid={`hash-mention-${item.label}`}
             direction="vertical"
             id={`hashtag-item-${item.id}`}
             key={item.id}
