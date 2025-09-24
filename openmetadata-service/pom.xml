@@ -36,7 +36,7 @@
     <logback-core.version>1.5.18</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <kubernetes-client.version>21.0.1</kubernetes-client.version>
+    <kubernetes-client.version>24.0.0</kubernetes-client.version>
   </properties>
 
   <dependencyManagement>
@@ -912,7 +912,7 @@
     <dependency>
       <groupId>org.flowable</groupId>
       <artifactId>flowable-engine</artifactId>
-      <version>7.0.1</version>
+      <version>7.2.0</version>
     </dependency>
     <dependency>
       <groupId>io.github.jamsesso</groupId>
