@@ -1211,7 +1211,7 @@ export interface ConfigObject {
      *
      * Password to connect to ServiceNow.
      *
-     * Password to connect to Metabase.
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -1317,8 +1317,7 @@ export interface ConfigObject {
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
      *
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *
@@ -1690,6 +1689,9 @@ export interface ConfigObject {
     tmode?: TransactionMode;
     /**
      * API key to authenticate with the SAP ERP APIs.
+     *
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
      *
      * API key of the redash instance to access.
      *

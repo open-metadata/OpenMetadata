@@ -20,9 +20,8 @@ import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { DashboardChartTable } from '../components/Dashboard/DashboardChartTable/DashboardChartTable';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -113,14 +112,12 @@ export const getDashboardDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
-            entity={dashboardDetails as SourceType}
-            entityType={EntityType.DASHBOARD}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={dashboardDetails as SourceType}
+          entityType={EntityType.DASHBOARD}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {
