@@ -1,8 +1,11 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -12,11 +15,14 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.SearchException;
+import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
@@ -25,6 +31,7 @@ import os.org.opensearch.client.opensearch.core.BulkRequest;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
+import os.org.opensearch.client.opensearch.core.GetResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 
 /**
@@ -417,6 +424,34 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     } else {
       LOG.error("OpenSearch client is not available. Cannot update children for indices.");
     }
+  }
+
+  @Override
+  public Response getDocByID(String indexName, String entityId) throws IOException {
+    if (isClientAvailable) {
+      try {
+        GetResponse<Map> response =
+            client.get(
+                g ->
+                    g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                        .id(entityId),
+                Map.class);
+
+        if (response.found()) {
+          return Response.status(Response.Status.OK).entity(response.source()).build();
+        }
+      } catch (OpenSearchException e) {
+        if (e.status() == 404) {
+          throw new SearchIndexNotFoundException(
+              String.format("Failed to find doc with id %s", entityId));
+        } else {
+          throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        }
+      }
+    } else {
+      LOG.error("OpenSearch client is not available. Cannot get document by ID.");
+    }
+    return getResponse(Response.Status.NOT_FOUND, "Document not found.");
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {

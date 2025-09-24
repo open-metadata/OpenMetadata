@@ -395,8 +395,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
   Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
       throws IOException;
 
-  Response getDocByID(String indexName, String entityId) throws IOException;
-
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }

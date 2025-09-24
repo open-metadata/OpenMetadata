@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
@@ -124,4 +125,14 @@ public interface EntityManagementClient {
       List<String> indexNames,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates);
+
+  /**
+   * Gets a document by ID from the specified index.
+   *
+   * @param indexName the name of the index
+   * @param entityId the document ID to retrieve
+   * @return Response containing the document if found
+   * @throws IOException if there's an error during retrieval
+   */
+  Response getDocByID(String indexName, String entityId) throws IOException;
 }

@@ -1,6 +1,9 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
+
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
@@ -9,8 +12,10 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
+import es.co.elastic.clients.elasticsearch.core.GetResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.json.JsonData;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,6 +25,8 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.SearchException;
+import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 
@@ -410,6 +417,34 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     } else {
       LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
     }
+  }
+
+  @Override
+  public Response getDocByID(String indexName, String entityId) throws IOException {
+    if (isClientAvailable) {
+      try {
+        GetResponse<Map> response =
+            client.get(
+                g ->
+                    g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                        .id(entityId),
+                Map.class);
+
+        if (response.found()) {
+          return Response.status(Response.Status.OK).entity(response.source()).build();
+        }
+      } catch (ElasticsearchException e) {
+        if (e.status() == 404) {
+          throw new SearchIndexNotFoundException(
+              String.format("Failed to find doc with id %s", entityId));
+        } else {
+          throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+        }
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot get document by ID.");
+    }
+    return getResponse(Response.Status.NOT_FOUND, "Document not found.");
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {

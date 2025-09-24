@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.opensearch;
 
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
@@ -10,7 +9,6 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
-import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
@@ -138,8 +136,6 @@ import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.action.get.GetRequest;
-import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
@@ -607,24 +603,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
-    try {
-      GetRequest request =
-          new GetRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName), entityId);
-      GetResponse response = client.get(request, RequestOptions.DEFAULT);
-
-      if (response.isExists()) {
-        return Response.status(OK).entity(response.toString()).build();
-      }
-
-    } catch (OpenSearchException e) {
-      if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to to find doc with id %s", entityId));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-      }
-    }
-    return getResponse(NOT_FOUND, "Document not found.");
+    return entityManager.getDocByID(indexName, entityId);
   }
 
   private void buildHierarchyQuery(

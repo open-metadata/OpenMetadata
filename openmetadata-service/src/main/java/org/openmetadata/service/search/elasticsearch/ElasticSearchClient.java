@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.elasticsearch;
 
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
@@ -8,7 +7,6 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
-import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
@@ -29,8 +27,6 @@ import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
-import es.org.elasticsearch.action.get.GetRequest;
-import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
 import es.org.elasticsearch.client.Request;
@@ -483,24 +479,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
-    try {
-      GetRequest request =
-          new GetRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName), entityId);
-      GetResponse response = client.get(request, RequestOptions.DEFAULT);
-
-      if (response.isExists()) {
-        return Response.status(OK).entity(response.toString()).build();
-      }
-
-    } catch (ElasticsearchStatusException e) {
-      if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to to find doc with id %s", entityId));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-      }
-    }
-    return getResponse(NOT_FOUND, "Document not found.");
+    return entityManager.getDocByID(indexName, entityId);
   }
 
   private void buildHierarchyQuery(
