@@ -358,6 +358,11 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
           placeholder={getPlaceholderText()}
           required={required}
           size="small"
+          slotProps={{
+            inputLabel: {
+              shrink: true,
+            },
+          }}
           variant="outlined"
         />
       )}

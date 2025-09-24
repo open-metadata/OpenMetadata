@@ -177,6 +177,11 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           }
           required={required}
           size="small"
+          slotProps={{
+            inputLabel: {
+              shrink: true,
+            },
+          }}
           variant="outlined"
         />
       )}
