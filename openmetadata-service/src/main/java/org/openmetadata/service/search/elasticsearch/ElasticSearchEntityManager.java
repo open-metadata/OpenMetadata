@@ -29,6 +29,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -564,6 +565,32 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       }
     } else {
       LOG.error("ElasticSearch client is not available. Cannot update entity relationship.");
+    }
+  }
+
+  @Override
+  public void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds) {
+    if (isClientAvailable) {
+      try {
+        List<String> queryIDs = entityIds.stream().map(UUID::toString).collect(Collectors.toList());
+
+        client.reindex(
+            r ->
+                r.source(s -> s.index(sourceIndices).query(q -> q.ids(ids -> ids.values(queryIDs))))
+                    .dest(d -> d.index(destinationIndex).pipeline(pipelineName))
+                    .refresh(true));
+
+        LOG.info("Reindex {} entities of type {} to vector index", entityIds.size(), entityType);
+      } catch (IOException e) {
+        LOG.error("Failed to reindex entities: {}", e.getMessage(), e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot reindex entities.");
     }
   }
 

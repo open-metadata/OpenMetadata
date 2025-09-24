@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
@@ -487,13 +486,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
 
   void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData);
-
-  void reindexWithEntityIds(
-      List<String> sourceIndices,
-      String destinationIndex,
-      String pipelineName,
-      String entityType,
-      List<UUID> entityIds);
 
   Response listDataInsightChartResult(
       Long startTs,

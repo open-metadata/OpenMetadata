@@ -4,6 +4,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
 
 /**
@@ -147,4 +148,20 @@ public interface EntityManagementClient {
       String indexName,
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData);
+
+  /**
+   * Reindexes specific entities from source indices to destination index with optional pipeline.
+   *
+   * @param sourceIndices list of source index names
+   * @param destinationIndex destination index name
+   * @param pipelineName pipeline name to apply during reindexing
+   * @param entityType the type of entities being reindex
+   * @param entityIds list of entity UUIDs to reindex
+   */
+  void reindexWithEntityIds(
+      List<String> sourceIndices,
+      String destinationIndex,
+      String pipelineName,
+      String entityType,
+      List<UUID> entityIds);
 }
