@@ -55,7 +55,7 @@ const ContractQualityCard: React.FC<{
     setIsTestCaseLoading(true);
     try {
       const response = await getListTestCaseBySearch({
-        testSuiteId: contract?.testSuite?.id,
+        dataContractId: contract.id,
         ...DEFAULT_SORT_ORDER,
         limit: ES_MAX_PAGE_SIZE,
       });
