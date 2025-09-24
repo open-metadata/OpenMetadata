@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
+import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -24,6 +25,7 @@ import es.co.elastic.clients.json.JsonData;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -522,6 +524,47 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.error("ElasticSearch client is not available. Cannot get document by ID.");
     }
     return getResponse(Response.Status.NOT_FOUND, "Document not found.");
+  }
+
+  @Override
+  public void updateEntityRelationship(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Map<String, Object> entityRelationshipData) {
+    if (isClientAvailable) {
+      try {
+        Map<String, JsonData> params =
+            Collections.singletonMap("entityRelationshipData", JsonData.of(entityRelationshipData));
+
+        client.updateByQuery(
+            u ->
+                u.index(indexName)
+                    .query(
+                        q ->
+                            q.match(
+                                m ->
+                                    m.field(fieldAndValue.getKey())
+                                        .query(fieldAndValue.getValue())
+                                        .operator(Operator.And)))
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless)
+                                        .source(ADD_UPDATE_ENTITY_RELATIONSHIP)
+                                        .params(params)))
+                    .refresh(true));
+
+        LOG.info(
+            "Successfully updated entity relationship in ElasticSearch for index: {}", indexName);
+      } catch (IOException e) {
+        LOG.error(
+            "Failed to update entity relationship in ElasticSearch for index: {}", indexName, e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot update entity relationship.");
+    }
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {

@@ -135,4 +135,16 @@ public interface EntityManagementClient {
    * @throws IOException if there's an error during retrieval
    */
   Response getDocByID(String indexName, String entityId) throws IOException;
+
+  /**
+   * Updates entity relationship data in documents matching field and value.
+   *
+   * @param indexName the name of the index
+   * @param fieldAndValue field-value pair to match documents
+   * @param entityRelationshipData the relationship data to update
+   */
+  void updateEntityRelationship(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Map<String, Object> entityRelationshipData);
 }

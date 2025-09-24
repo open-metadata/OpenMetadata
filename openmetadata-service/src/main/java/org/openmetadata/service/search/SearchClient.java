@@ -488,11 +488,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
   void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData);
 
-  void updateEntityRelationship(
-      String indexName,
-      Pair<String, String> fieldAndValue,
-      Map<String, Object> entityRelationshipData);
-
   void reindexWithEntityIds(
       List<String> sourceIndices,
       String destinationIndex,

@@ -1737,26 +1737,12 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
+  @Override
   public void updateEntityRelationship(
       String indexName,
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-      updateByQueryRequest.setQuery(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-              .operator(Operator.AND));
-      Map<String, Object> params =
-          Collections.singletonMap("entityRelationshipData", entityRelationshipData);
-      Script script =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              ADD_UPDATE_ENTITY_RELATIONSHIP,
-              params);
-      updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
-    }
+    entityManager.updateEntityRelationship(indexName, fieldAndValue, entityRelationshipData);
   }
 
   @Override
