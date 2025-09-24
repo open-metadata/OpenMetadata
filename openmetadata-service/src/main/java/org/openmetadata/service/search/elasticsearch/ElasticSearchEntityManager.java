@@ -537,28 +537,38 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
         Map<String, JsonData> params =
             Collections.singletonMap("entityRelationshipData", JsonData.of(entityRelationshipData));
 
-        client.updateByQuery(
-            u ->
-                u.index(indexName)
-                    .query(
-                        q ->
-                            q.match(
-                                m ->
-                                    m.field(fieldAndValue.getKey())
-                                        .query(fieldAndValue.getValue())
-                                        .operator(Operator.And)))
-                    .script(
-                        s ->
-                            s.inline(
-                                inline ->
-                                    inline
-                                        .lang(ScriptLanguage.Painless)
-                                        .source(ADD_UPDATE_ENTITY_RELATIONSHIP)
-                                        .params(params)))
-                    .refresh(true));
+        UpdateByQueryResponse response =
+            client.updateByQuery(
+                u ->
+                    u.index(indexName)
+                        .query(
+                            q ->
+                                q.match(
+                                    m ->
+                                        m.field(fieldAndValue.getKey())
+                                            .query(fieldAndValue.getValue())
+                                            .operator(Operator.And)))
+                        .script(
+                            s ->
+                                s.inline(
+                                    inline ->
+                                        inline
+                                            .lang(ScriptLanguage.Painless)
+                                            .source(ADD_UPDATE_ENTITY_RELATIONSHIP)
+                                            .params(params)))
+                        .refresh(true));
 
         LOG.info(
             "Successfully updated entity relationship in ElasticSearch for index: {}", indexName);
+
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("updated entity relationship encountered failures: {}", failureDetails);
+        }
+
       } catch (IOException e) {
         LOG.error(
             "Failed to update entity relationship in ElasticSearch for index: {}", indexName, e);
