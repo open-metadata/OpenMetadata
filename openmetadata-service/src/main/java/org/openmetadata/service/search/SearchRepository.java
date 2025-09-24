@@ -87,6 +87,8 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -1289,6 +1291,23 @@ public class SearchRepository {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return searchClient.searchLineageWithDirection(lineageRequest);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
+    return searchClient.getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return searchClient.searchLineageByEntityCount(request);
   }
 
   public Response searchEntityRelationship(

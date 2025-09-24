@@ -135,13 +135,12 @@ import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ExportTypes } from '../constants/Export.constants';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -897,14 +896,12 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
-            entity={tableDetails as SourceType}
-            entityType={EntityType.TABLE}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={tableDetails as SourceType}
+          entityType={EntityType.TABLE}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

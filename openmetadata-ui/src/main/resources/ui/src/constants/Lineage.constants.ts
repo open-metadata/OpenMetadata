@@ -160,3 +160,15 @@ export const LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS: Record<string, string> = {
   pipelineServiceName: t('label.pipeline-service-name'),
   pipelineServiceType: t('label.pipeline-service-type'),
 };
+
+export const IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS = [
+  'name',
+  'owners',
+  'nodeDepth',
+  'toEntity',
+  'fromEntity',
+  'column.toColumn',
+  'column.fromColumns',
+];
+
+export const IMPACT_ANALYSIS_STATIC_COLUMNS = ['name', 'column'];
