@@ -43,9 +43,8 @@ export class ClassificationClass {
   }
 
   async visitPage(page: Page) {
-    await sidebarClick(page, SidebarItem.TAGS);
-
     const getTags = page.waitForResponse('/api/v1/tags*');
+    await sidebarClick(page, SidebarItem.TAGS);
     await page.waitForSelector('[data-testid="side-panel-classification"]');
     await getTags;
     await page

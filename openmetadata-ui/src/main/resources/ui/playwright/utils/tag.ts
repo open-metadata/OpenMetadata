@@ -490,6 +490,15 @@ export const fillTagForm = async (adminPage: Page, domain: Domain) => {
   await adminPage.click(
     '[data-testid="modal-container"] [data-testid="add-domain"]'
   );
+
+  // Wait for the domain tag selector to be visible
+  await adminPage.waitForSelector(
+    `[data-testid="tag-${domain.responseData.fullyQualifiedName}"]`,
+    {
+      state: 'visible',
+    }
+  );
+
   await adminPage
     .getByTestId(`tag-${domain.responseData.fullyQualifiedName}`)
     .click();

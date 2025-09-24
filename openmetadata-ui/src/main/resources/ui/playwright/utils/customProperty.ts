@@ -813,6 +813,11 @@ export const deleteCreatedProperty = async (
   page: Page,
   propertyName: string
 ) => {
+  // Wait for the property row to be visible before trying to scroll
+  await page.waitForSelector(`[data-row-key="${propertyName}"]`, {
+    state: 'visible',
+  });
+
   // Fetching for delete button
   await page
     .locator(`[data-row-key="${propertyName}"]`)
