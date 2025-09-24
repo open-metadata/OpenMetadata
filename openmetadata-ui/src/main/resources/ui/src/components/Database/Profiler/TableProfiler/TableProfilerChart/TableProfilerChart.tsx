@@ -209,29 +209,26 @@ const TableProfilerChart = ({
           />
         </Box>
         {showSystemMetrics && (
-          <Box>
-            <ProfilerStateWrapper
-              dataTestId="operation-metrics"
-              isLoading={isSystemProfilerLoading}
-              profilerLatestValueProps={{
-                information: operationMetrics.information,
-              }}
-              title={t('label.volume-change')}>
-              <CustomBarChart
-                chartCollection={operationMetrics}
-                name="operationMetrics"
-                noDataPlaceholderText={noProfilerMessage}
-              />
-            </ProfilerStateWrapper>
-          </Box>
+          <ProfilerStateWrapper
+            dataTestId="operation-metrics"
+            isLoading={isSystemProfilerLoading}
+            profilerLatestValueProps={{
+              information: operationMetrics.information,
+            }}
+            title={t('label.volume-change')}>
+            <CustomBarChart
+              chartCollection={operationMetrics}
+              name="operationMetrics"
+              noDataPlaceholderText={noProfilerMessage}
+            />
+          </ProfilerStateWrapper>
         )}
-        <Box>
-          <CustomMetricGraphs
-            customMetrics={customMetrics}
-            customMetricsGraphData={tableCustomMetricsProfiling}
-            isLoading={isTableProfilerLoading || isSummaryLoading}
-          />
-        </Box>
+
+        <CustomMetricGraphs
+          customMetrics={customMetrics}
+          customMetricsGraphData={tableCustomMetricsProfiling}
+          isLoading={isTableProfilerLoading || isSummaryLoading}
+        />
       </Stack>
     </Stack>
   );

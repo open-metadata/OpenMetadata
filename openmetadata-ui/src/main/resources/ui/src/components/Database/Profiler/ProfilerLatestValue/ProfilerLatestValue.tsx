@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Divider, Stack, Typography, useTheme } from '@mui/material';
+import { Box, Divider, Grid, Typography, useTheme } from '@mui/material';
 import { isUndefined } from 'lodash';
 import { getStatisticsDisplayValue } from '../../../../utils/CommonUtils';
 import '../ProfilerDashboard/profiler-dashboard.less';
@@ -21,6 +21,7 @@ const ProfilerLatestValue = ({
   information,
   tickFormatter,
   stringValue = false,
+  extra,
 }: ProfilerLatestValueProps) => {
   const theme = useTheme();
 
@@ -37,65 +38,71 @@ const ProfilerLatestValue = ({
   };
 
   return (
-    <Stack
+    <Grid
+      container
+      alignItems="center"
       data-testid="data-summary-container"
-      direction="row"
-      spacing={20}
       sx={{
-        width: '100%',
         backgroundColor: theme.palette.grey[50],
         borderRadius: '10px',
         p: '16px 30px',
       }}>
-      {information.map((info) => (
-        <Box key={info.title}>
-          <Typography
-            className="break-all"
-            data-testid="title"
-            sx={{
-              color: theme.palette.grey[700],
-              fontSize: theme.typography.pxToRem(11),
-              fontWeight: theme.typography.fontWeightBold,
-              borderLeft: `4px solid ${info.color}`,
-              paddingLeft: '8px',
-              lineHeight: '12px',
-              mb: 1,
-            }}>
-            {info.title}
-          </Typography>
-          <Typography
-            className="break-all"
-            data-testid="value"
-            sx={{
-              color: theme.palette.grey[900],
-              fontSize: theme.typography.pxToRem(17),
-              fontWeight: 700,
-            }}>
-            {getLatestValue(info.latestValue)}
-          </Typography>
-          {info.extra && (
-            <>
-              <Divider
-                sx={{
-                  my: 2,
-                  borderStyle: 'dashed',
-                  borderColor: theme.palette.allShades.gray[300],
-                }}
-              />
-              <Typography
-                className="break-all"
-                data-testid="extra"
-                sx={{
-                  color: theme.palette.grey[900],
-                  fontSize: theme.typography.pxToRem(11),
-                }}>
-                {info.extra}
-              </Typography>
-            </>
-          )}
-        </Box>
-      ))}
-    </Stack>
+      <Grid display="flex" gap={20} size="grow">
+        {information.map((info) => (
+          <Box key={info.title}>
+            <Typography
+              className="break-all"
+              data-testid="title"
+              sx={{
+                color: theme.palette.grey[700],
+                fontSize: theme.typography.pxToRem(11),
+                fontWeight: theme.typography.fontWeightBold,
+                borderLeft: `4px solid ${info.color}`,
+                paddingLeft: '8px',
+                lineHeight: '12px',
+                mb: 1,
+              }}>
+              {info.title}
+            </Typography>
+            <Typography
+              className="break-all"
+              data-testid="value"
+              sx={{
+                color: theme.palette.grey[900],
+                fontSize: theme.typography.pxToRem(17),
+                fontWeight: 700,
+              }}>
+              {getLatestValue(info.latestValue)}
+            </Typography>
+            {info.extra && (
+              <>
+                <Divider
+                  sx={{
+                    my: 2,
+                    borderStyle: 'dashed',
+                    borderColor: theme.palette.allShades.gray[300],
+                  }}
+                />
+                <Typography
+                  className="break-all"
+                  data-testid="extra"
+                  sx={{
+                    color: theme.palette.grey[900],
+                    fontSize: theme.typography.pxToRem(11),
+                  }}>
+                  {info.extra}
+                </Typography>
+              </>
+            )}
+          </Box>
+        ))}
+      </Grid>
+      {extra && (
+        <Grid display="flex" justifyContent="flex-end" size={1}>
+          {extra}
+        </Grid>
+      )}
+    </Grid>
   );
 };
 

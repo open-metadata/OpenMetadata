@@ -81,6 +81,7 @@ export interface ProfilerLatestValueProps {
   information: MetricChartType['information'];
   tickFormatter?: string;
   stringValue?: boolean;
+  extra?: ReactNode;
 }
 
 export type TestCaseAction = {
