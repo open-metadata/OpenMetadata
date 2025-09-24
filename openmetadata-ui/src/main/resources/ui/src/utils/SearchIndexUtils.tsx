@@ -21,9 +21,8 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SampleDataWithMessages from '../components/Database/SampleDataWithMessages/SampleDataWithMessages';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
@@ -133,14 +132,12 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
-            entity={searchIndexDetails as SourceType}
-            entityType={EntityType.SEARCH_INDEX}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={searchIndexDetails as SourceType}
+          entityType={EntityType.SEARCH_INDEX}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

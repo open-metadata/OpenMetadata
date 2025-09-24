@@ -742,16 +742,18 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     CreateTag createTag = createRequest(getEntityName(test));
     Tag tag = createEntity(createTag, ADMIN_AUTH_HEADERS);
 
-    // Verify the tag is created with APPROVED status
+    // Verify the tag is created with UNPROCESSED status
     assertEquals(
-        EntityStatus.APPROVED, tag.getEntityStatus(), "Tag should be created with APPROVED status");
+        EntityStatus.UNPROCESSED,
+        tag.getEntityStatus(),
+        "Tag should be created with UNPROCESSED status");
 
     // Update the entityStatus using PATCH operation
     String originalJson = JsonUtils.pojoToJson(tag);
     tag.setEntityStatus(EntityStatus.IN_REVIEW);
 
     ChangeDescription change = getChangeDescription(tag, MINOR_UPDATE);
-    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
     Tag updatedTag =
         patchEntityAndCheck(tag, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 

@@ -148,6 +148,32 @@ export interface Assignees {
      * Add the Reviewers to the assignees List.
      */
     addReviewers?: boolean;
+    [property: string]: any;
+}
+
+/**
+ * Choose which Certification to apply to the Data Asset
+ */
+export enum CertificationEnum {
+    CertificationBronze = "Certification.Bronze",
+    CertificationGold = "Certification.Gold",
+    CertificationSilver = "Certification.Silver",
+    Empty = "",
+}
+
+/**
+ * Choose which Status to apply to the Glossary Term
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 export interface InputNamespaceMap {
