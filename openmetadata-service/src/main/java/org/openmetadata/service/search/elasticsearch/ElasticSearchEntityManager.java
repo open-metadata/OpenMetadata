@@ -3,9 +3,11 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
+import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
@@ -13,6 +15,7 @@ import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.elasticsearch.core.GetResponse;
+import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.json.JsonData;
 import jakarta.ws.rs.core.Response;
@@ -172,7 +175,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
         BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
         for (Pair<String, String> p : fieldAndValue) {
           boolQueryBuilder.must(
-              Query.of(q -> q.term(t -> t.field(p.getKey()).value(p.getValue()))));
+              Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
         }
 
         DeleteByQueryResponse response =
@@ -184,6 +187,15 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             "DeleteByQuery response From ES - Deleted: {}, Failures: {}",
             response.deleted(),
             response.failures().size());
+
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
+        }
+
       } catch (IOException e) {
         LOG.error("Failed to delete entities by fields using new ES client", e);
       }
@@ -212,6 +224,15 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             "DeleteByQuery by FQN prefix response from ES - Deleted: {}, Failures: {}",
             response.deleted(),
             response.failures().size());
+
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("DeleteByQuery by FQN prefix encountered failures: {}", failureDetails);
+        }
+
       } catch (IOException e) {
         LOG.error("Failed to delete entities by FQN prefix using ES client", e);
       }
@@ -237,6 +258,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                                 script.inline(
                                                     inline ->
                                                         inline
+                                                            .lang(ScriptLanguage.Painless)
                                                             .source(scriptTxt)
                                                             .params(
                                                                 params.entrySet().stream()
@@ -253,6 +275,14 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             "DeleteByQuery by script response from ES - Deleted: {}, Failures: {}",
             response.deleted(),
             response.failures().size());
+
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
+        }
       } catch (IOException e) {
         LOG.error("Failed to delete entities by script using ES client", e);
       }
@@ -271,13 +301,19 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                     .id(docId)
                     .refresh(Refresh.True)
                     .script(
-                        s -> s.inline(inline -> inline.source(scriptTxt).params(new HashMap<>()))),
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless)
+                                        .source(scriptTxt)
+                                        .params(new HashMap<>()))),
             Map.class);
         LOG.info(
             "Successfully soft deleted/restored entity in ElasticSearch for index: {}, docId: {}",
             indexName,
             docId);
-      } catch (IOException e) {
+      } catch (IOException | ElasticsearchException e) {
         LOG.error(
             "Failed to soft delete/restore entity in ElasticSearch for index: {}, docId: {}",
             indexName,
@@ -301,18 +337,34 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
               Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
         }
 
-        client.updateByQuery(
-            u ->
-                u.index(indexNames)
-                    .query(q -> q.bool(boolQueryBuilder.build()))
-                    .script(
-                        s -> s.inline(inline -> inline.source(scriptTxt).params(new HashMap<>())))
-                    .refresh(true));
+        UpdateByQueryResponse response =
+            client.updateByQuery(
+                u ->
+                    u.index(indexNames)
+                        .query(q -> q.bool(boolQueryBuilder.build()))
+                        .script(
+                            s ->
+                                s.inline(
+                                    inline ->
+                                        inline
+                                            .lang(ScriptLanguage.Painless)
+                                            .source(scriptTxt)
+                                            .params(new HashMap<>())))
+                        .refresh(true));
 
         LOG.info(
-            "Successfully soft deleted/restored children in ElasticSearch for indices: {}",
-            indexNames);
-      } catch (IOException e) {
+            "Successfully soft deleted/restored children in ElasticSearch for indices: {}, updated documents: {}",
+            indexNames,
+            response.updated());
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
+        }
+
+      } catch (IOException | ElasticsearchException e) {
         LOG.error(
             "Failed to soft delete/restore children in ElasticSearch for indices: {}",
             indexNames,
@@ -336,14 +388,21 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                     .id(docId)
                     .refresh(Refresh.True)
                     .scriptedUpsert(true)
-                    .script(s -> s.inline(inline -> inline.source(scriptTxt).params(params))),
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless)
+                                        .source(scriptTxt)
+                                        .params(params))),
             Map.class);
 
         LOG.info(
             "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
             indexName,
             docId);
-      } catch (IOException e) {
+      } catch (IOException | ElasticsearchException e) {
         LOG.error(
             "Failed to update entity in ElasticSearch for index: {}, docId: {}",
             indexName,
@@ -375,7 +434,14 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                     m.field(fieldAndValue.getKey())
                                         .query(fieldAndValue.getValue())
                                         .operator(Operator.And)))
-                    .script(s -> s.inline(inline -> inline.source(updates.getKey()).params(params)))
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless)
+                                        .source(updates.getKey())
+                                        .params(params)))
                     .refresh(true));
 
         LOG.info("Successfully updated children in ElasticSearch for index: {}", indexName);
@@ -407,7 +473,14 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                     m.field(fieldAndValue.getKey())
                                         .query(fieldAndValue.getValue())
                                         .operator(Operator.And)))
-                    .script(s -> s.inline(inline -> inline.source(updates.getKey()).params(params)))
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless)
+                                        .source(updates.getKey())
+                                        .params(params)))
                     .refresh(true));
 
         LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);

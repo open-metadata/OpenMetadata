@@ -1,17 +1,10 @@
 package org.openmetadata.service.search.opensearch;
 
-import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import jakarta.ws.rs.core.Response;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -21,6 +14,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.BulkIndexByScrollFailure;
 import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
@@ -32,7 +26,17 @@ import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
+import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 
 /**
  * OpenSearch implementation of entity management operations.
@@ -197,6 +201,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
             response.deleted(),
             response.failures().size());
+
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
+        }
+
       } catch (IOException e) {
         LOG.error("Failed to delete entities by fields using new OpenSearch client", e);
       }
@@ -226,6 +239,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             "DeleteByQuery by FQN prefix response from OS - Deleted: {}, Failures: {}",
             response.deleted(),
             response.failures().size());
+
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("DeleteByQuery by FQN prefix encountered failures: {}", failureDetails);
+        }
+
       } catch (IOException e) {
         LOG.error("Failed to delete entities by FQN prefix using OpenSearch client", e);
       }
@@ -251,6 +273,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                 script.inline(
                                                     inline ->
                                                         inline
+                                                            .lang(ScriptLanguage.Painless.jsonValue())
                                                             .source(scriptTxt)
                                                             .params(
                                                                 params.entrySet().stream()
@@ -267,6 +290,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             "DeleteByQuery by script response from OS - Deleted: {}, Failures: {}",
             response.deleted(),
             response.failures().size());
+
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
+        }
       } catch (IOException e) {
         LOG.error("Failed to delete entities by script using OpenSearch client", e);
       }
@@ -285,13 +316,19 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                     .id(docId)
                     .refresh(Refresh.True)
                     .script(
-                        s -> s.inline(inline -> inline.source(scriptTxt).params(new HashMap<>()))),
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless.jsonValue())
+                                        .source(scriptTxt)
+                                        .params(new HashMap<>()))),
             Map.class);
         LOG.info(
             "Successfully soft deleted/restored entity in OpenSearch for index: {}, docId: {}",
             indexName,
             docId);
-      } catch (IOException e) {
+      } catch (IOException | OpenSearchException e) {
         LOG.error(
             "Failed to soft delete/restore entity in OpenSearch for index: {}, docId: {}",
             indexName,
@@ -315,18 +352,35 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
         }
 
-        client.updateByQuery(
-            u ->
-                u.index(indexNames)
-                    .query(q -> q.bool(boolQueryBuilder.build()))
-                    .script(
-                        s -> s.inline(inline -> inline.source(scriptTxt).params(new HashMap<>())))
-                    .refresh(true));
+        UpdateByQueryResponse response =
+            client.updateByQuery(
+                u ->
+                    u.index(indexNames)
+                        .query(q -> q.bool(boolQueryBuilder.build()))
+                        .script(
+                            s ->
+                                s.inline(
+                                    inline ->
+                                        inline
+                                            .lang(ScriptLanguage.Painless.jsonValue())
+                                            .source(scriptTxt)
+                                            .params(new HashMap<>())))
+                        .refresh(true));
 
         LOG.info(
-            "Successfully soft deleted/restored children in OpenSearch for indices: {}",
-            indexNames);
-      } catch (IOException e) {
+            "Successfully soft deleted/restored children in OpenSearch for indices: {}, updated documents: {}",
+            indexNames,
+            response.updated());
+
+        if (!response.failures().isEmpty()) {
+          String failureDetails =
+              response.failures().stream()
+                  .map(BulkIndexByScrollFailure::toString)
+                  .collect(Collectors.joining("; "));
+          LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
+        }
+
+      } catch (IOException | OpenSearchException e) {
         LOG.error(
             "Failed to soft delete/restore children in OpenSearch for indices: {}", indexNames, e);
       }
@@ -348,12 +402,19 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                     .id(docId)
                     .refresh(Refresh.True)
                     .scriptedUpsert(true)
-                    .script(s -> s.inline(inline -> inline.source(scriptTxt).params(params))),
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless.jsonValue())
+                                        .source(scriptTxt)
+                                        .params(params))),
             Map.class);
 
         LOG.info(
             "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
-      } catch (IOException e) {
+      } catch (IOException | OpenSearchException e) {
         LOG.error(
             "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
       }
@@ -382,7 +443,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                     m.field(fieldAndValue.getKey())
                                         .query(FieldValue.of(fieldAndValue.getValue()))
                                         .operator(Operator.And)))
-                    .script(s -> s.inline(inline -> inline.source(updates.getKey()).params(params)))
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless.jsonValue())
+                                        .source(updates.getKey())
+                                        .params(params)))
                     .refresh(true));
 
         LOG.info("Successfully updated children in OpenSearch for index: {}", indexName);
@@ -414,7 +482,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                     m.field(fieldAndValue.getKey())
                                         .query(FieldValue.of(fieldAndValue.getValue()))
                                         .operator(Operator.And)))
-                    .script(s -> s.inline(inline -> inline.source(updates.getKey()).params(params)))
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless.jsonValue())
+                                        .source(updates.getKey())
+                                        .params(params)))
                     .refresh(true));
 
         LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
