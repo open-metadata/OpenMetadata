@@ -85,17 +85,22 @@ import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg'
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
+import { ReactComponent as DirectoryIcon } from '../assets/svg/ic-directory.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as DriveServiceIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as ExportIcon } from '../assets/svg/ic-export.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/ic-file.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PersonaIcon } from '../assets/svg/ic-personas.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
+import { ReactComponent as SpreadsheetIcon } from '../assets/svg/ic-spreadsheet.svg';
 import { ReactComponent as ContainerIcon } from '../assets/svg/ic-storage.svg';
 import { ReactComponent as IconStoredProcedure } from '../assets/svg/ic-stored-procedure.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/ic-table.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/ic-teams.svg';
 import { ReactComponent as TopicIcon } from '../assets/svg/ic-topic.svg';
+import { ReactComponent as WorksheetIcon } from '../assets/svg/ic-worksheet.svg';
 import { ReactComponent as IconDistLineThrough } from '../assets/svg/icon-dist-line-through.svg';
 import { ReactComponent as IconDistKey } from '../assets/svg/icon-distribution.svg';
 import { ReactComponent as IconKeyLineThrough } from '../assets/svg/icon-key-line-through.svg';
@@ -135,13 +140,12 @@ import TableQueries from '../components/Database/TableQueries/TableQueries';
 import { ContractTab } from '../components/DataContract/ContractTab/ContractTab';
 import { useEntityExportModalProvider } from '../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import KnowledgeGraph from '../components/KnowledgeGraph/KnowledgeGraph';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { NON_SERVICE_TYPE_ASSETS } from '../constants/Assets.constants';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { DE_ACTIVE_COLOR, NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ExportTypes } from '../constants/Export.constants';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -458,6 +462,16 @@ export const getEntityIcon = (
     ['location']: LocationIcon,
     [EntityType.QUERY]: QueryIcon,
     [SearchIndex.QUERY]: QueryIcon,
+    [EntityType.DIRECTORY]: DirectoryIcon,
+    [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectoryIcon,
+    [EntityType.FILE]: FileIcon,
+    [SearchIndex.FILE_SEARCH_INDEX]: FileIcon,
+    [EntityType.SPREADSHEET]: SpreadsheetIcon,
+    [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetIcon,
+    [EntityType.WORKSHEET]: WorksheetIcon,
+    [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetIcon,
+    [EntityType.DRIVE_SERVICE]: DriveServiceIcon,
+    [SearchIndex.DRIVE_SERVICE]: DriveServiceIcon,
   };
 
   switch (indexType) {
@@ -895,14 +909,12 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
-            entity={tableDetails as SourceType}
-            entityType={EntityType.TABLE}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={tableDetails as SourceType}
+          entityType={EntityType.TABLE}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

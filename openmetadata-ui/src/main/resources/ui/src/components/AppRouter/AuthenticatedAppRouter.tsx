@@ -29,6 +29,7 @@ import PlatformLineage from '../../pages/PlatformLineage/PlatformLineage';
 import TagPage from '../../pages/TagPage/TagPage';
 import { checkPermission, userPermissions } from '../../utils/PermissionsUtils';
 import { useApplicationsProvider } from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import { RoutePosition } from '../Settings/Applications/plugins/AppPlugin';
 import AdminProtectedRoute from './AdminProtectedRoute';
 import withSuspenseFallback from './withSuspenseFallback';
 
@@ -281,7 +282,19 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
   const { t } = useTranslation();
   const { plugins } = useApplicationsProvider();
 
-  const pluginRoutes = plugins.flatMap((plugin) => plugin.getRoutes?.() || []);
+  // Get all plugin routes that should be in AUTHENTICATED_ROUTE position
+  const pluginRoutes = useMemo(() => {
+    return plugins.flatMap((plugin) => {
+      const routes = plugin.getRoutes?.() || [];
+
+      // Filter routes that don't have position or have AUTHENTICATED_ROUTE position
+      return routes.filter(
+        (route) =>
+          !route.position ||
+          route.position === RoutePosition.AUTHENTICATED_ROUTE
+      );
+    });
+  }, [plugins]);
   const createBotPermission = useMemo(
     () =>
       checkPermission(Operation.Create, ResourceEntity.USER, permissions) &&
@@ -413,7 +426,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={
           <AdminProtectedRoute
             hasPermission={checkPermission(
-              Operation.Create,
+              Operation.EditDataProfile,
               ResourceEntity.TABLE,
               permissions
             )}>
