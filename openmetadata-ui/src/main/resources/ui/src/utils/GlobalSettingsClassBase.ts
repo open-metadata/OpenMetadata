@@ -24,8 +24,11 @@ import { ReactComponent as DataAssetsIcon } from '../assets/svg/data-assets-colo
 import { ReactComponent as DataProductIcon } from '../assets/svg/data-product-colored.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/database-colored-new.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/database-schema-colored.svg';
+import { ReactComponent as DirectoryIcon } from '../assets/svg/directory-colored-new.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/domain-colored.svg';
+import { ReactComponent as DriveServiceIcon } from '../assets/svg/drive-service-colored-new.svg';
 import { ReactComponent as EmailIcon } from '../assets/svg/email-colored.svg';
+import { ReactComponent as FileIcon } from '../assets/svg/file-colored-new.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary-term-colored-new.svg';
 import { ReactComponent as HealthIcon } from '../assets/svg/health-check.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/lineage-colored.svg';
@@ -50,6 +53,7 @@ import { ReactComponent as ManagementIcon } from '../assets/svg/setting-manageme
 import { ReactComponent as NotificationIcon } from '../assets/svg/setting-notification.svg';
 import { ReactComponent as ServiceIcon } from '../assets/svg/setting-services-omd.svg';
 import { ReactComponent as SSOIcon } from '../assets/svg/settings-sso.svg';
+import { ReactComponent as SpreadsheetIcon } from '../assets/svg/spreadsheet-colored-new.svg';
 import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored-new.svg';
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedures-colored-new.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-colored-new.svg';
@@ -58,6 +62,7 @@ import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/theme-colored-new.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/url-link-colored.svg';
 import { ReactComponent as UsersIcon } from '../assets/svg/user-colored.svg';
+import { ReactComponent as WorksheetIcon } from '../assets/svg/worksheet-colored-new.svg';
 import { SettingMenuItem } from './GlobalSettingsUtils';
 
 import { ReactComponent as PreferencesSearchIcon } from '../assets/svg/preferences-search.svg';
@@ -238,6 +243,16 @@ class GlobalSettingsClassBase {
             ),
             key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.METADATA}`,
             icon: MetadataIcon,
+          },
+          {
+            label: t('label.drive-plural'),
+            description: t('message.page-sub-header-for-drive'),
+            isProtected: userPermissions.hasViewPermissions(
+              ResourceEntity.DRIVE_SERVICE,
+              permissions
+            ),
+            key: `${GlobalSettingsMenuCategory.SERVICES}.${GlobalSettingOptions.DRIVES}`,
+            icon: DriveServiceIcon,
           },
           {
             label: t('label.data-observability'),
@@ -548,6 +563,42 @@ class GlobalSettingsClassBase {
                 key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.SEARCH_INDEXES}`,
                 icon: SearchIndexIcon,
               },
+              {
+                label: t('label.directory-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.directory-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.DIRECTORIES}`,
+                icon: DirectoryIcon,
+              },
+              {
+                label: t('label.file-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.file-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.FILES}`,
+                icon: FileIcon,
+              },
+              {
+                label: t('label.spreadsheet-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.spreadsheet-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.SPREADSHEETS}`,
+                icon: SpreadsheetIcon,
+              },
+              {
+                label: t('label.worksheet-plural'),
+                description: t('message.search-settings-for-entity', {
+                  entity: t('label.worksheet-plural'),
+                }),
+                isProtected: Boolean(isAdminUser),
+                key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.SEARCH_SETTINGS}.${GlobalSettingOptions.WORKSHEETS}`,
+                icon: WorksheetIcon,
+              },
             ].sort((a, b) => a.label.localeCompare(b.label)),
           },
           {
@@ -634,6 +685,15 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DATABASE_SCHEMA}`,
+            icon: SchemaIcon,
+          },
+          {
+            label: t('label.directory'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.directory'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
             icon: SchemaIcon,
           },
           {
@@ -743,6 +803,42 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.CHARTS}`,
             icon: ChartIcon,
+          },
+          {
+            label: t('label.directory-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.directory-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.DIRECTORIES}`,
+            icon: DirectoryIcon,
+          },
+          {
+            label: t('label.file-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.file-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.FILES}`,
+            icon: FileIcon,
+          },
+          {
+            label: t('label.spreadsheet-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.spreadsheet-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.SPREADSHEETS}`,
+            icon: SpreadsheetIcon,
+          },
+          {
+            label: t('label.worksheet-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.worksheet-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
+            icon: WorksheetIcon,
           },
         ].sort((a, b) => a.label.localeCompare(b.label)),
       },

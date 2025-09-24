@@ -23,6 +23,8 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Directory } from '../generated/entity/data/directory';
+import { File } from '../generated/entity/data/file';
 import { Glossary } from '../generated/entity/data/glossary';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Metric } from '../generated/entity/data/metric';
@@ -30,19 +32,23 @@ import { Mlmodel } from '../generated/entity/data/mlmodel';
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { Query } from '../generated/entity/data/query';
 import { SearchIndex as SearchIndexEntity } from '../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { StoredProcedure } from '../generated/entity/data/storedProcedure';
 import { Table } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Domain } from '../generated/entity/domains/domain';
 import { APIService } from '../generated/entity/services/apiService';
 import { DashboardService } from '../generated/entity/services/dashboardService';
 import { DatabaseService } from '../generated/entity/services/databaseService';
+import { DriveService } from '../generated/entity/services/driveService';
 import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { MessagingService } from '../generated/entity/services/messagingService';
 import { MlmodelService } from '../generated/entity/services/mlmodelService';
 import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
+import { StorageService } from '../generated/entity/services/storageService';
 import { Team } from '../generated/entity/teams/team';
 import { User } from '../generated/entity/teams/user';
 import { TestCase, TestCaseResult } from '../generated/tests/testCase';
@@ -181,9 +187,13 @@ export interface SearchServiceSearchSource
 
 export interface StorageServiceSearchSource
   extends SearchSourceBase,
-    SearchService {}
+    StorageService {}
 
 export interface APIServiceSearchSource extends SearchSourceBase, APIService {}
+
+export interface DriveServiceSearchSource
+  extends SearchSourceBase,
+    DriveService {}
 
 export interface APICollectionSearchSource
   extends SearchSourceBase,
@@ -194,6 +204,16 @@ export interface APIEndpointSearchSource
     APIEndpoint {}
 
 export interface MetricSearchSource extends SearchSourceBase, Metric {}
+
+export interface DirectorySearchSource extends SearchSourceBase, Directory {}
+
+export interface FileSearchSource extends SearchSourceBase, File {}
+
+export interface SpreadsheetSearchSource
+  extends SearchSourceBase,
+    Spreadsheet {}
+
+export interface WorksheetSearchSource extends SearchSourceBase, Worksheet {}
 
 export type ExploreSearchSource =
   | TableSearchSource
@@ -219,6 +239,7 @@ export type ExploreSearchSource =
   | MessagingServiceSearchSource
   | SearchServiceSearchSource
   | StorageServiceSearchSource
+  | DriveServiceSearchSource
   | DomainSearchSource
   | SearchIndexSearchSource
   | APIServiceSearchSource
@@ -253,6 +274,7 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.MESSAGING_SERVICE]: MessagingServiceSearchSource;
   [SearchIndex.SEARCH_SERVICE]: SearchServiceSearchSource;
   [SearchIndex.STORAGE_SERVICE]: StorageServiceSearchSource;
+  [SearchIndex.DRIVE_SERVICE]: DriveServiceSearchSource;
   [SearchIndex.DOMAIN]: DomainSearchSource;
   [SearchIndex.SEARCH_INDEX]: SearchIndexSearchSource;
   [SearchIndex.STORED_PROCEDURE]: StoredProcedureSearchSource;
@@ -264,6 +286,10 @@ export type SearchIndexSearchSourceMapping = {
   [SearchIndex.API_COLLECTION_INDEX]: APICollectionSearchSource;
   [SearchIndex.API_ENDPOINT_INDEX]: APIEndpointSearchSource;
   [SearchIndex.METRIC_SEARCH_INDEX]: MetricSearchSource;
+  [SearchIndex.DIRECTORY_SEARCH_INDEX]: DirectorySearchSource;
+  [SearchIndex.FILE_SEARCH_INDEX]: FileSearchSource;
+  [SearchIndex.SPREADSHEET_SEARCH_INDEX]: SpreadsheetSearchSource;
+  [SearchIndex.WORKSHEET_SEARCH_INDEX]: WorksheetSearchSource;
 };
 
 export type SearchRequest<
