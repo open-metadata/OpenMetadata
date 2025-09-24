@@ -1492,7 +1492,7 @@ const SSOConfigurationFormRJSF = ({
                       data-testid="cancel-sso-configuration"
                       type="link"
                       onClick={handleCancelClick}>
-                      {t('label.cancel-lowercase')}
+                      {t('label.cancel')}
                     </Button>
                     <Button
                       className="save-sso-configuration text-md"
@@ -1590,7 +1590,7 @@ const SSOConfigurationFormRJSF = ({
                     data-testid="cancel-sso-configuration"
                     type="link"
                     onClick={handleCancelClick}>
-                    {t('label.cancel-lowercase')}
+                    {t('label.cancel')}
                   </Button>
                   <Button
                     className="save-sso-configuration text-md"
