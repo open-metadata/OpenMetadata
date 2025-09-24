@@ -1,0 +1,7 @@
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 24 24">
+  <path d="M8.07,4.24v2.47c0,1.21-1.03,2.18-2.29,2.19h-2.46" stroke-linejoin="round" stroke-linecap="round" fill="none" stroke="currentColor" />
+  <path d="M18.42,19.43V6.71c0-1.66-1.34-3-3-3h-7.65c-1,0-1.93.5-2.49,1.33l-1.67,2.49c-.33.49-.51,1.08-.51,1.67v10.24c0,1.66,1.34,3,3,3h9.32c1.66,0,3-1.34,3-3Z" fill="none" stroke="currentColor" />
+  <path d="M17.79,20.95h.12c1.66,0,3-1.34,3-3V4.57c0-1.66-1.34-3-3-3h-6.19c-1.25,0-2.26,1.01-2.26,2.26h0" fill="none" stroke="currentColor" />
+  <line x1="6.72" y1="14.35" x2="15.11" y2="14.35" stroke-linecap="round" fill="none" stroke="currentColor" />
+  <line x1="6.72" y1="17.24" x2="10.91" y2="17.24" stroke-linecap="round" fill="none" stroke="currentColor" />
+</svg>

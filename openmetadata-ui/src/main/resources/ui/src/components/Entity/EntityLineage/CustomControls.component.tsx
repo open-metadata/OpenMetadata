@@ -12,19 +12,28 @@
  */
 
 import { RightOutlined } from '@ant-design/icons';
-import { Button, Dropdown, Space } from 'antd';
-import { ItemType } from 'antd/lib/menu/hooks/useItems';
+import { Button, MenuItem, useTheme } from '@mui/material';
+import { Space } from 'antd';
 import classNames from 'classnames';
-import { FC, memo, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  memo,
+  MouseEventHandler,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { LINEAGE_DEFAULT_QUICK_FILTERS } from '../../../constants/Lineage.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { SearchIndex } from '../../../enums/search.enum';
 import { getAssetsPageQuickFilters } from '../../../utils/AdvancedSearchUtils';
-import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { StyledMenu } from '../../LineageTable/LineageTable.styled';
 import { LineageControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
@@ -32,16 +41,14 @@ const CustomControls: FC<LineageControlProps> = ({
   onlyShowTabSwitch,
 }: LineageControlProps) => {
   const { t } = useTranslation();
-  const { onQueryFilterUpdate, nodes } = useLineageProvider();
+  const { setSelectedQuickFilters, nodes, selectedQuickFilters } =
+    useLineageProvider();
   const [selectedFilter, setSelectedFilter] = useState<string[]>([]);
-  const [selectedQuickFilters, setSelectedQuickFilters] = useState<
-    ExploreQuickFilterField[]
-  >([]);
-  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+  const [advanceEl, setAdvanceEl] = useState<null | HTMLElement>(null);
 
-  const handleMenuClick = ({ key }: { key: string }) => {
-    setSelectedFilter((prevSelected) => [...prevSelected, key]);
-  };
+  const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+  const navigate = useNavigate();
+  const theme = useTheme();
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
@@ -61,14 +68,6 @@ const CustomControls: FC<LineageControlProps> = ({
     };
   }, [nodes]);
 
-  const filterMenu: ItemType[] = useMemo(() => {
-    return filters.map((filter) => ({
-      key: filter.key,
-      label: filter.label,
-      onClick: handleMenuClick,
-    }));
-  }, [filters]);
-
   useEffect(() => {
     const dropdownItems = getAssetsPageQuickFilters(AssetsOfEntity.LINEAGE);
 
@@ -86,11 +85,6 @@ const CustomControls: FC<LineageControlProps> = ({
     setSelectedFilter(defaultFilterValues);
   }, []);
 
-  const handleQuickFiltersChange = (data: ExploreQuickFilterField[]) => {
-    const quickFilterQuery = getQuickFilterQuery(data);
-    onQueryFilterUpdate(JSON.stringify(quickFilterQuery));
-  };
-
   const handleQuickFiltersValueSelect = useCallback(
     (field: ExploreQuickFilterField) => {
       setSelectedQuickFilters((pre) => {
@@ -101,8 +95,6 @@ const CustomControls: FC<LineageControlProps> = ({
             return preField;
           }
         });
-
-        handleQuickFiltersChange(data);
 
         return data;
       });
@@ -133,6 +125,38 @@ const CustomControls: FC<LineageControlProps> = ({
     }
   }, [selectedFilter, selectedQuickFilters, filters]);
 
+  const handleAdvancedClick: MouseEventHandler<HTMLButtonElement> = useCallback(
+    (e) => setAdvanceEl(e.currentTarget),
+    []
+  );
+
+  const handleCloseAdvance = useCallback(() => setAdvanceEl(null), []);
+
+  const handleImpactAnalysisClick = useCallback(() => {
+    navigate({ search: '?mode=impact_analysis' });
+  }, [navigate]);
+
+  const filterMenu = useMemo(() => {
+    return filters.map((item) => (
+      <MenuItem
+        data-key={item.key}
+        key={item.key}
+        selected={selectedFilter.includes(item.key)}
+        onClick={() => {
+          setSelectedFilter((pre) => {
+            if (pre.includes(item.key)) {
+              return pre.filter((key) => key !== item.key);
+            } else {
+              return [...pre, item.key];
+            }
+          });
+          setAdvanceEl(null);
+        }}>
+        {item.label}
+      </MenuItem>
+    ));
+  }, [filters]);
+
   return (
     <div
       className={classNames(
@@ -143,22 +167,25 @@ const CustomControls: FC<LineageControlProps> = ({
         <div className="d-flex items-center gap-4">
           <LineageSearchSelect />
           <Space className="m-l-xs" size={16}>
-            <Dropdown
-              menu={{
-                items: filterMenu,
-                selectedKeys: selectedFilter,
-              }}
-              trigger={['click']}>
-              <Button ghost className="expand-btn" type="primary">
-                {t('label.advanced')}
-                <RightOutlined />
-              </Button>
-            </Dropdown>
+            <Button
+              className="expand-btn"
+              variant="outlined"
+              onClick={handleAdvancedClick}>
+              {t('label.advanced')}
+              <RightOutlined />
+            </Button>
+            <StyledMenu
+              anchorEl={advanceEl}
+              open={Boolean(advanceEl)}
+              onClose={handleCloseAdvance}>
+              {filterMenu}
+            </StyledMenu>
+
             <ExploreQuickFilters
               independent
               aggregations={{}}
               defaultQueryFilter={queryFilter}
-              fields={selectedQuickFilters}
+              fields={selectedQuickFilters ?? []}
               index={SearchIndex.ALL}
               showDeleted={false}
               onFieldValueSelect={handleQuickFiltersValueSelect}
@@ -166,6 +193,33 @@ const CustomControls: FC<LineageControlProps> = ({
           </Space>
         </div>
       )}
+      <div className="d-flex gap-4 items-center">
+        <Button
+          className="font-semibold"
+          sx={{
+            outlineColor: theme.palette.allShades.blue[700],
+            backgroundColor: theme.palette.allShades.blue[50],
+            color: theme.palette.allShades.blue[700],
+            outline: '1px solid',
+            boxShadow: 'none',
+
+            '&:hover': {
+              outlineColor: theme.palette.allShades.blue[100],
+              backgroundColor: theme.palette.allShades.blue[100],
+              color: theme.palette.allShades.blue[700],
+              boxShadow: 'none',
+            },
+          }}
+          variant="outlined">
+          {t('label.lineage')}
+        </Button>
+        <Button
+          className="font-semibold"
+          variant="outlined"
+          onClick={handleImpactAnalysisClick}>
+          {t('label.impact-analysis')}
+        </Button>
+      </div>
     </div>
   );
 };

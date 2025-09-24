@@ -60,6 +60,8 @@ export interface TestServiceConnection {
  * search Connection.
  *
  * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface TestServiceConnectionConnection {
     config?: ConfigObject;
@@ -290,6 +292,12 @@ export interface TestServiceConnectionConnection {
  * yet.
  *
  * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigObject {
     /**
@@ -363,6 +371,8 @@ export interface ConfigObject {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -1054,6 +1064,8 @@ export interface ConfigObject {
      * client_id for PowerBI.
      *
      * client_id for Sigma.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -1184,12 +1196,16 @@ export interface ConfigObject {
      * clientSecret for PowerBI.
      *
      * clientSecret for Sigma.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
      * Azure Directory (tenant) ID for service principal authentication.
      *
      * Tenant ID for PowerBI.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -1290,6 +1306,8 @@ export interface ConfigObject {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -1780,6 +1798,28 @@ export interface ConfigObject {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
     [property: string]: any;
 }
 
@@ -2571,6 +2611,8 @@ export interface ConfigSourceConnection {
  *
  * GCP credentials configs.
  *
+ * GCP Credentials for Google Drive API
+ *
  * AWS credentials configs.
  */
 export interface SecurityConfigClass {
@@ -3113,6 +3155,8 @@ export enum InitialConsumerOffsets {
  * GCP Credentials
  *
  * GCP credentials configs.
+ *
+ * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
  *
@@ -3931,6 +3975,12 @@ export enum TransactionMode {
  * Custom search service type
  *
  * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
 export enum ConfigType {
     Adls = "ADLS",
@@ -3950,6 +4000,7 @@ export enum ConfigType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -3977,6 +4028,7 @@ export enum ConfigType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
     Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
@@ -4023,6 +4075,7 @@ export enum ConfigType {
     SapERP = "SapErp",
     SapHana = "SapHana",
     ServiceNow = "ServiceNow",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",

@@ -70,6 +70,12 @@ jest.mock('./EntityUtils', () => ({
       url: 'url',
     },
   ]),
+  getBreadcrumbForEntityWithParent: jest.fn().mockReturnValue([
+    {
+      name: 'entityName',
+      url: 'url',
+    },
+  ]),
 }));
 
 jest.mock('./StringsUtils', () => ({
