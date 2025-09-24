@@ -61,7 +61,7 @@ public class ESLineageGraphBuilder {
     }
 
     int configuredMaxDepth =
-        lineageRequest.getDirection().toString().equals("UPSTREAM")
+        lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)
             ? lineageRequest.getUpstreamDepth()
             : lineageRequest.getDownstreamDepth() + 1;
 
