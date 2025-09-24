@@ -227,6 +227,7 @@
   padding: @size-lg;
   height: calc(100vh - (@om-navbar-height + @size-2xl));
   margin-top: @size-xs;
+  transition: height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   // Tab styling for configured SSO
   .ant-tabs .ant-tabs-tab {
@@ -251,6 +252,13 @@
 
   .ant-tabs .ant-tabs-ink-bar {
     background-color: @blue-34;
+  }
+}
+
+// When alert is visible with configured SSO, adjust container height
+.sso-settings-page:has(#page-alert) {
+  .settings-sso {
+    height: calc(100vh - (@om-navbar-height + @size-2xl) - 78px) !important;
   }
 }
 
