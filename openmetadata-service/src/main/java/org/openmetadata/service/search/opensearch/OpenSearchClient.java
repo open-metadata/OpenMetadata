@@ -138,7 +138,6 @@ import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.action.delete.DeleteRequest;
 import os.org.opensearch.action.get.GetRequest;
 import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
@@ -1848,23 +1847,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  private void updateChildren(
-      UpdateByQueryRequest updateByQueryRequest,
-      Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates) {
-    updateByQueryRequest.setQuery(
-        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-            .operator(Operator.AND));
-    Script script =
-        new Script(
-            ScriptType.INLINE,
-            Script.DEFAULT_SCRIPT_LANG,
-            updates.getKey(),
-            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
-    updateByQueryRequest.setScript(script);
-    updateOpenSearchByQuery(updateByQueryRequest);
-  }
-
   @Override
   public void updateChildren(
       String indexName,
@@ -2002,15 +1984,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @SneakyThrows
-  public void updateOpenSearch(UpdateRequest updateRequest) {
-    if (updateRequest != null && isClientAvailable) {
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      client.update(updateRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  @SneakyThrows
   public void deleteByQuery(String index, String query) {
     DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
     // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
@@ -2036,14 +2009,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
     deleteRequest.setQuery(query);
     deleteEntityFromOpenSearchByQuery(deleteRequest);
-  }
-
-  @SneakyThrows
-  private void deleteEntityFromOpenSearch(DeleteRequest deleteRequest) {
-    if (deleteRequest != null && isClientAvailable) {
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      client.delete(deleteRequest, RequestOptions.DEFAULT);
-    }
   }
 
   @SneakyThrows

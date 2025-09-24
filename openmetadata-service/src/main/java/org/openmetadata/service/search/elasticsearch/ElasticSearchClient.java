@@ -29,11 +29,9 @@ import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
-import es.org.elasticsearch.action.delete.DeleteRequest;
 import es.org.elasticsearch.action.get.GetRequest;
 import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
-import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.update.UpdateRequest;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
@@ -1698,23 +1696,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  private void updateChildren(
-      UpdateByQueryRequest updateByQueryRequest,
-      Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates) {
-    updateByQueryRequest.setQuery(
-        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-            .operator(Operator.AND));
-    Script script =
-        new Script(
-            ScriptType.INLINE,
-            Script.DEFAULT_SCRIPT_LANG,
-            updates.getKey(),
-            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
-    updateByQueryRequest.setScript(script);
-    updateElasticSearchByQuery(updateByQueryRequest);
-  }
-
   @Override
   public void updateChildren(
       String indexName,
@@ -1844,15 +1825,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @SneakyThrows
-  public void updateElasticSearch(UpdateRequest updateRequest) {
-    if (updateRequest != null && isClientAvailable) {
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      client.update(updateRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  @SneakyThrows
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
@@ -1864,16 +1836,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   /** */
   @Override
   public void close() {}
-
-  @SneakyThrows
-  private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
-    if (deleteRequest != null && isClientAvailable) {
-      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      client.delete(deleteRequest, RequestOptions.DEFAULT);
-    }
-  }
 
   @SneakyThrows
   public void deleteByQuery(String index, String query) {
