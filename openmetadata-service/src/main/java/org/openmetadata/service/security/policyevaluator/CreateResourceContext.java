@@ -78,13 +78,19 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
 
   @Override
   public List<EntityReference> getDomains() {
-    if (nullOrEmpty(parentEntities)) {
-      return null;
-    }
     List<EntityReference> domains = new ArrayList<>();
-    for (EntityInterface parent : parentEntities) {
-      if (parent.getDomains() != null) {
-        domains = mergedInheritedEntityRefs(domains, parent.getDomains());
+
+    // Add assigned domains at the time of entity creation
+    if (entity != null && !nullOrEmpty(entity.getDomains())) {
+      domains.addAll(entity.getDomains());
+    }
+
+    // Add inherited domains from parent entities
+    if (!nullOrEmpty(parentEntities)) {
+      for (EntityInterface parent : parentEntities) {
+        if (parent.getDomains() != null) {
+          domains = mergedInheritedEntityRefs(domains, parent.getDomains());
+        }
       }
     }
     return domains;

@@ -57,7 +57,7 @@ public class WorkflowHandler {
             .setJdbcUsername(config.getDataSourceFactory().getUser())
             .setJdbcPassword(config.getDataSourceFactory().getPassword())
             .setJdbcDriver(config.getDataSourceFactory().getDriverClass())
-            .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+            .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
 
     if (ConnectionType.MYSQL.label.equals(config.getDataSourceFactory().getDriverClass())) {
       processEngineConfiguration.setDatabaseType(ProcessEngineConfiguration.DATABASE_TYPE_MYSQL);
@@ -93,7 +93,7 @@ public class WorkflowHandler {
         .setJdbcPassword(currentProcessEngineConfiguration.getJdbcPassword())
         .setJdbcDriver(currentProcessEngineConfiguration.getJdbcDriver())
         .setDatabaseType(currentProcessEngineConfiguration.getDatabaseType())
-        .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_FALSE);
+        .setDatabaseSchemaUpdate(ProcessEngineConfiguration.DB_SCHEMA_UPDATE_TRUE);
 
     // Setting Async Executor Configuration
     processEngineConfiguration
