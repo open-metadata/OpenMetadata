@@ -699,7 +699,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def get_policy_tags_for_column(self, column: dict) -> dict:
         try:
-            if column["policy_tags"]:
+            if column.get("policy_tags"):
                 policy_tag_name = column["policy_tags"].names[0]
                 taxonomy_name = (
                     policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
@@ -734,7 +734,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             self.get_policy_tags_for_column(column)
             return fetch_tag_labels_om(
                 metadata=self.metadata,
-                tags=column["policy_tags"],
+                tags=[column["policy_tags"]],
                 classification_name=column["taxonomy"],
                 include_tags=self.source_config.includeTags
                 and self.service_connection.includePolicyTags,
