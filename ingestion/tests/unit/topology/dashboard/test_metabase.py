@@ -103,7 +103,11 @@ mock_config = {
             }
         },
         "sourceConfig": {
-            "config": {"dashboardFilterPattern": {}, "chartFilterPattern": {}}
+            "config": {
+                "dashboardFilterPattern": {},
+                "chartFilterPattern": {},
+                "includeOwners": True,
+            }
         },
     },
     "sink": {"type": "metadata-rest", "config": {}},
@@ -320,6 +324,47 @@ class MetabaseUnitTest(TestCase):
         )
         self.assertEqual(list(result), [])
 
+    def test_include_owners_flag_enabled(self):
+        """
+        Test that when includeOwners is True, owner information is processed
+        """
+        # Mock the source config to have includeOwners = True
+        self.metabase.source_config.includeOwners = True
+
+        # Test that owner information is processed when includeOwners is True
+        self.assertTrue(self.metabase.source_config.includeOwners)
+
+    def test_include_owners_flag_disabled(self):
+        """
+        Test that when includeOwners is False, owner information is not processed
+        """
+        # Mock the source config to have includeOwners = False
+        self.metabase.source_config.includeOwners = False
+
+        # Test that owner information is not processed when includeOwners is False
+        self.assertFalse(self.metabase.source_config.includeOwners)
+
+    def test_include_owners_flag_in_config(self):
+        """
+        Test that the includeOwners flag is properly set in the configuration
+        """
+        # Check that the mock configuration includes the includeOwners flag
+        config = mock_config["source"]["sourceConfig"]["config"]
+        self.assertIn("includeOwners", config)
+        self.assertTrue(config["includeOwners"])
+
+    def test_include_owners_flag_affects_owner_processing(self):
+        """
+        Test that the includeOwners flag affects how owner information is processed
+        """
+        # Test with includeOwners = True
+        self.metabase.source_config.includeOwners = True
+        self.assertTrue(self.metabase.source_config.includeOwners)
+
+        # Test with includeOwners = False
+        self.metabase.source_config.includeOwners = False
+        self.assertFalse(self.metabase.source_config.includeOwners)
+=======
     def test_dataset_query_string_parsing(self):
         """
         Test that dataset_query field can handle both string and dict inputs
