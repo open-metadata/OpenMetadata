@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
 import java.util.List;
 import java.util.Map;
@@ -36,8 +37,6 @@ import os.org.opensearch.common.xcontent.XContentType;
  */
 @Slf4j
 public class OpenSearchBulkSink implements BulkSink {
-
-  private static final String TARGET_INDEX_KEY = "targetIndex";
 
   private final OpenSearchClient searchClient;
   protected final SearchRepository searchRepository;

@@ -10,6 +10,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFI
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -97,7 +98,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private static final String DISABLED = "Disabled";
   private static final String RECREATE_INDEX = "recreateIndex";
   private static final String ENTITY_TYPE_KEY = "entityType";
-  private static final String TARGET_INDEX_KEY = "targetIndex";
 
   // String constants to avoid duplication
   private static final String APP_SCHEDULE_RUN = "AppScheduleRun";

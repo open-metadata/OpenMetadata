@@ -14,6 +14,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -222,7 +223,7 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
     Map<String, Object> contextData =
         (Map<String, Object>) createContextData.invoke(searchIndexApp, "table");
 
-    assertEquals("cluster_table_rebuild_123", contextData.get("targetIndex"));
+    assertEquals("cluster_table_rebuild_123", contextData.get(TARGET_INDEX_KEY));
     assertTrue((Boolean) contextData.get("recreateIndex"));
   }
 

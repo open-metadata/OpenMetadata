@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
 import es.org.elasticsearch.action.bulk.BackoffPolicy;
 import es.org.elasticsearch.action.bulk.BulkProcessor;
@@ -36,8 +37,6 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
  */
 @Slf4j
 public class ElasticSearchBulkSink implements BulkSink {
-
-  private static final String TARGET_INDEX_KEY = "targetIndex";
 
   private final ElasticSearchClient searchClient;
   protected final SearchRepository searchRepository;
