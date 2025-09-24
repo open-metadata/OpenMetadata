@@ -1627,7 +1627,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table).withEntityStatus(null);
     DataContract created = createDataContract(create);
-    assertNull(created.getEntityStatus());
+    assertEquals(EntityStatus.UNPROCESSED, created.getEntityStatus());
 
     String originalJson = JsonUtils.pojoToJson(created);
     created.setEntityStatus(EntityStatus.APPROVED);
