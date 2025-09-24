@@ -128,18 +128,6 @@ export const useCellRenderer = <
                 }}>
                 {entityName}
               </Typography>
-              <Typography
-                sx={{
-                  color: theme.palette.allShades.gray[500],
-                  fontSize: '0.75rem',
-                  lineHeight: '18px',
-                  maxWidth: 200,
-                  overflow: 'hidden',
-                  textOverflow: 'ellipsis',
-                  whiteSpace: 'nowrap',
-                }}>
-                {entity.description || ''}
-              </Typography>
             </Box>
           </Box>
         );
