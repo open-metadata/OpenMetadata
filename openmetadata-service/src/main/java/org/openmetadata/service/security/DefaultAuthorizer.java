@@ -16,7 +16,6 @@ package org.openmetadata.service.security;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Permission.Access.ALLOW;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmin;
-import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
@@ -80,12 +79,6 @@ public class DefaultAuthorizer implements Authorizer {
     }
     if (isReviewer(resourceContext, subjectContext)) {
       return; // Reviewer of a resource gets admin level privilege on the resource
-    }
-
-    // Domain access needs to be evaluated separately, user should not get any other domain data via
-    // one of the roles
-    if (subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE)) {
-      PolicyEvaluator.hasDomainPermission(subjectContext, resourceContext, operationContext);
     }
 
     // Check if the user has resource level permission
