@@ -17,9 +17,8 @@ import { CustomPropertyTable } from '../../components/common/CustomPropertyTable
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { PageType } from '../../generated/system/ui/page';
@@ -85,14 +84,12 @@ export const getApiEndpointDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={apiEndpoint.deleted}
-            entity={apiEndpoint as SourceType}
-            entityType={EntityType.API_ENDPOINT}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(apiEndpoint?.deleted)}
+          entity={apiEndpoint as SourceType}
+          entityType={EntityType.API_ENDPOINT}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {
