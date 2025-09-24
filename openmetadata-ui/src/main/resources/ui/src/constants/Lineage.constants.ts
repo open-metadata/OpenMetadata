@@ -73,6 +73,22 @@ export const entityData = [
     type: SearchIndex.METRIC_SEARCH_INDEX,
     label: t('label.metric-plural'),
   },
+  {
+    type: SearchIndex.DIRECTORY_SEARCH_INDEX,
+    label: t('label.directory-plural'),
+  },
+  {
+    type: SearchIndex.FILE_SEARCH_INDEX,
+    label: t('label.file-plural'),
+  },
+  {
+    type: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+    label: t('label.spreadsheet-plural'),
+  },
+  {
+    type: SearchIndex.WORKSHEET_SEARCH_INDEX,
+    label: t('label.worksheet-plural'),
+  },
 ];
 
 export const NODE_WIDTH = 400;
@@ -160,3 +176,15 @@ export const LINEAGE_TABLE_COLUMN_LOCALIZATION_KEYS: Record<string, string> = {
   pipelineServiceName: t('label.pipeline-service-name'),
   pipelineServiceType: t('label.pipeline-service-type'),
 };
+
+export const IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS = [
+  'name',
+  'owners',
+  'nodeDepth',
+  'toEntity',
+  'fromEntity',
+  'column.toColumn',
+  'column.fromColumns',
+];
+
+export const IMPACT_ANALYSIS_STATIC_COLUMNS = ['name', 'column'];
