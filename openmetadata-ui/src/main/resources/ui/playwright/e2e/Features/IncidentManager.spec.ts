@@ -32,6 +32,7 @@ import {
   triggerTestSuitePipelineAndWaitForSuccess,
   visitProfilerTab,
 } from '../../utils/incidentManager';
+import { makeRetryRequest } from '../../utils/serviceIngestion';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
@@ -68,9 +69,15 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         testDefinition: 'tableColumnCountToBeBetween',
       });
     }
-    await apiContext.post(
-      `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
-    );
+
+    await makeRetryRequest({
+      page,
+      fn: () =>
+        apiContext.post(
+          `/api/v1/services/ingestionPipelines/deploy/${pipeline.id}`
+        ),
+    });
+
     await triggerTestSuitePipelineAndWaitForSuccess({
       page,
       pipeline,
