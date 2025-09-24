@@ -131,7 +131,7 @@
     width: 100%;
 
     .cancel-sso-configuration {
-      font-weight: @font-semibold;
+      font-weight: @font-regular;
 
       line-height: 24px;
       color: @primary-6;
@@ -177,7 +177,7 @@
     box-sizing: border-box;
 
     .cancel-sso-configuration {
-      font-weight: 600;
+      font-weight: @font-regular;
 
       line-height: 24px;
       color: @primary-6;
@@ -562,9 +562,14 @@
   }
 }
 
-// SSO-specific dropdown menu box-shadow
+// SSO-specific dropdown menu box-shadow and border radius
 .sso-configuration-form-card .ant-select-dropdown {
   box-shadow: 0px 1px 2px 0px @grey-27;
+  border-radius: @border-rad-xs;
+
+  .ant-select-dropdown-content {
+    border-radius: @border-rad-xs;
+  }
 }
 
 .sso-configuration-form-card .rjsf .form-group.field {
@@ -817,6 +822,22 @@
       background-size: @size-sm @size-xs;
       background-repeat: no-repeat;
       background-position: center;
+    }
+  }
+}
+
+// SSO-specific scrollbar thumb color
+.sso-configuration-form-card,
+.content-resizable-panel-container.sso-configured,
+.content-height-with-resizable-panel.sso-configured {
+  &::-webkit-scrollbar-thumb {
+    background-color: @grey-500;
+  }
+
+  // Apply to all scrollable children within SSO forms
+  * {
+    &::-webkit-scrollbar-thumb {
+      background-color: @grey-500;
     }
   }
 }
