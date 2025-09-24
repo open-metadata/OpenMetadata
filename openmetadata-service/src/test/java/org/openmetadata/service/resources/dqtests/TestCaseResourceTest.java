@@ -1822,7 +1822,11 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 .withUpdatedBy(CREATE_ALL_OPS_USER.getEntityReference())
                 .withSeverity(Severity.Severity4));
     JsonNode patchForAllOps =
-        TestUtils.getJsonPatch(JsonUtils.pojoToJson(stored), updatedForAllOps);
+        TestUtils.getJsonPatch(
+            JsonUtils.pojoToJson(
+                stored.withSeverity(
+                    Severity.Severity3)), // restore to previous state as modified ln 1823
+            updatedForAllOps);
     TestCaseResolutionStatus patchedByAllOps =
         patchTestCaseResultFailureStatus(
             stored.getId(), patchForAllOps, authHeaders(CREATE_ALL_OPS_USER.getName()));
