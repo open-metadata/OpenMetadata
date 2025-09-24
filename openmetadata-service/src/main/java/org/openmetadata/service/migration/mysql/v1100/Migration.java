@@ -19,11 +19,11 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(handle, ConnectionType.MYSQL);
     migrationUtil.migrateEntityStatusForExistingEntities();
-      // Initialize WorkflowHandler before attempting to update workflows
-      // This ensures that Flowable engine is ready for validation
-      initializeWorkflowHandler();
+    // Initialize WorkflowHandler before attempting to update workflows
+    // This ensures that Flowable engine is ready for validation
+    initializeWorkflowHandler();
 
-      // Update GlossaryTermApprovalWorkflow: migrate to generic tasks and add thresholds
-      updateGlossaryTermApprovalWorkflow();
+    // Update GlossaryTermApprovalWorkflow: migrate to generic tasks and add thresholds
+    updateGlossaryTermApprovalWorkflow();
   }
 }
