@@ -55,7 +55,7 @@ export interface EsBoolQuery {
   filter?: QueryFieldInterface | QueryFieldInterface[];
   must?: QueryFieldInterface | QueryFieldInterface[];
   must_not?: QueryFieldInterface | QueryFieldInterface[];
-  should?: QueryFieldInterface | QueryFieldInterface[];
+  should?: QueryFieldInterface | QueryFieldInterface[] | EsWildCard[];
   minimum_should_match?: number;
 }
 
@@ -64,14 +64,6 @@ export interface QueryFieldInterface {
   term?: Partial<Record<string, EsTermQuery | FieldValue>>;
   terms?: EsTermsQuery;
   exists?: EsExistsQuery;
-  [key: string]:
-    | QueryFieldInterface
-    | EsBoolQuery
-    | EsTermQuery
-    | FieldValue
-    | EsTermsQuery
-    | EsExistsQuery
-    | EsWildCard;
 }
 
 export interface QueryFilterInterface {
