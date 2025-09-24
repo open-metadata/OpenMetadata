@@ -1631,7 +1631,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Get the test case resolution by FQN
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("testCaseFQN", TEST_TABLE1.getFullyQualifiedName());
+    queryParams.put("testCaseFQN", testCaseEntity2.getFullyQualifiedName());
     storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
     assertTrue(
         storedTestCaseResolutions.getData().stream()
@@ -1639,7 +1639,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 t ->
                     t.getTestCaseReference()
                         .getFullyQualifiedName()
-                        .equals(testCaseEntity1.getFullyQualifiedName())));
+                        .equals(testCaseEntity2.getFullyQualifiedName())));
 
     // Get the test case resolution by origin entity FQN
     queryParams.clear();
@@ -1654,8 +1654,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     queryParams.put("originEntityFQN", "IDONOTEXIST123");
-    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
-    assertEquals(0, storedTestCaseResolutions.getData().size());
+    assertResponse(
+        () -> getTestCaseFailureStatus(startTs, endTs, null, null, queryParams),
+        NOT_FOUND,
+        "table instance for IDONOTEXIST123 not found");
 
     // Delete test case recursively and check that the test case resolution status is also deleted
     // 1. soft delete - should not delete the test case resolution status
@@ -1810,7 +1812,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
             patchTestCaseResultFailureStatus(
                 stored.getId(), patchForNoPerms, authHeaders(USER_NO_PERMISSIONS.getName())),
         FORBIDDEN,
-        "does not have");
+        "User does not have ANY of the required permissions.");
 
     // Test 4: CREATE_ALL_OPS_USER (with EDIT_ALL on TEST_CASE) can patch even if not owner
     String updatedForAllOps =

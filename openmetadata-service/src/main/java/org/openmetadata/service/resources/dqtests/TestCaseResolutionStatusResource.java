@@ -34,6 +34,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
@@ -55,6 +56,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -543,7 +545,11 @@ public class TestCaseResolutionStatusResource
           MessageParser.EntityLink.parse(testCase.getEntityLink());
       return TestCaseResourceContext.builder().entityLink(entityLink).build();
     } else if (originEntityFQN != null) {
-      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(originEntityFQN);
+      EntityInterface entityInterface =
+          Entity.getEntityByName(Entity.TABLE, originEntityFQN, "", Include.ALL);
+      String entityLinkStr =
+          EntityUtil.buildEntityLink(Entity.TABLE, entityInterface.getFullyQualifiedName());
+      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
       return TestCaseResourceContext.builder().entityLink(entityLink).build();
     }
     return TestCaseResourceContext.builder().build();
