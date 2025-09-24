@@ -439,3 +439,52 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
 
   return null;
 };
+
+export const aggregateTestResultsByEntity = (
+  data: Array<{
+    document_count: string;
+    entityFQN: string;
+    'testCaseResult.testCaseStatus': string;
+  }>
+) => {
+  const overallTotal = {
+    failed: 0,
+    success: 0,
+    aborted: 0,
+    total: 0,
+  };
+
+  const entities = data.reduce((acc, item) => {
+    const entity = item.entityFQN;
+    const status = item['testCaseResult.testCaseStatus'] as
+      | 'failed'
+      | 'success'
+      | 'aborted';
+    const count = parseInt(item.document_count, 10);
+
+    // Initialize entity if not exists
+    if (!acc[entity]) {
+      acc[entity] = {
+        failed: 0,
+        success: 0,
+        aborted: 0,
+        total: 0,
+      };
+    }
+
+    // Add the count to the appropriate status for the entity
+    acc[entity][status] = (acc[entity][status] || 0) + count;
+    acc[entity].total += count;
+
+    // Also add to the overall total
+    overallTotal[status] = (overallTotal[status] || 0) + count;
+    overallTotal.total += count;
+
+    return acc;
+  }, {} as Record<string, Record<string, number>>);
+
+  return {
+    ...entities,
+    total: overallTotal,
+  };
+};

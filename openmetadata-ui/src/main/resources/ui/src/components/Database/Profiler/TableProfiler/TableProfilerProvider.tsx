@@ -42,6 +42,7 @@ import { Include } from '../../../../generated/type/include';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
+import { fetchTestCaseResultByTestSuiteId } from '../../../../rest/dataQualityDashboardAPI';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
@@ -51,6 +52,7 @@ import {
   getTestCaseExecutionSummary,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
+import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -330,6 +332,17 @@ export const TableProfilerProvider = ({
     }
     try {
       const response = await getTestCaseExecutionSummary(table.testSuite.id);
+      const { data } = await fetchTestCaseResultByTestSuiteId(
+        table.testSuite.id
+      );
+      const testCaseResults = aggregateTestResultsByEntity(
+        data as Array<{
+          document_count: string;
+          entityFQN: string;
+          'testCaseResult.testCaseStatus': string;
+        }>
+      );
+      console.log(testCaseResults);
       setTestCaseSummary(response);
     } catch (error) {
       setTestCaseSummary(undefined);

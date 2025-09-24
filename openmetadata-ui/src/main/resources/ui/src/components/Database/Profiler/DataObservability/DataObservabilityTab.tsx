@@ -10,10 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Stack, Tab, Tabs } from '@mui/material';
+import { Button, Stack, Tab, Tabs, useTheme } from '@mui/material';
+import { isEmpty } from 'lodash';
 import Qs from 'qs';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
+import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -27,19 +30,22 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   const { isTourOpen } = useTourProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
+  const theme = useTheme();
 
-  const { activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
-    useMemo(() => {
-      const param = location.search;
-      const searchData = Qs.parse(
-        param.startsWith('?') ? param.substring(1) : param
-      );
+  const {
+    activeTab = profilerClassBase.getDefaultTabKey(isTourOpen),
+    activeColumnFqn,
+  } = useMemo(() => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
 
-      return searchData as {
-        activeTab: TableProfilerTab;
-        activeColumnFqn: string;
-      };
-    }, [location.search, isTourOpen]);
+    return searchData as {
+      activeTab: TableProfilerTab;
+      activeColumnFqn: string;
+    };
+  }, [location.search, isTourOpen]);
 
   const tabOptions = useMemo(() => {
     return profilerClassBase.getProfilerTabOptions();
@@ -72,43 +78,69 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
           direction="row"
           justifyContent="space-between"
           spacing={4}>
-          <Tabs
-            sx={(theme) => ({
-              width: 'auto',
-              display: 'inline-flex',
-              '.MuiTab-root': {
-                color: theme.palette.grey['700'],
-                transition: 'background-color 0.2s ease-in, color 0.2s ease-in',
-                borderRadius: '6px',
-              },
-              '.Mui-selected': {
-                backgroundColor: `${theme.palette.primary.main} !important`,
-                color: `${theme.palette.primary.contrastText} !important`,
-              },
-              '.MuiTab-root:hover': {
-                backgroundColor: `${theme.palette.primary.main} !important`,
-                color: `${theme.palette.primary.contrastText} !important`,
-              },
-              'MuiTabs-root': {
-                minHeight: 'none',
-              },
-              '.MuiTabs-indicator': {
-                display: 'none',
-              },
-              '.MuiTabs-scroller': {
-                padding: '4px',
-                height: '100%',
-              },
-              '.MuiTab-root:not(:first-of-type)': {
-                marginLeft: '4px',
-              },
-            })}
-            value={activeTab}
-            onChange={handleTabChangeMUI}>
-            {tabOptions.map(({ label, key }) => (
-              <Tab key={key} label={label} value={key} />
-            ))}
-          </Tabs>
+          {isEmpty(activeColumnFqn) ? (
+            <Tabs
+              sx={(theme) => ({
+                width: 'auto',
+                display: 'inline-flex',
+                '.MuiTab-root': {
+                  color: theme.palette.grey['700'],
+                  transition:
+                    'background-color 0.2s ease-in, color 0.2s ease-in',
+                  borderRadius: '6px',
+                },
+                '.Mui-selected': {
+                  backgroundColor: `${theme.palette.primary.main} !important`,
+                  color: `${theme.palette.primary.contrastText} !important`,
+                },
+                '.MuiTab-root:hover': {
+                  backgroundColor: `${theme.palette.primary.main} !important`,
+                  color: `${theme.palette.primary.contrastText} !important`,
+                },
+                'MuiTabs-root': {
+                  minHeight: 'none',
+                },
+                '.MuiTabs-indicator': {
+                  display: 'none',
+                },
+                '.MuiTabs-scroller': {
+                  padding: '4px',
+                  height: '100%',
+                },
+                '.MuiTab-root:not(:first-of-type)': {
+                  marginLeft: '4px',
+                },
+              })}
+              value={activeTab}
+              onChange={handleTabChangeMUI}>
+              {tabOptions.map(({ label, key }) => (
+                <Tab key={key} label={label} value={key} />
+              ))}
+            </Tabs>
+          ) : (
+            <Button
+              startIcon={
+                <DropDownIcon className="transform-90" height={16} width={16} />
+              }
+              sx={{
+                color: theme.palette.primary.main,
+                fontWeight: theme.typography.fontWeightBold,
+                fontSize: theme.typography.fontSize,
+                '&:hover': {
+                  color: theme.palette.primary.main,
+                },
+              }}
+              variant="text"
+              onClick={() =>
+                navigate({
+                  search: Qs.stringify({
+                    activeTab: TableProfilerTab.COLUMN_PROFILE,
+                  }),
+                })
+              }>
+              {PAGE_HEADERS.COLUMN_PROFILE.header}
+            </Button>
+          )}
           <TabFilters />
         </Stack>
         <div className="data-observability-content-panel">

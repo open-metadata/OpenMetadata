@@ -173,14 +173,12 @@ const TableProfilerChart = ({
   }
 
   return (
-    <Stack data-testid="table-profiler-chart-container">
+    <Stack
+      data-testid="table-profiler-chart-container"
+      spacing={!isProfilingEnabled ? '30px' : 0}>
       {showHeader && (
         <>
-          {!isSummaryLoading && !isProfilingEnabled && (
-            <Box>
-              <NoProfilerBanner />
-            </Box>
-          )}
+          {!isSummaryLoading && !isProfilingEnabled && <NoProfilerBanner />}
 
           <Grid container spacing={5}>
             {overallSummary?.map((summary) => (

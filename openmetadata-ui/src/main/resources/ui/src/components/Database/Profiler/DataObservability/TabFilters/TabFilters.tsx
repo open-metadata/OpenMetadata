@@ -1,6 +1,6 @@
 import { KeyboardArrowDown } from '@mui/icons-material';
 import { Button, Menu, MenuItem, Stack, Tooltip } from '@mui/material';
-import { isEqual } from 'lodash';
+import { isEmpty, isEqual } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useMemo, useState } from 'react';
@@ -19,11 +19,12 @@ import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.com
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
+import ColumnPickerMenu from '../../TableProfiler/ColumnPickerMenu';
 import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
 
 const TabFilters = () => {
   const { isTourOpen } = useTourProvider();
-  const { formType } = useMemo(() => {
+  const { formType, activeColumnFqn, activeTab } = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
       param.startsWith('?') ? param.substring(1) : param
@@ -60,6 +61,7 @@ const TabFilters = () => {
     dateRangeObject = DEFAULT_RANGE_DATA,
     onDateRangeChange,
     onTestCaseDrawerOpen,
+    table,
   } = useTableProfiler();
 
   const { t } = useTranslation();
@@ -87,18 +89,35 @@ const TabFilters = () => {
     }
   };
 
+  const updateActiveColumnFqn = (key: string) =>
+    navigate({
+      search: QueryString.stringify({ activeColumnFqn: key, activeTab }),
+    });
+
   return (
     <Stack
       alignItems="center"
       direction="row"
       justifyContent="flex-end"
       spacing={5}>
-      <DatePickerMenu
-        showSelectedCustomRange
-        defaultDateRange={dateRangeObject}
-        handleDateRangeChange={handleDateRangeChange}
-        size="small"
-      />
+      {!isEmpty(activeColumnFqn) && (
+        <ColumnPickerMenu
+          activeColumnFqn={activeColumnFqn}
+          columns={table?.columns || []}
+          handleChange={updateActiveColumnFqn}
+        />
+      )}
+      {[
+        TableProfilerTab.COLUMN_PROFILE,
+        TableProfilerTab.DATA_QUALITY,
+      ].includes(activeTab) && isEmpty(activeColumnFqn) ? null : (
+        <DatePickerMenu
+          showSelectedCustomRange
+          defaultDateRange={dateRangeObject}
+          handleDateRangeChange={handleDateRangeChange}
+          size="small"
+        />
+      )}
 
       {editDataProfile && !isTableDeleted && (
         <>

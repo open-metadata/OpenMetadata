@@ -324,7 +324,7 @@ export const fetchTestCaseResultByTestSuiteId = (
       },
     }),
     aggregationQuery:
-      'bucketName=entityLinks:aggType=terms:field=entityLink.nonNormalized,bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus',
+      'bucketName=entityLinks:aggType=terms:field=entityFQN,bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus',
     index: 'testCase',
   };
 
