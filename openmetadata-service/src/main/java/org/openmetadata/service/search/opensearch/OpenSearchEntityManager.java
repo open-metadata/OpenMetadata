@@ -1,10 +1,18 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import jakarta.ws.rs.core.Response;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -28,15 +36,6 @@ import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-
-import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 
 /**
  * OpenSearch implementation of entity management operations.
@@ -273,7 +272,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                                 script.inline(
                                                     inline ->
                                                         inline
-                                                            .lang(ScriptLanguage.Painless.jsonValue())
+                                                            .lang(
+                                                                ScriptLanguage.Painless.jsonValue())
                                                             .source(scriptTxt)
                                                             .params(
                                                                 params.entrySet().stream()
@@ -539,7 +539,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     try {
       docMap = objectMapper.readValue(doc, new TypeReference<>() {});
     } catch (JsonProcessingException e) {
-      throw new RuntimeException(e);
+      throw new IllegalArgumentException("Invalid JSON input", e);
     }
     return JsonData.of(docMap);
   }

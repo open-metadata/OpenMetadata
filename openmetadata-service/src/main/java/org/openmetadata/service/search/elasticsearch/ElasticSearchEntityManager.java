@@ -2,6 +2,9 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
@@ -41,6 +44,7 @@ import org.openmetadata.service.search.EntityManagementClient;
 public class ElasticSearchEntityManager implements EntityManagementClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
+  private final ObjectMapper objectMapper = new ObjectMapper();
 
   public ElasticSearchEntityManager(ElasticsearchClient client) {
     this.client = client;
@@ -57,7 +61,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                     .id(docId)
                     .docAsUpsert(true)
                     .refresh(Refresh.True)
-                    .doc(JsonData.fromJson(doc)),
+                    .doc(toJsonData(doc)),
             Map.class);
         LOG.info(
             "Successfully created entity in ElasticSearch for index: {}, docId: {}",
@@ -89,7 +93,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                           i ->
                               i.index(indexName)
                                   .id(entry.getKey())
-                                  .document(JsonData.fromJson(entry.getValue())))));
+                                  .document(toJsonData(entry.getValue())))));
         }
 
         BulkResponse response =
@@ -125,7 +129,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                     .id(docId)
                     .docAsUpsert(true)
                     .refresh(Refresh.True)
-                    .doc(JsonData.fromJson(doc)),
+                    .doc(toJsonData(doc)),
             Map.class);
         LOG.info(
             "Successfully created time series entity in ElasticSearch for index: {}, docId: {}",
@@ -523,5 +527,15 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
     return JsonUtils.getMap(map).entrySet().stream()
         .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+  }
+
+  private JsonData toJsonData(String doc) {
+    Map<String, Object> docMap;
+    try {
+      docMap = objectMapper.readValue(doc, new TypeReference<>() {});
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid JSON input", e);
+    }
+    return JsonData.of(docMap);
   }
 }
