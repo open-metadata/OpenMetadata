@@ -4,6 +4,7 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 
 /**
@@ -319,10 +321,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
     if (isClientAvailable) {
       try {
-        Map<String, JsonData> params =
-            JsonUtils.getMap(doc).entrySet().stream()
-                .collect(
-                    Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+        Map<String, JsonData> params = convertToJsonDataMap(doc);
 
         client.update(
             u ->
@@ -347,5 +346,74 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     } else {
       LOG.error("ElasticSearch client is not available. Cannot update entity.");
     }
+  }
+
+  @Override
+  public void updateChildren(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    if (isClientAvailable) {
+      try {
+        Map<String, JsonData> params =
+            convertToJsonDataMap(updates.getValue() == null ? new HashMap<>() : updates.getValue());
+
+        client.updateByQuery(
+            u ->
+                u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                    .query(
+                        q ->
+                            q.match(
+                                m ->
+                                    m.field(fieldAndValue.getKey())
+                                        .query(fieldAndValue.getValue())
+                                        .operator(Operator.And)))
+                    .script(s -> s.inline(inline -> inline.source(updates.getKey()).params(params)))
+                    .refresh(true));
+
+        LOG.info("Successfully updated children in ElasticSearch for index: {}", indexName);
+      } catch (IOException e) {
+        LOG.error("Failed to update children in ElasticSearch for index: {}", indexName, e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot update children.");
+    }
+  }
+
+  @Override
+  public void updateChildren(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates) {
+    if (isClientAvailable) {
+      try {
+        Map<String, JsonData> params =
+            convertToJsonDataMap(updates.getValue() == null ? new HashMap<>() : updates.getValue());
+
+        client.updateByQuery(
+            u ->
+                u.index(indexNames)
+                    .query(
+                        q ->
+                            q.match(
+                                m ->
+                                    m.field(fieldAndValue.getKey())
+                                        .query(fieldAndValue.getValue())
+                                        .operator(Operator.And)))
+                    .script(s -> s.inline(inline -> inline.source(updates.getKey()).params(params)))
+                    .refresh(true));
+
+        LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
+      } catch (IOException e) {
+        LOG.error("Failed to update children in ElasticSearch for indices: {}", indexNames, e);
+      }
+    } else {
+      LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
+    }
+  }
+
+  private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
+    return JsonUtils.getMap(map).entrySet().stream()
+        .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
   }
 }

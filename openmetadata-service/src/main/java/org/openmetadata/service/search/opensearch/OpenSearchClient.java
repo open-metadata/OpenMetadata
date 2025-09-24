@@ -1870,11 +1870,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       String indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-      updateChildren(updateByQueryRequest, fieldAndValue, updates);
-    }
+    entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
   @Override
@@ -1882,11 +1878,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       List<String> indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[0]));
-      updateChildren(updateByQueryRequest, fieldAndValue, updates);
-    }
+    entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
   @Override

@@ -100,4 +100,28 @@ public interface EntityManagementClient {
    * @param scriptTxt the script text for the update
    */
   void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
+
+  /**
+   * Updates child entities matching field and value with a script.
+   *
+   * @param indexName the index name
+   * @param fieldAndValue field-value pair to match documents
+   * @param updates pair of script text and parameters
+   */
+  void updateChildren(
+      String indexName,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
+
+  /**
+   * Updates child entities matching field and value with a script across multiple indices.
+   *
+   * @param indexNames list of index names
+   * @param fieldAndValue field-value pair to match documents
+   * @param updates pair of script text and parameters
+   */
+  void updateChildren(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates);
 }
