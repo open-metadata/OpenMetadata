@@ -300,6 +300,9 @@ export const ROUTES = {
   // Entity Bulk Edit
   BULK_EDIT_ENTITY: `/bulk/edit`,
   BULK_EDIT_ENTITY_WITH_FQN: `/bulk/edit/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Settings
+  SETTINGS_SSO: '/settings/sso',
 };
 
 export const SOCKET_EVENTS = {
@@ -349,6 +352,10 @@ export const ENTITY_PATH = {
   testCases: 'testCase',
   domains: 'domain',
   charts: 'chart',
+  directories: 'directory',
+  files: 'file',
+  spreadsheets: 'spreadsheet',
+  worksheets: 'worksheet',
 };
 
 export const VALIDATION_MESSAGES = {

@@ -278,7 +278,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
   private final String allFields;
   private final String
       systemEntityName; // System entity provided by the system that can't be deleted
-  protected final boolean supportsFollowers;
+  protected boolean supportsFollowers;
   protected final boolean supportsVotes;
   protected boolean supportsOwners;
   protected boolean supportsTags;
@@ -4175,6 +4175,45 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
               return esLastUpdate >= entityDbLastUpdate;
             });
     return responseMap.get();
+  }
+
+  /**
+   * Wait for a specific field to have an expected value in the search index.
+   * This is useful for waiting for inherited fields to propagate.
+   *
+   * @param entityId The entity ID to check
+   * @param entityType The entity type
+   * @param fieldName The field name to check
+   * @param expectedValue The expected value of the field
+   */
+  public static void waitForFieldInSearchIndex(
+      UUID entityId, String entityType, String fieldName, Object expectedValue) {
+    Awaitility.await(String.format("Wait for field '%s' to be updated in search index", fieldName))
+        .ignoreExceptions()
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(30))
+        .until(
+            () -> {
+              Map<String, Object> doc = getEntityDocumentFromSearch(entityId, entityType);
+              Object actualValue = doc.get(fieldName);
+
+              // Handle null comparisons
+              if (expectedValue == null) {
+                return actualValue == null;
+              }
+
+              // For collections, compare contents
+              if (expectedValue instanceof List && actualValue instanceof List) {
+                List<?> expectedList = (List<?>) expectedValue;
+                List<?> actualList = (List<?>) actualValue;
+                return expectedList.size() == actualList.size()
+                    && expectedList.containsAll(actualList)
+                    && actualList.containsAll(expectedList);
+              }
+
+              // For other types, use equals
+              return expectedValue.equals(actualValue);
+            });
   }
 
   public static Map<String, Object> getEntityDocumentFromSearch(UUID entityId, String entityType)
