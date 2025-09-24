@@ -1335,6 +1335,7 @@
     "resolved": "सोडवले",
     "resolved-by": "द्वारे सोडवले",
     "resolved-incident-plural": "सोडवलेल्या घटना",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",

@@ -1335,6 +1335,7 @@
     "resolved": "解決済み",
     "resolved-by": "解決者",
     "resolved-incident-plural": "解決済みインシデント",
+    "resolved-with-colon": "Resolved:",
     "resource": "リソース",
     "resource-fqn-or-id": "リソースの FQN または ID",
     "resource-id": "リソース ID",

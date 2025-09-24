@@ -1335,6 +1335,7 @@
     "resolved": "حل شد",
     "resolved-by": "حل شده توسط",
     "resolved-incident-plural": "Resolved Incidents",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",

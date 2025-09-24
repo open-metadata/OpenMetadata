@@ -1335,6 +1335,7 @@
     "resolved": "Çözüldü",
     "resolved-by": "Çözen",
     "resolved-incident-plural": "Çözülmüş Olaylar",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",

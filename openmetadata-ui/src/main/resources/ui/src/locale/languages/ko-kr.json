@@ -1335,6 +1335,7 @@
     "resolved": "해결됨",
     "resolved-by": "해결자",
     "resolved-incident-plural": "해결된 인시던트",
+    "resolved-with-colon": "Resolved:",
     "resource": "Resource",
     "resource-fqn-or-id": "Resource FQN or ID",
     "resource-id": "Resource ID",

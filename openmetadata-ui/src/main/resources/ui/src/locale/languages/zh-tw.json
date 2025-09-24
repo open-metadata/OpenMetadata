@@ -1335,6 +1335,7 @@
     "resolved": "已解決",
     "resolved-by": "解決者",
     "resolved-incident-plural": "已解決的事件",
+    "resolved-with-colon": "Resolved:",
     "resource": "資源",
     "resource-fqn-or-id": "資源 FQN 或 ID",
     "resource-id": "資源 ID",
