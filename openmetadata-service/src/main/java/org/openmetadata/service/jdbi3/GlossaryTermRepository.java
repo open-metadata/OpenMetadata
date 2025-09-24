@@ -233,14 +233,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
-    if (!update || entity.getEntityStatus() == null) {
-      // If parentTerm or glossary has reviewers set, the glossary term can only be created in
-      // `Draft` mode
-      entity.setEntityStatus(
-          !nullOrEmpty(parentReviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
-    }
     if (!update) {
       checkDuplicateTerms(entity);
+    }
+  }
+
+  @Override
+  protected void setDefaultStatus(GlossaryTerm entity, boolean update) {
+    // If the entityStatus is set as Unprocessed then it is the default value from the POJO
+    if (!update
+        || entity.getEntityStatus() == null
+        || entity.getEntityStatus() == EntityStatus.UNPROCESSED) {
+      // Get reviewers from parent term or glossary to determine appropriate default status
+      List<EntityReference> parentReviewers = null;
+
+      // Get parent reviewers if parent term exists
+      if (entity.getParent() != null) {
+        GlossaryTerm parentTerm =
+            Entity.getEntity(
+                entity.getParent().withType(GLOSSARY_TERM), "reviewers", Include.NON_DELETED);
+        parentReviewers = parentTerm.getReviewers();
+      }
+
+      // Get glossary reviewers if no parent reviewers
+      if (parentReviewers == null && entity.getGlossary() != null) {
+        Glossary glossary =
+            Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
+        parentReviewers = glossary.getReviewers();
+      }
+
+      // If parentTerm or glossary has reviewers set, the glossary term can only be created in
+      // `Draft` mode, otherwise use `Approved`
+      entity.setEntityStatus(
+          !nullOrEmpty(parentReviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
     }
   }
 
