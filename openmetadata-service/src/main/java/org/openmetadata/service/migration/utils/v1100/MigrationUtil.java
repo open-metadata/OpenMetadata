@@ -439,19 +439,19 @@ public class MigrationUtil {
         WorkflowNodeDefinitionInterface versionCheckNode =
             JsonUtils.readValue(
                 """
-                                                    {
-                                                      "type": "automatedTask",
-                                                      "subType": "checkEntityAttributesTask",
-                                                      "name": "CheckIfGlossaryTermIsNew",
-                                                      "displayName": "Check if Glossary Term is New",
-                                                      "config": {
-                                                        "rules": "{\\"==\\":[{\\"var\\":\\"version\\"},0.1]}"
-                                                      },
-                                                      "inputNamespaceMap": {
-                                                        "relatedEntity": "global"
-                                                      }
-                                                    }
-                                                    """,
+                                                            {
+                                                              "type": "automatedTask",
+                                                              "subType": "checkEntityAttributesTask",
+                                                              "name": "CheckIfGlossaryTermIsNew",
+                                                              "displayName": "Check if Glossary Term is New",
+                                                              "config": {
+                                                                "rules": "{\\"==\\":[{\\"var\\":\\"version\\"},0.1]}"
+                                                              },
+                                                              "inputNamespaceMap": {
+                                                                "relatedEntity": "global"
+                                                              }
+                                                            }
+                                                            """,
                 WorkflowNodeDefinitionInterface.class);
         nodes.add(versionCheckNode);
         LOG.info("Added new node: CheckIfGlossaryTermIsNew");
@@ -468,20 +468,21 @@ public class MigrationUtil {
         WorkflowNodeDefinitionInterface inReviewUpdateNode =
             JsonUtils.readValue(
                 """
-                                                    {
-                                                      "type": "automatedTask",
-                                                      "subType": "setGlossaryTermStatusTask",
-                                                      "name": "SetGlossaryTermStatusToInReviewForUpdate",
-                                                      "displayName": "Set Status to 'In Review' (Update)",
-                                                      "config": {
-                                                        "glossaryTermStatus": "In Review"
-                                                      },
-                                                      "inputNamespaceMap": {
-                                                        "relatedEntity": "global",
-                                                        "updatedBy": "global"
-                                                      }
-                                                    }
-                                                    """,
+                                                            {
+                                                              "type": "automatedTask",
+                                                              "subType": "setEntityAttributeTask",
+                                                              "name": "SetGlossaryTermStatusToInReviewForUpdate",
+                                                              "displayName": "Set Status to 'In Review' (Update)",
+                                                              "config": {
+                                                                "fieldName": "status",
+                                                                "fieldValue": "In Review"
+                                                              },
+                                                              "inputNamespaceMap": {
+                                                                "relatedEntity": "global",
+                                                                "updatedBy": "global"
+                                                              }
+                                                            }
+                                                            """,
                 WorkflowNodeDefinitionInterface.class);
         nodes.add(inReviewUpdateNode);
         LOG.info("Added new node: SetGlossaryTermStatusToInReviewForUpdate");
@@ -497,28 +498,27 @@ public class MigrationUtil {
         WorkflowNodeDefinitionInterface unifiedApprovalNode =
             JsonUtils.readValue(
                 """
-                                                    {
-                                                      "type": "userTask",
-                                                      "subType": "userApprovalTask",
-                                                      "name": "ApprovalForUpdates",
-                                                      "displayName": "Review Changes for Updates",
-                                                      "config": {
-                                                        "assignees": {
-                                                          "addReviewers": true
-                                                        },
-                                                        "approvalThreshold": 1,
-                                                        "rejectionThreshold": 1,
-                                                        "supportsSuggestions": true
-                                                      },
-                                                      "inputNamespaceMap": {
-                                                        "relatedEntity": "global"
-                                                      },
-                                                      "output": ["updatedBy"]
-                                                    }
-                                                    """,
+                                                            {
+                                                              "type": "userTask",
+                                                              "subType": "userApprovalTask",
+                                                              "name": "ApprovalForUpdates",
+                                                              "displayName": "Review Changes for Updates",
+                                                              "config": {
+                                                                "assignees": {
+                                                                  "addReviewers": true
+                                                                },
+                                                                "approvalThreshold": 1,
+                                                                "rejectionThreshold": 1
+                                                              },
+                                                              "inputNamespaceMap": {
+                                                                "relatedEntity": "global"
+                                                              },
+                                                              "output": ["updatedBy"]
+                                                            }
+                                                            """,
                 WorkflowNodeDefinitionInterface.class);
         nodes.add(unifiedApprovalNode);
-        LOG.info("Added new node: ApprovalForUpdates (unified task with suggestions)");
+        LOG.info("Added new node: ApprovalForUpdates");
         nodesAdded = true;
       } catch (Exception e) {
         LOG.error("Failed to add ApprovalForUpdates node", e);
@@ -531,18 +531,18 @@ public class MigrationUtil {
         WorkflowNodeDefinitionInterface rollbackNode =
             JsonUtils.readValue(
                 """
-                                                    {
-                                                      "type": "automatedTask",
-                                                      "subType": "rollbackEntityTask",
-                                                      "name": "RollbackGlossaryTermChanges",
-                                                      "displayName": "Rollback Glossary Term Changes",
-                                                      "config": {},
-                                                      "inputNamespaceMap": {
-                                                        "relatedEntity": "global",
-                                                        "updatedBy": "ApprovalForUpdates"
-                                                      }
-                                                    }
-                                                    """,
+                                                            {
+                                                              "type": "automatedTask",
+                                                              "subType": "rollbackEntityTask",
+                                                              "name": "RollbackGlossaryTermChanges",
+                                                              "displayName": "Rollback Glossary Term Changes",
+                                                              "config": {},
+                                                              "inputNamespaceMap": {
+                                                                "relatedEntity": "global",
+                                                                "updatedBy": "ApprovalForUpdates"
+                                                              }
+                                                            }
+                                                            """,
                 WorkflowNodeDefinitionInterface.class);
         nodes.add(rollbackNode);
         LOG.info("Added new node: RollbackGlossaryTermChanges");
@@ -559,20 +559,21 @@ public class MigrationUtil {
         WorkflowNodeDefinitionInterface approvedDetailedNode =
             JsonUtils.readValue(
                 """
-                                                    {
-                                                      "type": "automatedTask",
-                                                      "subType": "setGlossaryTermStatusTask",
-                                                      "name": "SetGlossaryTermStatusToApprovedAfterReview",
-                                                      "displayName": "Set Status to 'Approved' (After Review)",
-                                                      "config": {
-                                                        "glossaryTermStatus": "Approved"
-                                                      },
-                                                      "inputNamespaceMap": {
-                                                        "relatedEntity": "global",
-                                                        "updatedBy": "ApprovalForUpdates"
-                                                      }
-                                                    }
-                                                    """,
+                                                            {
+                                                              "type": "automatedTask",
+                                                              "subType": "setEntityAttributeTask",
+                                                              "name": "SetGlossaryTermStatusToApprovedAfterReview",
+                                                              "displayName": "Set Status to 'Approved' (After Review)",
+                                                              "config": {
+                                                                "fieldName": "status",
+                                                                "fieldValue": "Approved"
+                                                              },
+                                                              "inputNamespaceMap": {
+                                                                "relatedEntity": "global",
+                                                                "updatedBy": "ApprovalForUpdates"
+                                                              }
+                                                            }
+                                                            """,
                 WorkflowNodeDefinitionInterface.class);
         nodes.add(approvedDetailedNode);
         LOG.info("Added new node: SetGlossaryTermStatusToApprovedAfterReview");
@@ -588,13 +589,13 @@ public class MigrationUtil {
         WorkflowNodeDefinitionInterface rollbackEndNode =
             JsonUtils.readValue(
                 """
-                                                    {
-                                                      "type": "endEvent",
-                                                      "subType": "endEvent",
-                                                      "name": "RollbackEnd",
-                                                      "displayName": "Changes Rolled Back"
-                                                    }
-                                                    """,
+                                                            {
+                                                              "type": "endEvent",
+                                                              "subType": "endEvent",
+                                                              "name": "RollbackEnd",
+                                                              "displayName": "Changes Rolled Back"
+                                                            }
+                                                            """,
                 WorkflowNodeDefinitionInterface.class);
         nodes.add(rollbackEndNode);
         LOG.info("Added new node: RollbackEnd");
@@ -610,13 +611,13 @@ public class MigrationUtil {
         WorkflowNodeDefinitionInterface changeReviewEndNode =
             JsonUtils.readValue(
                 """
-                                                    {
-                                                      "type": "endEvent",
-                                                      "subType": "endEvent",
-                                                      "name": "ChangeReviewEnd",
-                                                      "displayName": "Approved After Change Review"
-                                                    }
-                                                    """,
+                                                            {
+                                                              "type": "endEvent",
+                                                              "subType": "endEvent",
+                                                              "name": "ChangeReviewEnd",
+                                                              "displayName": "Approved After Change Review"
+                                                            }
+                                                            """,
                 WorkflowNodeDefinitionInterface.class);
         nodes.add(changeReviewEndNode);
         LOG.info("Added new node: ChangeReviewEnd");
@@ -837,14 +838,16 @@ public class MigrationUtil {
               boolean triggerModified = false;
 
               // Check if there's an entityType field (old format)
-              if (configObj.has("entityType") && !configObj.has("entityTypes")) {
+              if (configObj.has("entityType")) {
                 String entityType = configObj.get("entityType").asText();
-                configObj.remove("entityType");
 
                 // Create entityTypes array with the single value
                 ArrayNode entityTypesArray = mapper.createArrayNode();
                 entityTypesArray.add(entityType);
                 configObj.set("entityTypes", entityTypesArray);
+
+                // Remove the old entityType field
+                configObj.remove("entityType");
 
                 LOG.info(
                     "Updated trigger from entityType='{}' to entityTypes=['{}']",
