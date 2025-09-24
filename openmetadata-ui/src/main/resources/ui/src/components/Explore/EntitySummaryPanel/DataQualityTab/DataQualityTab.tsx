@@ -580,7 +580,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                   <Row className="incident-status-row-2">
                     <Col span={24}>
                       <Typography.Text className="incident-status-label">
-                        {t('label.resolved')}
+                        {t('label.resolved-with-colon')}
                       </Typography.Text>
                       <Typography.Text className="resolved-incident-count m-l-sm">
                         {incidentCounts.resolved.toString().padStart(2, '0')}

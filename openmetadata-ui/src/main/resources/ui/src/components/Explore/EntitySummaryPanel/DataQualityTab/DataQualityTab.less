@@ -18,7 +18,7 @@
 }
 .incident-status-row-1 {
   border-radius: 8px;
-  border: 1px solid var(--Neutral-150, #e3e8f0);
+  border-bottom: 1px solid var(--Neutral-150, #e3e8f0);
   background: #fff;
 }
 .incident-test-title {
@@ -37,7 +37,7 @@
 .resolved-incident-count {
   font-size: 14px;
   font-weight: 600;
-  color: #21263c;
+  color: #21263c !important;
 }
 .test-case-count {
   width: 16px;
@@ -47,7 +47,7 @@
   border-radius: 9px;
   margin-left: 4px;
   color: #21263c;
-  font-size: 11px !important;
+  font-size: 10px !important;
   &.active {
     color: #3a8ce9;
   }
@@ -162,17 +162,17 @@
   }
   .filter-button {
     width: 100%;
-    padding: 4px;
-    border-radius: 56px;
+    padding: 0 7px;
+    border-radius: 16px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     border: 1px solid #e3e8f0;
     background: #ffffff;
     color: #21263c;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    span {
-      font-size: 12px;
-      font-weight: 500;
-    }
+    // transition: all 0.3s ease;
+    font-size: 12px;
     &.active {
       background: #1b6ce7;
       border-color: #1b6ce7;
@@ -263,17 +263,17 @@
     .test-cases-section {
       .incident-filter-button {
         padding: 0px 7px;
-        border-radius: 56px;
+        border-radius: 16px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         border: 1px solid #e3e8f0;
         background: #ffffff;
         color: #21263c;
         font-weight: 500;
         transition: all 0.3s ease;
-
-        span {
-          font-size: 12px;
-          font-weight: 500;
-        }
+        font-size: 12px;
 
         &.active {
           background: #1b6ce7;
@@ -310,7 +310,7 @@
     background: #ffffff;
     transition: all 0.3s ease;
     margin-bottom: 12px;
-
+    overflow: hidden;
     .test-case-card-content {
       width: 100%;
       .test-case-header {

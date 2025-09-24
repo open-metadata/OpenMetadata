@@ -315,7 +315,6 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         ) : (
           <div className="owners-display">
             <OwnerLabel
-              isCompactView
               avatarSize={19}
               className="owner-label-section"
               hasPermission={hasPermission}

@@ -65,11 +65,12 @@
 
   .ant-card-body {
     padding-top: 0;
-    padding: 0;
+    padding: 0 !important;
     display: inherit;
     flex-direction: row;
     .scrollable-card-body();
     width: 100%;
+    scrollbar-width: none;
   }
 
   .content-area {
@@ -82,7 +83,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
     height: 100%;
-
+    border-radius: 0px;
     &::-webkit-scrollbar {
       width: 0px;
       background: transparent;
@@ -300,6 +301,9 @@
 
 // Lineage Tab Styles
 .lineage-filter-button-count {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 16px;
   height: 16px;
   flex-shrink: 0;
