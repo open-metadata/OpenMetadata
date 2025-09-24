@@ -271,6 +271,41 @@ public class WorkflowHandler {
             triggerWorkflowKey,
             e.getMessage());
       }
+
+      // Step 3: Delete old deployments to prevent confusion with old process definitions
+      // This is critical for periodicBatchEntity triggers that may have changed format
+      try {
+        // Delete old trigger deployments without entity type suffix
+        List<ProcessDefinition> oldTriggerDefinitions =
+            repositoryService
+                .createProcessDefinitionQuery()
+                .processDefinitionKey(triggerWorkflowKey)
+                .list();
+
+        for (ProcessDefinition pd : oldTriggerDefinitions) {
+          LOG.info(
+              "Removing old trigger deployment: {} (version: {})", pd.getKey(), pd.getVersion());
+          repositoryService.deleteDeployment(pd.getDeploymentId(), true);
+        }
+
+        // Delete old main workflow deployments
+        List<ProcessDefinition> oldMainDefinitions =
+            repositoryService
+                .createProcessDefinitionQuery()
+                .processDefinitionKey(workflowName)
+                .list();
+
+        for (ProcessDefinition pd : oldMainDefinitions) {
+          LOG.info(
+              "Removing old main workflow deployment: {} (version: {})",
+              pd.getKey(),
+              pd.getVersion());
+          repositoryService.deleteDeployment(pd.getDeploymentId(), true);
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Error removing old deployments for workflow {}: {}", workflowName, e.getMessage());
+      }
     }
 
     // Deploy Main Workflow
@@ -1035,7 +1070,7 @@ public class WorkflowHandler {
     List<ProcessDefinition> processDefinitions =
         repositoryService
             .createProcessDefinitionQuery()
-            .processDefinitionKeyLike(baseProcessKey + "%")
+            .processDefinitionKeyLike(baseProcessKey + "-%")
             .latestVersion()
             .list();
 
