@@ -56,368 +56,367 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
   @Override
   public void createEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      try {
-        client.update(
-            u ->
-                u.index(indexName)
-                    .id(docId)
-                    .docAsUpsert(true)
-                    .refresh(Refresh.True)
-                    .doc(toJsonData(doc)),
-            Map.class);
-        LOG.info(
-            "Successfully created entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId);
-      } catch (IOException e) {
-        LOG.error(
-            "Failed to create entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId,
-            e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot create entity.");
+      return;
+    }
+
+    try {
+      client.update(
+          u ->
+              u.index(indexName)
+                  .id(docId)
+                  .docAsUpsert(true)
+                  .refresh(Refresh.True)
+                  .doc(toJsonData(doc)),
+          Map.class);
+      LOG.info(
+          "Successfully created entity in ElasticSearch for index: {}, docId: {}",
+          indexName,
+          docId);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to create entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
     }
   }
 
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (isClientAvailable) {
-      try {
-        List<BulkOperation> operations = new ArrayList<>();
-        for (Map<String, String> docAndId : docsAndIds) {
-          Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
-          operations.add(
-              BulkOperation.of(
-                  b ->
-                      b.index(
-                          i ->
-                              i.index(indexName)
-                                  .id(entry.getKey())
-                                  .document(toJsonData(entry.getValue())))));
-        }
-
-        BulkResponse response =
-            client.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
-
-        if (response.errors()) {
-          String errorMessage =
-              response.items().stream()
-                  .filter(item -> item.error() != null)
-                  .map(
-                      item ->
-                          "Failed to index document " + item.id() + ": " + item.error().reason())
-                  .collect(Collectors.joining("; "));
-          LOG.error("Failed to create entities in ElasticSearch: {}", errorMessage);
-        } else {
-          LOG.info("Successfully created {} entities in ElasticSearch", docsAndIds.size());
-        }
-      } catch (IOException e) {
-        LOG.error("Failed to create entities in ElasticSearch for index: {} ", indexName, e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot create entities.");
+      return;
+    }
+
+    try {
+      List<BulkOperation> operations = new ArrayList<>();
+      for (Map<String, String> docAndId : docsAndIds) {
+        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
+        operations.add(
+            BulkOperation.of(
+                b ->
+                    b.index(
+                        i ->
+                            i.index(indexName)
+                                .id(entry.getKey())
+                                .document(toJsonData(entry.getValue())))));
+      }
+
+      BulkResponse response =
+          client.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
+
+      if (response.errors()) {
+        String errorMessage =
+            response.items().stream()
+                .filter(item -> item.error() != null)
+                .map(item -> "Failed to index document " + item.id() + ": " + item.error().reason())
+                .collect(Collectors.joining("; "));
+        LOG.error("Failed to create entities in ElasticSearch: {}", errorMessage);
+      } else {
+        LOG.info("Successfully created {} entities in ElasticSearch", docsAndIds.size());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to create entities in ElasticSearch for index: {} ", indexName, e);
     }
   }
 
   @Override
   public void createTimeSeriesEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      try {
-        client.update(
-            u ->
-                u.index(indexName)
-                    .id(docId)
-                    .docAsUpsert(true)
-                    .refresh(Refresh.True)
-                    .doc(toJsonData(doc)),
-            Map.class);
-        LOG.info(
-            "Successfully created time series entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId);
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to create time series entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId,
-            e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot create time series entity.");
+      return;
+    }
+
+    try {
+      client.update(
+          u ->
+              u.index(indexName)
+                  .id(docId)
+                  .docAsUpsert(true)
+                  .refresh(Refresh.True)
+                  .doc(toJsonData(doc)),
+          Map.class);
+      LOG.info(
+          "Successfully created time series entity in ElasticSearch for index: {}, docId: {}",
+          indexName,
+          docId);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to create time series entity in ElasticSearch for index: {}, docId: {}",
+          indexName,
+          docId,
+          e);
     }
   }
 
   @Override
   public void deleteEntity(String indexName, String docId) {
-    if (isClientAvailable) {
-      try {
-        DeleteResponse response =
-            client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.WaitFor));
-        LOG.info(
-            "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
-            indexName,
-            docId,
-            response.result());
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to delete entity from ElasticSearch for index: {}, docId: {}, error: {}",
-            indexName,
-            docId,
-            e.getMessage(),
-            e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot delete entity.");
+      return;
+    }
+
+    try {
+      DeleteResponse response =
+          client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.WaitFor));
+      LOG.info(
+          "Successfully deleted entity from ElasticSearch for index: {}, docId: {}, result: {}",
+          indexName,
+          docId,
+          response.result());
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to delete entity from ElasticSearch for index: {}, docId: {}, error: {}",
+          indexName,
+          docId,
+          e.getMessage(),
+          e);
     }
   }
 
   @Override
   public void deleteEntityByFields(
       List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
-      try {
-        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
-        for (Pair<String, String> p : fieldAndValue) {
-          boolQueryBuilder.must(
-              Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
-        }
-
-        DeleteByQueryResponse response =
-            client.deleteByQuery(
-                d ->
-                    d.index(indexNames).query(q -> q.bool(boolQueryBuilder.build())).refresh(true));
-
-        LOG.info(
-            "DeleteByQuery response From ES - Deleted: {}, Failures: {}",
-            response.deleted(),
-            response.failures().size());
-
-        if (!response.failures().isEmpty()) {
-          String failureDetails =
-              response.failures().stream()
-                  .map(BulkIndexByScrollFailure::toString)
-                  .collect(Collectors.joining("; "));
-          LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
-        }
-
-      } catch (IOException e) {
-        LOG.error("Failed to delete entities by fields using new ES client", e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot delete entities by fields.");
+      return;
+    }
+
+    try {
+      BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+      for (Pair<String, String> p : fieldAndValue) {
+        boolQueryBuilder.must(
+            Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+      }
+
+      DeleteByQueryResponse response =
+          client.deleteByQuery(
+              d -> d.index(indexNames).query(q -> q.bool(boolQueryBuilder.build())).refresh(true));
+
+      LOG.info(
+          "DeleteByQuery response From ES - Deleted: {}, Failures: {}",
+          response.deleted(),
+          response.failures().size());
+
+      if (!response.failures().isEmpty()) {
+        String failureDetails =
+            response.failures().stream()
+                .map(BulkIndexByScrollFailure::toString)
+                .collect(Collectors.joining("; "));
+        LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Failed to delete entities by fields using new ES client", e);
     }
   }
 
   @Override
   public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
-    if (isClientAvailable) {
-      try {
-        DeleteByQueryResponse response =
-            client.deleteByQuery(
-                d ->
-                    d.index(indexName)
-                        .query(
-                            q ->
-                                q.prefix(
-                                    p ->
-                                        p.field("fullyQualifiedName.keyword")
-                                            .value(fqnPrefix.toLowerCase())))
-                        .refresh(true));
-
-        LOG.info(
-            "DeleteByQuery by FQN prefix response from ES - Deleted: {}, Failures: {}",
-            response.deleted(),
-            response.failures().size());
-
-        if (!response.failures().isEmpty()) {
-          String failureDetails =
-              response.failures().stream()
-                  .map(BulkIndexByScrollFailure::toString)
-                  .collect(Collectors.joining("; "));
-          LOG.error("DeleteByQuery by FQN prefix encountered failures: {}", failureDetails);
-        }
-
-      } catch (IOException e) {
-        LOG.error("Failed to delete entities by FQN prefix using ES client", e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot delete entities by FQN prefix.");
+      return;
+    }
+
+    try {
+      DeleteByQueryResponse response =
+          client.deleteByQuery(
+              d ->
+                  d.index(indexName)
+                      .query(
+                          q ->
+                              q.prefix(
+                                  p ->
+                                      p.field("fullyQualifiedName.keyword")
+                                          .value(fqnPrefix.toLowerCase())))
+                      .refresh(true));
+
+      LOG.info(
+          "DeleteByQuery by FQN prefix response from ES - Deleted: {}, Failures: {}",
+          response.deleted(),
+          response.failures().size());
+
+      if (!response.failures().isEmpty()) {
+        String failureDetails =
+            response.failures().stream()
+                .map(BulkIndexByScrollFailure::toString)
+                .collect(Collectors.joining("; "));
+        LOG.error("DeleteByQuery by FQN prefix encountered failures: {}", failureDetails);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Failed to delete entities by FQN prefix using ES client", e);
     }
   }
 
   @Override
   public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
-    if (isClientAvailable) {
-      try {
-        DeleteByQueryResponse response =
-            client.deleteByQuery(
-                d ->
-                    d.index(indexName)
-                        .query(
-                            q ->
-                                q.script(
-                                    s ->
-                                        s.script(
-                                            script ->
-                                                script.inline(
-                                                    inline ->
-                                                        inline
-                                                            .lang(ScriptLanguage.Painless)
-                                                            .source(scriptTxt)
-                                                            .params(
-                                                                params.entrySet().stream()
-                                                                    .collect(
-                                                                        Collectors.toMap(
-                                                                            Map.Entry::getKey,
-                                                                            entry ->
-                                                                                JsonData.of(
-                                                                                    entry
-                                                                                        .getValue()))))))))
-                        .refresh(true));
-
-        LOG.info(
-            "DeleteByQuery by script response from ES - Deleted: {}, Failures: {}",
-            response.deleted(),
-            response.failures().size());
-
-        if (!response.failures().isEmpty()) {
-          String failureDetails =
-              response.failures().stream()
-                  .map(BulkIndexByScrollFailure::toString)
-                  .collect(Collectors.joining("; "));
-          LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
-        }
-      } catch (IOException e) {
-        LOG.error("Failed to delete entities by script using ES client", e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot delete entities by script.");
+      return;
+    }
+
+    try {
+      DeleteByQueryResponse response =
+          client.deleteByQuery(
+              d ->
+                  d.index(indexName)
+                      .query(
+                          q ->
+                              q.script(
+                                  s ->
+                                      s.script(
+                                          script ->
+                                              script.inline(
+                                                  inline ->
+                                                      inline
+                                                          .lang(ScriptLanguage.Painless)
+                                                          .source(scriptTxt)
+                                                          .params(
+                                                              params.entrySet().stream()
+                                                                  .collect(
+                                                                      Collectors.toMap(
+                                                                          Map.Entry::getKey,
+                                                                          entry ->
+                                                                              JsonData.of(
+                                                                                  entry
+                                                                                      .getValue()))))))))
+                      .refresh(true));
+
+      LOG.info(
+          "DeleteByQuery by script response from ES - Deleted: {}, Failures: {}",
+          response.deleted(),
+          response.failures().size());
+
+      if (!response.failures().isEmpty()) {
+        String failureDetails =
+            response.failures().stream()
+                .map(BulkIndexByScrollFailure::toString)
+                .collect(Collectors.joining("; "));
+        LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete entities by script using ES client", e);
     }
   }
 
   @Override
   public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt) {
-    if (isClientAvailable) {
-      try {
-        client.update(
-            u ->
-                u.index(indexName)
-                    .id(docId)
-                    .refresh(Refresh.True)
-                    .script(
-                        s ->
-                            s.inline(
-                                inline ->
-                                    inline
-                                        .lang(ScriptLanguage.Painless)
-                                        .source(scriptTxt)
-                                        .params(new HashMap<>()))),
-            Map.class);
-        LOG.info(
-            "Successfully soft deleted/restored entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId);
-      } catch (IOException | ElasticsearchException e) {
-        LOG.error(
-            "Failed to soft delete/restore entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId,
-            e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot soft delete/restore entity.");
+      return;
+    }
+
+    try {
+      client.update(
+          u ->
+              u.index(indexName)
+                  .id(docId)
+                  .refresh(Refresh.True)
+                  .script(
+                      s ->
+                          s.inline(
+                              inline ->
+                                  inline
+                                      .lang(ScriptLanguage.Painless)
+                                      .source(scriptTxt)
+                                      .params(new HashMap<>()))),
+          Map.class);
+      LOG.info(
+          "Successfully soft deleted/restored entity in ElasticSearch for index: {}, docId: {}",
+          indexName,
+          docId);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to soft delete/restore entity in ElasticSearch for index: {}, docId: {}",
+          indexName,
+          docId,
+          e);
     }
   }
 
   @Override
   public void softDeleteOrRestoreChildren(
       List<String> indexNames, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
-      try {
-        BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
-
-        for (Pair<String, String> p : fieldAndValue) {
-          boolQueryBuilder.must(
-              Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
-        }
-
-        UpdateByQueryResponse response =
-            client.updateByQuery(
-                u ->
-                    u.index(indexNames)
-                        .query(q -> q.bool(boolQueryBuilder.build()))
-                        .script(
-                            s ->
-                                s.inline(
-                                    inline ->
-                                        inline
-                                            .lang(ScriptLanguage.Painless)
-                                            .source(scriptTxt)
-                                            .params(new HashMap<>())))
-                        .refresh(true));
-
-        LOG.info(
-            "Successfully soft deleted/restored children in ElasticSearch for indices: {}, updated documents: {}",
-            indexNames,
-            response.updated());
-        if (!response.failures().isEmpty()) {
-          String failureDetails =
-              response.failures().stream()
-                  .map(BulkIndexByScrollFailure::toString)
-                  .collect(Collectors.joining("; "));
-          LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
-        }
-
-      } catch (IOException | ElasticsearchException e) {
-        LOG.error(
-            "Failed to soft delete/restore children in ElasticSearch for indices: {}",
-            indexNames,
-            e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot soft delete/restore children.");
+      return;
+    }
+
+    try {
+      BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+
+      for (Pair<String, String> p : fieldAndValue) {
+        boolQueryBuilder.must(
+            Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+      }
+
+      UpdateByQueryResponse response =
+          client.updateByQuery(
+              u ->
+                  u.index(indexNames)
+                      .query(q -> q.bool(boolQueryBuilder.build()))
+                      .script(
+                          s ->
+                              s.inline(
+                                  inline ->
+                                      inline
+                                          .lang(ScriptLanguage.Painless)
+                                          .source(scriptTxt)
+                                          .params(new HashMap<>())))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully soft deleted/restored children in ElasticSearch for indices: {}, updated documents: {}",
+          indexNames,
+          response.updated());
+      if (!response.failures().isEmpty()) {
+        String failureDetails =
+            response.failures().stream()
+                .map(BulkIndexByScrollFailure::toString)
+                .collect(Collectors.joining("; "));
+        LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
+      }
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to soft delete/restore children in ElasticSearch for indices: {}", indexNames, e);
     }
   }
 
   @Override
   public void updateEntity(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    if (isClientAvailable) {
-      try {
-        Map<String, JsonData> params = convertToJsonDataMap(doc);
-
-        client.update(
-            u ->
-                u.index(indexName)
-                    .id(docId)
-                    .refresh(Refresh.True)
-                    .scriptedUpsert(true)
-                    .script(
-                        s ->
-                            s.inline(
-                                inline ->
-                                    inline
-                                        .lang(ScriptLanguage.Painless)
-                                        .source(scriptTxt)
-                                        .params(params))),
-            Map.class);
-
-        LOG.info(
-            "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId);
-      } catch (IOException | ElasticsearchException e) {
-        LOG.error(
-            "Failed to update entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId,
-            e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot update entity.");
+      return;
+    }
+
+    try {
+      Map<String, JsonData> params = convertToJsonDataMap(doc);
+
+      client.update(
+          u ->
+              u.index(indexName)
+                  .id(docId)
+                  .refresh(Refresh.True)
+                  .scriptedUpsert(true)
+                  .script(
+                      s ->
+                          s.inline(
+                              inline ->
+                                  inline
+                                      .lang(ScriptLanguage.Painless)
+                                      .source(scriptTxt)
+                                      .params(params))),
+          Map.class);
+
+      LOG.info(
+          "Successfully updated entity in ElasticSearch for index: {}, docId: {}",
+          indexName,
+          docId);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to update entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
     }
   }
 
@@ -426,37 +425,38 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       String indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
-    if (isClientAvailable) {
-      try {
-        Map<String, JsonData> params =
-            convertToJsonDataMap(updates.getValue() == null ? new HashMap<>() : updates.getValue());
-
-        client.updateByQuery(
-            u ->
-                u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                    .query(
-                        q ->
-                            q.match(
-                                m ->
-                                    m.field(fieldAndValue.getKey())
-                                        .query(fieldAndValue.getValue())
-                                        .operator(Operator.And)))
-                    .script(
-                        s ->
-                            s.inline(
-                                inline ->
-                                    inline
-                                        .lang(ScriptLanguage.Painless)
-                                        .source(updates.getKey())
-                                        .params(params)))
-                    .refresh(true));
-
-        LOG.info("Successfully updated children in ElasticSearch for index: {}", indexName);
-      } catch (IOException e) {
-        LOG.error("Failed to update children in ElasticSearch for index: {}", indexName, e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot update children.");
+      return;
+    }
+
+    try {
+      Map<String, JsonData> params =
+          convertToJsonDataMap(updates.getValue() == null ? new HashMap<>() : updates.getValue());
+
+      client.updateByQuery(
+          u ->
+              u.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                  .query(
+                      q ->
+                          q.match(
+                              m ->
+                                  m.field(fieldAndValue.getKey())
+                                      .query(fieldAndValue.getValue())
+                                      .operator(Operator.And)))
+                  .script(
+                      s ->
+                          s.inline(
+                              inline ->
+                                  inline
+                                      .lang(ScriptLanguage.Painless)
+                                      .source(updates.getKey())
+                                      .params(params)))
+                  .refresh(true));
+
+      LOG.info("Successfully updated children in ElasticSearch for index: {}", indexName);
+    } catch (Exception e) {
+      LOG.error("Failed to update children in ElasticSearch for index: {}", indexName, e);
     }
   }
 
@@ -465,64 +465,65 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       List<String> indexNames,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
-    if (isClientAvailable) {
-      try {
-        Map<String, JsonData> params =
-            convertToJsonDataMap(updates.getValue() == null ? new HashMap<>() : updates.getValue());
-
-        client.updateByQuery(
-            u ->
-                u.index(indexNames)
-                    .query(
-                        q ->
-                            q.match(
-                                m ->
-                                    m.field(fieldAndValue.getKey())
-                                        .query(fieldAndValue.getValue())
-                                        .operator(Operator.And)))
-                    .script(
-                        s ->
-                            s.inline(
-                                inline ->
-                                    inline
-                                        .lang(ScriptLanguage.Painless)
-                                        .source(updates.getKey())
-                                        .params(params)))
-                    .refresh(true));
-
-        LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
-      } catch (IOException e) {
-        LOG.error("Failed to update children in ElasticSearch for indices: {}", indexNames, e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
+      return;
+    }
+
+    try {
+      Map<String, JsonData> params =
+          convertToJsonDataMap(updates.getValue() == null ? new HashMap<>() : updates.getValue());
+
+      client.updateByQuery(
+          u ->
+              u.index(indexNames)
+                  .query(
+                      q ->
+                          q.match(
+                              m ->
+                                  m.field(fieldAndValue.getKey())
+                                      .query(fieldAndValue.getValue())
+                                      .operator(Operator.And)))
+                  .script(
+                      s ->
+                          s.inline(
+                              inline ->
+                                  inline
+                                      .lang(ScriptLanguage.Painless)
+                                      .source(updates.getKey())
+                                      .params(params)))
+                  .refresh(true));
+
+      LOG.info("Successfully updated children in ElasticSearch for indices: {}", indexNames);
+    } catch (Exception e) {
+      LOG.error("Failed to update children in ElasticSearch for indices: {}", indexNames, e);
     }
   }
 
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
-    if (isClientAvailable) {
-      try {
-        GetResponse<Map> response =
-            client.get(
-                g ->
-                    g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
-                        .id(entityId),
-                Map.class);
-
-        if (response.found()) {
-          return Response.status(Response.Status.OK).entity(response.source()).build();
-        }
-      } catch (ElasticsearchException e) {
-        if (e.status() == 404) {
-          throw new SearchIndexNotFoundException(
-              String.format("Failed to find doc with id %s", entityId));
-        } else {
-          throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-        }
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot get document by ID.");
+      return getResponse(Response.Status.NOT_FOUND, "Document not found.");
+    }
+
+    try {
+      GetResponse<Map> response =
+          client.get(
+              g ->
+                  g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName)).id(entityId),
+              Map.class);
+
+      if (response.found()) {
+        return Response.status(Response.Status.OK).entity(response.source()).build();
+      }
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        throw new SearchIndexNotFoundException(
+            String.format("Failed to find doc with id %s", entityId));
+      } else {
+        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
+      }
     }
     return getResponse(Response.Status.NOT_FOUND, "Document not found.");
   }
@@ -532,49 +533,50 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       String indexName,
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData) {
-    if (isClientAvailable) {
-      try {
-        Map<String, JsonData> params =
-            Collections.singletonMap("entityRelationshipData", JsonData.of(entityRelationshipData));
-
-        UpdateByQueryResponse response =
-            client.updateByQuery(
-                u ->
-                    u.index(indexName)
-                        .query(
-                            q ->
-                                q.match(
-                                    m ->
-                                        m.field(fieldAndValue.getKey())
-                                            .query(fieldAndValue.getValue())
-                                            .operator(Operator.And)))
-                        .script(
-                            s ->
-                                s.inline(
-                                    inline ->
-                                        inline
-                                            .lang(ScriptLanguage.Painless)
-                                            .source(ADD_UPDATE_ENTITY_RELATIONSHIP)
-                                            .params(params)))
-                        .refresh(true));
-
-        LOG.info(
-            "Successfully updated entity relationship in ElasticSearch for index: {}", indexName);
-
-        if (!response.failures().isEmpty()) {
-          String failureDetails =
-              response.failures().stream()
-                  .map(BulkIndexByScrollFailure::toString)
-                  .collect(Collectors.joining("; "));
-          LOG.error("updated entity relationship encountered failures: {}", failureDetails);
-        }
-
-      } catch (IOException e) {
-        LOG.error(
-            "Failed to update entity relationship in ElasticSearch for index: {}", indexName, e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot update entity relationship.");
+      return;
+    }
+
+    try {
+      Map<String, JsonData> params =
+          Collections.singletonMap("entityRelationshipData", JsonData.of(entityRelationshipData));
+
+      UpdateByQueryResponse response =
+          client.updateByQuery(
+              u ->
+                  u.index(indexName)
+                      .query(
+                          q ->
+                              q.match(
+                                  m ->
+                                      m.field(fieldAndValue.getKey())
+                                          .query(fieldAndValue.getValue())
+                                          .operator(Operator.And)))
+                      .script(
+                          s ->
+                              s.inline(
+                                  inline ->
+                                      inline
+                                          .lang(ScriptLanguage.Painless)
+                                          .source(ADD_UPDATE_ENTITY_RELATIONSHIP)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated entity relationship in ElasticSearch for index: {}", indexName);
+
+      if (!response.failures().isEmpty()) {
+        String failureDetails =
+            response.failures().stream()
+                .map(BulkIndexByScrollFailure::toString)
+                .collect(Collectors.joining("; "));
+        LOG.error("updated entity relationship encountered failures: {}", failureDetails);
+      }
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to update entity relationship in ElasticSearch for index: {}", indexName, e);
     }
   }
 
@@ -585,22 +587,23 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       String pipelineName,
       String entityType,
       List<UUID> entityIds) {
-    if (isClientAvailable) {
-      try {
-        List<String> queryIDs = entityIds.stream().map(UUID::toString).collect(Collectors.toList());
-
-        client.reindex(
-            r ->
-                r.source(s -> s.index(sourceIndices).query(q -> q.ids(ids -> ids.values(queryIDs))))
-                    .dest(d -> d.index(destinationIndex).pipeline(pipelineName))
-                    .refresh(true));
-
-        LOG.info("Reindex {} entities of type {} to vector index", entityIds.size(), entityType);
-      } catch (IOException e) {
-        LOG.error("Failed to reindex entities: {}", e.getMessage(), e);
-      }
-    } else {
+    if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot reindex entities.");
+      return;
+    }
+
+    try {
+      List<String> queryIDs = entityIds.stream().map(UUID::toString).collect(Collectors.toList());
+
+      client.reindex(
+          r ->
+              r.source(s -> s.index(sourceIndices).query(q -> q.ids(ids -> ids.values(queryIDs))))
+                  .dest(d -> d.index(destinationIndex).pipeline(pipelineName))
+                  .refresh(true));
+
+      LOG.info("Reindex {} entities of type {} to vector index", entityIds.size(), entityType);
+    } catch (Exception e) {
+      LOG.error("Failed to reindex entities: {}", e.getMessage(), e);
     }
   }
 
