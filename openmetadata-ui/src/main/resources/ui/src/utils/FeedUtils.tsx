@@ -149,6 +149,10 @@ export const buildMentionLink = (entityType: string, entityFqn: string) => {
     const classificationFqn = Fqn.split(entityFqn);
 
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return `${document.location.protocol}//${
+      document.location.host
+    }/knowledge-center/${getEncodedFqn(entityFqn)}`;
   }
 
   return `${document.location.protocol}//${
