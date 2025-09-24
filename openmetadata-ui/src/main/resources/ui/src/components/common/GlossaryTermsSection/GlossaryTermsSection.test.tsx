@@ -227,7 +227,7 @@ describe('GlossaryTermsSection', () => {
   });
 
   describe('Save Flow', () => {
-    it('calls onGlossaryTermsUpdate with merged tags on save', async () => {
+    it('calls onGlossaryTermsUpdate via selection submit and keeps non-glossary tags', async () => {
       const onUpdate = jest.fn().mockResolvedValue(undefined);
 
       render(
@@ -241,27 +241,24 @@ describe('GlossaryTermsSection', () => {
 
       clickHeaderEdit();
 
-      // Click save (second action button)
-      const actions = document.querySelectorAll(
-        '.edit-actions .cursor-pointer'
-      );
-      fireEvent.click(actions[1] as HTMLElement);
+      // Submit string selections from form
+      fireEvent.click(screen.getByTestId('tsf-submit-strings'));
 
       await waitFor(() => {
         expect(onUpdate).toHaveBeenCalled();
 
         const arg = onUpdate.mock.calls[0][0];
 
-        // Should contain non-glossary and original glossary terms
+        // Should contain non-glossary tag and new selections
         expect(
           arg.find((t: any) => t.tagFQN === 'Classification.PII')
         ).toBeTruthy();
-        expect(arg.find((t: any) => t.tagFQN === 'g.customer')).toBeTruthy();
-        expect(arg.find((t: any) => t.tagFQN === 'g.order')).toBeTruthy();
+        expect(arg.find((t: any) => t.tagFQN === 'g.term.1')).toBeTruthy();
+        expect(arg.find((t: any) => t.tagFQN === 'g.term.2')).toBeTruthy();
       });
     });
 
-    it('shows error toast on save error', async () => {
+    it('shows error toast on selection submit error', async () => {
       const error = new Error('fail');
       const onUpdate = jest.fn().mockRejectedValue(error);
 
@@ -275,10 +272,7 @@ describe('GlossaryTermsSection', () => {
       );
 
       clickHeaderEdit();
-      const actions = document.querySelectorAll(
-        '.edit-actions .cursor-pointer'
-      );
-      fireEvent.click(actions[1] as HTMLElement);
+      fireEvent.click(screen.getByTestId('tsf-submit-strings'));
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalled();

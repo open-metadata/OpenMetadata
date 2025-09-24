@@ -18,7 +18,6 @@ import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
-import { ReactComponent as TickIcon } from '../../../assets/svg/tick.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
@@ -237,16 +236,14 @@ const TagsSection: React.FC<TagsSectionProps> = ({
     [entityId, entityType, tags, onTagsUpdate, t]
   );
 
-  const handleSave = () => {
-    handleSaveWithTags(editingTags);
-  };
+  // Save now happens via selection change; no explicit save button
 
   const handleCancel = () => {
     setEditingTags(convertToTagItems(tags));
     setIsEditing(false);
   };
 
-  const handleTagSelection = (selectedOptions: unknown) => {
+  const handleTagSelection = async (selectedOptions: unknown) => {
     const options = Array.isArray(selectedOptions)
       ? selectedOptions
       : [selectedOptions];
@@ -256,6 +253,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
       displayName: option.data?.displayName || option.label,
     }));
     setEditingTags(newTags);
+    await handleSaveWithTags(newTags);
   };
 
   if (!tags.length) {
@@ -280,12 +278,6 @@ const TagsSection: React.FC<TagsSectionProps> = ({
                 data-testid="close-icon"
                 onClick={handleCancel}>
                 <CloseIcon />
-              </span>
-              <span
-                className="cursor-pointer"
-                data-testid="tick-icon"
-                onClick={handleSave}>
-                <TickIcon />
               </span>
             </div>
           )}
@@ -343,12 +335,6 @@ const TagsSection: React.FC<TagsSectionProps> = ({
               data-testid="close-icon"
               onClick={handleCancel}>
               <CloseIcon />
-            </span>
-            <span
-              className="cursor-pointer"
-              data-testid="tick-icon"
-              onClick={handleSave}>
-              <TickIcon />
             </span>
           </div>
         )}

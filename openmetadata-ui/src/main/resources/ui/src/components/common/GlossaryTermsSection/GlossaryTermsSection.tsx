@@ -12,12 +12,11 @@
  */
 import { Typography } from 'antd';
 import { AxiosError } from 'axios';
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
-import { ReactComponent as TickIcon } from '../../../assets/svg/tick.svg';
 import {
   LabelType,
   State,
@@ -60,27 +59,58 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     setIsEditing(true);
   };
 
-  const handleSave = useCallback(async () => {
+  // Save now happens via selection submit; no explicit save button
+
+  const handleCancel = () => {
+    setEditingGlossaryTerms(glossaryTerms);
+    setIsEditing(false);
+  };
+
+  const handleGlossaryTermSelection = async (selectedOptions: unknown) => {
     try {
       setIsLoading(true);
+      // TagSelectForm returns the selected options directly
+      const options = Array.isArray(selectedOptions)
+        ? selectedOptions
+        : [selectedOptions];
+
+      const newGlossaryTerms = options.map((option: unknown) => {
+        const optionObj = option as Record<string, unknown>;
+
+        let tagData: any = {
+          tagFQN: (optionObj.value || option) as string,
+          source: TagSource.Glossary,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
+        };
+
+        // Extract additional data from option.data if available (same as TagsContainerV2)
+        if (optionObj.data) {
+          tagData = {
+            ...tagData,
+            name: (optionObj.data as any)?.name,
+            displayName: (optionObj.data as any)?.displayName,
+            description: (optionObj.data as any)?.description,
+            style: (optionObj.data as any)?.style ?? {},
+          };
+        }
+
+        return tagData;
+      });
 
       // Create updated tags array by replacing glossary terms
       const nonGlossaryTags = tags.filter(
         (tag) => tag.source !== TagSource.Glossary
       );
-      const updatedTags = [...nonGlossaryTags, ...editingGlossaryTerms];
+      const updatedTags = [...nonGlossaryTags, ...newGlossaryTerms];
 
-      // Call the callback to update parent component with the new tags
-      // The parent component will handle the API call
+      // Call the callback to update parent component
       if (onGlossaryTermsUpdate) {
         await onGlossaryTermsUpdate(updatedTags);
       }
 
-      // Keep loading state for a brief moment to ensure smooth transition
-      setTimeout(() => {
-        setIsEditing(false);
-        setIsLoading(false);
-      }, 500);
+      setIsEditing(false);
+      setIsLoading(false);
     } catch (error) {
       setIsLoading(false);
       showErrorToast(
@@ -90,55 +120,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         })
       );
     }
-  }, [tags, editingGlossaryTerms, onGlossaryTermsUpdate, t]);
-
-  const handleCancel = () => {
-    setEditingGlossaryTerms(glossaryTerms);
-    setIsEditing(false);
-  };
-
-  const handleGlossaryTermSelection = async (selectedOptions: unknown) => {
-    // TagSelectForm returns the selected options directly
-    const options = Array.isArray(selectedOptions)
-      ? selectedOptions
-      : [selectedOptions];
-
-    const newGlossaryTerms = options.map((option: unknown) => {
-      const optionObj = option as Record<string, unknown>;
-
-      let tagData: any = {
-        tagFQN: (optionObj.value || option) as string,
-        source: TagSource.Glossary,
-        labelType: LabelType.Manual,
-        state: State.Confirmed,
-      };
-
-      // Extract additional data from option.data if available (same as TagsContainerV2)
-      if (optionObj.data) {
-        tagData = {
-          ...tagData,
-          name: (optionObj.data as any)?.name,
-          displayName: (optionObj.data as any)?.displayName,
-          description: (optionObj.data as any)?.description,
-          style: (optionObj.data as any)?.style ?? {},
-        };
-      }
-
-      return tagData;
-    });
-
-    // Create updated tags array by replacing glossary terms
-    const nonGlossaryTags = tags.filter(
-      (tag) => tag.source !== TagSource.Glossary
-    );
-    const updatedTags = [...nonGlossaryTags, ...newGlossaryTerms];
-
-    // Call the callback to update parent component
-    if (onGlossaryTermsUpdate) {
-      await onGlossaryTermsUpdate(updatedTags);
-    }
-
-    setIsEditing(false);
   };
 
   if (!glossaryTerms || !glossaryTerms.length) {
@@ -157,9 +138,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             <div className="edit-actions">
               <span className="cursor-pointer" onClick={handleCancel}>
                 <CloseIcon />
-              </span>
-              <span className="cursor-pointer" onClick={handleSave}>
-                <TickIcon />
               </span>
             </div>
           )}
@@ -210,9 +188,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           <div className="edit-actions">
             <span className="cursor-pointer" onClick={handleCancel}>
               <CloseIcon />
-            </span>
-            <span className="cursor-pointer" onClick={handleSave}>
-              <TickIcon />
             </span>
           </div>
         )}

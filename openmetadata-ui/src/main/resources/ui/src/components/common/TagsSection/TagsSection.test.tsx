@@ -219,11 +219,10 @@ const defaultProps = {
   onTagsUpdate: jest.fn(),
 };
 
-// Helper to click the edit control regardless of icon mock
+// Helper to click the edit control
 const clickEditControl = () => {
-  const el =
-    screen.queryByTestId('edit-icon') || screen.queryByTestId('tick-icon');
-  fireEvent.click(el!);
+  const el = screen.getByTestId('edit-icon');
+  fireEvent.click(el);
 };
 
 const enterEditMode = async () => {
@@ -233,12 +232,10 @@ const enterEditMode = async () => {
   });
 };
 
+// No explicit save button anymore; saving occurs on selection change
 const clickSave = () => {
-  const candidates = screen.getAllByTestId('tick-icon');
-  const span =
-    candidates.find((el) => el.tagName.toLowerCase() === 'span') ||
-    candidates[0];
-  fireEvent.click(span);
+  // intentional no-op: kept for backward-compatible test calls
+  return;
 };
 
 describe('TagsSection', () => {
@@ -401,7 +398,6 @@ describe('TagsSection', () => {
 
       expect(screen.getByTestId('async-select-list')).toBeInTheDocument();
       expect(screen.getByTestId('close-icon')).toBeInTheDocument();
-      expect(screen.getByTestId('tick-icon')).toBeInTheDocument();
       expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
     });
 
@@ -416,13 +412,12 @@ describe('TagsSection', () => {
       expect(asyncSelectList).toHaveClass('tag-selector');
     });
 
-    it('should show save and cancel buttons in edit mode', () => {
+    it('should show cancel button in edit mode', () => {
       render(<TagsSection {...defaultProps} />);
 
       clickEditControl();
 
       expect(screen.getByTestId('close-icon')).toBeInTheDocument();
-      expect(screen.getByTestId('tick-icon')).toBeInTheDocument();
     });
 
     it('should exit edit mode when cancel button is clicked', () => {
@@ -481,8 +476,7 @@ describe('TagsSection', () => {
       const tagInput = screen.getByTestId('tag-selector-input');
       fireEvent.change(tagInput, { target: { value: 'new-tag1, new-tag2' } });
 
-      // Save
-      clickSave();
+      // Save happens on selection change automatically
 
       await waitFor(() => {
         expect(patchTableDetails).toHaveBeenCalled();
@@ -506,8 +500,7 @@ describe('TagsSection', () => {
       const tagInput = screen.getByTestId('tag-selector-input');
       fireEvent.change(tagInput, { target: { value: 'changed-tag' } });
 
-      // Save
-      clickSave();
+      // Save happens on selection change automatically
 
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(
@@ -524,8 +517,7 @@ describe('TagsSection', () => {
 
       await enterEditMode();
 
-      // Save without changes
-      clickSave();
+      // Save without changes: no selection change, so no API call
 
       await waitFor(() => {
         expect(patchTableDetails).not.toHaveBeenCalled();
@@ -548,8 +540,7 @@ describe('TagsSection', () => {
       const tagInput = screen.getByTestId('tag-selector-input');
       fireEvent.change(tagInput, { target: { value: 'new-tag' } });
 
-      // Save
-      clickSave();
+      // Save happens on selection change automatically
 
       // Check loading state
       await waitFor(() => {
@@ -821,8 +812,7 @@ describe('TagsSection', () => {
       const tagInput = screen.getByTestId('tag-selector-input');
       fireEvent.change(tagInput, { target: { value: 'new-tag' } });
 
-      // Save
-      clickSave();
+      // Save happens on selection change automatically
 
       // Check loading state
       await waitFor(() => {

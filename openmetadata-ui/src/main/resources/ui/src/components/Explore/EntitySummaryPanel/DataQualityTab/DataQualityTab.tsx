@@ -693,7 +693,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
   if (isLoading) {
     return (
-      <div className="data-quality-tab-container">
+      <div className="data-quality-tab-container p-md">
         <div>
           <Loader />
         </div>
@@ -703,7 +703,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
   if (statusCounts.total === 0) {
     return (
-      <div className="data-quality-tab-container">
+      <div className="data-quality-tab-container p-md">
         <div className="text-center text-grey-muted">
           <Transi18next
             i18nKey="message.no-data-quality-test-case"
