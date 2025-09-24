@@ -196,9 +196,12 @@ public class ListFilter extends Filter<ListFilter> {
   private String getDomainCondition(String tableName) {
     String domainId = getQueryParam("domainId");
     String entityIdColumn = nullOrEmpty(tableName) ? "id" : (tableName + ".id");
+    String domainAccessControl = getQueryParam("domainAccessControl");
     if (domainId == null) {
       return "";
-    } else if (NULL_PARAM.equals(domainId)) {
+    }
+
+    if (NULL_PARAM.equals(domainId)) {
       String entityType = getQueryParam("entityType");
       String entityTypeCondition =
           nullOrEmpty(entityType)
@@ -207,12 +210,20 @@ public class ListFilter extends Filter<ListFilter> {
       return String.format(
           "(%s NOT IN (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' %s AND relation=10))",
           entityIdColumn, entityTypeCondition);
-    } else {
-      return String.format(
-          "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
-              + "relation=10))",
-          entityIdColumn, domainId);
     }
+
+    if (Boolean.TRUE.toString().equals(domainAccessControl)) {
+      // allow passing entities with no domains
+      return String.format(
+          "(NOT EXISTS (SELECT 1 FROM entity_relationship er WHERE er.relation=10 AND er.fromEntity='domain' AND er.toId = %s) OR "
+              + "%s IN (SELECT er2.toId FROM entity_relationship er2 WHERE er2.fromEntity='domain' AND er2.fromId IN (%s) AND er2.relation=10))",
+          entityIdColumn, entityIdColumn, domainId);
+    }
+
+    return String.format(
+        "(%s in (SELECT entity_relationship.toId FROM entity_relationship WHERE entity_relationship.fromEntity='domain' AND entity_relationship.fromId IN (%s) AND "
+            + "relation=10))",
+        entityIdColumn, domainId);
   }
 
   public String getApiCollectionCondition(String apiEndpoint) {
