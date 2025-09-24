@@ -272,6 +272,18 @@
   .content-height-with-resizable-panel {
     height: calc(100vh - var(--ant-navbar-height) - @size-2xl + @size-md);
   }
+}
+
+// When alert is visible in SSO settings page, adjust container height
+.sso-settings-page:has(#page-alert) {
+  .content-height-with-resizable-panel {
+    height: calc(
+      100vh - var(--ant-navbar-height) - @size-2xl + @size-md - 78px
+    ) !important;
+  }
+}
+
+.sso-settings-page {
   .right-panel-splitter {
     margin-left: @size-sm;
   }
