@@ -62,28 +62,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
   @Override
   public void createEntity(String indexName, String docId, String doc) {
-    if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot create entity.");
-      return;
-    }
-
-    try {
-      client.update(
-          u ->
-              u.index(indexName)
-                  .id(docId)
-                  .docAsUpsert(true)
-                  .refresh(Refresh.True)
-                  .doc(toJsonData(doc)),
-          Map.class);
-      LOG.info(
-          "Successfully created entity in ElasticSearch for index: {}, docId: {}",
-          indexName,
-          docId);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to create entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
-    }
+    upsertDocument(indexName, docId, doc, "create entity");
   }
 
   @Override
@@ -148,31 +127,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
   @Override
   public void createTimeSeriesEntity(String indexName, String docId, String doc) {
-    if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot create time series entity.");
-      return;
-    }
-
-    try {
-      client.update(
-          u ->
-              u.index(indexName)
-                  .id(docId)
-                  .docAsUpsert(true)
-                  .refresh(Refresh.True)
-                  .doc(toJsonData(doc)),
-          Map.class);
-      LOG.info(
-          "Successfully created time series entity in ElasticSearch for index: {}, docId: {}",
-          indexName,
-          docId);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to create time series entity in ElasticSearch for index: {}, docId: {}",
-          indexName,
-          docId,
-          e);
-    }
+    upsertDocument(indexName, docId, doc, "create time series entity");
   }
 
   @Override
@@ -626,6 +581,29 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       LOG.info("Reindex {} entities of type {} to vector index", entityIds.size(), entityType);
     } catch (Exception e) {
       LOG.error("Failed to reindex entities: {}", e.getMessage(), e);
+    }
+  }
+
+  private void upsertDocument(String indexName, String docId, String doc, String operation) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot {}.", operation);
+      return;
+    }
+
+    try {
+      client.update(
+          u ->
+              u.index(indexName)
+                  .id(docId)
+                  .docAsUpsert(true)
+                  .refresh(Refresh.True)
+                  .doc(toJsonData(doc)),
+          Map.class);
+      LOG.info(
+          "Successfully {} in ElasticSearch for index: {}, docId: {}", operation, indexName, docId);
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to {} in ElasticSearch for index: {}, docId: {}", operation, indexName, docId, e);
     }
   }
 
