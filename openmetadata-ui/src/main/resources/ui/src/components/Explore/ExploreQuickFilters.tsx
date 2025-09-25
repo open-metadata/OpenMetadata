@@ -94,7 +94,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           key,
           '',
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
@@ -159,7 +160,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           key,
           value,
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted
         );
 
         const buckets = res.data.aggregations[`sterms#${key}`].buckets;
