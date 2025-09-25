@@ -2,9 +2,6 @@ package org.openmetadata.service.migration.utils.v1100;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.SQLException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -13,27 +10,20 @@ import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.locator.ConnectionType;
-
-import java.util.List;
-
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 @Slf4j
 public class MigrationUtil {
   private static final int BATCH_SIZE = 500;
   private final Handle handle;
   private final ConnectionType connectionType;
+  private final CollectionDAO collectionDAO;
 
-  public MigrationUtil(Handle handle, ConnectionType connectionType) {
+  public MigrationUtil(CollectionDAO collectionDAO, Handle handle, ConnectionType connectionType) {
     this.handle = handle;
     this.connectionType = connectionType;
+    this.collectionDAO = collectionDAO;
   }
 
   public void migrateEntityStatusForExistingEntities() {
@@ -326,7 +316,7 @@ public class MigrationUtil {
     return totalMigrated;
   }
 
-  public void migrateTestCaseDataContractReferences(Handle handle) {
+  public void migrateTestCaseDataContractReferences() {
     LOG.info("===== STARTING TEST CASE DATA CONTRACT MIGRATION =====");
 
     int totalTestCasesMigrated = 0;

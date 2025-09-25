@@ -15,8 +15,8 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    MigrationUtil migrationUtil = new MigrationUtil(handle, ConnectionType.MYSQL);
+    MigrationUtil migrationUtil = new MigrationUtil(collectionDAO, handle, ConnectionType.MYSQL);
     migrationUtil.migrateEntityStatusForExistingEntities();
-    migrationUtil.migrateTestCaseDataContractReferences(handle);
+    migrationUtil.migrateTestCaseDataContractReferences();
   }
 }
