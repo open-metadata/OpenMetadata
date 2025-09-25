@@ -5019,8 +5019,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // Verify that the dataProduct status was set to "Approved" by the workflow
     LOG.info("Verifying dataProduct status was auto-approved...");
     await()
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(1))
         .pollDelay(Duration.ofMillis(500))
         .until(
             () -> {

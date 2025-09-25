@@ -1406,4 +1406,4 @@ SET json = JSON_SET(json, '$.serviceType', 'MicroStrategy')
 WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.serviceType')) = 'Mstr';
 
 -- Increase Flowable ACTIVITY_ID_ column size to support longer user-defined workflow node names
-ALTER TABLE ACT_RU_EVENT_SUBSCR ALTER COLUMN ACTIVITY_ID_ TYPE varchar(255);
+ALTER TABLE ACT_RU_EVENT_SUBSCR MODIFY ACTIVITY_ID_ varchar(255);
