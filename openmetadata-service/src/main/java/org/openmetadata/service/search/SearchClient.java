@@ -16,7 +16,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -393,6 +395,18 @@ public interface SearchClient<T> {
 
   void createAliases(IndexMapping indexMapping);
 
+  void createIndex(String indexName, String indexMappingContent);
+
+  void deleteIndex(String indexName);
+
+  Set<String> getAliases(String indexName);
+
+  void addAliases(String indexName, Set<String> aliases);
+
+  void removeAliases(String indexName, Set<String> aliases);
+
+  Set<String> getIndicesByAlias(String aliasName);
+
   void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
   Response previewSearch(
@@ -437,6 +451,18 @@ public interface SearchClient<T> {
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
+      throws IOException;
+
+  LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException;
+
+  SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException;
 
   SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)

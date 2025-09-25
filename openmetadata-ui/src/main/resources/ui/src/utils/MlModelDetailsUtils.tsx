@@ -17,10 +17,9 @@ import { CustomPropertyTable } from '../components/common/CustomPropertyTable/Cu
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import MlModelFeaturesList from '../components/MlModel/MlModelDetail/MlModelFeaturesList';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
@@ -107,14 +106,12 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={Boolean(mlModelDetail.deleted)}
-            entity={mlModelDetail as SourceType}
-            entityType={EntityType.MLMODEL}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(mlModelDetail.deleted)}
+          entity={mlModelDetail as SourceType}
+          entityType={EntityType.MLMODEL}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {
