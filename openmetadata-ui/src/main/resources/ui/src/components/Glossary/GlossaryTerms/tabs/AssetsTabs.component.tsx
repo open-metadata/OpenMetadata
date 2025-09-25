@@ -57,7 +57,6 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useFqn } from '../../../../hooks/useFqn';
 import { Aggregations } from '../../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -77,7 +76,6 @@ import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
 import { Transi18next } from '../../../../utils/CommonUtils';
-import { getQueryFilterForDataProduct } from '../../../../utils/DomainUtils';
 import {
   getEntityName,
   getEntityReferenceFromEntity,
@@ -87,6 +85,7 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../../utils/ExploreUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -133,7 +132,6 @@ const AssetsTabs = forwardRef(
   ) => {
     const { theme } = useApplicationStore();
     const [assetRemoving, setAssetRemoving] = useState(false);
-    const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [data, setData] = useState<SearchedDataProps['data']>([]);
     const [quickFilterQuery, setQuickFilterQuery] =
@@ -202,57 +200,26 @@ const AssetsTabs = forwardRef(
       const encodedFqn = getEncodedFqn(escapeESReservedCharacters(entityFqn));
       switch (type) {
         case AssetsOfEntity.DOMAIN:
-          return {
-            query: {
-              bool: {
-                must: [
-                  {
-                    term: {
-                      'domains.fullyQualifiedName': encodedFqn,
-                    },
-                  },
-                ],
-              },
-            },
-          };
+          return getTermQuery(
+            { 'domains.fullyQualifiedName': encodedFqn },
+            'must',
+            undefined,
+            {
+              mustNotTerms: { entityType: 'dataProduct' },
+            }
+          );
         case AssetsOfEntity.DATA_PRODUCT:
-          return getQueryFilterForDataProduct(encodedFqn);
+          return getTermQuery({
+            'dataProducts.fullyQualifiedName': encodedFqn,
+          });
 
         case AssetsOfEntity.TEAM:
-          return {
-            query: {
-              bool: {
-                must: [
-                  {
-                    term: {
-                      'owners.fullyQualifiedName': getEncodedFqn(
-                        escapeESReservedCharacters(fqn)
-                      ),
-                    },
-                  },
-                ],
-              },
-            },
-          };
-
         case AssetsOfEntity.MY_DATA:
         case AssetsOfEntity.FOLLOWING:
           return queryFilter ?? undefined;
 
         case AssetsOfEntity.GLOSSARY:
-          return {
-            query: {
-              bool: {
-                must: [
-                  {
-                    term: {
-                      'tags.tagFQN': encodedFqn,
-                    },
-                  },
-                ],
-              },
-            },
-          };
+          return getTermQuery({ 'tags.tagFQN': encodedFqn });
 
         case AssetsOfEntity.TAG:
           return getTagAssetsQueryFilter(encodedFqn);

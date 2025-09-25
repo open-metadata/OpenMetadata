@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
+import { getTermQuery } from './SearchUtils';
 import {
   getDeleteIcon,
   getTagAssetsQueryFilter,
@@ -91,39 +92,26 @@ describe('getTagAssetsQueryFilter', () => {
   it('returns query filter for tagFQN starting with "Tier"', () => {
     const tagFQN = 'Tier.Tier1';
     const result = getTagAssetsQueryFilter(tagFQN);
+    const queryFilter = getTermQuery({ 'tier.tagFQN': tagFQN });
 
-    expect(result).toEqual({
-      query: {
-        term: {
-          'tier.tagFQN': tagFQN,
-        },
-      },
-    });
+    expect(result).toEqual(queryFilter);
   });
 
   it('returns query filter for tagFQN starting with "Certification"', () => {
     const tagFQN = 'Certification.Gold';
     const result = getTagAssetsQueryFilter(tagFQN);
-
-    expect(result).toEqual({
-      query: {
-        term: {
-          'certification.tagLabel.tagFQN': tagFQN,
-        },
-      },
+    const queryFilter = getTermQuery({
+      'certification.tagLabel.tagFQN': tagFQN,
     });
+
+    expect(result).toEqual(queryFilter);
   });
 
   it('returns common query filter for tagFQN starting with any name expect "Tier and Certification"', () => {
     const tagFQN = 'ClassificationTag.Gold';
     const result = getTagAssetsQueryFilter(tagFQN);
+    const queryFilter = getTermQuery({ 'tags.tagFQN': tagFQN });
 
-    expect(result).toEqual({
-      query: {
-        term: {
-          'tags.tagFQN': tagFQN,
-        },
-      },
-    });
+    expect(result).toEqual(queryFilter);
   });
 });

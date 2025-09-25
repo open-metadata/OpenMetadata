@@ -49,6 +49,7 @@ import { updateUserDetail } from '../../rest/userAPI';
 import { getEntityReferenceFromEntity } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { getTeamsWithFqnPath } from '../../utils/RouterUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import AddTeamForm from './AddTeamForm';
 
@@ -194,19 +195,7 @@ const TeamsPage = () => {
           query: '',
           pageNumber: 0,
           pageSize: 0,
-          queryFilter: {
-            query: {
-              bool: {
-                must: [
-                  {
-                    term: {
-                      'owners.id': selectedTeam.id,
-                    },
-                  },
-                ],
-              },
-            },
-          },
+          queryFilter: getTermQuery({ 'owners.id': selectedTeam.id }),
           searchIndex: SearchIndex.ALL,
         });
         const total = res?.hits?.total.value ?? 0;

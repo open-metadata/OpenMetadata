@@ -25,6 +25,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { formatDomainsResponse } from '../../../utils/APIUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -64,13 +65,9 @@ const SubDomainsTable = ({
         query: '',
         pageNumber: currentPage,
         pageSize,
-        queryFilter: {
-          query: {
-            term: {
-              'parent.fullyQualifiedName.keyword': encodedFqn,
-            },
-          },
-        },
+        queryFilter: getTermQuery({
+          'parent.fullyQualifiedName.keyword': encodedFqn,
+        }),
         searchIndex: SearchIndex.DOMAIN,
         includeDeleted: false,
       });

@@ -44,6 +44,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
 import searchClassBase from '../../../utils/SearchClassBase';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
@@ -126,14 +127,11 @@ const MyDataWidgetInternal = ({
         const teamsIds = (currentUser.teams ?? []).map((team) => team.id);
         const ownerIds = [...teamsIds, currentUser.id];
 
-        const queryFilterObj = {
-          query: {
-            bool: {
-              should: ownerIds.map((id) => ({ term: { 'owners.id': id } })),
-              minimum_should_match: 1,
-            },
-          },
-        };
+        const queryFilterObj = getTermQuery(
+          { 'owners.id': ownerIds },
+          'should',
+          1
+        );
 
         const sortField = getSortField(selectedFilter);
         const sortOrder = getSortOrder(selectedFilter);

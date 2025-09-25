@@ -32,6 +32,7 @@ import {
 } from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
@@ -86,22 +87,12 @@ const TableConstraintsModal = ({
                 bool: {
                   must: [
                     serviceFilter.query,
-                    {
-                      bool: {
-                        should: [
-                          {
-                            wildcard: {
-                              'columns.name.keyword': `*${encodedValue}*`,
-                            },
-                          },
-                          {
-                            wildcard: {
-                              'columns.fullyQualifiedName': `*${encodedValue}*`,
-                            },
-                          },
-                        ],
+                    getTermQuery({}, 'should', 1, {
+                      wildcardShouldQueries: {
+                        'columns.name.keyword': `*${encodedValue}*`,
+                        'columns.fullyQualifiedName': `*${encodedValue}*`,
                       },
-                    },
+                    }).query.bool,
                   ],
                 },
               },

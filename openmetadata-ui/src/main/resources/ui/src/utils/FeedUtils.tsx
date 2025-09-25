@@ -79,6 +79,7 @@ import {
   ImageQuality,
 } from './ProfilerUtils';
 import { getSanitizeContent } from './sanitize.utils';
+import { getTermQuery } from './SearchUtils';
 import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
@@ -171,13 +172,7 @@ export async function suggestions(
       query: searchTerm ?? '',
       pageNumber: 1,
       pageSize: 5,
-      queryFilter: {
-        query: {
-          term: {
-            isBot: false,
-          },
-        },
-      },
+      queryFilter: getTermQuery({ isBot: 'false' }),
       sortField: 'displayName.keyword',
       sortOrder: 'asc',
       searchIndex: [SearchIndex.USER, SearchIndex.TEAM],

@@ -51,6 +51,7 @@ import {
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { checkPermissionEntityResource } from './PermissionsUtils';
 import { getExplorePath } from './RouterUtils';
+import { getTermQuery } from './SearchUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -595,13 +596,7 @@ export const getTagAssetsQueryFilter = (fqn: string) => {
     fieldName = 'certification.tagLabel.tagFQN';
   }
 
-  return {
-    query: {
-      term: {
-        [fieldName]: fqn,
-      },
-    },
-  };
+  return getTermQuery({ [fieldName]: fqn });
 };
 
 export const getTagImageSrc = (iconURL: string) => {

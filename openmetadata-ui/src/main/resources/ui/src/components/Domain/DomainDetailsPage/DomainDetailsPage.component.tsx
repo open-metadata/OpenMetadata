@@ -90,6 +90,7 @@ import {
   getDomainVersionsPath,
   getEntityDetailsPath,
 } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -244,13 +245,9 @@ const DomainDetailsPage = ({
           query: '',
           pageNumber: 1,
           pageSize: 0,
-          queryFilter: {
-            query: {
-              term: {
-                'parent.fullyQualifiedName.keyword': encodedFqn,
-              },
-            },
-          },
+          queryFilter: getTermQuery({
+            'parent.fullyQualifiedName.keyword': encodedFqn,
+          }),
           searchIndex: SearchIndex.DOMAIN,
           trackTotalHits: true,
         });
@@ -353,13 +350,9 @@ const DomainDetailsPage = ({
           query: '',
           pageNumber: 1,
           pageSize: 0,
-          queryFilter: {
-            query: {
-              term: {
-                'domains.fullyQualifiedName': encodedFqn,
-              },
-            },
-          },
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': encodedFqn,
+          }),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
 

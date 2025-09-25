@@ -74,6 +74,7 @@ import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -711,6 +712,7 @@ const TeamDetailsV1 = ({
         isEntityDeleted={isTeamDeleted}
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
+        queryFilter={getTermQuery({ 'owners.id': currentTeam.id })}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => navigate(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}

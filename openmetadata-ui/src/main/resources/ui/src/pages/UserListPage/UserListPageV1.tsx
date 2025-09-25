@@ -54,6 +54,7 @@ import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
@@ -140,24 +141,10 @@ const UserListPageV1 = () => {
     return new Promise<Array<User>>((resolve) => {
       const searchText = text === WILD_CARD_CHAR ? text : `*${text}*`;
 
-      const queryFilter = {
-        query: {
-          bool: {
-            must: [
-              {
-                term: {
-                  isAdmin: isAdmin,
-                },
-              },
-              {
-                term: {
-                  isBot: false,
-                },
-              },
-            ],
-          },
-        },
-      };
+      const queryFilter = getTermQuery({
+        isAdmin: String(isAdmin),
+        isBot: 'false',
+      });
 
       searchQuery({
         query: searchText,

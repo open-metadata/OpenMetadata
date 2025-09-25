@@ -37,6 +37,7 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getOnlineUsers, OnlineUsersQueryParams } from '../../rest/userAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { commonUserDetailColumns } from '../../utils/Users.util';
 
@@ -122,13 +123,7 @@ const OnlineUsersPage = () => {
           query: value,
           pageNumber: currentPage,
           pageSize,
-          queryFilter: {
-            query: {
-              term: {
-                isBot: false,
-              },
-            },
-          },
+          queryFilter: getTermQuery({ isBot: 'false' }),
           searchIndex: SearchIndex.USER,
         });
         const data = res.hits.hits.map(({ _source }) => _source);

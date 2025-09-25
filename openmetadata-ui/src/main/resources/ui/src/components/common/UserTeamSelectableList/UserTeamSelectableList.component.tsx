@@ -36,6 +36,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
 import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
@@ -101,13 +102,7 @@ export const UserTeamSelectableList = ({
         query: searchText,
         pageNumber: afterPage,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: {
-          query: {
-            term: {
-              isBot: false,
-            },
-          },
-        },
+        queryFilter: getTermQuery({ isBot: 'false' }),
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.USER,
@@ -139,13 +134,9 @@ export const UserTeamSelectableList = ({
         query: searchText || '',
         pageNumber: afterPage,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: {
-          query: {
-            match: {
-              teamType: 'Group',
-            },
-          },
-        },
+        queryFilter: getTermQuery({}, 'must', undefined, {
+          matchTerms: { teamType: 'Group' },
+        }),
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.TEAM,
@@ -189,13 +180,7 @@ export const UserTeamSelectableList = ({
       query: '',
       pageNumber: 1,
       pageSize: 0,
-      queryFilter: {
-        query: {
-          term: {
-            isBot: false,
-          },
-        },
-      },
+      queryFilter: getTermQuery({ isBot: 'false' }),
       searchIndex: SearchIndex.USER,
     });
 
@@ -206,13 +191,9 @@ export const UserTeamSelectableList = ({
       query: '',
       pageNumber: 1,
       pageSize: 0,
-      queryFilter: {
-        query: {
-          match: {
-            teamType: 'Group',
-          },
-        },
-      },
+      queryFilter: getTermQuery({}, 'must', undefined, {
+        matchTerms: { teamType: 'Group' },
+      }),
       searchIndex: SearchIndex.TEAM,
     });
 

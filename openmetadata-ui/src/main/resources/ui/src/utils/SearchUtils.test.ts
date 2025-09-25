@@ -15,6 +15,7 @@ import { SearchIndex } from '../enums/search.enum';
 import {
   getEntityTypeFromSearchIndex,
   getGroupLabel,
+  getTermQuery,
   parseBucketsData,
 } from './SearchUtils';
 
@@ -253,5 +254,350 @@ describe('parseBucketsData', () => {
       { value: 'key3', title: 'key3' },
       { value: 'key4', title: 'key4' },
     ]);
+  });
+});
+
+describe('getTermQuery', () => {
+  describe('Basic term queries', () => {
+    it('should create a basic must query with single term', () => {
+      const result = getTermQuery({ field: 'value' });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [{ term: { field: 'value' } }],
+          },
+        },
+      });
+    });
+
+    it('should create a basic must query with multiple terms', () => {
+      const result = getTermQuery({ field1: 'value1', field2: 'value2' });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { field1: 'value1' } },
+              { term: { field2: 'value2' } },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should handle array values by creating multiple term queries', () => {
+      const result = getTermQuery({ field: ['value1', 'value2'] });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { field: 'value1' } },
+              { term: { field: 'value2' } },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should handle mixed single values and arrays', () => {
+      const result = getTermQuery({
+        singleField: 'value',
+        arrayField: ['value1', 'value2'],
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { singleField: 'value' } },
+              { term: { arrayField: 'value1' } },
+              { term: { arrayField: 'value2' } },
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  describe('Query types', () => {
+    it('should create must_not query when queryType is must_not', () => {
+      const result = getTermQuery({ field: 'value' }, 'must_not');
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must_not: [{ term: { field: 'value' } }],
+          },
+        },
+      });
+    });
+
+    it('should create should query when queryType is should', () => {
+      const result = getTermQuery({ field: 'value' }, 'should');
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            should: [{ term: { field: 'value' } }],
+          },
+        },
+      });
+    });
+
+    it('should create should query with minimum_should_match', () => {
+      const result = getTermQuery({ field: 'value' }, 'should', 1);
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            should: [{ term: { field: 'value' } }],
+            minimum_should_match: 1,
+          },
+        },
+      });
+    });
+  });
+
+  describe('Wildcard queries', () => {
+    it('should add wildcard queries when wildcardTerms is provided', () => {
+      const result = getTermQuery({ field: 'value' }, 'must', undefined, {
+        wildcardTerms: { name: '*search*' },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { field: 'value' } },
+              { wildcard: { name: '*search*' } },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should add nested bool query with should clauses for wildcardShouldQueries', () => {
+      const result = getTermQuery({ field: 'value' }, 'must', undefined, {
+        wildcardShouldQueries: {
+          'name.keyword': '*search*',
+          'description.keyword': '*search*',
+        },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { field: 'value' } },
+              {
+                bool: {
+                  should: [
+                    { wildcard: { 'name.keyword': '*search*' } },
+                    { wildcard: { 'description.keyword': '*search*' } },
+                  ],
+                  minimum_should_match: 1,
+                },
+              },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should add wildcard must_not queries', () => {
+      const result = getTermQuery({ field: 'value' }, 'must', undefined, {
+        wildcardMustNotQueries: { fullyQualifiedName: 'Tier.*' },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [{ term: { field: 'value' } }],
+            must_not: [{ wildcard: { fullyQualifiedName: 'Tier.*' } }],
+          },
+        },
+      });
+    });
+
+    it('should handle array values in wildcardMustNotQueries', () => {
+      const result = getTermQuery({}, 'must', undefined, {
+        wildcardMustNotQueries: {
+          fullyQualifiedName: ['Certification.*', 'Tier.*'],
+        },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [],
+            must_not: [
+              { wildcard: { fullyQualifiedName: 'Certification.*' } },
+              { wildcard: { fullyQualifiedName: 'Tier.*' } },
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  describe('Match queries', () => {
+    it('should add match queries when matchTerms is provided', () => {
+      const result = getTermQuery({ field: 'value' }, 'must', undefined, {
+        matchTerms: { teamType: 'Group' },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { field: 'value' } },
+              { match: { teamType: 'Group' } },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should handle multiple match terms', () => {
+      const result = getTermQuery({}, 'must', undefined, {
+        matchTerms: {
+          teamType: 'Group',
+          status: 'active',
+        },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { match: { teamType: 'Group' } },
+              { match: { status: 'active' } },
+            ],
+          },
+        },
+      });
+    });
+  });
+
+  describe('Must not terms', () => {
+    it('should add must_not term queries when mustNotTerms is provided', () => {
+      const result = getTermQuery({ field: 'value' }, 'must', undefined, {
+        mustNotTerms: { deleted: 'true' },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [{ term: { field: 'value' } }],
+            must_not: [{ term: { deleted: 'true' } }],
+          },
+        },
+      });
+    });
+
+    it('should handle array values in mustNotTerms', () => {
+      const result = getTermQuery({}, 'must', undefined, {
+        mustNotTerms: { type: ['bot', 'system'] },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [],
+            must_not: [{ term: { type: 'bot' } }, { term: { type: 'system' } }],
+          },
+        },
+      });
+    });
+  });
+
+  describe('Complex combinations', () => {
+    it('should combine all options together', () => {
+      const result = getTermQuery({ field: 'value' }, 'must', undefined, {
+        wildcardTerms: { name: '*search*' },
+        matchTerms: { teamType: 'Group' },
+        mustNotTerms: { deleted: 'true' },
+        wildcardMustNotQueries: { fullyQualifiedName: 'Tier.*' },
+        wildcardShouldQueries: { 'description.keyword': '*desc*' },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [
+              { term: { field: 'value' } },
+              { wildcard: { name: '*search*' } },
+              { match: { teamType: 'Group' } },
+              {
+                bool: {
+                  should: [{ wildcard: { 'description.keyword': '*desc*' } }],
+                  minimum_should_match: 1,
+                },
+              },
+            ],
+            must_not: [
+              { term: { deleted: 'true' } },
+              { wildcard: { fullyQualifiedName: 'Tier.*' } },
+            ],
+          },
+        },
+      });
+    });
+
+    it('should work with empty terms and only options', () => {
+      const result = getTermQuery({}, 'must', undefined, {
+        matchTerms: { teamType: 'Group' },
+        mustNotTerms: { deleted: 'true' },
+      });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [{ match: { teamType: 'Group' } }],
+            must_not: [{ term: { deleted: 'true' } }],
+          },
+        },
+      });
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('should handle empty terms object', () => {
+      const result = getTermQuery({});
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [],
+          },
+        },
+      });
+    });
+
+    it('should handle numeric values', () => {
+      const result = getTermQuery({ count: 5, rating: 4.5 });
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [{ term: { count: 5 } }, { term: { rating: 4.5 } }],
+          },
+        },
+      });
+    });
+
+    it('should not add minimum_should_match for non-should queries', () => {
+      const result = getTermQuery({ field: 'value' }, 'must', 5);
+
+      expect(result).toEqual({
+        query: {
+          bool: {
+            must: [{ term: { field: 'value' } }],
+          },
+        },
+      });
+    });
   });
 });

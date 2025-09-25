@@ -110,6 +110,7 @@ import { handleEntityCreationError } from '../formUtils';
 import { t } from '../i18next/LocalUtil';
 import { getConfigFieldFromDestinationType } from '../ObservabilityUtils';
 import searchClassBase from '../SearchClassBase';
+import { getTermQuery } from '../SearchUtils';
 import { showErrorToast, showSuccessToast } from '../ToastUtils';
 import './alerts-util.less';
 
@@ -224,29 +225,7 @@ export const searchEntity = async ({
 }: {
   searchText: string;
   searchIndex: SearchIndex | SearchIndex[];
-  queryFilter?: {
-    query: {
-      term?: Record<string, string | number | boolean>;
-      match?: Record<string, string | number>;
-      bool?: {
-        must?: Array<
-          | { term: Record<string, string | number | boolean> }
-          | { match: Record<string, string | number> }
-        >;
-        should?: Array<
-          | { term: Record<string, string | number | boolean> }
-          | { match: Record<string, string | number> }
-        >;
-        must_not?: Array<
-          | { term: Record<string, string | number | boolean> }
-          | { match: Record<string, string | number> }
-        >;
-      };
-      query_string?: {
-        query: string;
-      };
-    };
-  };
+  queryFilter?: Record<string, unknown>;
   showDisplayNameAsLabel?: boolean;
   setSourceAsValue?: boolean;
 }) => {
@@ -317,13 +296,9 @@ const getOwnerOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: [SearchIndex.TEAM, SearchIndex.USER],
-    queryFilter: {
-      query: {
-        term: {
-          isBot: false,
-        },
-      },
-    },
+    queryFilter: getTermQuery({
+      isBot: 'false',
+    }),
   });
 };
 
@@ -331,13 +306,9 @@ const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
     searchIndex: SearchIndex.USER,
-    queryFilter: {
-      query: {
-        term: {
-          isBot: false,
-        },
-      },
-    },
+    queryFilter: getTermQuery({
+      isBot: 'false',
+    }),
   });
 };
 

@@ -54,6 +54,7 @@ import {
 } from '../../../../utils/EntityUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
   dataProductTableObject,
@@ -151,33 +152,19 @@ export const DatabaseSchemaTable = ({
         query: '',
         pageNumber,
         pageSize: PAGE_SIZE,
-        queryFilter: {
-          query: {
-            bool: {
-              must: [
-                { term: { 'database.fullyQualifiedName': decodedDatabaseFQN } },
-                ...(searchValue
-                  ? [
-                      {
-                        bool: {
-                          should: [
-                            {
-                              wildcard: { 'name.keyword': `*${searchValue}*` },
-                            },
-                            {
-                              wildcard: {
-                                'description.keyword': `*${searchValue}*`,
-                              },
-                            },
-                          ],
-                        },
-                      },
-                    ]
-                  : []),
-              ],
-            },
-          },
-        },
+        queryFilter: getTermQuery(
+          { 'database.fullyQualifiedName': decodedDatabaseFQN },
+          'must',
+          undefined,
+          searchValue
+            ? {
+                wildcardShouldQueries: {
+                  'name.keyword': `*${searchValue}*`,
+                  'description.keyword': `*${searchValue}*`,
+                },
+              }
+            : undefined
+        ),
         searchIndex: SearchIndex.DATABASE_SCHEMA,
         includeDeleted: showDeletedSchemas,
         trackTotalHits: true,

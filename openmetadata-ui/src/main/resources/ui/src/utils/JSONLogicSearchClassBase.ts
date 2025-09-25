@@ -420,33 +420,7 @@ class JSONLogicSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     fieldName: string;
     fieldLabel: string;
-    queryFilter?: {
-      query: {
-        term?: Record<string, string | number | boolean>;
-        match?: Record<string, string | number>;
-        wildcard?: Record<string, string>;
-        bool?: {
-          must?: Array<
-            | { term: Record<string, string | number | boolean> }
-            | { match: Record<string, string | number> }
-            | { wildcard: Record<string, string> }
-          >;
-          should?: Array<
-            | { term: Record<string, string | number | boolean> }
-            | { match: Record<string, string | number> }
-            | { wildcard: Record<string, string> }
-          >;
-          must_not?: Array<
-            | { term: Record<string, string | number | boolean> }
-            | { match: Record<string, string | number> }
-            | { wildcard: Record<string, string> }
-          >;
-        };
-        query_string?: {
-          query: string;
-        };
-      };
-    };
+    queryFilter?: Record<string, unknown>;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     fieldName,

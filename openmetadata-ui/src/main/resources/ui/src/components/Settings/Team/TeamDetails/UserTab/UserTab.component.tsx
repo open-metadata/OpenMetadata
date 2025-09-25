@@ -50,6 +50,7 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../../../utils/EntityUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../../utils/SearchUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -138,19 +139,7 @@ export const UserTab = ({
       query: text,
       pageNumber: currentPage,
       pageSize,
-      queryFilter: {
-        query: {
-          bool: {
-            must: [
-              {
-                term: {
-                  'teams.id': currentTeam?.id,
-                },
-              },
-            ],
-          },
-        },
-      },
+      queryFilter: getTermQuery({ 'teams.id': currentTeam?.id }),
       searchIndex: SearchIndex.USER,
     })
       .then((res) => {

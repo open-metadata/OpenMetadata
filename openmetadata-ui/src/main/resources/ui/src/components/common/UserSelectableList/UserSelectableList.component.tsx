@@ -28,6 +28,7 @@ import { formatUsersResponse } from '../../../utils/APIUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import './user-select-dropdown.less';
 import { UserSelectableListProps } from './UserSelectableList.interface';
@@ -52,13 +53,7 @@ export const UserSelectableList = ({
           query: searchText,
           pageNumber: 1,
           pageSize: PAGE_SIZE_MEDIUM,
-          queryFilter: {
-            query: {
-              term: {
-                isBot: false,
-              },
-            },
-          },
+          queryFilter: getTermQuery({ isBot: 'false' }),
           searchIndex: SearchIndex.USER,
         });
 

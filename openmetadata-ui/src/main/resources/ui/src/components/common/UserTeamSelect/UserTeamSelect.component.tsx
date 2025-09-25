@@ -34,6 +34,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
 import './user-team-select.less';
@@ -92,13 +93,7 @@ export const UserTeamSelect = ({
         query: searchTerm,
         pageNumber: page,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: {
-          query: {
-            term: {
-              isBot: false,
-            },
-          },
-        },
+        queryFilter: getTermQuery({ isBot: 'false' }),
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.USER,
@@ -133,13 +128,9 @@ export const UserTeamSelect = ({
         query: searchTerm || '',
         pageNumber: page,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: {
-          query: {
-            match: {
-              teamType: 'Group',
-            },
-          },
-        },
+        queryFilter: getTermQuery({}, 'must', undefined, {
+          matchTerms: { teamType: 'Group' },
+        }),
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.TEAM,

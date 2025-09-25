@@ -46,10 +46,7 @@ import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
-import {
-  getQueryFilterForDataProduct,
-  getQueryFilterToIncludeDomain,
-} from '../../../utils/DomainUtils';
+import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
@@ -61,6 +58,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -194,7 +192,9 @@ const DataProductsDetailsPage = ({
         const encodedFqn = getEncodedFqn(
           escapeESReservedCharacters(dataProduct.fullyQualifiedName)
         );
-        const queryFilter = getQueryFilterForDataProduct(encodedFqn);
+        const queryFilter = getTermQuery({
+          'dataProducts.fullyQualifiedName': encodedFqn,
+        });
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
@@ -427,9 +427,7 @@ const DataProductsDetailsPage = ({
                     children: (
                       <AssetsTabs
                         assetCount={assetCount}
-                        entityFqn={
-                          dataProduct.fullyQualifiedName || dataProductFqn
-                        }
+                        entityFqn={dataProduct.fullyQualifiedName}
                         isSummaryPanelOpen={false}
                         permissions={dataProductPermission}
                         ref={assetTabRef}

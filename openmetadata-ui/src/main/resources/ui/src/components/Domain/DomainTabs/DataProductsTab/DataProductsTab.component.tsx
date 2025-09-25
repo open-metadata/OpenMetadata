@@ -31,6 +31,7 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { useFqn } from '../../../../hooks/useFqn';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -66,13 +67,9 @@ const DataProductsTab = forwardRef(
           query: '',
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
-          queryFilter: {
-            query: {
-              term: {
-                'domains.fullyQualifiedName': encodedFqn,
-              },
-            },
-          },
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': encodedFqn,
+          }),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
 

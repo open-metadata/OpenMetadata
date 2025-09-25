@@ -50,6 +50,7 @@ import {
   getAddServicePath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
@@ -102,16 +103,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const serviceTypeQueryFilter = useMemo(() => {
     return serviceTypeFilter?.length
-      ? {
-          query: {
-            bool: {
-              should: serviceTypeFilter.map((type) => ({
-                term: { 'serviceType.keyword': type },
-              })),
-              minimum_should_match: 1,
-            },
-          },
-        }
+      ? getTermQuery({ 'serviceType.keyword': serviceTypeFilter }, 'should', 1)
       : undefined;
   }, [serviceTypeFilter]);
 

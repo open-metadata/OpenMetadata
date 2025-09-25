@@ -46,6 +46,7 @@ import {
   getGlossaryTermDetailsPath,
   getGlossaryTermsVersionsPath,
 } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -141,13 +142,9 @@ const GlossaryTermsV1 = ({
           query: '',
           pageNumber: 1,
           pageSize: 0,
-          queryFilter: {
-            query: {
-              term: {
-                'tags.tagFQN': encodedFqn,
-              },
-            },
-          },
+          queryFilter: getTermQuery({
+            'tags.tagFQN': encodedFqn,
+          }),
           searchIndex: SearchIndex.ALL,
         });
 
