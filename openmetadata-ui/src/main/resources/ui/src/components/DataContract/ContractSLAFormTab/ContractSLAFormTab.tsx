@@ -26,15 +26,17 @@ import moment from 'moment';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { SLA_AVAILABILITY_TIME_FORMAT } from '../../../constants/DataContract.constants';
+import {
+  MAX_LATENCY_UNITS,
+  REFRESH_FREQUENCY_UNITS,
+  RETENTION_UNITS,
+  SLA_AVAILABILITY_TIME_FORMAT,
+} from '../../../constants/DataContract.constants';
 import {
   ContractSLA,
   DataContract,
-  MaxLatencyUnit,
-  RefreshFrequencyUnit,
-  RetentionUnit,
 } from '../../../generated/entity/data/dataContract';
-import { enumToSelectOptions } from '../../../utils/DataContract/DataContractUtils';
+import { generateSelectOptionsFromString } from '../../../utils/DataContract/DataContractUtils';
 import './contract-sla-form-tab.less';
 
 export const ContractSLAFormTab: React.FC<{
@@ -52,9 +54,11 @@ export const ContractSLAFormTab: React.FC<{
     REFRESH_FREQUENCY_UNIT_OPTIONS,
   } = useMemo(() => {
     return {
-      REFRESH_FREQUENCY_UNIT_OPTIONS: enumToSelectOptions(RefreshFrequencyUnit),
-      RETENTION_UNIT_OPTIONS: enumToSelectOptions(RetentionUnit),
-      MAX_LATENCY_OPTIONS: enumToSelectOptions(MaxLatencyUnit),
+      REFRESH_FREQUENCY_UNIT_OPTIONS: generateSelectOptionsFromString(
+        REFRESH_FREQUENCY_UNITS
+      ),
+      RETENTION_UNIT_OPTIONS: generateSelectOptionsFromString(RETENTION_UNITS),
+      MAX_LATENCY_OPTIONS: generateSelectOptionsFromString(MAX_LATENCY_UNITS),
     };
   }, []);
 
