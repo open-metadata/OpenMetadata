@@ -189,10 +189,11 @@ const DataProductsDetailsPage = ({
   }, [dataProductPermission, isVersionsView]);
 
   const fetchDataProductAssets = async () => {
-    const fqn = dataProduct?.fullyQualifiedName || dataProductFqn;
-    if (fqn) {
+    if (dataProduct) {
       try {
-        const encodedFqn = getEncodedFqn(escapeESReservedCharacters(fqn));
+        const encodedFqn = getEncodedFqn(
+          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
+        );
         const queryFilter = getQueryFilterForDataProduct(encodedFqn);
         const res = await searchQuery({
           query: '',
