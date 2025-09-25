@@ -21,15 +21,14 @@ import {
 import { AuthProvider } from '../../../generated/settings/settings';
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
-import { getProviderDisplayName } from '../../../utils/SSOUtils';
+import {
+  getProviderDisplayName,
+  getProviderIcon,
+} from '../../../utils/SSOUtils';
 import Loader from '../../common/Loader/Loader';
 import RichTextEditorPreviewer from '../../common/RichTextEditor/RichTextEditorPreviewer';
 import './sso-doc-panel.less';
-import {
-  FIELD_MAPPINGS,
-  PROVIDER_FILE_MAP,
-  PROVIDER_ICON_MAP,
-} from './SSODocPanel.constants';
+import { FIELD_MAPPINGS, PROVIDER_FILE_MAP } from './SSODocPanel.constants';
 
 interface SSODocPanelProp {
   serviceName: string;
@@ -234,12 +233,12 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
     <Row className="sso-doc-panel" data-testid="sso-requirements">
       <Col span={24}>
         <div className="sso-doc-header">
-          {PROVIDER_ICON_MAP[serviceName] && (
+          {getProviderIcon(serviceName) && (
             <div className="sso-provider-icon">
               <img
                 alt={`${serviceName} icon`}
                 height={22}
-                src={PROVIDER_ICON_MAP[serviceName]}
+                src={getProviderIcon(serviceName) as string}
                 width={22}
               />
             </div>

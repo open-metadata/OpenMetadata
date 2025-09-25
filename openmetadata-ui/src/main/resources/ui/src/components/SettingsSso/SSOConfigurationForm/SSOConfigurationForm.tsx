@@ -18,13 +18,6 @@ import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import LdapIcon from '../../../assets/img/ic-ldap.svg';
-import SamlIcon from '../../../assets/img/ic-saml.svg';
-import Auth0Icon from '../../../assets/img/icon-auth0.png';
-import CognitoIcon from '../../../assets/img/icon-aws-cognito.png';
-import AzureIcon from '../../../assets/img/icon-azure.png';
-import GoogleIcon from '../../../assets/img/icon-google.png';
-import OktaIcon from '../../../assets/img/icon-okta.png';
 
 import {
   AuthenticationConfiguration,
@@ -61,7 +54,10 @@ import {
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
 import { transformErrors } from '../../../utils/formUtils';
-import { getProviderDisplayName } from '../../../utils/SSOUtils';
+import {
+  getProviderDisplayName,
+  getProviderIcon,
+} from '../../../utils/SSOUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
@@ -111,27 +107,6 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
-
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case AuthProvider.Azure:
-        return AzureIcon;
-      case AuthProvider.Google:
-        return GoogleIcon;
-      case AuthProvider.Okta:
-        return OktaIcon;
-      case AuthProvider.Auth0:
-        return Auth0Icon;
-      case AuthProvider.AwsCognito:
-        return CognitoIcon;
-      case AuthProvider.LDAP:
-        return LdapIcon;
-      case AuthProvider.Saml:
-        return SamlIcon;
-      default:
-        return null;
-    }
-  };
 
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
