@@ -5,5 +5,5 @@
   "description": "System default template for entity soft deletion notifications",
   "provider": "system",
   "templateSubject": "{{entity.entityType}} {{entity.name}} soft deleted",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>{{event.userName}}</b> soft deleted {{entity.entityType}} <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a>{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
+  "templateBody": "[{{publisherName}}] <b>{{event.userName}}</b> soft deleted {{entity.entityType}} <a href=\"{{entity.href}}\">{{entity.fullyQualifiedName}}</a>"
 }
