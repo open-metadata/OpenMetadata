@@ -137,7 +137,6 @@ export default function EntitySummaryPanel({
       setIsPermissionLoading(false);
     }
   };
-
   const fetchEntityData = useCallback(async () => {
     if (!entityDetails?.details?.fullyQualifiedName || !entityType) {
       return;
@@ -148,41 +147,47 @@ export default function EntitySummaryPanel({
       const fqn = entityDetails.details.fullyQualifiedName;
       let entityPromise: Promise<any> | null = null;
 
+      // Fields needed for the right panel to reflect latest state
+      const commonFields =
+        'owners,domains,tags,dataProducts,description,extension';
+
       switch (entityType) {
         case EntityType.TABLE:
           entityPromise = getTableDetailsByFQN(fqn, {
-            fields: 'extension',
+            fields: commonFields,
           });
 
           break;
 
         case EntityType.TOPIC:
-          entityPromise = getTopicByFqn(fqn, { fields: 'extension' });
+          entityPromise = getTopicByFqn(fqn, { fields: commonFields });
 
           break;
 
         case EntityType.DASHBOARD:
-          entityPromise = getDashboardByFqn(fqn, { fields: 'extension' });
+          entityPromise = getDashboardByFqn(fqn, { fields: commonFields });
 
           break;
 
         case EntityType.PIPELINE:
-          entityPromise = getPipelineByFqn(fqn, { fields: 'extension' });
+          entityPromise = getPipelineByFqn(fqn, { fields: commonFields });
 
           break;
 
         case EntityType.MLMODEL:
-          entityPromise = getMlModelByFQN(fqn, { fields: 'extension' });
+          entityPromise = getMlModelByFQN(fqn, { fields: commonFields });
 
           break;
 
         case EntityType.DATABASE:
-          entityPromise = getDatabaseDetailsByFQN(fqn, { fields: 'extension' });
+          entityPromise = getDatabaseDetailsByFQN(fqn, {
+            fields: commonFields,
+          });
 
           break;
 
         case EntityType.DASHBOARD_DATA_MODEL:
-          entityPromise = getDataModelByFqn(fqn, { fields: 'extension' });
+          entityPromise = getDataModelByFqn(fqn, { fields: commonFields });
 
           break;
 
@@ -193,7 +198,7 @@ export default function EntitySummaryPanel({
 
         case EntityType.STORED_PROCEDURE:
           entityPromise = getStoredProceduresByFqn(fqn, {
-            fields: 'extension',
+            fields: commonFields,
           });
 
           break;
@@ -211,19 +216,19 @@ export default function EntitySummaryPanel({
           entityType: entityDetails.details.entityType,
           fullyQualifiedName: entityDetails.details.fullyQualifiedName,
           id: entityDetails.details.id,
-          description: entityDetails.details.description,
+          description: data.description ?? entityDetails.details.description,
           displayName: entityDetails.details.displayName,
           name: entityDetails.details.name,
           deleted: entityDetails.details.deleted,
           serviceType: (entityDetails.details as any).serviceType,
-          service: entityDetails.details.service,
-          // Fields that might not be in API response but are needed for UI
-          owners: data.owners || entityDetails.details.owners, // ✅ Preserve owners from API or fallback to search result
-          domains: entityDetails.details.domains,
-          tags: entityDetails.details.tags,
+          service: data.service ?? entityDetails.details.service,
+          // Prefer canonical data; fallback to search result if missing
+          owners: data.owners ?? entityDetails.details.owners,
+          domains: data.domains ?? entityDetails.details.domains,
+          tags: data.tags ?? entityDetails.details.tags,
           dataProducts:
-            data.dataProducts || (entityDetails.details as any).dataProducts,
-          tier: entityDetails.details.tier,
+            data.dataProducts ?? (entityDetails.details as any).dataProducts,
+          tier: (entityDetails.details as any).tier,
           columnNames: (entityDetails.details as any).columnNames,
           database: (entityDetails.details as any).database,
           databaseSchema: (entityDetails.details as any).databaseSchema,
@@ -278,16 +283,15 @@ export default function EntitySummaryPanel({
 
   const handleOwnerUpdate = useCallback(
     (updatedOwners: EntityReference[]) => {
-      // Update the entityData state with the new owners
+      const ownersClone = updatedOwners.map((o) => ({ ...o }));
       setEntityData((prevData: any) => {
-        if (!prevData) {
+        if (!prevData || prevData.id !== entityDetails.details.id) {
           return prevData;
         }
 
         const updatedData = {
           ...prevData,
-          owners: updatedOwners,
-          // Preserve all essential fields from entityDetails.details
+          owners: ownersClone,
           entityType: prevData.entityType || entityDetails.details.entityType,
           fullyQualifiedName:
             prevData.fullyQualifiedName ||
@@ -307,7 +311,7 @@ export default function EntitySummaryPanel({
           service: prevData.service || entityDetails.details.service,
           domains: prevData.domains || entityDetails.details.domains,
           tags: prevData.tags || entityDetails.details.tags,
-          tier: prevData.tier || entityDetails.details.tier,
+          tier: prevData.tier || (entityDetails.details as any).tier,
           columnNames:
             prevData.columnNames || (entityDetails.details as any).columnNames,
           database:
@@ -322,21 +326,20 @@ export default function EntitySummaryPanel({
         return updatedData;
       });
     },
-    [entityData]
+    [entityDetails.details]
   );
 
   const handleDomainUpdate = useCallback(
     (updatedDomains: EntityReference[]) => {
-      // Update the entityData state with the new domains
+      const domainsClone = updatedDomains.map((d) => ({ ...d }));
       setEntityData((prevData: any) => {
-        if (!prevData) {
+        if (!prevData || prevData.id !== entityDetails.details.id) {
           return prevData;
         }
 
         const updatedData = {
           ...prevData,
-          domains: updatedDomains,
-          // Preserve all essential fields from entityDetails.details
+          domains: domainsClone,
           entityType: prevData.entityType || entityDetails.details.entityType,
           fullyQualifiedName:
             prevData.fullyQualifiedName ||
@@ -356,7 +359,7 @@ export default function EntitySummaryPanel({
           service: prevData.service || entityDetails.details.service,
           owners: prevData.owners || entityDetails.details.owners,
           tags: prevData.tags || entityDetails.details.tags,
-          tier: prevData.tier || entityDetails.details.tier,
+          tier: prevData.tier || (entityDetails.details as any).tier,
           columnNames:
             prevData.columnNames || (entityDetails.details as any).columnNames,
           database:
@@ -371,20 +374,20 @@ export default function EntitySummaryPanel({
         return updatedData;
       });
     },
-    [entityData]
+    [entityDetails.details]
   );
 
   const handleTagsUpdate = useCallback(
     (updatedTags: any[]) => {
-      // Update the entityData state with the new tags
+      const tagsClone = updatedTags.map((t) => ({ ...t }));
       setEntityData((prevData: any) => {
-        if (!prevData) {
+        if (!prevData || prevData.id !== entityDetails.details.id) {
           return prevData;
         }
 
         const updatedData = {
           ...prevData,
-          tags: updatedTags,
+          tags: tagsClone,
           entityType: prevData.entityType || entityDetails.details.entityType,
           fullyQualifiedName:
             prevData.fullyQualifiedName ||
@@ -404,7 +407,7 @@ export default function EntitySummaryPanel({
           service: prevData.service || entityDetails.details.service,
           owners: prevData.owners || entityDetails.details.owners,
           domains: prevData.domains || entityDetails.details.domains,
-          tier: prevData.tier || entityDetails.details.tier,
+          tier: prevData.tier || (entityDetails.details as any).tier,
           columnNames:
             prevData.columnNames || (entityDetails.details as any).columnNames,
           database:
@@ -419,20 +422,20 @@ export default function EntitySummaryPanel({
         return updatedData;
       });
     },
-    [entityData]
+    [entityDetails.details]
   );
 
   const handleDataProductsUpdate = useCallback(
     (updatedDataProducts: EntityReference[]) => {
-      // Update the entityData state with the new data products
+      const dpsClone = updatedDataProducts.map((dp) => ({ ...dp }));
       setEntityData((prevData: any) => {
-        if (!prevData) {
+        if (!prevData || prevData.id !== entityDetails.details.id) {
           return prevData;
         }
 
         const updatedData = {
           ...prevData,
-          dataProducts: updatedDataProducts,
+          dataProducts: dpsClone,
           entityType: prevData.entityType || entityDetails.details.entityType,
           fullyQualifiedName:
             prevData.fullyQualifiedName ||
@@ -453,7 +456,7 @@ export default function EntitySummaryPanel({
           owners: prevData.owners || entityDetails.details.owners,
           domains: prevData.domains || entityDetails.details.domains,
           tags: prevData.tags || entityDetails.details.tags,
-          tier: prevData.tier || entityDetails.details.tier,
+          tier: prevData.tier || (entityDetails.details as any).tier,
           columnNames:
             prevData.columnNames || (entityDetails.details as any).columnNames,
           database:
@@ -468,7 +471,7 @@ export default function EntitySummaryPanel({
         return updatedData;
       });
     },
-    [entityData]
+    [entityDetails.details]
   );
 
   const handleGlossaryTermsUpdate = useCallback(
@@ -614,9 +617,8 @@ export default function EntitySummaryPanel({
 
   const handleDescriptionUpdate = useCallback(
     (updatedDescription: string) => {
-      // Update the entityData state with the new description
       setEntityData((prevData: any) => {
-        if (!prevData) {
+        if (!prevData || prevData.id !== entityDetails.details.id) {
           return prevData;
         }
 
@@ -644,7 +646,7 @@ export default function EntitySummaryPanel({
           dataProducts:
             prevData.dataProducts ||
             (entityDetails.details as any).dataProducts,
-          tier: prevData.tier || entityDetails.details.tier,
+          tier: prevData.tier || (entityDetails.details as any).tier,
           columnNames:
             prevData.columnNames || (entityDetails.details as any).columnNames,
           database:
