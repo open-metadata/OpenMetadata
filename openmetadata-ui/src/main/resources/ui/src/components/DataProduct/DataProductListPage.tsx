@@ -14,11 +14,11 @@
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../constants/constants';
-import { SearchIndex } from '../../enums/search.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
+import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { addDataProducts } from '../../rest/dataProductAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
@@ -27,7 +27,6 @@ import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFormDrawerWithRef } from '../common/atoms/drawer';
-import { useQuickFilters } from '../common/atoms/filters/useQuickFilters';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
@@ -40,26 +39,17 @@ import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
-const DataProductListPage = ({ pageTitle }: { pageTitle: string }) => {
+const DataProductListPage = () => {
   const dataProductListing = useDataProductListingData();
   const theme = useTheme();
   const { t } = useTranslation();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Use data product-specific filters configuration
-  const dataProductFilters = useDataProductFilters({
-    enabledFilters: ['owner', 'expert', 'tags', 'glossary'],
-  });
-
-  const { quickFilters } = useQuickFilters({
-    filterFields: dataProductFilters.filterFields,
-    filterConfigs: dataProductFilters.filterConfigs,
-    queryConfig: dataProductFilters.queryConfig,
+  // Use the simplified data product filters configuration
+  const { quickFilters } = useDataProductFilters({
+    aggregations: dataProductListing.aggregations || undefined,
     onFilterChange: dataProductListing.handleFilterChange,
-    aggregations: dataProductListing.aggregations || {},
-    searchIndex: SearchIndex.DATA_PRODUCT,
-    independent: true,
   });
 
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
@@ -76,10 +66,10 @@ const DataProductListPage = ({ pageTitle }: { pageTitle: string }) => {
         onCancel={() => {
           // No-op: Drawer close is handled by useFormDrawerWithRef
         }}
-        onSubmit={async (formData: CreateDataProduct) => {
+        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsLoading(true);
           try {
-            await addDataProducts(formData);
+            await addDataProducts(formData as CreateDataProduct);
             showSuccessToast(
               t('server.create-entity-success', {
                 entity: t('label.data-product'),
@@ -137,7 +127,7 @@ const DataProductListPage = ({ pageTitle }: { pageTitle: string }) => {
   });
 
   const { search } = useSearch({
-    searchPlaceholderKey: 'label.search',
+    searchPlaceholder: t('label.search'),
     onSearchChange: dataProductListing.handleSearchChange,
     initialSearchQuery: dataProductListing.urlState.searchQuery,
   });
@@ -165,10 +155,19 @@ const DataProductListPage = ({ pageTitle }: { pageTitle: string }) => {
     loading: dataProductListing.loading,
   });
 
+  // Map selected IDs to actual entities for the delete hook
+  const selectedDataProductEntities = useMemo(
+    () =>
+      dataProductListing.entities.filter((entity) =>
+        dataProductListing.selectedEntities.includes(entity.id)
+      ),
+    [dataProductListing.entities, dataProductListing.selectedEntities]
+  );
+
   const { deleteIconButton, deleteModal } = useDelete({
     entityType: 'dataProducts',
     entityLabel: 'Data Product',
-    selectedEntities: dataProductListing.selectedEntities,
+    selectedEntities: selectedDataProductEntities,
     onDeleteComplete: () => {
       dataProductListing.clearSelection();
       dataProductListing.refetch();

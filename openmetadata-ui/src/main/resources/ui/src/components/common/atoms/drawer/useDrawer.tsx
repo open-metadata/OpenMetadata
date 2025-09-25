@@ -80,7 +80,7 @@ export const useDrawer = (config: DrawerConfig = {}) => {
 
   const handleClose = useCallback(
     (
-      event: React.SyntheticEvent,
+      _event: React.SyntheticEvent,
       reason: 'backdropClick' | 'escapeKeyDown'
     ) => {
       if (reason === 'backdropClick' && config.closeOnBackdrop === false) {

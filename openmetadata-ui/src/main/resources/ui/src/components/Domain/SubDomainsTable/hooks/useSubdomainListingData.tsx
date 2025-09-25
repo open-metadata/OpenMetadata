@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { useMemo } from 'react';
 import { useDomainListing } from '../../../../components/common/atoms/domain/compositions/useDomainListing';
 import { ListingData } from '../../../../components/common/atoms/shared/types';
 import { Domain } from '../../../../generated/entity/domains/domain';
@@ -23,13 +22,23 @@ interface UseSubdomainListingDataProps {
 export const useSubdomainListingData = ({
   parentDomainFqn,
 }: UseSubdomainListingDataProps): ListingData<Domain> => {
-  const baseFilter = useMemo(
-    () => `(parent.fullyQualifiedName:"${parentDomainFqn}")`,
-    [parentDomainFqn]
-  );
+  const baseFilter = {
+    query: {
+      bool: {
+        must: [
+          {
+            term: {
+              'parent.fullyQualifiedName': parentDomainFqn,
+            },
+          },
+        ],
+        must_not: [],
+      },
+    },
+  };
 
   return useDomainListing({
-    baseFilter,
+    baseFilter: JSON.stringify(baseFilter),
     nameLabelKey: 'label.sub-domain',
   });
 };

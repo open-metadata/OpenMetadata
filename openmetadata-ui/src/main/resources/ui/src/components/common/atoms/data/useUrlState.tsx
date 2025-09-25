@@ -13,7 +13,8 @@
 
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { UrlState, UrlStateConfig, UrlStateHook } from '../types';
+import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
+import { UrlState, UrlStateConfig, UrlStateHook } from '../shared/types';
 
 export const useUrlState = (config: UrlStateConfig): UrlStateHook => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -25,7 +26,7 @@ export const useUrlState = (config: UrlStateConfig): UrlStateHook => {
     const currentPage = parseInt(searchParams.get(pageKey) || '1', 10);
 
     const filters: Record<string, string[]> = {};
-    filterKeys.forEach((key) => {
+    filterKeys.forEach((key: string) => {
       const filterValue = searchParams.get(key);
       filters[key] = filterValue ? filterValue.split(',').filter(Boolean) : [];
     });
@@ -68,14 +69,28 @@ export const useUrlState = (config: UrlStateConfig): UrlStateHook => {
   );
 
   const setFilters = useCallback(
-    (key: string, values: string[]) => {
+    (filters: ExploreQuickFilterField[]) => {
       const updates: Record<string, string | null> = {
-        [key]: values.length > 0 ? values.join(',') : null,
         [pageKey]: '1',
       };
+
+      // Clear all existing filter keys first
+      filterKeys.forEach((key: string) => {
+        updates[key] = null;
+      });
+
+      // Then set the new filter values
+      filters.forEach((filter) => {
+        const { key, value } = filter;
+        const values = value?.map((v) => v.key) || [];
+        if (values.length > 0) {
+          updates[key] = values.join(',');
+        }
+      });
+
       updateUrlParams(updates);
     },
-    [pageKey, updateUrlParams]
+    [pageKey, filterKeys, updateUrlParams]
   );
 
   const setCurrentPage = useCallback(
@@ -90,7 +105,7 @@ export const useUrlState = (config: UrlStateConfig): UrlStateHook => {
 
   const resetFilters = useCallback(() => {
     const updates: Record<string, string | null> = {};
-    filterKeys.forEach((key) => {
+    filterKeys.forEach((key: string) => {
       updates[key] = null;
     });
     updates[pageKey] = null;
@@ -102,7 +117,7 @@ export const useUrlState = (config: UrlStateConfig): UrlStateHook => {
       [searchKey]: null,
       [pageKey]: null,
     };
-    filterKeys.forEach((key) => {
+    filterKeys.forEach((key: string) => {
       updates[key] = null;
     });
     updateUrlParams(updates);

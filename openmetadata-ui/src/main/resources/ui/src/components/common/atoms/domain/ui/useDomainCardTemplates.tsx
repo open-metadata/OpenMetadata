@@ -82,7 +82,7 @@ export const useDomainCardTemplates = () => {
                 </Typography>
                 {renderCell(entity, {
                   key: 'owners',
-                  labelKey: 'label.owner',
+                  labelKey: 'label.owner-plural',
                   render: 'owners',
                 })}
               </Box>

@@ -56,7 +56,7 @@ export const useDomainColumns = (config: UseDomainColumnsConfig = {}) => {
     if (includeOwners) {
       columns.push({
         key: 'owners',
-        labelKey: 'label.owner',
+        labelKey: 'label.owner-plural',
         render: 'owners',
       });
     }

@@ -15,14 +15,13 @@ import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Aggregations } from '../../../../interface/search.interface';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
 export interface DataFetchingConfig<T> {
   searchIndex: SearchIndex;
   baseFilter?: string;
   pageSize?: number;
-  queryFieldMapping: Record<string, string>;
   transform?: (data: any) => T[];
 }
 
@@ -49,13 +48,7 @@ export const useDataFetching = <T extends { id: string }>(
   const [totalEntities, setTotalEntities] = useState(0);
   const [aggregations, setAggregations] = useState<Aggregations | null>(null);
 
-  const {
-    searchIndex,
-    baseFilter = '',
-    pageSize = 10,
-    queryFieldMapping,
-    transform,
-  } = config;
+  const { searchIndex, baseFilter = '', pageSize = 10, transform } = config;
 
   // Default transform function
   const defaultTransform = useCallback(
@@ -64,6 +57,60 @@ export const useDataFetching = <T extends { id: string }>(
   );
 
   const transformData = transform || defaultTransform;
+
+  // Build Elasticsearch query from filters
+  const buildESQuery = useCallback(
+    (filters: Record<string, string[]>): any => {
+      // Parse baseFilter if it exists
+      let query = baseFilter ? JSON.parse(baseFilter) : null;
+
+      // If no baseFilter, create a new query structure
+      if (!query) {
+        query = {
+          query: {
+            bool: {
+              must: [],
+            },
+          },
+        };
+      }
+
+      // Ensure the query has the proper structure
+      if (!query.query) {
+        query.query = { bool: { must: [] } };
+      }
+      if (!query.query.bool) {
+        query.query.bool = { must: [] };
+      }
+      if (!query.query.bool.must) {
+        query.query.bool.must = [];
+      }
+
+      // Add filters to the must array
+      Object.entries(filters).forEach(([filterKey, values]) => {
+        if (values && values.length > 0) {
+          if (values.length === 1) {
+            // Single value - use term query
+            query.query.bool.must.push({
+              term: {
+                [filterKey]: values[0],
+              },
+            });
+          } else {
+            // Multiple values - use terms query
+            query.query.bool.must.push({
+              terms: {
+                [filterKey]: values,
+              },
+            });
+          }
+        }
+      });
+
+      return query;
+    },
+    [baseFilter]
+  );
 
   // Main search function with comprehensive handling
   const searchEntities = useCallback(
@@ -78,44 +125,22 @@ export const useDataFetching = <T extends { id: string }>(
 
         const validPage = Math.max(1, page);
 
-        // Build filter string
-        const filterParts: string[] = [];
+        // Build Elasticsearch query with filters
+        const esQuery = buildESQuery(filters);
 
-        if (baseFilter) {
-          filterParts.push(baseFilter);
-        }
-
-        Object.entries(filters).forEach(([filterKey, values]) => {
-          if (values && values.length > 0) {
-            const queryField = queryFieldMapping[filterKey];
-            if (queryField) {
-              const formattedValues = values
-                .map((value) => `"${value.replace(/"/g, '\\"')}"`)
-                .join(' OR ');
-              filterParts.push(`(${queryField}:(${formattedValues}))`);
-            }
-          }
+        const response = await searchQuery({
+          query: searchTerm || '',
+          pageNumber: validPage,
+          pageSize,
+          queryFilter: esQuery,
+          searchIndex,
+          includeDeleted: false,
         });
 
-        const filterString = filterParts.join(' AND ');
-
-        // Make API call with searchData
-        const response = await searchData(
-          searchTerm || '',
-          validPage,
-          pageSize,
-          filterString,
-          '',
-          '',
-          searchIndex,
-          false,
-          true
-        );
-
         // Process response
-        const transformedEntities = transformData(response.data);
-        const total = response.data?.hits?.total?.value || 0;
-        const responseAggregations = response.data?.aggregations || null;
+        const transformedEntities = transformData(response);
+        const total = response?.hits?.total?.value || 0;
+        const responseAggregations = response?.aggregations || null;
 
         // Update state
         setEntities(transformedEntities);
@@ -132,7 +157,7 @@ export const useDataFetching = <T extends { id: string }>(
         setLoading(false);
       }
     },
-    [searchIndex, baseFilter, pageSize, queryFieldMapping, transformData]
+    [searchIndex, pageSize, transformData, buildESQuery]
   );
 
   // Refetch function

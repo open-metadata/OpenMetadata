@@ -44,7 +44,7 @@ describe('DomainDetailPage', () => {
   it('should render domain detail page', async () => {
     render(
       <MemoryRouter>
-        <DomainDetailPage />
+        <DomainDetailPage pageTitle="Domains" />
       </MemoryRouter>
     );
 
@@ -64,7 +64,7 @@ describe('DomainDetailPage', () => {
 
     render(
       <MemoryRouter>
-        <DomainDetailPage />
+        <DomainDetailPage pageTitle="Domains" />
       </MemoryRouter>
     );
 

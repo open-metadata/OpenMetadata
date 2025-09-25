@@ -12,79 +12,40 @@
  */
 
 import { useMemo } from 'react';
-import { FilterConfig, FilterField } from '../../shared/types';
-import { COMMON_FILTER_FIELDS } from '../../shared/utils/commonFilterConfigs';
+import { AssetsOfEntity } from '../../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import {
+  DOMAIN_FILTERS,
+  SUB_DOMAIN_FILTERS,
+} from '../../../../../constants/Domain.constants';
+import { SearchIndex } from '../../../../../enums/search.enum';
+import { Aggregations } from '../../../../../interface/search.interface';
+import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
+import { useQuickFiltersWithComponent } from '../../filters/useQuickFiltersWithComponent';
 
 interface UseDomainFiltersConfig {
-  enabledFilters?: string[];
-  customFilterFields?: FilterField[];
-  customFilterConfigs?: FilterConfig[];
+  isSubDomain?: boolean;
+  aggregations?: Aggregations;
+  onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }
 
-export const useDomainFilters = (config: UseDomainFiltersConfig = {}) => {
-  const { enabledFilters = ['owner', 'tags', 'glossary', 'domainType'] } =
-    config;
+export const useDomainFilters = (config: UseDomainFiltersConfig) => {
+  const { isSubDomain = false } = config;
 
-  const filterKeys = useMemo(() => enabledFilters, []);
-
-  const queryConfig = useMemo(
-    () => ({
-      owner: 'owners.displayName.keyword',
-      tags: 'classificationTags',
-      glossary: 'glossaryTags',
-      domainType: 'domainType.keyword',
-    }),
-    []
+  const defaultFilters = useMemo(
+    () => (isSubDomain ? SUB_DOMAIN_FILTERS : DOMAIN_FILTERS),
+    [isSubDomain]
   );
 
-  const filterFields = useMemo(
-    () => [
-      COMMON_FILTER_FIELDS.owners,
-      COMMON_FILTER_FIELDS.tags,
-      COMMON_FILTER_FIELDS.glossary,
-      COMMON_FILTER_FIELDS.domainTypes, // Temporarily disabled
-    ],
-    []
-  );
-
-  const filterConfigs = useMemo(
-    () => [
-      {
-        key: 'owner',
-        labelKey: 'label.owner',
-        searchKey: 'owner.displayName',
-        optionsKey: 'owners',
-        selectedKey: 'owner',
-      },
-      {
-        key: 'tags',
-        labelKey: 'label.tag-plural',
-        searchKey: 'tags.tagFQN',
-        optionsKey: 'tags',
-        selectedKey: 'tags',
-      },
-      {
-        key: 'glossary',
-        labelKey: 'label.glossary-term-plural',
-        searchKey: 'glossaryTerms',
-        optionsKey: 'glossary',
-        selectedKey: 'glossary',
-      },
-      {
-        key: 'domainTypes',
-        labelKey: 'label.domain-type',
-        searchKey: 'domainType',
-        optionsKey: 'domainTypes',
-        selectedKey: 'domainType',
-      },
-    ],
-    []
-  );
+  const { quickFilters, selectedFilters } = useQuickFiltersWithComponent({
+    defaultFilters,
+    aggregations: config.aggregations,
+    searchIndex: SearchIndex.DOMAIN,
+    assetType: AssetsOfEntity.DOMAIN,
+    onFilterChange: config.onFilterChange,
+  });
 
   return {
-    filterKeys,
-    queryConfig,
-    filterFields,
-    filterConfigs,
+    quickFilters,
+    selectedFilters,
   };
 };

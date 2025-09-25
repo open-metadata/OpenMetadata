@@ -13,12 +13,12 @@
 
 import { useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../../../constants/constants';
+import { DOMAIN_DEFAULT_QUICK_FILTERS } from '../../../../../constants/Domain.constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { useListingData } from '../../compositions/useListingData';
 import { CellRenderer, ColumnConfig, ListingData } from '../../shared/types';
 import { useDomainColumns } from '../ui/useDomainColumns';
-import { useDomainFilters } from '../ui/useDomainFilters';
 import { useDomainRenderers } from '../ui/useDomainRenderers';
 
 interface UseDomainListingConfig {
@@ -26,7 +26,6 @@ interface UseDomainListingConfig {
   nameLabelKey?: string;
   pageSize?: number;
   basePath?: string;
-  enabledFilters?: string[];
   includeOwners?: boolean;
   includeGlossaryTerms?: boolean;
   includeDomainType?: boolean;
@@ -39,11 +38,10 @@ export const useDomainListing = (
   config: UseDomainListingConfig = {}
 ): ListingData<Domain> => {
   const {
-    baseFilter = '!_exists_:parent',
+    baseFilter = '',
     nameLabelKey = 'label.domain',
     pageSize = TABLE_CARD_PAGE_SIZE,
     basePath = '/domain',
-    enabledFilters = ['owner', 'tags', 'glossary', 'domainType'],
     includeOwners = true,
     includeGlossaryTerms = true,
     includeDomainType = true,
@@ -80,18 +78,11 @@ export const useDomainListing = (
     [includeDomainType, customRenderers]
   );
 
-  const domainFiltersConfig = useMemo(
-    () => ({
-      enabledFilters,
-    }),
-    [enabledFilters]
-  );
-
   // Use domain-specific atoms with stable configurations
   const { columns } = useDomainColumns(domainColumnsConfig);
   const { renderers } = useDomainRenderers(domainRenderersConfig);
-  const { filterKeys, queryConfig, filterFields, filterConfigs } =
-    useDomainFilters(domainFiltersConfig);
+  // Define filterKeys for domain filters
+  const filterKeys = useMemo(() => DOMAIN_DEFAULT_QUICK_FILTERS, []);
 
   // Use generic listing composition with domain-specific configuration
   const listingData = useListingData<Domain>({
@@ -99,16 +90,10 @@ export const useDomainListing = (
     baseFilter,
     pageSize,
     filterKeys,
-    filterFields,
-    queryConfig,
     columns,
     renderers,
     basePath,
   });
 
-  return {
-    ...listingData,
-    // Add domain-specific metadata
-    filterConfigs,
-  };
+  return listingData;
 };

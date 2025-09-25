@@ -12,7 +12,7 @@
  */
 
 import { useMemo } from 'react';
-import { UrlState } from '../types';
+import { UrlState } from '../shared/types';
 
 interface QueryConfig {
   [filterKey: string]: string;
@@ -37,11 +37,11 @@ export const useQueryBuilder = ({
     }
 
     Object.entries(urlState.filters).forEach(([filterKey, values]) => {
-      if (values.length > 0) {
+      if (Array.isArray(values) && values.length > 0) {
         const queryField = queryConfig[filterKey];
         if (queryField) {
           const formattedValues = values
-            .map((value) => `"${value.replace(/"/g, '\\"')}"`)
+            .map((value: string) => `"${value.replace(/"/g, '\\"')}"`)
             .join(' OR ');
           filterParts.push(`(${queryField}:(${formattedValues}))`);
         }

@@ -13,11 +13,11 @@
 
 import { Chip, ChipProps as MuiChipProps, SxProps, Theme } from '@mui/material';
 import { Tag01, XClose } from '@untitledui/icons';
-import { FC, ReactNode } from 'react';
+import { FC, ReactElement } from 'react';
 
 export interface TagChipProps extends Omit<MuiChipProps, 'variant' | 'color'> {
   label: string;
-  icon?: ReactNode;
+  icon?: ReactElement;
   onDelete?: () => void;
   size?: 'small' | 'medium' | 'large';
   variant?: 'filled' | 'outlined' | 'blueGray';
@@ -98,7 +98,7 @@ const TagChip: FC<TagChipProps> = ({
         ...heightStyles,
         ...sx,
       }}
-      variant={variant as any}
+      variant={variant as 'filled' | 'outlined'}
       onDelete={onDelete}
     />
   );

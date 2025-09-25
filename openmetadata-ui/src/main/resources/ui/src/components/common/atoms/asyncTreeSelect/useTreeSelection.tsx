@@ -25,7 +25,7 @@ interface UseTreeSelectionOptions<T> {
 export const useTreeSelection = <T = unknown,>({
   multiple = false,
   cascadeSelection = false,
-  defaultSelected = [], // TODO: Implement proper defaultSelected handling with Map
+  // defaultSelected = [], // TODO: Implement proper defaultSelected handling with Map
   treeData,
   onSelectionChange,
 }: UseTreeSelectionOptions<T>): TreeSelectionState<T> => {

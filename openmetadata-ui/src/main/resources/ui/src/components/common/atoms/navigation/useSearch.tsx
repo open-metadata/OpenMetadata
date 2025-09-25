@@ -18,7 +18,7 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface SearchConfig {
-  searchPlaceholderKey: string;
+  searchPlaceholder: string;
   onSearchChange: (query: string) => void;
   initialSearchQuery?: string;
 }
@@ -55,7 +55,7 @@ export const useSearch = (config: SearchConfig) => {
   const search = useMemo(
     () => (
       <TextField
-        placeholder={t(config.searchPlaceholderKey) || t('label.search')}
+        placeholder={config.searchPlaceholder || t('label.search')}
         size="small"
         slotProps={{
           input: {
@@ -99,7 +99,7 @@ export const useSearch = (config: SearchConfig) => {
         onChange={(e) => handleInputChange(e.target.value)}
       />
     ),
-    [searchQuery, config.searchPlaceholderKey, theme, t, handleInputChange]
+    [searchQuery, config.searchPlaceholder, theme, t, handleInputChange]
   );
 
   return {

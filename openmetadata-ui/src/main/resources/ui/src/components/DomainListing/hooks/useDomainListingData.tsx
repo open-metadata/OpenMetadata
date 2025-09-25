@@ -16,8 +16,23 @@ import { ListingData } from '../../../components/common/atoms/shared/types';
 import { Domain } from '../../../generated/entity/domains/domain';
 
 export const useDomainListingData = (): ListingData<Domain> => {
+  const baseFilter = {
+    query: {
+      bool: {
+        must: [],
+        must_not: [
+          {
+            exists: {
+              field: 'parent',
+            },
+          },
+        ],
+      },
+    },
+  };
+
   return useDomainListing({
-    baseFilter: '!_exists_:parent',
+    baseFilter: JSON.stringify(baseFilter),
     nameLabelKey: 'label.domain',
   });
 };

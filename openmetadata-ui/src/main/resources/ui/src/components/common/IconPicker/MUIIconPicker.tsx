@@ -85,7 +85,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
 
   // Use the search hook from atoms
   const { search } = useSearch({
-    searchPlaceholderKey: 'label.search',
+    searchPlaceholder: t('label.search'),
     onSearchChange: setSearchQuery,
     initialSearchQuery: '',
   });

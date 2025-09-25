@@ -11,19 +11,15 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { getAggregations } from '../../../../utils/ExploreUtils';
+import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { useDataFetching } from '../data/useDataFetching';
 import { useSelectionState } from '../data/useSelectionState';
 import { useUrlState } from '../data/useUrlState';
 import { usePaginationState } from '../pagination/usePaginationState';
-import {
-  CellRenderer,
-  ColumnConfig,
-  FilterField,
-  ListingData,
-} from '../shared/types';
+import { CellRenderer, ColumnConfig, ListingData } from '../shared/types';
 import { useActionHandlers } from './useActionHandlers';
 
 interface UseListingDataProps<T> {
@@ -31,8 +27,6 @@ interface UseListingDataProps<T> {
   baseFilter?: string;
   pageSize?: number;
   filterKeys: string[];
-  filterFields: FilterField[];
-  queryConfig: Record<string, string>;
   columns: ColumnConfig<T>[];
   renderers?: CellRenderer<T>;
   basePath?: string;
@@ -42,7 +36,9 @@ interface UseListingDataProps<T> {
   onCustomAddClick?: () => void;
 }
 
-export const useListingData = <T extends { id: string }>(
+export const useListingData = <
+  T extends { id: string; name?: string; fullyQualifiedName?: string }
+>(
   props: UseListingDataProps<T>
 ): ListingData<T> => {
   const {
@@ -50,8 +46,6 @@ export const useListingData = <T extends { id: string }>(
     baseFilter = '',
     pageSize = 10,
     filterKeys,
-    filterFields,
-    queryConfig,
     columns,
     renderers = {},
     basePath,
@@ -68,7 +62,6 @@ export const useListingData = <T extends { id: string }>(
     searchIndex,
     baseFilter,
     pageSize,
-    queryFieldMapping: queryConfig,
   });
 
   const paginationState = usePaginationState({
@@ -80,7 +73,9 @@ export const useListingData = <T extends { id: string }>(
 
   const selectionState = useSelectionState(dataFetching.entities);
 
-  const actionHandlers = useActionHandlers<T>({
+  const actionHandlers = useActionHandlers<
+    T & { name?: string; fullyQualifiedName?: string }
+  >({
     basePath,
     getEntityPath,
     addPath,
@@ -115,8 +110,8 @@ export const useListingData = <T extends { id: string }>(
   );
 
   const handleFilterChange = useCallback(
-    (key: string, values: string[]) => {
-      setFilters(key, values);
+    (filters: ExploreQuickFilterField[]) => {
+      setFilters(filters);
       // Selection will be cleared by the useEffect that watches these changes
     },
     [setFilters]
@@ -130,14 +125,8 @@ export const useListingData = <T extends { id: string }>(
     [setCurrentPage]
   );
 
-  // Map selected IDs to actual entity objects
-  const selectedEntities = useMemo(
-    () =>
-      dataFetching.entities.filter((entity) =>
-        selectionState.selectedEntities.includes(entity.id)
-      ),
-    [dataFetching.entities, selectionState.selectedEntities]
-  );
+  // selectedEntities should be an array of IDs, not entities
+  const selectedEntities = selectionState.selectedEntities;
 
   // Refetch function to reload data with current filters
   const refetch = useCallback(() => {
@@ -176,7 +165,6 @@ export const useListingData = <T extends { id: string }>(
     handleSearchChange,
     handleFilterChange,
     handlePageChange,
-    searchFilterOptions: () => Promise.resolve([]),
     refetch,
   };
 };

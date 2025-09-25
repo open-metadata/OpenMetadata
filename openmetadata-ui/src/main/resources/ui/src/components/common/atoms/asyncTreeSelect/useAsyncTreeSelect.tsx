@@ -65,7 +65,6 @@ export const useAsyncTreeSelect = <T = unknown,>(
     multiple = false,
     cascadeSelection = false,
     searchable = true,
-    debounceMs = 300,
     pageSize = 50,
     lazyLoad = false,
     enableVirtualization = false,
@@ -89,8 +88,6 @@ export const useAsyncTreeSelect = <T = unknown,>(
     loadingNodes,
     refetch,
     loadChildren: loadChildrenData,
-    clearCache,
-    hasCache,
   } = useTreeData({
     fetchData,
     searchTerm,
@@ -106,7 +103,6 @@ export const useAsyncTreeSelect = <T = unknown,>(
     toggleNodeSelection,
     clearSelection,
     selectAll,
-    getSelectedNodes,
     removeLastSelectedOption,
   } = useTreeSelection({
     multiple,
@@ -132,14 +128,13 @@ export const useAsyncTreeSelect = <T = unknown,>(
   });
 
   // Search functionality
-  const { filteredNodes, highlightedNode, clearSearch, isNodeVisible } =
-    useTreeSearch({
-      treeData,
-      searchTerm,
-      setSearchTerm,
-      searchable,
-      filterNode,
-    });
+  const { highlightedNode, clearSearch, isNodeVisible } = useTreeSearch({
+    treeData,
+    searchTerm,
+    setSearchTerm,
+    searchable,
+    filterNode,
+  });
 
   // Virtualization
   const { virtualItems, isVirtualized } = useTreeVirtualization({
@@ -189,7 +184,7 @@ export const useAsyncTreeSelect = <T = unknown,>(
       toggleExpansion(nodeId);
       const isExpanding = !wasExpanded;
 
-      if (!hasCache(nodeId) && isExpanding) {
+      if (isExpanding) {
         const node = findNodeInTree(treeData, nodeId);
         if (shouldNodeLazyLoad(node, lazyLoad)) {
           await loadChildrenData(nodeId);
@@ -199,7 +194,6 @@ export const useAsyncTreeSelect = <T = unknown,>(
     [
       toggleExpansion,
       lazyLoad,
-      hasCache,
       isNodeExpanded,
       loadChildrenData,
       treeData,

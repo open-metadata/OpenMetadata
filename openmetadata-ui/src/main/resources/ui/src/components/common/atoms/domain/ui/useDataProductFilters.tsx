@@ -11,81 +11,29 @@
  *  limitations under the License.
  */
 
-import { useMemo } from 'react';
-import { FilterConfig, FilterField } from '../../shared/types';
-import { COMMON_FILTER_FIELDS } from '../../shared/utils/commonFilterConfigs';
+import { AssetsOfEntity } from '../../../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
+import { DATAPRODUCT_FILTERS } from '../../../../../constants/DataProduct.constants';
+import { SearchIndex } from '../../../../../enums/search.enum';
+import { Aggregations } from '../../../../../interface/search.interface';
+import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
+import { useQuickFiltersWithComponent } from '../../filters/useQuickFiltersWithComponent';
 
 interface UseDataProductFiltersConfig {
-  enabledFilters?: string[];
-  customFilterFields?: FilterField[];
-  customFilterConfigs?: FilterConfig[];
+  aggregations?: Aggregations;
+  onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }
 
-export const useDataProductFilters = (
-  config: UseDataProductFiltersConfig = {}
-) => {
-  const { enabledFilters = ['owner', 'expert', 'tags', 'glossary'] } = config;
-
-  const filterKeys = useMemo(() => enabledFilters, []);
-
-  const queryConfig = useMemo(
-    () => ({
-      owner: 'owners.displayName.keyword',
-      expert: 'experts.displayName.keyword',
-      tags: 'classificationTags',
-      glossary: 'glossaryTags',
-    }),
-    []
-  );
-
-  const filterFields = useMemo(
-    () => [
-      COMMON_FILTER_FIELDS.owners,
-      COMMON_FILTER_FIELDS.experts,
-      COMMON_FILTER_FIELDS.tags,
-      COMMON_FILTER_FIELDS.glossary,
-    ],
-    []
-  );
-
-  const filterConfigs = useMemo(
-    () => [
-      {
-        key: 'owners',
-        labelKey: 'label.owner',
-        searchKey: 'owner.displayName',
-        optionsKey: 'owners',
-        selectedKey: 'owner',
-      },
-      {
-        key: 'experts',
-        labelKey: 'label.expert-plural',
-        searchKey: 'expert.displayName',
-        optionsKey: 'experts',
-        selectedKey: 'expert',
-      },
-      {
-        key: 'tags',
-        labelKey: 'label.tag-plural',
-        searchKey: 'tags.tagFQN',
-        optionsKey: 'tags',
-        selectedKey: 'tags',
-      },
-      {
-        key: 'glossary',
-        labelKey: 'label.glossary-term-plural',
-        searchKey: 'glossaryTerms',
-        optionsKey: 'glossary',
-        selectedKey: 'glossary',
-      },
-    ],
-    []
-  );
+export const useDataProductFilters = (config: UseDataProductFiltersConfig) => {
+  const { quickFilters, selectedFilters } = useQuickFiltersWithComponent({
+    defaultFilters: DATAPRODUCT_FILTERS,
+    aggregations: config.aggregations,
+    searchIndex: SearchIndex.DATA_PRODUCT,
+    assetType: AssetsOfEntity.DATA_PRODUCT,
+    onFilterChange: config.onFilterChange,
+  });
 
   return {
-    filterKeys,
-    queryConfig,
-    filterFields,
-    filterConfigs,
+    quickFilters,
+    selectedFilters,
   };
 };

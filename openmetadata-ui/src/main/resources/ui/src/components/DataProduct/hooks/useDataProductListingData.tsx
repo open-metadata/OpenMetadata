@@ -13,6 +13,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
+import { DATAPRODUCT_DEFAULT_QUICK_FILTERS } from '../../../constants/DataProduct.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -22,30 +23,9 @@ import {
   ColumnConfig,
   ListingData,
 } from '../../common/atoms/shared/types';
-import { COMMON_FILTER_FIELDS } from '../../common/atoms/shared/utils/commonFilterConfigs';
 
 export const useDataProductListingData = (): ListingData<DataProduct> => {
-  const filterKeys = useMemo(() => ['owner', 'tags', 'glossary', 'expert'], []);
-
-  const queryConfig = useMemo(
-    () => ({
-      owner: 'owners.displayName.keyword',
-      tags: 'classificationTags',
-      glossary: 'glossaryTags',
-      expert: 'experts.displayName.keyword',
-    }),
-    []
-  );
-
-  const filterFields = useMemo(
-    () => [
-      COMMON_FILTER_FIELDS.owners,
-      COMMON_FILTER_FIELDS.experts,
-      COMMON_FILTER_FIELDS.tags,
-      COMMON_FILTER_FIELDS.glossary,
-    ],
-    []
-  );
+  const filterKeys = useMemo(() => DATAPRODUCT_DEFAULT_QUICK_FILTERS, []);
 
   const getGlossaryTags = useCallback(
     (dataProduct: DataProduct) =>
@@ -90,8 +70,6 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
     baseFilter: '', // No parent filter for data products
     pageSize: TABLE_CARD_PAGE_SIZE,
     filterKeys,
-    filterFields,
-    queryConfig,
     columns,
     renderers,
     basePath: '/dataProduct',

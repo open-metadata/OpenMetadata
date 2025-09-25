@@ -12,7 +12,7 @@
  */
 
 import { useMemo } from 'react';
-import { PaginationState } from '../types';
+import { PaginationState } from '../shared/types';
 
 interface UsePaginationStateProps {
   currentPage: number;

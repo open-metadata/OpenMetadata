@@ -12,7 +12,7 @@
  */
 
 import { useMemo } from 'react';
-import { ColumnConfig } from '../types';
+import { ColumnConfig } from '../shared/types';
 
 interface UseColumnConfigProps<T> {
   columns: ColumnConfig<T>[];

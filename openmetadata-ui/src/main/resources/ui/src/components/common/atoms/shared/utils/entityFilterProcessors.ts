@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchDropdownOption } from '../../../SearchDropdown/SearchDropdown.interface';
+import { SearchDropdownOption } from '../../../../SearchDropdown/SearchDropdown.interface';
 
 interface AggregationBucket {
   key: string;

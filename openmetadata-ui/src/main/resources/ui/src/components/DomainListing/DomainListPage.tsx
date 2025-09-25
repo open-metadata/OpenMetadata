@@ -14,10 +14,11 @@
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../constants/constants';
-import { SearchIndex } from '../../enums/search.enum';
+import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
+import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { addDomains } from '../../rest/domainAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
@@ -26,7 +27,6 @@ import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useFormDrawerWithRef } from '../common/atoms/drawer';
-import { useQuickFilters } from '../common/atoms/filters/useQuickFilters';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
@@ -46,18 +46,10 @@ const DomainListPage = () => {
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
-  // Use the existing domain filters configuration
-  const domainFilters = useDomainFilters({
-    enabledFilters: ['owner', 'tags', 'glossary', 'domainType'],
-  });
-
-  const { quickFilters } = useQuickFilters({
-    filterFields: domainFilters.filterFields,
-    filterConfigs: domainFilters.filterConfigs,
-    queryConfig: domainFilters.queryConfig,
+  // Use the simplified domain filters configuration
+  const { quickFilters } = useDomainFilters({
+    aggregations: domainListing.aggregations || undefined,
     onFilterChange: domainListing.handleFilterChange,
-    aggregations: domainListing.aggregations || {},
-    searchIndex: SearchIndex.DOMAIN,
   });
 
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
@@ -74,10 +66,10 @@ const DomainListPage = () => {
         onCancel={() => {
           // No-op: Drawer close is handled by useFormDrawerWithRef
         }}
-        onSubmit={async (formData: any) => {
+        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsLoading(true);
           try {
-            await addDomains(formData);
+            await addDomains(formData as CreateDomain);
             showSuccessToast(
               t('server.create-entity-success', {
                 entity: t('label.domain'),
@@ -134,7 +126,7 @@ const DomainListPage = () => {
   });
 
   const { search } = useSearch({
-    searchPlaceholderKey: 'label.search',
+    searchPlaceholder: t('label.search'),
     onSearchChange: domainListing.handleSearchChange,
     initialSearchQuery: domainListing.urlState.searchQuery,
   });
@@ -162,10 +154,19 @@ const DomainListPage = () => {
     loading: domainListing.loading,
   });
 
+  // Map selected IDs to actual entities for the delete hook
+  const selectedDomainEntities = useMemo(
+    () =>
+      domainListing.entities.filter((entity) =>
+        domainListing.selectedEntities.includes(entity.id)
+      ),
+    [domainListing.entities, domainListing.selectedEntities]
+  );
+
   const { deleteIconButton, deleteModal } = useDelete({
     entityType: 'domains',
     entityLabel: 'Domain',
-    selectedEntities: domainListing.selectedEntities,
+    selectedEntities: selectedDomainEntities,
     onDeleteComplete: () => {
       domainListing.clearSelection();
       domainListing.refetch();

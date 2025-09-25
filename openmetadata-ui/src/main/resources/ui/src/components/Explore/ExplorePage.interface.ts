@@ -110,7 +110,7 @@ export interface ExploreProps {
 export interface ExploreQuickFilterField {
   key: string;
   label: string;
-  value: SearchDropdownOption[] | undefined;
+  value?: SearchDropdownOption[];
 }
 
 // Type for all the explore tab entities

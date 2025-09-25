@@ -13,6 +13,7 @@
 
 import { ReactNode } from 'react';
 import { Aggregations } from '../../../../../interface/search.interface';
+import { ExploreQuickFilterField } from '../../../../Explore/ExplorePage.interface';
 
 export interface UrlStateConfig {
   searchKey?: string;
@@ -29,7 +30,7 @@ export interface UrlState {
 export interface UrlStateHook {
   urlState: UrlState;
   setSearchQuery: (query: string) => void;
-  setFilters: (key: string, values: string[]) => void;
+  setFilters: (filters: ExploreQuickFilterField[]) => void;
   setCurrentPage: (page: number) => void;
   resetFilters: () => void;
   resetAll: () => void;
@@ -58,7 +59,7 @@ export interface PaginationState {
   setCurrentPage: (page: number) => void;
 }
 
-export interface SelectionState<T> {
+export interface SelectionState {
   selectedEntities: string[];
   isAllSelected: boolean;
   isIndeterminate: boolean;
@@ -126,9 +127,8 @@ export interface ListingData<T> {
   filterOptions?: FilterOptions;
   aggregations?: Aggregations | null;
   handleSearchChange: (query: string) => void;
-  handleFilterChange: (key: string, values: string[]) => void;
+  handleFilterChange: (filters: ExploreQuickFilterField[]) => void;
   handlePageChange: (page: number) => void;
-  searchFilterOptions: (key: string, term: string) => void;
   refetch: () => void;
 }
 

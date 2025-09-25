@@ -12,11 +12,11 @@
  */
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
-import { SearchIndex } from '../../../enums/search.enum';
+import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
-import { useQuickFilters } from '../../common/atoms/filters/useQuickFilters';
 import { useSearch } from '../../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
 import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
@@ -31,24 +31,17 @@ const SubDomainsTable = ({
   permissions,
   onAddSubDomain,
 }: SubDomainsTableProps) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const subdomainListing = useSubdomainListingData({
     parentDomainFqn: domainFqn,
   });
 
   // Use the same domain filters configuration
-  const domainFilters = useDomainFilters({
-    enabledFilters: ['owner', 'tags', 'glossary', 'domainType'],
-  });
-
-  const { quickFilters } = useQuickFilters({
-    filterFields: domainFilters.filterFields,
-    filterConfigs: domainFilters.filterConfigs,
-    queryConfig: domainFilters.queryConfig,
+  const { quickFilters } = useDomainFilters({
+    isSubDomain: true,
+    aggregations: subdomainListing.aggregations || undefined,
     onFilterChange: subdomainListing.handleFilterChange,
-    aggregations: subdomainListing.aggregations || {},
-    searchIndex: SearchIndex.DOMAIN,
-    independent: true,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -58,7 +51,9 @@ const SubDomainsTable = ({
   });
 
   const { search } = useSearch({
-    searchPlaceholderKey: 'label.search-subdomain',
+    searchPlaceholder: t('label.search-entity', {
+      entity: t('label.sub-domain'),
+    }),
     onSearchChange: subdomainListing.handleSearchChange,
     initialSearchQuery: subdomainListing.urlState.searchQuery,
   });
@@ -86,10 +81,19 @@ const SubDomainsTable = ({
     loading: subdomainListing.loading,
   });
 
+  // Map selected IDs to actual entities for the delete hook
+  const selectedSubdomainEntities = useMemo(
+    () =>
+      subdomainListing.entities.filter((entity) =>
+        subdomainListing.selectedEntities.includes(entity.id)
+      ),
+    [subdomainListing.entities, subdomainListing.selectedEntities]
+  );
+
   const { deleteIconButton, deleteModal } = useDelete({
     entityType: 'domains',
     entityLabel: 'Sub-domain',
-    selectedEntities: subdomainListing.selectedEntities,
+    selectedEntities: selectedSubdomainEntities,
     onDeleteComplete: () => {
       subdomainListing.clearSelection();
       subdomainListing.refetch();

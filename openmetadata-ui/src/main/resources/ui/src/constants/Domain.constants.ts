@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { Domain, DomainType } from '../generated/entity/domains/domain';
 import i18n from '../utils/i18next/LocalUtil';
 
@@ -72,3 +73,58 @@ export const DOMAIN_DUMMY_DATA: Domain = {
     },
   ],
 };
+
+export const DOMAIN_DEFAULT_QUICK_FILTERS = [
+  EntityFields.OWNERS,
+  EntityFields.CLASSIFICATION_TAGS,
+  EntityFields.GLOSSARY_TERMS,
+  EntityFields.DOMAIN_TYPE,
+];
+
+export const SUBDOMAIN_DEFAULT_QUICK_FILTERS = [
+  EntityFields.OWNERS,
+  EntityFields.CLASSIFICATION_TAGS,
+  EntityFields.GLOSSARY_TERMS,
+];
+
+export const DOMAIN_FILTERS = [
+  {
+    label: i18n.t('label.owner-plural'),
+    key: EntityFields.OWNERS,
+  },
+  {
+    label: i18n.t('label.tag-plural'),
+    key: EntityFields.CLASSIFICATION_TAGS,
+  },
+  {
+    label: i18n.t('label.glossary-term-plural'),
+    key: EntityFields.GLOSSARY_TERMS,
+  },
+  {
+    label: i18n.t('label.domain-type'),
+    key: EntityFields.DOMAIN_TYPE,
+  },
+];
+
+export const SUB_DOMAIN_FILTERS = [
+  {
+    label: i18n.t('label.owner-plural'),
+    key: EntityFields.OWNERS,
+  },
+  {
+    label: i18n.t('label.domain-plural'),
+    key: EntityFields.DOMAINS,
+  },
+  {
+    label: i18n.t('label.tag-plural'),
+    key: EntityFields.CLASSIFICATION_TAGS,
+  },
+  {
+    label: i18n.t('label.glossary-term-plural'),
+    key: EntityFields.GLOSSARY_TERMS,
+  },
+  {
+    label: i18n.t('label.domain-type'),
+    key: EntityFields.DOMAIN_TYPE,
+  },
+];

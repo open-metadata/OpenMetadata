@@ -43,7 +43,6 @@ export const useTreeData = <T = unknown,>({
   fetchData,
   searchTerm = '',
   pageSize = 50,
-  lazyLoad = false,
   initialData = [],
 }: UseTreeDataOptions<T>): UseTreeDataReturn<T> => {
   const [state, setState] = useState<TreeState<T>>({

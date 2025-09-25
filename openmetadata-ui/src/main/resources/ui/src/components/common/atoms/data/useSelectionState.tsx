@@ -12,11 +12,11 @@
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { SelectionState } from '../types';
+import { SelectionState } from '../shared/types';
 
 export const useSelectionState = <T extends { id: string }>(
   entities: T[]
-): SelectionState<T> => {
+): SelectionState => {
   const [selectedEntities, setSelectedEntities] = useState<string[]>([]);
 
   const entityIds = useMemo(

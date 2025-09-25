@@ -13,7 +13,7 @@
 
 import { useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ActionHandlers } from '../types';
+import { ActionHandlers } from '../shared/types';
 
 interface UseActionHandlersProps<T> {
   basePath?: string;

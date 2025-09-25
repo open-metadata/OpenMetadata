@@ -22,7 +22,7 @@ import {
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { TableViewConfig } from '../types';
+import { TableViewConfig } from '../shared/types';
 import { useTableRow } from './useTableRow';
 
 export const useDataTable = <T extends { id: string }>(
@@ -41,7 +41,7 @@ export const useDataTable = <T extends { id: string }>(
   const hasActiveFilters =
     listing.urlState?.filters &&
     Object.values(listing.urlState.filters).some(
-      (filterValues: string[]) =>
+      (filterValues: unknown) =>
         Array.isArray(filterValues) && filterValues.length > 0
     );
   const hasActiveFiltersOrSearch = hasActiveSearch || hasActiveFilters;
