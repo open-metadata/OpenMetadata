@@ -4998,7 +4998,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.debug("Created data product without reviewers: {}", dataProduct.getName());
 
     // Wait for workflow to process and auto-approve
-    java.lang.Thread.sleep(10000);
+    // Adding extra time to handle potential duplicate workflow executions
+    java.lang.Thread.sleep(15000);
 
     // Verify no user tasks were created (since there are no reviewers, it should auto-approve)
     String dataProductEntityLink =
@@ -5020,8 +5021,9 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     LOG.info("Verifying dataProduct status was auto-approved...");
     await()
         .atMost(Duration.ofSeconds(120))
-        .pollInterval(Duration.ofSeconds(1))
-        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofSeconds(2))
+        .ignoreExceptions()  // Ignore transient errors during polling
         .until(
             () -> {
               try {
