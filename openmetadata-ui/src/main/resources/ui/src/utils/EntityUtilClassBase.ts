@@ -35,14 +35,18 @@ import DashboardDetailsPage from '../pages/DashboardDetailsPage/DashboardDetails
 import DatabaseDetailsPage from '../pages/DatabaseDetailsPage/DatabaseDetailsPage';
 import DatabaseSchemaPageComponent from '../pages/DatabaseSchemaPage/DatabaseSchemaPage.component';
 import DataModelsPage from '../pages/DataModelPage/DataModelPage.component';
+import DirectoryDetailsPage from '../pages/DirectoryDetailsPage/DirectoryDetailsPage';
 import { VersionData } from '../pages/EntityVersionPage/EntityVersionPage.component';
+import FileDetailsPage from '../pages/FileDetailsPage/FileDetailsPage';
 import MetricDetailsPage from '../pages/MetricsPage/MetricDetailsPage/MetricDetailsPage';
 import MlModelPage from '../pages/MlModelPage/MlModelPage.component';
 import PipelineDetailsPage from '../pages/PipelineDetails/PipelineDetailsPage.component';
 import SearchIndexDetailsPage from '../pages/SearchIndexDetailsPage/SearchIndexDetailsPage';
+import SpreadsheetDetailsPage from '../pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage';
 import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
+import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
 import {
   getDatabaseDetailsByFQN,
   getDatabaseSchemaDetailsByFQN,
@@ -58,6 +62,7 @@ import {
   FormattedAPIServiceType,
   FormattedDashboardServiceType,
   FormattedDatabaseServiceType,
+  FormattedDriveServiceType,
   FormattedMessagingServiceType,
   FormattedMetadataServiceType,
   FormattedMlModelServiceType,
@@ -102,6 +107,7 @@ class EntityUtilClassBase {
       ...FormattedMessagingServiceType,
       ...FormattedAPIServiceType,
       ...FormattedStorageServiceType,
+      ...FormattedDriveServiceType,
     });
   }
 
@@ -319,6 +325,34 @@ class EntityUtilClassBase {
           tab,
           subTab
         );
+      case EntityType.DIRECTORY:
+        return getEntityDetailsPath(
+          EntityType.DIRECTORY,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.FILE:
+        return getEntityDetailsPath(
+          EntityType.FILE,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.SPREADSHEET:
+        return getEntityDetailsPath(
+          EntityType.SPREADSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
+      case EntityType.WORKSHEET:
+        return getEntityDetailsPath(
+          EntityType.WORKSHEET,
+          fullyQualifiedName,
+          tab,
+          subTab
+        );
 
       case EntityType.BOT:
         return getBotsPath(fullyQualifiedName);
@@ -354,7 +388,7 @@ class EntityUtilClassBase {
     }
   }
 
-  public getEntityDetailComponent(entityType: string) {
+  public getEntityDetailComponent(entityType: string): FC | null {
     switch (entityType) {
       case EntityType.DATABASE:
         return DatabaseDetailsPage;
@@ -388,6 +422,14 @@ class EntityUtilClassBase {
         return APIEndpointPage;
       case EntityType.METRIC:
         return MetricDetailsPage;
+      case EntityType.DIRECTORY:
+        return DirectoryDetailsPage;
+      case EntityType.FILE:
+        return FileDetailsPage;
+      case EntityType.SPREADSHEET:
+        return SpreadsheetDetailsPage;
+      case EntityType.WORKSHEET:
+        return WorksheetDetailsPage;
 
       default:
         return null;
@@ -446,6 +488,18 @@ class EntityUtilClassBase {
       }
       case EntityType.METRIC: {
         return ResourceEntity.METRIC;
+      }
+      case EntityType.DIRECTORY: {
+        return ResourceEntity.DRIVE_SERVICE;
+      }
+      case EntityType.FILE: {
+        return ResourceEntity.FILE;
+      }
+      case EntityType.SPREADSHEET: {
+        return ResourceEntity.SPREADSHEET;
+      }
+      case EntityType.WORKSHEET: {
+        return ResourceEntity.WORKSHEET;
       }
 
       default: {
