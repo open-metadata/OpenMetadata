@@ -26,4 +26,5 @@ export type TitleBreadcrumbProps = {
   noLink?: boolean;
   loading?: boolean;
   widthDeductions?: number;
+  useCustomArrow?: boolean;
 };

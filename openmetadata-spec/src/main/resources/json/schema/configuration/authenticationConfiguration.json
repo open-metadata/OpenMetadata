@@ -22,10 +22,8 @@
       "javaType": "org.openmetadata.schema.api.security.ClientType",
       "description": "Client Type",
       "type": "string",
-      "enum": [
-        "public",
-        "confidential"
-      ],
+      "enum": ["public", "confidential"],
+      "enumNames": ["Public", "Confidential"],
       "default": "public"
     },
     "provider": {

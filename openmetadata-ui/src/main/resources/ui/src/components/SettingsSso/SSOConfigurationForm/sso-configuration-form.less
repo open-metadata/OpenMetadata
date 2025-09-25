@@ -131,7 +131,7 @@
     width: 100%;
 
     .cancel-sso-configuration {
-      font-weight: @font-semibold;
+      font-weight: @font-regular;
 
       line-height: 24px;
       color: @primary-6;
@@ -177,7 +177,7 @@
     box-sizing: border-box;
 
     .cancel-sso-configuration {
-      font-weight: 600;
+      font-weight: @font-regular;
 
       line-height: 24px;
       color: @primary-6;
@@ -389,7 +389,8 @@
 
 .content-height-with-resizable-panel.sso-configured {
   background-color: @white;
-  height: calc(100vh - var(--ant-navbar-height) - 216px);
+  height: calc(100vh - var(--ant-navbar-height) - 200px);
+  transition: height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   .right-panel-splitter {
     margin-left: @size-lg;
@@ -408,7 +409,7 @@
       gap: 12px;
       margin-top: @size-lg;
       margin-bottom: 0;
-      padding: @size-md @size-lg;
+      padding: @size-md @size-lg 0 @size-lg;
       border-top: 1px solid @grey-200;
       background-color: @white;
       box-shadow: @box-shadow-base;
@@ -435,6 +436,13 @@
         font-weight: @font-semibold;
       }
     }
+  }
+}
+
+// When alert is visible with configured SSO, adjust container height
+.sso-settings-page:has(#page-alert) {
+  .content-height-with-resizable-panel.sso-configured {
+    height: calc(100vh - var(--ant-navbar-height) - 200px - 78px) !important;
   }
 }
 
@@ -562,9 +570,14 @@
   }
 }
 
-// SSO-specific dropdown menu box-shadow
+// SSO-specific dropdown menu box-shadow and border radius
 .sso-configuration-form-card .ant-select-dropdown {
   box-shadow: 0px 1px 2px 0px @grey-27;
+  border-radius: @border-rad-xs;
+
+  .ant-select-dropdown-content {
+    border-radius: @border-rad-xs;
+  }
 }
 
 .sso-configuration-form-card .rjsf .form-group.field {
@@ -817,6 +830,22 @@
       background-size: @size-sm @size-xs;
       background-repeat: no-repeat;
       background-position: center;
+    }
+  }
+}
+
+// SSO-specific scrollbar thumb color
+.sso-configuration-form-card,
+.content-resizable-panel-container.sso-configured,
+.content-height-with-resizable-panel.sso-configured {
+  &::-webkit-scrollbar-thumb {
+    background-color: @grey-500;
+  }
+
+  // Apply to all scrollable children within SSO forms
+  * {
+    &::-webkit-scrollbar-thumb {
+      background-color: @grey-500;
     }
   }
 }
