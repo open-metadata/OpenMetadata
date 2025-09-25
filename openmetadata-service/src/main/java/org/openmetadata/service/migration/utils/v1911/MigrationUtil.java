@@ -57,7 +57,7 @@ public class MigrationUtil {
                 "/" + GLOBAL_SETTINGS + "/" + AGGREGATIONS + "/-",
                 Json.createObjectBuilder()
                     .add(NAME, ENTITY_TYPE_KEYWORD)
-                    .add(TYPE, TYPE)
+                    .add("type", TYPE)
                     .add(FIELD, ENTITY_TYPE_KEYWORD)
                     .build());
             needsUpdate.set(true);
