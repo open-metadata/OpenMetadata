@@ -10,7 +10,9 @@ You can learn more about Custom Connectors and see them in action in the followi
 
 $$section
 ### Connection Arguments $(id="connectionArguments")
+
 Advanced arguments specific to your custom implementation. These can be any key-value pairs that your custom connector requires.
+
 Possible uses:
 - Custom authentication parameters
 - Service-specific API options
@@ -20,12 +22,17 @@ $$
 
 $$section
 ### Connection Options $(id="connectionOptions")
+
 This property becomes useful when we need to send input parameters to our Source Class.
+
 If, for example, we want to run a piece of logic based on the value of a parameter named `business_unit`, we can pass the key `business_unit` with any value, and read it in the Source via:
+
 ```python
 business_unit = self.service_connection.connectionOptions.__root__.get("business_unit")
 ```
+
 You can find a full example of this implementation [here](https://github.com/open-metadata/openmetadata-demo/blob/main/custom-connector/connector/my_csv_connector.py#L91).
+
 $$
 
 ## Test Connection
