@@ -161,12 +161,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     createOrUpdateDataContractTestSuite(dataContract, update);
   }
 
-  @Override
-  protected void setDefaultStatus(DataContract entity, boolean update) {
-    // If the contract status is marked as null, let it be null, If it is not marked as null, leave
-    // it as is, so no implementation here
-  }
-
   // Ensure we have a pipeline after creation if needed
   @Override
   protected void postCreate(DataContract dataContract) {
