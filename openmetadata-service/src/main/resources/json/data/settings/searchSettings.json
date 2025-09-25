@@ -21,6 +21,11 @@
         "field": "entityType"
       },
       {
+        "name": "entityType.keyword",
+        "type": "terms",
+        "field": "entityType.keyword"
+      },
+      {
         "name": "tier.tagFQN",
         "type": "terms",
         "field": "tier.tagFQN"
