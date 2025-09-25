@@ -75,7 +75,7 @@ function SpreadsheetDetails({
   versionHandler,
   onSpreadsheetUpdate,
   onUpdateVote,
-}: SpreadsheetDetailsProps) {
+}: Readonly<SpreadsheetDetailsProps>) {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { tab: activeTab = EntityTabs.WORKSHEETS } =

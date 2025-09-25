@@ -17,8 +17,18 @@ import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidg
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { FileDetailPageTabProps } from './FileClassBase';
 import i18n from './i18next/LocalUtil';
+
+export interface FileDetailPageTabProps {
+  activityFeedTab: JSX.Element;
+  lineageTab: JSX.Element;
+  customPropertiesTab: JSX.Element;
+  activeTab: EntityTabs;
+  feedCount: {
+    totalCount: number;
+  };
+  labelMap?: Record<EntityTabs, string>;
+}
 
 export const fileDefaultFields = [
   TabSpecificField.OWNERS,
