@@ -94,7 +94,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    '/api/v1/search/query?q=&index=user_search_index&*'
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
@@ -390,16 +390,16 @@ export const fillGlossaryRowDetails = async (
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
-  await fillTextInputDetails(page, "#ccc")
+  await fillTextInputDetails(page, '#ccc');
 
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
   const base64Src =
-        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
-  await fillTextInputDetails(page, base64Src)
+  await fillTextInputDetails(page, base64Src);
 
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)
