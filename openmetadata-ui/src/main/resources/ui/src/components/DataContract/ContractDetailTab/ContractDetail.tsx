@@ -455,7 +455,7 @@ const ContractDetail: React.FC<{
           )}
 
           {/* Quality Component */}
-          {contract?.testSuite?.id && (
+          {!isEmpty(contract?.qualityExpectations) && (
             <Col
               className="contract-card-items"
               data-testid="data-quality-card"

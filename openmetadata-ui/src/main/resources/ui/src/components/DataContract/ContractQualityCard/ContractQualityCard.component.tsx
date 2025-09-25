@@ -19,9 +19,14 @@ import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { TEST_CASE_STATUS_ICON } from '../../../constants/DataQuality.constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
-import { TestCase, TestSummary } from '../../../generated/tests/testCase';
 import {
-  getListTestCaseBySearch,
+  TestCaseResult,
+  TestCaseStatus,
+  TestSummary,
+} from '../../../generated/tests/testCase';
+import { useFqn } from '../../../hooks/useFqn';
+import {
+  getListTestCasResultsBySearch,
   getTestCaseExecutionSummary,
 } from '../../../rest/testAPI';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
@@ -36,9 +41,10 @@ const ContractQualityCard: React.FC<{
   contractStatus?: string;
 }> = ({ contract, contractStatus }) => {
   const { t } = useTranslation();
+  const { fqn } = useFqn();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
-  const [testCaseResult, setTestCaseResult] = useState<TestCase[]>([]);
+  const [testCaseResult, setTestCaseResult] = useState<TestCaseResult[]>([]);
 
   const fetchTestCaseSummary = async () => {
     try {
@@ -54,7 +60,7 @@ const ContractQualityCard: React.FC<{
   const fetchTestCases = async () => {
     setIsTestCaseLoading(true);
     try {
-      const response = await getListTestCaseBySearch({
+      const response = await getListTestCasResultsBySearch({
         dataContractId: contract.id,
         ...DEFAULT_SORT_ORDER,
         limit: ES_MAX_PAGE_SIZE,
@@ -91,24 +97,30 @@ const ContractQualityCard: React.FC<{
     };
   }, [testCaseSummary]);
 
-  const getTestCaseStatusIcon = (record: TestCase) => (
-    <Icon
-      className="test-status-icon"
-      component={
-        TEST_CASE_STATUS_ICON[
-          (record?.testCaseResult?.testCaseStatus ??
-            'Queued') as keyof typeof TEST_CASE_STATUS_ICON
-        ]
-      }
-    />
-  );
+  const processedQualityExpectations = useMemo(() => {
+    const testCaseResultsMap = new Map(
+      testCaseResult.map((result) => [
+        result.testCaseFQN?.split('.').pop(), // Use the last segment as the key (name)
+        result,
+      ])
+    );
+
+    const mergedData = contract.qualityExpectations?.map((item) => ({
+      id: item.id,
+      name: item.name,
+      fullyQualifiedName: `${fqn}.${item.name}`,
+      testCaseStatus:
+        testCaseResultsMap.get(item.name)?.testCaseStatus ??
+        TestCaseStatus.Queued,
+    }));
+
+    return mergedData ?? [];
+  }, [contract, testCaseResult]);
 
   useEffect(() => {
-    if (contract?.testSuite?.id) {
-      fetchTestCaseSummary();
-      fetchTestCases();
-    }
-  }, [contract]);
+    // fetchTestCaseSummary();
+    fetchTestCases();
+  }, []);
 
   if (isTestCaseLoading) {
     return <Loader />;
@@ -124,7 +136,7 @@ const ContractQualityCard: React.FC<{
                 entity: t('label.test'),
               })}:`}{' '}
               <span className="data-quality-total-test-value">
-                {testCaseSummary?.total || 8000}
+                {testCaseSummary?.total}
               </span>
             </Typography.Text>
 
@@ -185,18 +197,19 @@ const ContractQualityCard: React.FC<{
           className="data-quality-test-item-container"
           direction="vertical"
           size={14}>
-          {testCaseResult.map((item) => {
+          {processedQualityExpectations.map((item) => {
             return (
               <div
                 className="data-quality-item d-flex items-center"
                 key={item.id}>
-                {getTestCaseStatusIcon(item)}
+                <Icon
+                  className="test-status-icon"
+                  component={TEST_CASE_STATUS_ICON[item.testCaseStatus]}
+                />
                 <div className="data-quality-item-content">
                   <Link
                     className="data-quality-item-name-link"
-                    to={getTestCaseDetailPagePath(
-                      item.fullyQualifiedName ?? ''
-                    )}>
+                    to={getTestCaseDetailPagePath(item.fullyQualifiedName)}>
                     {item.name}
                   </Link>
                 </div>
