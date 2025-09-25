@@ -13,19 +13,11 @@
 import { Card, RadioChangeEvent } from 'antd';
 import classNames from 'classnames';
 import Qs from 'qs';
-import {
-  DragEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { DragEvent, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
 import {
-  LINEAGE_TAB_VIEW,
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
@@ -48,7 +40,6 @@ import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { LineageProps } from './Lineage.interface';
-import LineageTable from './LineageTable/LineageTable.component';
 
 const Lineage = ({
   deleted,
@@ -59,9 +50,7 @@ const Lineage = ({
 }: LineageProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const [activeViewTab, setActiveViewTab] = useState<LINEAGE_TAB_VIEW>(
-    LINEAGE_TAB_VIEW.DIAGRAM_VIEW
-  );
+
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
   const location = useCustomLocation();
@@ -171,15 +160,11 @@ const Lineage = ({
               <TitleBreadcrumb className="p-b-lg" titleLinks={breadcrumbs} />
             )}
 
-            <CustomControlsComponent
-              activeViewTab={activeViewTab}
-              handleActiveViewTabChange={handleActiveViewTabChange}
-              onlyShowTabSwitch={activeViewTab === LINEAGE_TAB_VIEW.TABLE_VIEW}
-            />
+            <CustomControlsComponent />
           </div>
         )
       }>
-      {activeViewTab === LINEAGE_TAB_VIEW.DIAGRAM_VIEW ? (
+      {
         <div
           className="h-full relative lineage-container"
           data-testid="lineage-container"
@@ -245,9 +230,7 @@ const Lineage = ({
             </div>
           )}
         </div>
-      ) : (
-        <LineageTable />
-      )}
+      }
     </Card>
   );
 };
