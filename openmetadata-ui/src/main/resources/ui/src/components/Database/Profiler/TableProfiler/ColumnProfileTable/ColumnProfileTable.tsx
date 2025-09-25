@@ -12,19 +12,8 @@
  */
 
 import { Grid, Stack, Typography, useTheme } from '@mui/material';
-import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
-import classNames from 'classnames';
-import {
-  filter,
-  find,
-  groupBy,
-  isEmpty,
-  isUndefined,
-  map,
-  round,
-  toLower,
-} from 'lodash';
+import { isEmpty, round } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,10 +27,6 @@ import {
   Table as TableType,
 } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
-import {
-  TestCase,
-  TestCaseStatus,
-} from '../../../../../generated/tests/testCase';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
@@ -49,26 +34,21 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
-import { getListTestCaseBySearch } from '../../../../../rest/testAPI';
 import {
   formatNumberWithComma,
   getTableFQNFromColumnFQN,
 } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
 import {
-  generateEntityLink,
   getTableExpandableConfig,
   pruneEmptyChildren,
 } from '../../../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
-import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.component';
-import { SummaryCardProps } from '../../../../common/SummaryCard/SummaryCard.interface';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import Table from '../../../../common/Table/Table';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
-import ColumnSummary from '../ColumnSummary';
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
 import SingleColumnProfile from '../SingleColumnProfile';
 import { ModifiedColumn } from '../TableProfiler.interface';
@@ -95,8 +75,6 @@ const ColumnProfileTable = () => {
   const isLoading = isTestsLoading || isProfilerDataLoading;
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>([]);
-  const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
-  const [columnTestCases, setColumnTestCases] = useState<TestCase[]>([]);
   const [isColumnsLoading, setIsColumnsLoading] = useState(false);
   const {
     currentPage,
@@ -138,14 +116,20 @@ const ColumnProfileTable = () => {
         fixed: 'left',
         render: (_, record) => {
           return (
-            <Button
+            <Typography
               className="break-word p-0"
-              type="link"
+              sx={{
+                color: theme.palette.primary.main,
+                fontSize: theme.typography.pxToRem(14),
+                fontWeight: theme.typography.fontWeightMedium,
+                cursor: 'pointer',
+                '&:hover': { textDecoration: 'underline' },
+              }}
               onClick={() =>
                 updateActiveColumnFqn(record.fullyQualifiedName || '')
               }>
               {getEntityName(record)}
-            </Button>
+            </Typography>
           );
         },
         sorter: (col1, col2) => col1.name.localeCompare(col2.name),
@@ -157,7 +141,11 @@ const ColumnProfileTable = () => {
         width: 150,
         render: (dataTypeDisplay: string) => {
           return (
-            <Typography className="break-word">
+            <Typography
+              className="break-word"
+              sx={{
+                fontSize: theme.typography.pxToRem(14),
+              }}>
               {dataTypeDisplay || 'N/A'}
             </Typography>
           );
@@ -286,49 +274,9 @@ const ColumnProfileTable = () => {
     ];
   }, [testCaseSummary]);
 
-  const selectedColumn = useMemo(() => {
-    return find(
-      data,
-      (column: Column) => column.fullyQualifiedName === activeColumnFqn
-    );
-  }, [data, activeColumnFqn]);
-
-  const selectedColumnTestsObj = useMemo(() => {
-    const temp = filter(
-      columnTestCases,
-      (test: TestCase) => !isUndefined(test.testCaseResult)
-    );
-
-    const statusDict = {
-      [TestCaseStatus.Success]: [],
-      [TestCaseStatus.Aborted]: [],
-      [TestCaseStatus.Failed]: [],
-      ...groupBy(temp, 'testCaseResult.testCaseStatus'),
-    };
-
-    return { statusDict, totalTests: temp.length };
-  }, [columnTestCases]);
-
   const handleSearchAction = (searchText: string) => {
     setSearchText(searchText);
     handlePageChange(1);
-  };
-
-  const fetchColumnTestCase = async (activeColumnFqn: string) => {
-    setIsTestCaseLoading(true);
-    try {
-      const { data } = await getListTestCaseBySearch({
-        fields: TabSpecificField.TEST_CASE_RESULT,
-        entityLink: generateEntityLink(activeColumnFqn),
-        limit: PAGE_SIZE_LARGE,
-      });
-
-      setColumnTestCases(data);
-    } catch {
-      setColumnTestCases([]);
-    } finally {
-      setIsTestCaseLoading(false);
-    }
   };
 
   const fetchTableColumnWithProfiler = useCallback(
@@ -382,14 +330,6 @@ const ColumnProfileTable = () => {
     }
   }, [tableFqn, currentPage, searchText, pageSize]);
 
-  useEffect(() => {
-    if (activeColumnFqn) {
-      fetchColumnTestCase(activeColumnFqn);
-    } else {
-      setColumnTestCases([]);
-    }
-  }, [activeColumnFqn]);
-
   const pagingProps = useMemo(() => {
     return {
       currentPage: currentPage,
@@ -424,77 +364,43 @@ const ColumnProfileTable = () => {
   return (
     <Stack data-testid="column-profile-table-container" spacing="30px">
       {!isLoading && !isProfilingEnabled && <NoProfilerBanner />}
-      <Col span={24}>
-        <Grid container spacing={5}>
-          {overallSummary?.map((summary) => (
-            <Grid key={summary.title} size="grow">
-              <SummaryCardV1
-                extra={summary.extra}
-                icon={summary.icon}
-                isLoading={isLoading}
-                title={summary.title}
-                value={summary.value}
-              />
-            </Grid>
-          ))}
-        </Grid>
-        <Row gutter={[16, 16]}>
-          {!isUndefined(selectedColumn) && (
-            <Col span={10}>
-              <ColumnSummary column={selectedColumn} />
-            </Col>
-          )}
 
-          <Col span={selectedColumn ? 14 : 24}>
-            <Row
-              wrap
-              className={classNames(
-                activeColumnFqn ? 'justify-start' : 'justify-between'
-              )}
-              gutter={[16, 16]}>
-              {!isEmpty(activeColumnFqn) &&
-                map(selectedColumnTestsObj.statusDict, (data, key) => (
-                  <Col key={key}>
-                    <SummaryCard
-                      showProgressBar
-                      isLoading={isTestCaseLoading}
-                      title={key}
-                      total={selectedColumnTestsObj.totalTests}
-                      type={toLower(key) as SummaryCardProps['type']}
-                      value={data.length}
-                    />
-                  </Col>
-                ))}
-            </Row>
-          </Col>
-        </Row>
-      </Col>
+      <Grid container spacing={5}>
+        {overallSummary?.map((summary) => (
+          <Grid key={summary.title} size="grow">
+            <SummaryCardV1
+              extra={summary.extra}
+              icon={summary.icon}
+              isLoading={isLoading}
+              title={summary.title}
+              value={summary.value}
+            />
+          </Grid>
+        ))}
+      </Grid>
+
       {isEmpty(activeColumnFqn) ? (
-        <Col span={24}>
-          <Table
-            columns={tableColumn}
-            customPaginationProps={pagingProps}
-            dataSource={data}
-            expandable={getTableExpandableConfig<Column>()}
-            loading={isColumnsLoading || isLoading}
-            locale={{
-              emptyText: <FilterTablePlaceHolder />,
-            }}
-            pagination={false}
-            rowKey="name"
-            scroll={{ x: true }}
-            searchProps={searchProps}
-            size="small"
-          />
-        </Col>
+        <Table
+          columns={tableColumn}
+          customPaginationProps={pagingProps}
+          dataSource={data}
+          expandable={getTableExpandableConfig<Column>()}
+          loading={isColumnsLoading || isLoading}
+          locale={{
+            emptyText: <FilterTablePlaceHolder />,
+          }}
+          pagination={false}
+          rowKey="name"
+          scroll={{ x: true }}
+          searchProps={searchProps}
+          size="small"
+        />
       ) : (
-        <Col span={24}>
-          <SingleColumnProfile
-            activeColumnFqn={activeColumnFqn}
-            dateRangeObject={dateRangeObject}
-            tableDetails={tableDetailsWithColumns}
-          />
-        </Col>
+        <SingleColumnProfile
+          activeColumnFqn={activeColumnFqn}
+          dateRangeObject={dateRangeObject}
+          tableDetails={tableDetailsWithColumns}
+        />
       )}
     </Stack>
   );

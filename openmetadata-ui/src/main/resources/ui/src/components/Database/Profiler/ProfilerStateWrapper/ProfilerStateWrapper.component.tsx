@@ -57,7 +57,9 @@ const ProfilerStateWrapper = ({
           boxShadow: 'none',
         }}>
         <Stack spacing={4}>
-          <ProfilerLatestValue {...profilerLatestValueProps} />
+          {profilerLatestValueProps && (
+            <ProfilerLatestValue {...profilerLatestValueProps} />
+          )}
           <Box flexGrow={1}>{children}</Box>
         </Stack>
       </Card>

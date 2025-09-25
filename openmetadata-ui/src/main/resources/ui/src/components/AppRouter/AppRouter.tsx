@@ -43,7 +43,7 @@ const AppRouter = () => {
     isApplicationLoading,
     isAuthenticating,
   } = useApplicationStore();
-  const { plugins } = useApplicationsProvider();
+  const { plugins = [] } = useApplicationsProvider();
 
   useEffect(() => {
     const { pathname } = location;

@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Tag } from 'antd';
-import { isUndefined, map } from 'lodash';
+import { Box, Card, Divider, Typography, useTheme } from '@mui/material';
+import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -30,6 +30,7 @@ import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { ColumnProfile } from '../../../generated/entity/data/table';
 import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import { DataPill } from '../../common/DataPill/DataPill.styled';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 
 export interface CardinalityDistributionChartProps {
@@ -44,6 +45,7 @@ const CardinalityDistributionChart = ({
   data,
   noDataPlaceholderText,
 }: CardinalityDistributionChartProps) => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const showSingleGraph =
     isUndefined(data.firstDayData?.cardinalityDistribution) ||
@@ -54,11 +56,16 @@ const CardinalityDistributionChart = ({
     isUndefined(data.currentDayData?.cardinalityDistribution)
   ) {
     return (
-      <Row align="middle" className="h-full w-full" justify="center">
-        <Col>
-          <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
-        </Col>
-      </Row>
+      <Box
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          height: '100%',
+          width: '100%',
+        }}>
+        <ErrorPlaceHolder placeholderText={noDataPlaceholderText} />
+      </Box>
     );
   }
 
@@ -70,16 +77,60 @@ const CardinalityDistributionChart = ({
       const data = payload[0].payload;
 
       return (
-        <Card>
-          <p className="font-semibold text-sm mb-1">{`${t('label.category')}: ${
-            data.name
-          }`}</p>
-          <p className="text-sm mb-1">{`${t('label.count')}: ${tooltipFormatter(
-            data.count
-          )}`}</p>
-          <p className="text-sm">{`${t('label.percentage')}: ${
-            data.percentage
-          }%`}</p>
+        <Card
+          sx={{
+            p: '10px',
+            bgcolor: theme.palette.allShades.white,
+          }}>
+          <Typography
+            sx={{
+              color: theme.palette.allShades.gray[900],
+              fontWeight: theme.typography.fontWeightMedium,
+              fontSize: theme.typography.pxToRem(12),
+            }}>
+            {data.name}
+          </Typography>
+          <Divider
+            sx={{
+              my: 2,
+              borderStyle: 'dashed',
+              borderColor: theme.palette.allShades.gray[300],
+            }}
+          />
+          <Box className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+            <Typography
+              sx={(theme) => ({
+                color: theme.palette.allShades.gray[700],
+                fontSize: theme.typography.pxToRem(11),
+              })}>
+              {t('label.count')}
+            </Typography>
+            <Typography
+              sx={(theme) => ({
+                color: theme.palette.allShades.gray[900],
+                fontWeight: theme.typography.fontWeightMedium,
+                fontSize: theme.typography.pxToRem(11),
+              })}>
+              {tooltipFormatter(data.count)}
+            </Typography>
+          </Box>
+          <Box className="d-flex items-center justify-between gap-6 p-b-xss text-sm">
+            <Typography
+              sx={(theme) => ({
+                color: theme.palette.allShades.gray[700],
+                fontSize: theme.typography.pxToRem(11),
+              })}>
+              {t('label.percentage')}
+            </Typography>
+            <Typography
+              sx={(theme) => ({
+                color: theme.palette.allShades.gray[900],
+                fontWeight: theme.typography.fontWeightMedium,
+                fontSize: theme.typography.pxToRem(11),
+              })}>
+              {`${data.percentage}%`}
+            </Typography>
+          </Box>
         </Card>
       );
     }
@@ -87,9 +138,19 @@ const CardinalityDistributionChart = ({
     return null;
   };
 
+  const dataEntries = Object.entries(data).filter(
+    ([, columnProfile]) => !isUndefined(columnProfile?.cardinalityDistribution)
+  );
+
   return (
-    <Row className="w-full" data-testid="chart-container">
-      {map(data, (columnProfile, key) => {
+    <Box
+      data-testid="chart-container"
+      sx={{
+        display: 'flex',
+        width: '100%',
+        gap: 0,
+      }}>
+      {dataEntries.map(([key, columnProfile], index) => {
         if (
           isUndefined(columnProfile) ||
           isUndefined(columnProfile?.cardinalityDistribution)
@@ -108,62 +169,96 @@ const CardinalityDistributionChart = ({
 
         const graphDate = customFormatDateTime(
           columnProfile?.timestamp || 0,
-          'MMM dd'
+          'MMM dd, yyyy'
         );
 
         return (
-          <Col key={key} span={showSingleGraph ? 24 : 12}>
-            <Row gutter={[8, 8]}>
-              <Col
-                data-testid="date"
-                offset={showSingleGraph ? 1 : 2}
-                span={24}>
-                {graphDate}
-              </Col>
-              <Col offset={showSingleGraph ? 1 : 2} span={24}>
-                <Tag data-testid="cardinality-tag">{`${t('label.total-entity', {
+          <Box
+            key={key}
+            sx={{
+              flex: showSingleGraph ? '1 1 100%' : '1 1 50%',
+              minWidth: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              px: showSingleGraph ? 4 : 6,
+              py: 2,
+              borderRight:
+                !showSingleGraph && index === 0
+                  ? `1px solid ${theme.palette.grey[200]}`
+                  : 'none',
+            }}>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                mb: 5,
+              }}>
+              <DataPill data-testid="date">{graphDate}</DataPill>
+              <DataPill data-testid="cardinality-tag">
+                {`${t('label.total-entity', {
                   entity: t('label.category-plural'),
-                })}: ${cardinalityData.categories?.length || 0}`}</Tag>
-              </Col>
-              <Col span={24}>
-                <ResponsiveContainer
-                  debounce={200}
-                  id={`${key}-cardinality`}
-                  minHeight={300}>
-                  <BarChart
-                    className="w-full"
-                    data={graphData}
-                    layout="vertical"
-                    margin={{ left: 16 }}>
-                    <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
-                    <XAxis
-                      padding={{ left: 16, right: 16 }}
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(props) => axisTickFormatter(props, '%')}
-                      type="number"
-                    />
-                    <YAxis
-                      allowDataOverflow
-                      dataKey="name"
-                      padding={{ top: 16, bottom: 16 }}
-                      tick={{ fontSize: 12 }}
-                      tickFormatter={(value: string) =>
-                        value?.length > 15 ? `${value.slice(0, 15)}...` : value
-                      }
-                      type="category"
-                      width={120}
-                    />
-                    <Legend />
-                    <Tooltip content={renderTooltip} />
-                    <Bar dataKey="percentage" fill={CHART_BLUE_1} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </Col>
-            </Row>
-          </Col>
+                })}: ${cardinalityData.categories?.length || 0}`}
+              </DataPill>
+            </Box>
+            <Box sx={{ flex: 1, minHeight: 350 }}>
+              <ResponsiveContainer
+                debounce={200}
+                id={`${key}-cardinality`}
+                minHeight={300}>
+                <BarChart
+                  className="w-full"
+                  data={graphData}
+                  layout="vertical"
+                  margin={{ left: 16 }}>
+                  <CartesianGrid
+                    stroke={GRAPH_BACKGROUND_COLOR}
+                    strokeDasharray="3 3"
+                    vertical={false}
+                  />
+                  <XAxis
+                    axisLine={{
+                      stroke: theme.palette.grey[200],
+                    }}
+                    padding={{ left: 16, right: 16 }}
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(props) => axisTickFormatter(props, '%')}
+                    tickLine={false}
+                    type="number"
+                  />
+                  <YAxis
+                    allowDataOverflow
+                    axisLine={false}
+                    dataKey="name"
+                    padding={{ top: 16, bottom: 16 }}
+                    tick={{ fontSize: 12 }}
+                    tickFormatter={(value: string) =>
+                      value?.length > 15 ? `${value.slice(0, 15)}...` : value
+                    }
+                    tickLine={false}
+                    type="category"
+                    width={120}
+                  />
+                  <Legend />
+                  <Tooltip
+                    content={renderTooltip}
+                    cursor={{
+                      stroke: theme.palette.grey[200],
+                      strokeDasharray: '3 3',
+                    }}
+                  />
+                  <Bar
+                    dataKey="percentage"
+                    fill={CHART_BLUE_1}
+                    radius={[0, 8, 8, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+          </Box>
         );
       })}
-    </Row>
+    </Box>
   );
 };
 

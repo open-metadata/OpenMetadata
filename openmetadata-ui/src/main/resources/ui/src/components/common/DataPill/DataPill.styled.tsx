@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2023 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,12 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ProfilerLatestValueProps } from '../ProfilerDashboard/profilerDashboard.interface';
 
-export interface ProfilerStateWrapperProps {
-  isLoading: boolean;
-  children: React.ReactNode;
-  title: string;
-  profilerLatestValueProps?: ProfilerLatestValueProps;
-  dataTestId?: string;
-}
+import { Box, styled } from '@mui/material';
+
+export const DataPill = styled(Box)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[100],
+  color: theme.palette.grey[900],
+  borderRadius: '6px',
+  padding: '6px 12px',
+  fontSize: theme.typography.pxToRem(14),
+  fontWeight: theme.typography.fontWeightBold,
+  display: 'inline-block',
+}));

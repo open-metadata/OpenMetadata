@@ -369,11 +369,15 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
     timeStampKey = 'timestampValue',
     transformLabel = true,
     valueFormatter,
+    displayDateInHeader = true,
   } = props;
 
   if (active && payload && payload.length) {
     // we need to check if the xAxis is a date or not.
-    const timestamp = dateTimeFormatter(payload[0].payload[timeStampKey] || 0);
+    const timestamp = displayDateInHeader
+      ? dateTimeFormatter(payload[0].payload[timeStampKey] || 0)
+      : payload[0].payload[timeStampKey];
+
     const payloadValue = uniqBy(payload, 'dataKey');
 
     return (

@@ -123,28 +123,28 @@ export const INITIAL_COUNT_METRIC_VALUE = {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctCount',
-      color: '#1890FF',
+      color: '#467DDC',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.null'),
       }),
       dataKey: 'nullCount',
-      color: '#7147E8',
+      color: '#3488B5',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueCount',
-      color: '#008376',
+      color: '#685997',
     },
     {
       title: t('label.entity-count', {
         entity: t('label.value-plural'),
       }),
       dataKey: 'valuesCount',
-      color: '#B02AAC',
+      color: '#464A52',
     },
   ],
   data: [],
@@ -157,21 +157,21 @@ export const INITIAL_PROPORTION_METRIC_VALUE = {
         entity: t('label.distinct'),
       }),
       dataKey: 'distinctProportion',
-      color: '#1890FF',
+      color: '#6B97E3',
     },
     {
       title: t('label.entity-proportion', {
         entity: t('label.null'),
       }),
       dataKey: 'nullProportion',
-      color: '#7147E8',
+      color: '#867AAC',
     },
     {
       title: t('label.entity-proportion', {
         entity: t('label.unique'),
       }),
       dataKey: 'uniqueProportion',
-      color: '#008376',
+      color: '#6B6E75',
     },
   ],
   data: [],
@@ -182,17 +182,17 @@ export const INITIAL_MATH_METRIC_VALUE = {
     {
       title: t('label.max'),
       dataKey: 'max',
-      color: '#1890FF',
+      color: '#6B97E3',
     },
     {
       title: t('label.mean'),
       dataKey: 'mean',
-      color: '#7147E8',
+      color: '#6B6E75',
     },
     {
       title: t('label.min'),
       dataKey: 'min',
-      color: '#008376',
+      color: '#867AAC',
     },
   ],
   data: [],
@@ -203,7 +203,8 @@ export const INITIAL_SUM_METRIC_VALUE = {
     {
       title: t('label.sum'),
       dataKey: 'sum',
-      color: '#1890FF',
+      color: BLUE_500,
+      fill: BLUE_50,
     },
   ],
   data: [],
@@ -213,22 +214,22 @@ export const INITIAL_QUARTILE_METRIC_VALUE = {
     {
       title: t('label.first-quartile'),
       dataKey: 'firstQuartile',
-      color: '#1890FF',
+      color: '#467DDC',
     },
     {
       title: t('label.median'),
       dataKey: 'median',
-      color: '#7147E8',
+      color: '#3488B5',
     },
     {
       title: t('label.inter-quartile-range'),
       dataKey: 'interQuartileRange',
-      color: '#008376',
+      color: '#685997',
     },
     {
       title: t('label.third-quartile'),
       dataKey: 'thirdQuartile',
-      color: '#B02AAC',
+      color: '#464A52',
     },
   ],
   data: [],

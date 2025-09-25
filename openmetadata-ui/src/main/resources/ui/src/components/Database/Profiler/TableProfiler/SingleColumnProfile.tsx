@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, Col, Row, Typography } from 'antd';
+import { Stack } from '@mui/material';
 import { AxiosError } from 'axios';
-import { first, isString, last, pick } from 'lodash';
+import { find, first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,10 @@ import {
   DEFAULT_RANGE_DATA,
   INITIAL_COLUMN_METRICS_VALUE,
 } from '../../../../constants/profiler.constant';
-import { ColumnProfile } from '../../../../generated/entity/data/container';
+import {
+  Column,
+  ColumnProfile,
+} from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
 import { Transi18next } from '../../../../utils/CommonUtils';
@@ -35,6 +38,8 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import CardinalityDistributionChart from '../../../Visualisations/Chart/CardinalityDistributionChart.component';
 import DataDistributionHistogram from '../../../Visualisations/Chart/DataDistributionHistogram.component';
 import ProfilerDetailsCard from '../ProfilerDetailsCard/ProfilerDetailsCard';
+import ProfilerStateWrapper from '../ProfilerStateWrapper/ProfilerStateWrapper.component';
+import ColumnSummary from './ColumnSummary';
 import CustomMetricGraphs from './CustomMetricGraphs/CustomMetricGraphs.component';
 import { useTableProfiler } from './TableProfilerProvider';
 
@@ -62,6 +67,13 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   const [columnProfilerData, setColumnProfilerData] = useState<ColumnProfile[]>(
     []
   );
+
+  const selectedColumn = useMemo(() => {
+    return find(
+      tableDetails?.columns ?? [],
+      (column: Column) => column.fullyQualifiedName === activeColumnFqn
+    );
+  }, [tableDetails, activeColumnFqn]);
 
   const customMetrics = useMemo(
     () =>
@@ -151,115 +163,85 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   }, [activeColumnFqn, dateRangeObject]);
 
   return (
-    <Row
+    <Stack
       className="m-b-lg"
       data-testid="profiler-tab-container"
-      gutter={[16, 16]}>
-      <Col span={24}>
-        <ProfilerDetailsCard
-          chartCollection={columnMetric.countMetrics}
-          isLoading={isLoading}
-          name="count"
-          noDataPlaceholderText={noProfilerMessage}
-          title={t('label.data-count-plural')}
-        />
-      </Col>
-      <Col span={24}>
-        <ProfilerDetailsCard
-          chartCollection={columnMetric.proportionMetrics}
-          isLoading={isLoading}
-          name="proportion"
-          noDataPlaceholderText={noProfilerMessage}
-          tickFormatter="%"
-          title={t('label.data-proportion-plural')}
-        />
-      </Col>
-      <Col span={24}>
-        <ProfilerDetailsCard
-          chartCollection={columnMetric.mathMetrics}
-          isLoading={isLoading}
-          name="math"
-          noDataPlaceholderText={noProfilerMessage}
-          showYAxisCategory={isMinMaxStringData}
-          // only min/max category can be string
-          title={t('label.data-range')}
-        />
-      </Col>
-      <Col span={24}>
-        <ProfilerDetailsCard
-          chartCollection={columnMetric.sumMetrics}
-          isLoading={isLoading}
-          name="sum"
-          noDataPlaceholderText={noProfilerMessage}
-          title={t('label.data-aggregate')}
-        />
-      </Col>
-      <Col span={24}>
-        <ProfilerDetailsCard
-          chartCollection={columnMetric.quartileMetrics}
-          isLoading={isLoading}
-          name="quartile"
-          noDataPlaceholderText={noProfilerMessage}
-          title={t('label.data-quartile-plural')}
-        />
-      </Col>
+      spacing="30px">
+      {selectedColumn && <ColumnSummary column={selectedColumn} />}
+      <ProfilerDetailsCard
+        chartCollection={columnMetric.countMetrics}
+        isLoading={isLoading}
+        name="count"
+        noDataPlaceholderText={noProfilerMessage}
+        title={t('label.data-count-plural')}
+      />
+      <ProfilerDetailsCard
+        chartCollection={columnMetric.proportionMetrics}
+        isLoading={isLoading}
+        name="proportion"
+        noDataPlaceholderText={noProfilerMessage}
+        tickFormatter="%"
+        title={t('label.data-proportion-plural')}
+      />
+      <ProfilerDetailsCard
+        chartCollection={columnMetric.mathMetrics}
+        isLoading={isLoading}
+        name="math"
+        noDataPlaceholderText={noProfilerMessage}
+        showYAxisCategory={isMinMaxStringData}
+        // only min/max category can be string
+        title={t('label.data-range')}
+      />
+      <ProfilerDetailsCard
+        chartCollection={columnMetric.sumMetrics}
+        chartType="area"
+        isLoading={isLoading}
+        name="sum"
+        noDataPlaceholderText={noProfilerMessage}
+        title={t('label.data-aggregate')}
+      />
+      <ProfilerDetailsCard
+        chartCollection={columnMetric.quartileMetrics}
+        isLoading={isLoading}
+        name="quartile"
+        noDataPlaceholderText={noProfilerMessage}
+        title={t('label.data-quartile-plural')}
+      />
       {firstDay?.histogram || currentDay?.histogram ? (
-        <Col span={24}>
-          <Card
-            className="shadow-none global-border-radius"
-            data-testid="histogram-metrics"
-            loading={isLoading}>
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <Typography.Title
-                  data-testid="data-distribution-title"
-                  level={5}>
-                  {t('label.data-distribution')}
-                </Typography.Title>
-              </Col>
-              <Col span={24}>
-                <DataDistributionHistogram
-                  data={{ firstDayData: firstDay, currentDayData: currentDay }}
-                  noDataPlaceholderText={noProfilerMessage}
-                />
-              </Col>
-            </Row>
-          </Card>
-        </Col>
+        <ProfilerStateWrapper
+          dataTestId="histogram-metrics"
+          isLoading={isLoading}
+          title={t('label.data-distribution')}>
+          <DataDistributionHistogram
+            data={{
+              firstDayData: firstDay,
+              currentDayData: currentDay,
+            }}
+            noDataPlaceholderText={noProfilerMessage}
+          />
+        </ProfilerStateWrapper>
       ) : null}
       {firstDay?.cardinalityDistribution ||
       currentDay?.cardinalityDistribution ? (
-        <Col span={24}>
-          <Card
-            className="shadow-none global-border-radius"
-            data-testid="cardinality-distribution-metrics"
-            loading={isLoading}>
-            <Row gutter={[16, 16]}>
-              <Col span={24}>
-                <Typography.Title
-                  data-testid="cardinality-distribution-title"
-                  level={5}>
-                  {t('label.cardinality')}
-                </Typography.Title>
-              </Col>
-              <Col span={24}>
-                <CardinalityDistributionChart
-                  data={{ firstDayData: firstDay, currentDayData: currentDay }}
-                  noDataPlaceholderText={noProfilerMessage}
-                />
-              </Col>
-            </Row>
-          </Card>
-        </Col>
+        <ProfilerStateWrapper
+          dataTestId="cardinality-distribution-metrics"
+          isLoading={isLoading}
+          title={t('label.cardinality')}>
+          <CardinalityDistributionChart
+            data={{
+              firstDayData: firstDay,
+              currentDayData: currentDay,
+            }}
+            noDataPlaceholderText={noProfilerMessage}
+          />
+        </ProfilerStateWrapper>
       ) : null}
-      <Col span={24}>
-        <CustomMetricGraphs
-          customMetrics={customMetrics}
-          customMetricsGraphData={columnCustomMetrics}
-          isLoading={isLoading || isProfilerDataLoading}
-        />
-      </Col>
-    </Row>
+      <CustomMetricGraphs
+        customMetrics={customMetrics}
+        customMetricsGraphData={columnCustomMetrics}
+        isLoading={isLoading || isProfilerDataLoading}
+      />
+    </Stack>
   );
 };
 
