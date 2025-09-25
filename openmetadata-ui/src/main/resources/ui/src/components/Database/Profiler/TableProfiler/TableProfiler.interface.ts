@@ -22,9 +22,10 @@ import {
   Table,
   TableProfilerConfig,
 } from '../../../../generated/entity/data/table';
-import { TestCase, TestSummary } from '../../../../generated/tests/testCase';
+import { TestCase } from '../../../../generated/tests/testCase';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
+import { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityUtils';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 
 export interface TableProfilerProps {
@@ -38,7 +39,7 @@ export interface TableProfilerProviderProps extends TableProfilerProps {
 
 export interface TableProfilerContextInterface {
   isTableDeleted?: boolean;
-  testCaseSummary?: TestSummary;
+  testCaseSummary?: Record<string, TestCaseCountByStatus>;
   permissions: OperationPermission;
   isTestsLoading: boolean;
   isProfilerDataLoading: boolean;

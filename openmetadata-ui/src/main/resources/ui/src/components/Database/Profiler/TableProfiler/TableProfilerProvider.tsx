@@ -37,7 +37,7 @@ import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
 import { ProfileSampleType } from '../../../../generated/metadataIngestion/databaseServiceProfilerPipeline';
-import { TestCase, TestSummary } from '../../../../generated/tests/testCase';
+import { TestCase } from '../../../../generated/tests/testCase';
 import { Include } from '../../../../generated/type/include';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
@@ -49,10 +49,12 @@ import {
 } from '../../../../rest/tableAPI';
 import {
   getListTestCaseBySearch,
-  getTestCaseExecutionSummary,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
-import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityUtils';
+import {
+  aggregateTestResultsByEntity,
+  TestCaseCountByStatus,
+} from '../../../../utils/DataQuality/DataQualityUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -94,7 +96,8 @@ export const TableProfilerProvider = ({
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
   const [testLevel, setTestLevel] = useState<TestLevel>();
   const [table, setTable] = useState<Table | undefined>(tableEntity);
-  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
+  const [testCaseSummary, setTestCaseSummary] =
+    useState<Record<string, TestCaseCountByStatus>>();
 
   const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
@@ -331,7 +334,6 @@ export const TableProfilerProvider = ({
       return;
     }
     try {
-      const response = await getTestCaseExecutionSummary(table.testSuite.id);
       const { data } = await fetchTestCaseResultByTestSuiteId(
         table.testSuite.id
       );
@@ -342,8 +344,7 @@ export const TableProfilerProvider = ({
           'testCaseResult.testCaseStatus': string;
         }>
       );
-      console.log(testCaseResults);
-      setTestCaseSummary(response);
+      setTestCaseSummary(testCaseResults);
     } catch (error) {
       setTestCaseSummary(undefined);
     }

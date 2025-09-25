@@ -440,13 +440,20 @@ export const CustomDQTooltip = (props: DataInsightChartTooltipProps) => {
   return null;
 };
 
+export type TestCaseCountByStatus = {
+  success: number;
+  failed: number;
+  aborted: number;
+  total: number;
+};
+
 export const aggregateTestResultsByEntity = (
   data: Array<{
     document_count: string;
     entityFQN: string;
     'testCaseResult.testCaseStatus': string;
   }>
-) => {
+): Record<string, TestCaseCountByStatus> => {
   const overallTotal = {
     failed: 0,
     success: 0,

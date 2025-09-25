@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Grid, Stack } from '@mui/material';
-import { Button, Col, Row, Typography } from 'antd';
+import { Grid, Stack, Typography, useTheme } from '@mui/material';
+import { Button, Col, Row } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import classNames from 'classnames';
 import {
@@ -20,7 +20,6 @@ import {
   find,
   groupBy,
   isEmpty,
-  isEqual,
   isUndefined,
   map,
   round,
@@ -56,7 +55,6 @@ import {
   getTableFQNFromColumnFQN,
 } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
-import { getEntityColumnFQN } from '../../../../../utils/FeedUtils';
 import {
   generateEntityLink,
   getTableExpandableConfig,
@@ -69,7 +67,6 @@ import { SummaryCard } from '../../../../common/SummaryCard/SummaryCard.componen
 import { SummaryCardProps } from '../../../../common/SummaryCard/SummaryCard.interface';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import Table from '../../../../common/Table/Table';
-import TestCaseStatusSummaryIndicator from '../../../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ColumnSummary from '../ColumnSummary';
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
@@ -79,6 +76,7 @@ import { useTableProfiler } from '../TableProfilerProvider';
 
 const ColumnProfileTable = () => {
   const location = useCustomLocation();
+  const theme = useTheme();
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
@@ -94,10 +92,6 @@ const ColumnProfileTable = () => {
     testCaseSummary,
   } = useTableProfiler();
 
-  const testCaseCounts = useMemo(
-    () => testCaseSummary?.columnTestSummary ?? [],
-    [testCaseSummary]
-  );
   const isLoading = isTestsLoading || isProfilerDataLoading;
   const [searchText, setSearchText] = useState<string>('');
   const [data, setData] = useState<ModifiedColumn[]>([]);
@@ -163,9 +157,9 @@ const ColumnProfileTable = () => {
         width: 150,
         render: (dataTypeDisplay: string) => {
           return (
-            <Typography.Text className="break-word">
+            <Typography className="break-word">
               {dataTypeDisplay || 'N/A'}
-            </Typography.Text>
+            </Typography>
           );
         },
         sorter: (col1, col2) => col1.dataType.localeCompare(col2.dataType),
@@ -221,51 +215,76 @@ const ColumnProfileTable = () => {
           (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
       },
       {
-        title: t('label.test-plural'),
-        dataIndex: 'testCount',
-        key: 'Tests',
+        title: t('label.success'),
+        dataIndex: 'success',
+        key: 'success',
         width: 100,
         render: (_, record) => {
-          const testCounts = testCaseCounts.find((column) => {
-            return isEqual(
-              getEntityColumnFQN(column.entityLink ?? ''),
-              record.fullyQualifiedName
-            );
-          });
+          const testCounts = testCaseSummary?.[record.fullyQualifiedName ?? ''];
 
           return (
             <Link
-              data-testid={`${record.name}-test-count`}
+              data-testid={`${record.name}-test-success-count`}
               to={{
                 search: Qs.stringify({
                   activeTab: TableProfilerTab.DATA_QUALITY,
                 }),
               }}>
-              {testCounts?.total ?? 0}
+              <Typography sx={{ color: theme.palette.success.main }}>
+                {testCounts?.success ?? 0}
+              </Typography>
             </Link>
           );
         },
       },
       {
-        title: t('label.status'),
-        dataIndex: 'dataQualityTest',
-        key: 'dataQualityTest',
-        width: 150,
+        title: t('label.failed'),
+        dataIndex: 'failed',
+        key: 'failed',
+        width: 100,
         render: (_, record) => {
-          const testCounts = testCaseCounts.find((column) => {
-            return isEqual(
-              getEntityColumnFQN(column.entityLink ?? ''),
-              record.fullyQualifiedName
-            );
-          });
+          const testCounts = testCaseSummary?.[record.fullyQualifiedName ?? ''];
 
           return (
-            <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
+            <Link
+              data-testid={`${record.name}-test-failed-count`}
+              to={{
+                search: Qs.stringify({
+                  activeTab: TableProfilerTab.DATA_QUALITY,
+                }),
+              }}>
+              <Typography sx={{ color: theme.palette.error.main }}>
+                {testCounts?.failed ?? 0}
+              </Typography>
+            </Link>
+          );
+        },
+      },
+      {
+        title: t('label.aborted'),
+        dataIndex: 'aborted',
+        key: 'aborted',
+        width: 100,
+        render: (_, record) => {
+          const testCounts = testCaseSummary?.[record.fullyQualifiedName ?? ''];
+
+          return (
+            <Link
+              data-testid={`${record.name}-test-aborted-count`}
+              to={{
+                search: Qs.stringify({
+                  activeTab: TableProfilerTab.DATA_QUALITY,
+                }),
+              }}>
+              <Typography sx={{ color: theme.palette.warning.main }}>
+                {testCounts?.aborted ?? 0}
+              </Typography>
+            </Link>
           );
         },
       },
     ];
-  }, [testCaseCounts]);
+  }, [testCaseSummary]);
 
   const selectedColumn = useMemo(() => {
     return find(
