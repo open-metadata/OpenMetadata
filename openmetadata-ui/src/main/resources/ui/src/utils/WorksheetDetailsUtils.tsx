@@ -32,6 +32,7 @@ export const defaultFields = [
   TabSpecificField.EXTENSION,
   TabSpecificField.ROW_COUNT,
   TabSpecificField.COLUMNS,
+  TabSpecificField.ROW_COUNT,
 ].join(',');
 
 export const getWorksheetDetailsPageTabs = ({

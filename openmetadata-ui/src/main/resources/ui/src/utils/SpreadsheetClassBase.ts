@@ -210,3 +210,4 @@ class SpreadsheetClassBase {
 const spreadsheetClassBase = new SpreadsheetClassBase();
 
 export default spreadsheetClassBase;
+export { SpreadsheetClassBase };

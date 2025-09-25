@@ -28,6 +28,9 @@ export const fileDefaultFields = [
   TabSpecificField.DATA_PRODUCTS,
   TabSpecificField.VOTES,
   TabSpecificField.EXTENSION,
+  TabSpecificField.FILE_TYPE,
+  TabSpecificField.FILE_EXTENSION,
+  TabSpecificField.FILE_VERSION,
 ].join(',');
 
 export const getFileDetailsPageTabs = ({
