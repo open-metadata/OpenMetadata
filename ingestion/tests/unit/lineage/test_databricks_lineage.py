@@ -85,7 +85,7 @@ mock_databricks_config = {
         "serviceName": "local_databricks1",
         "serviceConnection": {
             "config": {
-                "authType": {"token": "random_token"},
+                "token": "random_token",
                 "hostPort": "localhost:443",
                 "httpPath": "sql/1.0/endpoints/path",
                 "connectionArguments": {

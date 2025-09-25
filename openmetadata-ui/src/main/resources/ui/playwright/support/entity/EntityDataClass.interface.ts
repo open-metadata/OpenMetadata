@@ -36,4 +36,9 @@ export interface EntityDataClassCreationConfig {
   searchIndexService?: boolean;
   storageService?: boolean;
   metric?: boolean;
+  driveService?: boolean;
+  directory?: boolean;
+  file?: boolean;
+  spreadsheet?: boolean;
+  worksheet?: boolean;
 }

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { LINEAGE_TAB_VIEW } from '../../../constants/Lineage.constants';
 import { LineageLayer } from '../../../generated/settings/settings';
 import CustomControlsComponent from './CustomControls.component';
@@ -45,6 +46,8 @@ jest.mock('../../../context/LineageProvider/LineageProvider', () => ({
     onLineageEditClick: mockOnEditLineageClick,
     onExportClick: mockOnExportClick,
     activeLayer: [LineageLayer.ColumnLevelLineage],
+    selectedQuickFilters: [],
+    setSelectedQuickFilters: jest.fn(),
   })),
 }));
 
@@ -59,7 +62,8 @@ describe('CustomControls', () => {
         activeViewTab={LINEAGE_TAB_VIEW.DIAGRAM_VIEW}
         handleActiveViewTabChange={mockHandleActiveViewTabChange}
         onlyShowTabSwitch={false}
-      />
+      />,
+      { wrapper: MemoryRouter }
     );
 
     // check LineageSearchSelect is visible
