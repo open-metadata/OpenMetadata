@@ -170,7 +170,7 @@ export const ContractSLAFormTab: React.FC<{
                       label={t('label.unit')}
                       name="refresh_frequency_unit">
                       <Select
-                        // allowClear
+                        allowClear
                         data-testid="refresh-frequency-unit-select"
                         options={REFRESH_FREQUENCY_UNIT_OPTIONS}
                         popupClassName="refresh-frequency-unit-select"
@@ -214,6 +214,7 @@ export const ContractSLAFormTab: React.FC<{
                       label={t('label.unit')}
                       name="max_latency_unit">
                       <Select
+                        allowClear
                         data-testid="max-latency-unit-select"
                         options={MAX_LATENCY_OPTIONS}
                         popupClassName="max-latency-unit-select"
@@ -278,6 +279,7 @@ export const ContractSLAFormTab: React.FC<{
                       label={t('label.unit')}
                       name="retention_unit">
                       <Select
+                        allowClear
                         data-testid="retention-unit-select"
                         options={RETENTION_UNIT_OPTIONS}
                         popupClassName="retention-unit-select"
