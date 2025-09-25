@@ -71,7 +71,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
 
     const fieldElement = (
       <Fragment>
-        <Space className="w-full justify-between header-title-wrapper">
+        <Space className="w-full justify-between header-title-wrapper m-y-sm">
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':
