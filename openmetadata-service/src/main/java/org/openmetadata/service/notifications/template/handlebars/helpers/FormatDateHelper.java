@@ -1,9 +1,9 @@
-package org.openmetadata.service.template.handlebars.helpers;
+package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import org.openmetadata.service.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

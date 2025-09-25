@@ -1,11 +1,11 @@
-package org.openmetadata.service.template.handlebars.helpers;
+package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
 import java.util.Collection;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.service.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
 
 /**
  * Helper to join lists into comma-separated strings. Usage: {{joinList tags}}

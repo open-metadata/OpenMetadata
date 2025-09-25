@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.template.handlebars.helpers;
+package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
 import java.util.Map;
 import java.util.Optional;
 import okhttp3.HttpUrl;
-import org.openmetadata.service.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.util.email.EmailUtil;
 
 public class BuildEntityUrlHelper implements HandlebarsHelper {
