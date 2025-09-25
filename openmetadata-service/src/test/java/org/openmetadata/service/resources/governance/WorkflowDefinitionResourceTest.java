@@ -5023,7 +5023,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         .atMost(Duration.ofSeconds(120))
         .pollInterval(Duration.ofSeconds(2))
         .pollDelay(Duration.ofSeconds(2))
-        .ignoreExceptions()  // Ignore transient errors during polling
+        .ignoreExceptions() // Ignore transient errors during polling
         .until(
             () -> {
               try {
