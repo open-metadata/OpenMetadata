@@ -37,6 +37,7 @@ import {
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
 import { searchQuery } from '../../rest/searchAPI';
+import { getTermQuery } from '../SearchUtils';
 import {
   getAlertActionTypeDisplayName,
   getAlertEventsFilterLabels,
@@ -343,13 +344,7 @@ describe('getFieldByArgumentType tests', () => {
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
-      queryFilter: {
-        query: {
-          term: {
-            isBot: false,
-          },
-        },
-      },
+      queryFilter: getTermQuery({ isBot: 'false' }),
       searchIndex: ['team_search_index', 'user_search_index'],
     });
   });
@@ -390,13 +385,7 @@ describe('getFieldByArgumentType tests', () => {
       query: undefined,
       pageNumber: 1,
       pageSize: 50,
-      queryFilter: {
-        query: {
-          term: {
-            isBot: false,
-          },
-        },
-      },
+      queryFilter: getTermQuery({ isBot: 'false' }),
       searchIndex: 'user_search_index',
     });
   });
