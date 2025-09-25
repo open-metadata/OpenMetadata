@@ -88,7 +88,7 @@
     width: @size-2xl;
     height: @size-2xl;
     border-radius: 50%;
-    background-color: @red-22;
+    background-color: @alert-error-icon-bg-1;
   }
 
   .scim-modal-delete-title {
@@ -135,6 +135,7 @@
     padding: @size-sm - 2px @size-xl;
     border-radius: @border-rad-xs;
     width: @size-3xl * 2 + @size-lg + @size-sm;
+    font-weight: @font-medium;
   }
   .scim-modal-delete-button {
     background-color: @red-14;
@@ -353,4 +354,7 @@
       }
     }
   }
+}
+.scim-modal-delete.ant-modal {
+  width: @size-3xl * 6 + @size-md !important;
 }
