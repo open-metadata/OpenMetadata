@@ -92,34 +92,26 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             List[DimensionResult]: List of dimension-specific test results
         """
         try:
-            # Get dimension columns from test case
             dimension_columns = self.test_case.dimensionColumns or []
             if not dimension_columns:
                 return []
 
-            # Get the column to validate (same as _run_validation)
             column: Union[SQALikeColumn, Column] = self._get_column_name()
 
-            # Define the metrics to compute (same as _run_validation)
             metrics_to_compute = {
                 "count": Metrics.COUNT,
                 "unique_count": Metrics.UNIQUE_COUNT,
             }
 
-            # Execute separate queries for each dimension column
             dimension_results = []
             for dimension_column in dimension_columns:
                 try:
-                    # Get dimension column object
                     dimension_col = self._get_column_name(dimension_column)
 
-                    # Execute dimensional query for this single dimension
-                    # This will return results grouped by this dimension only
                     single_dimension_results = self._execute_dimensional_query(
                         column, dimension_col, metrics_to_compute
                     )
 
-                    # Add to overall results list (now directly a list)
                     dimension_results.extend(single_dimension_results)
 
                 except Exception as exc:
@@ -132,7 +124,6 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
         except Exception as exc:
             logger.warning(f"Error executing dimensional validation: {exc}")
-            # Return empty list on error (test continues without dimensions)
             return []
 
     @abstractmethod

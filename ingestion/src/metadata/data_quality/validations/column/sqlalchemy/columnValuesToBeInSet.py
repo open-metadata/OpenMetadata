@@ -109,11 +109,9 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            # Extract test parameters
             allowed_values = test_params["allowed_values"]
             match_enum = test_params["match_enum"]
 
-            # Build metric expressions dictionary
             metric_expressions = {}
             for metric_name, metric in metrics_to_compute.items():
                 metric_instance = metric.value(column)
@@ -121,7 +119,6 @@ class ColumnValuesToBeInSetValidator(
                     metric_instance.values = allowed_values
                 metric_expressions[metric_name] = metric_instance.fn()
 
-            # Add standardized keys for impact scoring
             from metadata.data_quality.validations.base_test_handler import (
                 DIMENSION_FAILED_COUNT_KEY,
                 DIMENSION_TOTAL_COUNT_KEY,
@@ -142,14 +139,11 @@ class ColumnValuesToBeInSetValidator(
                 ]
                 metric_expressions[DIMENSION_FAILED_COUNT_KEY] = func.literal(0)
 
-            # Execute with Others aggregation (always use CTEs for impact scoring)
             result_rows = self._execute_with_others_aggregation(
                 dimension_col, metric_expressions, DEFAULT_TOP_DIMENSIONS
             )
 
-            # Process results into DimensionResult objects
             for row in result_rows:
-                # Extract values using dictionary keys
                 from metadata.data_quality.validations.base_test_handler import (
                     DIMENSION_NULL_LABEL,
                 )
@@ -160,7 +154,6 @@ class ColumnValuesToBeInSetValidator(
                     else DIMENSION_NULL_LABEL
                 )
 
-                # Extract metric results - preserve original logic
                 count_in_set = row.get("count_in_set", 0) or 0
 
                 # PRESERVE ORIGINAL LOGIC: match_enum determines how we get total_count
@@ -178,7 +171,6 @@ class ColumnValuesToBeInSetValidator(
 
                 impact_score = row.get("impact_score", 0.0)
 
-                # Create dimension result using the helper method
                 dimension_result = self.get_dimension_result_object(
                     dimension_values={dimension_col.name: dimension_value},
                     test_case_status=self.get_test_case_status(matched),
@@ -191,18 +183,13 @@ class ColumnValuesToBeInSetValidator(
                     total_rows=total_count,
                     passed_rows=count_in_set,
                     failed_rows=failed_count if match_enum else None,
-                    impact_score=impact_score
-                    if match_enum
-                    else None,  # Only include impact score when we have full metrics
+                    impact_score=impact_score if match_enum else None,
                 )
 
-                # Add to results list
                 dimension_results.append(dimension_result)
 
         except Exception as exc:
-            # Use the same error handling pattern as _run_results
             logger.warning(f"Error executing dimensional query: {exc}")
             logger.debug("Full error details: ", exc_info=True)
-            # Return empty list on error (test continues without dimensions)
 
         return dimension_results

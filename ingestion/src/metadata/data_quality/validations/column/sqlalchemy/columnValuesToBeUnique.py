@@ -151,26 +151,21 @@ class ColumnValuesToBeUniqueValidator(
                     )
                     continue
 
-            # Add standardized keys for impact scoring
             from metadata.data_quality.validations.base_test_handler import (
                 DIMENSION_FAILED_COUNT_KEY,
                 DIMENSION_TOTAL_COUNT_KEY,
             )
 
-            # For uniqueness test: failed = total - unique (duplicates)
             metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions["count"]
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
                 metric_expressions["count"] - metric_expressions["unique_count"]
             )
 
-            # Execute with Others aggregation (always use CTEs for impact scoring)
             result_rows = self._execute_with_others_aggregation(
                 dimension_col, metric_expressions, DEFAULT_TOP_DIMENSIONS
             )
 
-            # Process results into DimensionResult objects
             for row in result_rows:
-                # Extract values using dictionary keys
                 from metadata.data_quality.validations.base_test_handler import (
                     DIMENSION_NULL_LABEL,
                 )
@@ -181,17 +176,13 @@ class ColumnValuesToBeUniqueValidator(
                     else DIMENSION_NULL_LABEL
                 )
 
-                # Extract metric results
                 total_count = row.get("count", 0) or 0
                 unique_count = row.get("unique_count", 0) or 0
-
-                # Calculate duplicate count (failed rows for uniqueness test)
                 duplicate_count = total_count - unique_count
                 matched = total_count == unique_count
 
                 impact_score = row.get("impact_score", 0.0)
 
-                # Create dimension result using the helper method
                 dimension_result = self.get_dimension_result_object(
                     dimension_values={dimension_col.name: dimension_value},
                     test_case_status=self.get_test_case_status(matched),

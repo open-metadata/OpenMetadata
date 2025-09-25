@@ -343,20 +343,17 @@ class BaseTestValidator(ABC):
         """
         from metadata.generated.schema.tests.basic import DimensionValue
 
-        # Auto-calculate failed rows if not provided
         if failed_rows is None:
             failed_rows = total_rows - passed_rows
 
-        # Calculate percentages - derive one from the other to ensure they sum to 100%
+        # Derive one percentage from the other to ensure they sum to 100%
         if total_rows > 0:
             passed_rows_percentage = round(passed_rows / total_rows * 100, 2)
-            # Derive failed percentage to ensure sum equals 100%
             failed_rows_percentage = round(100 - passed_rows_percentage, 2)
         else:
             passed_rows_percentage = 0
             failed_rows_percentage = 0
 
-        # Convert dictionary to array of DimensionValue objects
         dimension_values_array = [
             DimensionValue(name=name, value=value)
             for name, value in dimension_values.items()
@@ -371,9 +368,7 @@ class BaseTestValidator(ABC):
             failedRows=failed_rows,
             passedRowsPercentage=passed_rows_percentage,
             failedRowsPercentage=failed_rows_percentage,
-            impactScore=round(impact_score, 4)
-            if impact_score is not None
-            else None,  # Round to 4 decimal places
+            impactScore=round(impact_score, 4) if impact_score is not None else None,
         )
 
         return dimension_result

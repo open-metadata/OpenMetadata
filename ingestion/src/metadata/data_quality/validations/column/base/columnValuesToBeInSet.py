@@ -107,15 +107,12 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             List[DimensionResult]: List of dimension-specific test results
         """
         try:
-            # Get dimension columns from test case
             dimension_columns = self.test_case.dimensionColumns or []
             if not dimension_columns:
                 return []
 
-            # Get the column to validate (same as _run_validation)
             column: Union[SQALikeColumn, Column] = self._get_column_name()
 
-            # Get test parameters (same as _run_validation)
             allowed_values = self.get_test_case_param_value(
                 self.test_case.parameterValues,  # type: ignore
                 "allowedValues",
@@ -126,34 +123,27 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
                 self.test_case.parameterValues, "matchEnum"
             )
 
-            # Define the metrics to compute (same as _run_validation)
             metrics_to_compute = {
                 "count_in_set": Metrics.COUNT_IN_SET,
             }
 
-            # Add row count metric if match_enum is enabled
             if match_enum:
                 metrics_to_compute["row_count"] = Metrics.ROW_COUNT
 
-            # Store test parameters for child class
             test_params = {
                 "allowed_values": allowed_values,
                 "match_enum": match_enum,
             }
 
-            # Execute separate queries for each dimension column
             dimension_results = []
             for dimension_column in dimension_columns:
                 try:
-                    # Get dimension column object
                     dimension_col = self._get_column_name(dimension_column)
 
-                    # Execute dimensional query for this single dimension
                     single_dimension_results = self._execute_dimensional_query(
                         column, dimension_col, metrics_to_compute, test_params
                     )
 
-                    # Add to overall results list (now directly a list)
                     dimension_results.extend(single_dimension_results)
 
                 except Exception as exc:

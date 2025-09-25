@@ -60,13 +60,11 @@ class ColumnValuesToBeInSetValidator(
             SQALikeColumn: Column object
         """
         if column_name is None:
-            # Get the main column being validated (original behavior)
             return self.get_column_name(
                 self.test_case.entityLink.root,
                 self.runner,
             )
         else:
-            # Get a specific column by name (for dimension columns)
             return self.get_column_name(
                 column_name,
                 self.runner,
@@ -111,28 +109,21 @@ class ColumnValuesToBeInSetValidator(
         dimension_results = []
 
         try:
-            # Extract test parameters
             allowed_values = test_params["allowed_values"]
             match_enum = test_params["match_enum"]
 
-            # Get the dataframe
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
             df = dfs[0]
 
-            # Group by dimension column
             grouped = df.groupby(dimension_col.name, dropna=False)
-
-            # Prepare results dataframe
             results_data = []
 
             for dimension_value, group_df in grouped:
-                # Handle NULL values
                 if pd.isna(dimension_value):
                     dimension_value = DIMENSION_NULL_LABEL
                 else:
                     dimension_value = str(dimension_value)
 
-                # Calculate metrics for this group
                 count_in_set = group_df[column.name].isin(allowed_values).sum()
 
                 if match_enum:
@@ -159,32 +150,25 @@ class ColumnValuesToBeInSetValidator(
                         }
                     )
 
-            # Create DataFrame with results
             results_df = pd.DataFrame(results_data)
 
             if not results_df.empty:
-                # Calculate impact scores
                 results_df = calculate_impact_score_pandas(
                     results_df,
                     failed_column=DIMENSION_FAILED_COUNT_KEY,
                     total_column=DIMENSION_TOTAL_COUNT_KEY,
                 )
 
-                # Aggregate Others
                 results_df = aggregate_others_pandas(
                     results_df,
                     dimension_column="dimension",
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 
-                # Process results into DimensionResult objects
                 for _, row in results_df.iterrows():
                     dimension_value = row["dimension"]
-
-                    # Extract metric values
                     count_in_set = int(row.get("count_in_set", 0))
 
-                    # Follow SQLAlchemy's exact logic
                     if match_enum:
                         # Enum mode: track actual totals and failures
                         total_count = int(row.get(DIMENSION_TOTAL_COUNT_KEY, 0))
@@ -198,7 +182,6 @@ class ColumnValuesToBeInSetValidator(
 
                     impact_score = float(row.get("impact_score", 0.0))
 
-                    # Create dimension result
                     dimension_result = self.get_dimension_result_object(
                         dimension_values={dimension_col.name: dimension_value},
                         test_case_status=self.get_test_case_status(matched),

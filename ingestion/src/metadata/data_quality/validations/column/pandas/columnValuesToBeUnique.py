@@ -60,13 +60,11 @@ class ColumnValuesToBeUniqueValidator(
             SQALikeColumn: column
         """
         if column_name is None:
-            # Get the main column being validated (original behavior)
             return self.get_column_name(
                 self.test_case.entityLink.root,
                 self.runner,
             )
         else:
-            # Get a specific column by name (for dimension columns)
             return self.get_column_name(
                 column_name,
                 self.runner,
@@ -106,24 +104,18 @@ class ColumnValuesToBeUniqueValidator(
         dimension_results = []
 
         try:
-            # Get the dataframe
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
             df = dfs[0]
 
-            # Group by dimension column
             grouped = df.groupby(dimension_col.name, dropna=False)
-
-            # Prepare results dataframe
             results_data = []
 
             for dimension_value, group_df in grouped:
-                # Handle NULL values
                 if pd.isna(dimension_value):
                     dimension_value = DIMENSION_NULL_LABEL
                 else:
                     dimension_value = str(dimension_value)
 
-                # Calculate metrics for this group
                 total_count = len(group_df)
                 unique_count = group_df[column.name].nunique()
                 duplicate_count = total_count - unique_count
@@ -138,29 +130,23 @@ class ColumnValuesToBeUniqueValidator(
                     }
                 )
 
-            # Create DataFrame with results
             results_df = pd.DataFrame(results_data)
 
             if not results_df.empty:
-                # Calculate impact scores
                 results_df = calculate_impact_score_pandas(
                     results_df,
                     failed_column=DIMENSION_FAILED_COUNT_KEY,
                     total_column=DIMENSION_TOTAL_COUNT_KEY,
                 )
 
-                # Aggregate Others
                 results_df = aggregate_others_pandas(
                     results_df,
                     dimension_column="dimension",
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 
-                # Process results into DimensionResult objects
                 for _, row in results_df.iterrows():
                     dimension_value = row["dimension"]
-
-                    # Extract metric values
                     total_count = int(row.get("count", 0))
                     unique_count = int(row.get("unique_count", 0))
                     duplicate_count = int(row.get(DIMENSION_FAILED_COUNT_KEY, 0))
