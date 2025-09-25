@@ -887,7 +887,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            q: `name:* NOT classification.name:tier NOT classification.name:certification`,
+            q: `{"query":{"bool":{"must":[{"bool":{"must_not":{"term":{"classification.name.keyword":"tier"}}}},{"bool":{"must_not":{"term":{"classification.name.keyword":"certification"}}}}]}}}`,
           }),
           useAsyncSearch: true,
         },
@@ -901,7 +901,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            q: `name:* AND classification.name:certification`,
+            q: `{"query":{"bool":{"must":{"term":{"classification.name.keyword":"certification"}}}}}`,
           }),
           useAsyncSearch: true,
         },
@@ -915,7 +915,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            q: `name:* AND classification.name:tier`,
+            q: `{"query":{"bool":{"must":{"term":{"classification.name.keyword":"tier"}}}}}`,
           }),
           useAsyncSearch: true,
         },
