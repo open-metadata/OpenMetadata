@@ -143,19 +143,19 @@ class ColumnValuesToBeInSetValidator(
                         {
                             "dimension": dimension_value,
                             "count_in_set": count_in_set,
-                            "row_count": row_count,
                             DIMENSION_TOTAL_COUNT_KEY: row_count,
                             DIMENSION_FAILED_COUNT_KEY: failed_count,
                         }
                     )
                 else:
-                    # Non-enum mode
+                    # Non-enum mode: we only care about matches, not failures
+                    # Following SQLAlchemy's logic exactly
                     results_data.append(
                         {
                             "dimension": dimension_value,
                             "count_in_set": count_in_set,
-                            DIMENSION_TOTAL_COUNT_KEY: count_in_set,
-                            DIMENSION_FAILED_COUNT_KEY: 0,
+                            DIMENSION_TOTAL_COUNT_KEY: count_in_set,  # Use count_in_set as total
+                            DIMENSION_FAILED_COUNT_KEY: 0,  # Don't track failures in non-enum mode
                         }
                     )
 
@@ -184,14 +184,17 @@ class ColumnValuesToBeInSetValidator(
                     # Extract metric values
                     count_in_set = int(row.get("count_in_set", 0))
 
+                    # Follow SQLAlchemy's exact logic
                     if match_enum:
-                        total_count = int(row.get("row_count", 0))
+                        # Enum mode: track actual totals and failures
+                        total_count = int(row.get(DIMENSION_TOTAL_COUNT_KEY, 0))
                         failed_count = int(row.get(DIMENSION_FAILED_COUNT_KEY, 0))
-                        matched = total_count - count_in_set == 0
+                        matched = failed_count == 0  # All values must be in enum
                     else:
-                        total_count = count_in_set
-                        failed_count = 0
-                        matched = count_in_set > 0
+                        # Non-enum mode: we only care about matches
+                        matched = count_in_set > 0  # Pass if ANY values are in set
+                        total_count = count_in_set  # Use count_in_set as total
+                        failed_count = 0  # Don't track failures
 
                     impact_score = float(row.get("impact_score", 0.0))
 

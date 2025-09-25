@@ -51,7 +51,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
             count = self._run_results(Metrics.COUNT, column)
-            unique_count = self._get_unique_count(Metrics.UNIQUE_COUNT, column)
+            unique_count = self._get_unique_count(Metrics.DISTINCT_COUNT, column)
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())

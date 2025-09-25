@@ -347,13 +347,14 @@ class BaseTestValidator(ABC):
         if failed_rows is None:
             failed_rows = total_rows - passed_rows
 
-        # Calculate percentages with rounding to 2 decimal places
-        passed_rows_percentage = (
-            round(passed_rows / total_rows * 100, 2) if total_rows > 0 else 0
-        )
-        failed_rows_percentage = (
-            round(failed_rows / total_rows * 100, 2) if total_rows > 0 else 0
-        )
+        # Calculate percentages - derive one from the other to ensure they sum to 100%
+        if total_rows > 0:
+            passed_rows_percentage = round(passed_rows / total_rows * 100, 2)
+            # Derive failed percentage to ensure sum equals 100%
+            failed_rows_percentage = round(100 - passed_rows_percentage, 2)
+        else:
+            passed_rows_percentage = 0
+            failed_rows_percentage = 0
 
         # Convert dictionary to array of DimensionValue objects
         dimension_values_array = [
