@@ -6,6 +6,7 @@ import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_REL
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
@@ -30,6 +31,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
@@ -47,11 +49,17 @@ import org.openmetadata.service.search.EntityManagementClient;
 public class ElasticSearchEntityManager implements EntityManagementClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
+  private ElasticsearchAsyncClient asyncClient;
+  private final boolean isAsyncClientAvailable;
   private final ObjectMapper objectMapper = new ObjectMapper();
 
   public ElasticSearchEntityManager(ElasticsearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
+    if (this.isClientAvailable) {
+      this.asyncClient = new ElasticsearchAsyncClient(this.client._transport());
+    }
+    this.isAsyncClientAvailable = this.asyncClient != null;
   }
 
   @Override
@@ -82,14 +90,15 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot create entities.");
+    if (!isAsyncClientAvailable) {
+      LOG.error("ElasticSearch async client is not available. Cannot create entities.");
       return;
     }
 
     try {
       List<BulkOperation> operations = new ArrayList<>();
       for (Map<String, String> docAndId : docsAndIds) {
+        if (docAndId == null || docAndId.isEmpty()) continue; // skip invalid entries
         Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
         operations.add(
             BulkOperation.of(
@@ -101,19 +110,39 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                 .document(toJsonData(entry.getValue())))));
       }
 
-      BulkResponse response =
-          client.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
+      // Execute the async bulk request
+      CompletableFuture<BulkResponse> future =
+          asyncClient.bulk(b -> b.index(indexName).operations(operations).refresh(Refresh.True));
 
-      if (response.errors()) {
-        String errorMessage =
-            response.items().stream()
-                .filter(item -> item.error() != null)
-                .map(item -> "Failed to index document " + item.id() + ": " + item.error().reason())
-                .collect(Collectors.joining("; "));
-        LOG.error("Failed to create entities in ElasticSearch: {}", errorMessage);
-      } else {
-        LOG.info("Successfully created {} entities in ElasticSearch", docsAndIds.size());
-      }
+      // Handle response asynchronously
+      future.whenComplete(
+          (response, error) -> {
+            if (error != null) {
+              LOG.error("Failed to create entities in ElasticSearch (async)", error);
+              return;
+            }
+
+            if (response.errors()) {
+              LOG.error(
+                  "Bulk indexing to ElasticSearch encountered errors. Index: {}, Total: {}, Failed: {}",
+                  indexName,
+                  docsAndIds.size(),
+                  response.items().stream().filter(item -> item.error() != null).count());
+
+              response.items().stream()
+                  .filter(item -> item.error() != null)
+                  .forEach(
+                      item ->
+                          LOG.error(
+                              "Indexing failed for ID {}: {}", item.id(), item.error().reason()));
+            } else {
+              LOG.info(
+                  "Successfully indexed {} entities to ElasticSearch (async) for index: {}",
+                  docsAndIds.size(),
+                  indexName);
+            }
+          });
+
     } catch (Exception e) {
       LOG.error("Failed to create entities in ElasticSearch for index: {} ", indexName, e);
     }
@@ -271,15 +300,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                                                       inline
                                                           .lang(ScriptLanguage.Painless)
                                                           .source(scriptTxt)
-                                                          .params(
-                                                              params.entrySet().stream()
-                                                                  .collect(
-                                                                      Collectors.toMap(
-                                                                          Map.Entry::getKey,
-                                                                          entry ->
-                                                                              JsonData.of(
-                                                                                  entry
-                                                                                      .getValue()))))))))
+                                                          .params(convertToJsonDataMap(params))))))
                       .refresh(true));
 
       LOG.info(
@@ -514,7 +535,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                   g.index(Entity.getSearchRepository().getIndexOrAliasName(indexName)).id(entityId),
               Map.class);
 
-      if (response.found()) {
+      if (response != null && response.found()) {
         return Response.status(Response.Status.OK).entity(response.source()).build();
       }
     } catch (ElasticsearchException e) {
@@ -540,7 +561,10 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
     try {
       Map<String, JsonData> params =
-          Collections.singletonMap("entityRelationshipData", JsonData.of(entityRelationshipData));
+          entityRelationshipData != null
+              ? Collections.singletonMap(
+                  "entityRelationshipData", JsonData.of(entityRelationshipData))
+              : new HashMap<>();
 
       UpdateByQueryResponse response =
           client.updateByQuery(
@@ -609,6 +633,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
     return JsonUtils.getMap(map).entrySet().stream()
+        .filter(entry -> entry.getValue() != null)
         .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
   }
 
