@@ -36,9 +36,7 @@ class PresidioRecognizerFactory:
     """Factory for creating Presidio recognizers from OpenMetadata configurations."""
 
     @staticmethod
-    def create_recognizer(
-        recognizer_config: Recognizer, tag_name: str
-    ) -> Optional[EntityRecognizer]:
+    def create_recognizer(recognizer_config: Recognizer) -> Optional[EntityRecognizer]:
         """
         Create a Presidio recognizer from an OpenMetadata recognizer configuration.
 
@@ -56,23 +54,25 @@ class PresidioRecognizerFactory:
 
         if isinstance(config, PatternRecognizer):
             return PresidioRecognizerFactory._create_pattern_recognizer(
-                config, recognizer_config, tag_name
+                config, recognizer_config
             )
         elif isinstance(config, DenyListRecognizer):
             return PresidioRecognizerFactory._create_deny_list_recognizer(
-                config, recognizer_config, tag_name
+                config, recognizer_config
             )
         elif isinstance(config, ContextRecognizer):
             return PresidioRecognizerFactory._create_context_recognizer(
-                config, recognizer_config, tag_name
+                config, recognizer_config
             )
         elif isinstance(config, CustomRecognizer):
             return PresidioRecognizerFactory._create_custom_recognizer(
-                config, recognizer_config, tag_name
+                config, recognizer_config
             )
-        elif isinstance(config, PredefinedRecognizer):
+        elif isinstance(
+            config, PredefinedRecognizer
+        ):  # pyright: ignore[reportUnnecessaryIsInstance]
             return PresidioRecognizerFactory._create_predefined_recognizer(
-                config, recognizer_config, tag_name
+                config, recognizer_config
             )
         else:
             logger.warning(f"Unknown recognizer type for {recognizer_config.name}")
@@ -81,7 +81,7 @@ class PresidioRecognizerFactory:
     @staticmethod
     def _get_regex_flags(flags: Optional[RegexFlags]) -> Optional[int]:
         if flags is None:
-            return re.IGNORECASE | re.DOTALL | re.UNICODE
+            return re.IGNORECASE | re.DOTALL | re.MULTILINE
 
         re_flags = 0
         if flags.ignoreCase:
@@ -97,10 +97,9 @@ class PresidioRecognizerFactory:
     def _create_pattern_recognizer(
         config: PatternRecognizer,
         recognizer_config: Recognizer,
-        tag_name: str,
     ) -> PresidioPatternRecognizer:
         """Create a pattern-based recognizer."""
-        patterns = []
+        patterns: List[PresidioPattern] = []
         for pattern_config in config.patterns:
             patterns.append(
                 PresidioPattern(
@@ -122,10 +121,10 @@ class PresidioRecognizerFactory:
 
     @staticmethod
     def _create_deny_list_recognizer(
-        config: DenyListRecognizer, recognizer_config: Recognizer, tag_name: str
+        config: DenyListRecognizer, recognizer_config: Recognizer
     ) -> PresidioPatternRecognizer:
         """Create a deny list recognizer using patterns."""
-        patterns = []
+        patterns: List[PresidioPattern] = []
         for value in config.denyList:
             # Escape special regex characters in the value
             escaped_value = re.escape(value)
@@ -150,12 +149,12 @@ class PresidioRecognizerFactory:
 
     @staticmethod
     def _create_context_recognizer(
-        config: ContextRecognizer, recognizer_config: Recognizer, tag_name: str
+        config: ContextRecognizer, recognizer_config: Recognizer
     ) -> PresidioPatternRecognizer:
         """Create a context-aware recognizer."""
         # For context recognizers, we can use a pattern recognizer with context words
         # or implement a custom recognizer that uses NLP
-        context_patterns = []
+        context_patterns: List[PresidioPattern] = []
 
         # Create patterns that look for context words near potential entities
         for context_word in config.contextWords:
@@ -180,7 +179,8 @@ class PresidioRecognizerFactory:
 
     @staticmethod
     def _create_custom_recognizer(
-        config: CustomRecognizer, recognizer_config: Recognizer, tag_name: str
+        config: CustomRecognizer,  # pyright: ignore[reportUnusedParameter]
+        recognizer_config: Recognizer,
     ) -> Optional[EntityRecognizer]:
         """
         Create a custom recognizer with user-defined logic.
@@ -191,13 +191,14 @@ class PresidioRecognizerFactory:
         """
         logger.warning(
             f"Custom recognizer {recognizer_config.name} requires implementation. "
-            "Consider using pattern, deny_list, or context recognizers instead."
+            + "Consider using pattern, deny_list, or context recognizers instead."
         )
         return None
 
     @staticmethod
     def _create_predefined_recognizer(
-        config: PredefinedRecognizer, recognizer: Recognizer, tag_name: str
+        config: PredefinedRecognizer,
+        recognizer: Recognizer,  # pyright: ignore[reportUnusedParameter]
     ) -> Optional[EntityRecognizer]:
         """Create a custom recognizer with user-defined logic."""
         try:
@@ -225,15 +226,13 @@ class PresidioRecognizerFactory:
         Returns:
             List of Presidio EntityRecognizer instances
         """
-        recognizers = []
+        recognizers: List[EntityRecognizer] = []
 
         if not tag.autoClassificationEnabled or not tag.recognizers:
             return recognizers
 
         for recognizer_config in tag.recognizers:
-            recognizer = PresidioRecognizerFactory.create_recognizer(
-                recognizer_config, tag.name.root
-            )
+            recognizer = PresidioRecognizerFactory.create_recognizer(recognizer_config)
             if recognizer:
                 recognizers.append(recognizer)
                 logger.info(
@@ -282,7 +281,7 @@ class RecognizerRegistry:
 
     def get_all_recognizers(self) -> List[EntityRecognizer]:
         """Get all registered recognizers across all tags."""
-        all_recognizers = []
+        all_recognizers: List[EntityRecognizer] = []
         for recognizers in self.recognizers.values():
             all_recognizers.extend(recognizers)
         return all_recognizers
