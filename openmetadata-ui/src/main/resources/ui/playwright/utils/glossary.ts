@@ -718,7 +718,9 @@ export const validateGlossaryTerm = async (
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
+    await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
+    await expect(page.locator(statusSelector)).toBeVisible();
     await expect(page.locator(statusSelector)).toContainText(status);
   }
 };
@@ -1681,4 +1683,16 @@ export const setupGlossaryDenyPermissionTest = async (
     dataConsumerRole,
     cleanup,
   };
+};
+
+export const performExpandAll = async (page: Page) => {
+  const termRes = page.waitForResponse(
+    '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers*'
+  );
+  await page.getByTestId('expand-collapse-all-button').click();
+  await termRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };

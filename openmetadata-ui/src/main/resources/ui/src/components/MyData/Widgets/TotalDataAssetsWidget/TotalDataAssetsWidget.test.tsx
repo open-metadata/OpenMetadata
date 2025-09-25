@@ -547,6 +547,79 @@ describe('TotalDataAssetsWidget', () => {
   });
 
   describe('Data Processing', () => {
+    it('should sort data by count in descending order', async () => {
+      const sortedTestData: DataInsightCustomChartResult = {
+        results: [
+          {
+            count: 50,
+            day: 1640995200000,
+            group: 'dashboard',
+            term: 'dashboard',
+          },
+          {
+            count: 200,
+            day: 1640995200000,
+            group: 'table',
+            term: 'table',
+          },
+          {
+            count: 100,
+            day: 1640995200000,
+            group: 'topic',
+            term: 'topic',
+          },
+        ],
+      };
+
+      (getChartPreviewByName as jest.Mock).mockResolvedValueOnce(
+        sortedTestData
+      );
+
+      await act(async () => {
+        renderTotalDataAssetsWidget();
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('350')).toBeInTheDocument(); // Total count
+      });
+
+      // Verify legend items are sorted by count (high to low)
+      await waitFor(() => {
+        // Verify specific legend items exist with correct counts using data-testid
+        expect(screen.getByTestId('legend-count-table')).toHaveTextContent(
+          '200'
+        );
+        expect(screen.getByTestId('legend-count-topic')).toHaveTextContent(
+          '100'
+        );
+        expect(screen.getByTestId('legend-count-dashboard')).toHaveTextContent(
+          '50'
+        );
+
+        // Verify legend items appear in sorted order (highest count first)
+        const legendContainer = screen.getByTestId('assets-legend');
+        const legendItems = legendContainer.querySelectorAll(
+          '[data-testid^="legend-item-"]'
+        );
+
+        // First item should be table (highest count)
+        expect(legendItems[0]).toHaveAttribute(
+          'data-testid',
+          'legend-item-table'
+        );
+        // Second item should be topic (medium count)
+        expect(legendItems[1]).toHaveAttribute(
+          'data-testid',
+          'legend-item-topic'
+        );
+        // Third item should be dashboard (lowest count)
+        expect(legendItems[2]).toHaveAttribute(
+          'data-testid',
+          'legend-item-dashboard'
+        );
+      });
+    });
+
     it('should correctly group data by date', async () => {
       await act(async () => {
         renderTotalDataAssetsWidget();

@@ -202,6 +202,14 @@
       "description": "User who made the update.",
       "type": "string"
     },
+    "createdAt": {
+      "description": "Timestamp in Unix epoch time milliseconds corresponding to when the data contract was created.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "createdBy": {
+      "description": "User or Bot who created the data contract.",
+      "type": "string"
+    },
     "href": {
       "description": "Link to this data contract resource.",
       "$ref": "../../type/basic.json#/definitions/href"

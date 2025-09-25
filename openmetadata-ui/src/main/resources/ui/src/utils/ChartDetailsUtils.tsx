@@ -19,9 +19,8 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
@@ -77,14 +76,12 @@ export const getChartDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
-            entity={chartDetails as SourceType}
-            entityType={EntityType.CHART}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={chartDetails as SourceType}
+          entityType={EntityType.CHART}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

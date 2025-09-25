@@ -16,7 +16,9 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -231,6 +233,53 @@ public interface SearchClient<T> {
       }
       """;
 
+  // Script for propagating followers to TestCases from their parent tables.
+  // TestCases can only have inherited followers (no direct followers allowed),
+  // so we always replace the entire followers list when propagating.
+  // Followers are stored as UUID strings in the search index for efficiency.
+  // This script only applies to TestCases - does nothing for other entity types.
+  String ADD_FOLLOWERS_SCRIPT =
+      """
+      if (ctx._source.containsKey('entityType') && ctx._source.entityType == 'testCase') {
+        // TestCases can only have inherited followers - always replace
+        if (params.containsKey('updatedFollowers') && params.updatedFollowers != null) {
+          List followerIds = new ArrayList();
+          for (def follower : params.updatedFollowers) {
+            if (follower != null && follower.containsKey('id')) {
+              followerIds.add(follower.id.toString());
+            }
+          }
+          ctx._source.followers = followerIds;
+        }
+      }
+      // Do nothing for other entity types
+      """;
+
+  // Script for removing followers from TestCases when removed from their parent tables.
+  // TestCases can only have inherited followers, so when the parent loses followers,
+  // we need to update the TestCase's follower list accordingly.
+  // Note: deletedFollowers contains the REMAINING followers after deletion, not the deleted ones.
+  // This script only applies to TestCases - does nothing for other entity types.
+  String REMOVE_FOLLOWERS_SCRIPT =
+      """
+      if (ctx._source.containsKey('entityType') && ctx._source.entityType == 'testCase') {
+        // For TestCases, replace with the updated follower list (already has removed followers filtered out)
+        if (params.containsKey('deletedFollowers') && params.deletedFollowers != null) {
+          List followerIds = new ArrayList();
+          for (def follower : params.deletedFollowers) {
+            if (follower != null && follower.containsKey('id')) {
+              followerIds.add(follower.id.toString());
+            }
+          }
+          ctx._source.followers = followerIds;
+        } else {
+          // If no followers remain, clear the list
+          ctx._source.followers = new ArrayList();
+        }
+      }
+      // Do nothing for other entity types
+      """;
+
   String UPDATE_TAGS_FIELD_SCRIPT =
       """
       if (ctx._source.tags != null) {
@@ -346,6 +395,18 @@ public interface SearchClient<T> {
 
   void createAliases(IndexMapping indexMapping);
 
+  void createIndex(String indexName, String indexMappingContent);
+
+  void deleteIndex(String indexName);
+
+  Set<String> getAliases(String indexName);
+
+  void addAliases(String indexName, Set<String> aliases);
+
+  void removeAliases(String indexName, Set<String> aliases);
+
+  Set<String> getIndicesByAlias(String aliasName);
+
   void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
   Response previewSearch(
@@ -390,6 +451,18 @@ public interface SearchClient<T> {
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
+      throws IOException;
+
+  LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException;
+
+  SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException;
 
   SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)

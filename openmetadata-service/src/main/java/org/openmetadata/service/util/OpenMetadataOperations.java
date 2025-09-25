@@ -105,6 +105,7 @@ import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
@@ -431,7 +432,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
@@ -497,7 +498,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getInstance()
+                .getCurrentAuthConfig()
+                .getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -586,7 +589,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       CollectionRegistry.initialize();
 
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
       if (!authProvider.equals(AuthProvider.BASIC)) {
