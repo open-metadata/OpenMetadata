@@ -155,7 +155,7 @@
 
 .sso-settings-page .content-resizable-panel-container {
   .ant-card-body {
-    padding-bottom: 0 !important;
+    padding-bottom: 0;
   }
 
   .form-actions-bottom {
@@ -198,11 +198,11 @@
 .sso-settings-page .content-resizable-panel-container.sso-configured {
   margin-top: @size-xs;
   .ant-card {
-    border: none !important;
+    border: none;
   }
 
   .ant-card-body {
-    padding: 0px !important;
+    padding: 0px;
   }
 
   // Apply same styling as non-configured for ALL form controls including array fields
@@ -244,9 +244,9 @@
   .rjsf textarea.form-control {
     &:focus,
     &:focus-visible {
-      border-color: @primary-color !important;
-      box-shadow: @box-shadow-ant-select !important;
-      outline: none !important;
+      border-color: @primary-color;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
     }
   }
   .rjsf .form-group.field {
@@ -267,9 +267,9 @@
   .rjsf .checkbox label span,
   .rjsf .radio-inline label span span,
   .rjsf .ant-radio-wrapper {
-    color: @grey-700 !important;
-    font-weight: 500 !important;
-    font-size: @font-size-base !important;
+    color: @grey-700;
+    font-weight: @font-medium;
+    font-size: @font-size-base;
   }
 
   // Checkbox styling for configured SSO - match non-configured styling
@@ -361,7 +361,7 @@
 
   // Hide the clear/close button on select dropdowns
   .ant-select-clear {
-    display: none !important;
+    display: none;
   }
 
   .ant-select-focused .ant-select-selector {
@@ -381,16 +381,15 @@
   textarea.form-control:focus,
   .ant-input:focus,
   .ant-input-focused {
-    border-color: @primary-color !important;
-    box-shadow: @box-shadow-ant-select !important;
-    outline: none !important;
+    border-color: @primary-color;
+    box-shadow: @box-shadow-ant-select;
+    outline: none;
   }
 }
 
 .sso-settings-page .content-height-with-resizable-panel.sso-configured {
   background-color: @white;
   height: calc(100vh - var(--ant-navbar-height) - 200px);
-  transition: height 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 
   .right-panel-splitter {
     margin-left: @size-lg;
