@@ -42,6 +42,7 @@ import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
+import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
@@ -106,6 +107,7 @@ public final class ClassConverterFactory {
             Map.entry(VertexAIConnection.class, new VertexAIConnectionClassConverter()),
             Map.entry(RangerConnection.class, new RangerConnectionClassConverter()),
             Map.entry(DatabricksConnection.class, new DatabricksConnectionClassConverter()),
+            Map.entry(UnityCatalogConnection.class, new UnityCatalogConnectionClassConverter()),
             Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
             Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
             Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()));

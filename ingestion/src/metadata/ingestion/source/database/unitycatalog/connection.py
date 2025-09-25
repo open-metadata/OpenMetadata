@@ -12,15 +12,26 @@
 """
 Source connection handler
 """
+from copy import deepcopy
 from functools import partial
 from typing import Optional
 
 from databricks.sdk import WorkspaceClient
+from databricks.sdk.core import Config, azure_service_principal, oauth_service_principal
 from sqlalchemy.engine import Engine
 from sqlalchemy.exc import DatabaseError
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.azureAdSetup import (
+    AzureAdSetup,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.databricksOAuth import (
+    DatabricksOauth,
+)
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
 )
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
@@ -50,8 +61,50 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 
+def get_personal_access_token_auth(connection: UnityCatalogConnection) -> dict:
+    """
+    Configure Personal Access Token authentication
+    """
+    return {"access_token": connection.authType.token.get_secret_value()}
+
+
+def get_databricks_oauth_auth(connection: UnityCatalogConnection):
+    """
+    Create Databricks OAuth2 M2M credentials provider for Service Principal authentication
+    """
+
+    def credential_provider():
+        hostname = connection.hostPort.split(":")[0]
+        config = Config(
+            host=f"https://{hostname}",
+            client_id=connection.authType.clientId,
+            client_secret=connection.authType.clientSecret.get_secret_value(),
+        )
+        return oauth_service_principal(config)
+
+    return {"credentials_provider": credential_provider}
+
+
+def get_azure_ad_auth(connection: UnityCatalogConnection):
+    """
+    Create Azure AD credentials provider for Azure Service Principal authentication
+    """
+
+    def credential_provider():
+        hostname = connection.hostPort.split(":")[0]
+        config = Config(
+            host=f"https://{hostname}",
+            azure_client_secret=connection.authType.azureClientSecret.get_secret_value(),
+            azure_client_id=connection.authType.azureClientId,
+            azure_tenant_id=connection.authType.azureTenantId,
+        )
+        return azure_service_principal(config)
+
+    return {"credentials_provider": credential_provider}
+
+
 def get_connection_url(connection: UnityCatalogConnection) -> str:
-    url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
+    url = f"{connection.scheme.value}://{connection.hostPort}"
     return url
 
 
@@ -59,10 +112,23 @@ def get_connection(connection: UnityCatalogConnection) -> WorkspaceClient:
     """
     Create connection
     """
+    client_params = {}
+    if isinstance(connection.authType, PersonalAccessToken):
+        client_params["token"] = connection.authType.token.get_secret_value()
+    elif isinstance(connection.authType, DatabricksOauth):
+        client_params["client_id"] = connection.authType.clientId
+        client_params[
+            "client_secret"
+        ] = connection.authType.clientSecret.get_secret_value()
+    elif isinstance(connection.authType, AzureAdSetup):
+        client_params["azure_client_id"] = connection.authType.azureClientId
+        client_params[
+            "azure_client_secret"
+        ] = connection.authType.azureClientSecret.get_secret_value()
+        client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
     return WorkspaceClient(
-        host=get_host_from_host_port(connection.hostPort),
-        token=connection.token.get_secret_value(),
+        host=get_host_from_host_port(connection.hostPort), **client_params
     )
 
 
@@ -75,6 +141,23 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
         if not connection.connectionArguments:
             connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.root["http_path"] = connection.httpPath
+
+    auth_method = {
+        PersonalAccessToken: get_personal_access_token_auth,
+        DatabricksOauth: get_databricks_oauth_auth,
+        AzureAdSetup: get_azure_ad_auth,
+    }.get(type(connection.authType))
+
+    if not auth_method:
+        raise ValueError(
+            f"Unsupported authentication type: {type(connection.authType)}"
+        )
+
+    auth_args = auth_method(connection)
+
+    original_connection_arguments = connection.connectionArguments
+    connection.connectionArguments = deepcopy(original_connection_arguments)
+    connection.connectionArguments.root.update(auth_args)
 
     return create_generic_db_connection(
         connection=connection,

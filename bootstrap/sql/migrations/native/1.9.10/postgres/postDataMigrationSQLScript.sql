@@ -5,15 +5,3 @@
 UPDATE profiler_data_time_series
 SET json = jsonb_set(json::jsonb, '{profileData}', json::jsonb->'profileData'->'profileData')::json
 WHERE json->'profileData'->>'profileData' IS NOT NULL;
-
--- Migration script to restructure Databricks connection configuration
--- Move 'token' field from connection.config.token to connection.config.authType.token
-
-UPDATE dbservice_entity 
-SET json = jsonb_set(
-    json #- '{connection,config,token}',
-    '{connection,config,authType}',
-    jsonb_build_object('token', json #> '{connection,config,token}'),
-    true
-)
-WHERE serviceType = 'Databricks';
