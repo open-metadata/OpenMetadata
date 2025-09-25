@@ -30,7 +30,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/CommonUtils';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
   const navigate = useNavigate();
@@ -149,6 +149,16 @@ const UserPage = () => {
               // remove key from object if value is undefined
               delete newCurrentUserData[key];
               delete newUserData[key];
+            } else {
+              const personaName =
+                response.defaultPersona.displayName ||
+                response.defaultPersona.name;
+              showSuccessToast(
+                t('message.field-value-updated-notification', {
+                  fieldName: t('label.default-persona'),
+                  fieldValue: personaName,
+                })
+              );
             }
           }
           if (userData.id === currentUser?.id) {

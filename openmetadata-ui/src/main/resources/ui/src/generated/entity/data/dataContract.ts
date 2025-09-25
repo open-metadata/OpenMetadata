@@ -23,6 +23,15 @@ export interface DataContract {
      */
     contractUpdates?: ContractUpdate[];
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when the data contract was
+     * created.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created the data contract.
+     */
+    createdBy?: string;
+    /**
      * When `true` indicates the entity has been soft deleted.
      */
     deleted?: boolean;
@@ -294,6 +303,7 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**

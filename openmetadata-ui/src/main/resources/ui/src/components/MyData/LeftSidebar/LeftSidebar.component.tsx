@@ -39,7 +39,8 @@ const LeftSidebar = () => {
   const location = useCustomLocation();
   const { t } = useTranslation();
   const { onLogoutHandler } = useAuthProvider();
-  const [showConfirmLogoutModal, setShowConfirmLogoutModal] = useState(false);
+  const [isConfirmLogoutModalOpen, setIsConfirmLogoutModalOpen] =
+    useState(false);
   const {
     preferences: { isSidebarCollapsed },
   } = useCurrentUserPreferences();
@@ -65,11 +66,11 @@ const LeftSidebar = () => {
   }, [location.pathname]);
 
   const handleLogoutClick = useCallback(() => {
-    setShowConfirmLogoutModal(true);
+    setIsConfirmLogoutModalOpen(true);
   }, []);
 
-  const hideConfirmationModal = () => {
-    setShowConfirmLogoutModal(false);
+  const hideConfirmLogoutModal = () => {
+    setIsConfirmLogoutModalOpen(false);
   };
 
   const LOWER_SIDEBAR_TOP_SIDEBAR_MENU_ITEMS: MenuProps['items'] = useMemo(
@@ -86,9 +87,11 @@ const LeftSidebar = () => {
   const { plugins = [] } = useApplicationsProvider();
 
   const pluginSidebarActions = useMemo(() => {
-    return plugins
-      .flatMap((plugin) => plugin.getSidebarActions?.() ?? [])
-      .sort((a, b) => (a.index ?? 999) - (b.index ?? 999));
+    return (
+      plugins
+        ?.flatMap((plugin) => plugin.getSidebarActions?.() ?? [])
+        .sort((a, b) => (a.index ?? 999) - (b.index ?? 999)) ?? []
+    );
   }, [plugins]);
 
   const menuItems = useMemo(() => {
@@ -187,23 +190,23 @@ const LeftSidebar = () => {
         </div>
       </div>
 
-      {showConfirmLogoutModal && (
+      {isConfirmLogoutModalOpen && (
         <Modal
           centered
           bodyStyle={{ textAlign: 'center' }}
           closable={false}
           closeIcon={null}
           footer={null}
-          open={showConfirmLogoutModal}
+          open={isConfirmLogoutModalOpen}
           width={360}
-          onCancel={hideConfirmationModal}>
+          onCancel={hideConfirmLogoutModal}>
           <Typography.Title level={5}>{t('label.logout')}</Typography.Title>
           <Typography.Text className="text-grey-muted">
             {t('message.logout-confirmation')}
           </Typography.Text>
 
           <div className="d-flex gap-2 w-full m-t-md justify-center">
-            <Button className="confirm-btn" onClick={hideConfirmationModal}>
+            <Button className="confirm-btn" onClick={hideConfirmLogoutModal}>
               {t('label.cancel')}
             </Button>
             <Button

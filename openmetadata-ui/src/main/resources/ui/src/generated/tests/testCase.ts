@@ -64,6 +64,11 @@ export interface TestCase {
      */
     failedRowsSample?: TableData;
     /**
+     * Followers of this test case. When not set, the test case inherits the followers from the
+     * table it belongs to.
+     */
+    followers?: EntityReference[];
+    /**
      * FullyQualifiedName same as `name`.
      */
     fullyQualifiedName?: string;
@@ -297,6 +302,7 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
