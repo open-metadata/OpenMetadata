@@ -4596,22 +4596,22 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   @Test
   void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
-    // Create a test case with APPROVED status by default
+    // Create a test case with UNPROCESSED status by default
     CreateTestCase createTestCase = createRequest(getEntityName(test));
     TestCase testCase = createEntity(createTestCase, ADMIN_AUTH_HEADERS);
 
-    // Verify the test case is created with APPROVED status
+    // Verify the test case is created with UNPROCESSED status
     assertEquals(
-        EntityStatus.APPROVED,
+        EntityStatus.UNPROCESSED,
         testCase.getEntityStatus(),
-        "TestCase should be created with APPROVED status");
+        "TestCase should be created with UNPROCESSED status");
 
     // Update the entityStatus using PATCH operation
     String originalJson = JsonUtils.pojoToJson(testCase);
     testCase.setEntityStatus(EntityStatus.IN_REVIEW);
 
     ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
-    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
     TestCase updatedTestCase =
         patchEntityAndCheck(testCase, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -4705,9 +4705,9 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Verify initial state
     assertEquals(
-        EntityStatus.APPROVED,
+        EntityStatus.UNPROCESSED,
         testCase.getEntityStatus(),
-        "TestCase should be created with APPROVED status");
+        "TestCase should be created with UNPROCESSED status");
     assertTrue(nullOrEmpty(testCase.getReviewers()), "TestCase should have no reviewers initially");
 
     // Add reviewers using PATCH
@@ -4727,7 +4727,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     origJson = JsonUtils.pojoToJson(testCase);
     testCase.withEntityStatus(EntityStatus.IN_REVIEW);
     change = getChangeDescription(testCase, MINOR_UPDATE);
-    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
     testCase = patchEntityAndCheck(testCase, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
     // Verify entityStatus was updated
@@ -4753,16 +4753,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Test clearing reviewers and updating status back to APPROVED
     origJson = JsonUtils.pojoToJson(testCase);
-    testCase.withEntityStatus(EntityStatus.APPROVED).withReviewers(null);
+    testCase.withEntityStatus(EntityStatus.UNPROCESSED).withReviewers(null);
     change = getChangeDescription(testCase, MINOR_UPDATE);
-    fieldUpdated(change, "entityStatus", EntityStatus.IN_REVIEW, EntityStatus.APPROVED);
+    fieldUpdated(change, "entityStatus", EntityStatus.IN_REVIEW, EntityStatus.UNPROCESSED);
     fieldDeleted(change, "reviewers", List.of(USER2.getEntityReference()));
     testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
 
     // Verify final state
     assertNotNull(testCase);
     assertEquals(
-        EntityStatus.APPROVED,
+        EntityStatus.UNPROCESSED,
         testCase.getEntityStatus(),
         "TestCase should be updated to APPROVED status");
     assertTrue(
