@@ -1181,6 +1181,9 @@ public class IngestionPipelineResource
     decryptOrNullify(securityContext, ingestionPipeline, true);
     ServiceEntityInterface service =
         Entity.getEntity(ingestionPipeline.getService(), "", Include.NON_DELETED);
+    if (repository.isS3LogStorageEnabled()) {
+      ingestionPipeline.setEnableStreamableLogs(true);
+    }
     PipelineServiceClientResponse status =
         pipelineServiceClient.deployPipeline(ingestionPipeline, service);
     if (status.getCode() == 200) {
