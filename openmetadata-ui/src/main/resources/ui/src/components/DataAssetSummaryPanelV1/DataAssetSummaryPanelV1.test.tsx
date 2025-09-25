@@ -108,6 +108,12 @@ jest.mock('../../utils/EntityUtils', () => {
   };
 });
 
+// Mock DataInsight constants to prevent undefined DEFAULT_SELECTED_RANGE
+jest.mock('../../constants/DataInsight.constants', () => ({
+  DEFAULT_SELECTED_RANGE: { days: 30 },
+  INITIAL_CHART_FILTER: { startTs: 0, endTs: 0 },
+}));
+
 jest.mock('../../constants/profiler.constant', () => ({
   PROFILER_FILTER_RANGE: {
     last30days: {
@@ -190,13 +196,13 @@ jest.mock('../common/DescriptionSection/DescriptionSection', () => {
 });
 
 jest.mock('../common/OverviewSection/OverviewSection', () => {
-  return jest.fn().mockImplementation(({ items }) => (
+  return jest.fn().mockImplementation(({ entityInfoV1 }) => (
     <div data-testid="overview-section">
-      {items.map((item: any, index: number) => (
+      {(entityInfoV1 || []).map((item: any, index: number) => (
         <div
-          data-testid={`overview-item-${item.label.toLowerCase()}`}
+          data-testid={`overview-item-${String(item.name).toLowerCase()}`}
           key={index}>
-          {item.label}: {item.value}
+          {item.name} {item.value}
         </div>
       ))}
     </div>
@@ -408,7 +414,22 @@ describe('DataAssetSummaryPanelV1', () => {
     );
     (listTestCases as jest.Mock).mockResolvedValue({ data: mockTestCaseData });
     (fetchCharts as jest.Mock).mockResolvedValue(mockChartsData);
-    (getEntityOverview as jest.Mock).mockReturnValue([]);
+    (getEntityOverview as jest.Mock).mockImplementation(
+      (_entityType: any, _dataAsset: any, additionalInfo: any) => [
+        { name: 'Type', value: 'Table', visible: ['explore'] },
+        { name: 'Rows', value: 1000, visible: ['explore'] },
+        { name: 'Columns', value: 15, visible: ['explore'] },
+        { name: 'Queries', value: 250, visible: ['explore'] },
+        {
+          name: 'Incidents',
+          value:
+            (additionalInfo && additionalInfo.incidentCount) !== undefined
+              ? additionalInfo.incidentCount
+              : 0,
+          visible: ['explore'],
+        },
+      ]
+    );
   });
 
   afterEach(() => {
@@ -818,7 +839,7 @@ describe('DataAssetSummaryPanelV1', () => {
 
       await waitFor(() => {
         expect(screen.getByTestId('overview-item-incidents')).toHaveTextContent(
-          'Incidents: 0'
+          'Incidents 0'
         );
       });
     });

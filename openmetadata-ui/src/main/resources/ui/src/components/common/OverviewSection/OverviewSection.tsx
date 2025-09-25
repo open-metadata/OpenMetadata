@@ -12,39 +12,63 @@
  */
 import { useTranslation } from 'react-i18next';
 import SectionWithEdit from '../SectionWithEdit/SectionWithEdit';
+import CommonEntitySummaryInfoV1 from './CommonEntitySummaryInfoV1';
 import './OverviewSection.less';
 
-interface OverviewItem {
-  label: string;
-  value: string | number;
-}
-
-interface OverviewSectionProps {
-  items: OverviewItem[];
+export interface OverviewSectionProps {
   onEdit?: () => void;
   showEditButton?: boolean;
+  entityInfoV1?: Array<{
+    name: string;
+    value?: any;
+    url?: string;
+    linkProps?: import('react-router-dom').To;
+    isLink?: boolean;
+    isExternal?: boolean;
+    visible?: string[];
+  }>;
+  componentType?: string;
+  isDomainVisible?: boolean;
 }
 
 const OverviewSection: React.FC<OverviewSectionProps> = ({
-  items,
   onEdit,
   showEditButton = false,
+  entityInfoV1,
+  componentType = '',
+  isDomainVisible = false,
 }) => {
   const { t } = useTranslation();
+
+  // Compute visible rows when using entityInfoV1
+  const visibleEntityInfo = entityInfoV1
+    ? entityInfoV1.filter((info) => {
+        const isDomain =
+          isDomainVisible && info.name === t('label.domain-plural');
+
+        return (info.visible || []).includes(componentType) || isDomain;
+      })
+    : [];
+
+  // Hide the entire section (including title) when there's no content
+  const hasContent = entityInfoV1 && visibleEntityInfo.length > 0;
+
+  if (!hasContent) {
+    return null;
+  }
 
   return (
     <SectionWithEdit
       showEditButton={showEditButton}
       title={t('label.overview')}
       onEdit={onEdit}>
-      <div className="overview-section">
-        {items.map((item, index) => (
-          <div className="overview-row" key={index}>
-            <span className="overview-label">{item.label}:</span>
-            <span className="overview-value">{item.value}</span>
-          </div>
-        ))}
-      </div>
+      {entityInfoV1 && (
+        <CommonEntitySummaryInfoV1
+          componentType={componentType}
+          entityInfo={entityInfoV1}
+          isDomainVisible={isDomainVisible}
+        />
+      )}
     </SectionWithEdit>
   );
 };

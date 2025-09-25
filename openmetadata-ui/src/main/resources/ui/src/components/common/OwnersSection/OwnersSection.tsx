@@ -198,7 +198,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           <Typography.Text className="owners-title">
             {t('label.owner-plural')}
           </Typography.Text>
-          {showEditButton && !isEditing && !isLoading && (
+          {showEditButton && hasPermission && !isEditing && !isLoading && (
             <span className="cursor-pointer" onClick={handleEditClick}>
               <EditIcon />
             </span>
@@ -263,7 +263,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         <Typography.Text className="owners-title">
           {t('label.owner-plural')}
         </Typography.Text>
-        {showEditButton && !isEditing && !isLoading && (
+        {showEditButton && hasPermission && !isEditing && !isLoading && (
           <span className="cursor-pointer" onClick={handleEditClick}>
             <EditIcon />
           </span>

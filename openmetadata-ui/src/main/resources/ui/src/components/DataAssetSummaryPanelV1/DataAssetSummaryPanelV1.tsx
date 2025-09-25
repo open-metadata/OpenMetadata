@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -65,10 +65,11 @@ import GlossaryTermsSection from '../common/GlossaryTermsSection/GlossaryTermsSe
 import Loader from '../common/Loader/Loader';
 import OverviewSection from '../common/OverviewSection/OverviewSection';
 import OwnersSection from '../common/OwnersSection/OwnersSection';
-import QueryCount from '../common/QueryCount/QueryCount.component';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
 import { DataAssetSummaryPanelProps } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
+import GlossaryTermSummary from '../Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
+import TagsSummary from '../Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component';
 import './DataAssetSummaryPanelV1.less';
 
 interface TestCaseStatusCounts {
@@ -87,6 +88,7 @@ export const DataAssetSummaryPanelV1 = ({
   highlights,
   onOwnerUpdate,
   onDomainUpdate,
+  isDomainVisible,
   onTagsUpdate,
   onDataProductsUpdate,
   onGlossaryTermsUpdate,
@@ -198,10 +200,13 @@ export const DataAssetSummaryPanelV1 = ({
     ack: 0,
     total: 0,
   });
-  const entityInfo = useMemo(
-    () => getEntityOverview(entityType, dataAsset, additionalInfo),
-    [dataAsset, additionalInfo, entityType]
-  );
+  const entityInfo = useMemo(() => {
+    return getEntityOverview(
+      entityType,
+      dataAsset ?? ({} as any),
+      additionalInfo
+    );
+  }, [dataAsset, additionalInfo, entityType]);
 
   useMemo(() => {
     return getEntityChildDetails(
@@ -327,16 +332,17 @@ export const DataAssetSummaryPanelV1 = ({
   };
 
   const init = useCallback(async () => {
-    if (dataAsset.id && !isTourPage) {
-      const permissions = await getEntityPermission(
-        ResourceEntity.TABLE,
-        dataAsset.id
-      );
-      setEntityPermissions(permissions);
-    } else {
-      setEntityPermissions(null);
+    // Do not reset permissions to null when id is temporarily missing during re-renders
+    if (!dataAsset.id || isTourPage) {
+      return;
     }
-  }, [dataAsset, isTourPage, isEntityDeleted, getEntityPermission]);
+
+    const permissions = await getEntityPermission(
+      dataAsset.entityType as ResourceEntity,
+      dataAsset.id
+    );
+    setEntityPermissions(permissions);
+  }, [dataAsset.id, dataAsset.entityType, isTourPage, getEntityPermission]);
 
   useEffect(() => {
     if (entityPermissions) {
@@ -344,7 +350,6 @@ export const DataAssetSummaryPanelV1 = ({
       fetchEntityBasedDetails();
     }
   }, [entityPermissions, dataAsset.fullyQualifiedName]);
-
   const commonEntitySummaryInfo = useMemo(() => {
     switch (entityType) {
       case EntityType.API_COLLECTION:
@@ -370,6 +375,10 @@ export const DataAssetSummaryPanelV1 = ({
       case EntityType.STORED_PROCEDURE:
       case EntityType.TABLE:
       case EntityType.TOPIC:
+      case EntityType.DIRECTORY:
+      case EntityType.FILE:
+      case EntityType.SPREADSHEET:
+      case EntityType.WORKSHEET:
         return (
           <>
             <DescriptionSection
@@ -377,23 +386,9 @@ export const DataAssetSummaryPanelV1 = ({
               onDescriptionUpdate={handleDescriptionUpdate}
             />
             <OverviewSection
-              items={[
-                { label: 'Type', value: startCase(dataAsset?.entityType) },
-                { label: 'Rows', value: '344' },
-                {
-                  label: 'Columns',
-                  // @ts-expect-error TODO: fix
-                  value: dataAsset?.columnNames?.length || 0,
-                },
-                {
-                  label: 'Queries',
-                  value: <QueryCount tableId={dataAsset.id || ''} />,
-                },
-                {
-                  label: 'Incidents',
-                  value: additionalInfo?.incidentCount ?? 0,
-                },
-              ]}
+              componentType={componentType}
+              entityInfoV1={entityInfo}
+              isDomainVisible={isDomainVisible}
             />
             {isTestCaseLoading ? (
               <Loader size="small" />
@@ -416,9 +411,7 @@ export const DataAssetSummaryPanelV1 = ({
               <OwnersSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={entityPermissions?.EditOwners}
                 key={`owners-${dataAsset.id}-${
                   (dataAsset.owners as EntityReference[])?.length || 0
                 }`}
@@ -432,9 +425,7 @@ export const DataAssetSummaryPanelV1 = ({
                 entityFqn={dataAsset.fullyQualifiedName}
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={entityPermissions?.EditTags}
                 key={`domains-${dataAsset.id}-${
                   (dataAsset.domains as EntityReference[])?.length || 0
                 }`}
@@ -444,9 +435,7 @@ export const DataAssetSummaryPanelV1 = ({
             <div className="section-container">
               <GlossaryTermsSection
                 entityId={dataAsset.id}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={entityPermissions?.EditGlossaryTerms}
                 key={`glossary-terms-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
@@ -458,9 +447,7 @@ export const DataAssetSummaryPanelV1 = ({
               <TagsSection
                 entityId={dataAsset.id}
                 entityType={entityType}
-                hasPermission={
-                  entityPermissions?.EditAll || entityPermissions?.EditTags
-                }
+                hasPermission={entityPermissions?.EditTags}
                 key={`tags-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
@@ -542,11 +529,27 @@ export const DataAssetSummaryPanelV1 = ({
           </>
         );
       case EntityType.GLOSSARY_TERM:
+        return (
+          <GlossaryTermSummary
+            entityDetails={dataAsset as any}
+            isLoading={false}
+          />
+        );
       case EntityType.TAG:
+        return (
+          <TagsSummary entityDetails={dataAsset as any} isLoading={false} />
+        );
       default:
         return null;
     }
-  }, [entityType, dataAsset, entityInfo, componentType, statusCounts]);
+  }, [
+    entityType,
+    dataAsset,
+    entityInfo,
+    componentType,
+    statusCounts,
+    entityPermissions,
+  ]);
 
   useEffect(() => {
     init();

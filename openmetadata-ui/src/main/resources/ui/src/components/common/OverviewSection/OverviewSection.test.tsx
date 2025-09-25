@@ -37,16 +37,17 @@ jest.mock('../SectionWithEdit/SectionWithEdit', () => {
     ));
 });
 
-const mockOverviewItems = [
-  { label: 'Type', value: 'Table' },
-  { label: 'Rows', value: 1000 },
-  { label: 'Columns', value: 15 },
-  { label: 'Queries', value: 250 },
-  { label: 'Incidents', value: 3 },
+const entityInfoV1 = [
+  { name: 'Type', value: 'Table', visible: ['explore'] },
+  { name: 'Rows', value: 1000, visible: ['explore'] },
+  { name: 'Columns', value: 15, visible: ['explore'] },
+  { name: 'Queries', value: 250, visible: ['explore'] },
+  { name: 'Incidents', value: 3, visible: ['explore'] },
 ];
 
 const defaultProps = {
-  items: mockOverviewItems,
+  entityInfoV1,
+  componentType: 'explore',
 };
 
 describe('OverviewSection', () => {
@@ -77,19 +78,19 @@ describe('OverviewSection', () => {
   });
 
   describe('Overview Items Rendering', () => {
-    it('should render all overview items', () => {
+    it('should render all overview items from entityInfoV1', () => {
       render(<OverviewSection {...defaultProps} />);
 
-      expect(screen.getByText('Type:')).toBeInTheDocument();
-      expect(screen.getByText('Table')).toBeInTheDocument();
-      expect(screen.getByText('Rows:')).toBeInTheDocument();
-      expect(screen.getByText('1000')).toBeInTheDocument();
-      expect(screen.getByText('Columns:')).toBeInTheDocument();
-      expect(screen.getByText('15')).toBeInTheDocument();
-      expect(screen.getByText('Queries:')).toBeInTheDocument();
-      expect(screen.getByText('250')).toBeInTheDocument();
-      expect(screen.getByText('Incidents:')).toBeInTheDocument();
-      expect(screen.getByText('3')).toBeInTheDocument();
+      expect(screen.getByTestId('Type-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Type-value')).toHaveTextContent('Table');
+      expect(screen.getByTestId('Rows-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Rows-value')).toHaveTextContent('1000');
+      expect(screen.getByTestId('Columns-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Columns-value')).toHaveTextContent('15');
+      expect(screen.getByTestId('Queries-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Queries-value')).toHaveTextContent('250');
+      expect(screen.getByTestId('Incidents-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Incidents-value')).toHaveTextContent('3');
     });
 
     it('should render items with correct structure', () => {
@@ -115,41 +116,42 @@ describe('OverviewSection', () => {
       expect(values).toHaveLength(5);
     });
 
-    it('should handle empty items array', () => {
-      render(<OverviewSection items={[]} />);
+    it('should hide when nothing visible for given componentType', () => {
+      render(
+        <OverviewSection componentType="other" entityInfoV1={entityInfoV1} />
+      );
 
-      expect(screen.getByTestId('section-with-edit')).toBeInTheDocument();
-      expect(screen.getByTestId('section-content')).toBeInTheDocument();
+      expect(screen.queryByTestId('section-with-edit')).toBeNull();
     });
 
     it('should handle single item', () => {
-      const singleItem = [{ label: 'Type', value: 'Table' }];
-      render(<OverviewSection items={singleItem} />);
+      const info = [{ name: 'Type', value: 'Table', visible: ['explore'] }];
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
-      expect(screen.getByText('Type:')).toBeInTheDocument();
-      expect(screen.getByText('Table')).toBeInTheDocument();
+      expect(screen.getByTestId('Type-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Type-value')).toHaveTextContent('Table');
     });
   });
 
   describe('Data Types', () => {
     it('should render string values correctly', () => {
-      const stringItems = [
-        { label: 'Name', value: 'Test Table' },
-        { label: 'Type', value: 'Table' },
+      const info = [
+        { name: 'Name', value: 'Test Table', visible: ['explore'] },
+        { name: 'Type', value: 'Table', visible: ['explore'] },
       ];
-      render(<OverviewSection items={stringItems} />);
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
       expect(screen.getByText('Test Table')).toBeInTheDocument();
       expect(screen.getByText('Table')).toBeInTheDocument();
     });
 
     it('should render number values correctly', () => {
-      const numberItems = [
-        { label: 'Count', value: 42 },
-        { label: 'Size', value: 0 },
-        { label: 'Negative', value: -5 },
+      const info = [
+        { name: 'Count', value: 42, visible: ['explore'] },
+        { name: 'Size', value: 0, visible: ['explore'] },
+        { name: 'Negative', value: -5, visible: ['explore'] },
       ];
-      render(<OverviewSection items={numberItems} />);
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
       expect(screen.getByText('42')).toBeInTheDocument();
       expect(screen.getByText('0')).toBeInTheDocument();
@@ -157,13 +159,13 @@ describe('OverviewSection', () => {
     });
 
     it('should render mixed data types', () => {
-      const mixedItems = [
-        { label: 'Name', value: 'Test Table' },
-        { label: 'Count', value: 100 },
-        { label: 'Active', value: 'Yes' },
-        { label: 'Score', value: 95.5 },
+      const info = [
+        { name: 'Name', value: 'Test Table', visible: ['explore'] },
+        { name: 'Count', value: 100, visible: ['explore'] },
+        { name: 'Active', value: 'Yes', visible: ['explore'] },
+        { name: 'Score', value: 95.5, visible: ['explore'] },
       ];
-      render(<OverviewSection items={mixedItems} />);
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
       expect(screen.getByText('Test Table')).toBeInTheDocument();
       expect(screen.getByText('100')).toBeInTheDocument();
@@ -240,65 +242,62 @@ describe('OverviewSection', () => {
     it('should handle undefined onEdit prop', () => {
       render(<OverviewSection {...defaultProps} showEditButton />);
 
-      const SectionWithEdit = jest.requireMock(
-        '../SectionWithEdit/SectionWithEdit'
+      // Assert via DOM to avoid brittle prop shape checks on mock component
+      expect(screen.getByTestId('section-title')).toHaveTextContent(
+        'label.overview'
       );
 
-      expect(SectionWithEdit).toHaveBeenCalledWith(
-        expect.objectContaining({
-          showEditButton: true,
-          title: 'label.overview',
-          onEdit: undefined,
-          children: expect.any(Object),
-        }),
-        expect.any(Object)
-      );
+      const editButton = screen.getByTestId('edit-button');
+
+      expect(editButton).toBeInTheDocument();
+      expect(() => fireEvent.click(editButton)).not.toThrow();
     });
   });
 
   describe('Edge Cases', () => {
     it('should handle items with empty labels', () => {
-      const itemsWithEmptyLabels = [
-        { label: '', value: 'Value 1' },
-        { label: 'Label 2', value: 'Value 2' },
+      const info = [
+        { name: '', value: 'Value 1', visible: ['explore'] },
+        { name: 'Label 2', value: 'Value 2', visible: ['explore'] },
       ];
-      render(<OverviewSection items={itemsWithEmptyLabels} />);
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
-      expect(screen.getByText(':')).toBeInTheDocument(); // Empty label with colon
       expect(screen.getByText('Value 1')).toBeInTheDocument();
-      expect(screen.getByText('Label 2:')).toBeInTheDocument();
-      expect(screen.getByText('Value 2')).toBeInTheDocument();
+      expect(screen.getByTestId('Label 2-value')).toHaveTextContent('Value 2');
     });
 
     it('should handle items with empty values', () => {
-      const itemsWithEmptyValues = [
-        { label: 'Label 1', value: '' },
-        { label: 'Label 2', value: 'Value 2' },
+      const info = [
+        { name: 'Label 1', value: '', visible: ['explore'] },
+        { name: 'Label 2', value: 'Value 2', visible: ['explore'] },
       ];
-      render(<OverviewSection items={itemsWithEmptyValues} />);
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
-      expect(screen.getByText('Label 1:')).toBeInTheDocument();
-      expect(screen.getByText('Label 2:')).toBeInTheDocument();
-      expect(screen.getByText('Value 2')).toBeInTheDocument();
+      expect(screen.getByTestId('Label 1-label')).toBeInTheDocument();
+      expect(screen.getByTestId('Label 2-value')).toHaveTextContent('Value 2');
     });
 
     it('should handle items with special characters in labels', () => {
-      const itemsWithSpecialChars = [
-        { label: 'Label & Value', value: 'Test' },
-        { label: 'Label < > " \'', value: 'Test' },
+      const info = [
+        { name: 'Label & Value', value: 'Test', visible: ['explore'] },
+        { name: 'Label < > " \'', value: 'Test', visible: ['explore'] },
       ];
-      render(<OverviewSection items={itemsWithSpecialChars} />);
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
-      expect(screen.getByText('Label & Value:')).toBeInTheDocument();
-      expect(screen.getByText('Label < > " \':')).toBeInTheDocument();
+      expect(screen.getByTestId('Label & Value-value')).toHaveTextContent(
+        'Test'
+      );
+      expect(screen.getByTestId('Label < > " \'-value')).toHaveTextContent(
+        'Test'
+      );
     });
 
     it('should handle items with special characters in values', () => {
-      const itemsWithSpecialValues = [
-        { label: 'Name', value: 'Table & Data' },
-        { label: 'Description', value: 'Test < > " \'' },
+      const info = [
+        { name: 'Name', value: 'Table & Data', visible: ['explore'] },
+        { name: 'Description', value: 'Test < > " \'', visible: ['explore'] },
       ];
-      render(<OverviewSection items={itemsWithSpecialValues} />);
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
       expect(screen.getByText('Table & Data')).toBeInTheDocument();
       expect(screen.getByText('Test < > " \'')).toBeInTheDocument();
@@ -307,11 +306,15 @@ describe('OverviewSection', () => {
     it('should handle very long labels and values', () => {
       const longLabel = 'A'.repeat(100);
       const longValue = 'B'.repeat(100);
-      const itemsWithLongContent = [{ label: longLabel, value: longValue }];
-      render(<OverviewSection items={itemsWithLongContent} />);
+      const info = [
+        { name: longLabel, value: longValue, visible: ['explore'] },
+      ];
+      render(<OverviewSection componentType="explore" entityInfoV1={info} />);
 
-      expect(screen.getByText(`${longLabel}:`)).toBeInTheDocument();
-      expect(screen.getByText(longValue)).toBeInTheDocument();
+      expect(screen.getByTestId(`${longLabel}-label`)).toBeInTheDocument();
+      expect(screen.getByTestId(`${longLabel}-value`)).toHaveTextContent(
+        longValue
+      );
     });
   });
 
@@ -348,12 +351,15 @@ describe('OverviewSection', () => {
 
   describe('Performance', () => {
     it('should handle large number of items efficiently', () => {
-      const largeItems = Array.from({ length: 100 }, (_, index) => ({
-        label: `Label ${index}`,
+      const info = Array.from({ length: 100 }, (_, index) => ({
+        name: `Label ${index}`,
         value: `Value ${index}`,
+        visible: ['explore'],
       }));
 
-      const { container } = render(<OverviewSection items={largeItems} />);
+      const { container } = render(
+        <OverviewSection componentType="explore" entityInfoV1={info} />
+      );
 
       const overviewRows = container.querySelectorAll('.overview-row');
 
@@ -363,14 +369,19 @@ describe('OverviewSection', () => {
     it('should re-render efficiently when props change', () => {
       const { rerender } = render(<OverviewSection {...defaultProps} />);
 
-      expect(screen.getByText('Type:')).toBeInTheDocument();
+      expect(screen.getByTestId('Type-value')).toHaveTextContent('Table');
 
-      const newItems = [{ label: 'New Label', value: 'New Value' }];
-      rerender(<OverviewSection items={newItems} />);
+      const newInfo = [
+        { name: 'New Label', value: 'New Value', visible: ['explore'] },
+      ];
+      rerender(
+        <OverviewSection componentType="explore" entityInfoV1={newInfo} />
+      );
 
-      expect(screen.getByText('New Label:')).toBeInTheDocument();
-      expect(screen.getByText('New Value')).toBeInTheDocument();
-      expect(screen.queryByText('Type:')).not.toBeInTheDocument();
+      expect(screen.getByTestId('New Label-value')).toHaveTextContent(
+        'New Value'
+      );
+      expect(screen.queryByTestId('Type-value')).not.toBeInTheDocument();
     });
   });
 });

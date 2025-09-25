@@ -196,7 +196,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           <Typography.Text className="domains-title">
             {t('label.domain-plural')}
           </Typography.Text>
-          {showEditButton && !isEditing && !isLoading && (
+          {showEditButton && hasPermission && !isEditing && !isLoading && (
             <span className="cursor-pointer" onClick={handleEditClick}>
               <EditIcon />
             </span>
