@@ -273,7 +273,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                 </Box>
 
                 {/* Icons grid */}
-                {filteredIcons.length > 1 && (
+                {filteredIcons.length > 0 && (
                   <>
                     <Box
                       sx={{
@@ -294,7 +294,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                         maxHeight: '250px',
                         overflowY: 'auto',
                       }}>
-                      {filteredIcons.slice(1).map((icon) => {
+                      {filteredIcons.slice(0).map((icon) => {
                         const IconComponent = icon.component;
                         const isSelected = selectedIcon === icon.name;
 
