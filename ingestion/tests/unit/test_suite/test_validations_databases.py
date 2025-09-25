@@ -712,11 +712,6 @@ def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
 
         mock_get_column.side_effect = mock_get_column_side_effect
 
-        # Also mock get_dimension_column for dimensional validation
-        test_handler.get_dimension_column = MagicMock(
-            side_effect=mock_get_column_side_effect
-        )
-
         res = test_handler.run_validation()
 
     # Verify main test result
@@ -800,9 +795,7 @@ def test_column_values_to_be_in_set_invalid_dimension_column(create_sqlite_table
     # Mock column resolution to raise ValueError for invalid column
     with patch.object(test_handler, "_run_results", return_value=23), patch.object(
         test_handler, "_get_column_name"
-    ) as mock_get_column, patch.object(
-        test_handler, "get_dimension_column"
-    ) as mock_get_dimension_column:
+    ) as mock_get_column:
 
         # Mock main column resolution
         from unittest.mock import MagicMock
@@ -813,15 +806,6 @@ def test_column_values_to_be_in_set_invalid_dimension_column(create_sqlite_table
         mock_main_column.name = "nickname"
         mock_main_column.type = String()
         mock_get_column.return_value = mock_main_column
-
-        # Mock dimension column resolution to raise error for invalid column
-        def mock_get_dimension_column_side_effect(column_name):
-            if column_name == "invalid_column":
-                raise ValueError(f"Column {column_name} not found in table")
-            # This shouldn't be called for other columns in this test
-            raise AssertionError(f"Unexpected column: {column_name}")
-
-        mock_get_dimension_column.side_effect = mock_get_dimension_column_side_effect
 
         res = test_handler.run_validation()
 

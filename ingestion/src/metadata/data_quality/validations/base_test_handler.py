@@ -106,9 +106,7 @@ class BaseTestValidator(ABC):
             logger.debug(f"Dimension columns: {self.test_case.dimensionColumns}")
 
             # Validate dimension columns exist in the target table
-            validation_error = self.validate_dimension_columns()
-            if validation_error:
-                logger.warning(f"Dimensional validation skipped: {validation_error}")
+            if not self.are_dimension_columns_valid():
                 # Don't abort the main test, just skip dimensional validation
                 # The main test result is still valid
                 return test_result
@@ -278,35 +276,44 @@ class BaseTestValidator(ABC):
 
         return test_case_dimension_results
 
-    def validate_dimension_columns(self) -> Optional[str]:
+    def are_dimension_columns_valid(self) -> bool:
         """Validate that all dimension columns exist in the target table
 
         Returns:
-            Optional[str]: Error message if validation fails, None if successful
+            bool: True if all dimension columns are valid, False otherwise
         """
         if not self.is_dimensional_test():
-            return None
+            return False  # No dimensions to validate
+
+        if not hasattr(self, "_get_column_name"):
+            logger.warning("Validator does not support dimensional column validation")
+            return False
 
         try:
             missing_columns = []
             for dim_col in self.test_case.dimensionColumns:
                 try:
-                    # Delegate to child classes via get_dimension_column method
-                    # which uses the _get_column_name(column_name) pattern
-                    self.get_dimension_column(dim_col)
+                    self._get_column_name(dim_col)  # type: ignore[attr-defined] - Delegates to child class
                 except ValueError:
                     missing_columns.append(dim_col)
-                except AttributeError:
+                except NotImplementedError:
                     # Child class doesn't support dimensional validation yet
-                    return f"Validator does not support dimensional column validation"
+                    logger.warning(
+                        "Validator does not support dimensional column validation"
+                    )
+                    return False
 
             if missing_columns:
-                return f"Dimension columns not found in table: {', '.join(missing_columns)}"
+                logger.warning(
+                    f"Dimensional validation skipped: Dimension columns not found in table: {', '.join(missing_columns)}"
+                )
+                return False
 
-            return None
+            return True
 
         except Exception as exc:
-            return f"Unable to validate dimension columns: {exc}"
+            logger.warning(f"Unable to validate dimension columns: {exc}")
+            return False
 
     def get_dimension_result_object(
         self,

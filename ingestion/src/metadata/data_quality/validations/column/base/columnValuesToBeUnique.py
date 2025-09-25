@@ -204,20 +204,3 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             Example: [DimensionResult(dimensionValues={"country": "Spain"}, ...), DimensionResult(dimensionValues={"country": "Argentina"}, ...)]
         """
         raise NotImplementedError
-
-    def get_dimension_column(self, column_name: str):
-        """Get column object for dimension validation
-
-        This method is called by the base class to validate that dimension columns exist.
-        It delegates to the existing _get_column_name method that child classes already implement.
-
-        Args:
-            column_name: Name of the dimension column
-
-        Returns:
-            Column object for the dimension column
-
-        Raises:
-            ValueError: If column doesn't exist
-        """
-        return self._get_column_name(column_name)

@@ -72,18 +72,18 @@ class MockTestValidator(BaseTestValidator):
         # Default implementation returns empty list
         return []
 
-    def _get_column_name(self):
+    def _get_column_name(self, column_name=None):
         """Mock implementation of _get_column_name"""
-        return None
+        # For testing purposes, accept any column name that's provided
+        # This simulates that all dimension columns exist
+        if column_name:
+            # Return a mock column for dimension columns
+            from unittest.mock import MagicMock
 
-    def get_dimension_column(self, column_name: str):
-        """Mock implementation of get_dimension_column for dimensional validation"""
-        # Return a mock column object
-        from unittest.mock import MagicMock
-
-        mock_column = MagicMock()
-        mock_column.name = column_name
-        return mock_column
+            mock_column = MagicMock()
+            mock_column.name = column_name
+            return mock_column
+        return None  # Return None for the main column (backward compatibility)
 
 
 class TestBaseTestValidator:

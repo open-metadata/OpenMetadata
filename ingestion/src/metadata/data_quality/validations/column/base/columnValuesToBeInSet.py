@@ -215,17 +215,3 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             Tuple[int, int]:
         """
         return self.compute_row_count(self._get_column_name())
-
-    def get_dimension_column(self, column_name: str):
-        """Get dimension column object by name for validation
-
-        Args:
-            column_name: Name of the dimension column to retrieve
-
-        Returns:
-            Column object (type depends on implementation)
-
-        Raises:
-            ValueError: If column is not found in the data source
-        """
-        return self._get_column_name(column_name)
