@@ -85,19 +85,21 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
 
-  await page.waitForLoadState('networkidle');
-
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
   await expect(
     page.locator('.ant-tabs-tab-active').getByText('Teams')
   ).toBeVisible();
+
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const userListResponse = page.waitForResponse(
     '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
+
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.waitForSelector('[data-testid="owner-select-users-search-bar"]', {
@@ -113,6 +115,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
     await searchOwner;
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector(
       '[data-testid="select-owner-tabs"] [data-testid="loader"]',
       { state: 'detached' }
@@ -382,6 +385,21 @@ export const fillGlossaryRowDetails = async (
     .press('ArrowRight', { delay: 100 });
 
   await fillOwnerDetails(page, row.owners);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  await fillTextInputDetails(page, '#ccc');
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  const base64Src =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+  await fillTextInputDetails(page, base64Src);
 
   await page
     .locator(RDG_ACTIVE_CELL_SELECTOR)

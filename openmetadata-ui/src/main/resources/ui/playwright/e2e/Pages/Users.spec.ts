@@ -23,6 +23,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   redirectToHomePage,
+  toastNotification,
   uuid,
   visitOwnProfilePage,
 } from '../../utils/common';
@@ -546,6 +547,445 @@ test.describe('User Profile Feed Interactions', () => {
   });
 });
 
+test.describe('User Profile Dropdown Persona Interactions', () => {
+  test.beforeAll(async ({ adminPage }) => {
+    await redirectToHomePage(adminPage);
+
+    // First, add personas to the user profile for testing
+    await visitOwnProfilePage(adminPage);
+    await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+
+    // Add personas to user profile
+    await adminPage
+      .locator('[data-testid="edit-user-persona"]')
+      .first()
+      .click();
+    await adminPage.waitForSelector('[data-testid="persona-select-list"]');
+    await adminPage.locator('[data-testid="persona-select-list"]').click();
+    await adminPage.waitForSelector('.ant-select-dropdown', {
+      state: 'visible',
+    });
+
+    // Select both personas
+    await adminPage.getByTestId(`${persona1.data.displayName}-option`).click();
+    await adminPage.getByTestId(`${persona2.data.displayName}-option`).click();
+
+    await adminPage
+      .locator('[data-testid="user-profile-persona-edit-save"]')
+      .click();
+    await adminPage.waitForResponse('/api/v1/users/*');
+
+    // Set default persona
+    await adminPage
+      .locator('[data-testid="default-edit-user-persona"]')
+      .click();
+    await adminPage.waitForSelector(
+      '[data-testid="default-persona-select-list"]'
+    );
+    await adminPage
+      .locator('[data-testid="default-persona-select-list"]')
+      .click();
+    await adminPage.waitForSelector('.ant-select-dropdown', {
+      state: 'visible',
+    });
+
+    await adminPage.getByTestId(`${persona1.data.displayName}-option`).click();
+
+    const defaultPersonaUpdateResponse =
+      adminPage.waitForResponse('/api/v1/users/*');
+
+    await adminPage
+      .locator('[data-testid="user-profile-default-persona-edit-save"]')
+      .click();
+    await defaultPersonaUpdateResponse;
+
+    await redirectToHomePage(adminPage);
+  });
+
+  test('Should display persona dropdown with pagination', async ({
+    adminPage,
+  }) => {
+    // Open user profile dropdown
+    await adminPage.locator('[data-testid="dropdown-profile"]').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Verify personas section is visible
+    await expect(adminPage.getByText('Switch Persona')).toBeVisible();
+
+    // Initially should show limited personas (2 by default)
+    const initialPersonaLabels = adminPage.locator(
+      '[data-testid="persona-label"]'
+    );
+    const initialCount = await initialPersonaLabels.count();
+
+    expect(initialCount).toBeLessThanOrEqual(2);
+
+    // Check if "more" button exists and click it
+    const moreButton = adminPage.getByText(/\d+ More/);
+    if (await moreButton.isVisible()) {
+      await moreButton.click();
+
+      // Verify all personas are now visible
+      const expandedPersonaLabels = adminPage.locator(
+        '[data-testid="persona-label"]'
+      );
+      const expandedCount = await expandedPersonaLabels.count();
+
+      expect(expandedCount).toBeGreaterThan(initialCount);
+    }
+  });
+
+  test('Should display default persona tag correctly', async ({
+    adminPage,
+  }) => {
+    // Open user profile dropdown
+    await adminPage.locator('[data-testid="dropdown-profile"]').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Expand personas if needed
+    const moreButton = adminPage.getByText(/\d+ More/);
+    if (await moreButton.isVisible()) {
+      await moreButton.click();
+    }
+
+    // Verify default persona tag is visible
+    await expect(
+      adminPage.locator('[data-testid="default-persona-tag"]')
+    ).toBeVisible();
+
+    // Verify default persona is first in the list
+    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
+    const firstPersona = personaLabels.first();
+
+    await expect(
+      firstPersona.locator('[data-testid="default-persona-tag"]')
+    ).toBeVisible();
+  });
+
+  test('Should switch personas correctly', async ({ adminPage }) => {
+    // Open user profile dropdown
+    await adminPage.locator('[data-testid="dropdown-profile"]').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Expand personas if needed
+    const moreButton = adminPage.getByText(/\d+ More/);
+    if (await moreButton.isVisible()) {
+      await moreButton.click();
+    }
+
+    // Find a non-default persona to select
+    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
+    const personaCount = await personaLabels.count();
+
+    if (personaCount > 1) {
+      // Get the second persona (not the default one)
+      const secondPersona = personaLabels.nth(1);
+
+      // Click on the second persona
+      const personaChangeResponse = adminPage.waitForResponse(
+        '/api/v1/docStore/name/persona.*'
+      );
+
+      await secondPersona.click();
+
+      // Wait for persona change API call
+      await personaChangeResponse;
+
+      // Close dropdown to see updated persona
+      await adminPage.keyboard.press('Escape');
+
+      // Reopen dropdown to verify the change
+      await adminPage.locator('[data-testid="dropdown-profile"]').click();
+      await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+        state: 'visible',
+      });
+
+      // Verify the selected persona is checked
+      const checkedRadio = adminPage.locator('input[type="radio"]:checked');
+
+      await expect(checkedRadio).toBeVisible();
+    }
+  });
+
+  test('Should handle persona sorting correctly', async ({ adminPage }) => {
+    // Open user profile dropdown
+    await adminPage.locator('[data-testid="dropdown-profile"]').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Expand personas if needed
+    const moreButton = adminPage.getByText(/\d+ More/);
+    if (await moreButton.isVisible()) {
+      await moreButton.click();
+    }
+
+    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
+    const personaCount = await personaLabels.count();
+
+    if (personaCount > 1) {
+      // First persona should have the default tag
+      const firstPersona = personaLabels.first();
+
+      await expect(
+        firstPersona.locator('[data-testid="default-persona-tag"]')
+      ).toBeVisible();
+
+      // Get text of all personas to verify sorting
+      const personaTexts = await personaLabels
+        .locator('.ant-typography')
+        .allTextContents();
+
+      // Verify first one contains the default persona name
+      expect(personaTexts[0]).toContain(persona1.data.displayName);
+    }
+  });
+
+  test('Should revert to default persona after page refresh when non-default is selected', async ({
+    adminPage,
+  }) => {
+    // First, verify default persona is selected initially
+    await adminPage.locator('[data-testid="dropdown-profile"]').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Expand personas if needed
+    const moreButton = adminPage.getByText(/\d+ More/);
+    if (await moreButton.isVisible()) {
+      await moreButton.click();
+    }
+
+    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
+    const personaCount = await personaLabels.count();
+
+    if (personaCount > 1) {
+      // Verify default persona is initially selected (first one)
+      const defaultPersonaRadio = personaLabels
+        .first()
+        .locator('input[type="radio"]');
+
+      await expect(defaultPersonaRadio).toBeChecked();
+
+      // Select the second (non-default) persona
+      const secondPersona = personaLabels.nth(1);
+      const personaChangeResponse = adminPage.waitForResponse(
+        '/api/v1/docStore/name/persona.*'
+      );
+
+      await secondPersona.click();
+
+      // Wait for persona change API call
+      await personaChangeResponse;
+
+      // Verify the second persona is now selected
+      const secondPersonaRadio = personaLabels
+        .nth(1)
+        .locator('input[type="radio"]');
+
+      await expect(secondPersonaRadio).toBeChecked();
+
+      // Close dropdown
+      await adminPage.keyboard.press('Escape');
+
+      // Refresh the page
+      await adminPage.reload();
+      await adminPage.waitForLoadState('networkidle');
+
+      // Open dropdown again after refresh
+      await adminPage.locator('[data-testid="dropdown-profile"]').click();
+      await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+        state: 'visible',
+      });
+
+      // Expand personas if needed
+      const moreButtonAfterRefresh = adminPage.getByText(/\d+ More/);
+      if (await moreButtonAfterRefresh.isVisible()) {
+        await moreButtonAfterRefresh.click();
+      }
+
+      // Verify default persona is selected again after refresh
+      const personaLabelsAfterRefresh = adminPage.locator(
+        '[data-testid="persona-label"]'
+      );
+      const defaultPersonaRadioAfterRefresh = personaLabelsAfterRefresh
+        .first()
+        .locator('input[type="radio"]');
+
+      await expect(defaultPersonaRadioAfterRefresh).toBeChecked();
+
+      // Verify default persona tag is still visible
+      await expect(
+        personaLabelsAfterRefresh
+          .first()
+          .locator('[data-testid="default-persona-tag"]')
+      ).toBeVisible();
+    }
+  });
+
+  test('Should handle default persona change and removal correctly', async ({
+    adminPage,
+  }) => {
+    // Step 1: Verify default persona is initially selected
+    await adminPage.locator('[data-testid="dropdown-profile"]').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Expand personas if needed
+    let moreButton = adminPage.getByText(/\d+ More/);
+    if (await moreButton.isVisible()) {
+      await moreButton.click();
+    }
+
+    // Verify first persona has default tag and is selected
+    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
+
+    await expect(
+      personaLabels.first().locator('[data-testid="default-persona-tag"]')
+    ).toBeVisible();
+    await expect(
+      personaLabels.first().locator('input[type="radio"]')
+    ).toBeChecked();
+
+    // Get the current default persona name for later verification
+    const originalDefaultPersonaText = await personaLabels
+      .first()
+      .locator('.ant-typography')
+      .textContent();
+
+    // Close dropdown
+    await adminPage.keyboard.press('Escape');
+
+    // Step 2: Go to profile page and change default persona
+    await visitOwnProfilePage(adminPage);
+    await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+
+    // Change default persona to the second persona
+    await adminPage
+      .locator('[data-testid="default-edit-user-persona"]')
+      .click();
+    await adminPage.waitForSelector(
+      '[data-testid="default-persona-select-list"]'
+    );
+    await adminPage
+      .locator('[data-testid="default-persona-select-list"]')
+      .click();
+    await adminPage.waitForSelector('.ant-select-dropdown', {
+      state: 'visible',
+    });
+
+    // Select the second persona as default
+    await adminPage.getByTestId(`${persona2.data.displayName}-option`).click();
+
+    const defaultPersonaChangeResponse =
+      adminPage.waitForResponse('/api/v1/users/*');
+
+    await adminPage
+      .locator('[data-testid="user-profile-default-persona-edit-save"]')
+      .click();
+    await defaultPersonaChangeResponse;
+
+    // Step 3: Go back to home page and verify new default persona is selected
+    await redirectToHomePage(adminPage);
+
+    await adminPage.locator('[data-testid="dropdown-profile"]').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Expand personas if needed
+    moreButton = adminPage.getByText(/\d+ More/);
+    if (await moreButton.isVisible()) {
+      await moreButton.click();
+    }
+
+    // Verify the new default persona (persona2) is now first and selected
+    const updatedPersonaLabels = adminPage.locator(
+      '[data-testid="persona-label"]'
+    );
+    const newDefaultPersonaText = await updatedPersonaLabels
+      .first()
+      .locator('.ant-typography')
+      .textContent();
+
+    expect(newDefaultPersonaText).toContain(persona2.data.displayName);
+    expect(newDefaultPersonaText).not.toBe(originalDefaultPersonaText);
+
+    await expect(
+      updatedPersonaLabels
+        .first()
+        .locator('[data-testid="default-persona-tag"]')
+    ).toBeVisible();
+    await expect(
+      updatedPersonaLabels.first().locator('input[type="radio"]')
+    ).toBeChecked();
+
+    // Close dropdown
+    await adminPage.keyboard.press('Escape');
+
+    // Step 4: Go back to profile and remove default persona
+    await visitOwnProfilePage(adminPage);
+    await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+
+    // Remove default persona
+    await adminPage
+      .locator('[data-testid="default-edit-user-persona"]')
+      .click();
+    await adminPage.waitForSelector(
+      '[data-testid="default-persona-select-list"]'
+    );
+    await adminPage
+      .locator('[data-testid="default-persona-select-list"] .ant-select-clear')
+      .click();
+
+    await adminPage
+      .locator('[data-testid="user-profile-default-persona-edit-save"]')
+      .click();
+    await adminPage.waitForResponse('/api/v1/users/*');
+
+    // Verify NO notification appears when removing default persona
+    await expect(adminPage.getByTestId('alert-bar')).not.toBeVisible();
+
+    // Verify "No default persona" message appears
+    await expect(adminPage.getByText('No default persona')).toBeVisible();
+
+    // Step 5: Go back to home page and verify no default persona in dropdown
+    await redirectToHomePage(adminPage);
+
+    await adminPage.locator('[data-testid="dropdown-profile"]').click();
+    await adminPage.waitForSelector('[role="menu"].profile-dropdown', {
+      state: 'visible',
+    });
+
+    // Expand personas if needed
+    moreButton = adminPage.getByText(/\d+ More/);
+    if (await moreButton.isVisible()) {
+      await moreButton.click();
+    }
+
+    // Verify no default persona tag exists
+    const finalPersonaLabels = adminPage.locator(
+      '[data-testid="persona-label"]'
+    );
+
+    await expect(
+      finalPersonaLabels.locator('[data-testid="default-persona-tag"]')
+    ).not.toBeVisible();
+
+    // Verify there are no selected nor a default persona
+    const checkedRadios = adminPage.locator('input[type="radio"]:checked');
+
+    await expect(checkedRadios).toHaveCount(0);
+  });
+});
+
 test.describe('User Profile Persona Interactions', () => {
   test('Should add, remove, and navigate to persona pages for Personas section', async ({
     adminPage,
@@ -738,6 +1178,13 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Wait for the API call to complete and default persona to appear
       await adminPage.waitForResponse('/api/v1/users/*');
+
+      // Check that success notification appears with correct message
+      await toastNotification(
+        adminPage,
+        `Your Default Persona changed to ${persona1.data.displayName}`
+      );
+
       await adminPage.waitForSelector(
         '.default-persona-text [data-testid="tag-chip"]'
       );
@@ -793,13 +1240,19 @@ test.describe('User Profile Persona Interactions', () => {
         )
         .click();
 
+      const defaultPersonaChangeResponse =
+        adminPage.waitForResponse('/api/v1/users/*');
+
       // Save the changes
       await adminPage
         .locator('[data-testid="user-profile-default-persona-edit-save"]')
         .click();
 
       // Wait for the API call to complete and verify no default persona is shown
-      await adminPage.waitForResponse('api/v1/users/*');
+      await defaultPersonaChangeResponse;
+
+      // Verify NO notification appears when removing default persona
+      await expect(adminPage.getByTestId('alert-bar')).not.toBeVisible();
 
       await expect(adminPage.getByText('No default persona')).toBeVisible();
     });

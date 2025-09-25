@@ -163,6 +163,13 @@ describe('AddDataContract', () => {
       expect(
         screen.getByRole('tab', { name: 'label.quality' })
       ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole('tab', { name: 'label.security' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: 'label.sla' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -200,7 +207,7 @@ describe('AddDataContract', () => {
 
       expect(
         screen
-          .getByRole('tab', { name: 'label.schema' })
+          .getByRole('tab', { name: 'label.terms-of-service' })
           .closest('.ant-tabs-tab')
       ).toHaveClass('ant-tabs-tab-active');
     });

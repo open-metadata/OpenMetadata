@@ -156,7 +156,8 @@ test.describe('Curated Assets Widget', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        'Display Name'
+        'Display Name',
+        true
       );
 
       await selectOption(
@@ -260,13 +261,14 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
 
     await selectOption(
       page,
       ruleLocator.locator('.rule--operator .ant-select'),
-      '=='
+      'Is'
     );
 
     await ruleLocator
@@ -335,12 +337,13 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
     await selectOption(
       page,
       ruleLocator1.locator('.rule--operator .ant-select'),
-      'Is not null'
+      'Is Set'
     );
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
@@ -352,12 +355,13 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
     await selectOption(
       page,
       ruleLocator2.locator('.rule--operator .ant-select'),
-      '=='
+      'Is'
     );
     await ruleLocator2
       .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
@@ -439,12 +443,13 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
     await selectOption(
       page,
       ruleLocator1.locator('.rule--operator .ant-select'),
-      '=='
+      'Is'
     );
     await ruleLocator1
       .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
@@ -457,7 +462,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Display Name'
+      'Display Name',
+      true
     );
     await selectOption(
       page,
@@ -560,7 +566,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
     await selectOption(
       page,
@@ -570,7 +577,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--value .ant-select'),
-      'admin'
+      'admin',
+      true
     );
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
@@ -588,7 +596,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--operator .ant-select'),
-      '=='
+      'Is'
     );
     await selectOption(
       page,
@@ -610,7 +618,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator3.locator('.rule--operator .ant-select'),
-      '!='
+      'Is Not'
     );
     await selectOption(
       page,

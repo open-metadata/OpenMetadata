@@ -478,7 +478,7 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await patchRequest;
   await clickOutside(page);
 
-  await expect(page.getByTestId('Tier')).toContainText('No Tier');
+  await expect(page.getByTestId('Tier')).toContainText('--');
 };
 
 export const assignCertification = async (
@@ -509,9 +509,7 @@ export const removeCertification = async (page: Page, endpoint: string) => {
   await patchRequest;
   await clickOutside(page);
 
-  await expect(page.getByTestId('certification-label')).toContainText(
-    'No Certification'
-  );
+  await expect(page.getByTestId('certification-label')).toContainText('--');
 };
 
 export const updateDescription = async (
@@ -1921,7 +1919,15 @@ export const checkExploreSearchFilter = async (
   entity?: EntityClass
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  if (filterKey === 'tier.tagFQN') {
+    const tierList = page.waitForResponse(
+      `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN**`
+    );
+    await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+    await tierList;
+  } else {
+    await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  }
   await searchAndClickOnOption(
     page,
     {

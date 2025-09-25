@@ -23,6 +23,10 @@ export interface Metric {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Custom unit of measurement when unitOfMeasurement is OTHER.
+     */
+    customUnitOfMeasurement?: string;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -357,6 +361,7 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -429,6 +434,7 @@ export enum UnitOfMeasurement {
     Count = "COUNT",
     Dollars = "DOLLARS",
     Events = "EVENTS",
+    Other = "OTHER",
     Percentage = "PERCENTAGE",
     Requests = "REQUESTS",
     Size = "SIZE",
