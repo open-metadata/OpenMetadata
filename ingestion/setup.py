@@ -33,7 +33,7 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.0.0",
+    "pandas": "pandas~=2.0.3",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
@@ -69,6 +69,7 @@ VERSIONS = {
     "pyathena": "pyathena~=3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
+    "asammdf": "asammdf~=7.4.5",
 }
 
 COMMONS = {
@@ -168,6 +169,7 @@ base_requirements = {
 }
 
 plugins: Dict[str, Set[str]] = {
+    "adls": {VERSIONS["asammdf"]},
     "airflow": {
         "opentelemetry-exporter-otlp==1.27.0",
         "protobuf<5",
