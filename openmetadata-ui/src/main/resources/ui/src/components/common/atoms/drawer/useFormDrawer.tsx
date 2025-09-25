@@ -24,7 +24,6 @@ export interface FormDrawerConfig<T = any>
   form: ReactNode;
   onSubmit: (data: T) => Promise<void> | void;
   onCancel?: () => void;
-  onReset?: () => void;
   submitLabel?: string;
   cancelLabel?: string;
   loading?: boolean;
@@ -85,7 +84,6 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
     form,
     onSubmit,
     onCancel,
-    onReset,
     submitLabel = t('label.save'),
     cancelLabel = t('label.cancel'),
     loading = false,
@@ -116,10 +114,7 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
         label: cancelLabel,
         variant: 'text',
         testId: cancelTestId,
-        onClick: () => {
-          closeRef.current();
-          onReset?.(); // Reset form on cancel
-        },
+        onClick: () => closeRef.current(),
       },
       primaryButton: {
         label: submitLabel,
@@ -136,7 +131,6 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
             // Form submission error handled by caller
           } finally {
             setIsSubmitting(false);
-            onReset?.(); // Reset form on submit
           }
         },
       },
@@ -179,11 +173,7 @@ export const useFormDrawer = <T = any,>(config: FormDrawerConfig<T>) => {
  */
 export const useFormDrawerWithRef = <T = any,>(
   config: FormDrawerConfig<T> & {
-    formRef?: {
-      submit: () => void;
-      validateFields?: () => Promise<any>;
-      resetFields: () => void;
-    };
+    formRef?: { submit: () => void; validateFields?: () => Promise<any> };
   }
 ) => {
   const { formRef, onSubmit, ...restConfig } = config;
@@ -208,7 +198,6 @@ export const useFormDrawerWithRef = <T = any,>(
   const drawer = useFormDrawer({
     ...restConfig,
     onSubmit: handleSubmit,
-    onReset: formRef?.resetFields,
   });
 
   const submitForm = useCallback(() => {
