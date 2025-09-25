@@ -11,7 +11,6 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -57,9 +56,8 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   public OpenSearchEntityManager(OpenSearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
-    if (this.isClientAvailable) {
-      this.asyncClient = new OpenSearchAsyncClient(this.client._transport());
-    }
+    this.asyncClient =
+        this.isClientAvailable ? new OpenSearchAsyncClient(client._transport()) : null;
     this.isAsyncClientAvailable = this.asyncClient != null;
   }
 
@@ -341,7 +339,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                   inline
                                       .lang(ScriptLanguage.Painless.jsonValue())
                                       .source(scriptTxt)
-                                      .params(new HashMap<>()))),
+                                      .params(Map.of()))),
           Map.class);
       LOG.info(
           "Successfully soft deleted/restored entity in OpenSearch for index: {}, docId: {}",
@@ -384,7 +382,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                                       inline
                                           .lang(ScriptLanguage.Painless.jsonValue())
                                           .source(scriptTxt)
-                                          .params(new HashMap<>())))
+                                          .params(Map.of())))
                       .refresh(true));
 
       LOG.info(
@@ -453,7 +451,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     try {
       Map<String, JsonData> params =
-          convertToJsonDataMap(updates.getValue() == null ? new HashMap<>() : updates.getValue());
+          convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
 
       client.updateByQuery(
           u ->
@@ -493,7 +491,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     try {
       Map<String, JsonData> params =
-          convertToJsonDataMap(updates.getValue() == null ? new HashMap<>() : updates.getValue());
+          convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
 
       client.updateByQuery(
           u ->
@@ -564,7 +562,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           entityRelationshipData != null
               ? Collections.singletonMap(
                   "entityRelationshipData", JsonData.of(entityRelationshipData))
-              : new HashMap<>();
+              : Map.of();
 
       UpdateByQueryResponse response =
           client.updateByQuery(
