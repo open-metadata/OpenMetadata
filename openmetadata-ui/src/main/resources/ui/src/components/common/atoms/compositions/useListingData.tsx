@@ -13,8 +13,8 @@
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { getAggregations } from '../../../../utils/ExploreUtils';
 import { useDataFetching } from '../data/useDataFetching';
-import { useFilterOptions } from '../data/useFilterOptions';
 import { useSelectionState } from '../data/useSelectionState';
 import { useUrlState } from '../data/useUrlState';
 import { usePaginationState } from '../pagination/usePaginationState';
@@ -79,11 +79,6 @@ export const useListingData = <T extends { id: string }>(
   });
 
   const selectionState = useSelectionState(dataFetching.entities);
-
-  const filterOptionsHook = useFilterOptions({
-    searchIndex,
-    filterFields,
-  });
 
   const actionHandlers = useActionHandlers<T>({
     basePath,
@@ -176,11 +171,12 @@ export const useListingData = <T extends { id: string }>(
     clearSelection: selectionState.clearSelection,
     urlState,
     actionHandlers,
-    filterOptions: filterOptionsHook.filterOptions,
+    filterOptions: {},
+    aggregations: getAggregations(dataFetching.aggregations || {}),
     handleSearchChange,
     handleFilterChange,
     handlePageChange,
-    searchFilterOptions: filterOptionsHook.searchFilterOptions,
+    searchFilterOptions: () => Promise.resolve([]),
     refetch,
   };
 };

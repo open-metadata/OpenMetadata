@@ -11,19 +11,16 @@
  *  limitations under the License.
  */
 
-import { FilterConfig, FilterField } from '../types';
-import { processOwnerOptions } from './entityFilterProcessors';
+import { FilterField } from '../types';
 
 export const COMMON_FILTER_FIELDS: Record<string, FilterField> = {
   owners: {
     key: 'owners',
     aggregationField: 'owners.displayName.keyword',
-    processor: processOwnerOptions,
   },
   experts: {
     key: 'experts',
     aggregationField: 'experts.displayName.keyword',
-    processor: processOwnerOptions,
   },
   tags: {
     key: 'tags',
@@ -35,99 +32,6 @@ export const COMMON_FILTER_FIELDS: Record<string, FilterField> = {
   },
   domainTypes: {
     key: 'domainTypes',
-    aggregationField: 'domainType',
+    aggregationField: 'domainType.keyword',
   },
 };
-
-export const DOMAIN_FILTER_CONFIGS: FilterConfig[] = [
-  {
-    key: 'owner',
-    labelKey: 'label.owner',
-    searchKey: 'owner.displayName',
-    optionsKey: 'owners',
-    selectedKey: 'owner',
-  },
-  {
-    key: 'tags',
-    labelKey: 'label.tag-plural',
-    searchKey: 'tags.tagFQN',
-    optionsKey: 'tags',
-    selectedKey: 'tags',
-  },
-  {
-    key: 'glossary',
-    labelKey: 'label.glossary-term-plural',
-    searchKey: 'glossaryTerms',
-    optionsKey: 'glossary',
-    selectedKey: 'glossary',
-  },
-  {
-    key: 'domainType',
-    labelKey: 'label.domain-type',
-    searchKey: 'domainType',
-    optionsKey: 'domainTypes',
-    selectedKey: 'domainType',
-  },
-];
-
-export const DATA_PRODUCT_FILTER_CONFIGS: FilterConfig[] = [
-  {
-    key: 'owner',
-    labelKey: 'label.owner',
-    searchKey: 'owner.displayName',
-    optionsKey: 'owners',
-    selectedKey: 'owner',
-  },
-  {
-    key: 'expert',
-    labelKey: 'label.expert',
-    searchKey: 'expert.displayName',
-    optionsKey: 'experts',
-    selectedKey: 'expert',
-  },
-  {
-    key: 'tags',
-    labelKey: 'label.tag-plural',
-    searchKey: 'tags.tagFQN',
-    optionsKey: 'tags',
-    selectedKey: 'tags',
-  },
-  {
-    key: 'glossary',
-    labelKey: 'label.glossary-term-plural',
-    searchKey: 'glossaryTerms',
-    optionsKey: 'glossary',
-    selectedKey: 'glossary',
-  },
-];
-
-export const SUBDOMAIN_FILTER_CONFIGS: FilterConfig[] = [
-  {
-    key: 'owner',
-    labelKey: 'label.owner',
-    searchKey: 'owner.displayName',
-    optionsKey: 'owners',
-    selectedKey: 'owner',
-  },
-  {
-    key: 'tags',
-    labelKey: 'label.tag-plural',
-    searchKey: 'tags.tagFQN',
-    optionsKey: 'tags',
-    selectedKey: 'tags',
-  },
-  {
-    key: 'glossary',
-    labelKey: 'label.glossary-term-plural',
-    searchKey: 'glossaryTerms',
-    optionsKey: 'glossary',
-    selectedKey: 'glossary',
-  },
-  {
-    key: 'domainType',
-    labelKey: 'label.domain-type',
-    searchKey: 'domainType',
-    optionsKey: 'domainTypes',
-    selectedKey: 'domainType',
-  },
-];

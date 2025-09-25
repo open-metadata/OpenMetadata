@@ -13,7 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_DOMAINS } from '../../../mocks/Domains.mock';
+import { DOMAINS_LIST } from '../../../mocks/Domains.mock';
 import { getDomainByName } from '../../../rest/domainAPI';
 import DomainDetailPage from './DomainDetailPage.component';
 
@@ -38,7 +38,7 @@ const mockGetDomainByName = getDomainByName as jest.MockedFunction<
 
 describe('DomainDetailPage', () => {
   beforeEach(() => {
-    mockGetDomainByName.mockResolvedValue(MOCK_DOMAINS[0]);
+    mockGetDomainByName.mockResolvedValue(DOMAINS_LIST[0]);
   });
 
   it('should render domain detail page', async () => {

@@ -17,22 +17,22 @@ import { AxiosError } from 'axios';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { addDomains } from '../../rest/domainAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
+import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useFormDrawerWithRef } from '../common/atoms/drawer';
-import { useFilterConfig } from '../common/atoms/filters/useFilterConfig';
-import { useFilterDropdowns } from '../common/atoms/filters/useFilterDropdowns';
+import { useQuickFilters } from '../common/atoms/filters/useQuickFilters';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
-import { DOMAIN_FILTER_CONFIGS } from '../common/atoms/shared/utils/commonFilterConfigs';
 import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
@@ -45,6 +45,20 @@ const DomainListPage = () => {
   const { t } = useTranslation();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Use the existing domain filters configuration
+  const domainFilters = useDomainFilters({
+    enabledFilters: ['owner', 'tags', 'glossary', 'domainType'],
+  });
+
+  const { quickFilters } = useQuickFilters({
+    filterFields: domainFilters.filterFields,
+    filterConfigs: domainFilters.filterConfigs,
+    queryConfig: domainFilters.queryConfig,
+    onFilterChange: domainListing.handleFilterChange,
+    aggregations: domainListing.aggregations || {},
+    searchIndex: SearchIndex.DOMAIN,
+  });
 
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.domain') }),
@@ -99,14 +113,6 @@ const DomainListPage = () => {
     loading: isLoading,
   });
 
-  const { dropdownConfigs } = useFilterConfig({
-    filterConfigs: DOMAIN_FILTER_CONFIGS,
-    filterOptions: domainListing.filterOptions || {},
-    selectedFilters: domainListing.urlState.filters,
-    onFilterChange: domainListing.handleFilterChange,
-    onFilterSearch: domainListing.searchFilterOptions,
-  });
-
   // Composable hooks for each UI component
   const { breadcrumbs } = useBreadcrumbs({
     entityLabelKey: 'label.domain',
@@ -131,10 +137,6 @@ const DomainListPage = () => {
     searchPlaceholderKey: 'label.search',
     onSearchChange: domainListing.handleSearchChange,
     initialSearchQuery: domainListing.urlState.searchQuery,
-  });
-
-  const { filterDropdowns } = useFilterDropdowns({
-    filters: dropdownConfigs,
   });
 
   const { view, viewToggle } = useViewToggle();
@@ -188,7 +190,7 @@ const DomainListPage = () => {
           }}>
           {titleAndCount}
           {search}
-          {filterDropdowns}
+          {quickFilters}
           <Box ml="auto" />
           {viewToggle}
           {deleteIconButton}

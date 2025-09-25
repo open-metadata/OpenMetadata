@@ -12,6 +12,7 @@
  */
 
 import { ReactNode } from 'react';
+import { Aggregations } from '../../../../../interface/search.interface';
 
 export interface UrlStateConfig {
   searchKey?: string;
@@ -123,6 +124,7 @@ export interface ListingData<T> {
   urlState: UrlState;
   actionHandlers: ActionHandlers<T>;
   filterOptions?: FilterOptions;
+  aggregations?: Aggregations | null;
   handleSearchChange: (query: string) => void;
   handleFilterChange: (key: string, values: string[]) => void;
   handlePageChange: (page: number) => void;

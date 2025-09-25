@@ -17,35 +17,50 @@ import { AxiosError } from 'axios';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../constants/constants';
+import { SearchIndex } from '../../enums/search.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { addDataProducts } from '../../rest/dataProductAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
+import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFormDrawerWithRef } from '../common/atoms/drawer';
-import { useFilterConfig } from '../common/atoms/filters/useFilterConfig';
-import { useFilterDropdowns } from '../common/atoms/filters/useFilterDropdowns';
+import { useQuickFilters } from '../common/atoms/filters/useQuickFilters';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
-import { DATA_PRODUCT_FILTER_CONFIGS } from '../common/atoms/shared/utils/commonFilterConfigs';
 import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
-const DataProductListPage = () => {
+const DataProductListPage = ({ pageTitle }: { pageTitle: string }) => {
   const dataProductListing = useDataProductListingData();
   const theme = useTheme();
   const { t } = useTranslation();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Use data product-specific filters configuration
+  const dataProductFilters = useDataProductFilters({
+    enabledFilters: ['owner', 'expert', 'tags', 'glossary'],
+  });
+
+  const { quickFilters } = useQuickFilters({
+    filterFields: dataProductFilters.filterFields,
+    filterConfigs: dataProductFilters.filterConfigs,
+    queryConfig: dataProductFilters.queryConfig,
+    onFilterChange: dataProductListing.handleFilterChange,
+    aggregations: dataProductListing.aggregations || {},
+    searchIndex: SearchIndex.DATA_PRODUCT,
+    independent: true,
+  });
 
   const { formDrawer, openDrawer, closeDrawer } = useFormDrawerWithRef({
     title: t('label.add-entity', { entity: t('label.data-product') }),
@@ -101,14 +116,6 @@ const DataProductListPage = () => {
     loading: isLoading,
   });
 
-  const { dropdownConfigs } = useFilterConfig({
-    filterConfigs: DATA_PRODUCT_FILTER_CONFIGS,
-    filterOptions: dataProductListing.filterOptions || {},
-    selectedFilters: dataProductListing.urlState.filters,
-    onFilterChange: dataProductListing.handleFilterChange,
-    onFilterSearch: dataProductListing.searchFilterOptions,
-  });
-
   // Composable hooks for each UI component
   const { breadcrumbs } = useBreadcrumbs({
     entityLabelKey: 'label.data-product',
@@ -133,10 +140,6 @@ const DataProductListPage = () => {
     searchPlaceholderKey: 'label.search',
     onSearchChange: dataProductListing.handleSearchChange,
     initialSearchQuery: dataProductListing.urlState.searchQuery,
-  });
-
-  const { filterDropdowns } = useFilterDropdowns({
-    filters: dropdownConfigs,
   });
 
   const { view, viewToggle } = useViewToggle();
@@ -190,7 +193,7 @@ const DataProductListPage = () => {
           }}>
           {titleAndCount}
           {search}
-          {filterDropdowns}
+          {quickFilters}
           <Box ml="auto" />
           {viewToggle}
           {deleteIconButton}

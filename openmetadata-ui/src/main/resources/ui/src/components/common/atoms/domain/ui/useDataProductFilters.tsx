@@ -15,24 +15,25 @@ import { useMemo } from 'react';
 import { FilterConfig, FilterField } from '../../shared/types';
 import { COMMON_FILTER_FIELDS } from '../../shared/utils/commonFilterConfigs';
 
-interface UseDomainFiltersConfig {
+interface UseDataProductFiltersConfig {
   enabledFilters?: string[];
   customFilterFields?: FilterField[];
   customFilterConfigs?: FilterConfig[];
 }
 
-export const useDomainFilters = (config: UseDomainFiltersConfig = {}) => {
-  const { enabledFilters = ['owner', 'tags', 'glossary', 'domainType'] } =
-    config;
+export const useDataProductFilters = (
+  config: UseDataProductFiltersConfig = {}
+) => {
+  const { enabledFilters = ['owner', 'expert', 'tags', 'glossary'] } = config;
 
   const filterKeys = useMemo(() => enabledFilters, []);
 
   const queryConfig = useMemo(
     () => ({
       owner: 'owners.displayName.keyword',
+      expert: 'experts.displayName.keyword',
       tags: 'classificationTags',
       glossary: 'glossaryTags',
-      domainType: 'domainType.keyword',
     }),
     []
   );
@@ -40,9 +41,9 @@ export const useDomainFilters = (config: UseDomainFiltersConfig = {}) => {
   const filterFields = useMemo(
     () => [
       COMMON_FILTER_FIELDS.owners,
+      COMMON_FILTER_FIELDS.experts,
       COMMON_FILTER_FIELDS.tags,
       COMMON_FILTER_FIELDS.glossary,
-      COMMON_FILTER_FIELDS.domainTypes, // Temporarily disabled
     ],
     []
   );
@@ -50,11 +51,18 @@ export const useDomainFilters = (config: UseDomainFiltersConfig = {}) => {
   const filterConfigs = useMemo(
     () => [
       {
-        key: 'owner',
+        key: 'owners',
         labelKey: 'label.owner',
         searchKey: 'owner.displayName',
         optionsKey: 'owners',
         selectedKey: 'owner',
+      },
+      {
+        key: 'experts',
+        labelKey: 'label.expert-plural',
+        searchKey: 'expert.displayName',
+        optionsKey: 'experts',
+        selectedKey: 'expert',
       },
       {
         key: 'tags',
@@ -69,13 +77,6 @@ export const useDomainFilters = (config: UseDomainFiltersConfig = {}) => {
         searchKey: 'glossaryTerms',
         optionsKey: 'glossary',
         selectedKey: 'glossary',
-      },
-      {
-        key: 'domainTypes',
-        labelKey: 'label.domain-type',
-        searchKey: 'domainType',
-        optionsKey: 'domainTypes',
-        selectedKey: 'domainType',
       },
     ],
     []

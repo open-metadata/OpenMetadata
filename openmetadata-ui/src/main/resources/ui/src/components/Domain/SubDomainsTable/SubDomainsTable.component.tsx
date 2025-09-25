@@ -12,15 +12,15 @@
  */
 
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import { SearchIndex } from '../../../enums/search.enum';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
-import { useFilterConfig } from '../../common/atoms/filters/useFilterConfig';
-import { useFilterDropdowns } from '../../common/atoms/filters/useFilterDropdowns';
+import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
+import { useQuickFilters } from '../../common/atoms/filters/useQuickFilters';
 import { useSearch } from '../../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
 import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
-import { SUBDOMAIN_FILTER_CONFIGS } from '../../common/atoms/shared/utils/commonFilterConfigs';
 import { useCardView } from '../../common/atoms/table/useCardView';
 import { useDataTable } from '../../common/atoms/table/useDataTable';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
@@ -36,12 +36,19 @@ const SubDomainsTable = ({
     parentDomainFqn: domainFqn,
   });
 
-  const { dropdownConfigs } = useFilterConfig({
-    filterConfigs: SUBDOMAIN_FILTER_CONFIGS,
-    filterOptions: subdomainListing.filterOptions || {},
-    selectedFilters: subdomainListing.urlState.filters,
+  // Use the same domain filters configuration
+  const domainFilters = useDomainFilters({
+    enabledFilters: ['owner', 'tags', 'glossary', 'domainType'],
+  });
+
+  const { quickFilters } = useQuickFilters({
+    filterFields: domainFilters.filterFields,
+    filterConfigs: domainFilters.filterConfigs,
+    queryConfig: domainFilters.queryConfig,
     onFilterChange: subdomainListing.handleFilterChange,
-    onFilterSearch: subdomainListing.searchFilterOptions,
+    aggregations: subdomainListing.aggregations || {},
+    searchIndex: SearchIndex.DOMAIN,
+    independent: true,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -51,13 +58,9 @@ const SubDomainsTable = ({
   });
 
   const { search } = useSearch({
-    searchPlaceholder: 'Search subdomains',
+    searchPlaceholderKey: 'label.search-subdomain',
     onSearchChange: subdomainListing.handleSearchChange,
     initialSearchQuery: subdomainListing.urlState.searchQuery,
-  });
-
-  const { filterDropdowns } = useFilterDropdowns({
-    filters: dropdownConfigs,
   });
 
   const { view, viewToggle } = useViewToggle();
@@ -108,7 +111,7 @@ const SubDomainsTable = ({
           }}>
           {titleAndCount}
           {search}
-          {filterDropdowns}
+          {quickFilters}
           <Box ml="auto" />
           {viewToggle}
           {deleteIconButton}

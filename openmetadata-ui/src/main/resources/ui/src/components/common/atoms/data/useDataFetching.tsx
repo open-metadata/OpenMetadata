@@ -14,6 +14,7 @@
 import { AxiosError } from 'axios';
 import { useCallback, useState } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Aggregations } from '../../../../interface/search.interface';
 import { searchData } from '../../../../rest/miscAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 
@@ -30,6 +31,7 @@ export interface DataFetchingResult<T> {
   loading: boolean;
   error: Error | null;
   totalEntities: number;
+  aggregations: Aggregations | null;
   refetch: () => void;
   searchEntities: (
     page: number,
@@ -45,6 +47,7 @@ export const useDataFetching = <T extends { id: string }>(
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const [totalEntities, setTotalEntities] = useState(0);
+  const [aggregations, setAggregations] = useState<Aggregations | null>(null);
 
   const {
     searchIndex,
@@ -112,15 +115,18 @@ export const useDataFetching = <T extends { id: string }>(
         // Process response
         const transformedEntities = transformData(response.data);
         const total = response.data?.hits?.total?.value || 0;
+        const responseAggregations = response.data?.aggregations || null;
 
         // Update state
         setEntities(transformedEntities);
         setTotalEntities(total);
+        setAggregations(responseAggregations);
         setError(null);
       } catch (err) {
         setError(err instanceof Error ? err : new Error('Search failed'));
         setEntities([]);
         setTotalEntities(0);
+        setAggregations(null);
         showErrorToast(err as AxiosError);
       } finally {
         setLoading(false);
@@ -139,6 +145,7 @@ export const useDataFetching = <T extends { id: string }>(
     loading,
     error,
     totalEntities,
+    aggregations,
     refetch,
     searchEntities,
   };

@@ -46,7 +46,7 @@ const DomainRouter = () => {
         index
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainsListPage />
+            <DomainsListPage pageTitle={i18n.t('label.domain-plural')} />
           </AdminProtectedRoute>
         }
         path="/"
@@ -54,7 +54,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainDetailPage />
+            <DomainDetailPage pageTitle={i18n.t('label.domain-plural')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS.replace(ROUTES.DOMAIN, '')}
@@ -62,7 +62,7 @@ const DomainRouter = () => {
       <Route
         element={
           <AdminProtectedRoute hasPermission={domainPermission}>
-            <DomainDetailPage />
+            <DomainDetailPage pageTitle={i18n.t('label.domain-plural')} />
           </AdminProtectedRoute>
         }
         path={ROUTES.DOMAIN_DETAILS_WITH_TAB.replace(ROUTES.DOMAIN, '')}
