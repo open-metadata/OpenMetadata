@@ -428,20 +428,22 @@ const ContractDetail: React.FC<{
           )}
 
           {/* Description Component */}
-          <Col className="contract-card-items" span={24}>
-            <div className="contract-card-header-container">
-              <Typography.Text className="contract-card-header">
-                {t('label.description')}
-              </Typography.Text>
-              <Divider className="contract-dash-separator" />
-            </div>
+          {!isDescriptionContentEmpty(contract.description ?? '') && (
+            <Col className="contract-card-items" span={24}>
+              <div className="contract-card-header-container">
+                <Typography.Text className="contract-card-header">
+                  {t('label.description')}
+                </Typography.Text>
+                <Divider className="contract-dash-separator" />
+              </div>
 
-            <RichTextEditorPreviewerNew
-              enableSeeMoreVariant
-              markdown={contract.description ?? ''}
-              maxLineLength="3"
-            />
-          </Col>
+              <RichTextEditorPreviewerNew
+                enableSeeMoreVariant
+                markdown={contract.description ?? ''}
+                maxLineLength="3"
+              />
+            </Col>
+          )}
 
           {/* Terms of Use Component */}
           {!isDescriptionContentEmpty(contract.termsOfUse ?? '') && (
