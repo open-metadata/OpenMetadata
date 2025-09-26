@@ -168,17 +168,24 @@ test.describe('Search Preview test', () => {
       state: 'detached',
     });
 
-    const searchInput = page.getByTestId('searchbar');
-    const previewRes = page.waitForResponse('/api/v1/search/preview');
-    await searchInput.fill(table1.entity.name);
-    await previewRes;
-
     const descriptionField = page.getByTestId(
       `field-configuration-panel-description`
     );
     await descriptionField.click();
     await setSliderValue(page, 'field-weight-slider', 68);
-    await descriptionField.click();
+
+    const previewResponse = page.waitForResponse('/api/v1/search/preview');
+    await page.getByTestId('highlight-field-switch').click();
+    await previewResponse;
+
+    await expect(page.getByTestId('highlight-field-switch')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+
+    const searchInput = page.getByTestId('searchbar');
+    await searchInput.fill(table1.entity.name);
+    await previewResponse;
 
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
