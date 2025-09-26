@@ -61,14 +61,13 @@ class DatabricksClient:
     ):
         self.config = config
         base_url, *_ = self.config.hostPort.split(":")
-        auth_token = self.config.token.get_secret_value()
         self.base_url = f"https://{base_url}{API_VERSION}"
         self.base_query_url = f"{self.base_url}{QUERIES_PATH}"
         self.base_job_url = f"https://{base_url}{JOB_API_VERSION}/jobs"
         self.jobs_list_url = f"{self.base_job_url}/list"
         self.jobs_run_list_url = f"{self.base_job_url}/runs/list"
         self.headers = {
-            "Authorization": f"Bearer {auth_token}",
+            **self._get_auth_header(),
             "Content-Type": "application/json",
         }
         self.api_timeout = self.config.connectionTimeout or 120
@@ -78,6 +77,12 @@ class DatabricksClient:
         ] = {}
         self.engine = engine
         self.client = requests
+
+    def _get_auth_header(self) -> str:
+        """
+        Method to get auth header
+        """
+        return {"Authorization": f"Bearer {self.config.token.get_secret_value()}"}
 
     def test_query_api_access(self) -> None:
         res = self.client.get(
