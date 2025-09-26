@@ -242,6 +242,10 @@ public final class EntityUtil {
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
   }
 
+  public static String buildEntityLink(String entityType, String fullyQualifiedName) {
+    return String.format("<#E::%s::%s>", entityType, fullyQualifiedName);
+  }
+
   public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {
     LOG.debug("Getting latest usage for {}", entityId);
     UsageDetails details = usageDAO.getLatestUsage(entityId.toString());
