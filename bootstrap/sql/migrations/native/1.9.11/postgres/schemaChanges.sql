@@ -1,2 +1,3 @@
-DELETE FROM openmetadata_settings WHERE configType = 'searchSettings';
+-- Add migrations to fetch updated searchSettings
+-- Java migration handles adding entityType.keyword aggregation
 
