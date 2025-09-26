@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
 import java.util.List;
 import java.util.Map;
@@ -199,7 +200,10 @@ public class OpenSearchBulkSink implements BulkSink {
       LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
       return;
     }
-    String indexName = indexMapping.getIndexName(searchRepository.getClusterAlias());
+    String indexName =
+        (String)
+            contextData.getOrDefault(
+                TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
       // Check if these are time series entities
