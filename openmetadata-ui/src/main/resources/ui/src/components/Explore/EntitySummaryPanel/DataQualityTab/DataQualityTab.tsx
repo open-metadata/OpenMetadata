@@ -214,7 +214,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     ack: 0,
     total: 0,
   });
-  const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>('success');
   const [activeTab, setActiveTab] = useState<string>('data-quality');
 
   // Incident-related state
@@ -555,39 +555,46 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
         <div className="incidents-tab-content">
           {/* Incidents Summary Section */}
           <div className="incidents-summary-section">
-            <Typography.Text className="incident-test-title d-inline-block">
-              {t('label.incident-plural')}
-            </Typography.Text>
+            <div className="incidents-header">
+              <Typography.Title className="incidents-title" level={5}>
+                {t('label.incident-plural')}
+              </Typography.Title>
+              <div className="total-incidents-badge">
+                <Typography.Text className="total-incidents-badge-text">
+                  {incidentCounts.total}
+                </Typography.Text>
+              </div>
+            </div>
 
             <div className="overview-section gap-0">
-              <div className="overview-row  m-b-sm">
+              <div className="overview-row m-b-sm">
                 <span className="overview-label" data-testid="new-label">
                   {t('label.new')}
                 </span>
                 <span
                   className="overview-value text-grey-body"
                   data-testid="new-value">
-                  {incidentCounts.new}
+                  {incidentCounts.new.toString().padStart(2, '0')}
                 </span>
               </div>
-              <div className="overview-row  m-b-sm">
+              <div className="overview-row m-b-sm">
                 <span className="overview-label" data-testid="ack-label">
                   {t('label.acknowledged')}
                 </span>
                 <span
                   className="overview-value text-grey-body"
                   data-testid="ack-value">
-                  {incidentCounts.ack}
+                  {incidentCounts.ack.toString().padStart(2, '0')}
                 </span>
               </div>
-              <div className="overview-row  m-b-sm">
+              <div className="overview-row m-b-sm">
                 <span className="overview-label" data-testid="assigned-label">
                   {t('label.assigned')}
                 </span>
                 <span
                   className="overview-value text-grey-body"
                   data-testid="assigned-value">
-                  {incidentCounts.assigned}
+                  {incidentCounts.assigned.toString().padStart(2, '0')}
                 </span>
               </div>
               <div className="overview-row">
@@ -597,7 +604,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                 <span
                   className="overview-value text-grey-body"
                   data-testid="resolved-value">
-                  {incidentCounts.resolved}
+                  {incidentCounts.resolved.toString().padStart(2, '0')}
                 </span>
               </div>
             </div>

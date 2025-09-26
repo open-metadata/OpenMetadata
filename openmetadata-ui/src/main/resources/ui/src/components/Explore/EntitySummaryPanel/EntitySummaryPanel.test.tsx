@@ -45,7 +45,7 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-describe.skip('EntitySummaryPanel component tests', () => {
+describe('EntitySummaryPanel component tests', () => {
   it('TableSummary should render for table data', async () => {
     await act(async () => {
       render(

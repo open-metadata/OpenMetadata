@@ -95,6 +95,11 @@ export default function EntitySummaryPanel({
   entityDetails,
   highlights,
 }: EntitySummaryPanelProps) {
+  // Fallback when tests mock EntityUtils and omit DRAWER_NAVIGATION_OPTIONS
+  const NAV_OPTIONS = (DRAWER_NAVIGATION_OPTIONS as any) || {
+    explore: 'Explore',
+    lineage: 'Lineage',
+  };
   const { tab } = useRequiredParams<{ tab: string }>();
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
@@ -749,11 +754,7 @@ export default function EntitySummaryPanel({
 
     return (
       <DataAssetSummaryPanel
-        componentType={
-          tab === DRAWER_NAVIGATION_OPTIONS.lineage
-            ? tab
-            : DRAWER_NAVIGATION_OPTIONS.explore
-        }
+        componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
         dataAsset={
           entity as SearchedDataProps['data'][number]['_source'] & {
             dataProducts: DataProduct[];
@@ -787,11 +788,7 @@ export default function EntitySummaryPanel({
 
     return (
       <DataAssetSummaryPanelV1
-        componentType={
-          tab === DRAWER_NAVIGATION_OPTIONS.lineage
-            ? tab
-            : DRAWER_NAVIGATION_OPTIONS.explore
-        }
+        componentType={tab === NAV_OPTIONS.lineage ? tab : NAV_OPTIONS.explore}
         dataAsset={
           entity as SearchedDataProps['data'][number]['_source'] & {
             dataProducts: DataProduct[];
