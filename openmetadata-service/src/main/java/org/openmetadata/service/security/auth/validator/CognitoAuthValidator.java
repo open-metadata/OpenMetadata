@@ -29,7 +29,7 @@ public class CognitoAuthValidator {
     } catch (Exception e) {
       LOG.error("Cognito validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Cognito validation failed: " + e.getMessage());
+          "", "Cognito validation failed: " + e.getMessage());
     }
   }
 
@@ -54,8 +54,7 @@ public class CognitoAuthValidator {
     } catch (Exception e) {
       LOG.error("Cognito public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration",
-          "Cognito public client validation failed: " + e.getMessage());
+          "", "Cognito public client validation failed: " + e.getMessage());
     }
   }
 
@@ -97,8 +96,7 @@ public class CognitoAuthValidator {
     } catch (Exception e) {
       LOG.error("Cognito confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration",
-          "Cognito confidential client validation failed: " + e.getMessage());
+          "", "Cognito confidential client validation failed: " + e.getMessage());
     }
   }
 

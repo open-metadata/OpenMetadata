@@ -191,8 +191,7 @@ public class SamlValidator {
         return ValidationErrorBuilder.createFieldError(
             ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, message);
       } else {
-        return ValidationErrorBuilder.createFieldError(
-            "authenticationConfiguration.samlConfiguration", message);
+        return ValidationErrorBuilder.createFieldError("", message);
       }
     }
   }
@@ -231,8 +230,7 @@ public class SamlValidator {
       return null; // Success - SAML certificates validated
     } catch (Exception e) {
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration.samlConfiguration",
-          "Certificate validation failed: " + e.getMessage());
+          "", "Certificate validation failed: " + e.getMessage());
     }
   }
 
@@ -279,8 +277,7 @@ public class SamlValidator {
             ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, message);
       } else {
         return ValidationErrorBuilder.createFieldError(
-            "authenticationConfiguration.samlConfiguration.security",
-            "Security configuration validation failed: " + message);
+            "", "Security configuration validation failed: " + message);
       }
     }
   }

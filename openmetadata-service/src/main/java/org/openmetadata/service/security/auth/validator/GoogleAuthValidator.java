@@ -42,7 +42,7 @@ public class GoogleAuthValidator {
     } catch (Exception e) {
       LOG.error("Google OAuth validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Google OAuth validation failed: " + e.getMessage());
+          "", "Google OAuth validation failed: " + e.getMessage());
     }
   }
 
@@ -69,8 +69,7 @@ public class GoogleAuthValidator {
     } catch (Exception e) {
       LOG.error("Google public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration",
-          "Google public client validation failed: " + e.getMessage());
+          "", "Google public client validation failed: " + e.getMessage());
     }
   }
 
@@ -140,8 +139,7 @@ public class GoogleAuthValidator {
     } catch (Exception e) {
       LOG.error("Google confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration",
-          "Google confidential client validation failed: " + e.getMessage());
+          "", "Google confidential client validation failed: " + e.getMessage());
     }
   }
 

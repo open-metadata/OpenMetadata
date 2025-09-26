@@ -30,7 +30,7 @@ public class Auth0Validator {
     } catch (Exception e) {
       LOG.error("Auth0 validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Auth0 validation failed: " + e.getMessage());
+          "", "Auth0 validation failed: " + e.getMessage());
     }
   }
 
@@ -68,8 +68,7 @@ public class Auth0Validator {
     } catch (Exception e) {
       LOG.error("Auth0 public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration",
-          "Auth0 public client validation failed: " + e.getMessage());
+          "", "Auth0 public client validation failed: " + e.getMessage());
     }
   }
 
@@ -108,8 +107,7 @@ public class Auth0Validator {
     } catch (Exception e) {
       LOG.error("Auth0 confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration",
-          "Auth0 confidential client validation failed: " + e.getMessage());
+          "", "Auth0 confidential client validation failed: " + e.getMessage());
     }
   }
 

@@ -38,7 +38,7 @@ public class OktaAuthValidator {
     } catch (Exception e) {
       LOG.error("Okta validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Okta validation failed: " + e.getMessage());
+          "", "Okta validation failed: " + e.getMessage());
     }
   }
 
@@ -76,7 +76,7 @@ public class OktaAuthValidator {
     } catch (Exception e) {
       LOG.error("Okta public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Okta public client validation failed: " + e.getMessage());
+          "", "Okta public client validation failed: " + e.getMessage());
     }
   }
 
@@ -121,8 +121,7 @@ public class OktaAuthValidator {
     } catch (Exception e) {
       LOG.error("Okta confidential client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration",
-          "Okta confidential client validation failed: " + e.getMessage());
+          "", "Okta confidential client validation failed: " + e.getMessage());
     }
   }
 

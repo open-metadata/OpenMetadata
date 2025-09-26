@@ -879,7 +879,7 @@ public class SystemRepository {
 
       return null; // No errors - validation passed
     } catch (Exception e) {
-      return ValidationErrorBuilder.createFieldError("general", e.getMessage());
+      return ValidationErrorBuilder.createFieldError("", e.getMessage());
     }
   }
 
@@ -1002,7 +1002,7 @@ public class SystemRepository {
 
       return null; // No errors - validation passed
     } catch (Exception e) {
-      return ValidationErrorBuilder.createFieldError("general", e.getMessage());
+      return ValidationErrorBuilder.createFieldError("", e.getMessage());
     }
   }
 
@@ -1092,9 +1092,58 @@ public class SystemRepository {
         }
       }
     } catch (Exception e) {
-      return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration.ldapConfiguration", e.getMessage());
+      return mapLdapExceptionToFieldError(e);
     }
+  }
+
+  private FieldError mapLdapExceptionToFieldError(Exception e) {
+    String message = e.getMessage().toLowerCase();
+
+    // UserBaseDN errors - "no such object" typically means the DN doesn't exist
+    if (message.contains("no such object") || message.contains("32")) {
+      return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_USER_BASE_DN, e.getMessage());
+    }
+
+    // Host-related errors
+    if (message.contains("unknownhostexception") || message.contains("resolve address")) {
+      return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_HOST, e.getMessage());
+    }
+
+    // Port-related errors
+    if (message.contains("connection refused")
+        || message.contains("connect error")
+        || (message.contains("port") && message.contains("connect"))) {
+      return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_PORT, e.getMessage());
+    }
+
+    // SSL-related errors
+    if (message.contains("sslhandshakeexception")
+        || message.contains("ssl")
+        || message.contains("handshake")
+        || message.contains("certificate")) {
+      return ValidationErrorBuilder.createFieldError(FieldPaths.LDAP_SSL_ENABLED, e.getMessage());
+    }
+
+    // Authentication/credentials errors
+    // Note: It's difficult to distinguish between wrong DN and wrong password from LDAP error alone
+    // Both typically return "invalid credentials" (LDAP error code 49)
+    // We map to dnAdminPassword since that's more commonly the issue
+    if (message.contains("invalid credentials")
+        || message.contains("authentication")
+        || message.contains("bind failed")
+        || message.contains("49")) {
+      return ValidationErrorBuilder.createFieldError(
+          FieldPaths.LDAP_DN_ADMIN_PASSWORD, e.getMessage());
+    }
+
+    // Invalid DN format errors
+    if (message.contains("invalid dn") || message.contains("malformed")) {
+      return ValidationErrorBuilder.createFieldError(
+          FieldPaths.LDAP_DN_ADMIN_PRINCIPAL, e.getMessage());
+    }
+
+    // Generic LDAP configuration error for unmatched cases
+    return ValidationErrorBuilder.createFieldError("", e.getMessage());
   }
 
   private FieldError validateSamlConfiguration(
@@ -1143,7 +1192,7 @@ public class SystemRepository {
 
       return null; // No errors - validation passed
     } catch (Exception e) {
-      return ValidationErrorBuilder.createFieldError("authorizerConfiguration", e.getMessage());
+      return ValidationErrorBuilder.createFieldError("", e.getMessage());
     }
   }
 

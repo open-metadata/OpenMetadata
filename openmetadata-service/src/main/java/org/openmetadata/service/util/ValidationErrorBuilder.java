@@ -27,7 +27,7 @@ public class ValidationErrorBuilder {
     // OIDC Configuration
     public static final String OIDC_CLIENT_ID = "authenticationConfiguration.oidcConfiguration.id";
     public static final String OIDC_CLIENT_SECRET =
-        "authenticationConfiguration.oidcConfiguration.clientSecret";
+        "authenticationConfiguration.oidcConfiguration.secret";
     public static final String OIDC_DISCOVERY_URI =
         "authenticationConfiguration.oidcConfiguration.discoveryUri";
     public static final String OIDC_SERVER_URL =

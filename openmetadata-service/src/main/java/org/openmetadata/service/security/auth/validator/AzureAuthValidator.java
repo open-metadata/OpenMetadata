@@ -30,7 +30,7 @@ public class AzureAuthValidator {
     } catch (Exception e) {
       LOG.error("Azure AD validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Azure OAuth validation failed: " + e.getMessage());
+          "", "Azure OAuth validation failed: " + e.getMessage());
     }
   }
 
@@ -70,7 +70,7 @@ public class AzureAuthValidator {
     } catch (Exception e) {
       LOG.error("Azure public client validation failed", e);
       return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Azure public key validation failed" + e.getMessage());
+          "", "Azure public key validation failed" + e.getMessage());
     }
   }
 
@@ -164,8 +164,7 @@ public class AzureAuthValidator {
       return null;
     } catch (Exception e) {
       LOG.error("Azure confidential client validation failed", e);
-      return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Failed azure confidential validation");
+      return ValidationErrorBuilder.createFieldError("", "Failed azure confidential validation");
     }
   }
 
@@ -276,8 +275,7 @@ public class AzureAuthValidator {
       LOG.warn("Azure credentials validation encountered an error", e);
 
       LOG.warn("Could not fully validate credentials: {}", e.getMessage());
-      return ValidationErrorBuilder.createFieldError(
-          "authenticationConfiguration", "Exception occured while validating");
+      return ValidationErrorBuilder.createFieldError("", "Exception occured while validating");
     }
   }
 
