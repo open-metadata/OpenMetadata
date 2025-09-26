@@ -27,6 +27,7 @@ import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
 import { useFormDrawerWithRef } from '../common/atoms/drawer';
+import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
@@ -47,8 +48,15 @@ const DomainListPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   // Use the simplified domain filters configuration
-  const { quickFilters } = useDomainFilters({
+  const { quickFilters, defaultFilters } = useDomainFilters({
     aggregations: domainListing.aggregations || undefined,
+    onFilterChange: domainListing.handleFilterChange,
+  });
+
+  // Use the filter selection hook for displaying selected filters
+  const { filterSelectionDisplay } = useFilterSelection({
+    urlState: domainListing.urlState,
+    filterConfigs: defaultFilters,
     onFilterChange: domainListing.handleFilterChange,
   });
 
@@ -182,19 +190,22 @@ const DomainListPage = () => {
         <Box
           sx={{
             display: 'flex',
-            gap: 5,
-            alignItems: 'center',
+            flexDirection: 'column',
+            gap: 4,
             px: 6,
             py: 4,
             borderBottom: `1px solid`,
             borderColor: theme.palette.allShades?.gray?.[200],
           }}>
-          {titleAndCount}
-          {search}
-          {quickFilters}
-          <Box ml="auto" />
-          {viewToggle}
-          {deleteIconButton}
+          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            {titleAndCount}
+            {search}
+            {quickFilters}
+            <Box ml="auto" />
+            {viewToggle}
+            {deleteIconButton}
+          </Box>
+          {filterSelectionDisplay}
         </Box>
 
         {view === 'table' ? dataTable : cardView}

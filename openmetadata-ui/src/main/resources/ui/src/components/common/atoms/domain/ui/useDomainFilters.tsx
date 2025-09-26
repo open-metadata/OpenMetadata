@@ -47,5 +47,6 @@ export const useDomainFilters = (config: UseDomainFiltersConfig) => {
   return {
     quickFilters,
     selectedFilters,
+    defaultFilters,
   };
 };

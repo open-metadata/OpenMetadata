@@ -35,5 +35,6 @@ export const useDataProductFilters = (config: UseDataProductFiltersConfig) => {
   return {
     quickFilters,
     selectedFilters,
+    defaultFilters: DATAPRODUCT_FILTERS,
   };
 };

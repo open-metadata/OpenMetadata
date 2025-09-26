@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useDelete } from '../../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
+import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import { useSearch } from '../../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
 import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
@@ -38,9 +39,16 @@ const SubDomainsTable = ({
   });
 
   // Use the same domain filters configuration
-  const { quickFilters } = useDomainFilters({
+  const { quickFilters, defaultFilters } = useDomainFilters({
     isSubDomain: true,
     aggregations: subdomainListing.aggregations || undefined,
+    onFilterChange: subdomainListing.handleFilterChange,
+  });
+
+  // Use the filter selection hook for displaying selected filters
+  const { filterSelectionDisplay } = useFilterSelection({
+    urlState: subdomainListing.urlState,
+    filterConfigs: defaultFilters,
     onFilterChange: subdomainListing.handleFilterChange,
   });
 
@@ -106,19 +114,22 @@ const SubDomainsTable = ({
         <Box
           sx={{
             display: 'flex',
-            gap: 5,
-            alignItems: 'center',
+            flexDirection: 'column',
+            gap: 4,
             px: 6,
             py: 4,
             borderBottom: `1px solid`,
             borderColor: theme.palette.allShades?.gray?.[200],
           }}>
-          {titleAndCount}
-          {search}
-          {quickFilters}
-          <Box ml="auto" />
-          {viewToggle}
-          {deleteIconButton}
+          <Box sx={{ display: 'flex', gap: 5, alignItems: 'center' }}>
+            {titleAndCount}
+            {search}
+            {quickFilters}
+            <Box ml="auto" />
+            {viewToggle}
+            {deleteIconButton}
+          </Box>
+          {filterSelectionDisplay}
         </Box>
 
         {view === 'table' ? dataTable : cardView}

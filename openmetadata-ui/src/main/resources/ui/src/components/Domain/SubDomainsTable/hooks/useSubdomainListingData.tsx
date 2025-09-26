@@ -28,11 +28,10 @@ export const useSubdomainListingData = ({
         must: [
           {
             term: {
-              'parent.fullyQualifiedName': parentDomainFqn,
+              'parent.fullyQualifiedName.keyword': parentDomainFqn,
             },
           },
         ],
-        must_not: [],
       },
     },
   };

@@ -78,6 +78,7 @@ export const useQuickFiltersWithComponent = (
     () => (
       <ExploreQuickFilters
         independent
+        showSelectedCounts
         aggregations={config.aggregations || {}}
         fields={selectedQuickFilters}
         index={config.searchIndex}
