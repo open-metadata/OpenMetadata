@@ -542,8 +542,130 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
         """
         if self.raw_data:
             try:
+                # First, check if this is an Iceberg/Delta Lake metadata file
+                data = json.loads(self.raw_data)
+                if self._is_iceberg_delta_metadata(data):
+                    return self._parse_iceberg_delta_schema(data)
+                # Otherwise, try to parse as standard JSON Schema
                 return parse_json_schema(schema_text=self.raw_data, cls=Column)
             except Exception as exc:
                 logger.warning(f"Unable to parse the json schema: {exc}")
                 logger.debug(traceback.format_exc())
         return self._get_columns(self.data_frame)
+
+    def _is_iceberg_delta_metadata(self, data: dict) -> bool:
+        """
+        Check if the JSON data is an Iceberg or Delta Lake metadata file.
+        These files have a specific structure with 'schema' containing 'fields'.
+        """
+        return (
+            isinstance(data, dict)
+            and "schema" in data
+            and isinstance(data["schema"], dict)
+            and "fields" in data["schema"]
+            and isinstance(data["schema"]["fields"], list)
+        )
+
+    def _parse_iceberg_delta_schema(self, data: dict) -> List[Column]:
+        """
+        Parse Iceberg/Delta Lake metadata file schema to extract columns.
+        These files have structure: {"schema": {"fields": [{"id": ..., "name": ..., "type": ..., "required": ...}, ...]}}
+        """
+        columns = []
+        schema = data.get("schema", {})
+        fields = schema.get("fields", [])
+
+        for field in fields:
+            try:
+                column_name = field.get("name", "")
+                column_type = field.get("type", "string")
+                required = field.get("required", False)
+
+                # Get the type string from dict if needed
+                type_str = column_type
+                if isinstance(column_type, dict):
+                    type_str = column_type.get("type", "string")
+
+                # Use DataType enum directly - it will handle the conversion
+                try:
+                    data_type = (
+                        DataType(type_str.upper())
+                        if isinstance(type_str, str)
+                        else DataType.STRING
+                    )
+                except (ValueError, AttributeError):
+                    # If the type is not recognized, default to STRING
+                    data_type = DataType.STRING
+
+                column = Column(
+                    name=truncate_column_name(column_name),
+                    displayName=column_name,
+                    dataType=data_type,
+                    dataTypeDisplay=column_type
+                    if isinstance(column_type, str)
+                    else str(column_type),
+                )
+
+                # Handle nested struct types
+                if (
+                    isinstance(column_type, dict)
+                    and column_type.get("type") == "struct"
+                ):
+                    column.children = self._parse_struct_fields(
+                        column_type.get("fields", [])
+                    )
+                    column.dataType = DataType.STRUCT
+
+                columns.append(column)
+            except Exception as exc:
+                logger.warning(f"Unable to parse field {field}: {exc}")
+                logger.debug(traceback.format_exc())
+
+        return columns
+
+    def _parse_struct_fields(self, fields: list) -> List[dict]:
+        """
+        Parse nested struct fields in Iceberg/Delta Lake metadata.
+        """
+        children = []
+        for field in fields:
+            try:
+                child_name = field.get("name", "")
+                child_type = field.get("type", "string")
+
+                # Get the type string from dict if needed
+                type_str = child_type
+                if isinstance(child_type, dict):
+                    type_str = child_type.get("type", "string")
+
+                # Use DataType enum directly
+                try:
+                    data_type = (
+                        DataType(type_str.upper())
+                        if isinstance(type_str, str)
+                        else DataType.STRING
+                    )
+                except (ValueError, AttributeError):
+                    data_type = DataType.STRING
+
+                child = {
+                    "name": truncate_column_name(child_name),
+                    "displayName": child_name,
+                    "dataType": data_type.value,
+                    "dataTypeDisplay": child_type
+                    if isinstance(child_type, str)
+                    else str(child_type),
+                }
+
+                # Recursively handle nested structs
+                if isinstance(child_type, dict) and child_type.get("type") == "struct":
+                    child["children"] = self._parse_struct_fields(
+                        child_type.get("fields", [])
+                    )
+
+                children.append(child)
+            except Exception as exc:
+                logger.warning(f"Unable to parse nested field {field}: {exc}")
+                logger.debug(traceback.format_exc())
+
+        return children
