@@ -51,6 +51,7 @@ import {
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { checkPermissionEntityResource } from './PermissionsUtils';
 import { getExplorePath } from './RouterUtils';
+import { getTermQuery } from './SearchUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
 export const getClassifications = async (
@@ -587,13 +588,15 @@ export const getExcludedIndexesBasedOnEntityTypeEditTagPermission = (
 };
 
 export const getTagAssetsQueryFilter = (fqn: string) => {
+  let fieldName = 'tags.tagFQN';
+
   if (fqn.includes('Tier.')) {
-    return `(tier.tagFQN:"${fqn}")`;
+    fieldName = 'tier.tagFQN';
   } else if (fqn.includes('Certification.')) {
-    return `(certification.tagLabel.tagFQN:"${fqn}")`;
-  } else {
-    return `(tags.tagFQN:"${fqn}")`;
+    fieldName = 'certification.tagLabel.tagFQN';
   }
+
+  return getTermQuery({ [fieldName]: fqn });
 };
 
 export const getTagImageSrc = (iconURL: string) => {

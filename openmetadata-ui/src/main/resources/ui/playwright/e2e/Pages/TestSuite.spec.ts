@@ -219,7 +219,7 @@ test('Logical TestSuite', async ({ page }) => {
       state: 'detached',
     });
     const getOwnerList = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page.click('.ant-tabs [id*=tab-users]');
     await getOwnerList;
