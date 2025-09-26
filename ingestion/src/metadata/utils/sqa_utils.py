@@ -274,5 +274,8 @@ def update_mssql_ischema_names(ischema_names):
             "sql_variant": create_sqlalchemy_type("SQL_VARIANT"),
             "uniqueidentifier": create_sqlalchemy_type("UUID"),
             "xml": create_sqlalchemy_type("XML"),
+            "hierarchyid": create_sqlalchemy_type("HIERARCHYID"),
+            "geography": create_sqlalchemy_type("GEOGRAPHY"),
+            "geometry": create_sqlalchemy_type("GEOMETRY"),
         }
     )
