@@ -17,9 +17,11 @@ class UnityCatalogTableParameter(BaseTableParameter):
     which is databricks-based for data diff operations"""
 
     def __init__(self):
-        `BaseTableParameter._get_service_connection_config = UnityCatalogTableParameter._get_service_connection_config
+        BaseTableParameter._get_service_connection_config = (
+            UnityCatalogTableParameter._get_service_connection_config
+        )
         super().__init__()
-    
+
     def get(
         self,
         service: DatabaseService,
@@ -122,5 +124,3 @@ class UnityCatalogTableParameter(BaseTableParameter):
         if hasattr(db_service.connection.config, "supportsDatabase"):
             kwargs["query"] = f"catalog={database}"
         return url._replace(**kwargs).geturl()
-
-    
