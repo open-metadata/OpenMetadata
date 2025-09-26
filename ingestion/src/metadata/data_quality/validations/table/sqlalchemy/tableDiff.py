@@ -262,15 +262,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             List[str]: A list of column names that have incomparable types
         """
 
-        print(
-            f"DEBUG: Connecting to table1 - serviceUrl: {self.runtime_params.table1.serviceUrl}"
-        )
-        print(f"DEBUG: table1.path: {self.runtime_params.table1.path}")
-        print(f"DEBUG: keyColumns: {self.runtime_params.keyColumns}")
-        print(
-            f"DEBUG: Has privateKey: {self.runtime_params.table1.privateKey is not None}"
-        )
-
         table1 = data_diff.connect_to_table(
             self.runtime_params.table1.serviceUrl,
             self.runtime_params.table1.path,
