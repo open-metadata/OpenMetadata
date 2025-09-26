@@ -92,6 +92,18 @@ export interface CreateMlModel {
      * For supervised ML Models, the value to estimate.
      */
     target?: string;
+    /**
+     * Datasets used for final model testing and evaluation.
+     */
+    testDatasets?: EntityReference[];
+    /**
+     * Datasets (tables, files, feature stores) used to train this ML Model.
+     */
+    trainingDatasets?: EntityReference[];
+    /**
+     * Datasets used for model validation during training.
+     */
+    validationDatasets?: EntityReference[];
 }
 
 /**
@@ -386,6 +398,10 @@ export interface MlHyperParameter {
  * Location containing the ML Model. It can be a storage layer and/or a container repository.
  */
 export interface MlStore {
+    /**
+     * URI pointing to the model artifacts location (e.g., gs://, s3://, hdfs://, file://).
+     */
+    artifactUri?: string;
     /**
      * Container Repository with the ML Model image.
      */

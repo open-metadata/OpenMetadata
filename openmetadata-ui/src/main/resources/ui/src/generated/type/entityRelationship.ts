@@ -83,7 +83,10 @@ export enum RelationshipType {
     RepliedTo = "repliedTo",
     Reviews = "reviews",
     TestedBy = "testedBy",
+    TestedWith = "testedWith",
+    TrainedWith = "trainedWith",
     Upstream = "upstream",
     Uses = "uses",
+    ValidatedWith = "validatedWith",
     Voted = "voted",
 }
