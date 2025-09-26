@@ -19,7 +19,6 @@ export const DATAPRODUCT_DEFAULT_QUICK_FILTERS = [
   EntityFields.DOMAINS,
   EntityFields.CLASSIFICATION_TAGS,
   EntityFields.GLOSSARY_TERMS,
-  EntityFields.DOMAIN_TYPE,
 ];
 
 export const DATAPRODUCT_FILTERS = [
@@ -38,9 +37,5 @@ export const DATAPRODUCT_FILTERS = [
   {
     label: i18n.t('label.glossary-term-plural'),
     key: EntityFields.GLOSSARY_TERMS,
-  },
-  {
-    label: i18n.t('label.domain-type'),
-    key: EntityFields.DOMAIN_TYPE,
   },
 ];

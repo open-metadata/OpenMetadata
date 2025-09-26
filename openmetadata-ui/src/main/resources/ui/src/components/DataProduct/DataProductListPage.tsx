@@ -123,7 +123,7 @@ const DataProductListPage = () => {
   });
 
   const { pageHeader } = usePageHeader({
-    titleKey: 'label.data-product',
+    titleKey: 'label.data-product-plural',
     descriptionMessageKey: 'message.data-product-description',
     createPermission: true,
     addButtonLabelKey: 'label.add-data-product',

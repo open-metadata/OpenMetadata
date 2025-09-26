@@ -32,11 +32,9 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
   multiple = false,
   value,
   onChange,
-  showAllDomains = true,
   hasPermission = true,
   onBlur,
   onFocus,
-  className,
   'data-testid': dataTestId,
 }) => {
   const convertDomainToTreeNode = useCallback(
@@ -61,7 +59,7 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
         hasChildren,
         lazyLoad: false,
         children: hasChildren
-          ? (domain as Domain).children?.map(convertDomainToTreeNode)
+          ? domain.children?.map(convertDomainToTreeNode)
           : undefined,
         allowSelection: hasPermission,
       };
@@ -72,10 +70,8 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
   const fetchData = useCallback(
     async ({
       searchTerm,
-      parentId,
     }: {
       searchTerm?: string;
-      parentId?: string;
     }): Promise<TreeDataResponse> => {
       try {
         if (searchTerm) {

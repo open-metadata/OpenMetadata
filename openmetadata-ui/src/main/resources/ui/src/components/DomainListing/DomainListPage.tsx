@@ -122,7 +122,7 @@ const DomainListPage = () => {
   });
 
   const { pageHeader } = usePageHeader({
-    titleKey: 'label.domain',
+    titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
     createPermission: true,
     addButtonLabelKey: 'label.add-domain',
