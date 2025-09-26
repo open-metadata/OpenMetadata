@@ -12,7 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { getEncodedFqn } from './entity';
+import { escapeESReservedCharacters, getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
@@ -272,20 +272,30 @@ export const fillRule = async (
       const dropdownInput = ruleLocator.locator(
         '.widget--widget > .ant-select > .ant-select-selector input'
       );
-      let aggregateRes;
+      let aggregateRes1;
+      let aggregateRes2;
 
       if (!field.localSearch) {
-        aggregateRes = page.waitForResponse('/api/v1/search/aggregate?*');
+        aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
       }
 
       await dropdownInput.click();
-      if (aggregateRes) {
-        await aggregateRes;
+      if (aggregateRes1) {
+        await aggregateRes1;
       }
+
+      if (!field.localSearch) {
+        aggregateRes2 = page.waitForResponse(
+          `/api/v1/search/aggregate?*${getEncodedFqn(
+            escapeESReservedCharacters(searchData)
+          )}*`
+        );
+      }
+
       await dropdownInput.fill(searchData);
 
-      if (aggregateRes) {
-        await aggregateRes;
+      if (aggregateRes2) {
+        await aggregateRes2;
       }
 
       await page
@@ -555,7 +565,9 @@ export const checkAddRuleOrGroupWithOperator = async (
   }
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
+    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+      searchCriteria1
+    )}*${getEncodedFqn(searchCriteria2)}*`
   );
   await page.getByTestId('apply-btn').click();
 
