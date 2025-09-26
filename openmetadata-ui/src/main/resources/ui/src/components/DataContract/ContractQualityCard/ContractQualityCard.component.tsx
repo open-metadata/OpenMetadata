@@ -19,16 +19,13 @@ import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { TEST_CASE_STATUS_ICON } from '../../../constants/DataQuality.constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import {
   TestCaseResult,
   TestCaseStatus,
-  TestSummary,
 } from '../../../generated/tests/testCase';
 import { useFqn } from '../../../hooks/useFqn';
-import {
-  getListTestCasResultsBySearch,
-  getTestCaseExecutionSummary,
-} from '../../../rest/testAPI';
+import { getListTestCasResultsBySearch } from '../../../rest/testAPI';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import { getTestCaseDetailPagePath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -39,23 +36,12 @@ import './contract-quality-card.less';
 const ContractQualityCard: React.FC<{
   contract: DataContract;
   contractStatus?: string;
-}> = ({ contract, contractStatus }) => {
+  latestContractResults?: DataContractResult;
+}> = ({ contract, contractStatus, latestContractResults }) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
-  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [testCaseResult, setTestCaseResult] = useState<TestCaseResult[]>([]);
-
-  const fetchTestCaseSummary = async () => {
-    try {
-      const response = await getTestCaseExecutionSummary(
-        contract?.testSuite?.id
-      );
-      setTestCaseSummary(response);
-    } catch {
-      // silent fail
-    }
-  };
 
   const fetchTestCases = async () => {
     setIsTestCaseLoading(true);
@@ -77,25 +63,52 @@ const ContractQualityCard: React.FC<{
     }
   };
 
-  const { showTestCaseSummaryChart, segmentWidths } = useMemo(() => {
-    const total = testCaseSummary?.total ?? 0;
-    const success = testCaseSummary?.success ?? 0;
-    const failed = testCaseSummary?.failed ?? 0;
-    const aborted = testCaseSummary?.aborted ?? 0;
+  const {
+    showTestCaseSummaryChart,
+    segmentWidths,
+    total,
+    success,
+    failed,
+    aborted,
+  } = useMemo(() => {
+    if (!latestContractResults?.qualityValidation) {
+      return {
+        showTestCaseSummaryChart: false,
+        segmentWidths: {
+          successPercent: 0,
+          failedPercent: 0,
+          abortedPercent: 0,
+        },
+        total: 0,
+        success: 0,
+        failed: 0,
+        aborted: 0,
+      };
+    }
+
+    const { qualityValidation } = latestContractResults;
+    const total = qualityValidation?.total ?? 0;
+    const success = qualityValidation?.passed ?? 0;
+    const failed = qualityValidation?.failed ?? 0;
+    const aborted = total - success - failed;
 
     const successPercent = (success / total) * 100;
     const failedPercent = (failed / total) * 100;
     const abortedPercent = (aborted / total) * 100;
 
     return {
-      showTestCaseSummaryChart: Boolean(total),
+      showTestCaseSummaryChart: true,
       segmentWidths: {
         successPercent,
         failedPercent,
         abortedPercent,
       },
+      total,
+      success,
+      failed,
+      aborted,
     };
-  }, [testCaseSummary]);
+  }, [latestContractResults?.qualityValidation]);
 
   const processedQualityExpectations = useMemo(() => {
     const testCaseResultsMap = new Map(
@@ -118,7 +131,6 @@ const ContractQualityCard: React.FC<{
   }, [contract, testCaseResult]);
 
   useEffect(() => {
-    // fetchTestCaseSummary();
     fetchTestCases();
   }, []);
 
@@ -135,9 +147,7 @@ const ContractQualityCard: React.FC<{
               {`${t('label.total-entity', {
                 entity: t('label.test'),
               })}:`}{' '}
-              <span className="data-quality-total-test-value">
-                {testCaseSummary?.total}
-              </span>
+              <span className="data-quality-total-test-value">{total}</span>
             </Typography.Text>
 
             <div className="data-quality-line-chart-container">
@@ -166,27 +176,21 @@ const ContractQualityCard: React.FC<{
                 <div className="data-quality-legends-dot success" />
                 <Typography.Text className="data-quality-legends-label">
                   {`${t('label.success')}:`}{' '}
-                  <span className="data-quality-legends-value">
-                    {testCaseSummary?.success}
-                  </span>
+                  <span className="data-quality-legends-value">{success}</span>
                 </Typography.Text>
               </div>
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot failed" />
                 <Typography.Text className="data-quality-legends-label">
                   {`${t('label.failed')}:`}{' '}
-                  <span className="data-quality-legends-value">
-                    {testCaseSummary?.failed}
-                  </span>
+                  <span className="data-quality-legends-value">{failed}</span>
                 </Typography.Text>
               </div>
               <div className="data-quality-legends-item">
                 <div className="data-quality-legends-dot aborted" />
                 <Typography.Text className="data-quality-legends-label">
                   {`${t('label.aborted')}:`}{' '}
-                  <span className="data-quality-legends-value">
-                    {testCaseSummary?.aborted}
-                  </span>
+                  <span className="data-quality-legends-value">{aborted}</span>
                 </Typography.Text>
               </div>
             </div>

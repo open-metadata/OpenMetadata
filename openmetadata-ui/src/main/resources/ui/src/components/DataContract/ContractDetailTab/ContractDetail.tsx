@@ -470,6 +470,7 @@ const ContractDetail: React.FC<{
               <ContractQualityCard
                 contract={contract}
                 contractStatus={constraintStatus['quality']}
+                latestContractResults={latestContractResults}
               />
             </Col>
           )}
