@@ -11,13 +11,14 @@
  *  limitations under the License.
  */
 
-import LdapIcon from '../assets/img/ic-ldap.svg';
-import SamlIcon from '../assets/img/ic-saml.svg';
 import Auth0Icon from '../assets/img/icon-auth0.png';
 import CognitoIcon from '../assets/img/icon-aws-cognito.png';
 import AzureIcon from '../assets/img/icon-azure.png';
 import GoogleIcon from '../assets/img/icon-google.png';
 import OktaIcon from '../assets/img/icon-okta.png';
+import CustomOIDCIcon from '../assets/svg/ic-custom-oidc.svg';
+import LdapIcon from '../assets/svg/ic-ldap.svg';
+import SamlIcon from '../assets/svg/ic-saml.svg';
 import SSOIcon from '../assets/svg/sso-settings.svg';
 
 import { AuthProvider } from '../generated/settings/settings';
@@ -167,7 +168,7 @@ export const PROVIDER_OPTIONS: ProviderOption[] = [
   {
     key: AuthProvider.CustomOidc,
     label: 'Custom-OIDC',
-    icon: CognitoIcon,
+    icon: CustomOIDCIcon,
   },
   {
     key: AuthProvider.LDAP,
