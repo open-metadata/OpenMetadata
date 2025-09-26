@@ -1963,6 +1963,7 @@
     "consumer-aligned-domain-type-description": "소스 정렬된 여러 데이터를 수집하고 큐레이션하여 다른 도메인이 소비할 수 있는 집계된 데이터와 데이터 제품(예: 고객 360, 고객 세션 등)을 제공하는 도메인입니다.",
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
+    "contract-security-consume-description": "데이터의 예상 소비자",
     "contract-status-description": "기존 검사에 대한 전체 상태를 제공합니다",
     "contract-validation-trigger-successfully": "계약 검증이 성공적으로 트리거되었습니다.",
     "copied-to-clipboard": "클립보드에 복사됨",

@@ -1963,6 +1963,7 @@
     "consumer-aligned-domain-type-description": "โดเมนที่เป็นการมอบหมายให้ผู้ใช้โดยที่ผลิตภัณฑ์สุดท้ายของการรวมข้อมูลจากโดเมนต่าง ๆ พร้อมให้บริการแก่ผู้ใช้ธุรกิจหรือประชาชนข้อมูลเพื่อการตัดสินใจที่ขับเคลื่อนด้วยข้อมูล",
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
+    "contract-security-consume-description": "ผู้บริโภคที่ตั้งใจไว้ของข้อมูล",
     "contract-status-description": "ให้สถานะโดยรวมสำหรับการตรวจสอบที่มีอยู่",
     "contract-validation-trigger-successfully": "การตรวจสอบสัญญาทำงานสำเร็จ",
     "copied-to-clipboard": "คัดลอกไปที่คลิปบอร์ด",

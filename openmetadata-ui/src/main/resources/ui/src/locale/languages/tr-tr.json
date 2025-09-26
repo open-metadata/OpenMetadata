@@ -1963,6 +1963,7 @@
     "consumer-aligned-domain-type-description": "Çeşitli alanlardan gelen verilerin birleşiminin son ürününün iş kullanıcıları veya veri vatandaşları için veri odaklı karar verme amacıyla kullanılabildiği, kullanıcıya yönelik alan adları.",
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
+    "contract-security-consume-description": "Verinin hedeflenen tüketicileri",
     "contract-status-description": "Mevcut kontroller için genel durumu sağlar",
     "contract-validation-trigger-successfully": "Sözleşme doğrulama başarıyla tetiklendi.",
     "copied-to-clipboard": "Panoya kopyalandı",

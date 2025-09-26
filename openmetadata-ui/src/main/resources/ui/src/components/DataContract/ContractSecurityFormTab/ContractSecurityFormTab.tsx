@@ -11,18 +11,35 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Card, Col, Form, Input, Row, Select, Typography } from 'antd';
+import {
+  Button,
+  Card,
+  Col,
+  Divider,
+  Form,
+  Input,
+  Row,
+  Select,
+  Typography,
+} from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
-import { isEmpty } from 'lodash';
-import { useEffect } from 'react';
+import classNames from 'classnames';
+import { isEmpty, isNull } from 'lodash';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/ic-cross.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
 import { ReactComponent as RightIcon } from '../../../assets/svg/right-arrow.svg';
 import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
-import { DataContract } from '../../../generated/entity/data/dataContract';
+import {
+  ContractSecurity,
+  DataConsumers,
+  DataContract,
+} from '../../../generated/entity/data/dataContract';
+import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
+import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import './contract-security-form-tab.less';
 
 export const ContractSecurityFormTab: React.FC<{
@@ -35,6 +52,49 @@ export const ContractSecurityFormTab: React.FC<{
 }> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const addFunctionRef = useRef<
+    | ((
+        defaultValue?: ContractSecurity,
+        insertIndex?: number | undefined
+      ) => void)
+    | null
+  >(null);
+  const [editingKey, setEditingKey] = useState<number | null>(null);
+
+  const consumerFormData: DataConsumers[] = Form.useWatch('consumers', form);
+
+  const handleAddConsumers = () => {
+    addFunctionRef.current?.({
+      accessPolicy: '',
+      identities: [],
+      rowFilters: [
+        {
+          columnName: '',
+          values: [],
+        },
+      ],
+    });
+
+    setEditingKey(consumerFormData.length ?? 0);
+  };
+
+  const handleDeleteConsumer = useCallback(
+    (key: number) => {
+      const filteredValue =
+        consumerFormData
+          ?.filter((_item, idx) => idx !== key)
+          ?.filter(Boolean) ?? [];
+      form.setFieldsValue({
+        consumers: filteredValue,
+      });
+      onChange({
+        security: {
+          consumers: filteredValue,
+        },
+      });
+    },
+    [consumerFormData]
+  );
 
   const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
     onChange({
@@ -62,11 +122,12 @@ export const ContractSecurityFormTab: React.FC<{
         ],
       });
     }
+    setEditingKey(0);
   }, [initialValues]);
 
   return (
     <>
-      <Card className="container bg-grey p-box">
+      <Card className="contract-security-form-container container bg-grey p-box">
         <div>
           <Typography.Text className="contract-detail-form-tab-title">
             {t('label.security')}
@@ -76,14 +137,14 @@ export const ContractSecurityFormTab: React.FC<{
           </Typography.Paragraph>
         </div>
 
-        <div className="contract-form-content-container">
-          <Form
-            className="new-form-style contract-security-form"
-            form={form}
-            layout="vertical"
-            name="security"
-            validateMessages={VALIDATION_MESSAGES}
-            onValuesChange={handleFormChange}>
+        <Form
+          className="new-form-style contract-security-form"
+          form={form}
+          layout="vertical"
+          name="security"
+          validateMessages={VALIDATION_MESSAGES}
+          onValuesChange={handleFormChange}>
+          <div className="contract-form-content-container">
             <Form.Item
               id="dataClassification"
               label={t('label.data-classification')}
@@ -95,212 +156,360 @@ export const ContractSecurityFormTab: React.FC<{
                 })}
               />
             </Form.Item>
+          </div>
 
-            <Typography.Text className="m-b-md d-block">
-              {t('label.consumer-plural')}
-            </Typography.Text>
+          <div className="contract-form-content-container">
+            <div className="d-flex justify-between items-center">
+              <div className="consumer-title-container">
+                <Typography.Text className="consumer-title">
+                  {t('label.consumer-plural')}
+                </Typography.Text>
+                <Typography.Paragraph className="consumer-description">
+                  {t('message.contract-security-consume-description')}
+                </Typography.Paragraph>
+              </div>
+
+              <Button
+                className="add-consumer-button"
+                data-testid="add-consumer-button"
+                disabled={!isNull(editingKey) || !addFunctionRef.current}
+                icon={<Icon className="anticon" component={PlusIcon} />}
+                type="link"
+                onClick={handleAddConsumers}>
+                {t('label.add-entity', { entity: t('label.consumer') })}
+              </Button>
+            </div>
 
             <Form.List name="consumers">
-              {(
-                consumerFields,
-                { add: addConsumer, remove: removeConsumer }
-              ) => {
+              {(consumerFields, { add: addConsumer }) => {
+                // Store the add function so it can be used outside
+                if (!addFunctionRef.current) {
+                  addFunctionRef.current = addConsumer;
+                }
+
                 return (
                   <>
                     {consumerFields.map((consumerField, consumerIndex) => {
                       return (
-                        <Row className="m-b-md" key={consumerField.key}>
-                          <Col span={24}>
-                            <Card className="contract-consumer-security-card">
+                        <ExpandableCard
+                          cardProps={{
+                            className: classNames(
+                              'contract-consumer-security-card expandable-card',
+                              {
+                                'expanded-active-card':
+                                  editingKey === consumerField.name,
+                              }
+                            ),
+                            title: (
+                              <div className="w-full d-flex justify-between items-center">
+                                {editingKey === consumerField.key ? null : (
+                                  <div className="security-form-item-title-container">
+                                    <div className="d-flex items-center gap-6">
+                                      <div className="d-flex flex-column">
+                                        <Typography.Text className="semantic-form-item-title">
+                                          {consumerFormData?.[consumerField.key]
+                                            ?.accessPolicy ||
+                                            t('label.untitled')}
+                                        </Typography.Text>
+                                      </div>
+                                    </div>
+                                    <div className="d-flex items-center gap-2">
+                                      <EditIconButton
+                                        newLook
+                                        className="edit-expand-button"
+                                        data-testid={`edit-semantic-${consumerField.key}`}
+                                        size="middle"
+                                        onClick={() =>
+                                          setEditingKey(consumerField.key)
+                                        }
+                                      />
+
+                                      <Button
+                                        danger
+                                        className="delete-expand-button"
+                                        data-testid={`delete-semantic-${consumerField.key}`}
+                                        icon={<DeleteIcon />}
+                                        size="middle"
+                                        onClick={() => {
+                                          handleDeleteConsumer(
+                                            consumerField.key
+                                          );
+                                        }}
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ),
+                          }}
+                          dataTestId={`contract-semantics-card-${consumerField.key}`}
+                          defaultExpanded={editingKey === consumerField.name}
+                          key={consumerField.name}>
+                          {editingKey === consumerField.name ? (
+                            <>
                               <Row
-                                className="contract-consumer-security-card-row"
-                                gutter={[0, 16]}>
+                                className="security-form-item-content"
+                                key={consumerField.key}>
                                 <Col span={24}>
-                                  <Form.Item
-                                    label={t('label.access-policy')}
-                                    name={[consumerField.name, 'accessPolicy']}>
-                                    <Input
-                                      data-testid={`access-policy-input-${consumerIndex}`}
-                                      placeholder={t(
-                                        'label.please-enter-entity-name',
-                                        {
-                                          entity: t('label.access-policy'),
-                                        }
-                                      )}
-                                    />
-                                  </Form.Item>
-                                </Col>
+                                  <Row
+                                    className="contract-consumer-security-card-row"
+                                    gutter={[0, 16]}>
+                                    <Col span={24}>
+                                      <Form.Item
+                                        label={t('label.access-policy')}
+                                        name={[
+                                          consumerField.name,
+                                          'accessPolicy',
+                                        ]}>
+                                        <Input
+                                          data-testid={`access-policy-input-${consumerIndex}`}
+                                          placeholder={t(
+                                            'label.please-enter-entity-name',
+                                            {
+                                              entity: t('label.access-policy'),
+                                            }
+                                          )}
+                                        />
+                                      </Form.Item>
+                                    </Col>
 
-                                <Col span={24}>
-                                  <Form.Item
-                                    label={t('label.identities')}
-                                    name={[consumerField.name, 'identities']}>
-                                    <Select
-                                      data-testid={`identities-input-${consumerIndex}`}
-                                      mode="tags"
-                                      placeholder={t(
-                                        'label.please-enter-value',
-                                        {
-                                          name: t('label.identities'),
-                                        }
-                                      )}
-                                    />
-                                  </Form.Item>
-                                </Col>
+                                    <Col span={24}>
+                                      <Form.Item
+                                        label={t('label.identities')}
+                                        name={[
+                                          consumerField.name,
+                                          'identities',
+                                        ]}>
+                                        <Select
+                                          data-testid={`identities-input-${consumerIndex}`}
+                                          id={`identities-input-${consumerIndex}`}
+                                          mode="tags"
+                                          placeholder={t(
+                                            'label.please-enter-value',
+                                            {
+                                              name: t('label.identities'),
+                                            }
+                                          )}
+                                        />
+                                      </Form.Item>
+                                    </Col>
+                                  </Row>
 
-                                <Col span={24}>
-                                  <Typography.Text className="m-b-md d-block">
+                                  <Divider />
+
+                                  <Typography.Text className="row-filter-title">
                                     {t('label.row-filter-plural')}
                                   </Typography.Text>
+
+                                  <Form.List
+                                    name={[consumerField.name, 'rowFilters']}>
+                                    {(
+                                      rowFilterFields,
+                                      {
+                                        add: addRowFilter,
+                                        remove: removeRowFilter,
+                                      }
+                                    ) => {
+                                      return (
+                                        <>
+                                          <div className="contract-consumer-security-card-rule-container">
+                                            {rowFilterFields.map(
+                                              (
+                                                rowFilterField,
+                                                rowFilterIndex
+                                              ) => {
+                                                return (
+                                                  <Row
+                                                    align="middle"
+                                                    gutter={[16, 16]}
+                                                    key={rowFilterField.key}>
+                                                    <Col span={11}>
+                                                      <Form.Item
+                                                        label={t(
+                                                          'label.column-name'
+                                                        )}
+                                                        name={[
+                                                          rowFilterField.name,
+                                                          'columnName',
+                                                        ]}>
+                                                        <Input
+                                                          data-testid={`columnName-input-${consumerIndex}-${rowFilterIndex}`}
+                                                          placeholder={t(
+                                                            'label.please-enter-entity-name',
+                                                            {
+                                                              entity:
+                                                                t(
+                                                                  'label.column'
+                                                                ),
+                                                            }
+                                                          )}
+                                                        />
+                                                      </Form.Item>
+                                                    </Col>
+
+                                                    <Col span={11}>
+                                                      <Form.Item
+                                                        label={t(
+                                                          'label.value-plural'
+                                                        )}
+                                                        name={[
+                                                          rowFilterField.name,
+                                                          'values',
+                                                        ]}>
+                                                        <Select
+                                                          data-testid={`values-${consumerIndex}-${rowFilterIndex}`}
+                                                          id={`values-${consumerIndex}-${rowFilterIndex}`}
+                                                          mode="tags"
+                                                          placeholder={t(
+                                                            'label.please-enter-value',
+                                                            {
+                                                              name: t(
+                                                                'label.column-plural'
+                                                              ),
+                                                            }
+                                                          )}
+                                                        />
+                                                      </Form.Item>
+                                                    </Col>
+
+                                                    <Col span={2}>
+                                                      <Button
+                                                        className="contract-consumer-security-card-rule-delete-button"
+                                                        icon={
+                                                          <Icon
+                                                            component={
+                                                              CloseIcon
+                                                            }
+                                                          />
+                                                        }
+                                                        size="small"
+                                                        type="text"
+                                                        onClick={() => {
+                                                          removeRowFilter(
+                                                            rowFilterField.name
+                                                          );
+                                                        }}
+                                                      />
+                                                    </Col>
+                                                  </Row>
+                                                );
+                                              }
+                                            )}
+                                          </div>
+
+                                          <div className="contract-consumer-security-card-form-actions-items">
+                                            <Button
+                                              className="add-row-filter-button"
+                                              data-testid={`add-row-filter-button-${consumerIndex}`}
+                                              icon={
+                                                <Icon component={PlusIcon} />
+                                              }
+                                              type="link"
+                                              onClick={() => addRowFilter()}>
+                                              {t('label.add-entity', {
+                                                entity: t('label.row-filter'),
+                                              })}
+                                            </Button>
+
+                                            <div className="d-flex items-center">
+                                              <Button
+                                                onClick={() =>
+                                                  setEditingKey(null)
+                                                }>
+                                                {t('label.cancel')}
+                                              </Button>
+                                              <Button
+                                                className="m-l-md"
+                                                data-testid="save-semantic-button"
+                                                type="primary"
+                                                onClick={() =>
+                                                  setEditingKey(null)
+                                                }>
+                                                {t('label.save')}
+                                              </Button>
+                                            </div>
+                                          </div>
+                                        </>
+                                      );
+                                    }}
+                                  </Form.List>
                                 </Col>
                               </Row>
-
-                              <Form.List
-                                name={[consumerField.name, 'rowFilters']}>
-                                {(
-                                  rowFilterFields,
-                                  { add: addRowFilter, remove: removeRowFilter }
-                                ) => {
-                                  return (
-                                    <>
-                                      <div className="contract-consumer-security-card-rule-container">
-                                        {rowFilterFields.map(
-                                          (rowFilterField, rowFilterIndex) => {
-                                            return (
-                                              <Row
-                                                align="middle"
-                                                gutter={[16, 16]}
-                                                key={rowFilterField.key}>
-                                                <Col span={11}>
-                                                  <Form.Item
-                                                    label={t(
-                                                      'label.column-name'
-                                                    )}
-                                                    name={[
-                                                      rowFilterField.name,
-                                                      'columnName',
-                                                    ]}>
-                                                    <Input
-                                                      data-testid={`columnName-input-${consumerIndex}-${rowFilterIndex}`}
-                                                      placeholder={t(
-                                                        'label.please-enter-entity-name',
-                                                        {
-                                                          entity:
-                                                            t('label.column'),
-                                                        }
-                                                      )}
-                                                    />
-                                                  </Form.Item>
-                                                </Col>
-
-                                                <Col span={11}>
-                                                  <Form.Item
-                                                    label={t(
-                                                      'label.value-plural'
-                                                    )}
-                                                    name={[
-                                                      rowFilterField.name,
-                                                      'values',
-                                                    ]}>
-                                                    <Select
-                                                      data-testid={`values-${consumerIndex}-${rowFilterIndex}`}
-                                                      mode="tags"
-                                                      placeholder={t(
-                                                        'label.please-enter-value',
-                                                        {
-                                                          name: t(
-                                                            'label.column-plural'
-                                                          ),
-                                                        }
-                                                      )}
-                                                    />
-                                                  </Form.Item>
-                                                </Col>
-
-                                                <Col span={2}>
-                                                  <Button
-                                                    className="contract-consumer-security-card-rule-delete-button"
-                                                    icon={
-                                                      <Icon
-                                                        component={CloseIcon}
-                                                      />
+                            </>
+                          ) : (
+                            <Form.List
+                              name={[consumerField.name, 'rowFilters']}>
+                              {(rowFilterFields) => {
+                                return (
+                                  <div className="contract-consumer-security-card-rule-container">
+                                    {rowFilterFields.map(
+                                      (rowFilterField, rowFilterIndex) => {
+                                        return (
+                                          <Row
+                                            align="middle"
+                                            gutter={[16, 16]}
+                                            key={rowFilterField.key}>
+                                            <Col span={11}>
+                                              <Form.Item
+                                                label={t('label.column-name')}
+                                                name={[
+                                                  rowFilterField.name,
+                                                  'columnName',
+                                                ]}>
+                                                <Input
+                                                  disabled
+                                                  data-testid={`columnName-input-${consumerIndex}-${rowFilterIndex}`}
+                                                  placeholder={t(
+                                                    'label.please-enter-entity-name',
+                                                    {
+                                                      entity: t('label.column'),
                                                     }
-                                                    size="small"
-                                                    type="text"
-                                                    onClick={() => {
-                                                      removeRowFilter(
-                                                        rowFilterField.name
-                                                      );
-                                                    }}
-                                                  />
-                                                </Col>
-                                              </Row>
-                                            );
-                                          }
-                                        )}
-                                      </div>
+                                                  )}
+                                                />
+                                              </Form.Item>
+                                            </Col>
 
-                                      <div className="contract-consumer-security-card-form-actions-items">
-                                        <Button
-                                          className="add-row-filter-button"
-                                          data-testid={`add-row-filter-button-${consumerIndex}`}
-                                          icon={<Icon component={PlusIcon} />}
-                                          type="link"
-                                          onClick={() => addRowFilter()}>
-                                          {t('label.add-entity', {
-                                            entity: t('label.row-filter'),
-                                          })}
-                                        </Button>
-
-                                        <Button
-                                          className="delete-consumer-filter-button"
-                                          data-testid={`delete-consumer-filter-button-${consumerIndex}`}
-                                          icon={<Icon component={DeleteIcon} />}
-                                          type="link"
-                                          onClick={() => {
-                                            removeConsumer(consumerField.name);
-                                          }}>
-                                          {t('label.remove-entity', {
-                                            entity: t('label.consumer'),
-                                          })}
-                                        </Button>
-                                      </div>
-                                    </>
-                                  );
-                                }}
-                              </Form.List>
-                            </Card>
-                          </Col>
-                        </Row>
+                                            <Col span={11}>
+                                              <Form.Item
+                                                label={t('label.value-plural')}
+                                                name={[
+                                                  rowFilterField.name,
+                                                  'values',
+                                                ]}>
+                                                <Select
+                                                  disabled
+                                                  data-testid={`values-${consumerIndex}-${rowFilterIndex}`}
+                                                  id={`values-${consumerIndex}-${rowFilterIndex}`}
+                                                  mode="tags"
+                                                  placeholder={t(
+                                                    'label.please-enter-value',
+                                                    {
+                                                      name: t(
+                                                        'label.column-plural'
+                                                      ),
+                                                    }
+                                                  )}
+                                                />
+                                              </Form.Item>
+                                            </Col>
+                                          </Row>
+                                        );
+                                      }
+                                    )}
+                                  </div>
+                                );
+                              }}
+                            </Form.List>
+                          )}
+                        </ExpandableCard>
                       );
                     })}
-                    <Form.Item>
-                      <Button
-                        className="add-consumer-button"
-                        data-testid="add-consumer-button"
-                        icon={<Icon component={PlusIcon} />}
-                        type="link"
-                        onClick={() =>
-                          addConsumer({
-                            accessPolicy: '',
-                            identities: [],
-                            rowFilters: [
-                              {
-                                columnName: '',
-                                values: [],
-                              },
-                            ],
-                          })
-                        }>
-                        {t('label.add-entity', { entity: t('label.consumer') })}
-                      </Button>
-                    </Form.Item>
                   </>
                 );
               }}
             </Form.List>
-          </Form>
-        </div>
+          </div>
+        </Form>
       </Card>
       <div className="d-flex justify-between m-t-md">
         <Button

@@ -1963,6 +1963,7 @@
     "consumer-aligned-domain-type-description": "دامنه‌هایی که کاربر محور هستند و محصول نهایی ترکیب داده‌ها از دامنه‌های مختلف در اختیار کاربران تجاری یا شهروندان داده برای تصمیم‌گیری مبتنی بر داده قرار می‌گیر",
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
+    "contract-security-consume-description": "ਡੇਟਾ ਦੇ ਇਰਾਦੇ ਵਾਲੇ ਉਪਭੋਗਤਾ",
     "contract-status-description": "وضعیت کلی برای بررسی‌های موجود فراهم می‌کند",
     "contract-validation-trigger-successfully": "بررسی قرارداد با موفقیت انجام شد.",
     "copied-to-clipboard": "به حافظه موقت کپی شد",

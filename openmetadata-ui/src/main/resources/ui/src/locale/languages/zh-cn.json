@@ -1963,6 +1963,7 @@
     "consumer-aligned-domain-type-description": "面向用户的域, 在这些域中, 来自不同域的数据组合的最终产品可供商业用户或数据公民进行数据驱动决策.",
     "contract-detail-plural-description": "为数据资产指定期望的合同。",
     "contract-execution-history-description": "查看随时间变化的所有合同执行结果",
+    "contract-security-consume-description": "数据的预期消费者",
     "contract-status-description": "提供现有检查的总体状态",
     "contract-validation-trigger-successfully": "合同验证触发成功。",
     "copied-to-clipboard": "已复制到剪贴板",

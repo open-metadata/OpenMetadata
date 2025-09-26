@@ -1963,6 +1963,7 @@
     "consumer-aligned-domain-type-description": "Domains that are user-facing where the end product of a combination of data from various domains are available for business users or data citizens for data-driven decision-making.",
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
+    "contract-security-consume-description": "Intended consumers of the data",
     "contract-status-description": "Provides the over all status for existing checks",
     "contract-validation-trigger-successfully": "Contract validation trigger successfully.",
     "copied-to-clipboard": "Copied to the clipboard",

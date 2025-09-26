@@ -1963,6 +1963,7 @@
     "consumer-aligned-domain-type-description": "डोमेन्स जे वापरकर्त्यांना सामोरे जातात जिथे विविध डोमेन्समधील डेटाचे संयोजन व्यवसाय वापरकर्त्यांसाठी किंवा डेटा नागरिकांसाठी डेटा-चालित निर्णय घेण्यासाठी उपलब्ध आहे.",
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
+    "contract-security-consume-description": "डेटाचे अपेक्षित ग्राहक",
     "contract-status-description": "विद्यमान तपासण्यांसाठी एकूण स्थिती प्रदान करते",
     "contract-validation-trigger-successfully": "करार सत्यापन सफलतापूर्वक चालविले.",
     "copied-to-clipboard": "क्लिपबोर्डवर कॉपी केले",

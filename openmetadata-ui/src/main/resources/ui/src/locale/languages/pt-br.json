@@ -1963,6 +1963,7 @@
     "consumer-aligned-domain-type-description": "Domínios que são voltados para o usuário, onde o produto final de uma combinação de dados de vários domínios está disponível para usuários de negócios ou cidadãos de dados para tomada de decisões baseada em dados.",
     "contract-detail-plural-description": "Um contrato especificando expectativas para um ativo de dados.",
     "contract-execution-history-description": "Visualizar todos os resultados de execução do contrato ao longo do tempo",
+    "contract-security-consume-description": "Consumidores pretendidos dos dados",
     "contract-status-description": "Fornece o status geral para as verificações existentes",
     "contract-validation-trigger-successfully": "Validação de contrato acionada com sucesso.",
     "copied-to-clipboard": "Copiado para a área de transferência",
