@@ -242,6 +242,10 @@ public final class EntityUtil {
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
   }
 
+  public static String buildEntityLink(String entityType, String fullyQualifiedName) {
+    return String.format("<#E::%s::%s>", entityType, fullyQualifiedName);
+  }
+
   public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {
     LOG.debug("Getting latest usage for {}", entityId);
     UsageDetails details = usageDAO.getLatestUsage(entityId.toString());
@@ -841,6 +845,7 @@ public final class EntityUtil {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+        filter.addQueryParam("domainAccessControl", "true");
       } else {
         filter.addQueryParam("domainId", NULL_PARAM);
         filter.addQueryParam("entityType", entityType);

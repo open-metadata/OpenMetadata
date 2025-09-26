@@ -691,11 +691,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
 
     assertNotNull(upstreamZeroResult);
     // Debug output
-    // For depth=0, expect starting node + immediate upstreams
-    assertEquals(2, upstreamZeroResult.getNodes().size());
-    assertTrue(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    // For depth=1, expect starting node + nothing else
+    assertEquals(1, upstreamZeroResult.getNodes().size());
+    assertFalse(upstreamZeroResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
     assertTrue(upstreamZeroResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
-    assertEquals(1, upstreamZeroResult.getUpstreamEdges().size());
+    assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
     assertTrue(upstreamZeroResult.getDownstreamEdges().isEmpty());
 
     // Test DOWNSTREAM direction for tableB (should find B -> C)
@@ -711,11 +711,11 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     SearchLineageResult downstreamResult =
         TestUtils.get(downstreamTarget, SearchLineageResult.class, ADMIN_AUTH_HEADERS);
 
-    // Assertions for downstream: should find tableB -> tableC, upstream=0 will still return you
-    // tableA upstream connection
+    // Assertions for downstream: should find tableB -> tableC, upstream=0 will should not return
+    // anything
     assertNotNull(downstreamResult);
-    assertEquals(3, downstreamResult.getNodes().size());
-    assertTrue(downstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
+    assertEquals(2, downstreamResult.getNodes().size());
+    assertFalse(downstreamResult.getNodes().containsKey(tableA.getFullyQualifiedName()));
     assertTrue(downstreamResult.getNodes().containsKey(tableB.getFullyQualifiedName()));
     assertTrue(downstreamResult.getNodes().containsKey(tableC.getFullyQualifiedName()));
 
@@ -726,10 +726,7 @@ public class LineageResourceTest extends OpenMetadataApplicationTest {
     assertEquals(tableC.getId(), downstreamEdge.getToEntity().getId());
 
     // 1 upstream is there, for upstreamDepth = 0
-    assertEquals(1, downstreamResult.getUpstreamEdges().size());
-    upstreamEdge = downstreamResult.getUpstreamEdges().values().iterator().next();
-    assertEquals(tableA.getId(), upstreamEdge.getFromEntity().getId());
-    assertEquals(tableB.getId(), upstreamEdge.getToEntity().getId());
+    assertEquals(0, downstreamResult.getUpstreamEdges().size());
 
     // Clean up
     deleteEdge(tableA, tableB);
