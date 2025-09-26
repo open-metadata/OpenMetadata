@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Typography } from 'antd';
+import { Typography } from 'antd';
 import { first, last } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -230,8 +230,8 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
   }
 
   return (
-    <Row className="sso-doc-panel" data-testid="sso-requirements">
-      <Col span={24}>
+    <div className="sso-doc-panel" data-testid="sso-requirements">
+      <div className="sso-doc-content-wrapper">
         <div className="sso-doc-header">
           {getProviderIcon(serviceName) && (
             <div className="sso-provider-icon">
@@ -255,8 +255,8 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
           enableSeeMoreVariant={false}
           markdown={markdownContent}
         />
-      </Col>
-    </Row>
+      </div>
+    </div>
   );
 };
 

@@ -14,11 +14,22 @@
 @import (reference) '../../../styles/variables.less';
 
 .sso-doc-panel {
+  height: 100%;
+  padding-top: @size-lg;
+  display: flex;
+  flex-direction: column;
+
+  .sso-doc-content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
   .sso-doc-header {
     display: flex;
     align-items: center;
     gap: @padding-xs;
-    padding: @size-lg;
+    padding: 0 @size-lg @size-lg @size-lg;
 
     .sso-provider-icon {
       display: flex;

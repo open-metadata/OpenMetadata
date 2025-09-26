@@ -1544,6 +1544,7 @@ const SSOConfigurationFormRJSF = ({
         firstPanel={{
           children: (
             <>
+              <div className="sso-form-sticky-header" />
               {wrappedFormContent}
               {isEditMode && (
                 <div className="form-actions-bottom">

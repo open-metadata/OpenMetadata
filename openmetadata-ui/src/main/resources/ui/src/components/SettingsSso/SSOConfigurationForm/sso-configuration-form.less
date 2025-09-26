@@ -14,7 +14,7 @@
 
 .sso-configuration-form-card {
   border: none;
-  padding: @padding-lg @padding-mlg;
+  padding: 0 @padding-mlg @padding-lg @padding-mlg;
   box-shadow: none;
   .ant-card-body {
     padding: 0;
@@ -156,6 +156,7 @@
 .sso-settings-page .content-resizable-panel-container {
   .ant-card-body {
     padding-bottom: 0;
+    padding-top: 0;
   }
 
   .form-actions-bottom {
@@ -838,4 +839,12 @@
       background-color: @grey-500;
     }
   }
+}
+.sso-form-sticky-header {
+  height: @size-lg;
+  background-color: @white;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 9;
 }
