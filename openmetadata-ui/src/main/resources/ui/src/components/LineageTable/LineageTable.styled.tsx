@@ -24,16 +24,22 @@ export const StyledMenu = styled((props: MenuProps) => <Menu {...props} />)(
   ({ theme }) => ({
     '& .MuiPaper-root': {
       width: 'auto',
+      /* Shadows/shadow-xs */
+      boxShadow: theme.shadows[1],
       '& .MuiMenu-list': {
         padding: '0',
+        borderRadius: '8px',
+        border: '1px solid #EAECF5',
       },
       '& .MuiMenuItem-root': {
         margin: '0',
         padding: '10px 16px',
         borderRadius: '0px',
+
         '& svg': {
-          height: 20,
-          marginRight: theme.spacing(1.5),
+          height: 16,
+          width: 16,
+          marginRight: theme.spacing(3),
         },
         '&:active': {
           backgroundColor: theme.palette.allShades.blue[25],
@@ -92,7 +98,7 @@ export const StyledIconButton = styled((props: IconButtonProps) => (
   '& svg': {
     height: 20,
     width: 20,
-    color: theme.palette.allShades.gray[500],
+    color: theme.palette.allShades.gray[600],
   },
   boxShadow: 'none',
   borderColor: theme.palette.allShades.gray[300],
