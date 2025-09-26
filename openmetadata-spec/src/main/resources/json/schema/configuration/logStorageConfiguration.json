@@ -12,6 +12,11 @@
       "enum": ["default", "s3"],
       "default": "default"
     },
+    "enabled": {
+      "description": "Enable it for pipelines deployed in the server",
+      "type": "boolean",
+      "default": false
+    },
     "bucketName": {
       "description": "S3 bucket name for storing logs (required for S3 type)",
       "type": "string"

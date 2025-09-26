@@ -397,7 +397,8 @@ public class S3LogStorage implements LogStorageInterface {
         List<String> lines = new ArrayList<>();
         String line;
         int lineNumber = 0;
-        int startLine = afterCursor != null ? Integer.parseInt(afterCursor) : 0;
+        int startLine =
+            afterCursor != null && !afterCursor.isEmpty() ? Integer.parseInt(afterCursor) : 0;
 
         while (lineNumber < startLine && (line = reader.readLine()) != null) {
           lineNumber++;
