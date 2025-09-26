@@ -397,6 +397,13 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
 
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual) {
+    if (JsonUtils.isValidJson(expected) && JsonUtils.isValidJson(actual)) {
+      assertEquals(
+          JsonUtils.readJson((String) expected),
+          JsonUtils.readJson((String) actual),
+          "Field " + fieldName + " does not match when compared as JSON");
+      return;
+    }
     assertCommonFieldChange(fieldName, expected, actual);
   }
 
