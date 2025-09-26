@@ -20,7 +20,7 @@ import {
   useState,
 } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as RightArrowIcon } from '../../../assets/svg/ic-right-arrow.svg';
+import { ReactComponent as RightArrowIcon } from '../../../assets/svg/right-arrow.svg';
 import { BREADCRUMB_SEPARATOR } from '../../../constants/constants';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import './title-breadcrumb.less';
