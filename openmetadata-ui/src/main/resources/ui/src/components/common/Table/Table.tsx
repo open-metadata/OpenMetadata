@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
 import {
   Button,
   Col,
@@ -34,7 +33,7 @@ import {
 import { useAntdColumnResize } from 'react-antd-column-resize';
 import { Column } from 'react-antd-column-resize/dist/useAntdColumnResize/types';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column-customize.svg';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
@@ -299,10 +298,11 @@ const Table = <T extends Record<string, unknown>>(
                   <Button
                     className="remove-button-background-hover"
                     data-testid="column-dropdown"
-                    icon={<Icon component={ColumnIcon} />}
+                    icon={<ColumnIcon />}
                     size="small"
+                    title={t('label.show-or-hide-column-plural')}
                     type="text">
-                    {t('label.column-plural')}
+                    {t('label.customize')}
                   </Button>
                 </Dropdown>
               )}

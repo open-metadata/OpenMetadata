@@ -997,7 +997,7 @@ test.describe('Domains Rbac', () => {
         );
 
         const assetData = userPage.waitForResponse(
-          `/api/v1/${asset.endpoint}/name/${fqn}*`
+          `/api/v1/permissions/${ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]}/name/${fqn}*`
         );
         await userPage.goto(
           `/${ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]}/${fqn}`
@@ -1007,7 +1007,7 @@ test.describe('Domains Rbac', () => {
         await expect(
           userPage.getByTestId('permission-error-placeholder')
         ).toHaveText(
-          "You don't have necessary permissions. Please check with the admin to get the  permission."
+          /You don't have necessary permissions\. Please check with the admin to get the .* permission\./
         );
       }
 
