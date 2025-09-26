@@ -33,13 +33,14 @@ import {
   NAME_MAX_LENGTH_VALIDATION_ERROR,
   NAME_VALIDATION_ERROR,
   redirectToHomePage,
+  toastNotification,
   uuid,
 } from './common';
 import { addOwner, waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
-  await page.getByTestId('add-domain').click();
+  await page.getByTestId('add-entity-button').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
@@ -65,7 +66,7 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
 };
 
 export const updateDomain = async (page: Page, domain: Domain['data']) => {
-  await page.getByTestId('add-domain').click();
+  await page.getByTestId('add-entity-button').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
   const searchDomain = page.waitForResponse(
@@ -84,7 +85,7 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
 };
 
 export const removeDomain = async (page: Page) => {
-  await page.getByTestId('add-domain').click();
+  await page.getByTestId('add-entity-button').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('remove-owner').locator('path')).toBeVisible();
@@ -117,27 +118,24 @@ export const validateDomainForm = async (page: Page) => {
   await expect(page.locator('#name_help')).toHaveText(NAME_VALIDATION_ERROR);
 };
 
-export const selectDomain = async (
-  page: Page,
-  domain: Domain['data'],
-  bWaitForResponse = true
-) => {
-  const menuItem = page.getByRole('menuitem', { name: domain.displayName });
-  const isSelected = await menuItem.evaluate((element) => {
-    return element.classList.contains('ant-menu-item-selected');
+export const selectDomain = async (page: Page, domain: Domain['data']) => {
+  const searchBox = page
+    .getByTestId('page-layout-v1')
+    .getByRole('textbox', { name: 'Search' });
+
+  const domainRes = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=domain_search_index*'
+  );
+
+  await searchBox.fill(domain.name);
+
+  await domainRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
   });
 
-  if (!isSelected) {
-    if (bWaitForResponse) {
-      const domainRes = page.waitForResponse(
-        '/api/v1/domains/name/*?fields=children%2Cowners%2Cparent%2Cexperts%2Ctags%2Cfollowers%2Cextension'
-      );
-      await menuItem.click();
-      await domainRes;
-    } else {
-      await menuItem.click();
-    }
-  }
+  await page.getByRole('row', { name: domain.displayName }).click();
 
   await page.waitForLoadState('networkidle');
 
@@ -220,7 +218,7 @@ export const selectDataProduct = async (
 const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
   await checkDomainDisplayName(page, domain.displayName);
-  await page.getByTestId('assets').click();
+  await page.getByRole('tab', { name: /Assets/ }).click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -228,8 +226,8 @@ const fillCommonFormItems = async (
   page: Page,
   entity: Domain['data'] | DataProduct['data'] | SubDomain['data']
 ) => {
-  await page.locator('[data-testid="name"]').fill(entity.name);
-  await page.locator('[data-testid="display-name"]').fill(entity.displayName);
+  await page.locator('#root\\/name').fill(entity.name);
+  await page.locator('#root\\/displayName').fill(entity.displayName);
   await page.locator(descriptionBox).fill(entity.description);
   if (!isEmpty(entity.owners) && !isUndefined(entity.owners)) {
     await addOwner({
@@ -249,16 +247,11 @@ export const fillDomainForm = async (
   isDomain = true
 ) => {
   await fillCommonFormItems(page, entity);
-  if (isDomain) {
-    await page.click('[data-testid="domainType"]');
-  } else {
-    await page
-      .getByLabel('Add Sub Domain')
-      .getByTestId('domainType')
-      .locator('div')
-      .click();
-  }
-  await page.getByTitle(entity.domainType).locator('div').click();
+
+  const domainTypeCombo = page.getByRole('combobox', { name: 'Domain Type' });
+  await domainTypeCombo.click();
+
+  await page.getByRole('option', { name: entity.domainType }).click();
 };
 
 export const checkDomainDisplayName = async (
@@ -319,24 +312,29 @@ export const createDomain = async (
   domain: Domain['data'],
   validate = false
 ) => {
-  await page.click('[data-testid="add-domain"]');
-  await page.waitForSelector('[data-testid="form-heading"]');
+  await page.click('[data-testid="add-entity-button"]');
 
-  await expect(page.locator('[data-testid="form-heading"]')).toHaveText(
-    'Add Domain'
-  );
+  await page.waitForSelector('h6:has-text("Add Domain")', { timeout: 5000 });
 
-  await page.click('[data-testid="save-domain"]');
+  await expect(page.locator('h6:has-text("Add Domain")')).toBeVisible();
+
+  const saveButton = page.getByRole('button', { name: 'Save' });
 
   if (validate) {
+    await saveButton.click();
     await validateDomainForm(page);
   }
 
   await fillDomainForm(page, domain);
 
   const domainRes = page.waitForResponse('/api/v1/domains');
-  await page.click('[data-testid="save-domain"]');
+  await saveButton.click();
   await domainRes;
+
+  await toastNotification(page, /Domain created successfully/);
+
+  await selectDomain(page, domain);
+
   await checkDomainDisplayName(page, domain.displayName);
   await checkAssetsCount(page, 0);
   await checkDataProductCount(page, 0);

@@ -101,7 +101,7 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     key: 'domains-section',
     title: 'label.domain-plural',
     icon: DomainsIcon,
-    dataTestId: `app-bar-item-${SidebarItem.DOMAINS_SECTION}`,
+    dataTestId: SidebarItem.DOMAINS_SECTION,
     children: [
       {
         key: ROUTES.DOMAIN,

@@ -22,6 +22,7 @@ import {
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../Loader/Loader';
 import { TableViewConfig } from '../shared/types';
 import { useTableRow } from './useTableRow';
 
@@ -73,7 +74,15 @@ export const useDataTable = <T extends { id: string }>(
           </TableRow>
         </TableHead>
         <TableBody>
-          {isEmpty(listing.entities) && hasActiveFiltersOrSearch ? (
+          {listing.loading ? (
+            <TableRow>
+              <TableCell
+                align="center"
+                colSpan={listing.columns.length + (enableSelection ? 1 : 0)}>
+                <Loader />
+              </TableCell>
+            </TableRow>
+          ) : isEmpty(listing.entities) && hasActiveFiltersOrSearch ? (
             <TableRow>
               <TableCell
                 align="center"
