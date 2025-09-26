@@ -55,6 +55,19 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
             <Tooltip
               arrow
               placement={placement || 'top'}
+              slotProps={{
+                tooltip: {
+                  sx: {
+                    bgcolor: '#fff',
+                    color: '#000',
+                  },
+                },
+                arrow: {
+                  sx: {
+                    color: '#fff',
+                  },
+                },
+              }}
               title={helperText || ''}>
               <Box
                 component="span"
