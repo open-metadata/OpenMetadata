@@ -575,4 +575,318 @@ describe('DestinationSelectItem component', () => {
       useWatchMock.mockRestore();
     });
   });
+
+  describe('Notify Downstream functionality', () => {
+    it('should show notify downstream switch when a destination is selected', async () => {
+      const mockFormInstance: Partial<FormInstance> = {
+        setFieldValue: jest.fn(),
+        getFieldValue: jest
+          .fn()
+          .mockImplementation((val: string | string[]) => {
+            if (isString(val)) {
+              return [
+                {
+                  category: SubscriptionCategory.External,
+                  type: SubscriptionType.Email,
+                  destinationType: SubscriptionType.Email,
+                },
+              ];
+            }
+
+            return '';
+          }),
+      };
+
+      jest
+        .spyOn(Form, 'useFormInstance')
+        .mockImplementation(() => mockFormInstance as FormInstance);
+      const useWatchMock = jest
+        .spyOn(Form, 'useWatch')
+        .mockImplementation((name: string | string[]) => {
+          if (
+            Array.isArray(name) &&
+            name[0] === 'destinations' &&
+            Number(name[1]) === 0
+          ) {
+            return {
+              category: SubscriptionCategory.External,
+              type: SubscriptionType.Email,
+              destinationType: SubscriptionType.Email,
+            };
+          }
+
+          return undefined;
+        });
+
+      await act(async () => {
+        render(
+          <Form
+            initialValues={{
+              destinations: [
+                {
+                  category: SubscriptionCategory.External,
+                  type: SubscriptionType.Email,
+                  destinationType: SubscriptionType.Email,
+                },
+              ],
+            }}>
+            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
+          </Form>
+        );
+      });
+
+      await waitFor(() => {
+        const notifyDownstreamLabel = screen.getByText(
+          'label.notify-downstream'
+        );
+
+        expect(notifyDownstreamLabel).toBeInTheDocument();
+      });
+
+      useWatchMock.mockRestore();
+    });
+
+    it('should show downstream depth input when notify downstream is enabled', async () => {
+      const mockFormInstance: Partial<FormInstance> = {
+        setFieldValue: jest.fn(),
+        getFieldValue: jest
+          .fn()
+          .mockImplementation((val: string | string[]) => {
+            if (isString(val)) {
+              return [
+                {
+                  category: 'External',
+                  type: SubscriptionType.Email,
+                  notifyDownstream: true,
+                },
+              ];
+            }
+            if (
+              Array.isArray(val) &&
+              val.length === 2 &&
+              val[0] === 'destinations' &&
+              Number(val[1]) === 0
+            ) {
+              return {
+                category: 'External',
+                type: SubscriptionType.Email,
+                notifyDownstream: true,
+              };
+            }
+
+            return '';
+          }),
+      };
+
+      jest
+        .spyOn(Form, 'useFormInstance')
+        .mockImplementation(() => mockFormInstance as FormInstance);
+      const useWatchMock = jest
+        .spyOn(Form, 'useWatch')
+        .mockImplementation((name: string | string[]) => {
+          if (
+            Array.isArray(name) &&
+            name[0] === 'destinations' &&
+            Number(name[1]) === 0
+          ) {
+            return {
+              category: 'External',
+              type: SubscriptionType.Email,
+              notifyDownstream: true,
+            };
+          }
+
+          return undefined;
+        });
+
+      await act(async () => {
+        render(
+          <Form
+            initialValues={{
+              destinations: [
+                {
+                  category: 'External',
+                  type: SubscriptionType.Email,
+                  notifyDownstream: true,
+                },
+              ],
+            }}>
+            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
+          </Form>
+        );
+      });
+
+      await waitFor(() => {
+        const downstreamDepthLabel = screen.getByText('label.downstream-depth');
+
+        expect(downstreamDepthLabel).toBeInTheDocument();
+
+        const downstreamDepthInput = screen.getByTestId(
+          'destination-downstream-depth-0'
+        );
+
+        expect(downstreamDepthInput).toBeInTheDocument();
+        expect(downstreamDepthInput).toHaveAttribute('type', 'number');
+        expect(downstreamDepthInput).toHaveAttribute('value', '1');
+      });
+
+      useWatchMock.mockRestore();
+    });
+
+    it('should not show downstream depth input when notify downstream is disabled', async () => {
+      const mockFormInstance: Partial<FormInstance> = {
+        setFieldValue: jest.fn(),
+        getFieldValue: jest
+          .fn()
+          .mockImplementation((val: string | string[]) => {
+            if (isString(val)) {
+              return [
+                {
+                  category: 'External',
+                  type: SubscriptionType.Email,
+                  notifyDownstream: false,
+                },
+              ];
+            }
+            if (
+              Array.isArray(val) &&
+              val.length === 2 &&
+              val[0] === 'destinations' &&
+              Number(val[1]) === 0
+            ) {
+              return {
+                category: 'External',
+                type: SubscriptionType.Email,
+                notifyDownstream: false,
+              };
+            }
+
+            return '';
+          }),
+      };
+
+      jest
+        .spyOn(Form, 'useFormInstance')
+        .mockImplementation(() => mockFormInstance as FormInstance);
+      const useWatchMock = jest
+        .spyOn(Form, 'useWatch')
+        .mockImplementation((name: string | string[]) => {
+          if (
+            Array.isArray(name) &&
+            name[0] === 'destinations' &&
+            Number(name[1]) === 0
+          ) {
+            return {
+              category: 'External',
+              type: SubscriptionType.Email,
+              notifyDownstream: false,
+            };
+          }
+
+          return undefined;
+        });
+
+      await act(async () => {
+        render(
+          <Form
+            initialValues={{
+              destinations: [
+                {
+                  category: 'External',
+                  type: SubscriptionType.Email,
+                  notifyDownstream: false,
+                },
+              ],
+            }}>
+            <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
+          </Form>
+        );
+      });
+
+      await waitFor(() => {
+        const downstreamDepthLabel = screen.queryByText(
+          'label.downstream-depth'
+        );
+
+        expect(downstreamDepthLabel).not.toBeInTheDocument();
+
+        const downstreamDepthInput = screen.queryByTestId(
+          'destination-downstream-depth-0'
+        );
+
+        expect(downstreamDepthInput).not.toBeInTheDocument();
+      });
+
+      useWatchMock.mockRestore();
+    });
+
+    it('should clear downstream depth when notify downstream is toggled off', async () => {
+      const setFieldValueSpy = jest.fn();
+      const mockFormInstance: Partial<FormInstance> = {
+        setFieldValue: setFieldValueSpy,
+        getFieldValue: jest
+          .fn()
+          .mockImplementation((val: string | string[]) => {
+            if (isString(val)) {
+              return [
+                {
+                  category: 'External',
+                  type: SubscriptionType.Email,
+                  notifyDownstream: true,
+                },
+              ];
+            }
+
+            return '';
+          }),
+      };
+
+      jest
+        .spyOn(Form, 'useFormInstance')
+        .mockImplementation(() => mockFormInstance as FormInstance);
+      const useWatchMock = jest
+        .spyOn(Form, 'useWatch')
+        .mockImplementation((name: string | string[]) => {
+          if (
+            Array.isArray(name) &&
+            name[0] === 'destinations' &&
+            Number(name[1]) === 0
+          ) {
+            return {
+              category: 'External',
+              type: SubscriptionType.Email,
+              notifyDownstream: true,
+            };
+          }
+
+          return undefined;
+        });
+
+      render(
+        <Form
+          initialValues={{
+            destinations: [
+              {
+                category: 'External',
+                type: SubscriptionType.Email,
+                notifyDownstream: true,
+                downstreamDepth: 3,
+              },
+            ],
+          }}>
+          <DestinationSelectItem {...MOCK_DESTINATION_SELECT_ITEM_PROPS} />
+        </Form>
+      );
+
+      const notifySwitch = screen.getByRole('switch');
+      fireEvent.click(notifySwitch);
+
+      expect(setFieldValueSpy).toHaveBeenCalledWith(
+        ['destinations', 0, 'downstreamDepth'],
+        undefined
+      );
+
+      useWatchMock.mockRestore();
+    });
+  });
 });

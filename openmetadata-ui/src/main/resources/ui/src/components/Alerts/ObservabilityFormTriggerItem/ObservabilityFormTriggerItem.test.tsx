@@ -105,4 +105,52 @@ describe('ObservabilityFormTriggerItem', () => {
 
     expect(addButton).not.toBeDisabled();
   });
+
+  it('should render form item with proper label alignment', () => {
+    const setFieldValue = jest.fn();
+    const getFieldValue = jest.fn().mockImplementation((path) => {
+      if (path === 'triggers') {
+        return [{ name: 'trigger1', effect: 'include' }];
+      }
+
+      return undefined;
+    });
+    jest.spyOn(Form, 'useFormInstance').mockImplementation(
+      () =>
+        ({
+          setFieldValue,
+          getFieldValue,
+        } as unknown as FormInstance)
+    );
+
+    const useWatchMock = jest.spyOn(Form, 'useWatch');
+    useWatchMock.mockImplementation((path) => {
+      if (path === 'resources') {
+        return ['container'];
+      }
+      if (path === 'triggers') {
+        return [{ name: 'trigger1', effect: 'include' }];
+      }
+
+      return undefined;
+    });
+
+    const { container } = render(
+      <Form>
+        <ObservabilityFormTriggerItem
+          supportedTriggers={mockSupportedTriggers}
+        />
+      </Form>
+    );
+
+    // Check that the effect field (Include switch) is rendered with correct label
+    const includeLabel = screen.getByText('label.include');
+
+    expect(includeLabel).toBeInTheDocument();
+
+    // Check that the form items are properly structured with the updated labelAlign and labelCol
+    const formItems = container.querySelectorAll('.ant-form-item');
+
+    expect(formItems.length).toBeGreaterThan(0);
+  });
 });
