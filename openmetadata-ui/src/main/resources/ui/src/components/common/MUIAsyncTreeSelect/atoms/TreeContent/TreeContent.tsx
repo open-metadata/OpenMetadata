@@ -79,7 +79,7 @@ const TreeContent: FC<TreeContentProps> = ({
   if (!hasData) {
     return (
       <Typography sx={{ p: 2, color: 'text.secondary' }} variant="body2">
-        {noDataMessage || t('label.no-data-available')}
+        {noDataMessage || t('message.no-data-available')}
       </Typography>
     );
   }
