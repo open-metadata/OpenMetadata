@@ -10,7 +10,6 @@ import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
 import es.co.elastic.clients.transport.endpoints.BooleanResponse;
-import java.io.IOException;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -38,6 +37,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
   @Override
   public boolean indexExists(String indexName) {
     if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot check index exists.");
       return false;
     }
     try {
@@ -46,7 +46,7 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       BooleanResponse response = indicesClient.exists(request);
       LOG.info("index {} exist: {}", indexName, response.value());
       return response.value();
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Failed to check if index {} exists", indexName, e);
       return false;
     }
@@ -54,37 +54,39 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
-    if (isClientAvailable) {
-      try {
-        String indexName = indexMapping.getIndexName(clusterAlias);
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot create index.");
+      return;
+    }
+    try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
 
-        CreateIndexRequest request =
-            CreateIndexRequest.of(
-                builder -> {
-                  builder.index(indexName);
-                  if (indexMappingContent != null) {
-                    builder.withJson(new StringReader(indexMappingContent));
-                  }
-                  return builder;
-                });
+      CreateIndexRequest request =
+          CreateIndexRequest.of(
+              builder -> {
+                builder.index(indexName);
+                if (indexMappingContent != null) {
+                  builder.withJson(new StringReader(indexMappingContent));
+                }
+                return builder;
+              });
 
-        client.indices().create(request);
+      client.indices().create(request);
 
-        LOG.info("Successfully created index: {}", indexName);
-        createAliases(indexMapping);
+      LOG.info("Successfully created index: {}", indexName);
+      createAliases(indexMapping);
 
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to create index for {} due to", indexMapping.getIndexName(clusterAlias), e);
-      }
-    } else {
-      LOG.error(
-          "Failed to create Elasticsearch index: client is not properly configured. Check your OpenMetadata configuration.");
+    } catch (Exception e) {
+      LOG.error("Failed to create index for {} due to", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update index.");
+      return;
+    }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
@@ -111,6 +113,10 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot delete index.");
+      return;
+    }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
@@ -138,6 +144,10 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot add index alias.");
+      return;
+    }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 

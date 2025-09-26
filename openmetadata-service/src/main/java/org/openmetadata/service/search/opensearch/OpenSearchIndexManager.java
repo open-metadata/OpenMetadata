@@ -3,7 +3,6 @@ package org.openmetadata.service.search.opensearch;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonParser;
-import java.io.IOException;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -44,12 +43,14 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   @Override
   public boolean indexExists(String indexName) {
     if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot check index exists.");
       return false;
     }
     try {
       BooleanResponse response = client.indices().exists(ExistsRequest.of(e -> e.index(indexName)));
+      LOG.info("index {} exist: {}", indexName, response.value());
       return response.value();
-    } catch (IOException e) {
+    } catch (Exception e) {
       LOG.error("Failed to check if index {} exists", indexName, e);
       return false;
     }
@@ -57,69 +58,73 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
-    if (isClientAvailable) {
-      try {
-        String indexName = indexMapping.getIndexName(clusterAlias);
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot create index.");
+      return;
+    }
 
-        if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
-          // Parse the mapping content
-          JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
-          JsonNode mappingsNode = rootNode.get("mappings");
-          JsonNode settingsNode = rootNode.get("settings");
+    try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
 
-          // Build the request with mappings and settings
-          CreateIndexRequest createIndexRequest =
-              CreateIndexRequest.of(
-                  builder -> {
-                    builder.index(indexName);
+      if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
+        // Parse the mapping content
+        JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+        JsonNode mappingsNode = rootNode.get("mappings");
+        JsonNode settingsNode = rootNode.get("settings");
 
-                    // Add mappings if present
-                    if (mappingsNode != null && !mappingsNode.isNull()) {
-                      try {
-                        // Parse the mappings JSON into TypeMapping
-                        TypeMapping parseTypeMapping = parseTypeMapping(mappingsNode);
-                        builder.mappings(parseTypeMapping);
-                      } catch (Exception e) {
-                        LOG.warn("Failed to parse mappings, creating index without mappings", e);
-                      }
+        // Build the request with mappings and settings
+        CreateIndexRequest createIndexRequest =
+            CreateIndexRequest.of(
+                builder -> {
+                  builder.index(indexName);
+
+                  // Add mappings if present
+                  if (mappingsNode != null && !mappingsNode.isNull()) {
+                    try {
+                      // Parse the mappings JSON into TypeMapping
+                      TypeMapping parseTypeMapping = parseTypeMapping(mappingsNode);
+                      builder.mappings(parseTypeMapping);
+                    } catch (Exception e) {
+                      LOG.warn("Failed to parse mappings, creating index without mappings", e);
                     }
+                  }
 
-                    // Add settings if present
-                    if (settingsNode != null && !settingsNode.isNull()) {
-                      try {
-                        IndexSettings settings = parseIndexSettings(settingsNode);
-                        builder.settings(settings);
-                      } catch (Exception e) {
-                        LOG.warn("Failed to parse settings, creating index without settings", e);
-                      }
+                  // Add settings if present
+                  if (settingsNode != null && !settingsNode.isNull()) {
+                    try {
+                      IndexSettings settings = parseIndexSettings(settingsNode);
+                      builder.settings(settings);
+                    } catch (Exception e) {
+                      LOG.warn("Failed to parse settings, creating index without settings", e);
                     }
+                  }
 
-                    return builder;
-                  });
+                  return builder;
+                });
 
-          CreateIndexResponse createIndexResponse = client.indices().create(createIndexRequest);
-          LOG.info("{} Created {}", indexName, createIndexResponse.acknowledged());
-        } else {
-          // Create index without mappings
-          CreateIndexRequest request = CreateIndexRequest.of(builder -> builder.index(indexName));
-          CreateIndexResponse createIndexResponse = client.indices().create(request);
-          LOG.info("{} Created without mappings {}", indexName, createIndexResponse.acknowledged());
-        }
-
-        // creating alias for indexes
-        createAliases(indexMapping);
-      } catch (Exception e) {
-        LOG.error(
-            "Failed to create OpenSearch index [{}]", indexMapping.getIndexName(clusterAlias), e);
+        CreateIndexResponse createIndexResponse = client.indices().create(createIndexRequest);
+        LOG.info("{} Created {}", indexName, createIndexResponse.acknowledged());
+      } else {
+        // Create index without mappings
+        CreateIndexRequest request = CreateIndexRequest.of(builder -> builder.index(indexName));
+        CreateIndexResponse createIndexResponse = client.indices().create(request);
+        LOG.info("{} Created without mappings {}", indexName, createIndexResponse.acknowledged());
       }
-    } else {
+
+      // creating alias for indexes
+      createAliases(indexMapping);
+    } catch (Exception e) {
       LOG.error(
-          "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
+          "Failed to create OpenSearch index [{}]", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update index.");
+      return;
+    }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
@@ -154,6 +159,10 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot delete index.");
+      return;
+    }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
       os.org.opensearch.client.opensearch.indices.DeleteIndexRequest request =
@@ -182,6 +191,10 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot add index alias.");
+      return;
+    }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
 
