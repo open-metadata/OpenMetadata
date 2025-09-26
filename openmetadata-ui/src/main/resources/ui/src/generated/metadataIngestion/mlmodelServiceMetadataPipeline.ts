@@ -15,6 +15,10 @@
  */
 export interface MlmodelServiceMetadataPipeline {
     /**
+     * Details required to generate Lineage
+     */
+    lineageInformation?: LineageInformation;
+    /**
      * Optional configuration to soft delete MlModels in OpenMetadata if the source MlModels are
      * deleted. Also, if the MlModel is deleted, all the associated entities like lineage, etc.,
      * with that MlModels will be deleted
@@ -24,6 +28,10 @@ export interface MlmodelServiceMetadataPipeline {
      * Regex to only fetch MlModels with names matching the pattern.
      */
     mlModelFilterPattern?: FilterPattern;
+    /**
+     * Set the 'Override Lineage' toggle to control whether to override the existing lineage.
+     */
+    overrideLineage?: boolean;
     /**
      * Set the 'Override Metadata' toggle to control whether to override the existing metadata
      * in the OpenMetadata server with the metadata fetched from the source. If the toggle is
@@ -37,6 +45,19 @@ export interface MlmodelServiceMetadataPipeline {
      * Pipeline type
      */
     type?: MlModelMetadataConfigType;
+}
+
+/**
+ * Details required to generate Lineage
+ */
+export interface LineageInformation {
+    /**
+     * List of service path prefixes for lineage matching. Supported formats: DBServiceName,
+     * DBServiceName.DatabaseName, DBServiceName.DatabaseName.SchemaName, or
+     * DBServiceName.DatabaseName.SchemaName.TableName
+     */
+    dbServicePrefixes?: string[];
+    [property: string]: any;
 }
 
 /**
