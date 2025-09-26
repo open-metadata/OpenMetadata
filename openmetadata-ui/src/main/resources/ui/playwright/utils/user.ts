@@ -317,7 +317,7 @@ export const softDeleteUser = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.fill('[data-testid="searchbar"]', username);
   await searchResponse;
