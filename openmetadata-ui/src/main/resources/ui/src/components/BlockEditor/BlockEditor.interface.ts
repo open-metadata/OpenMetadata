@@ -45,6 +45,7 @@ export interface BlockEditorProps {
   autoFocus?: boolean;
   placeholder?: string;
   showInlineAlert?: boolean;
+  isDomainRevampEnabled?: boolean;
 }
 
 export interface BlockEditorAttachmentProps {
@@ -64,6 +65,7 @@ export interface EditorSlotsProps {
 export interface BarMenuProps {
   editor: Editor;
   onLinkToggle?: () => void;
+  isDomainRevampEnabled?: boolean;
 }
 
 export enum FileType {

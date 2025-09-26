@@ -27,7 +27,11 @@ import StrikeIcon from '../../../assets/svg/ic-format-strike.svg';
 import { BarMenuProps, FileType } from '../BlockEditor.interface';
 import './bar-menu.less';
 
-const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
+const BarMenu: FC<BarMenuProps> = ({
+  editor,
+  onLinkToggle,
+  isDomainRevampEnabled,
+}) => {
   const formats = [
     [
       {
@@ -142,7 +146,12 @@ const BarMenu: FC<BarMenuProps> = ({ editor, onLinkToggle }) => {
   ];
 
   return (
-    <div className="bar-menu-wrapper">
+    <div
+      className={
+        isDomainRevampEnabled
+          ? 'bar-menu-wrapper bar-menu-wrapper--revamp'
+          : 'bar-menu-wrapper'
+      }>
       {formats.map((format, index) => {
         return (
           <Fragment key={`format-group-${uniqueId()}`}>

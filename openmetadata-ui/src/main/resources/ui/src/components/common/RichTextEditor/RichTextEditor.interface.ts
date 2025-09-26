@@ -37,6 +37,7 @@ export interface RichTextEditorProp extends HTMLAttributes<HTMLDivElement> {
   readonly?: boolean;
   onTextChange?: (value: string) => void;
   placeHolder?: string;
+  isDomainRevampEnabled?: boolean;
 }
 
 export interface EditorContentRef {
