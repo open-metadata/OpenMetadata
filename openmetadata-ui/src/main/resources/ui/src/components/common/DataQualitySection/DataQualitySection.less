@@ -29,6 +29,17 @@
   font-size: 10px;
   font-weight: 500;
 }
+.divider-color {
+  &.success {
+    border-color: @green-500;
+  }
+  &.aborted {
+    border-color: @alert-warning;
+  }
+  &.failed {
+    border-color: @red-15;
+  }
+}
 .data-quality-content {
   .data-quality-header {
     display: flex;

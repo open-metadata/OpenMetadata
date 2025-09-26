@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import '../../../../styles/variables.less';
 .test-title {
-  margin-top: 24px;
+  margin-top: 12px;
   margin-bottom: 10px;
   font-size: 13px;
   font-weight: 600;
@@ -22,9 +23,8 @@
   background: #fff;
 }
 .incident-test-title {
+  margin-bottom: 10px;
   font-size: 13px;
-  color: #364254;
-  margin-bottom: 8px;
   font-weight: 600;
 }
 .incident-status-row-2 {
@@ -40,8 +40,8 @@
   color: #21263c !important;
 }
 .test-case-count {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   flex-shrink: 0;
   background-color: #f2f5f9;
   border-radius: 9px;
@@ -104,14 +104,11 @@
     color: #3a8ce9;
   }
 }
-.dotted-row {
-  border-bottom: 1px dotted #cdd5e0;
-}
 
 .data-quality-tab-content {
   padding-left: 16px;
   height: 100vh;
-  padding-right: 16px;
+  // padding-right: 16px;
 }
 .data-quality-tab-container {
   border: 0px !important;
@@ -161,7 +158,7 @@
     }
   }
   .filter-button {
-    width: 100%;
+    // width: 100%;
     padding: 0 7px;
     border-radius: 16px;
     height: 28px;
@@ -271,7 +268,6 @@
         border: 1px solid #e3e8f0;
         background: #ffffff;
         color: #21263c;
-        font-weight: 500;
         transition: all 0.3s ease;
         font-size: 12px;
 
@@ -288,6 +284,8 @@
       }
 
       .incident-cards-section {
+        margin-right: -16px;
+        margin-left: -16px;
         .no-incidents {
           text-align: center;
           padding: 24px;
@@ -305,12 +303,8 @@
   }
 
   .test-case-card {
-    border-radius: 8px;
-    border: 1px solid #f0f0f0;
-    background: #ffffff;
-    transition: all 0.3s ease;
-    margin-bottom: 12px;
-    overflow: hidden;
+    padding-bottom: 16px;
+    border-bottom: 1px solid #eaecf5;
     .test-case-card-content {
       width: 100%;
       .test-case-header {
@@ -319,17 +313,14 @@
         align-items: flex-start;
         gap: 24px;
         padding-bottom: 12px;
-        border-bottom: 1px solid #f0f0f0;
-        background-color: #f9fafc;
-        padding-top: 12px;
         .test-case-title-section {
           flex: 1;
-          padding-left: 14px;
+          padding-left: 16px;
           .test-case-name {
-            font-size: 12px;
-            color: #262626;
+            font-size: 13px;
+            color: @grey-700;
             font-weight: 600;
-            line-height: 1.4;
+            line-height: 20px;
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
@@ -360,17 +351,15 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
-        padding-left: 14px;
-        padding-right: 14px;
-        padding-top: 14px;
+        padding-left: 16px;
+        padding-right: 16px;
         .test-case-detail-item {
           display: flex;
           align-items: center;
-          padding-bottom: 10px;
           gap: 4px;
           .detail-label {
             font-size: 12px;
-            color: #364254;
+            color: #181d27;
             min-width: 60px;
             font-weight: 500;
 
@@ -381,8 +370,8 @@
           }
 
           .detail-value {
-            font-size: 12px;
-            color: #20293a;
+            font-size: 13px;
+            color: #181d27;
             font-weight: 500;
           }
 

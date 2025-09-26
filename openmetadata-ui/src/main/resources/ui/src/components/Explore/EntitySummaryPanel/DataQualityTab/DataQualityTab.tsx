@@ -34,6 +34,7 @@ import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection';
 import Loader from '../../../common/Loader/Loader';
+import '../../../common/OverviewSection/OverviewSection.less';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
 import './DataQualityTab.less';
@@ -59,7 +60,7 @@ interface IncidentStatusCounts {
   total: number;
 }
 
-type FilterStatus = 'success' | 'failed' | 'aborted';
+type FilterStatus = 'all' | 'success' | 'failed' | 'aborted';
 type IncidentFilterStatus = 'new' | 'ack' | 'assigned' | 'resolved';
 
 interface TestCaseCardProps {
@@ -115,7 +116,10 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
   const severity = incident?.severity;
 
   return (
-    <Card className="test-case-card">
+    <Card
+      bordered={false}
+      className="test-case-card"
+      style={{ borderRadius: '0px' }}>
       <div className="test-case-card-content">
         {/* Header Section */}
         <div className="test-case-header">
@@ -145,7 +149,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
         {/* Details Section */}
         <div className="test-case-details">
           {!isIncidentMode && columnName && (
-            <div className="test-case-detail-item dotted-row">
+            <div className="test-case-detail-item">
               <Typography.Text className="detail-label">
                 {t('label.column')}
               </Typography.Text>
@@ -156,7 +160,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           )}
 
           {isIncidentMode && severity && (
-            <div className="test-case-detail-item dotted-row">
+            <div className="test-case-detail-item">
               <Typography.Text className="detail-label">
                 {t('label.severity')}
               </Typography.Text>
@@ -210,7 +214,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     ack: 0,
     total: 0,
   });
-  const [activeFilter, setActiveFilter] = useState<FilterStatus>('success');
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
   const [activeTab, setActiveTab] = useState<string>('data-quality');
 
   // Incident-related state
@@ -370,6 +374,9 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
 
   // Filter test cases based on active filter
   const filteredTestCases = testCases.filter((testCase) => {
+    if (activeFilter === 'all') {
+      return true;
+    }
     const status = testCase.testCaseResult?.testCaseStatus;
 
     return status?.toLowerCase() === activeFilter;
@@ -436,6 +443,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
       children: (
         <div className="data-quality-tab-content">
           <DataQualitySection
+            isDataQualityTab
             tests={[
               { type: 'success', count: statusCounts.success },
               { type: 'aborted', count: statusCounts.aborted },
@@ -449,8 +457,24 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
           <Typography.Text ellipsis className="test-title">
             {t('label.test-case-plural')}
           </Typography.Text>
-          <Row className="m-b-sm" gutter={[8, 8]}>
-            <Col span={8}>
+          <Row className="m-b-sm gap-1">
+            <Col>
+              <Button
+                className={`filter-button all ${
+                  activeFilter === 'all' ? 'active' : ''
+                }`}
+                size="small"
+                onClick={() => handleFilterChange('all')}>
+                {t('label.all')}
+                <span
+                  className={`test-case-count ${
+                    activeFilter === 'all' ? 'active' : ''
+                  }`}>
+                  {statusCounts.total}
+                </span>
+              </Button>
+            </Col>
+            <Col>
               <Button
                 className={`filter-button success ${
                   activeFilter === 'success' ? 'active' : ''
@@ -467,7 +491,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
               </Button>
             </Col>
 
-            <Col span={8}>
+            <Col>
               <Button
                 className={`filter-button aborted ${
                   activeFilter === 'aborted' ? 'active' : ''
@@ -483,7 +507,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
                 </span>
               </Button>
             </Col>
-            <Col span={8}>
+            <Col>
               <Button
                 className={`filter-button failed ${
                   activeFilter === 'failed' ? 'active' : ''
@@ -504,7 +528,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
           {/* Test Case Cards */}
           <div className="test-case-cards-section">
             {filteredTestCases.length > 0 ? (
-              <Row gutter={[0, 12]}>
+              <Row gutter={[0, 12]} style={{ marginLeft: '-16px' }}>
                 {filteredTestCases.map((testCase) => (
                   <Col key={testCase.id} span={24}>
                     <TestCaseCard testCase={testCase} />
@@ -531,71 +555,58 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
         <div className="incidents-tab-content">
           {/* Incidents Summary Section */}
           <div className="incidents-summary-section">
-            <div className="incidents-header">
-              <Typography.Title className="incidents-title" level={5}>
-                {t('label.incident-plural')}
-              </Typography.Title>
-              <div className="total-incidents-badge">
-                <Typography.Text className="total-incidents-badge-text">
-                  {incidentCounts.total}
-                </Typography.Text>
-              </div>
-            </div>
+            <Typography.Text className="incident-test-title d-inline-block">
+              {t('label.incident-plural')}
+            </Typography.Text>
 
-            <div className="incidents-cards">
-              <Card className="incident-summary-card">
-                <div className="incident-summary-content">
-                  <Row className="incident-status-row-1">
-                    <Col className="incident-status-column" span={8}>
-                      <div className="status-section">
-                        <Typography.Text className="incident-count">
-                          {incidentCounts.new.toString().padStart(2, '0')}
-                        </Typography.Text>
-                        <Typography.Text className="incident-status-label">
-                          {t('label.new')}
-                        </Typography.Text>
-                      </div>
-                    </Col>
-                    <Col className="incident-status-column" span={8}>
-                      <div className="status-section">
-                        <Typography.Text className="incident-count">
-                          {incidentCounts.assigned.toString().padStart(2, '0')}
-                        </Typography.Text>
-                        <Typography.Text className="incident-status-label">
-                          {t('label.ack')}
-                        </Typography.Text>
-                      </div>
-                    </Col>
-                    <Col className="incident-status-column" span={8}>
-                      <div className="status-section">
-                        <Typography.Text className="incident-count">
-                          {incidentCounts.resolved.toString().padStart(2, '0')}
-                        </Typography.Text>
-                        <Typography.Text className="incident-status-label">
-                          {t('label.assigned')}
-                        </Typography.Text>
-                      </div>
-                    </Col>
-                  </Row>
-                  <Row className="incident-status-row-2">
-                    <Col span={24}>
-                      <Typography.Text className="incident-status-label">
-                        {t('label.resolved-with-colon')}
-                      </Typography.Text>
-                      <Typography.Text className="resolved-incident-count m-l-sm">
-                        {incidentCounts.resolved.toString().padStart(2, '0')}
-                      </Typography.Text>
-                    </Col>
-                  </Row>
-                </div>
-              </Card>
+            <div className="overview-section gap-0">
+              <div className="overview-row  m-b-sm">
+                <span className="overview-label" data-testid="new-label">
+                  {t('label.new')}
+                </span>
+                <span
+                  className="overview-value text-grey-body"
+                  data-testid="new-value">
+                  {incidentCounts.new}
+                </span>
+              </div>
+              <div className="overview-row  m-b-sm">
+                <span className="overview-label" data-testid="ack-label">
+                  {t('label.acknowledged')}
+                </span>
+                <span
+                  className="overview-value text-grey-body"
+                  data-testid="ack-value">
+                  {incidentCounts.ack}
+                </span>
+              </div>
+              <div className="overview-row  m-b-sm">
+                <span className="overview-label" data-testid="assigned-label">
+                  {t('label.assigned')}
+                </span>
+                <span
+                  className="overview-value text-grey-body"
+                  data-testid="assigned-value">
+                  {incidentCounts.assigned}
+                </span>
+              </div>
+              <div className="overview-row">
+                <span className="overview-label" data-testid="resolved-label">
+                  {t('label.resolved')}
+                </span>
+                <span
+                  className="overview-value text-grey-body"
+                  data-testid="resolved-value">
+                  {incidentCounts.resolved}
+                </span>
+              </div>
             </div>
           </div>
 
           {/* Test Cases Section */}
           <div className="test-cases-section">
             <Typography.Text ellipsis className="incident-test-title">
-              {t('label.test-case-plural')}
+              {t('label.incident-plural')}
             </Typography.Text>
 
             <div className="incident-filter-buttons-container">

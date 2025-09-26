@@ -316,22 +316,28 @@
     color: #3a8ce9;
   }
 }
-.service-icon {
-  width: 31px;
-  height: 28px;
-  border-radius: 5px;
-  border: 1px solid #e3e8f0;
-  background: #fff;
-  justify-content: center;
-  display: flex;
-  align-items: center;
-}
 
 .service-icon-lineage {
-  width: 18px !important;
-  height: 18px !important;
+  width: 21px !important;
+  height: 21px !important;
 }
+.lineage-item-direction {
+  border-radius: 5px;
+  border: 0.8px solid #e3e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  padding: 0px 4px;
+  gap: 4px;
 
+  .ant-badge {
+    .ant-badge-status-text {
+      font-size: 11px;
+      font-weight: 500;
+    }
+  }
+}
 .lineage-tab-content {
   .lineage-filter-buttons {
     display: flex;
@@ -361,14 +367,14 @@
   }
   .lineage-items-list {
     overflow-y: auto;
-
+    margin-right: -16px;
+    margin-left: -16px;
     .lineage-item-card {
-      border: 1px solid #f0f0f0;
-      border-radius: 10px;
-      margin-bottom: 8px;
-      background-color: #ffffff;
-      transition: all 0.2s ease;
-
+      border-bottom: 1px solid #eaecf5;
+      padding-bottom: 18px;
+      padding-right: 16px;
+      padding-left: 16px;
+      padding-top: 12px;
       .item-name-text {
         color: #20293a;
         text-transform: uppercase;
@@ -385,60 +391,24 @@
       }
       .lineage-item-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
-        gap: 24px;
-        padding-bottom: 12px;
-        background-color: #f9fafc;
-        border-top-right-radius: 10px;
-        border-top-left-radius: 10px;
-        padding-top: 14px;
-        padding-left: 12px;
-        padding-right: 12px;
-
-        .lineage-item-direction {
-          border-radius: 5px;
-          border: 0.8px solid #e3e8f0;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          background: #fff;
-          padding: 0px 4px;
-          gap: 4px;
-
-          .ant-badge {
-            .ant-badge-status-text {
-              font-size: 11px;
-              font-weight: 500;
-            }
-          }
-        }
+        gap: 6px;
       }
 
-      .lineage-item-path {
-        display: flex;
-        margin-bottom: 8px;
-        padding: 0 7px;
-        width: 100%;
-        align-items: center;
-        border-radius: 5px;
-        border: 1px solid #e3e8f0;
-        background: #fff;
-        .item-path-text {
-          color: #364254;
-          font-size: 10px;
-          line-height: 18px !important;
-          text-transform: uppercase;
-        }
+      .item-path-text {
+        color: #242932;
+        font-size: 10px !important;
+        line-height: 21px !important;
+        text-transform: uppercase;
+      }
 
-        .ant-badge {
-          .ant-badge-status-text {
-            font-size: 11px;
-            color: #8c8c8c;
-            background-color: #f5f5f5;
-            padding: 2px 8px;
-            border-radius: 12px;
-          }
+      .ant-badge {
+        .ant-badge-status-text {
+          font-size: 11px;
+          color: #8c8c8c;
+          background-color: #f5f5f5;
+          padding: 2px 8px;
+          border-radius: 12px;
         }
       }
     }
