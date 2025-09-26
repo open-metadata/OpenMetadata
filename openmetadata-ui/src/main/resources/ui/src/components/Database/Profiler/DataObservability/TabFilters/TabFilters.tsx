@@ -168,7 +168,6 @@ const TabFilters = () => {
                 minWidth: '36px',
                 height: '32px',
               }}
-              title={t('label.setting-plural')}
               variant="outlined"
               onClick={onSettingButtonClick}>
               <SettingIcon />

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Stack } from '@mui/material';
+import { Grid, Stack } from '@mui/material';
 import { AxiosError } from 'axios';
 import { find, first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
@@ -167,7 +167,15 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
       className="m-b-lg"
       data-testid="profiler-tab-container"
       spacing="30px">
-      {selectedColumn && <ColumnSummary column={selectedColumn} />}
+      {selectedColumn && (
+        <Grid container spacing={5}>
+          <Grid size={7.2}>
+            <ColumnSummary column={selectedColumn} />
+          </Grid>
+          <Grid size="grow">"DQ widget"</Grid>
+        </Grid>
+      )}
+
       <ProfilerDetailsCard
         chartCollection={columnMetric.countMetrics}
         isLoading={isLoading}

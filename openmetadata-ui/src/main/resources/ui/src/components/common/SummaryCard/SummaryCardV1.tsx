@@ -28,7 +28,7 @@ const SummaryCardV1 = ({
       <Card
         sx={{
           borderRadius: '12px',
-          border: '1px solid #E9E9F5',
+          border: `1px solid ${theme.palette.grey[200]}`,
           boxShadow: '0 4px 3px 0 rgba(235, 239, 250, 0.25)',
           minWidth: '210px',
           display: 'flex',
