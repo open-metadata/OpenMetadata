@@ -122,20 +122,6 @@ test.describe('Data Contracts', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await testClassification.delete(apiContext);
-    await testTag.delete(apiContext);
-    await testGlossary.delete(apiContext);
-    await testGlossaryTerm.delete(apiContext);
-    await testPersona.delete(apiContext);
-    await adminUser.delete(apiContext);
-    await afterAction();
-  });
-
   test('Create Data Contract and validate', async ({ page }) => {
     test.setTimeout(360000);
 
@@ -1228,6 +1214,8 @@ test.describe('Data Contracts', () => {
   test('Semantic with Contains Operator should work for Tier, Tag and Glossary', async ({
     page,
   }) => {
+    test.slow(true);
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
