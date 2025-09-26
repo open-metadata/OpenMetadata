@@ -26,6 +26,7 @@ import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
   descriptionBox,
+  readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -486,8 +487,24 @@ export const assignCertification = async (
   certification: TagClass,
   endpoint: string
 ) => {
+  const certificationResponse = page.waitForResponse(
+    '/api/v1/tags?parent=Certification&limit=50'
+  );
   await page.getByTestId('edit-certification').click();
+  await certificationResponse;
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await readElementInListWithScroll(
+    page,
+    page.getByTestId(
+      `radio-btn-${certification.responseData.fullyQualifiedName}`
+    ),
+    page.locator('[data-testid="certification-cards"] .ant-radio-group')
+  );
+
   await page
     .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
     .click();
@@ -503,6 +520,9 @@ export const assignCertification = async (
 
 export const removeCertification = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId('clear-certification').click();
