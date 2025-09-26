@@ -62,6 +62,10 @@ export const ContractSecurityFormTab: React.FC<{
   const [editingKey, setEditingKey] = useState<number | null>(null);
 
   const consumerFormData: DataConsumers[] = Form.useWatch('consumers', form);
+  const dataClassificationFormItem: string = Form.useWatch(
+    'dataClassification',
+    form
+  );
 
   const handleAddConsumers = () => {
     addFunctionRef.current?.({
@@ -89,6 +93,7 @@ export const ContractSecurityFormTab: React.FC<{
       });
       onChange({
         security: {
+          dataClassification: dataClassificationFormItem,
           consumers: filteredValue,
         },
       });
@@ -206,7 +211,7 @@ export const ContractSecurityFormTab: React.FC<{
                                   <div className="security-form-item-title-container">
                                     <div className="d-flex items-center gap-6">
                                       <div className="d-flex flex-column">
-                                        <Typography.Text className="semantic-form-item-title">
+                                        <Typography.Text className="consumer-form-item-title">
                                           {consumerFormData?.[consumerField.key]
                                             ?.accessPolicy ||
                                             t('label.untitled')}
@@ -217,7 +222,7 @@ export const ContractSecurityFormTab: React.FC<{
                                       <EditIconButton
                                         newLook
                                         className="edit-expand-button"
-                                        data-testid={`edit-semantic-${consumerField.key}`}
+                                        data-testid={`edit-consumer-${consumerField.key}`}
                                         size="middle"
                                         onClick={() =>
                                           setEditingKey(consumerField.key)
@@ -227,7 +232,7 @@ export const ContractSecurityFormTab: React.FC<{
                                       <Button
                                         danger
                                         className="delete-expand-button"
-                                        data-testid={`delete-semantic-${consumerField.key}`}
+                                        data-testid={`delete-consumer-${consumerField.key}`}
                                         icon={<DeleteIcon />}
                                         size="middle"
                                         onClick={() => {
@@ -242,7 +247,7 @@ export const ContractSecurityFormTab: React.FC<{
                               </div>
                             ),
                           }}
-                          dataTestId={`contract-semantics-card-${consumerField.key}`}
+                          dataTestId={`contract-consumer-card-${consumerField.key}`}
                           defaultExpanded={editingKey === consumerField.name}
                           key={consumerField.name}>
                           {editingKey === consumerField.name ? (
@@ -413,6 +418,7 @@ export const ContractSecurityFormTab: React.FC<{
 
                                             <div className="d-flex items-center">
                                               <Button
+                                                data-testid="cancel-consumer-button"
                                                 onClick={() =>
                                                   setEditingKey(null)
                                                 }>
@@ -420,7 +426,7 @@ export const ContractSecurityFormTab: React.FC<{
                                               </Button>
                                               <Button
                                                 className="m-l-md"
-                                                data-testid="save-semantic-button"
+                                                data-testid="save-consumer-button"
                                                 type="primary"
                                                 onClick={() =>
                                                   setEditingKey(null)
