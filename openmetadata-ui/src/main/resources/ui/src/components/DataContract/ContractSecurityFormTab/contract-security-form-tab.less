@@ -1,0 +1,85 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.contract-security-form {
+  .contract-consumer-security-card {
+    .ant-card-body {
+      padding: 20px 0;
+
+      .contract-consumer-security-card-row {
+        padding: 0 20px;
+      }
+
+      .contract-consumer-security-card-rule-container {
+        padding: 0 20px;
+
+        .contract-consumer-security-card-rule-delete-button {
+          margin-top: 10px;
+          border: 1px solid @grey-34;
+          border-radius: 8px;
+          color: @grey-34;
+          width: 40px;
+          height: 40px;
+
+          .anticon {
+            font-size: 12px;
+          }
+        }
+      }
+
+      .contract-consumer-security-card-form-actions-items {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 0;
+        border-top: 1px solid @grey-200;
+
+        .add-row-filter-button {
+          span {
+            font-weight: 600;
+          }
+          .anticon {
+            font-size: 14px;
+            rotate: 45deg;
+          }
+        }
+
+        .delete-consumer-filter-button {
+          color: @red-1;
+          span {
+            font-weight: 600;
+          }
+          .anticon {
+            font-size: 14px;
+          }
+
+          &:hover {
+            color: @red-3;
+          }
+        }
+      }
+    }
+  }
+
+  .add-consumer-button {
+    span {
+      font-weight: 600;
+    }
+    .anticon {
+      font-size: 14px;
+      rotate: 45deg;
+    }
+  }
+}
