@@ -302,10 +302,6 @@ export const ContractSecurityFormTab: React.FC<{
 
                                   <Divider />
 
-                                  <Typography.Text className="row-filter-title">
-                                    {t('label.row-filter-plural')}
-                                  </Typography.Text>
-
                                   <Form.List
                                     name={[consumerField.name, 'rowFilters']}>
                                     {(
@@ -317,6 +313,25 @@ export const ContractSecurityFormTab: React.FC<{
                                     ) => {
                                       return (
                                         <>
+                                          <div className="d-flex items-center justify-between">
+                                            <Typography.Text className="row-filter-title">
+                                              {t('label.row-filter-plural')}
+                                            </Typography.Text>
+
+                                            <Button
+                                              className="add-row-filter-button"
+                                              data-testid={`add-row-filter-button-${consumerIndex}`}
+                                              icon={
+                                                <Icon component={PlusIcon} />
+                                              }
+                                              type="link"
+                                              onClick={() => addRowFilter()}>
+                                              {t('label.add-entity', {
+                                                entity: t('label.row-filter'),
+                                              })}
+                                            </Button>
+                                          </div>
+
                                           <div className="contract-consumer-security-card-rule-container">
                                             {rowFilterFields.map(
                                               (
@@ -404,36 +419,21 @@ export const ContractSecurityFormTab: React.FC<{
 
                                           <div className="contract-consumer-security-card-form-actions-items">
                                             <Button
-                                              className="add-row-filter-button"
-                                              data-testid={`add-row-filter-button-${consumerIndex}`}
-                                              icon={
-                                                <Icon component={PlusIcon} />
-                                              }
-                                              type="link"
-                                              onClick={() => addRowFilter()}>
-                                              {t('label.add-entity', {
-                                                entity: t('label.row-filter'),
-                                              })}
+                                              data-testid="cancel-consumer-button"
+                                              onClick={() =>
+                                                setEditingKey(null)
+                                              }>
+                                              {t('label.cancel')}
                                             </Button>
-
-                                            <div className="d-flex items-center">
-                                              <Button
-                                                data-testid="cancel-consumer-button"
-                                                onClick={() =>
-                                                  setEditingKey(null)
-                                                }>
-                                                {t('label.cancel')}
-                                              </Button>
-                                              <Button
-                                                className="m-l-md"
-                                                data-testid="save-consumer-button"
-                                                type="primary"
-                                                onClick={() =>
-                                                  setEditingKey(null)
-                                                }>
-                                                {t('label.save')}
-                                              </Button>
-                                            </div>
+                                            <Button
+                                              className="m-l-md"
+                                              data-testid="save-consumer-button"
+                                              type="primary"
+                                              onClick={() =>
+                                                setEditingKey(null)
+                                              }>
+                                              {t('label.save')}
+                                            </Button>
                                           </div>
                                         </>
                                       );
