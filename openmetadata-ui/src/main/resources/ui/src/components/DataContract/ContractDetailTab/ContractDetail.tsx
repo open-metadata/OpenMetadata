@@ -37,6 +37,7 @@ import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-v
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
 
 import {
+  CONTRACT_DATE_TIME_FORMAT,
   DataContractMode,
   DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
@@ -53,6 +54,7 @@ import {
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
+import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -271,6 +273,55 @@ const ContractDetail: React.FC<{
             </div>
           </Col>
           <Col className="d-flex items-center gap-2" span={24}>
+            {contract.createdBy && (
+              <>
+                <div className="d-flex items-center">
+                  <Typography.Text
+                    className="contract-sub-header-title"
+                    data-testid="contract-created-by-label">
+                    {`${t('label.created-by')} : `}
+                  </Typography.Text>
+
+                  <OwnerLabel
+                    owners={[
+                      { name: contract.createdBy, type: 'user', id: '' },
+                    ]}
+                  />
+                </div>
+
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+              </>
+            )}
+
+            {contract.createdAt && (
+              <>
+                <div className="d-flex items-center">
+                  <Typography.Text
+                    className="contract-sub-header-title"
+                    data-testid="contract-created-at-label">
+                    {`${t('label.created-at')} : `}
+                  </Typography.Text>
+
+                  <Typography.Text
+                    className="contract-sub-header-value"
+                    data-testid="contract-created-at-value">
+                    {customFormatDateTime(
+                      contract.createdAt,
+                      CONTRACT_DATE_TIME_FORMAT
+                    )}
+                  </Typography.Text>
+                </div>
+
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+              </>
+            )}
+
             <div className="d-flex items-center">
               <Typography.Text
                 className="contract-sub-header-title"
