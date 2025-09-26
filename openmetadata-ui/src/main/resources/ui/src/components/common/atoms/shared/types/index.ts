@@ -29,6 +29,7 @@ export interface UrlState {
 
 export interface UrlStateHook {
   urlState: UrlState;
+  parsedFilters: ExploreQuickFilterField[];
   setSearchQuery: (query: string) => void;
   setFilters: (filters: ExploreQuickFilterField[]) => void;
   setCurrentPage: (page: number) => void;
@@ -123,6 +124,7 @@ export interface ListingData<T> {
   isSelected: (id: string) => boolean;
   clearSelection: () => void;
   urlState: UrlState;
+  parsedFilters: ExploreQuickFilterField[];
   actionHandlers: ActionHandlers<T>;
   filterOptions?: FilterOptions;
   aggregations?: Aggregations | null;

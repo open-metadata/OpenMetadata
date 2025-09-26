@@ -21,6 +21,7 @@ import { AssetsOfEntity } from '../../../Glossary/GlossaryTerms/tabs/AssetsTabs.
 interface QuickFiltersWithComponentConfig {
   defaultFilters: ExploreQuickFilterField[];
   aggregations?: Aggregations;
+  parsedFilters?: ExploreQuickFilterField[];
   searchIndex: SearchIndex;
   assetType: AssetsOfEntity;
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
@@ -34,23 +35,25 @@ export const useQuickFiltersWithComponent = (
   >([]);
 
   useEffect(() => {
-    setSelectedQuickFilters(config.defaultFilters);
-  }, [config.defaultFilters]);
+    // Use parsedFilters if available (from URL), otherwise use defaultFilters
+    if (config.parsedFilters && config.parsedFilters.length > 0) {
+      // Merge parsedFilters with defaultFilters to maintain structure
+      const mergedFilters = config.defaultFilters.map((defaultFilter) => {
+        const parsedFilter = config.parsedFilters?.find(
+          (pf) => pf.key === defaultFilter.key
+        );
+
+        return parsedFilter || defaultFilter;
+      });
+      setSelectedQuickFilters(mergedFilters);
+    } else {
+      setSelectedQuickFilters(config.defaultFilters);
+    }
+  }, [config.defaultFilters, config.parsedFilters]);
 
   const handleQuickFiltersChange = useCallback(
     (data: ExploreQuickFilterField[]) => {
       config.onFilterChange(data);
-
-      // data.forEach((filter) => {
-      //   if (filter.value && filter.value.length > 0) {
-      //     config.onFilterChange(
-      //       filter.key,
-      //       filter.value as unknown as string[]
-      //     );
-      //   } else {
-      //     config.onFilterChange(filter.key, []);
-      //   }
-      // });
     },
     [config.onFilterChange]
   );
@@ -77,7 +80,6 @@ export const useQuickFiltersWithComponent = (
   const quickFilters = useMemo(
     () => (
       <ExploreQuickFilters
-        independent
         showSelectedCounts
         aggregations={config.aggregations || {}}
         fields={selectedQuickFilters}

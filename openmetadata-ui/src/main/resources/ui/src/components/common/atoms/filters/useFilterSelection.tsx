@@ -27,6 +27,7 @@ interface FilterConfig {
 interface FilterSelectionConfig {
   urlState: UrlState;
   filterConfigs: FilterConfig[];
+  parsedFilters?: ExploreQuickFilterField[];
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }
 
@@ -38,26 +39,40 @@ interface FilterSelectionItem {
 
 export const useFilterSelection = (config: FilterSelectionConfig) => {
   const { t } = useTranslation();
-  const { urlState, filterConfigs, onFilterChange } = config;
+  const { urlState, filterConfigs, parsedFilters, onFilterChange } = config;
 
   const selectedFilters = useMemo<FilterSelectionItem[]>(() => {
     const filters: FilterSelectionItem[] = [];
 
-    Object.entries(urlState.filters).forEach(([filterKey, values]) => {
-      if (values && values.length > 0) {
-        const filterConfig = filterConfigs.find((fc) => fc.key === filterKey);
-        if (filterConfig) {
+    // Use parsedFilters if available for consistent values
+    if (parsedFilters) {
+      parsedFilters.forEach((filter) => {
+        if (filter.value && filter.value.length > 0) {
           filters.push({
-            key: filterKey,
-            label: filterConfig.label,
-            values,
+            key: filter.key,
+            label: filter.label,
+            values: filter.value.map((v) => v.label || v.key),
           });
         }
-      }
-    });
+      });
+    } else {
+      // Fallback to urlState.filters
+      Object.entries(urlState.filters).forEach(([filterKey, values]) => {
+        if (values && values.length > 0) {
+          const filterConfig = filterConfigs.find((fc) => fc.key === filterKey);
+          if (filterConfig) {
+            filters.push({
+              key: filterKey,
+              label: filterConfig.label,
+              values,
+            });
+          }
+        }
+      });
+    }
 
     return filters;
-  }, [urlState.filters, filterConfigs]);
+  }, [urlState.filters, filterConfigs, parsedFilters]);
 
   const handleRemoveFilter = useCallback(
     (filterKey: string) => {

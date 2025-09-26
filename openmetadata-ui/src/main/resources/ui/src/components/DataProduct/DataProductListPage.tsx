@@ -50,6 +50,7 @@ const DataProductListPage = () => {
   // Use the simplified data product filters configuration
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
+    parsedFilters: dataProductListing.parsedFilters,
     onFilterChange: dataProductListing.handleFilterChange,
   });
 
@@ -57,6 +58,7 @@ const DataProductListPage = () => {
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: dataProductListing.urlState,
     filterConfigs: defaultFilters,
+    parsedFilters: dataProductListing.parsedFilters,
     onFilterChange: dataProductListing.handleFilterChange,
   });
 

@@ -20,6 +20,7 @@ import { useQuickFiltersWithComponent } from '../../filters/useQuickFiltersWithC
 
 interface UseDataProductFiltersConfig {
   aggregations?: Aggregations;
+  parsedFilters?: ExploreQuickFilterField[];
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }
 
@@ -27,6 +28,7 @@ export const useDataProductFilters = (config: UseDataProductFiltersConfig) => {
   const { quickFilters, selectedFilters } = useQuickFiltersWithComponent({
     defaultFilters: DATAPRODUCT_FILTERS,
     aggregations: config.aggregations,
+    parsedFilters: config.parsedFilters,
     searchIndex: SearchIndex.DATA_PRODUCT,
     assetType: AssetsOfEntity.DATA_PRODUCT,
     onFilterChange: config.onFilterChange,

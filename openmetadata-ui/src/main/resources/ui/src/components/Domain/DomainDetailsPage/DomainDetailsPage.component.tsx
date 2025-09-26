@@ -88,7 +88,6 @@ import {
   getDomainDetailsPath,
   getDomainPath,
   getDomainVersionsPath,
-  getEntityDetailsPath,
 } from '../../../utils/RouterUtils';
 import {
   escapeESReservedCharacters,
@@ -139,68 +138,70 @@ const DomainDetailsPage = ({
   const [subDomainForm] = Form.useForm();
   const [isSubDomainLoading, setIsSubDomainLoading] = useState(false);
 
-  const {
-    formDrawer: subDomainDrawer,
-    openDrawer: openSubDomainDrawer,
-    closeDrawer: closeSubDomainDrawer,
-  } = useFormDrawerWithRef({
-    title: t('label.add-entity', { entity: t('label.sub-domain') }),
-    anchor: 'right',
-    width: 670,
-    closeOnEscape: false,
-    form: (
-      <AddDomainForm
-        isFormInDialog
-        formRef={subDomainForm}
-        loading={isSubDomainLoading}
-        type={DomainFormType.SUBDOMAIN}
-        onCancel={() => {
-          // No-op: Drawer close is handled by useFormDrawerWithRef
-        }}
-        onSubmit={async (formData: any) => {
-          setIsSubDomainLoading(true);
-          try {
-            formData.parent = domain.fullyQualifiedName;
-            await addDomains(formData);
-            showSuccessToast(
-              t('server.create-entity-success', {
-                entity: t('label.sub-domain'),
-              })
-            );
-            fetchSubDomainsCount();
-            // Navigate to the subdomains tab
-            handleTabChange(EntityTabs.SUBDOMAINS);
-            closeSubDomainDrawer();
-          } catch (error) {
-            showErrorToast(
-              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-                ? t('server.entity-already-exist', {
-                    entity: t('label.sub-domain'),
-                    entityPlural: 'sub-domains',
-                    name: formData.name,
-                  })
-                : (error as AxiosError),
-              t('server.add-entity-error', {
-                entity: t('label.sub-domain').toLowerCase(),
-              })
-            );
-          } finally {
-            setIsSubDomainLoading(false);
-          }
-        }}
-      />
-    ),
-    formRef: subDomainForm,
-    onSubmit: () => {
-      // This is called by the drawer button, but actual submission
-      // happens via formRef.submit() which triggers form.onFinish
-    },
-    loading: isSubDomainLoading,
-  });
-
   // Data product drawer implementation
   const [dataProductForm] = Form.useForm();
   const [isDataProductLoading, setIsDataProductLoading] = useState(false);
+
+  const [showActions, setShowActions] = useState(false);
+  const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
+  const [isStyleEditing, setIsStyleEditing] = useState(false);
+  const [previewAsset, setPreviewAsset] =
+    useState<EntityDetailsObjectInterface>();
+  const [assetCount, setAssetCount] = useState<number>(0);
+  const [dataProductsCount, setDataProductsCount] = useState<number>(0);
+  const [subDomainsCount, setSubDomainsCount] = useState<number>(0);
+  const encodedFqn = getEncodedFqn(
+    escapeESReservedCharacters(domain.fullyQualifiedName)
+  );
+  const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
+  const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
+
+  const queryFilter = useMemo(() => {
+    return getQueryFilterForDomain(domainFqn);
+  }, [domainFqn]);
+
+  const isOwner = useMemo(
+    () => domain.owners?.some((owner) => isEqual(owner.id, currentUser?.id)),
+    [domain, currentUser]
+  );
+
+  const fetchDomainAssets = async () => {
+    if (domainFqn && !isVersionsView) {
+      try {
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 0,
+          pageSize: 0,
+          queryFilter,
+          searchIndex: SearchIndex.ALL,
+          filters: '',
+        });
+
+        const totalCount = res?.hits?.total.value ?? 0;
+        setAssetCount(totalCount);
+      } catch (error) {
+        setAssetCount(0);
+        showErrorToast(
+          error as AxiosError,
+          t('server.entity-fetch-error', {
+            entity: t('label.asset-plural-lowercase'),
+          })
+        );
+      }
+    }
+  };
+
+  const handleTabChange = (activeKey: string) => {
+    if (activeKey === 'assets') {
+      // refresh domain count when assets tab is selected
+      fetchDomainAssets();
+    }
+    if (activeKey !== activeTab) {
+      navigate(getDomainDetailsPath(domainFqn, activeKey));
+    }
+  };
 
   const {
     formDrawer: dataProductDrawer,
@@ -221,11 +222,13 @@ const DomainDetailsPage = ({
         onCancel={() => {
           // No-op: Drawer close is handled by useFormDrawerWithRef
         }}
-        onSubmit={async (formData: any) => {
+        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsDataProductLoading(true);
           try {
-            formData.domains = [domain.fullyQualifiedName];
-            await addDataProducts(formData);
+            (formData as CreateDataProduct).domains = [
+              domain.fullyQualifiedName ?? '',
+            ];
+            await addDataProducts(formData as CreateDataProduct);
             showSuccessToast(
               t('server.create-entity-success', {
                 entity: t('label.data-product'),
@@ -262,26 +265,6 @@ const DomainDetailsPage = ({
     },
     loading: isDataProductLoading,
   });
-  const [showActions, setShowActions] = useState(false);
-  const [isDelete, setIsDelete] = useState<boolean>(false);
-  const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
-  const [isStyleEditing, setIsStyleEditing] = useState(false);
-  const [previewAsset, setPreviewAsset] =
-    useState<EntityDetailsObjectInterface>();
-  const [assetCount, setAssetCount] = useState<number>(0);
-  const [dataProductsCount, setDataProductsCount] = useState<number>(0);
-  const [subDomainsCount, setSubDomainsCount] = useState<number>(0);
-  const encodedFqn = getEncodedFqn(
-    escapeESReservedCharacters(domain.fullyQualifiedName)
-  );
-  const { customizedPage, isLoading } = useCustomPages(PageType.Domain);
-  const [isTabExpanded, setIsTabExpanded] = useState(false);
-  const isSubDomain = useMemo(() => !isEmpty(domain.parent), [domain]);
-
-  const isOwner = useMemo(
-    () => domain.owners?.some((owner) => isEqual(owner.id, currentUser?.id)),
-    [domain, currentUser]
-  );
 
   const breadcrumbs = useMemo(() => {
     if (!domainFqn) {
@@ -327,6 +310,65 @@ const DomainDetailsPage = ({
       return [domain.name, domain.displayName];
     }
   }, [domain, isVersionsView]);
+
+  const {
+    formDrawer: subDomainDrawer,
+    openDrawer: openSubDomainDrawer,
+    closeDrawer: closeSubDomainDrawer,
+  } = useFormDrawerWithRef({
+    title: t('label.add-entity', { entity: t('label.sub-domain') }),
+    anchor: 'right',
+    width: 670,
+    closeOnEscape: false,
+    form: (
+      <AddDomainForm
+        isFormInDialog
+        formRef={subDomainForm}
+        loading={isSubDomainLoading}
+        type={DomainFormType.SUBDOMAIN}
+        onCancel={() => {
+          // No-op: Drawer close is handled by useFormDrawerWithRef
+        }}
+        onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
+          setIsSubDomainLoading(true);
+          try {
+            (formData as CreateDomain).parent = domain.fullyQualifiedName;
+            await addDomains(formData as CreateDomain);
+            showSuccessToast(
+              t('server.create-entity-success', {
+                entity: t('label.sub-domain'),
+              })
+            );
+            fetchSubDomainsCount();
+            // Navigate to the subdomains tab
+            handleTabChange(EntityTabs.SUBDOMAINS);
+            closeSubDomainDrawer();
+          } catch (error) {
+            showErrorToast(
+              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
+                ? t('server.entity-already-exist', {
+                    entity: t('label.sub-domain'),
+                    entityPlural: 'sub-domains',
+                    name: formData.name,
+                  })
+                : (error as AxiosError),
+              t('server.add-entity-error', {
+                entity: t('label.sub-domain').toLowerCase(),
+              })
+            );
+          } finally {
+            setIsSubDomainLoading(false);
+          }
+        }}
+      />
+    ),
+    formRef: subDomainForm,
+    onSubmit: () => {
+      // This is called by the drawer button, but actual submission
+      // happens via formRef.submit() which triggers form.onFinish
+    },
+    loading: isSubDomainLoading,
+  });
 
   const editDisplayNamePermission = useMemo(() => {
     return getPrioritizedEditPermission(
@@ -420,45 +462,6 @@ const DomainDetailsPage = ({
     [domain, fetchSubDomainsCount]
   );
 
-  const addDataProduct = useCallback(
-    async (formData: CreateDataProduct | CreateDomain) => {
-      if (!domain.fullyQualifiedName) {
-        return;
-      }
-
-      const data = {
-        ...formData,
-        domains: [domain.fullyQualifiedName],
-      };
-
-      try {
-        const res = await addDataProducts(data);
-        navigate(
-          getEntityDetailsPath(
-            EntityType.DATA_PRODUCT,
-            res.fullyQualifiedName ?? ''
-          )
-        );
-      } catch (error) {
-        showErrorToast(
-          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-            ? t('server.entity-already-exist', {
-                entity: t('label.sub-domain'),
-                entityPlural: t('label.sub-domain-lowercase-plural'),
-                name: data.name,
-              })
-            : (error as AxiosError),
-          t('server.add-entity-error', {
-            entity: t('label.sub-domain-lowercase'),
-          })
-        );
-      } finally {
-        closeDataProductDrawer();
-      }
-    },
-    [domain]
-  );
-
   const handleVersionClick = async () => {
     const path = isVersionsView
       ? getDomainPath(domainFqn)
@@ -493,32 +496,6 @@ const DomainDetailsPage = ({
     }
   };
 
-  const fetchDomainAssets = async () => {
-    if (domainFqn && !isVersionsView) {
-      try {
-        const res = await searchQuery({
-          query: '',
-          pageNumber: 0,
-          pageSize: 0,
-          queryFilter,
-          searchIndex: SearchIndex.ALL,
-          filters: '',
-        });
-
-        const totalCount = res?.hits?.total.value ?? 0;
-        setAssetCount(totalCount);
-      } catch (error) {
-        setAssetCount(0);
-        showErrorToast(
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.asset-plural-lowercase'),
-          })
-        );
-      }
-    }
-  };
-
   const fetchDomainPermission = async () => {
     try {
       const response = await getEntityPermission(
@@ -528,16 +505,6 @@ const DomainDetailsPage = ({
       setDomainPermission(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    }
-  };
-
-  const handleTabChange = (activeKey: string) => {
-    if (activeKey === 'assets') {
-      // refresh domain count when assets tab is selected
-      fetchDomainAssets();
-    }
-    if (activeKey !== activeTab) {
-      navigate(getDomainDetailsPath(domainFqn, activeKey));
     }
   };
 
@@ -657,10 +624,6 @@ const DomainDetailsPage = ({
         ] as ItemType[])
       : []),
   ];
-
-  const queryFilter = useMemo(() => {
-    return getQueryFilterForDomain(domainFqn);
-  }, [domainFqn]);
 
   const tabs = useMemo(() => {
     const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);

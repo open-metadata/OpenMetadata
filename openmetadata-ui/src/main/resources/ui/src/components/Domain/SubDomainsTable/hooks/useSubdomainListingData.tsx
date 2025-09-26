@@ -39,5 +39,6 @@ export const useSubdomainListingData = ({
   return useDomainListing({
     baseFilter: JSON.stringify(baseFilter),
     nameLabelKey: 'label.sub-domain',
+    isSubDomain: true,
   });
 };

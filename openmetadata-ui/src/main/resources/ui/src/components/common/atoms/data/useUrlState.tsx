@@ -16,10 +16,17 @@ import { useSearchParams } from 'react-router-dom';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { UrlState, UrlStateConfig, UrlStateHook } from '../shared/types';
 
-export const useUrlState = (config: UrlStateConfig): UrlStateHook => {
+export const useUrlState = (
+  config: UrlStateConfig & { filterConfigs?: ExploreQuickFilterField[] }
+): UrlStateHook => {
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const { searchKey = 'q', filterKeys, pageKey = 'page' } = config;
+  const {
+    searchKey = 'q',
+    filterKeys,
+    pageKey = 'page',
+    filterConfigs,
+  } = config;
 
   const urlState: UrlState = useMemo(() => {
     const searchQuery = searchParams.get(searchKey) || '';
@@ -37,6 +44,21 @@ export const useUrlState = (config: UrlStateConfig): UrlStateHook => {
       currentPage,
     };
   }, [searchParams, searchKey, pageKey, filterKeys]);
+
+  const parsedFilters: ExploreQuickFilterField[] = useMemo(() => {
+    if (!filterConfigs) {
+      return [];
+    }
+
+    return filterConfigs.map((filterConfig) => {
+      const values = urlState.filters[filterConfig.key] || [];
+
+      return {
+        ...filterConfig,
+        value: values.map((v) => ({ key: v, label: v })),
+      };
+    });
+  }, [urlState.filters, filterConfigs]);
 
   const updateUrlParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -125,6 +147,7 @@ export const useUrlState = (config: UrlStateConfig): UrlStateHook => {
 
   return {
     urlState,
+    parsedFilters,
     setSearchQuery,
     setFilters,
     setCurrentPage,

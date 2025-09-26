@@ -50,6 +50,7 @@ const DomainListPage = () => {
   // Use the simplified domain filters configuration
   const { quickFilters, defaultFilters } = useDomainFilters({
     aggregations: domainListing.aggregations || undefined,
+    parsedFilters: domainListing.parsedFilters,
     onFilterChange: domainListing.handleFilterChange,
   });
 
@@ -57,6 +58,7 @@ const DomainListPage = () => {
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: domainListing.urlState,
     filterConfigs: defaultFilters,
+    parsedFilters: domainListing.parsedFilters,
     onFilterChange: domainListing.handleFilterChange,
   });
 

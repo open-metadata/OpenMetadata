@@ -13,7 +13,10 @@
 
 import { useCallback, useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../constants/constants';
-import { DATAPRODUCT_DEFAULT_QUICK_FILTERS } from '../../../constants/DataProduct.constants';
+import {
+  DATAPRODUCT_DEFAULT_QUICK_FILTERS,
+  DATAPRODUCT_FILTERS,
+} from '../../../constants/DataProduct.constants';
 import { SearchIndex } from '../../../enums/search.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { TagSource } from '../../../generated/type/tagLabel';
@@ -26,6 +29,7 @@ import {
 
 export const useDataProductListingData = (): ListingData<DataProduct> => {
   const filterKeys = useMemo(() => DATAPRODUCT_DEFAULT_QUICK_FILTERS, []);
+  const filterConfigs = useMemo(() => DATAPRODUCT_FILTERS, []);
 
   const getGlossaryTags = useCallback(
     (dataProduct: DataProduct) =>
@@ -70,6 +74,7 @@ export const useDataProductListingData = (): ListingData<DataProduct> => {
     baseFilter: '', // No parent filter for data products
     pageSize: TABLE_CARD_PAGE_SIZE,
     filterKeys,
+    filterConfigs,
     columns,
     renderers,
     basePath: '/dataProduct',

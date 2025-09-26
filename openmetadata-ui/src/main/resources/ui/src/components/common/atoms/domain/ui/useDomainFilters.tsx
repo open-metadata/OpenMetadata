@@ -25,11 +25,12 @@ import { useQuickFiltersWithComponent } from '../../filters/useQuickFiltersWithC
 interface UseDomainFiltersConfig {
   isSubDomain?: boolean;
   aggregations?: Aggregations;
+  parsedFilters?: ExploreQuickFilterField[];
   onFilterChange: (filters: ExploreQuickFilterField[]) => void;
 }
 
 export const useDomainFilters = (config: UseDomainFiltersConfig) => {
-  const { isSubDomain = false } = config;
+  const { isSubDomain = false, parsedFilters } = config;
 
   const defaultFilters = useMemo(
     () => (isSubDomain ? SUB_DOMAIN_FILTERS : DOMAIN_FILTERS),
@@ -39,6 +40,7 @@ export const useDomainFilters = (config: UseDomainFiltersConfig) => {
   const { quickFilters, selectedFilters } = useQuickFiltersWithComponent({
     defaultFilters,
     aggregations: config.aggregations,
+    parsedFilters,
     searchIndex: SearchIndex.DOMAIN,
     assetType: AssetsOfEntity.DOMAIN,
     onFilterChange: config.onFilterChange,

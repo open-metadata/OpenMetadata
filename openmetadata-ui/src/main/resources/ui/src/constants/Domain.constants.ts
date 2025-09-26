@@ -85,6 +85,7 @@ export const SUBDOMAIN_DEFAULT_QUICK_FILTERS = [
   EntityFields.OWNERS,
   EntityFields.CLASSIFICATION_TAGS,
   EntityFields.GLOSSARY_TERMS,
+  EntityFields.DOMAIN_TYPE,
 ];
 
 export const DOMAIN_FILTERS = [

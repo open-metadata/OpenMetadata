@@ -13,7 +13,12 @@
 
 import { useMemo } from 'react';
 import { TABLE_CARD_PAGE_SIZE } from '../../../../../constants/constants';
-import { DOMAIN_DEFAULT_QUICK_FILTERS } from '../../../../../constants/Domain.constants';
+import {
+  DOMAIN_DEFAULT_QUICK_FILTERS,
+  DOMAIN_FILTERS,
+  SUBDOMAIN_DEFAULT_QUICK_FILTERS,
+  SUB_DOMAIN_FILTERS,
+} from '../../../../../constants/Domain.constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import { Domain } from '../../../../../generated/entity/domains/domain';
 import { useListingData } from '../../compositions/useListingData';
@@ -32,6 +37,7 @@ interface UseDomainListingConfig {
   includeClassificationTags?: boolean;
   customColumns?: ColumnConfig<Domain>[];
   customRenderers?: CellRenderer<Domain>;
+  isSubDomain?: boolean;
 }
 
 export const useDomainListing = (
@@ -48,6 +54,7 @@ export const useDomainListing = (
     includeClassificationTags = true,
     customColumns = [],
     customRenderers = {},
+    isSubDomain = false,
   } = config;
 
   // Memoize domain atom configurations to ensure stability (like DataProduct pattern)
@@ -82,7 +89,17 @@ export const useDomainListing = (
   const { columns } = useDomainColumns(domainColumnsConfig);
   const { renderers } = useDomainRenderers(domainRenderersConfig);
   // Define filterKeys for domain filters
-  const filterKeys = useMemo(() => DOMAIN_DEFAULT_QUICK_FILTERS, []);
+  const filterKeys = useMemo(
+    () =>
+      isSubDomain
+        ? SUBDOMAIN_DEFAULT_QUICK_FILTERS
+        : DOMAIN_DEFAULT_QUICK_FILTERS,
+    [isSubDomain]
+  );
+  const filterConfigs = useMemo(
+    () => (isSubDomain ? SUB_DOMAIN_FILTERS : DOMAIN_FILTERS),
+    [isSubDomain]
+  );
 
   // Use generic listing composition with domain-specific configuration
   const listingData = useListingData<Domain>({
@@ -90,6 +107,7 @@ export const useDomainListing = (
     baseFilter,
     pageSize,
     filterKeys,
+    filterConfigs,
     columns,
     renderers,
     basePath,

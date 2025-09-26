@@ -27,11 +27,7 @@ import { useDataTable } from '../../common/atoms/table/useDataTable';
 import { useSubdomainListingData } from './hooks/useSubdomainListingData';
 import { SubDomainsTableProps } from './SubDomainsTable.interface';
 
-const SubDomainsTable = ({
-  domainFqn,
-  permissions,
-  onAddSubDomain,
-}: SubDomainsTableProps) => {
+const SubDomainsTable = ({ domainFqn }: SubDomainsTableProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const subdomainListing = useSubdomainListingData({
@@ -42,6 +38,7 @@ const SubDomainsTable = ({
   const { quickFilters, defaultFilters } = useDomainFilters({
     isSubDomain: true,
     aggregations: subdomainListing.aggregations || undefined,
+    parsedFilters: subdomainListing.parsedFilters,
     onFilterChange: subdomainListing.handleFilterChange,
   });
 
@@ -49,6 +46,7 @@ const SubDomainsTable = ({
   const { filterSelectionDisplay } = useFilterSelection({
     urlState: subdomainListing.urlState,
     filterConfigs: defaultFilters,
+    parsedFilters: subdomainListing.parsedFilters,
     onFilterChange: subdomainListing.handleFilterChange,
   });
 

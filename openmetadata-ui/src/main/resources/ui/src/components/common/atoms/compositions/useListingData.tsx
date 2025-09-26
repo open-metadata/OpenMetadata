@@ -27,6 +27,7 @@ interface UseListingDataProps<T> {
   baseFilter?: string;
   pageSize?: number;
   filterKeys: string[];
+  filterConfigs?: ExploreQuickFilterField[];
   columns: ColumnConfig<T>[];
   renderers?: CellRenderer<T>;
   basePath?: string;
@@ -46,6 +47,7 @@ export const useListingData = <
     baseFilter = '',
     pageSize = 10,
     filterKeys,
+    filterConfigs,
     columns,
     renderers = {},
     basePath,
@@ -55,8 +57,14 @@ export const useListingData = <
     onCustomAddClick,
   } = props;
 
-  const urlStateHook = useUrlState({ filterKeys });
-  const { urlState, setSearchQuery, setFilters, setCurrentPage } = urlStateHook;
+  const urlStateHook = useUrlState({ filterKeys, filterConfigs });
+  const {
+    urlState,
+    parsedFilters,
+    setSearchQuery,
+    setFilters,
+    setCurrentPage,
+  } = urlStateHook;
 
   const dataFetching = useDataFetching<T>({
     searchIndex,
@@ -159,6 +167,7 @@ export const useListingData = <
     isSelected: selectionState.isSelected,
     clearSelection: selectionState.clearSelection,
     urlState,
+    parsedFilters,
     actionHandlers,
     filterOptions: {},
     aggregations: getAggregations(dataFetching.aggregations || {}),
