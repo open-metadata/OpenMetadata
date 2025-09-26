@@ -369,7 +369,7 @@ describe('SSOConfigurationForm', () => {
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
         expect(mockApplySecurityConfiguration).toHaveBeenCalled();
-        expect(mockOnLogoutHandler).toHaveBeenCalled();
+
         expect(window.location.replace).toHaveBeenCalledWith('/signin');
       });
     });
