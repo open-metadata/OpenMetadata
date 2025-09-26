@@ -50,6 +50,7 @@ class UnityCatalogTableParameter(BaseTableParameter):
             passPhrase=None,
         )
 
+    @staticmethod
     def _get_service_connection_config(
         service_connection_config,
     ) -> Optional[Union[str, dict]]:
