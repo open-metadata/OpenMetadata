@@ -16,6 +16,10 @@ class UnityCatalogTableParameter(BaseTableParameter):
     """Unity Catalog table parameter setter - uses Unity Catalog connection
     which is databricks-based for data diff operations"""
 
+    def __init__(self):
+        `BaseTableParameter._get_service_connection_config = UnityCatalogTableParameter._get_service_connection_config
+        super().__init__()
+    
     def get(
         self,
         service: DatabaseService,
@@ -30,6 +34,7 @@ class UnityCatalogTableParameter(BaseTableParameter):
         Returns:
             TableParameter
         """
+
         return TableParameter(
             database_service_type=service.serviceType,
             path=self.get_data_diff_table_path(
@@ -77,8 +82,7 @@ class UnityCatalogTableParameter(BaseTableParameter):
                 if not http_path.startswith("/"):
                     http_path = "/" + http_path
                 return f"{scheme}://:{token_value}@{host_port}{http_path}"
-            else:
-                return f"{scheme}://:{token_value}@{host_port}"
+            return f"{scheme}://:{token_value}@{host_port}"
         return None
 
     @staticmethod
@@ -119,4 +123,4 @@ class UnityCatalogTableParameter(BaseTableParameter):
             kwargs["query"] = f"catalog={database}"
         return url._replace(**kwargs).geturl()
 
-    BaseTableParameter._get_service_connection_config = _get_service_connection_config
+    
