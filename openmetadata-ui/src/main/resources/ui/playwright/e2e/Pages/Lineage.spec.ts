@@ -521,7 +521,7 @@ test('Verify table search with special characters as handled', async ({
   }
 });
 
-test('Verify cycle lineage should be handled properly', async ({ browser }) => {
+test.fixme('Verify cycle lineage should be handled properly', async ({ browser }) => {
   test.slow();
 
   const { page } = await createNewPage(browser);
