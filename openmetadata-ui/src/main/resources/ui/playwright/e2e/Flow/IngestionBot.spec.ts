@@ -78,16 +78,6 @@ test.describe('Ingestion Bot ', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await Promise.all([
-      domain1.delete(apiContext),
-      domain2.delete(apiContext),
-      domain3.delete(apiContext),
-    ]);
-    await afterAction();
-  });
-
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -105,7 +95,6 @@ test.describe('Ingestion Bot ', () => {
 
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
@@ -115,7 +104,6 @@ test.describe('Ingestion Bot ', () => {
       await addAssetsToDomain(page, domain1, domainAsset1);
 
       // Add assets to domain 2
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
@@ -128,8 +116,6 @@ test.describe('Ingestion Bot ', () => {
     await test.step(
       'Ingestion bot should access domain assigned assets',
       async () => {
-        await redirectToHomePage(ingestionBotPage);
-
         // Check if entity page is accessible & it has domain
         for (const asset of domainAsset1) {
           await redirectToHomePage(ingestionBotPage);
@@ -173,7 +159,6 @@ test.describe('Ingestion Bot ', () => {
       ]);
 
       // Add assets to domain 2
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {

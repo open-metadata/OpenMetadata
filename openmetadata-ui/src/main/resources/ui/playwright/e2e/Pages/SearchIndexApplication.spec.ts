@@ -189,10 +189,38 @@ test('Search Index Application', async ({ page }) => {
 
     // Verify response status code
     const getMarketPlaceResponse = await page.waitForResponse(
-      '/api/v1/apps/marketplace?limit=*'
+      '/api/v1/apps/marketplace?limit=15'
     );
 
     expect(getMarketPlaceResponse.status()).toBe(200);
+
+    // Check if search-indexing-application-card is visible, if not paginate through pages
+    let cardFound = await page
+      .locator('[data-testid="search-indexing-application-card"]')
+      .isVisible();
+
+    while (!cardFound) {
+      const nextButton = page.locator('[data-testid="next"]');
+      const isNextButtonDisabled = await nextButton.isDisabled();
+
+      if (isNextButtonDisabled) {
+        throw new Error(
+          'search-indexing-application-card not found in marketplace and next button is disabled'
+        );
+      }
+
+      // Click next page and wait for response
+      const nextPageResponse = page.waitForResponse(
+        '/api/v1/apps/marketplace*'
+      );
+      await nextButton.click();
+      await nextPageResponse;
+
+      // Check if card is now visible
+      cardFound = await page
+        .locator('[data-testid="search-indexing-application-card"]')
+        .isVisible();
+    }
 
     await page.click(
       '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
