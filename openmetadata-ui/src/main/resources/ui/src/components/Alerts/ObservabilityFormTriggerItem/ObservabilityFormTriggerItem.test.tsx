@@ -48,7 +48,11 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
+      <Form>
+        <ObservabilityFormTriggerItem
+          supportedTriggers={mockSupportedTriggers}
+        />
+      </Form>
     );
 
     expect(screen.getByText('label.trigger')).toBeInTheDocument();
@@ -75,7 +79,11 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => []);
 
     render(
-      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
+      <Form>
+        <ObservabilityFormTriggerItem
+          supportedTriggers={mockSupportedTriggers}
+        />
+      </Form>
     );
 
     const addButton = screen.getByTestId('add-trigger');
@@ -98,7 +106,11 @@ describe('ObservabilityFormTriggerItem', () => {
     useWatchMock.mockImplementation(() => ['container']);
 
     render(
-      <ObservabilityFormTriggerItem supportedTriggers={mockSupportedTriggers} />
+      <Form>
+        <ObservabilityFormTriggerItem
+          supportedTriggers={mockSupportedTriggers}
+        />
+      </Form>
     );
 
     const addButton = screen.getByTestId('add-trigger');
@@ -109,8 +121,11 @@ describe('ObservabilityFormTriggerItem', () => {
   it('should render form item with proper label alignment', () => {
     const setFieldValue = jest.fn();
     const getFieldValue = jest.fn().mockImplementation((path) => {
-      if (path === 'triggers') {
+      if (Array.isArray(path) && path[0] === 'input' && path[1] === 'actions') {
         return [{ name: 'trigger1', effect: 'include' }];
+      }
+      if (Array.isArray(path) && path[0] === 'resources') {
+        return ['container'];
       }
 
       return undefined;
@@ -125,18 +140,22 @@ describe('ObservabilityFormTriggerItem', () => {
 
     const useWatchMock = jest.spyOn(Form, 'useWatch');
     useWatchMock.mockImplementation((path) => {
-      if (path === 'resources') {
-        return ['container'];
-      }
-      if (path === 'triggers') {
+      if (Array.isArray(path) && path[0] === 'input' && path[1] === 'actions') {
         return [{ name: 'trigger1', effect: 'include' }];
+      }
+      if (Array.isArray(path) && path[0] === 'resources') {
+        return ['container'];
       }
 
       return undefined;
     });
 
     const { container } = render(
-      <Form>
+      <Form
+        initialValues={{
+          input: { actions: [{ name: 'trigger1', effect: 'include' }] },
+          resources: ['container'],
+        }}>
         <ObservabilityFormTriggerItem
           supportedTriggers={mockSupportedTriggers}
         />
