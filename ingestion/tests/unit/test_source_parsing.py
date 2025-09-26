@@ -235,11 +235,7 @@ def test_databricks():
         "serviceName": "local_databricks",
         "serviceConnection": {
             "config": {
-                "authType": {
-                    "azureClientId": "3df43ed7-5f2f-46bb-9793-384c6374a81d",
-                    "azureClientSecret": "secret-value",
-                    "azureTenantId": "3df43ed7-5g1f-46bb-9793-384c6374a81d",
-                },
+                "token": "<databricks token>",
                 "hostPort": "localhost:443",
                 "httpPath": "<http path of databricks cluster>",
                 "connectionArguments": {

@@ -426,7 +426,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={
           <AdminProtectedRoute
             hasPermission={checkPermission(
-              Operation.Create,
+              Operation.EditDataProfile,
               ResourceEntity.TABLE,
               permissions
             )}>
