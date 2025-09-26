@@ -62,302 +62,266 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
-  public void createEntity(String indexName, String docId, String doc) {
+  public void createEntity(String indexName, String docId, String doc) throws IOException {
     upsertDocument(indexName, docId, doc, "create entity");
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
     if (!isAsyncClientAvailable) {
       LOG.error("OpenSearch async client is not available. Cannot create entities.");
       return;
     }
 
-    try {
-      List<BulkOperation> operations = new ArrayList<>();
-      for (Map<String, String> docAndId : docsAndIds) {
-        if (docAndId == null || docAndId.isEmpty()) continue; // skip invalid entries
-        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
-        operations.add(
-            BulkOperation.of(
-                b ->
-                    b.index(
-                        i ->
-                            i.index(indexName)
-                                .id(entry.getKey())
-                                .document(toJsonData(entry.getValue())))));
-      }
-
-      BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
-      // Async call using OpenSearchAsyncClient
-      CompletableFuture<BulkResponse> future = asyncClient.bulk(bulkRequest);
-
-      future.whenComplete(
-          (response, error) -> {
-            if (error != null) {
-              LOG.error("Failed to create entities in OpenSearch (async)", error);
-              return;
-            }
-
-            if (response.errors()) {
-              LOG.error(
-                  "Bulk indexing to OpenSearch encountered errors. Index: {}, Total: {}, Failed: {}",
-                  indexName,
-                  docsAndIds.size(),
-                  response.items().stream().filter(item -> item.error() != null).count());
-
-              response.items().stream()
-                  .filter(item -> item.error() != null)
-                  .forEach(
-                      item ->
-                          LOG.error(
-                              "Indexing failed for ID {}: {}", item.id(), item.error().reason()));
-            } else {
-              LOG.info(
-                  "Successfully indexed {} entities to OpenSearch (async) for index: {}",
-                  docsAndIds.size(),
-                  indexName);
-            }
-          });
-    } catch (Exception e) {
-      LOG.error("Failed to create entities in OpenSearch for index: {} ", indexName, e);
+    List<BulkOperation> operations = new ArrayList<>();
+    for (Map<String, String> docAndId : docsAndIds) {
+      if (docAndId == null || docAndId.isEmpty()) continue; // skip invalid entries
+      Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
+      operations.add(
+          BulkOperation.of(
+              b ->
+                  b.index(
+                      i ->
+                          i.index(indexName)
+                              .id(entry.getKey())
+                              .document(toJsonData(entry.getValue())))));
     }
+
+    BulkRequest bulkRequest = BulkRequest.of(b -> b.operations(operations).refresh(Refresh.True));
+    // Async call using OpenSearchAsyncClient
+    CompletableFuture<BulkResponse> future = asyncClient.bulk(bulkRequest);
+
+    future.whenComplete(
+        (response, error) -> {
+          if (error != null) {
+            LOG.error("Failed to create entities in OpenSearch (async)", error);
+            return;
+          }
+
+          if (response.errors()) {
+            LOG.error(
+                "Bulk indexing to OpenSearch encountered errors. Index: {}, Total: {}, Failed: {}",
+                indexName,
+                docsAndIds.size(),
+                response.items().stream().filter(item -> item.error() != null).count());
+
+            response.items().stream()
+                .filter(item -> item.error() != null)
+                .forEach(
+                    item ->
+                        LOG.error(
+                            "Indexing failed for ID {}: {}", item.id(), item.error().reason()));
+          } else {
+            LOG.info(
+                "Successfully indexed {} entities to OpenSearch (async) for index: {}",
+                docsAndIds.size(),
+                indexName);
+          }
+        });
   }
 
   @Override
-  public void createTimeSeriesEntity(String indexName, String docId, String doc) {
+  public void createTimeSeriesEntity(String indexName, String docId, String doc)
+      throws IOException {
     upsertDocument(indexName, docId, doc, "create time series entity");
   }
 
   @Override
-  public void deleteEntity(String indexName, String docId) {
+  public void deleteEntity(String indexName, String docId) throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot delete entity.");
       return;
     }
 
-    try {
-      DeleteResponse response =
-          client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.WaitFor));
-      LOG.info(
-          "Successfully deleted entity from OpenSearch for index: {}, docId: {}, result: {}",
-          indexName,
-          docId,
-          response.result());
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to delete entity from OpenSearch for index: {}, docId: {}, error: {}",
-          indexName,
-          docId,
-          e.getMessage(),
-          e);
-    }
+    DeleteResponse response =
+        client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.WaitFor));
+    LOG.info(
+        "Successfully deleted entity from OpenSearch for index: {}, docId: {}, result: {}",
+        indexName,
+        docId,
+        response.result());
   }
 
   @Override
   public void deleteEntityByFields(
-      List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot delete entities by fields.");
       return;
     }
 
-    try {
-      // Build the query using the new OpenSearch client API
-      BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+    // Build the query using the new OpenSearch client API
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
 
-      for (Pair<String, String> p : fieldAndValue) {
-        boolQueryBuilder.must(
-            Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
-      }
+    for (Pair<String, String> p : fieldAndValue) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+    }
 
-      // Execute delete by query using the new client
-      DeleteByQueryResponse response =
-          client.deleteByQuery(
-              d -> d.index(indexNames).query(q -> q.bool(boolQueryBuilder.build())).refresh(true));
+    // Execute delete by query using the new client
+    DeleteByQueryResponse response =
+        client.deleteByQuery(
+            d -> d.index(indexNames).query(q -> q.bool(boolQueryBuilder.build())).refresh(true));
 
-      LOG.info(
-          "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
-          response.deleted(),
-          response.failures().size());
+    LOG.info(
+        "DeleteByQuery response from OS - Deleted: {}, Failures: {}",
+        response.deleted(),
+        response.failures().size());
 
-      if (!response.failures().isEmpty()) {
-        String failureDetails =
-            response.failures().stream()
-                .map(BulkIndexByScrollFailure::toString)
-                .collect(Collectors.joining("; "));
-        LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
-      }
-
-    } catch (Exception e) {
-      LOG.error("Failed to delete entities by fields using new OpenSearch client", e);
+    if (!response.failures().isEmpty()) {
+      String failureDetails =
+          response.failures().stream()
+              .map(BulkIndexByScrollFailure::toString)
+              .collect(Collectors.joining("; "));
+      LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
     }
   }
 
   @Override
-  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
+  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot delete entities by FQN prefix.");
       return;
     }
 
-    try {
-      // Build prefix query using the new OpenSearch client API
-      DeleteByQueryResponse response =
-          client.deleteByQuery(
-              d ->
-                  d.index(indexName)
-                      .query(
-                          q ->
-                              q.prefix(
-                                  p ->
-                                      p.field("fullyQualifiedName.keyword")
-                                          .value(fqnPrefix.toLowerCase())))
-                      .refresh(true));
+    // Build prefix query using the new OpenSearch client API
+    DeleteByQueryResponse response =
+        client.deleteByQuery(
+            d ->
+                d.index(indexName)
+                    .query(
+                        q ->
+                            q.prefix(
+                                p ->
+                                    p.field("fullyQualifiedName.keyword")
+                                        .value(fqnPrefix.toLowerCase())))
+                    .refresh(true));
 
-      LOG.info(
-          "DeleteByQuery by FQN prefix response from OS - Deleted: {}, Failures: {}",
-          response.deleted(),
-          response.failures().size());
+    LOG.info(
+        "DeleteByQuery by FQN prefix response from OS - Deleted: {}, Failures: {}",
+        response.deleted(),
+        response.failures().size());
 
-      if (!response.failures().isEmpty()) {
-        String failureDetails =
-            response.failures().stream()
-                .map(BulkIndexByScrollFailure::toString)
-                .collect(Collectors.joining("; "));
-        LOG.error("DeleteByQuery by FQN prefix encountered failures: {}", failureDetails);
-      }
-
-    } catch (Exception e) {
-      LOG.error("Failed to delete entities by FQN prefix using OpenSearch client", e);
+    if (!response.failures().isEmpty()) {
+      String failureDetails =
+          response.failures().stream()
+              .map(BulkIndexByScrollFailure::toString)
+              .collect(Collectors.joining("; "));
+      LOG.error("DeleteByQuery by FQN prefix encountered failures: {}", failureDetails);
     }
   }
 
   @Override
-  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
+  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot delete entities by script.");
       return;
     }
 
-    try {
-      DeleteByQueryResponse response =
-          client.deleteByQuery(
-              d ->
-                  d.index(indexName)
-                      .query(
-                          q ->
-                              q.script(
-                                  s ->
-                                      s.script(
-                                          script ->
-                                              script.inline(
-                                                  inline ->
-                                                      inline
-                                                          .lang(ScriptLanguage.Painless.jsonValue())
-                                                          .source(scriptTxt)
-                                                          .params(convertToJsonDataMap(params))))))
-                      .refresh(true));
+    DeleteByQueryResponse response =
+        client.deleteByQuery(
+            d ->
+                d.index(indexName)
+                    .query(
+                        q ->
+                            q.script(
+                                s ->
+                                    s.script(
+                                        script ->
+                                            script.inline(
+                                                inline ->
+                                                    inline
+                                                        .lang(ScriptLanguage.Painless.jsonValue())
+                                                        .source(scriptTxt)
+                                                        .params(convertToJsonDataMap(params))))))
+                    .refresh(true));
 
-      LOG.info(
-          "DeleteByQuery by script response from OS - Deleted: {}, Failures: {}",
-          response.deleted(),
-          response.failures().size());
+    LOG.info(
+        "DeleteByQuery by script response from OS - Deleted: {}, Failures: {}",
+        response.deleted(),
+        response.failures().size());
 
-      if (!response.failures().isEmpty()) {
-        String failureDetails =
-            response.failures().stream()
-                .map(BulkIndexByScrollFailure::toString)
-                .collect(Collectors.joining("; "));
-        LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to delete entities by script using OpenSearch client", e);
+    if (!response.failures().isEmpty()) {
+      String failureDetails =
+          response.failures().stream()
+              .map(BulkIndexByScrollFailure::toString)
+              .collect(Collectors.joining("; "));
+      LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
     }
   }
 
   @Override
-  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt) {
+  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot soft delete/restore entity.");
       return;
     }
 
-    try {
-      client.update(
-          u ->
-              u.index(indexName)
-                  .id(docId)
-                  .refresh(Refresh.True)
-                  .script(
-                      s ->
-                          s.inline(
-                              inline ->
-                                  inline
-                                      .lang(ScriptLanguage.Painless.jsonValue())
-                                      .source(scriptTxt)
-                                      .params(Map.of()))),
-          Map.class);
-      LOG.info(
-          "Successfully soft deleted/restored entity in OpenSearch for index: {}, docId: {}",
-          indexName,
-          docId);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to soft delete/restore entity in OpenSearch for index: {}, docId: {}",
-          indexName,
-          docId,
-          e);
-    }
+    client.update(
+        u ->
+            u.index(indexName)
+                .id(docId)
+                .refresh(Refresh.True)
+                .script(
+                    s ->
+                        s.inline(
+                            inline ->
+                                inline
+                                    .lang(ScriptLanguage.Painless.jsonValue())
+                                    .source(scriptTxt)
+                                    .params(Map.of()))),
+        Map.class);
+    LOG.info(
+        "Successfully soft deleted/restored entity in OpenSearch for index: {}, docId: {}",
+        indexName,
+        docId);
   }
 
   @Override
   public void softDeleteOrRestoreChildren(
-      List<String> indexNames, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexNames, String scriptTxt, List<Pair<String, String>> fieldAndValue)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot soft delete/restore children.");
       return;
     }
 
-    try {
-      BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
+    BoolQuery.Builder boolQueryBuilder = new BoolQuery.Builder();
 
-      for (Pair<String, String> p : fieldAndValue) {
-        boolQueryBuilder.must(
-            Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
-      }
+    for (Pair<String, String> p : fieldAndValue) {
+      boolQueryBuilder.must(
+          Query.of(q -> q.term(t -> t.field(p.getKey()).value(FieldValue.of(p.getValue())))));
+    }
 
-      UpdateByQueryResponse response =
-          client.updateByQuery(
-              u ->
-                  u.index(indexNames)
-                      .query(q -> q.bool(boolQueryBuilder.build()))
-                      .script(
-                          s ->
-                              s.inline(
-                                  inline ->
-                                      inline
-                                          .lang(ScriptLanguage.Painless.jsonValue())
-                                          .source(scriptTxt)
-                                          .params(Map.of())))
-                      .refresh(true));
+    UpdateByQueryResponse response =
+        client.updateByQuery(
+            u ->
+                u.index(indexNames)
+                    .query(q -> q.bool(boolQueryBuilder.build()))
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless.jsonValue())
+                                        .source(scriptTxt)
+                                        .params(Map.of())))
+                    .refresh(true));
 
-      LOG.info(
-          "Successfully soft deleted/restored children in OpenSearch for indices: {}, updated documents: {}",
-          indexNames,
-          response.updated());
+    LOG.info(
+        "Successfully soft deleted/restored children in OpenSearch for indices: {}, updated documents: {}",
+        indexNames,
+        response.updated());
 
-      if (!response.failures().isEmpty()) {
-        String failureDetails =
-            response.failures().stream()
-                .map(BulkIndexByScrollFailure::toString)
-                .collect(Collectors.joining("; "));
-        LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
-      }
-
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to soft delete/restore children in OpenSearch for indices: {}", indexNames, e);
+    if (!response.failures().isEmpty()) {
+      String failureDetails =
+          response.failures().stream()
+              .map(BulkIndexByScrollFailure::toString)
+              .collect(Collectors.joining("; "));
+      LOG.error("UpdateByQuery encountered failures: {}", failureDetails);
     }
   }
 
@@ -390,7 +354,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
       LOG.info(
           "Successfully updated entity in OpenSearch for index: {}, docId: {}", indexName, docId);
-    } catch (Exception e) {
+    } catch (IOException | OpenSearchException e) {
       LOG.error(
           "Failed to update entity in OpenSearch for index: {}, docId: {}", indexName, docId, e);
     }
@@ -431,7 +395,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                   .refresh(true));
 
       LOG.info("Successfully updated children in OpenSearch for index: {}", indexName);
-    } catch (Exception e) {
+    } catch (IOException | OpenSearchException e) {
       LOG.error("Failed to update children in OpenSearch for index: {}", indexName, e);
     }
   }
@@ -440,40 +404,37 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   public void updateChildren(
       List<String> indexNames,
       Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates) {
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot update children for indices.");
       return;
     }
 
-    try {
-      Map<String, JsonData> params =
-          convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
+    Map<String, JsonData> params =
+        convertToJsonDataMap(updates.getValue() == null ? Map.of() : updates.getValue());
 
-      client.updateByQuery(
-          u ->
-              u.index(indexNames)
-                  .query(
-                      q ->
-                          q.match(
-                              m ->
-                                  m.field(fieldAndValue.getKey())
-                                      .query(FieldValue.of(fieldAndValue.getValue()))
-                                      .operator(Operator.And)))
-                  .script(
-                      s ->
-                          s.inline(
-                              inline ->
-                                  inline
-                                      .lang(ScriptLanguage.Painless.jsonValue())
-                                      .source(updates.getKey())
-                                      .params(params)))
-                  .refresh(true));
+    client.updateByQuery(
+        u ->
+            u.index(indexNames)
+                .query(
+                    q ->
+                        q.match(
+                            m ->
+                                m.field(fieldAndValue.getKey())
+                                    .query(FieldValue.of(fieldAndValue.getValue()))
+                                    .operator(Operator.And)))
+                .script(
+                    s ->
+                        s.inline(
+                            inline ->
+                                inline
+                                    .lang(ScriptLanguage.Painless.jsonValue())
+                                    .source(updates.getKey())
+                                    .params(params)))
+                .refresh(true));
 
-      LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
-    } catch (Exception e) {
-      LOG.error("Failed to update children in OpenSearch for indices: {}", indexNames, e);
-    }
+    LOG.info("Successfully updated children in OpenSearch for indices: {}", indexNames);
   }
 
   @Override
@@ -552,7 +513,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("updated entity relationship encountered failures: {}", failureDetails);
       }
 
-    } catch (Exception e) {
+    } catch (IOException | OpenSearchException e) {
       LOG.error("Failed to update entity relationship in OpenSearch for index: {}", indexName, e);
     }
   }
@@ -579,32 +540,26 @@ public class OpenSearchEntityManager implements EntityManagementClient {
                   .refresh(true));
 
       LOG.info("Reindex {} entities of type {} to vector index", entityIds.size(), entityType);
-    } catch (Exception e) {
+    } catch (IOException | OpenSearchException e) {
       LOG.error("Failed to reindex entities: {}", e.getMessage(), e);
     }
   }
 
-  private void upsertDocument(String indexName, String docId, String doc, String operation) {
+  private void upsertDocument(String indexName, String docId, String doc, String operation)
+      throws IOException {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot {}.", operation);
       return;
     }
-
-    try {
-      client.update(
-          u ->
-              u.index(indexName)
-                  .id(docId)
-                  .refresh(Refresh.True)
-                  .docAsUpsert(true)
-                  .doc(toJsonData(doc)),
-          Map.class);
-      LOG.info(
-          "Successfully {} in OpenSearch for index: {}, docId: {}", operation, indexName, docId);
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to {} in OpenSearch for index: {}, docId: {}", operation, indexName, docId, e);
-    }
+    client.update(
+        u ->
+            u.index(indexName)
+                .id(docId)
+                .refresh(Refresh.True)
+                .docAsUpsert(true)
+                .doc(toJsonData(doc)),
+        Map.class);
+    LOG.info("Successfully {} in OpenSearch for index: {}, docId: {}", operation, indexName, docId);
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {

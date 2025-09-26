@@ -1571,7 +1571,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public void createEntity(String indexName, String docId, String doc) {
+  public void createEntity(String indexName, String docId, String doc) throws IOException {
     entityManager.createEntity(indexName, docId, doc);
   }
 
@@ -1581,39 +1581,43 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public void createTimeSeriesEntity(String indexName, String docId, String doc) {
+  public void createTimeSeriesEntity(String indexName, String docId, String doc)
+      throws IOException {
     entityManager.createTimeSeriesEntity(indexName, docId, doc);
   }
 
   @Override
-  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
+  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params)
+      throws IOException {
     entityManager.deleteByScript(indexName, scriptTxt, params);
   }
 
   @Override
-  public void deleteEntity(String indexName, String docId) {
+  public void deleteEntity(String indexName, String docId) throws IOException {
     entityManager.deleteEntity(indexName, docId);
   }
 
   @Override
   public void deleteEntityByFields(
-      List<String> indexNames, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
     entityManager.deleteEntityByFields(indexNames, fieldAndValue);
   }
 
   @Override
-  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
+  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) throws IOException {
     entityManager.deleteEntityByFQNPrefix(indexName, fqnPrefix);
   }
 
   @Override
-  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt) {
+  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+      throws IOException {
     entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt);
   }
 
   @Override
   public void softDeleteOrRestoreChildren(
-      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue)
+      throws IOException {
     entityManager.softDeleteOrRestoreChildren(indexName, scriptTxt, fieldAndValue);
   }
 
@@ -1731,7 +1735,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public void updateChildren(
       List<String> indexName,
       Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates) {
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
     entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 

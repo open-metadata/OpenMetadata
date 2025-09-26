@@ -528,7 +528,8 @@ public class SearchRepository {
       String entityId,
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
-      EntityInterface entity) {
+      EntityInterface entity)
+      throws IOException {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates =
           getInheritedFieldChanges(changeDescription, entity);
@@ -1036,7 +1037,8 @@ public class SearchRepository {
     }
   }
 
-  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping) {
+  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping)
+      throws IOException {
     String docId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     switch (entityType) {
@@ -1101,7 +1103,8 @@ public class SearchRepository {
   }
 
   public void softDeleteOrRestoredChildren(
-      EntityReference entityReference, IndexMapping indexMapping, boolean delete) {
+      EntityReference entityReference, IndexMapping indexMapping, boolean delete)
+      throws IOException {
     String docId = entityReference.getId().toString();
     String entityType = entityReference.getType();
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);

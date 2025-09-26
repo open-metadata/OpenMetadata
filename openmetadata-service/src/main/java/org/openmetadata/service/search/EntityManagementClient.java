@@ -21,7 +21,7 @@ public interface EntityManagementClient {
    * @param docId the document ID
    * @param doc the document content as JSON string
    */
-  void createEntity(String indexName, String docId, String doc);
+  void createEntity(String indexName, String docId, String doc) throws IOException;
 
   /**
    * Creates or updates multiple entities in the specified index.
@@ -39,7 +39,7 @@ public interface EntityManagementClient {
    * @param docId the document ID
    * @param doc the document content as JSON string
    */
-  void createTimeSeriesEntity(String indexName, String docId, String doc);
+  void createTimeSeriesEntity(String indexName, String docId, String doc) throws IOException;
 
   /**
    * Deletes an entity from the specified index.
@@ -47,7 +47,7 @@ public interface EntityManagementClient {
    * @param indexName the name of the index
    * @param docId the document ID to delete
    */
-  void deleteEntity(String indexName, String docId);
+  void deleteEntity(String indexName, String docId) throws IOException;
 
   /**
    * Deletes entities from indices based on field values.
@@ -55,7 +55,8 @@ public interface EntityManagementClient {
    * @param indexNames the list of index names
    * @param fieldAndValue list of field-value pairs to match for deletion
    */
-  void deleteEntityByFields(List<String> indexNames, List<Pair<String, String>> fieldAndValue);
+  void deleteEntityByFields(List<String> indexNames, List<Pair<String, String>> fieldAndValue)
+      throws IOException;
 
   /**
    * Deletes entities from an index by FQN prefix.
@@ -63,7 +64,7 @@ public interface EntityManagementClient {
    * @param indexName the name of the index
    * @param fqnPrefix the FQN prefix to match for deletion
    */
-  void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
+  void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) throws IOException;
 
   /**
    * Deletes entities from an index using a script query.
@@ -72,7 +73,8 @@ public interface EntityManagementClient {
    * @param scriptTxt the script text for the deletion query
    * @param params the parameters for the script
    */
-  void deleteByScript(String indexName, String scriptTxt, java.util.Map<String, Object> params);
+  void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params)
+      throws IOException;
 
   /**
    * Soft deletes or restores an entity using a script update.
@@ -81,7 +83,8 @@ public interface EntityManagementClient {
    * @param docId the document ID to update
    * @param scriptTxt the script text for the update operation
    */
-  void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
+  void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+      throws IOException;
 
   /**
    * Soft deletes or restores child entities using a script update.
@@ -91,7 +94,8 @@ public interface EntityManagementClient {
    * @param fieldAndValue list of field-value pairs to match for the update
    */
   void softDeleteOrRestoreChildren(
-      List<String> indexNames, String scriptTxt, List<Pair<String, String>> fieldAndValue);
+      List<String> indexNames, String scriptTxt, List<Pair<String, String>> fieldAndValue)
+      throws IOException;
 
   /**
    * Updates an entity using a script with parameters.
@@ -125,7 +129,8 @@ public interface EntityManagementClient {
   void updateChildren(
       List<String> indexNames,
       Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates);
+      Pair<String, Map<String, Object>> updates)
+      throws IOException;
 
   /**
    * Gets a document by ID from the specified index.
