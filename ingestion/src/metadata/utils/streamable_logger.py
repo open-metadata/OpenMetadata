@@ -63,6 +63,7 @@ from typing import Any, Dict, Optional
 from uuid import UUID
 
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.logger import BASE_LOGGING_FORMAT, METADATA_LOGGER, ingestion_logger
 
 logger = ingestion_logger()
@@ -506,7 +507,7 @@ def setup_streamable_logging_for_workflow(
         StreamableLogHandlerManager.set_handler(handler)
 
         logger.info(
-            f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {run_id}"
+            f"Streamable logging configured for pipeline: {pipeline_fqn}, run_id: {model_str(run_id)}"
         )
 
         return handler

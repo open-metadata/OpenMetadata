@@ -24,6 +24,10 @@ export interface Application {
      */
     appPrivateConfig?: PrivateConfig;
     /**
+     * Enable streaming logs to a remote log storage via the OpenMetadata Server
+     */
+    enableStreamableLogs?: boolean;
+    /**
      * Fully qualified name of ingestion pipeline, used to identify the current ingestion
      * pipeline
      */

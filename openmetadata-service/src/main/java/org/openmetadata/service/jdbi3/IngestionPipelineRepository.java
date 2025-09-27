@@ -499,6 +499,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       updateEnabled(original.getEnabled(), updated.getEnabled());
       updateDeployed(original.getDeployed(), updated.getDeployed());
       updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError());
+      updateEnableStreamableLogs(
+          original.getEnableStreamableLogs(), updated.getEnableStreamableLogs());
     }
 
     protected void updateProcessingEngine(IngestionPipeline original, IngestionPipeline updated) {
@@ -543,6 +545,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
     private void updateLogLevel(LogLevels origLevel, LogLevels updatedLevel) {
       if (updatedLevel != null && !origLevel.equals(updatedLevel)) {
         recordChange("loggerLevel", origLevel, updatedLevel);
+      }
+    }
+
+    private void updateEnableStreamableLogs(
+        Boolean origEnableStreamableLogs, Boolean updatedEnableStreamableLogs) {
+      if (updatedEnableStreamableLogs != null
+          && !origEnableStreamableLogs.equals(updatedEnableStreamableLogs)) {
+        recordChange("enableStreamableLogs", origEnableStreamableLogs, updatedEnableStreamableLogs);
       }
     }
 

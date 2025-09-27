@@ -194,6 +194,9 @@ public class S3LogStorage implements LogStorageInterface {
         s3Client.headBucket(HeadBucketRequest.builder().bucket(bucketName).build());
       } catch (NoSuchBucketException e) {
         throw new IOException("S3 bucket does not exist: " + bucketName);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Error accessing S3 bucket: " + bucketName + ". Validate AWS configuration.", e);
       }
 
       this.asyncExecutor =
@@ -397,7 +400,8 @@ public class S3LogStorage implements LogStorageInterface {
         List<String> lines = new ArrayList<>();
         String line;
         int lineNumber = 0;
-        int startLine = afterCursor != null ? Integer.parseInt(afterCursor) : 0;
+        int startLine =
+            afterCursor != null && !afterCursor.isEmpty() ? Integer.parseInt(afterCursor) : 0;
 
         while (lineNumber < startLine && (line = reader.readLine()) != null) {
           lineNumber++;

@@ -27,6 +27,10 @@ export interface LogStorageConfiguration {
      */
     bucketName?: string;
     /**
+     * Enable it for pipelines deployed in the server
+     */
+    enabled?: boolean;
+    /**
      * Enable server-side encryption for S3 objects
      */
     enableServerSideEncryption?: boolean;

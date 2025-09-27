@@ -28,6 +28,12 @@ export interface CreateIngestionPipeline {
      */
     domains?: string[];
     /**
+     * Enable real-time log streaming to the OpenMetadata server. When enabled, ingestion logs
+     * will be automatically shipped to the server's configured log storage backend (S3 or
+     * compatible).
+     */
+    enableStreamableLogs?: boolean;
+    /**
      * Set the logging level for the workflow.
      */
     loggerLevel?: LogLevels;
