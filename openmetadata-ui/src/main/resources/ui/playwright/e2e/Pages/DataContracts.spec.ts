@@ -17,6 +17,7 @@ import {
   DATA_CONTRACT_NOT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_SECURITY_DETAILS_1,
   DATA_CONTRACT_SECURITY_DETAILS_2,
+  DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
@@ -119,20 +120,6 @@ test.describe('Data Contracts', () => {
     //   await resetTokenFromBotPage(page, 'testsuite-bot');
     // }
 
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await testClassification.delete(apiContext);
-    await testTag.delete(apiContext);
-    await testGlossary.delete(apiContext);
-    await testGlossaryTerm.delete(apiContext);
-    await testPersona.delete(apiContext);
-    await adminUser.delete(apiContext);
     await afterAction();
   });
 
@@ -1228,6 +1215,8 @@ test.describe('Data Contracts', () => {
   test('Semantic with Contains Operator should work for Tier, Tag and Glossary', async ({
     page,
   }) => {
+    test.slow(true);
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
@@ -1891,7 +1880,11 @@ test.describe('Data Contracts', () => {
 
       await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
-      await saveSecurityAndSLADetails(page, DATA_CONTRACT_SECURITY_DETAILS_1);
+      await saveSecurityAndSLADetails(
+        page,
+        DATA_CONTRACT_SECURITY_DETAILS_1,
+        true
+      );
 
       await expect(page.getByTestId('contract-title')).toContainText(
         DATA_CONTRACT_DETAILS.name
@@ -1960,10 +1953,10 @@ test.describe('Data Contracts', () => {
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
-        await validateSecurityAndSLADetails(
-          page,
-          DATA_CONTRACT_SECURITY_DETAILS_2
-        );
+        await validateSecurityAndSLADetails(page, {
+          ...DATA_CONTRACT_SECURITY_DETAILS_2,
+          ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+        });
       }
     );
   });

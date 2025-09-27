@@ -94,7 +94,15 @@ export const DATA_CONTRACT_NOT_CONTAIN_SEMANTICS = {
 };
 
 export interface DataContractSecuritySlaData {
-  accessPolicyName: string;
+  consumers: {
+    accessPolicyName: string;
+    identities: string[];
+    row_filters: {
+      index: number;
+      column_name: string;
+      values: string[];
+    }[];
+  };
   dataClassificationName: string;
   refreshFrequencyIntervalInput: string;
   maxLatencyValueInput: string;
@@ -106,7 +114,22 @@ export interface DataContractSecuritySlaData {
 }
 
 export const DATA_CONTRACT_SECURITY_DETAILS_1: DataContractSecuritySlaData = {
-  accessPolicyName: 'Test Policy Security',
+  consumers: {
+    accessPolicyName: 'Test Policy Security',
+    identities: ['test_1', 'test_2'],
+    row_filters: [
+      {
+        index: 0,
+        column_name: 'Column 1',
+        values: ['value_1', 'value_2'],
+      },
+      {
+        index: 1,
+        column_name: 'Column 2',
+        values: ['value_3', 'value_4'],
+      },
+    ],
+  },
   dataClassificationName: 'PII',
   refreshFrequencyIntervalInput: '10',
   maxLatencyValueInput: '20',
@@ -118,7 +141,22 @@ export const DATA_CONTRACT_SECURITY_DETAILS_1: DataContractSecuritySlaData = {
 };
 
 export const DATA_CONTRACT_SECURITY_DETAILS_2: DataContractSecuritySlaData = {
-  accessPolicyName: 'Updated Policy Security',
+  consumers: {
+    accessPolicyName: 'Updated Policy Security',
+    identities: ['test_3', 'test_4'],
+    row_filters: [
+      {
+        index: 0,
+        column_name: 'Column 3',
+        values: ['value_5', 'value_6'],
+      },
+      {
+        index: 1,
+        column_name: 'Column 4',
+        values: ['value_7', 'value_8'],
+      },
+    ],
+  },
   dataClassificationName: 'PersonalData',
   refreshFrequencyIntervalInput: '50',
   maxLatencyValueInput: '60',
@@ -127,4 +165,40 @@ export const DATA_CONTRACT_SECURITY_DETAILS_2: DataContractSecuritySlaData = {
   refreshFrequencyUnitSelect: 'Hour',
   maxLatencyUnitSelect: 'Minute',
   retentionUnitSelect: 'Year',
+};
+
+export const DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS = {
+  consumers: {
+    accessPolicyName: 'Updated Policy Security',
+    identities: ['test_1', 'test_2', 'test_3', 'test_4'],
+    row_filters: [
+      {
+        index: 0,
+        column_name: 'Column 3',
+        values: ['value_1', 'value_2', 'value_5', 'value_6'],
+      },
+      {
+        index: 1,
+        column_name: 'Column 4',
+        values: ['value_3', 'value_4', 'value_7', 'value_8'],
+      },
+    ],
+  },
+} as DataContractSecuritySlaData;
+
+export const DATA_CONTRACT_SECURITY_CONSUMER_DETAILS = {
+  accessPolicyName: 'Test Consumer Security 2',
+  identities: ['identity_1', 'identity_2'],
+  row_filters: [
+    {
+      index: 0,
+      column_name: 'Consumer_Column_1',
+      values: ['column_value_1', 'column_value_2'],
+    },
+    {
+      index: 1,
+      column_name: 'Consumer_Column_2',
+      values: ['column_value_3', 'column_value_4'],
+    },
+  ],
 };

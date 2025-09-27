@@ -247,18 +247,18 @@ public class ClassificationResourceTest
     CreateClassification createClassification = createRequest(getEntityName(test));
     Classification classification = createEntity(createClassification, ADMIN_AUTH_HEADERS);
 
-    // Verify the classification is created with APPROVED status
+    // Verify the classification is created with UNPROCESSED status
     assertEquals(
-        EntityStatus.APPROVED,
+        EntityStatus.UNPROCESSED,
         classification.getEntityStatus(),
-        "Classification should be created with APPROVED status");
+        "Classification should be created with UNPROCESSED status");
 
     // Update the entityStatus using PATCH operation
     String originalJson = JsonUtils.pojoToJson(classification);
     classification.setEntityStatus(EntityStatus.IN_REVIEW);
 
     ChangeDescription change = getChangeDescription(classification, MINOR_UPDATE);
-    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
     Classification updatedClassification =
         patchEntityAndCheck(classification, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
