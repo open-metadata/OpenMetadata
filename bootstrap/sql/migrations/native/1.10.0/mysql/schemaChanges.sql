@@ -44,3 +44,16 @@ CREATE TABLE IF NOT EXISTS notification_template_entity (
     INDEX idx_notification_template_name (name),
     INDEX idx_notification_template_provider (provider)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Increase Flowable ACTIVITY_ID_ column size to support longer user-defined workflow node names
+ALTER TABLE ACT_RU_EVENT_SUBSCR MODIFY ACTIVITY_ID_ varchar(255);
+
+-- Update workflow settings with new job acquisition interval settings
+UPDATE openmetadata_settings
+SET json = JSON_SET(
+    json,
+    '$.executorConfiguration.asyncJobAcquisitionInterval', 60000,
+    '$.executorConfiguration.timerJobAcquisitionInterval', 60000
+)
+WHERE configType = 'workflowSettings'
+  AND JSON_EXTRACT(json, '$.executorConfiguration') IS NOT NULL;
