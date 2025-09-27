@@ -10,16 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  AppstoreOutlined,
-  BarChartOutlined,
-  CompassOutlined,
-  SafetyCertificateOutlined,
-  SwapOutlined,
-} from '@ant-design/icons';
 import { Menu } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CustomPropertiesIcon } from '../../../assets/svg/explore-panel-icons/custom-prop.svg';
+import { ReactComponent as DataQualityIcon } from '../../../assets/svg/explore-panel-icons/data-quality.svg';
+import { ReactComponent as LineageIcon } from '../../../assets/svg/explore-panel-icons/lineage.svg';
+import { ReactComponent as OverviewIcon } from '../../../assets/svg/explore-panel-icons/overview.svg';
+import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-panel-icons/schema.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import './EntityRightPanelVerticalNav.less';
 
@@ -45,7 +43,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       const items = [
         {
           key: EntityRightPanelTab.OVERVIEW,
-          icon: <CompassOutlined height={13} width={13} />,
+          icon: <OverviewIcon height={16} width={16} />,
           label: t('label.overview'),
         },
       ];
@@ -64,7 +62,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
-          icon: <BarChartOutlined height={13} width={13} />,
+          icon: <SchemaIcon height={16} width={16} />,
           label: t('label.schema'),
         });
       }
@@ -84,7 +82,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
-          icon: <SwapOutlined height={13} width={13} />,
+          icon: <LineageIcon height={16} width={16} />,
           label: t('label.lineage'),
         });
       }
@@ -93,7 +91,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       if (entityType === EntityType.TABLE) {
         items.push({
           key: EntityRightPanelTab.DATA_QUALITY,
-          icon: <SafetyCertificateOutlined height={13} width={13} />,
+          icon: <DataQualityIcon height={16} width={16} />,
           label: t('label.data-quality'),
         });
       }
@@ -101,7 +99,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       // Add custom properties tab
       items.push({
         key: EntityRightPanelTab.CUSTOM_PROPERTIES,
-        icon: <AppstoreOutlined height={13} width={13} />,
+        icon: <CustomPropertiesIcon height={16} width={16} />,
         label: t('label.custom-property'),
       });
 

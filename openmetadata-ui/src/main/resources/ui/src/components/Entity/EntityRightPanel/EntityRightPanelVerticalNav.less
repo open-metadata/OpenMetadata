@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../styles/variables.less';
+
 .entity-right-panel-vertical-nav {
   width: 80px;
   right: 0px;
@@ -22,16 +24,18 @@
   flex-direction: column;
   align-items: center;
   padding-top: -12px;
-
+  .ant-menu-vertical .ant-menu-item:not(:last-child) {
+    margin-bottom: 0px;
+  }
   .vertical-nav-menu {
     background: transparent;
     border: none;
+    margin-top: 12px;
     width: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     .ant-menu-item {
-      height: 65px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -39,55 +43,80 @@
       border-radius: 6px;
       border: none;
       padding: 0;
+      height: 65px;
       margin-top: 0px;
       margin-bottom: 0px;
       background: transparent;
+      .ant-menu-item-icon {
+        padding: 8px;
 
-      &:hover:not(.ant-menu-item-selected) {
-        // background: #f0f8ff;
-        color: #1890ff;
+        height: 16px;
       }
 
+      /* Hover: only icon gets light bg, label turns blue */
+      &.ant-menu-item-active:not(.ant-menu-item-selected),
+      &:hover:not(.ant-menu-item-selected) {
+        background: transparent;
+        color: @primary-7;
+
+        .ant-menu-item-icon {
+          background: @primary-1;
+          color: @primary-7;
+        }
+      }
+
+      /* Selected state: only icon bg blue, label blue */
       &.ant-menu-item-selected {
-        background: #fff;
+        background: transparent;
+        color: @primary-7; // affects label
 
         &::after {
           display: none;
         }
 
-        .anticon {
-          background: #e9f0ff;
-          color: #1890ff;
-          border-radius: 7px;
-          padding: 8px;
-          width: 29px;
-          height: 29px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
+        .ant-menu-item-icon {
+          background: @primary-color;
+          color: @white; // make svg stroke white
         }
 
         .ant-menu-title-content {
-          color: #1890ff;
+          color: @primary-7;
           font-weight: 600;
         }
       }
 
-      .anticon {
-        font-size: 16px;
+      /* Icon container and svg coloring */
+      .ant-menu-item-icon {
+        padding: 8px;
         margin-bottom: 2px;
         display: flex;
         align-items: center;
         justify-content: center;
         width: 30px;
         height: 30px;
-        border-radius: 7px;
+        border-radius: 8px;
         transition: all 0.2s ease;
+        background: transparent;
+        color: @grey-600;
+      }
+
+      svg {
+        font-size: 16px;
+      }
+
+      /* Match left sidebar: hollow icons that follow currentColor */
+      svg {
+        fill: transparent !important;
+      }
+
+      /* Force svg strokes (and fills) to follow current text color */
+      svg * {
+        stroke: currentColor !important;
+        fill: transparent !important;
       }
 
       .ant-menu-title-content {
         display: block;
-        width: 47px;
         font-size: 10px;
         font-weight: 400;
         text-align: center;
@@ -95,6 +124,7 @@
         word-break: break-word;
         white-space: normal;
         margin: 0 auto;
+        color: @grey-600;
       }
     }
   }
