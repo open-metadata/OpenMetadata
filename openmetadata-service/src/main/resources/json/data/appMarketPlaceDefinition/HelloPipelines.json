@@ -4,7 +4,7 @@
   "description": "Example external application to demonstrate the use of pipelines.",
   "features": "Test external application functionality",
   "appType": "external",
-  "appScreenshots": ["DataInsightsPic1.png"],
+  "appScreenshots": ["DataInsightsPic1"],
   "developer": "Collate Inc.",
   "developerUrl": "https://www.getcollate.io",
   "privacyPolicyUrl": "https://www.getcollate.io",
