@@ -55,10 +55,15 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-export const redirectToHomePage = async (page: Page) => {
+export const redirectToHomePage = async (
+  page: Page,
+  waitForNetworkIdle = true
+) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
-  await page.waitForLoadState('networkidle');
+  if (waitForNetworkIdle) {
+    await page.waitForLoadState('networkidle');
+  }
 };
 
 export const redirectToExplorePage = async (page: Page) => {
