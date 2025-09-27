@@ -41,11 +41,14 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
@@ -54,12 +57,16 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 @Slf4j
 @Path("/v1/notificationTemplates")
@@ -75,7 +82,6 @@ public class NotificationTemplateResource
   public static final String COLLECTION_PATH = "/v1/notificationTemplates";
   public static final String FIELDS = "";
 
-  // Mapper for converting DTOs to entities
   private final NotificationTemplateMapper mapper = new NotificationTemplateMapper();
 
   public NotificationTemplateResource(Authorizer authorizer, Limits limits) {
@@ -86,6 +92,13 @@ public class NotificationTemplateResource
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("templateBody", MetadataOperation.VIEW_BASIC);
     return null;
+  }
+
+  @Override
+  public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    // Load notification template seed data on startup with versioning support
+    repository.initOrUpdateSeedDataFromResources();
+    LOG.info("Notification template seed data initialized with versioning support");
   }
 
   public static class NotificationTemplateList extends ResultList<NotificationTemplate> {
@@ -524,5 +537,122 @@ public class NotificationTemplateResource
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
     return restoreEntity(uriInfo, securityContext, restore.getId());
+  }
+
+  @PUT
+  @Path("/{id}/reset")
+  @Operation(
+      operationId = "resetNotificationTemplateById",
+      summary = "Reset a notification template to its default state by Id",
+      description =
+          "Reset a SYSTEM notification template to its original default state from seed data. "
+              + "Only SYSTEM templates can be reset. This operation requires EDIT_ALL permission.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Template successfully reset to default"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Bad request - Template cannot be reset (not a SYSTEM template)"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - EDIT_ALL permission required"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Notification template for instance {id} is not found")
+      })
+  public Response resetToDefaultById(
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the notification template", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+        getResourceContextById(id));
+
+    NotificationTemplate template = repository.get(null, id, repository.getFields("*"));
+    repository.resetToDefault(template.getFullyQualifiedName());
+    return Response.ok().build();
+  }
+
+  @PUT
+  @Path("/name/{fqn}/reset")
+  @Operation(
+      operationId = "resetNotificationTemplateByFQN",
+      summary = "Reset a notification template to its default state by fully qualified name",
+      description =
+          "Reset a SYSTEM notification template to its original default state from seed data. "
+              + "Only SYSTEM templates can be reset. This operation requires EDIT_ALL permission.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Template successfully reset to default"),
+        @ApiResponse(
+            responseCode = "400",
+            description = "Bad request - Template cannot be reset (not a SYSTEM template)"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - EDIT_ALL permission required"),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Notification template for instance {fqn} is not found")
+      })
+  public Response resetToDefaultByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the notification template to reset",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+        getResourceContextByName(fqn));
+
+    repository.resetToDefault(fqn);
+    return Response.ok().build();
+  }
+
+  @POST
+  @Path("/validate")
+  @Operation(
+      operationId = "validateNotificationTemplate",
+      summary = "Validate a notification template",
+      description =
+          "Validates the syntax and structure of a notification template without saving it. "
+              + "Requires CREATE or EDIT_ALL permission for notification templates.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Validation result",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema =
+                        @Schema(implementation = NotificationTemplateValidationResponse.class))),
+        @ApiResponse(responseCode = "400", description = "Invalid request"),
+        @ApiResponse(responseCode = "401", description = "Unauthorized"),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Forbidden - CREATE or EDIT_ALL permission required")
+      })
+  public Response validateTemplate(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid NotificationTemplateValidationRequest request) {
+
+    // Create authorization requests for CREATE or EDIT_ALL permissions
+    List<AuthRequest> authRequests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.CREATE), getResourceContext()),
+            new AuthRequest(
+                new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+                getResourceContext()));
+
+    // Use ANY logic - user needs either CREATE or EDIT_ALL permission
+    authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+
+    // Delegate to repository for validation
+    NotificationTemplateValidationResponse response = repository.validate(request);
+
+    return Response.ok(response).build();
   }
 }

@@ -10,6 +10,7 @@ public class NotificationTemplateMapper
   @Override
   public NotificationTemplate createToEntity(CreateNotificationTemplate create, String user) {
     return copy(new NotificationTemplate(), create, user)
+        .withTemplateSubject(create.getTemplateSubject())
         .withTemplateBody(create.getTemplateBody());
   }
 }

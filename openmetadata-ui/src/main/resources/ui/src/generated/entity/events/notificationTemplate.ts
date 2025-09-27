@@ -20,6 +20,11 @@ export interface NotificationTemplate {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Checksum of the default template to detect if updates are available. Only applicable to
+     * system templates.
+     */
+    defaultTemplateChecksum?: string;
+    /**
      * When `true` indicates the template has been soft deleted.
      */
     deleted?: boolean;
@@ -48,6 +53,11 @@ export interface NotificationTemplate {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * Indicates if this system template has been modified from its default version. Only
+     * applicable to system templates.
+     */
+    isModifiedFromDefault?: boolean;
+    /**
      * Name for the notification template (e.g., 'Default Table Template', 'Custom Pipeline
      * Alerts').
      */
@@ -61,6 +71,10 @@ export interface NotificationTemplate {
      * Handlebars HTML template body with placeholders.
      */
     templateBody: string;
+    /**
+     * Handlebars template for the email subject line with placeholders.
+     */
+    templateSubject?: string;
     /**
      * Last update time corresponding to the new version of the template.
      */
