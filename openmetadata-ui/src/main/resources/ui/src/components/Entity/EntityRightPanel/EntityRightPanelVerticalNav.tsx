@@ -43,7 +43,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       const items = [
         {
           key: EntityRightPanelTab.OVERVIEW,
-          icon: <OverviewIcon height={16} width={16} />,
+          icon: <OverviewIcon height={16} role="img" width={16} />,
           label: t('label.overview'),
         },
       ];
@@ -62,7 +62,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ) {
         items.push({
           key: EntityRightPanelTab.SCHEMA,
-          icon: <SchemaIcon height={16} width={16} />,
+          icon: <SchemaIcon height={16} role="img" width={16} />,
           label: t('label.schema'),
         });
       }
@@ -82,7 +82,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
-          icon: <LineageIcon height={16} width={16} />,
+          icon: <LineageIcon height={16} role="img" width={16} />,
           label: t('label.lineage'),
         });
       }
@@ -91,7 +91,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       if (entityType === EntityType.TABLE) {
         items.push({
           key: EntityRightPanelTab.DATA_QUALITY,
-          icon: <DataQualityIcon height={16} width={16} />,
+          icon: <DataQualityIcon height={16} role="img" width={16} />,
           label: t('label.data-quality'),
         });
       }
@@ -99,7 +99,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       // Add custom properties tab
       items.push({
         key: EntityRightPanelTab.CUSTOM_PROPERTIES,
-        icon: <CustomPropertiesIcon height={16} width={16} />,
+        icon: <CustomPropertiesIcon height={16} role="img" width={16} />,
         label: t('label.custom-property'),
       });
 

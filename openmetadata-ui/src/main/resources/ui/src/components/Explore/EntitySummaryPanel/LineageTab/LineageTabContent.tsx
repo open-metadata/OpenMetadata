@@ -142,7 +142,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   )}
                 </div>
               </div>
-              <div className="d-flex items-end justify-between gap-2">
+              <div className="lineage-card-content d-flex items-end justify-between gap-2">
                 <Typography.Text className="item-name-text">
                   {item.entity.displayName || item.entity.name}
                 </Typography.Text>
