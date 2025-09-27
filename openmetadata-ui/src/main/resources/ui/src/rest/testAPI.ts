@@ -58,7 +58,6 @@ export type ListTestCaseParams = ListParams & {
   includeAllTests?: boolean;
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
-  dataContractId?: string;
 };
 export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   q?: string;
