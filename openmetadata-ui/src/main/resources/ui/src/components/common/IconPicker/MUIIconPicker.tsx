@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import {
   Box,
   ClickAwayListener,
@@ -21,6 +22,7 @@ import {
   Tab,
   Tabs,
   TextField,
+  Tooltip,
   useTheme,
 } from '@mui/material';
 import { FC, useEffect, useRef, useState } from 'react';
@@ -129,7 +131,31 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
 
   return (
     <FormControl component="fieldset" disabled={disabled}>
-      {label && <FormLabel>{label}</FormLabel>}
+      {label && (
+        <Box sx={{ display: 'inline-flex' }}>
+          <FormLabel>{label}</FormLabel>
+          <Tooltip arrow placement="top" title={`${selectedIcon} Icon`}>
+            <Box
+              component="span"
+              sx={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                cursor: 'help',
+                lineHeight: 0,
+                pointerEvents: 'auto',
+              }}>
+              <InfoOutlinedIcon
+                data-testid="mui-helper-icon"
+                sx={{
+                  fontSize: 16,
+                  color: 'text.secondary',
+                  pointerEvents: 'auto',
+                }}
+              />
+            </Box>
+          </Tooltip>
+        </Box>
+      )}
 
       {/* Inline icon display - just a box */}
       <Box
