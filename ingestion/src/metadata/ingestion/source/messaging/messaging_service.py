@@ -227,5 +227,28 @@ class MessagingServiceSource(TopologyRunnerMixin, Source, ABC):
 
         self.topic_source_state.add(topic_fqn)
 
+    def get_default_owner_ref(self) -> Optional[EntityReferenceList]:
+        """
+        Method to get the default owner from sourceConfig
+        """
+        try:
+            # Check if owner is configured in sourceConfig
+            if hasattr(self.source_config, 'owner') and self.source_config.owner:
+                owner_name = self.source_config.owner
+                logger.debug(f"Using default owner from sourceConfig: {owner_name}")
+                
+                # Try to get owner reference by name (could be user or team)
+                owner_ref = self.metadata.get_reference_by_name(
+                    name=owner_name, is_owner=True
+                )
+                if owner_ref:
+                    return owner_ref
+                else:
+                    logger.warning(f"Could not find owner with name: {owner_name}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing default owner from sourceConfig: {exc}")
+        return None
+
     def close(self):
         """By default, nothing to close"""

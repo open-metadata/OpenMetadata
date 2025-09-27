@@ -11,6 +11,7 @@
 """
 Base class for ingesting Object Storage services
 """
+import traceback
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List, Optional, Set
 
@@ -23,6 +24,7 @@ from metadata.generated.schema.entity.services.storageService import (
     StorageConnection,
     StorageService,
 )
+from metadata.generated.schema.type.entityReference import EntityReferenceList
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
 )
@@ -235,6 +237,29 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         )
 
         self.container_source_state.add(container_fqn)
+
+    def get_default_owner_ref(self) -> Optional[EntityReferenceList]:
+        """
+        Method to get the default owner from sourceConfig
+        """
+        try:
+            # Check if owner is configured in sourceConfig
+            if hasattr(self.source_config, 'owner') and self.source_config.owner:
+                owner_name = self.source_config.owner
+                logger.debug(f"Using default owner from sourceConfig: {owner_name}")
+                
+                # Try to get owner reference by name (could be user or team)
+                owner_ref = self.metadata.get_reference_by_name(
+                    name=owner_name, is_owner=True
+                )
+                if owner_ref:
+                    return owner_ref
+                else:
+                    logger.warning(f"Could not find owner with name: {owner_name}")
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing default owner from sourceConfig: {exc}")
+        return None
 
     def test_connection(self) -> None:
         test_connection_common(
