@@ -222,11 +222,6 @@
           }
         }
       }
-      .ant-form-item-control-input-content {
-        .group--field {
-          align-self: baseline;
-        }
-      }
     }
 
     input[type='text'],
@@ -262,7 +257,7 @@
         border-color: @primary-color;
       }
 
-      .ant-select-selection-search {
+      > .ant-select-selection-search {
         input[type='search'] {
           height: 40px;
           font-weight: 500;
@@ -274,6 +269,16 @@
       .ant-select-selector,
       .ant-mentions {
         padding: 4px 12px;
+      }
+
+      .ant-select-multiple {
+        .ant-select-selector {
+          padding: 0 6px;
+        }
+      }
+
+      .group--field {
+        align-self: baseline;
       }
     }
   }
@@ -335,7 +340,7 @@
     padding: 4px 12px !important;
     color: @grey-700;
     font-weight: 500;
-    height: 40px !important;
+    min-height: 40px !important;
     box-shadow: 0 1px 2px 0px @grey-27;
 
     .ant-select-selector,
