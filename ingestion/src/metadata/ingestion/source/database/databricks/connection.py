@@ -41,6 +41,13 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_SQL_STATEMENT_TEST,
+    TEST_CATALOG_TAGS,
+    TEST_COLUMN_LINEAGE,
+    TEST_COLUMN_TAGS,
+    TEST_SCHEMA_TAGS,
+    TEST_TABLE_LINEAGE,
+    TEST_TABLE_TAGS,
+    TEST_VIEW_DEFINITIONS,
 )
 from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
@@ -170,6 +177,11 @@ def test_connection(
     # Create wrapper to avoid multiple schema calls
     engine_wrapper = DatabricksEngineWrapper(connection)
 
+    # Helper function to get first catalog for tag queries
+    def get_first_catalog():
+        catalogs = engine_wrapper.get_catalogs(catalog_name=service_connection.catalog)
+        return catalogs[0] if catalogs else service_connection.catalog or "main"
+
     test_fn = {
         "CheckAccess": partial(test_connection_engine_step, connection),
         "GetSchemas": partial(
@@ -186,6 +198,41 @@ def test_connection(
             statement=DATABRICKS_SQL_STATEMENT_TEST.format(
                 query_history=service_connection.queryHistoryTable
             ),
+        ),
+        "GetViewDefinitions": partial(
+            test_database_query,
+            engine=connection,
+            statement=TEST_VIEW_DEFINITIONS,
+        ),
+        "GetCatalogTags": partial(
+            test_database_query,
+            engine=connection,
+            statement=TEST_CATALOG_TAGS.format(database_name=get_first_catalog()),
+        ),
+        "GetSchemaTags": partial(
+            test_database_query,
+            engine=connection,
+            statement=TEST_SCHEMA_TAGS.format(database_name=get_first_catalog()),
+        ),
+        "GetTableTags": partial(
+            test_database_query,
+            engine=connection,
+            statement=TEST_TABLE_TAGS.format(database_name=get_first_catalog()),
+        ),
+        "GetColumnTags": partial(
+            test_database_query,
+            engine=connection,
+            statement=TEST_COLUMN_TAGS.format(database_name=get_first_catalog()),
+        ),
+        "GetTableLineage": partial(
+            test_database_query,
+            engine=connection,
+            statement=TEST_TABLE_LINEAGE,
+        ),
+        "GetColumnLineage": partial(
+            test_database_query,
+            engine=connection,
+            statement=TEST_COLUMN_LINEAGE,
         ),
     }
 
