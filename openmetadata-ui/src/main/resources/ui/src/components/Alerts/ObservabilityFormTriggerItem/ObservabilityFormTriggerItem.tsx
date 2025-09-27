@@ -125,6 +125,8 @@ function ObservabilityFormTriggerItem({
                       label={
                         <Typography.Text>{t('label.include')}</Typography.Text>
                       }
+                      labelAlign="left"
+                      labelCol={{ span: 6 }}
                       name={[name, 'effect']}
                       normalize={(value) =>
                         value ? Effect.Include : Effect.Exclude
