@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """
-单元测试：验证所有权分配功能
+Unit tests: Verify ownership assignment functionality
 
-这个脚本测试新添加的 get_default_owner_ref 方法的功能。
+This script tests the functionality of the newly added get_default_owner_ref method.
 """
 
 import unittest
 from unittest.mock import Mock, MagicMock, patch
 from typing import Optional
 
-# 模拟导入
+# Mock imports
 class MockEntityReferenceList:
     def __init__(self, root=None):
         self.root = root or []
@@ -24,7 +24,7 @@ class MockMetadata:
         self.get_reference_by_name = Mock()
 
 class MockDatabaseServiceSource:
-    """模拟 DatabaseServiceSource 类"""
+    """Mock DatabaseServiceSource class"""
     
     def __init__(self, source_config, metadata):
         self.source_config = source_config
@@ -32,7 +32,7 @@ class MockDatabaseServiceSource:
     
     def get_default_owner_ref(self) -> Optional[MockEntityReferenceList]:
         """
-        测试版本的 get_default_owner_ref 方法
+        Test version of get_default_owner_ref method
         """
         try:
             # Check if owner is configured in sourceConfig
@@ -53,26 +53,26 @@ class MockDatabaseServiceSource:
         return None
 
 class TestOwnerAssignment(unittest.TestCase):
-    """测试所有权分配功能"""
+    """Test ownership assignment functionality"""
     
     def setUp(self):
-        """设置测试环境"""
+        """Set up test environment"""
         self.metadata = MockMetadata()
         self.mock_owner_ref = MockEntityReferenceList([{"id": "user123", "type": "user"}])
     
     def test_get_default_owner_ref_with_valid_owner(self):
-        """测试有效所有者的情况"""
-        # 设置模拟
+        """Test valid owner scenario"""
+        # Set up mocks
         source_config = MockSourceConfig(owner="data_team")
         self.metadata.get_reference_by_name.return_value = self.mock_owner_ref
         
-        # 创建测试对象
+        # Create test object
         source = MockDatabaseServiceSource(source_config, self.metadata)
         
-        # 执行测试
+        # Execute test
         result = source.get_default_owner_ref()
         
-        # 验证结果
+        # Verify results
         self.assertIsNotNone(result)
         self.assertEqual(result, self.mock_owner_ref)
         self.metadata.get_reference_by_name.assert_called_once_with(
@@ -80,136 +80,136 @@ class TestOwnerAssignment(unittest.TestCase):
         )
     
     def test_get_default_owner_ref_with_nonexistent_owner(self):
-        """测试不存在的所有者的情况"""
-        # 设置模拟
+        """Test non-existent owner scenario"""
+        # Set up mocks
         source_config = MockSourceConfig(owner="nonexistent_team")
         self.metadata.get_reference_by_name.return_value = None
         
-        # 创建测试对象
+        # Create test object
         source = MockDatabaseServiceSource(source_config, self.metadata)
         
-        # 执行测试
+        # Execute test
         result = source.get_default_owner_ref()
         
-        # 验证结果
+        # Verify results
         self.assertIsNone(result)
         self.metadata.get_reference_by_name.assert_called_once_with(
             name="nonexistent_team", is_owner=True
         )
     
     def test_get_default_owner_ref_with_no_owner(self):
-        """测试没有配置所有者的情况"""
-        # 设置模拟
+        """Test no owner configured scenario"""
+        # Set up mocks
         source_config = MockSourceConfig(owner=None)
         
-        # 创建测试对象
+        # Create test object
         source = MockDatabaseServiceSource(source_config, self.metadata)
         
-        # 执行测试
+        # Execute test
         result = source.get_default_owner_ref()
         
-        # 验证结果
+        # Verify results
         self.assertIsNone(result)
         self.metadata.get_reference_by_name.assert_not_called()
     
     def test_get_default_owner_ref_with_empty_owner(self):
-        """测试空所有者的情况"""
-        # 设置模拟
+        """Test empty owner scenario"""
+        # Set up mocks
         source_config = MockSourceConfig(owner="")
         
-        # 创建测试对象
+        # Create test object
         source = MockDatabaseServiceSource(source_config, self.metadata)
         
-        # 执行测试
+        # Execute test
         result = source.get_default_owner_ref()
         
-        # 验证结果
+        # Verify results
         self.assertIsNone(result)
         self.metadata.get_reference_by_name.assert_not_called()
     
     def test_get_default_owner_ref_with_exception(self):
-        """测试异常处理"""
-        # 设置模拟
+        """Test exception handling"""
+        # Set up mocks
         source_config = MockSourceConfig(owner="data_team")
         self.metadata.get_reference_by_name.side_effect = Exception("Database error")
         
-        # 创建测试对象
+        # Create test object
         source = MockDatabaseServiceSource(source_config, self.metadata)
         
-        # 执行测试
+        # Execute test
         result = source.get_default_owner_ref()
         
-        # 验证结果
+        # Verify results
         self.assertIsNone(result)
         self.metadata.get_reference_by_name.assert_called_once_with(
             name="data_team", is_owner=True
         )
 
 class TestOwnerAssignmentIntegration(unittest.TestCase):
-    """集成测试：验证所有权分配在摄取流程中的集成"""
+    """Integration tests: Verify ownership assignment integration in ingestion flow"""
     
     def test_owner_priority_in_get_owner_ref(self):
-        """测试在 get_owner_ref 方法中所有者的优先级"""
-        # 模拟配置
+        """Test owner priority in get_owner_ref method"""
+        # Mock configuration
         source_config = MockSourceConfig(owner="data_team", includeOwners=True)
         metadata = MockMetadata()
         mock_owner_ref = MockEntityReferenceList([{"id": "user123", "type": "user"}])
         metadata.get_reference_by_name.return_value = mock_owner_ref
         
-        # 模拟 get_owner_ref 方法的行为
+        # Mock get_owner_ref method behavior
         def mock_get_owner_ref(table_name: str):
-            # 首先检查默认所有者
+            # First check default owner
             default_owner_ref = MockDatabaseServiceSource(source_config, metadata).get_default_owner_ref()
             if default_owner_ref:
                 return default_owner_ref
             
-            # 如果没有默认所有者，则从数据库元数据中提取
+            # If no default owner, extract from database metadata
             if source_config.includeOwners:
-                # 这里会调用 inspector.get_table_owner 等
-                # 但为了测试，我们返回 None
+                # This would call inspector.get_table_owner etc.
+                # But for testing, we return None
                 return None
             return None
         
-        # 执行测试
+        # Execute test
         result = mock_get_owner_ref("test_table")
         
-        # 验证结果
+        # Verify results
         self.assertIsNotNone(result)
         self.assertEqual(result, mock_owner_ref)
-        # 验证调用了 get_reference_by_name
+        # Verify get_reference_by_name was called
         metadata.get_reference_by_name.assert_called_with(
             name="data_team", is_owner=True
         )
 
 def run_tests():
-    """运行所有测试"""
-    print("=== 运行所有权分配功能测试 ===\n")
+    """Run all tests"""
+    print("=== Running Ownership Assignment Functionality Tests ===\n")
     
-    # 创建测试套件
+    # Create test suite
     test_suite = unittest.TestSuite()
     
-    # 添加测试用例
+    # Add test cases
     test_suite.addTest(unittest.makeSuite(TestOwnerAssignment))
     test_suite.addTest(unittest.makeSuite(TestOwnerAssignmentIntegration))
     
-    # 运行测试
+    # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(test_suite)
     
-    # 输出结果摘要
-    print(f"\n=== 测试结果摘要 ===")
-    print(f"运行测试: {result.testsRun}")
-    print(f"成功: {result.testsRun - len(result.failures) - len(result.errors)}")
-    print(f"失败: {len(result.failures)}")
-    print(f"错误: {len(result.errors)}")
+    # Output result summary
+    print(f"\n=== Test Result Summary ===")
+    print(f"Tests run: {result.testsRun}")
+    print(f"Success: {result.testsRun - len(result.failures) - len(result.errors)}")
+    print(f"Failures: {len(result.failures)}")
+    print(f"Errors: {len(result.errors)}")
     
     if result.failures:
-        print(f"\n失败的测试:")
+        print(f"\nFailed tests:")
         for test, traceback in result.failures:
             print(f"- {test}: {traceback}")
     
     if result.errors:
-        print(f"\n错误的测试:")
+        print(f"\nError tests:")
         for test, traceback in result.errors:
             print(f"- {test}: {traceback}")
     
