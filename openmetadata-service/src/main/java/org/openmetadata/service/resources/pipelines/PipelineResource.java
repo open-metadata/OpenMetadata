@@ -56,6 +56,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PipelineObservabilityResponse;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -589,6 +590,35 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     return repository
         .updateVote(securityContext.getUserPrincipal().getName(), id, request)
         .toResponse();
+  }
+
+  @GET
+  @Path("/{id}/observability")
+  @Operation(
+      operationId = "getPipelineObservability",
+      summary = "Get pipeline observability data",
+      description = "Get observability data for all tables associated with this pipeline.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline observability data grouped by tables",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineObservabilityResponse.class))),
+        @ApiResponse(responseCode = "404", description = "Pipeline for instance {id} is not found")
+      })
+  public Response getPipelineObservability(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the pipeline", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    PipelineObservabilityResponse response = repository.getPipelineObservability(id);
+    return Response.ok(response).build();
   }
 
   @DELETE
