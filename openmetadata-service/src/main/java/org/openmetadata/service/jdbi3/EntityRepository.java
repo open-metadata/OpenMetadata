@@ -585,8 +585,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entity.getEntityStatus() != null) {
       return;
     }
-    // Set default status to APPROVED
-    entity.setEntityStatus(EntityStatus.APPROVED);
+    // Set default status to UNPROCESSED
+    entity.setEntityStatus(EntityStatus.UNPROCESSED);
   }
 
   /**
@@ -1186,11 +1186,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
     entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
-    if (fields.contains(FIELD_ENTITY_STATUS)) {
-      if (entity.getEntityStatus() == null) {
-        entity.setEntityStatus(EntityStatus.APPROVED);
-      }
-    }
 
     setFields(entity, fields);
     return entity;

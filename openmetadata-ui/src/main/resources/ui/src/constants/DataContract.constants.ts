@@ -15,6 +15,8 @@ import { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import jsonLogicSearchClassBase from '../utils/JSONLogicSearchClassBase';
 
+export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
+
 export enum DataContractMode {
   YAML,
   UI,
@@ -75,3 +77,7 @@ export const DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS: {
   maxBarSize: 12,
   radius: [6, 6, 0, 0],
 };
+
+export const MAX_LATENCY_UNITS = ['minute', 'hour', 'day'];
+export const REFRESH_FREQUENCY_UNITS = ['hour', 'day', 'week', 'month', 'year'];
+export const RETENTION_UNITS = ['day', 'week', 'month', 'year'];
