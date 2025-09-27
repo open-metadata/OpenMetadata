@@ -16,6 +16,7 @@ import {
   DATA_CONTRACT_DETAILS,
   DATA_CONTRACT_SECURITY_DETAILS_1,
   DATA_CONTRACT_SECURITY_DETAILS_2,
+  DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
@@ -1717,7 +1718,11 @@ test.describe('Data Contracts', () => {
 
       await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
-      await saveSecurityAndSLADetails(page, DATA_CONTRACT_SECURITY_DETAILS_1);
+      await saveSecurityAndSLADetails(
+        page,
+        DATA_CONTRACT_SECURITY_DETAILS_1,
+        true
+      );
 
       await expect(page.getByTestId('contract-title')).toContainText(
         DATA_CONTRACT_DETAILS.name
@@ -1786,10 +1791,10 @@ test.describe('Data Contracts', () => {
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
-        await validateSecurityAndSLADetails(
-          page,
-          DATA_CONTRACT_SECURITY_DETAILS_2
-        );
+        await validateSecurityAndSLADetails(page, {
+          ...DATA_CONTRACT_SECURITY_DETAILS_2,
+          ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+        });
       }
     );
   });
