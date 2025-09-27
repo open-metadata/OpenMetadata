@@ -261,4 +261,11 @@ public class PasswordEntityMasker extends EntityMasker {
   private String createKey(String previousKey, String key) {
     return NEW_KEY.equals(previousKey) ? key : previousKey + "." + key;
   }
+
+  public Object maskAppPrivateConfig(Object privateConfig, String appType) {
+    if (privateConfig != null) {
+      return PASSWORD_MASK;
+    }
+    return null;
+  }
 }
