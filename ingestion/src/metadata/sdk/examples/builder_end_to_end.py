@@ -1,0 +1,270 @@
+"""
+Builder-style end-to-end example (Python)
+
+This keeps a builder-only style by wrapping the SDK Create*Request
+objects with tiny chainable builders in this example file, while the
+SDK performs the actual operations.
+
+Run:
+  python -m metadata.sdk.examples.builder_end_to_end
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import List, Optional
+
+from metadata.sdk import OpenMetadata, OpenMetadataConfig
+from metadata.sdk.entities.database_services import DatabaseServices
+from metadata.sdk.entities.databases import Databases
+from metadata.sdk.entities.databaseschemas import DatabaseSchemas
+from metadata.sdk.entities.tables import Tables
+from metadata.sdk.entities.glossaries import Glossaries
+
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseServiceType,
+    DatabaseConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
+from metadata.generated.schema.api.data.createDatabaseSchema import (
+    CreateDatabaseSchemaRequest,
+)
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import DataType as ColumnDataType
+
+
+# ------------------------
+# Example-local builders
+# ------------------------
+
+
+@dataclass
+class DatabaseServiceBuilderPy:
+    name_val: Optional[str] = None
+    description_val: Optional[str] = None
+    type_val: Optional[DatabaseServiceType] = None
+    connection_val: Optional[DatabaseConnection] = None
+
+    def name(self, name: str) -> "DatabaseServiceBuilderPy":
+        self.name_val = name
+        return self
+
+    def description(self, desc: str) -> "DatabaseServiceBuilderPy":
+        self.description_val = desc
+        return self
+
+    def service_type(self, st: DatabaseServiceType) -> "DatabaseServiceBuilderPy":
+        self.type_val = st
+        return self
+
+    def mysql_connection(self, host_port: str, username: str, database: Optional[str] = None) -> "DatabaseServiceBuilderPy":
+        conn = DatabaseConnection(
+            config=MysqlConnection(hostPort=host_port, username=username, databaseName=database)
+        )
+        self.connection_val = conn
+        self.type_val = DatabaseServiceType.Mysql
+        return self
+
+    def build(self) -> CreateDatabaseServiceRequest:
+        if not self.name_val:
+            raise ValueError("Service name is required")
+        if not self.type_val:
+            raise ValueError("Service type is required")
+        return CreateDatabaseServiceRequest(
+            name=self.name_val,
+            description=self.description_val,
+            serviceType=self.type_val,
+            connection=self.connection_val,
+        )
+
+    def create(self):
+        return DatabaseServices.create(self.build())
+
+
+@dataclass
+class DatabaseBuilderPy:
+    name_val: Optional[str] = None
+    description_val: Optional[str] = None
+    service_fqn_val: Optional[str] = None
+
+    def name(self, name: str) -> "DatabaseBuilderPy":
+        self.name_val = name
+        return self
+
+    def description(self, desc: str) -> "DatabaseBuilderPy":
+        self.description_val = desc
+        return self
+
+    def in_service(self, service_fqn: str) -> "DatabaseBuilderPy":
+        self.service_fqn_val = service_fqn
+        return self
+
+    def build(self) -> CreateDatabaseRequest:
+        if not self.name_val:
+            raise ValueError("Database name is required")
+        if not self.service_fqn_val:
+            raise ValueError("Database service FQN is required")
+        return CreateDatabaseRequest(
+            name=self.name_val,
+            description=self.description_val,
+            service=self.service_fqn_val,
+        )
+
+    def create(self):
+        return Databases.create(self.build())
+
+
+@dataclass
+class SchemaBuilderPy:
+    name_val: Optional[str] = None
+    description_val: Optional[str] = None
+    database_fqn_val: Optional[str] = None
+
+    def name(self, name: str) -> "SchemaBuilderPy":
+        self.name_val = name
+        return self
+
+    def description(self, desc: str) -> "SchemaBuilderPy":
+        self.description_val = desc
+        return self
+
+    def in_database(self, database_fqn: str) -> "SchemaBuilderPy":
+        self.database_fqn_val = database_fqn
+        return self
+
+    def build(self) -> CreateDatabaseSchemaRequest:
+        if not self.name_val:
+            raise ValueError("Schema name is required")
+        if not self.database_fqn_val:
+            raise ValueError("Database FQN is required")
+        return CreateDatabaseSchemaRequest(
+            name=self.name_val,
+            description=self.description_val,
+            database=self.database_fqn_val,
+        )
+
+    def create(self):
+        return DatabaseSchemas.create(self.build())
+
+
+@dataclass
+class TableBuilderPy:
+    name_val: Optional[str] = None
+    description_val: Optional[str] = None
+    schema_fqn_val: Optional[str] = None
+    columns_val: List[Column] = field(default_factory=list)
+
+    def name(self, name: str) -> "TableBuilderPy":
+        self.name_val = name
+        return self
+
+    def description(self, desc: str) -> "TableBuilderPy":
+        self.description_val = desc
+        return self
+
+    def in_schema(self, schema_fqn: str) -> "TableBuilderPy":
+        self.schema_fqn_val = schema_fqn
+        return self
+
+    def add_column(self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None) -> "TableBuilderPy":
+        col = Column(name=name, dataType=dtype)
+        if dtype == ColumnDataType.VARCHAR and length:
+            # pydantic model uses dataLength for varchar
+            col.dataLength = length
+        self.columns_val.append(col)
+        return self
+
+    def build(self) -> CreateTableRequest:
+        if not self.name_val:
+            raise ValueError("Table name is required")
+        if not self.schema_fqn_val:
+            raise ValueError("Schema FQN is required")
+        if not self.columns_val:
+            raise ValueError("At least one column is required")
+        return CreateTableRequest(
+            name=self.name_val,
+            description=self.description_val,
+            databaseSchema=self.schema_fqn_val,
+            columns=self.columns_val,
+        )
+
+    def create(self):
+        return Tables.create(self.build())
+
+
+def main() -> None:
+    # 0) Configure SDK client
+    config = OpenMetadataConfig(
+        server_url="http://localhost:8585",  # Update if needed
+        jwt_token="YOUR_JWT_OR_API_KEY",     # Update before running
+        verify_ssl=False,
+    )
+    OpenMetadata.initialize(config)
+
+    # 1) Service (builder)
+    service = (
+        DatabaseServiceBuilderPy()
+        .name("mysql_prod")
+        .description("Production MySQL")
+        .mysql_connection(host_port="localhost:3306", username="om_user", database="prod")
+        .create()
+    )
+    service_fqn = service.fullyQualifiedName or service.name
+
+    # 2) Database (builder)
+    database = (
+        DatabaseBuilderPy()
+        .name("sales")
+        .description("Sales database")
+        .in_service(service_fqn)
+        .create()
+    )
+    database_fqn = database.fullyQualifiedName or database.name
+
+    # 3) Schema (builder)
+    schema = (
+        SchemaBuilderPy()
+        .name("public")
+        .description("Default schema")
+        .in_database(database_fqn)
+        .create()
+    )
+    schema_fqn = schema.fullyQualifiedName or schema.name
+
+    # 4) Table (builder)
+    table = (
+        TableBuilderPy()
+        .name("customers")
+        .description("Customer master table")
+        .in_schema(schema_fqn)
+        .add_column("id", ColumnDataType.BIGINT)
+        .add_column("email", ColumnDataType.VARCHAR, length=255)
+        .create()
+    )
+    # 5) Update description (builder-like: reuse entity, call SDK update)
+    table.description = "Updated description: includes PII columns"
+    table = Tables.update(table)
+
+    # Add tag via helper (still chained by intent)
+    table = Tables.add_tag(table.id, "PII.Sensitive")
+
+    # 6) Glossary export/import using SDK's CSV operations
+    glossary_name = "BusinessGlossary"  # adjust to your glossary
+    csv_text = Glossaries.export_csv(glossary_name).execute()
+    # dry run
+    _ = Glossaries.import_csv(glossary_name).set_dry_run(True).with_data(csv_text).execute()
+    # apply
+    _ = Glossaries.import_csv(glossary_name).with_data(csv_text).execute()
+
+    print("Completed builder-based example successfully.")
+
+
+if __name__ == "__main__":
+    main()
+
