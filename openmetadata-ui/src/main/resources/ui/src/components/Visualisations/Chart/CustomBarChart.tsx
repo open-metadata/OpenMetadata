@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { useTheme } from '@mui/material';
 import { Col, Row } from 'antd';
 import { useMemo, useState } from 'react';
 import {
@@ -32,7 +33,7 @@ import {
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
-import { CustomTooltip } from '../../../utils/DataInsightUtils';
+import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
 import { formatDateTimeLong } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { CustomBarChartProps } from './Chart.interface';
@@ -43,6 +44,7 @@ const CustomBarChart = ({
   name,
   noDataPlaceholderText,
 }: CustomBarChartProps) => {
+  const theme = useTheme();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
 
@@ -78,27 +80,41 @@ const CustomBarChart = ({
       id={`${name}_graph`}
       minHeight={300}>
       <BarChart className="w-full" data={data} margin={{ left: 16 }}>
-        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+        <CartesianGrid
+          stroke={GRAPH_BACKGROUND_COLOR}
+          strokeDasharray="3 3"
+          vertical={false}
+        />
         <XAxis
+          axisLine={{
+            stroke: theme.palette.grey[200],
+          }}
           dataKey="name"
           padding={{ left: 16, right: 16 }}
           tick={{ fontSize: 12 }}
+          tickLine={false}
         />
 
         <YAxis
           allowDataOverflow
+          axisLine={false}
           padding={{ top: 16, bottom: 16 }}
           tick={{ fontSize: 12 }}
           tickFormatter={(props) => axisTickFormatter(props, tickFormatter)}
+          tickLine={false}
         />
         <Tooltip
           content={
-            <CustomTooltip
+            <CustomDQTooltip
               dateTimeFormatter={formatDateTimeLong}
               timeStampKey="timestamp"
               valueFormatter={(value) => tooltipFormatter(value, tickFormatter)}
             />
           }
+          cursor={{
+            stroke: theme.palette.grey[200],
+            strokeDasharray: '3 3',
+          }}
         />
         {information.map((info) => (
           <Bar
@@ -109,7 +125,7 @@ const CustomBarChart = ({
             }
             key={info.dataKey}
             name={info.title}
-            stackId={info.stackId}
+            stackId="custom-bar-chart"
           />
         ))}
         <Legend onClick={handleClick} />

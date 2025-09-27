@@ -24,6 +24,10 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as AddItemIcon } from '../../../../assets/svg/add-item-icon.svg';
+import { ReactComponent as RedCircleIcon } from '../../../../assets/svg/red-circle-with-dash.svg';
+import { ReactComponent as SuccessTicketIcon } from '../../../../assets/svg/success-ticket-with-check.svg';
+import { ReactComponent as YellowCalendarIcon } from '../../../../assets/svg/yellow-calendar.icon.svg';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import {
   DEFAULT_RANGE_DATA,
@@ -38,6 +42,7 @@ import { Include } from '../../../../generated/type/include';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
+import { fetchTestCaseResultByTestSuiteId } from '../../../../rest/dataQualityDashboardAPI';
 import {
   getLatestTableProfileByFqn,
   getTableDetailsByFQN,
@@ -46,6 +51,10 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
+import {
+  aggregateTestResultsByEntity,
+  TestCaseCountByStatus,
+} from '../../../../utils/DataQuality/DataQualityUtils';
 import { bytesToSize } from '../../../../utils/StringsUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -68,7 +77,6 @@ export const TableProfilerProvider = ({
   children,
   permissions,
   table: tableEntity,
-  testCaseSummary,
 }: TableProfilerProviderProps) => {
   const { t } = useTranslation();
   const { fqn: datasetFQN } = useFqn();
@@ -88,6 +96,8 @@ export const TableProfilerProvider = ({
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
   const [testLevel, setTestLevel] = useState<TestLevel>();
   const [table, setTable] = useState<Table | undefined>(tableEntity);
+  const [testCaseSummary, setTestCaseSummary] =
+    useState<Record<string, TestCaseCountByStatus>>();
 
   const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
@@ -141,6 +151,7 @@ export const TableProfilerProvider = ({
         }),
         key: 'row-count',
         value: profile?.rowCount ?? 0,
+        icon: AddItemIcon,
       },
       {
         title: t('label.column-entity', {
@@ -148,16 +159,19 @@ export const TableProfilerProvider = ({
         }),
         key: 'column-count',
         value: profile?.columnCount ?? tableProfiler?.columns?.length ?? 0,
+        icon: SuccessTicketIcon,
       },
       {
         title: `${t('label.profile-sample-type', { type: '' })}`,
         key: 'profile-sample-type',
         value: getProfileSampleValue(),
+        icon: RedCircleIcon,
       },
       {
         title: t('label.size'),
         key: 'size',
         value: bytesToSize(profile?.sizeInByte ?? 0),
+        icon: YellowCalendarIcon,
       },
       {
         title: t('label.created-date'),
@@ -167,6 +181,12 @@ export const TableProfilerProvider = ({
               .toUTC()
               .toLocaleString(DateTime.DATE_MED)
           : '--',
+        extra: profile?.timestamp
+          ? `Last updated: ${DateTime.fromJSDate(
+              new Date(profile?.timestamp)
+            ).toLocaleString(DateTime.DATETIME_MED)}`
+          : undefined,
+        icon: YellowCalendarIcon,
       },
     ];
   }, [tableProfiler]);
@@ -308,6 +328,31 @@ export const TableProfilerProvider = ({
       setIsTestsLoading(false);
     }
   }, [viewTest, isTourOpen, activeTab, testCasePaging.pageSize]);
+
+  const fetchTestCaseSummary = useCallback(async () => {
+    if (isUndefined(table?.testSuite?.id)) {
+      return;
+    }
+    try {
+      const { data } = await fetchTestCaseResultByTestSuiteId(
+        table.testSuite.id
+      );
+      const testCaseResults = aggregateTestResultsByEntity(
+        data as Array<{
+          document_count: string;
+          entityFQN: string;
+          'testCaseResult.testCaseStatus': string;
+        }>
+      );
+      setTestCaseSummary(testCaseResults);
+    } catch (error) {
+      setTestCaseSummary(undefined);
+    }
+  }, [table?.testSuite?.id]);
+
+  useEffect(() => {
+    fetchTestCaseSummary();
+  }, []);
 
   const tableProfilerPropsData: TableProfilerContextInterface = useMemo(() => {
     return {
