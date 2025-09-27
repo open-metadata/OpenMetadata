@@ -1280,6 +1280,8 @@ test.describe('Data Contracts', () => {
       true
     );
 
+    await clickOutside(page);
+
     await page.getByRole('button', { name: 'Add New Rule' }).click();
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
@@ -1303,6 +1305,8 @@ test.describe('Data Contracts', () => {
       testGlossaryTerm.responseData.name,
       true
     );
+
+    await clickOutside(page);
 
     await page.getByTestId('save-semantic-button').click();
 
@@ -1442,6 +1446,8 @@ test.describe('Data Contracts', () => {
       true
     );
 
+    await clickOutside(page);
+
     await page.getByRole('button', { name: 'Add New Rule' }).click();
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
@@ -1466,6 +1472,8 @@ test.describe('Data Contracts', () => {
       true
     );
 
+    await clickOutside(page);
+
     await page.getByTestId('save-semantic-button').click();
 
     await expect(
@@ -1488,10 +1496,7 @@ test.describe('Data Contracts', () => {
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
-    ).toContainText('Failed');
-    await expect(
-      page.getByTestId('data-contract-latest-result-btn')
-    ).toContainText('Contract Failed');
+    ).toContainText('Passed');
 
     await page.getByTestId('schema').click();
 
@@ -1533,7 +1538,11 @@ test.describe('Data Contracts', () => {
 
     await expect(
       page.getByTestId('contract-status-card-item-semantics-status')
-    ).toContainText('Passed');
+    ).toContainText('Failed');
+
+    await expect(
+      page.getByTestId('data-contract-latest-result-btn')
+    ).toContainText('Contract Failed');
   });
 
   test('Nested Column should not be selectable', async ({ page }) => {

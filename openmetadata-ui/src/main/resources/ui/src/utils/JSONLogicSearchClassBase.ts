@@ -178,9 +178,8 @@ class JSONLogicSearchClassBase {
       label: t('label.not-contain-plural'),
       labelForFormat: t('label.not-contain-plural'),
       valueTypes: ['multiselect', 'select'],
-      cardinality: 1,
       valueSources: ['value'],
-      jsonLogic: 'not_contains',
+      reversedOp: 'array_contains',
     },
   };
 
@@ -594,6 +593,71 @@ class JSONLogicSearchClassBase {
         }),
       },
     };
+  };
+
+  // Custom handling for array_not_contains operator
+  // Check the tree structure to determine if array_not_contains was used
+  // Return the rule with negation applied at group level
+  getNegativeQueryForNotContainsReverserOperation = (
+    logic: Record<string, unknown>
+  ) => {
+    const processNotContains = (
+      logic: Record<string, unknown>
+    ): Record<string, unknown> | unknown => {
+      if (!logic || typeof logic !== 'object') {
+        return logic;
+      }
+
+      // Check if this is a "some" operation with nested "!" and "contains"
+      // This pattern is generated when array_not_contains is used with reversedOp
+      if (logic.some && Array.isArray(logic.some)) {
+        const [variable, condition] = logic.some as [
+          unknown,
+          Record<string, unknown>
+        ];
+
+        // Check if the condition has a negated contains (indicating array_not_contains was used)
+        if (
+          condition &&
+          condition['!'] &&
+          typeof condition['!'] === 'object' &&
+          (condition['!'] as Record<string, unknown>).contains
+        ) {
+          // Transform to NOT around the entire some operation
+          return {
+            '!': {
+              some: [
+                variable,
+                {
+                  contains: (condition['!'] as Record<string, unknown>)
+                    .contains,
+                },
+              ],
+            },
+          };
+        }
+      }
+
+      // Recursively process nested logic
+      if (logic.and && Array.isArray(logic.and)) {
+        return {
+          and: logic.and.map((item: unknown) =>
+            processNotContains(item as Record<string, unknown>)
+          ),
+        };
+      }
+      if (logic.or && Array.isArray(logic.or)) {
+        return {
+          or: logic.or.map((item: unknown) =>
+            processNotContains(item as Record<string, unknown>)
+          ),
+        };
+      }
+
+      return logic;
+    };
+
+    return processNotContains(logic);
   };
 }
 
