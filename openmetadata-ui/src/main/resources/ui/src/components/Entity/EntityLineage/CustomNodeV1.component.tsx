@@ -11,19 +11,17 @@
  *  limitations under the License.
  */
 
-import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { noop } from 'lodash';
+import { memo, useMemo } from 'react';
 import { Handle, NodeProps, Position } from 'reactflow';
-import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import { useLineageStore } from '../../Lineage/LineageNew/useLineageStore';
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
-import {
-  getCollapseHandle,
-  getExpandHandle,
-  getNodeClassNames,
-} from './CustomNode.utils';
+import { getCollapseHandle, getExpandHandle } from './CustomNode.utils';
 import './entity-lineage.style.less';
 import {
   ExpandCollapseHandlesProps,
@@ -145,16 +143,19 @@ const ExpandCollapseHandles = memo(
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
 
-  const {
-    isEditMode,
-    tracedNodes,
-    selectedNode,
-    onNodeCollapse,
-    removeNodeHandler,
-    loadChildNodesHandler,
-    activeLayer,
-    dataQualityLineage,
-  } = useLineageProvider();
+  //   const {
+  //     isEditMode,
+  //     tracedNodes,
+  //     selectedNode,
+  //     onNodeCollapse,
+  //     removeNodeHandler,
+  //     loadChildNodesHandler,
+  //     activeLayer,
+  //     dataQualityLineage,
+  //   } = useLineageProvider();
+
+  const { isEditMode, selectedNode, activeLayer, dataQualityLineage } =
+    useLineageStore.getState();
 
   const {
     label,
@@ -176,7 +177,6 @@ const CustomNodeV1 = (props: NodeProps) => {
     upstreamExpandPerformed = false,
     downstreamExpandPerformed = false,
   } = node;
-  const [isTraced, setIsTraced] = useState(false);
 
   const showDqTracing = useMemo(
     () =>
@@ -185,26 +185,31 @@ const CustomNodeV1 = (props: NodeProps) => {
     [activeLayer, dataQualityLineage, id]
   );
 
-  const containerClass = getNodeClassNames({
-    isSelected,
-    showDqTracing: showDqTracing ?? false,
-    isTraced,
-    isBaseNode: isRootNode,
-  });
+  const containerClassNames = useMemo(() => {
+    return classNames(
+      'lineage-node p-0',
+      isSelected ? 'custom-node-header-active' : 'custom-node-header-normal',
+      {
+        'data-quality-failed-custom-node-header': showDqTracing,
+        'custom-node-header-tracing': false,
+        'lineage-base-node': isRootNode,
+      }
+    );
+  }, [isRootNode, isSelected, showDqTracing]);
 
-  const onExpand = useCallback(
-    (direction: LineageDirection) => {
-      loadChildNodesHandler(node, direction);
-    },
-    [loadChildNodesHandler, node]
-  );
+  //   const onExpand = useCallback(
+  //     (direction: LineageDirection) => {
+  //       loadChildNodesHandler(node, direction);
+  //     },
+  //     [loadChildNodesHandler, node]
+  //   );
 
-  const onCollapse = useCallback(
-    (direction = LineageDirection.Downstream) => {
-      onNodeCollapse(props, direction);
-    },
-    [onNodeCollapse, props]
-  );
+  //   const onCollapse = useCallback(
+  //     (direction = LineageDirection.Downstream) => {
+  //       onNodeCollapse(props, direction);
+  //     },
+  //     [props]
+  //   );
 
   const nodeLabel = useMemo(() => {
     if (isNewNode) {
@@ -215,7 +220,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       <>
         <LineageNodeLabelV1 node={node} />
         {isSelected && isEditMode && !isRootNode && (
-          <LineageNodeRemoveButton onRemove={() => removeNodeHandler(props)} />
+          <LineageNodeRemoveButton onRemove={noop} />
         )}
       </>
     );
@@ -232,8 +237,8 @@ const CustomNodeV1 = (props: NodeProps) => {
       isRootNode,
       isUpstreamNode,
       upstreamLineageLength: upstreamLineage.length,
-      onCollapse,
-      onExpand,
+      onCollapse: noop,
+      onExpand: noop,
     }),
     [
       upstreamExpandPerformed,
@@ -245,8 +250,6 @@ const CustomNodeV1 = (props: NodeProps) => {
       isRootNode,
       isUpstreamNode,
       upstreamLineage.length,
-      onCollapse,
-      onExpand,
     ]
   );
 
@@ -255,13 +258,9 @@ const CustomNodeV1 = (props: NodeProps) => {
     [expandCollapseProps]
   );
 
-  useEffect(() => {
-    setIsTraced(tracedNodes.includes(id));
-  }, [tracedNodes, id]);
-
   return (
     <div
-      className={containerClass}
+      className={containerClassNames}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
       <NodeHandles
         expandCollapseHandles={handlesElement}

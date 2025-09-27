@@ -799,15 +799,15 @@ export const createNodes = (
   isExpanded = false,
   hidden?: boolean
 ) => {
-  const uniqueNodesMap = new Map<string, LineageEntityReference>();
-  nodesData.forEach((node) => {
-    if (node?.fullyQualifiedName) {
-      uniqueNodesMap.set(node.fullyQualifiedName, node);
-    }
-  });
+  //   const uniqueNodesMap = new Map<string, LineageEntityReference>();
+  //   nodesData.forEach((node) => {
+  //     if (node?.fullyQualifiedName) {
+  //       uniqueNodesMap.set(node.fullyQualifiedName, node);
+  //     }
+  //   });
 
   // Convert to array and sort once
-  const uniqueNodesData = Array.from(uniqueNodesMap.values()).sort((a, b) =>
+  const uniqueNodesData = nodesData.sort((a, b) =>
     getEntityName(a).localeCompare(getEntityName(b))
   );
 
