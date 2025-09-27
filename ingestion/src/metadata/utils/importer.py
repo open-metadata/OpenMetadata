@@ -122,7 +122,7 @@ def get_class_name_root(type_: str) -> str:
     )
 
 
-def import_from_module(key: str) -> Type[Any]:
+def import_from_module(key: str, log_traceback: bool = True) -> Type[Any]:
     """
     Dynamically import an object from a module path
     """
@@ -132,7 +132,8 @@ def import_from_module(key: str) -> Type[Any]:
         obj = getattr(importlib.import_module(module_name), obj_name)
         return obj
     except (ModuleNotFoundError, ImportError) as err:
-        logger.debug(traceback.format_exc())
+        if log_traceback:
+            logger.debug(traceback.format_exc())
         raise DynamicImportException(module=module_name, key=obj_name, cause=err)
 
 
