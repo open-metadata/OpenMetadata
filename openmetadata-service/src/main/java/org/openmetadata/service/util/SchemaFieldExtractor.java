@@ -425,7 +425,16 @@ public class SchemaFieldExtractor {
   }
 
   private static String determineReferenceType(String refUri) {
-    // Pattern to extract the definition name if present
+    // Handle internal schema references first (e.g., #/definitions/column,
+    // #/definitions/tableConstraint, etc.)
+    if (refUri.startsWith("#/definitions/")) {
+      String definitionName = refUri.substring("#/definitions/".length());
+      LOG.debug("Found internal schema reference: {}", definitionName);
+      // Return the definition name as the type - this preserves the actual type name
+      return definitionName;
+    }
+
+    // Pattern to extract the definition name if present from external files
     Pattern definitionPattern = Pattern.compile("^(?:.*/)?basic\\.json#/definitions/([\\w-]+)$");
     Matcher matcher = definitionPattern.matcher(refUri);
     if (matcher.find()) {
