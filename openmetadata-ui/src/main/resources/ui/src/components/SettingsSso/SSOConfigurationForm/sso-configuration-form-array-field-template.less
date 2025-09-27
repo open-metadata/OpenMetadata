@@ -250,6 +250,29 @@
   }
 }
 
+// Error state styling - should override all other states
+.sso-array-field.has-error {
+  .ant-select-status-error {
+    .ant-select-selector {
+      border-color: @red-23 !important;
+
+      &:hover {
+        border-color: @red-23 !important;
+      }
+    }
+
+    &.ant-select-focused .ant-select-selector,
+    &.ant-select-open .ant-select-selector,
+    .ant-select-selector:focus,
+    .ant-select-selector:focus-within,
+    .ant-select-selector:active {
+      border-color: @red-23 !important;
+      outline: none !important;
+      box-shadow: none !important;
+    }
+  }
+}
+
 // Specific override for ant-select show-search input
 .sso-select-container
   .ant-select-show-search.ant-select:not(.ant-select-customize-input)
