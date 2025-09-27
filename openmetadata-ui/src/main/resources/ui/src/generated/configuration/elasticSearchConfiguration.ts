@@ -90,6 +90,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * Embedding generation using Deep Java Library (DJL)
+     */
+    djl?: Djl;
+    /**
      * The provider to use for generating vector embeddings (e.g., bedrock, openai).
      */
     embeddingProvider?: string;
@@ -135,6 +139,16 @@ export interface Bedrock {
      * Set to true to use IAM role based authentication instead of access/secret keys.
      */
     useIamRole?: boolean;
+}
+
+/**
+ * Embedding generation using Deep Java Library (DJL)
+ */
+export interface Djl {
+    /**
+     * DJL model name for embedding generation
+     */
+    embeddingModel?: string;
 }
 
 /**
