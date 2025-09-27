@@ -238,7 +238,10 @@ export const getField = (field: FieldProp) => {
       break;
     case FieldTypes.DESCRIPTION:
       fieldElement = (
-        <RichTextEditor {...(props as unknown as RichTextEditorProp)} />
+        <RichTextEditor
+          {...(props as unknown as RichTextEditorProp)}
+          isDomainRevampEnabled
+        />
       );
       formProps.trigger = 'onTextChange';
       formProps.initialValue = props?.initialValue ?? '';

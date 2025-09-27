@@ -37,6 +37,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
       style,
       placeHolder,
       onTextChange,
+      isDomainRevampEnabled = false,
     }: RichTextEditorProp,
     ref
   ) => {
@@ -74,6 +75,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
           menuType="bar"
           editable={!readonly}
           onChange={onChangeHandler}
+          isDomainRevampEnabled={isDomainRevampEnabled}
         />
       </div>
     );

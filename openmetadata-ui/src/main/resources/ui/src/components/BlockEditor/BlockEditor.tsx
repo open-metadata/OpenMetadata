@@ -46,6 +46,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       placeholder,
       onChange,
       showInlineAlert = true,
+      isDomainRevampEnabled = false,
     },
     ref
   ) => {
@@ -244,6 +245,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         {menuType === 'bar' && !isNil(editor) && (
           <BarMenu
             editor={editor}
+            isDomainRevampEnabled={isDomainRevampEnabled}
             onLinkToggle={editorSlots.current?.onLinkToggle}
           />
         )}
