@@ -60,6 +60,7 @@ const ApplicationConfiguration = ({
 
   const formPanel = (
     <FormBuilder
+      capitalizeOptionLabel
       useSelectWidget
       cancelText={t('label.back')}
       formData={appData?.appConfiguration ?? {}}
