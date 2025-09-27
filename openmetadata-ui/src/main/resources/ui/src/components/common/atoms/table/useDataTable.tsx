@@ -100,7 +100,11 @@ export const useDataTable = <T extends { id: string }>(
                     entity={entity}
                     isSelected={listing.isSelected(entity.id)}
                     key={entity.id}
-                    onEntityClick={listing.actionHandlers.onEntityClick}
+                    onEntityClick={
+                      listing.actionHandlers.onEntityClick ||
+                      // eslint-disable-next-line @typescript-eslint/no-empty-function
+                      (() => {})
+                    }
                     onSelect={listing.handleSelect}
                   />
                 );
@@ -114,7 +118,10 @@ export const useDataTable = <T extends { id: string }>(
                   renderers: listing.renderers,
                   isSelected: listing.isSelected(entity.id),
                   onSelect: listing.handleSelect,
-                  onEntityClick: listing.actionHandlers.onEntityClick,
+                  onEntityClick:
+                    listing.actionHandlers.onEntityClick ||
+                    // eslint-disable-next-line @typescript-eslint/no-empty-function
+                    (() => {}),
                   enableSelection,
                 });
 

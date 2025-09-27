@@ -470,7 +470,13 @@ export const getField = (field: FieldProp) => {
 };
 
 export const generateFormFields = (fields: FieldProp[]) => {
-  return <>{fields.map((field) => getField(field))}</>;
+  return (
+    <>
+      {fields.map((field, index) => (
+        <Fragment key={field.id || index}>{getField(field)}</Fragment>
+      ))}
+    </>
+  );
 };
 
 export const transformErrors: ErrorTransformer = (errors) => {
