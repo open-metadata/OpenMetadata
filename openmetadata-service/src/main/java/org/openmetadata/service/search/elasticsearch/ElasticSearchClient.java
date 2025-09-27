@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.elasticsearch;
 
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
@@ -8,7 +7,6 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
-import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
@@ -24,19 +22,13 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
-import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
-import es.org.elasticsearch.action.delete.DeleteRequest;
-import es.org.elasticsearch.action.get.GetRequest;
-import es.org.elasticsearch.action.get.GetResponse;
-import es.org.elasticsearch.action.index.IndexRequest;
 import es.org.elasticsearch.action.search.SearchResponse;
-import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.update.UpdateRequest;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
@@ -55,7 +47,6 @@ import es.org.elasticsearch.common.ParsingException;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
-import es.org.elasticsearch.index.query.IdsQueryBuilder;
 import es.org.elasticsearch.index.query.MatchQueryBuilder;
 import es.org.elasticsearch.index.query.Operator;
 import es.org.elasticsearch.index.query.PrefixQueryBuilder;
@@ -63,10 +54,8 @@ import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
-import es.org.elasticsearch.index.query.ScriptQueryBuilder;
 import es.org.elasticsearch.index.query.TermQueryBuilder;
 import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
-import es.org.elasticsearch.index.reindex.ReindexRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.script.Script;
@@ -223,6 +212,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private final ESLineageGraphBuilder lineageGraphBuilder;
   private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
   private final ElasticSearchIndexManager indexManager;
+  private final ElasticSearchEntityManager entityManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -265,6 +255,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     lineageGraphBuilder = new ESLineageGraphBuilder(client);
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
+    entityManager = new ElasticSearchEntityManager(newClient);
     nlqService = null;
   }
 
@@ -613,24 +604,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
-    try {
-      GetRequest request =
-          new GetRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName), entityId);
-      GetResponse response = client.get(request, RequestOptions.DEFAULT);
-
-      if (response.isExists()) {
-        return Response.status(OK).entity(response.toString()).build();
-      }
-
-    } catch (ElasticsearchStatusException e) {
-      if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to to find doc with id %s", entityId));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-      }
-    }
-    return getResponse(NOT_FOUND, "Document not found.");
+    return entityManager.getDocByID(indexName, entityId);
   }
 
   private void buildHierarchyQuery(
@@ -1692,149 +1666,60 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public void createEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      updateRequest.doc(doc, XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      updateElasticSearch(updateRequest);
-    }
+  public void createEntity(String indexName, String docId, String doc) throws IOException {
+    entityManager.createEntity(indexName, docId, doc);
   }
 
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (isClientAvailable) {
-      BulkRequest bulkRequest = new BulkRequest();
-      for (Map<String, String> docAndId : docsAndIds) {
-        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
-        IndexRequest indexRequest =
-            new IndexRequest(indexName)
-                .id(entry.getKey())
-                .source(entry.getValue(), XContentType.JSON);
-        bulkRequest.add(indexRequest);
-      }
-      bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      ActionListener<BulkResponse> listener =
-          new ActionListener<BulkResponse>() {
-            @Override
-            public void onResponse(BulkResponse bulkItemResponses) {
-              if (bulkItemResponses.hasFailures()) {
-                LOG.error(
-                    "Failed to create entities in ElasticSearch: {}",
-                    bulkItemResponses.buildFailureMessage());
-              } else {
-                LOG.debug("Successfully created {} entities in ElasticSearch", docsAndIds.size());
-              }
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Failed to create entities in ElasticSearch", e);
-            }
-          };
-      client.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
-    }
+    entityManager.createEntities(indexName, docsAndIds);
   }
 
   @Override
-  public void createTimeSeriesEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      updateRequest.doc(doc, XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      updateElasticSearch(updateRequest);
-    }
+  public void createTimeSeriesEntity(String indexName, String docId, String doc)
+      throws IOException {
+    entityManager.createTimeSeriesEntity(indexName, docId, doc);
   }
 
   @Override
-  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
-    if (isClientAvailable) {
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
-      ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-      deleteByQueryRequest.setQuery(scriptQuery);
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-    }
+  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params)
+      throws IOException {
+    entityManager.deleteByScript(indexName, scriptTxt, params);
   }
 
   @Override
-  public void deleteEntity(String indexName, String docId) {
-    if (isClientAvailable) {
-      DeleteRequest deleteRequest = new DeleteRequest(indexName, docId);
-      deleteEntityFromElasticSearch(deleteRequest);
-    }
+  public void deleteEntity(String indexName, String docId) throws IOException {
+    entityManager.deleteEntity(indexName, docId);
   }
 
   @Override
   public void deleteEntityByFields(
-      List<String> indexName, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
-      es.org.elasticsearch.index.query.BoolQueryBuilder queryBuilder =
-          new es.org.elasticsearch.index.query.BoolQueryBuilder();
-      DeleteByQueryRequest deleteByQueryRequest =
-          new DeleteByQueryRequest(indexName.toArray(new String[0]));
-      for (Pair<String, String> p : fieldAndValue) {
-        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
-      }
-      deleteByQueryRequest.setQuery(queryBuilder);
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-    }
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
+    entityManager.deleteEntityByFields(indexNames, fieldAndValue);
   }
 
   @Override
-  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
-    if (isClientAvailable) {
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-      deleteByQueryRequest.setQuery(
-          new PrefixQueryBuilder("fullyQualifiedName.keyword", fqnPrefix.toLowerCase()));
-      deleteEntityFromElasticSearchByQuery(deleteByQueryRequest);
-    }
+  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) throws IOException {
+    entityManager.deleteEntityByFQNPrefix(indexName, fqnPrefix);
   }
 
   @Override
-  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-      updateRequest.script(script);
-      updateElasticSearch(updateRequest);
-    }
+  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+      throws IOException {
+    entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt);
   }
 
   @Override
   public void softDeleteOrRestoreChildren(
-      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable && !nullOrEmpty(indexName)) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[0]));
-      es.org.elasticsearch.index.query.BoolQueryBuilder queryBuilder =
-          new es.org.elasticsearch.index.query.BoolQueryBuilder();
-      for (Pair<String, String> p : fieldAndValue) {
-        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
-      }
-      updateByQueryRequest.setQuery(queryBuilder);
-      Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-      updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
-    }
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue)
+      throws IOException {
+    entityManager.softDeleteOrRestoreChildren(indexName, scriptTxt, fieldAndValue);
   }
 
   @Override
   public void updateEntity(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-      updateRequest.scriptedUpsert(true);
-      updateRequest.script(script);
-      updateElasticSearch(updateRequest);
-    }
+    entityManager.updateEntity(indexName, docId, doc, scriptTxt);
   }
 
   @Override
@@ -1887,33 +1772,12 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  private void updateChildren(
-      UpdateByQueryRequest updateByQueryRequest,
-      Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates) {
-    updateByQueryRequest.setQuery(
-        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-            .operator(Operator.AND));
-    Script script =
-        new Script(
-            ScriptType.INLINE,
-            Script.DEFAULT_SCRIPT_LANG,
-            updates.getKey(),
-            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
-    updateByQueryRequest.setScript(script);
-    updateElasticSearchByQuery(updateByQueryRequest);
-  }
-
   @Override
   public void updateChildren(
       String indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-      updateChildren(updateByQueryRequest, fieldAndValue, updates);
-    }
+    entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
   @Override
@@ -1966,34 +1830,17 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public void updateChildren(
       List<String> indexName,
       Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[0]));
-      updateChildren(updateByQueryRequest, fieldAndValue, updates);
-    }
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
+  @Override
   public void updateEntityRelationship(
       String indexName,
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-      updateByQueryRequest.setQuery(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-              .operator(Operator.AND));
-      Map<String, Object> params =
-          Collections.singletonMap("entityRelationshipData", entityRelationshipData);
-      Script script =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              ADD_UPDATE_ENTITY_RELATIONSHIP,
-              params);
-      updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
-    }
+    entityManager.updateEntityRelationship(indexName, fieldAndValue, entityRelationshipData);
   }
 
   @Override
@@ -2003,24 +1850,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       String pipelineName,
       String entityType,
       List<UUID> entityIds) {
-    String[] queryIDs = entityIds.stream().map(UUID::toString).toArray(String[]::new);
-
-    ReindexRequest request = new ReindexRequest();
-    request.setSourceIndices(sourceIndices.toArray(new String[0]));
-    request.setDestIndex(destinationIndex);
-    request.setDestPipeline(pipelineName);
-
-    // Add query to filter by IDs
-    IdsQueryBuilder idsQuery = QueryBuilders.idsQuery();
-    idsQuery.addIds(queryIDs);
-    request.setSourceQuery(idsQuery);
-
-    try {
-      client.reindex(request, RequestOptions.DEFAULT);
-      LOG.info("Reindexed {} entities of type {} to vector index", entityIds.size(), entityType);
-    } catch (IOException e) {
-      LOG.error("Failed to reindex entities: {}", e.getMessage());
-    }
+    entityManager.reindexWithEntityIds(
+        sourceIndices, destinationIndex, pipelineName, entityType, entityIds);
   }
 
   @Override
@@ -2041,15 +1872,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @SneakyThrows
-  public void updateElasticSearch(UpdateRequest updateRequest) {
-    if (updateRequest != null && isClientAvailable) {
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      client.update(updateRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  @SneakyThrows
   private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
     if (updateByQueryRequest != null && isClientAvailable) {
       updateByQueryRequest.setRefresh(true);
@@ -2061,16 +1883,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   /** */
   @Override
   public void close() {}
-
-  @SneakyThrows
-  private void deleteEntityFromElasticSearch(DeleteRequest deleteRequest) {
-    if (deleteRequest != null && isClientAvailable) {
-      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      deleteRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL);
-      client.delete(deleteRequest, RequestOptions.DEFAULT);
-    }
-  }
 
   @SneakyThrows
   public void deleteByQuery(String index, String query) {
@@ -3107,6 +2919,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       JsonNode versionNode = jsonNode.get("version");
       if (versionNode != null && versionNode.get("number") != null) {
         String version = versionNode.get("number").asText();
+        LOG.info("ES Server version is running on: {}", version);
         return version.startsWith("7.");
       }
     } catch (Exception e) {

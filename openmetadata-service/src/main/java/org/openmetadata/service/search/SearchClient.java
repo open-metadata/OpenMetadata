@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.commons.lang3.tuple.Pair;
@@ -38,7 +37,7 @@ import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
-public interface SearchClient<T> extends IndexManagementClient {
+public interface SearchClient<T> extends IndexManagementClient, EntityManagementClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
@@ -409,8 +408,6 @@ public interface SearchClient<T> extends IndexManagementClient {
   Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
       throws IOException;
 
-  Response getDocByID(String indexName, String entityId) throws IOException;
-
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }
@@ -507,57 +504,14 @@ public interface SearchClient<T> extends IndexManagementClient {
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
-  void createEntity(String indexName, String docId, String doc);
-
-  void createEntities(String indexName, List<Map<String, String>> docsAndIds) throws IOException;
-
-  void createTimeSeriesEntity(String indexName, String docId, String doc);
-
-  void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
-
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
-
-  void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params);
-
-  void deleteEntity(String indexName, String docId);
-
-  void deleteEntityByFields(List<String> indexName, List<Pair<String, String>> fieldAndValue);
-
-  void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
-
-  void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
-
-  void softDeleteOrRestoreChildren(
-      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
-
-  void updateChildren(
-      String indexName,
-      Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates);
 
   void updateByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition);
 
-  void updateChildren(
-      List<String> indexName,
-      Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates);
-
   void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData);
-
-  void updateEntityRelationship(
-      String indexName,
-      Pair<String, String> fieldAndValue,
-      Map<String, Object> entityRelationshipData);
-
-  void reindexWithEntityIds(
-      List<String> sourceIndices,
-      String destinationIndex,
-      String pipelineName,
-      String entityType,
-      List<UUID> entityIds);
 
   Response listDataInsightChartResult(
       Long startTs,
