@@ -3,7 +3,7 @@ package org.openmetadata.sdk.fluent.common;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import lombok.extern.slf4j.Slf4j;
+// Avoid Lombok to keep logging provider-agnostic
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -18,8 +18,9 @@ public class CsvOperations {
   /**
    * Base class for CSV Export operations with WebSocket support.
    */
-  @Slf4j
   public abstract static class BaseCsvExporter {
+    private static final org.slf4j.Logger LOG =
+        org.slf4j.LoggerFactory.getLogger(BaseCsvExporter.class);
     protected final OpenMetadataClient client;
     protected final String entityName;
     protected boolean async = false;
@@ -78,6 +79,7 @@ public class CsvOperations {
 
     public CompletableFuture<String> executeAsync() {
       String jobId = performAsyncExport();
+      LOG.debug("CSV export initiated: entity={}, jobId={}", entityName, jobId);
 
       // If WebSocket is enabled and waiting for completion, use WebSocket for notifications
       if (useWebSocket && waitForCompletion) {
@@ -86,17 +88,38 @@ public class CsvOperations {
           if (serverUrl != null) {
             UUID userId = client.getUserId();
             if (userId != null) {
-              log.debug("Using WebSocket for async export monitoring with user ID: {}", userId);
+              LOG.debug("Using WebSocket for async export monitoring with user ID: {}", userId);
 
               WebSocketManager wsManager = WebSocketManager.getInstance(serverUrl, userId);
+              LOG.debug(
+                  "Waiting for CSV export via WebSocket: jobId={}, timeoutSeconds={}",
+                  jobId,
+                  timeoutSeconds);
               return wsManager
                   .waitForCsvExport(jobId, timeoutSeconds)
-                  .thenApply(
+                  .thenCompose(
                       result -> {
+                        // Some backends may emit a JSON status on completion; if so, fetch final
+                        // CSV
+                        if (!isLikelyCsv(result)) {
+                          try {
+                            String status = client.importExport().getExportStatus(jobId);
+                            String csv = tryExtractCsv(status);
+                            if (csv != null) {
+                              if (onComplete != null) onComplete.accept(csv);
+                              return CompletableFuture.completedFuture(csv);
+                            }
+                          } catch (Exception e) {
+                            LOG.debug(
+                                "Failed fetching final CSV after WS completion: {}",
+                                e.getMessage());
+                          }
+                        }
+
                         if (onComplete != null) {
                           onComplete.accept(result);
                         }
-                        return result;
+                        return CompletableFuture.completedFuture(result); // CSV content
                       })
                   .exceptionally(
                       ex -> {
@@ -108,22 +131,59 @@ public class CsvOperations {
             }
           }
         } catch (Exception e) {
-          log.debug("WebSocket not available, falling back to polling: {}", e.getMessage());
+          LOG.debug("WebSocket not available; returning job id immediately: {}", e.getMessage());
         }
+        // WebSocket requested but not available: do NOT poll; return job id now
+        return CompletableFuture.supplyAsync(
+            () -> {
+              if (onComplete != null) onComplete.accept(jobId);
+              return jobId;
+            });
       }
 
-      // Fallback to simple async completion
+      // If waiting for completion without WebSocket, poll the export status
+      if (waitForCompletion /* && !useWebSocket */) {
+        return CompletableFuture.supplyAsync(
+                () -> {
+                  long deadline = System.currentTimeMillis() + (timeoutSeconds * 1000L);
+                  String last = null;
+                  while (System.currentTimeMillis() < deadline) {
+                    try {
+                      String status = client.importExport().getExportStatus(jobId);
+                      if (status != null && !status.isEmpty()) {
+                        last = status;
+                        String csv = tryExtractCsv(status);
+                        if (csv != null) {
+                          if (onComplete != null) onComplete.accept(csv);
+                          return csv; // Completed CSV
+                        }
+                      }
+                    } catch (Exception e) {
+                      LOG.debug("Polling export status failed: {}", e.getMessage());
+                    }
+                    try {
+                      Thread.sleep(1000);
+                    } catch (InterruptedException ie) {
+                      Thread.currentThread().interrupt();
+                      break;
+                    }
+                  }
+                  // Timeout: return last known status or job id
+                  if (onComplete != null) onComplete.accept(last != null ? last : jobId);
+                  return last != null ? last : jobId;
+                })
+            .exceptionally(
+                ex -> {
+                  if (onError != null) onError.accept(ex);
+                  throw new RuntimeException("CSV export failed", ex);
+                });
+      }
+
+      // No waiting requested: return job id immediately
+      LOG.debug("CSV export: no waiting requested; returning jobId immediately: jobId={}", jobId);
       CompletableFuture<String> future =
           CompletableFuture.supplyAsync(
               () -> {
-                if (waitForCompletion && timeoutSeconds > 0) {
-                  try {
-                    Thread.sleep(Math.min(2000, timeoutSeconds * 1000));
-                  } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                  }
-                }
-
                 if (onComplete != null) {
                   onComplete.accept(jobId);
                 }
@@ -139,6 +199,41 @@ public class CsvOperations {
           });
     }
 
+    private String tryExtractCsv(String statusJson) {
+      try {
+        org.json.JSONObject obj = new org.json.JSONObject(statusJson);
+        String st = obj.optString("status", obj.optString("state", ""));
+        if (st != null && !st.isEmpty() && "COMPLETED".equalsIgnoreCase(st)) {
+          if (obj.has("data")) {
+            Object data = obj.get("data");
+            if (data instanceof String) return (String) data;
+            if (data instanceof org.json.JSONObject json && json.has("csv")) {
+              return json.optString("csv", null);
+            }
+          }
+          if (obj.has("result")) {
+            Object res = obj.get("result");
+            if (res instanceof String) return (String) res;
+            if (res instanceof org.json.JSONObject json && json.has("csv")) {
+              return json.optString("csv", null);
+            }
+          }
+        }
+      } catch (Exception ignore) {
+        // Not JSON or unexpected shape; keep polling
+      }
+      return null;
+    }
+
+    private boolean isLikelyCsv(String s) {
+      if (s == null || s.isEmpty()) return false;
+      // JSON starts with '{' or '['; treat as not CSV
+      char c = s.charAt(0);
+      if (c == '{' || c == '[') return false;
+      // Heuristic: CSV typically contains commas and newlines
+      return (s.indexOf(',') >= 0) && (s.indexOf('\n') >= 0);
+    }
+
     public String toCsv() {
       return execute();
     }
@@ -147,8 +242,9 @@ public class CsvOperations {
   /**
    * Base class for CSV Import operations with WebSocket support.
    */
-  @Slf4j
   public abstract static class BaseCsvImporter {
+    private static final org.slf4j.Logger LOG =
+        org.slf4j.LoggerFactory.getLogger(BaseCsvImporter.class);
     protected final OpenMetadataClient client;
     protected final String entityName;
     protected String csvData;
@@ -250,7 +346,7 @@ public class CsvOperations {
           if (serverUrl != null) {
             UUID userId = client.getUserId();
             if (userId != null) {
-              log.debug("Using WebSocket for async import monitoring with user ID: {}", userId);
+              LOG.debug("Using WebSocket for async import monitoring with user ID: {}", userId);
 
               WebSocketManager wsManager = WebSocketManager.getInstance(serverUrl, userId);
               return wsManager
@@ -270,11 +366,11 @@ public class CsvOperations {
                         throw new RuntimeException("CSV import failed", ex);
                       });
             } else {
-              log.debug("User ID not available, falling back to polling");
+              LOG.debug("User ID not available, falling back to polling");
             }
           }
         } catch (Exception e) {
-          log.debug("WebSocket not available, falling back to polling: {}", e.getMessage());
+          LOG.debug("WebSocket not available, falling back to polling: {}", e.getMessage());
         }
       }
 

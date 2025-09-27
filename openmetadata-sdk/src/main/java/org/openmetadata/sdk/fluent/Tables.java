@@ -21,7 +21,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Table table = find(tableId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -155,8 +155,12 @@ public final class Tables {
       this.isFqn = isFqn;
     }
 
-    public TableFinder includeOwner() {
-      includes.add("owner");
+    /**
+     * Include owners field in response.
+     * Prefer this over includeOwner (singular).
+     */
+    public TableFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -166,7 +170,7 @@ public final class Tables {
     }
 
     public TableFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

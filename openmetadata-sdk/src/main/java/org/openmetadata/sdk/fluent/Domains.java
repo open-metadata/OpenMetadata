@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Domain domain = find(domainId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -140,8 +140,8 @@ public final class Domains {
       this.isFqn = isFqn;
     }
 
-    public DomainFinder includeOwner() {
-      includes.add("owner");
+    public DomainFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -151,7 +151,7 @@ public final class Domains {
     }
 
     public DomainFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

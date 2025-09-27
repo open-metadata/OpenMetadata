@@ -9,9 +9,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import lombok.Getter;
+// Avoid Lombok for logging vs annotation processing
 import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * WebSocket listener for OpenMetadata async operations.
@@ -19,10 +21,11 @@ import org.json.JSONObject;
  */
 @Slf4j
 public class WebSocketListener {
+  private static final Logger LOG = LoggerFactory.getLogger(WebSocketListener.class);
   private Socket socket;
   private final String serverUrl;
   private final UUID userId;
-  @Getter private boolean connected = false;
+  private boolean connected = false;
 
   // Job ID to CompletableFuture mapping for async operations
   private final Map<String, CompletableFuture<JobResult>> pendingJobs = new ConcurrentHashMap<>();
@@ -77,7 +80,7 @@ public class WebSocketListener {
     socket.on(
         Socket.EVENT_CONNECT,
         args -> {
-          log.info(
+          LOG.info(
               "WebSocket connected successfully for user: {} to server: {}", userId, serverUrl);
           connected = true;
         });
@@ -85,7 +88,7 @@ public class WebSocketListener {
     socket.on(
         Socket.EVENT_DISCONNECT,
         args -> {
-          log.info(
+          LOG.info(
               "WebSocket disconnected for user: {} - reason: {}",
               userId,
               args.length > 0 ? args[0] : "unknown");
@@ -96,14 +99,14 @@ public class WebSocketListener {
         Socket.EVENT_CONNECT_ERROR,
         args -> {
           String error = args.length > 0 ? args[0].toString() : "unknown error";
-          log.error(
+          LOG.error(
               "WebSocket connection error for user {} connecting to {}: {}",
               userId,
               serverUrl,
               error);
           // Log more details about the error
           if (args[0] instanceof Exception) {
-            log.error("Connection error details:", (Exception) args[0]);
+            LOG.error("Connection error details:", (Exception) args[0]);
           }
         });
 
@@ -111,27 +114,27 @@ public class WebSocketListener {
     socket.on(
         "message",
         args -> {
-          log.debug("Received message event: {}", args.length > 0 ? args[0] : "empty");
+          LOG.debug("Received message event: {}", args.length > 0 ? args[0] : "empty");
         });
 
     // CSV Export handler
     socket.on(CSV_EXPORT_CHANNEL, createJobHandler(CSV_EXPORT_CHANNEL));
-    log.debug("Registered handler for channel: {}", CSV_EXPORT_CHANNEL);
+    LOG.debug("Registered handler for channel: {}", CSV_EXPORT_CHANNEL);
 
     // CSV Import handler
     socket.on(CSV_IMPORT_CHANNEL, createJobHandler(CSV_IMPORT_CHANNEL));
-    log.debug("Registered handler for channel: {}", CSV_IMPORT_CHANNEL);
+    LOG.debug("Registered handler for channel: {}", CSV_IMPORT_CHANNEL);
 
     // Bulk Assets handler
     socket.on(BULK_ASSETS_CHANNEL, createJobHandler(BULK_ASSETS_CHANNEL));
-    log.debug("Registered handler for channel: {}", BULK_ASSETS_CHANNEL);
+    LOG.debug("Registered handler for channel: {}", BULK_ASSETS_CHANNEL);
   }
 
   private Emitter.Listener createJobHandler(String channel) {
     return args -> {
       try {
         String messageStr = args[0].toString();
-        log.debug("Received message on channel {}: {}", channel, messageStr);
+        LOG.debug("Received message on channel {}: {}", channel, messageStr);
 
         JSONObject message = new JSONObject(messageStr);
         String jobId = message.getString("jobId");
@@ -151,25 +154,29 @@ public class WebSocketListener {
             if (message.has("result")) {
               result.setResult(message.get("result"));
             }
-            log.info("Job {} completed on channel {}", jobId, channel);
+            LOG.info("Job {} completed on channel {}", jobId, channel);
             future.complete(result);
             pendingJobs.remove(jobId);
           } else if ("FAILED".equals(status)) {
             String error = message.optString("error", "Operation failed");
             result.setError(error);
-            log.error("Job {} failed on channel {}: {}", jobId, channel, error);
+            LOG.error("Job {} failed on channel {}: {}", jobId, channel, error);
             future.completeExceptionally(new Exception(error));
             pendingJobs.remove(jobId);
           } else if ("STARTED".equals(status)) {
-            log.debug("Job {} started on channel {}", jobId, channel);
+            LOG.debug("Job {} started on channel {}", jobId, channel);
           }
         } else {
-          log.debug("No pending future found for job {} on channel {}", jobId, channel);
+          LOG.debug("No pending future found for job {} on channel {}", jobId, channel);
         }
       } catch (Exception e) {
-        log.error("Error handling WebSocket message on channel {}: {}", channel, e.getMessage(), e);
+        LOG.error("Error handling WebSocket message on channel {}: {}", channel, e.getMessage(), e);
       }
     };
+  }
+
+  public boolean isConnected() {
+    return connected;
   }
 
   /**
@@ -189,7 +196,7 @@ public class WebSocketListener {
         ex -> {
           if (ex instanceof TimeoutException) {
             pendingJobs.remove(jobId);
-            log.error("Job {} timed out after {} seconds", jobId, timeout);
+            LOG.error("Job {} timed out after {} seconds", jobId, timeout);
           }
           return null;
         });
@@ -211,7 +218,6 @@ public class WebSocketListener {
   /**
    * Job result class for async operations.
    */
-  @lombok.Data
   public static class JobResult {
     private String jobId;
     private String status;
@@ -219,5 +225,53 @@ public class WebSocketListener {
     private String data;
     private Object result;
     private String error;
+
+    public String getJobId() {
+      return jobId;
+    }
+
+    public void setJobId(String jobId) {
+      this.jobId = jobId;
+    }
+
+    public String getStatus() {
+      return status;
+    }
+
+    public void setStatus(String status) {
+      this.status = status;
+    }
+
+    public String getChannel() {
+      return channel;
+    }
+
+    public void setChannel(String channel) {
+      this.channel = channel;
+    }
+
+    public String getData() {
+      return data;
+    }
+
+    public void setData(String data) {
+      this.data = data;
+    }
+
+    public Object getResult() {
+      return result;
+    }
+
+    public void setResult(Object result) {
+      this.result = result;
+    }
+
+    public String getError() {
+      return error;
+    }
+
+    public void setError(String error) {
+      this.error = error;
+    }
   }
 }

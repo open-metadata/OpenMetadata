@@ -21,7 +21,7 @@ import org.openmetadata.sdk.fluent.collections.TeamCollection;
  *
  * // Find and load
  * Team team = find(teamId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -150,8 +150,8 @@ public final class Teams {
       this.isFqn = isFqn;
     }
 
-    public TeamFinder includeOwner() {
-      includes.add("owner");
+    public TeamFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -161,7 +161,7 @@ public final class Teams {
     }
 
     public TeamFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domain"));
       return this;
     }
 

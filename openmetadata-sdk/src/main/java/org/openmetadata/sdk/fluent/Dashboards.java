@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Dashboard dashboard = find(dashboardId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -150,8 +150,8 @@ public final class Dashboards {
       this.isFqn = isFqn;
     }
 
-    public DashboardFinder includeOwner() {
-      includes.add("owner");
+    public DashboardFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 

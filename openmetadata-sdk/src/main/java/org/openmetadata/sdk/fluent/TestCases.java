@@ -21,7 +21,7 @@ import org.openmetadata.sdk.models.ListResponse;
  *
  * // Find and load
  * TestCase testCase = find(testCaseId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -137,8 +137,8 @@ public final class TestCases {
       this.isFqn = isFqn;
     }
 
-    public TestCaseFinder includeOwner() {
-      includes.add("owner");
+    public TestCaseFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 

@@ -4,7 +4,6 @@ import java.util.*;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ApiStatus;
@@ -27,7 +26,7 @@ import org.openmetadata.sdk.fluent.collections.GlossaryCollection;
  *
  * // Find and load
  * Glossary glossary = find(glossaryId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -161,8 +160,8 @@ public final class Glossaries {
       this.isFqn = isFqn;
     }
 
-    public GlossaryFinder includeOwner() {
-      includes.add("owner");
+    public GlossaryFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -172,7 +171,7 @@ public final class Glossaries {
     }
 
     public GlossaryFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 
@@ -312,93 +311,31 @@ public final class Glossaries {
 
   // ==================== CSV Exporter ====================
 
-  public static class CsvExporter {
-    private final OpenMetadataClient client;
+  public static class CsvExporter
+      extends org.openmetadata.sdk.fluent.common.CsvOperations.BaseCsvExporter {
     private final String glossaryName;
-    private boolean async = false;
-    private Consumer<String> onComplete;
-    private Consumer<Throwable> onError;
-    private boolean waitForCompletion = false;
-    private long timeoutSeconds = 60;
 
     CsvExporter(OpenMetadataClient client, String glossaryName) {
-      this.client = client;
+      super(client, "glossary");
       this.glossaryName = glossaryName;
     }
 
-    public CsvExporter async() {
-      this.async = true;
-      return this;
-    }
-
-    public CsvExporter waitForCompletion() {
-      this.waitForCompletion = true;
-      return this;
-    }
-
-    public CsvExporter waitForCompletion(long timeoutSeconds) {
-      this.waitForCompletion = true;
-      this.timeoutSeconds = timeoutSeconds;
-      return this;
-    }
-
-    public CsvExporter onComplete(Consumer<String> callback) {
-      this.onComplete = callback;
-      return this;
-    }
-
-    public CsvExporter onError(Consumer<Throwable> callback) {
-      this.onError = callback;
-      return this;
-    }
-
-    public String execute() {
-      if (async) {
-        return client.glossaries().exportCsvAsync(glossaryName);
-      }
+    @Override
+    protected String performSyncExport() {
       return client.glossaries().exportCsv(glossaryName);
     }
 
-    public CompletableFuture<String> executeAsync() {
-      String jobId = client.glossaries().exportCsvAsync(glossaryName);
-
-      // Return a CompletableFuture that completes after a delay if waiting
-      CompletableFuture<String> future =
-          CompletableFuture.supplyAsync(
-              () -> {
-                if (waitForCompletion && timeoutSeconds > 0) {
-                  try {
-                    // Give the async export time to process (at least 2 seconds)
-                    Thread.sleep(Math.min(2000, timeoutSeconds * 1000));
-                  } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                  }
-                }
-
-                if (onComplete != null) {
-                  onComplete.accept(jobId);
-                }
-                return jobId;
-              });
-
-      return future.exceptionally(
-          ex -> {
-            if (onError != null) {
-              onError.accept(ex);
-            }
-            throw new RuntimeException("CSV export failed", ex);
-          });
-    }
-
-    public String toCsv() {
-      return execute();
+    @Override
+    protected String performAsyncExport() {
+      return client.glossaries().exportCsvAsync(glossaryName);
     }
   }
 
   // ==================== CSV Importer ====================
 
-  @Slf4j
   public static class CsvImporter {
+    private static final org.slf4j.Logger LOG =
+        org.slf4j.LoggerFactory.getLogger(CsvImporter.class);
     private final OpenMetadataClient client;
     private final String glossaryName;
     private String csvData;
@@ -499,7 +436,7 @@ public final class Glossaries {
             // Only fetch user ID when WebSocket is actually needed
             UUID userId = client.getUserId();
             if (userId != null) {
-              log.debug("Using WebSocket for async import monitoring with user ID: {}", userId);
+              LOG.debug("Using WebSocket for async import monitoring with user ID: {}", userId);
 
               org.openmetadata.sdk.websocket.WebSocketManager wsManager =
                   org.openmetadata.sdk.websocket.WebSocketManager.getInstance(serverUrl, userId);
@@ -522,11 +459,11 @@ public final class Glossaries {
                         throw new RuntimeException("CSV import failed", ex);
                       });
             } else {
-              log.debug("User ID not available, falling back to polling");
+              LOG.debug("User ID not available, falling back to polling");
             }
           }
         } catch (Exception e) {
-          log.debug("WebSocket not available, falling back to polling: {}", e.getMessage());
+          LOG.debug("WebSocket not available, falling back to polling: {}", e.getMessage());
         }
       }
 

@@ -171,7 +171,7 @@ public class TableEntityOperationsTest {
     when(mockTableService.get(eq(tableId), anyString())).thenReturn(expectedTable);
 
     // Act - Fluent API
-    Table result = Tables.find(tableId).includeOwner().includeTags().fetch().get();
+    Table result = Tables.find(tableId).includeOwners().includeTags().fetch().get();
 
     // Assert
     assertNotNull(result);

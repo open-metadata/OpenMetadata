@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * DataProduct dataProduct = find(dataProductId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -145,8 +145,8 @@ public final class DataProducts {
       this.isFqn = isFqn;
     }
 
-    public DataProductFinder includeOwner() {
-      includes.add("owner");
+    public DataProductFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -156,7 +156,7 @@ public final class DataProducts {
     }
 
     public DataProductFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * StoredProcedure storedProcedure = find(storedProcedureId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -155,8 +155,8 @@ public final class StoredProcedures {
       this.isFqn = isFqn;
     }
 
-    public StoredProcedureFinder includeOwner() {
-      includes.add("owner");
+    public StoredProcedureFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -166,7 +166,7 @@ public final class StoredProcedures {
     }
 
     public StoredProcedureFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

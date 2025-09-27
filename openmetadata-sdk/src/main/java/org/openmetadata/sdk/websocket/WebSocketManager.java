@@ -3,15 +3,16 @@ package org.openmetadata.sdk.websocket;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import lombok.extern.slf4j.Slf4j;
+// Avoid Lombok for logger to prevent annotation processing issues
 import org.openmetadata.schema.type.csv.CsvImportResult;
 
 /**
  * Manages WebSocket connections for async operations.
  * Provides a singleton pattern to reuse connections across operations.
  */
-@Slf4j
 public class WebSocketManager {
+  private static final org.slf4j.Logger LOG =
+      org.slf4j.LoggerFactory.getLogger(WebSocketManager.class);
   private static final ConcurrentHashMap<String, WebSocketManager> instances =
       new ConcurrentHashMap<>();
   private final String serverUrl;
@@ -50,9 +51,9 @@ public class WebSocketManager {
           }
           listener = new WebSocketListener(serverUrl, userId);
           listener.connect();
-          log.info("WebSocket connected for user: {}", userId);
+          LOG.info("WebSocket connected for user: {}", userId);
         } catch (Exception e) {
-          log.error("Failed to connect WebSocket", e);
+          LOG.error("Failed to connect WebSocket", e);
           listener = null;
         }
       }
@@ -91,7 +92,7 @@ public class WebSocketManager {
       ensureConnected();
     } catch (Exception e) {
       // Log but don't fail if WebSocket connection fails
-      log.debug("WebSocket connection not available, returning empty result");
+      LOG.debug("WebSocket connection not available, returning empty result");
     }
 
     if (listener != null && listener.isConnected()) {
@@ -113,6 +114,10 @@ public class WebSocketManager {
    */
   public CompletableFuture<String> waitForCsvExport(String jobId, long timeoutSeconds) {
     ensureConnected();
+    LOG.debug(
+        "WebSocketManager: waiting for CSV export: jobId={}, timeoutSeconds={}",
+        jobId,
+        timeoutSeconds);
 
     if (listener != null && listener.isConnected()) {
       return listener
@@ -120,6 +125,7 @@ public class WebSocketManager {
           .thenApply(WebSocketListener.JobResult::getData);
     } else {
       // Return job ID if WebSocket is not available
+      LOG.debug("WebSocketManager: listener not connected; returning jobId={}", jobId);
       CompletableFuture<String> future = new CompletableFuture<>();
       future.complete(jobId);
       return future;

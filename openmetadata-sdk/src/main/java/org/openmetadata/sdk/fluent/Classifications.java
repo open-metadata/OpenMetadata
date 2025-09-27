@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Classification classification = find(classificationId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -140,8 +140,8 @@ public final class Classifications {
       this.isFqn = isFqn;
     }
 
-    public ClassificationFinder includeOwner() {
-      includes.add("owner");
+    public ClassificationFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -151,7 +151,7 @@ public final class Classifications {
     }
 
     public ClassificationFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

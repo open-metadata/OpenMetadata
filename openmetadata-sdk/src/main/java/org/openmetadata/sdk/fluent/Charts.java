@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Chart chart = find(chartId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -145,8 +145,8 @@ public final class Charts {
       this.isFqn = isFqn;
     }
 
-    public ChartFinder includeOwner() {
-      includes.add("owner");
+    public ChartFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -156,7 +156,7 @@ public final class Charts {
     }
 
     public ChartFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

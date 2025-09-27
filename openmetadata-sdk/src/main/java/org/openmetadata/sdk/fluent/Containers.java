@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Container container = find(containerId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -145,8 +145,8 @@ public final class Containers {
       this.isFqn = isFqn;
     }
 
-    public ContainerFinder includeOwner() {
-      includes.add("owner");
+    public ContainerFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -156,7 +156,7 @@ public final class Containers {
     }
 
     public ContainerFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

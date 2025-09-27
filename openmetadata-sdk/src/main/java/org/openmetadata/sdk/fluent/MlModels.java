@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * MlModel mlModel = find(mlModelId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -145,8 +145,8 @@ public final class MlModels {
       this.isFqn = isFqn;
     }
 
-    public MlModelFinder includeOwner() {
-      includes.add("owner");
+    public MlModelFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -156,7 +156,7 @@ public final class MlModels {
     }
 
     public MlModelFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

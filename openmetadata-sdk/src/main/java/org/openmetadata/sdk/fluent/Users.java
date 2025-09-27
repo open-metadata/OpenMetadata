@@ -21,7 +21,7 @@ import org.openmetadata.sdk.fluent.collections.UserCollection;
  *
  * // Find and load
  * User user = find(userId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -155,8 +155,8 @@ public final class Users {
       this.isFqn = isFqn;
     }
 
-    public UserFinder includeOwner() {
-      includes.add("owner");
+    public UserFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -166,7 +166,7 @@ public final class Users {
     }
 
     public UserFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domain"));
       return this;
     }
 

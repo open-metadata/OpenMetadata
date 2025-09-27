@@ -86,7 +86,7 @@ public class DashboardsFluentAPITest {
     when(mockDashboardService.get(eq(dashboardId), anyString())).thenReturn(expectedDashboard);
 
     // Act
-    Dashboard result = Dashboards.find(dashboardId).includeOwner().includeTags().fetch().get();
+    Dashboard result = Dashboards.find(dashboardId).includeOwners().includeTags().fetch().get();
 
     // Assert
     assertNotNull(result);

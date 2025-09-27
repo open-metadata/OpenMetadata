@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Topic topic = find(topicId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -155,8 +155,8 @@ public final class Topics {
       this.isFqn = isFqn;
     }
 
-    public TopicFinder includeOwner() {
-      includes.add("owner");
+    public TopicFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -166,7 +166,7 @@ public final class Topics {
     }
 
     public TopicFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

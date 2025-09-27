@@ -15,7 +15,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Use fluent API through OM
  * Table table = OM.Table.find(id).fetch();
- * Database db = OM.Database.find(id).includeOwner().fetch();
+ * Database db = OM.Database.find(id).includeOwners().fetch();
  * </pre>
  */
 public class OM {

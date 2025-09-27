@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Metric metric = find(metricId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -150,8 +150,8 @@ public final class Metrics {
       this.isFqn = isFqn;
     }
 
-    public MetricFinder includeOwner() {
-      includes.add("owner");
+    public MetricFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -161,7 +161,7 @@ public final class Metrics {
     }
 
     public MetricFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

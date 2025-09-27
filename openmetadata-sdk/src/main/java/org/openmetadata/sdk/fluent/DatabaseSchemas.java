@@ -21,7 +21,7 @@ import org.openmetadata.sdk.fluent.collections.DatabaseSchemaCollection;
  *
  * // Find and load
  * DatabaseSchema databaseSchema = find(databaseSchemaId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -160,8 +160,8 @@ public final class DatabaseSchemas {
       this.isFqn = isFqn;
     }
 
-    public DatabaseSchemaFinder includeOwner() {
-      includes.add("owner");
+    public DatabaseSchemaFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -171,7 +171,7 @@ public final class DatabaseSchemas {
     }
 
     public DatabaseSchemaFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

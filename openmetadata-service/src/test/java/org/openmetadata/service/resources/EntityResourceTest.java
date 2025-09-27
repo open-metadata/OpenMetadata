@@ -4884,21 +4884,21 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         Tables.setDefaultClient(sdkClient);
         var tableFinder = Tables.find(id);
         if (fields != null && fields.contains("tags")) tableFinder.includeTags();
-        if (fields != null && fields.contains("owner")) tableFinder.includeOwner();
+        if (fields != null && fields.contains("owner")) tableFinder.includeOwners();
         return (T) tableFinder.fetch().get();
 
       case "database":
         Databases.setDefaultClient(sdkClient);
         var dbFinder = Databases.find(id);
         if (fields != null && fields.contains("tags")) dbFinder.includeTags();
-        if (fields != null && fields.contains("owner")) dbFinder.includeOwner();
+        if (fields != null && fields.contains("owner")) dbFinder.includeOwners();
         return (T) dbFinder.fetch().get();
 
       case "databaseSchema":
         DatabaseSchemas.setDefaultClient(sdkClient);
         var schemaFinder = DatabaseSchemas.find(id);
         if (fields != null && fields.contains("tags")) schemaFinder.includeTags();
-        if (fields != null && fields.contains("owner")) schemaFinder.includeOwner();
+        if (fields != null && fields.contains("owner")) schemaFinder.includeOwners();
         return (T) schemaFinder.fetch().get();
 
       case "pipeline":
@@ -4926,7 +4926,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         Users.setDefaultClient(sdkClient);
         var userFinder = Users.find(id);
         if (fields != null && fields.contains("teams")) userFinder.includeAll();
-        if (fields != null && fields.contains("owner")) userFinder.includeOwner();
+        if (fields != null && fields.contains("owner")) userFinder.includeOwners();
         if (fields != null && fields.contains("tags")) userFinder.includeTags();
         return (T) userFinder.fetch().get();
 
@@ -4934,7 +4934,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         Teams.setDefaultClient(sdkClient);
         var teamFinder = Teams.find(id);
         if (fields != null && fields.contains("users")) teamFinder.includeAll();
-        if (fields != null && fields.contains("owner")) teamFinder.includeOwner();
+        if (fields != null && fields.contains("owner")) teamFinder.includeOwners();
         if (fields != null && fields.contains("tags")) teamFinder.includeTags();
         return (T) teamFinder.fetch().get();
 
@@ -7387,15 +7387,15 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     switch (entityType) {
       case Entity.TABLE -> {
         Tables.setDefaultClient(sdkClient);
-        entityWithOwners = (T) Tables.find(entityId).includeOwner().fetch().get();
+        entityWithOwners = (T) Tables.find(entityId).includeOwners().fetch().get();
       }
       case Entity.DATABASE -> {
         Databases.setDefaultClient(sdkClient);
-        entityWithOwners = (T) Databases.find(entityId).includeOwner().fetch().get();
+        entityWithOwners = (T) Databases.find(entityId).includeOwners().fetch().get();
       }
       case Entity.DATABASE_SCHEMA -> {
         DatabaseSchemas.setDefaultClient(sdkClient);
-        entityWithOwners = (T) DatabaseSchemas.find(entityId).includeOwner().fetch().get();
+        entityWithOwners = (T) DatabaseSchemas.find(entityId).includeOwners().fetch().get();
       }
     }
 

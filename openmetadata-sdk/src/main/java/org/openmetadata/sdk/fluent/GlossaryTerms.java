@@ -22,7 +22,7 @@ import org.openmetadata.sdk.fluent.collections.GlossaryTermCollection;
  *
  * // Find and load
  * GlossaryTerm glossaryTerm = find(glossaryTermId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -191,8 +191,8 @@ public final class GlossaryTerms {
       this.isFqn = isFqn;
     }
 
-    public GlossaryTermFinder includeOwner() {
-      includes.add("owner");
+    public GlossaryTermFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 

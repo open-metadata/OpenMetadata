@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * SearchIndex searchIndex = find(searchIndexId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -145,8 +145,8 @@ public final class SearchIndexes {
       this.isFqn = isFqn;
     }
 
-    public SearchIndexFinder includeOwner() {
-      includes.add("owner");
+    public SearchIndexFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 
@@ -156,7 +156,7 @@ public final class SearchIndexes {
     }
 
     public SearchIndexFinder includeAll() {
-      includes.addAll(Arrays.asList("owner", "tags", "followers", "domain"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
       return this;
     }
 

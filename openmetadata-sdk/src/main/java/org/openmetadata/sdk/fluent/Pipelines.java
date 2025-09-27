@@ -20,7 +20,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
  *
  * // Find and load
  * Pipeline pipeline = find(pipelineId)
- *     .includeOwner()
+ *     .includeOwners()
  *     .includeTags()
  *     .fetch();
  *
@@ -145,8 +145,8 @@ public final class Pipelines {
       this.isFqn = isFqn;
     }
 
-    public PipelineFinder includeOwner() {
-      includes.add("owner");
+    public PipelineFinder includeOwners() {
+      includes.add("owners");
       return this;
     }
 

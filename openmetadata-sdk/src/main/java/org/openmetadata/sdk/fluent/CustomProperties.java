@@ -82,6 +82,8 @@ public class CustomProperties {
     final boolean isFqn;
     final Map<String, Object> properties = new HashMap<>();
     boolean clearAll = false;
+    private static final org.slf4j.Logger LOG =
+        org.slf4j.LoggerFactory.getLogger(CustomPropertyUpdater.class);
 
     CustomPropertyUpdater(Class<?> entityClass, String identifier) {
       this(entityClass, identifier, false);
@@ -207,7 +209,7 @@ public class CustomProperties {
         var method = entity.getClass().getMethod("getExtension");
         return method.invoke(entity);
       } catch (Exception e) {
-        log.warn("Failed to get extension field", e);
+        LOG.warn("Failed to get extension field", e);
         return null;
       }
     }
