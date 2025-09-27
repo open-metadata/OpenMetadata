@@ -16,12 +16,6 @@ class UnityCatalogTableParameter(BaseTableParameter):
     """Unity Catalog table parameter setter - uses Unity Catalog connection
     which is databricks-based for data diff operations"""
 
-    def __init__(self):
-        BaseTableParameter._get_service_connection_config = (
-            UnityCatalogTableParameter._get_service_connection_config
-        )
-        super().__init__()
-
     def get(
         self,
         service: DatabaseService,
@@ -36,15 +30,14 @@ class UnityCatalogTableParameter(BaseTableParameter):
         Returns:
             TableParameter
         """
-
         return TableParameter(
             database_service_type=service.serviceType,
             path=self.get_data_diff_table_path(
                 entity.fullyQualifiedName.root, service.serviceType
             ),
-            serviceUrl=UnityCatalogTableParameter.get_data_diff_url(
-                db_service=service,
-                table_fqn=entity.fullyQualifiedName.root,
+            serviceUrl=self.get_data_diff_url(
+                service,
+                entity.fullyQualifiedName.root,
                 override_url=service_url,
             ),
             columns=self.filter_relevant_columns(
@@ -57,8 +50,9 @@ class UnityCatalogTableParameter(BaseTableParameter):
             passPhrase=None,
         )
 
-    @staticmethod
+    @classmethod
     def _get_service_connection_config(
+        cls,
         service_connection_config,
     ) -> Optional[Union[str, dict]]:
         """Build connection URL directly to avoid WorkspaceClient.url AttributeError"""
@@ -87,8 +81,8 @@ class UnityCatalogTableParameter(BaseTableParameter):
             return f"{scheme}://:{token_value}@{host_port}"
         return None
 
-    @staticmethod
     def get_data_diff_url(
+        self,
         db_service: DatabaseService,
         table_fqn,
         override_url: Optional[Union[str, dict]] = None,
@@ -104,9 +98,7 @@ class UnityCatalogTableParameter(BaseTableParameter):
             str: The url for the data diff service
         """
         source_url = (
-            UnityCatalogTableParameter._get_service_connection_config(
-                db_service.connection.config
-            )
+            self.__class__._get_service_connection_config(db_service.connection.config)
             if not override_url
             else override_url
         )

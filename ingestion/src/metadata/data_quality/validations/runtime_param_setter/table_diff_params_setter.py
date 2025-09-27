@@ -15,7 +15,6 @@ from typing import List, Optional, Set
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.models import Column, TableDiffRuntimeParameters
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
-    BaseTableParameter,
     ServiceSpecPatch,
 )
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
@@ -52,13 +51,16 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         service_spec_patch = ServiceSpecPatch(
             ServiceType.Database, self.service_connection_config.type.value.lower()
         )
-        cls = service_spec_patch.get_data_diff_class()()
+        data_diff_class = service_spec_patch.get_data_diff_class()
+        cls = data_diff_class()
 
         service1: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, self.table_entity.service.id, nullable=False
         )
 
-        service1_url = BaseTableParameter._get_service_connection_config(
+        # Use the class method - each connector can override as needed
+        # This is scalable: any connector can override _get_service_connection_config
+        service1_url = data_diff_class._get_service_connection_config(
             self.service_connection_config
         )
 

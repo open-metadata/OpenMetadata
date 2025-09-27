@@ -122,13 +122,18 @@ class BaseTableParameter:
             "___SERVICE___", "__DATABASE__", schema, table
         ).replace("___SERVICE___.__DATABASE__.", "")
 
-    @staticmethod
+    @classmethod
     def _get_service_connection_config(
+        cls,
         service_connection_config,
     ) -> Optional[Union[str, dict]]:
         """
         Get the connection dictionary for the service.
+        This is now a classmethod so subclasses can override it properly.
         """
+        if not service_connection_config:
+            return None
+
         service_spec_patch = ServiceSpecPatch(
             ServiceType.Database, service_connection_config.type.value.lower()
         )
@@ -150,8 +155,8 @@ class BaseTableParameter:
                 else None
             )
 
-    @staticmethod
     def get_data_diff_url(
+        self,
         db_service: DatabaseService,
         table_fqn,
         override_url: Optional[Union[str, dict]] = None,
@@ -167,9 +172,7 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            BaseTableParameter._get_service_connection_config(
-                db_service.connection.config
-            )
+            self.__class__._get_service_connection_config(db_service.connection.config)
             if not override_url
             else override_url
         )
