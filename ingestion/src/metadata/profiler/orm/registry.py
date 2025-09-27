@@ -88,6 +88,7 @@ class PythonDialects(Enum):
     Snowflake = "snowflake"
     Teradata = "teradatasql"
     Trino = "trino"
+    UnityCatalog = "unitycatalog"
     Vertica = "vertica"
 
 
