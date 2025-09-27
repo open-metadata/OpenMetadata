@@ -1,0 +1,187 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.domains-section {
+  border-bottom: solid;
+  border-bottom-width: 1px;
+  border-color: #f2f3f9;
+  padding-bottom: 18px;
+  .domains-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-left: 16px;
+    padding-right: 16px;
+    .domains-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: #414651;
+    }
+
+    .edit-button {
+      color: #1890ff;
+      font-size: 12px;
+      padding: 0;
+      height: auto;
+      border: none;
+      background: none;
+
+      &:hover {
+        color: #40a9ff;
+        background: none;
+      }
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 8px;
+
+      .cancel-button {
+        color: #8c8c8c;
+        border: none;
+        background: none;
+        padding: 4px 8px;
+        height: auto;
+        font-size: 14px;
+
+        &:hover {
+          color: #595959;
+          background: #f5f5f5;
+        }
+      }
+
+      .save-button {
+        background-color: #1890ff;
+        border-color: #1890ff;
+        color: #fff;
+        padding: 4px 16px;
+        height: auto;
+        font-size: 14px;
+        border-radius: 4px;
+
+        &:hover {
+          background-color: #40a9ff;
+          border-color: #40a9ff;
+        }
+      }
+    }
+  }
+
+  .domains-content {
+    padding-left: 16px;
+    padding-right: 16px;
+    .inline-edit-container {
+      .domain-selector-display {
+        min-height: 40px;
+        border: 1px solid #408dfb;
+        border-radius: 6px;
+        background-color: #fff;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        &:hover {
+          border-color: #40a9ff;
+        }
+
+        .selected-domains-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          width: 100%;
+
+          .selected-domain-chip {
+            background-color: #f9fafc;
+            border: 1px solid #e3e8f0;
+            border-radius: 16px;
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+
+            .domain-name {
+              font-weight: 500;
+              font-size: 12px;
+              color: #21263c;
+            }
+          }
+        }
+
+        .domain-placeholder {
+          color: #8c8c8c;
+          font-size: 14px;
+          font-style: italic;
+        }
+      }
+    }
+
+    .domains-display {
+      // DomainLabel component will handle its own styling
+    }
+
+    .no-data-placeholder {
+      color: #8c8c8c;
+      font-style: italic;
+    }
+
+    .domains-loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      min-height: 60px;
+
+      .domains-loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+
+        .loading-spinner {
+          animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+          color: #8c8c8c;
+          font-size: 12px;
+        }
+      }
+    }
+
+    // Ensure popover appears below the selector
+    :global(.domain-select-popover) {
+      .ant-popover-arrow {
+        display: none;
+      }
+    }
+  }
+}

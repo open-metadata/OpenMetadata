@@ -1,0 +1,131 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.entity-right-panel-vertical-nav {
+  width: 80px;
+  right: 0px;
+  position: relative;
+  height: 100vh;
+  background: #fff;
+  border-left: 0.75px solid #f2f3f9;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: -12px;
+  .ant-menu-vertical .ant-menu-item:not(:last-child) {
+    margin-bottom: 0px;
+  }
+  .vertical-nav-menu {
+    background: transparent;
+    border: none;
+    margin-top: 12px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    .ant-menu-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: none;
+      padding: 0;
+      height: 65px;
+      margin-top: 0px;
+      margin-bottom: 0px;
+      background: transparent;
+      .ant-menu-item-icon {
+        padding: 8px;
+
+        height: 16px;
+      }
+
+      /* Hover: only icon gets light bg, label turns blue */
+      &.ant-menu-item-active:not(.ant-menu-item-selected),
+      &:hover:not(.ant-menu-item-selected) {
+        background: transparent;
+        color: @primary-7;
+
+        .ant-menu-item-icon {
+          background: @primary-1;
+          color: @primary-7;
+        }
+      }
+
+      /* Selected state: only icon bg blue, label blue */
+      &.ant-menu-item-selected {
+        background: transparent;
+        color: @primary-7; // affects label
+
+        &::after {
+          display: none;
+        }
+
+        .ant-menu-item-icon {
+          background: @primary-color;
+          color: @white; // make svg stroke white
+        }
+
+        .ant-menu-title-content {
+          color: @primary-7;
+          font-weight: 600;
+        }
+      }
+
+      /* Icon container and svg coloring */
+      .ant-menu-item-icon {
+        padding: 8px;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        background: transparent;
+        color: @grey-600;
+      }
+
+      svg {
+        font-size: 16px;
+      }
+
+      /* Match left sidebar: hollow icons that follow currentColor */
+      svg {
+        fill: transparent !important;
+      }
+
+      /* Force svg strokes (and fills) to follow current text color */
+      svg * {
+        stroke: currentColor !important;
+        fill: transparent !important;
+      }
+
+      .ant-menu-title-content {
+        display: block;
+        font-size: 10px;
+        font-weight: 400;
+        text-align: center;
+        line-height: 1.1;
+        word-break: break-word;
+        white-space: normal;
+        margin: 0 auto;
+        color: @grey-600;
+      }
+    }
+  }
+}
