@@ -58,6 +58,7 @@ export type ListTestCaseParams = ListParams & {
   includeAllTests?: boolean;
   testCaseStatus?: TestCaseStatus;
   testCaseType?: TestCaseType;
+  dataContractId?: string;
 };
 export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   q?: string;
@@ -117,6 +118,7 @@ export type DataQualityReportParamsType = {
 
 const testCaseUrl = '/dataQuality/testCases';
 const testSuiteUrl = '/dataQuality/testSuites';
+const testResultUrl = '/dataQuality/testCases/testCaseResults';
 const testDefinitionUrl = '/dataQuality/testDefinitions';
 
 // testCase section
@@ -133,11 +135,24 @@ export const getListTestCaseBySearch = async (
   return response.data;
 };
 
+export const getListTestCasResultsBySearch = async (
+  params?: ListTestCaseParamsBySearch
+) => {
+  const response = await APIClient.get<PagingResponse<TestCaseResult[]>>(
+    `${testResultUrl}/search/list`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
 export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
 ) => {
-  const url = `${testCaseUrl}/testCaseResults/${getEncodedFqn(fqn)}`;
+  const url = `${testResultUrl}/${getEncodedFqn(fqn)}`;
   const response = await APIClient.get<{
     data: TestCaseResult[];
     paging: Paging;
