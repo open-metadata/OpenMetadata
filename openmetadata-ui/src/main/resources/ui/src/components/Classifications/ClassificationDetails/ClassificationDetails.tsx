@@ -83,6 +83,7 @@ const ClassificationDetails = forwardRef(
       handleAddNewTagClick,
       disableEditButton,
       isVersionView = false,
+      handleEditClassificationClick,
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
@@ -303,12 +304,17 @@ const ClassificationDetails = forwardRef(
         getClassificationExtraDropdownContent(
           showDisableOption,
           isClassificationDisabled,
-          handleEnableDisableClassificationClick
+          handleEnableDisableClassificationClick,
+          handleEditClassificationClick,
+          editClassificationPermission && !isVersionView
         ),
       [
         isClassificationDisabled,
         showDisableOption,
         handleEnableDisableClassificationClick,
+        handleEditClassificationClick,
+        editClassificationPermission,
+        isVersionView,
       ]
     );
 

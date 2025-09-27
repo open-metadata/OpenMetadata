@@ -430,6 +430,9 @@ public interface CollectionDAO {
   @CreateSqlObject
   DeletionLockDAO deletionLockDAO();
 
+  @CreateSqlObject
+  RecognizerFeedbackDAO recognizerFeedbackDAO();
+
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
     default String getTableName() {
@@ -7595,5 +7598,41 @@ public interface CollectionDAO {
                 + "WHERE workflowInstanceId = :workflowInstanceId AND stage = :stage ORDER BY timestamp DESC")
     List<String> listWorkflowInstanceStateForStage(
         @Bind("workflowInstanceId") String workflowInstanceId, @Bind("stage") String stage);
+  }
+
+  interface RecognizerFeedbackDAO {
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO recognizer_feedback_entity(json) VALUES (:json)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "INSERT INTO recognizer_feedback_entity(json) VALUES (:json :: jsonb)",
+        connectionType = POSTGRES)
+    void insert(@Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM recognizer_feedback_entity WHERE id = :id")
+    String findById(@BindUUID("id") UUID id);
+
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE recognizer_feedback_entity SET json = :json WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "UPDATE recognizer_feedback_entity SET json = :json :: jsonb WHERE id = :id",
+        connectionType = POSTGRES)
+    void update(@BindUUID("id") UUID id, @Bind("json") String json);
+
+    @SqlQuery("SELECT json FROM recognizer_feedback_entity WHERE entityLink = :entityLink")
+    List<String> findByEntityLink(@Bind("entityLink") String entityLink);
+
+    @SqlQuery("SELECT json FROM recognizer_feedback_entity WHERE tagFQN = :tagFQN")
+    List<String> findByTagFQN(@Bind("tagFQN") String tagFQN);
+
+    @SqlQuery("SELECT json FROM recognizer_feedback_entity WHERE status = :status")
+    List<String> findByStatus(@Bind("status") String status);
+
+    @SqlQuery("SELECT count(id) FROM recognizer_feedback_entity")
+    int count();
+
+    @SqlUpdate("DELETE FROM recognizer_feedback_entity WHERE id = :id")
+    void delete(@BindUUID("id") UUID id);
   }
 }
