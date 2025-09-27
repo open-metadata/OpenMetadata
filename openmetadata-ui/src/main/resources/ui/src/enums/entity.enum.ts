@@ -181,6 +181,9 @@ export enum TabSpecificField {
   MODIFIED_TIME = 'modifiedTime',
   CREATED_TIME = 'createdTime',
   ROW_COUNT = 'rowCount',
+  FILE_TYPE = 'fileType',
+  FILE_EXTENSION = 'fileExtension',
+  FILE_VERSION = 'fileVersion',
 }
 
 export enum FqnPart {

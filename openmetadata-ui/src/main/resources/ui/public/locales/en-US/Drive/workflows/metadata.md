@@ -30,7 +30,6 @@ File filter patterns allow you to control which files are included in the metada
 - `.*\.csv$` - Include CSV files
 - `.*\.pdf$` - Include PDF documents
 - `.*\.docx?$` - Include Word documents
-
 **Exclude**: Add regular expressions to exclude specific file types. For example:
 - `~\$.*` - Exclude temporary files
 - `\.tmp$` - Exclude files with .tmp extension
@@ -72,7 +71,6 @@ When enabled (default: true), the connector will extract metadata for directorie
 - Directory structure and hierarchy
 - Directory permissions and ownership
 - Directory metadata like creation date, modification date
-
 Disable this if you only want to extract file-level metadata without directory information.
 $$
 
@@ -86,7 +84,6 @@ When enabled (default: true), the connector will extract metadata for all types 
 - Images
 - Videos
 - Other file types
-
 Disable this if you only want to extract directory or spreadsheet metadata.
 $$
 
@@ -99,7 +96,6 @@ When enabled (default: true), the connector will process spreadsheet files (Goog
 - Spreadsheet structure
 - Sheet names and relationships
 - Basic schema information
-
 Disable this if you don't want to process spreadsheets as data sources.
 $$
 
@@ -112,7 +108,6 @@ When enabled (default: true), the connector will extract detailed metadata for e
 - Column headers and data types
 - Row counts
 - Worksheet-specific metadata
-
 Disable this if you only want spreadsheet-level metadata without worksheet details.
 $$
 
@@ -221,6 +216,5 @@ Recommended values:
 - 1 thread: Safe default for small to medium drives
 - 2-4 threads: Medium to large drives with good network bandwidth
 - 5+ threads: Very large drives with enterprise API limits
-
 Default: 1
 $$

@@ -410,6 +410,14 @@ export enum AuthProvider {
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -2351,11 +2359,19 @@ export interface ConfigObject {
      */
     delegatedEmail?: string;
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
      * Specific shared drive ID to connect to
      *
      * SharePoint drive ID. If not provided, default document library will be used
      */
     driveId?: string;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
     /**
      * Extract metadata only for Google Sheets files
      */
@@ -2364,6 +2380,14 @@ export interface ConfigObject {
      * Include shared/team drives in metadata extraction
      */
     includeTeamDrives?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
     /**
      * SharePoint site URL
      */
