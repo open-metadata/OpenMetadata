@@ -49,6 +49,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
   fieldsWithNullValues = [],
   defaultQueryFilter,
+  showSelectedCounts = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -214,6 +215,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             options={options ?? []}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
+            showSelectedCounts={showSelectedCounts}
             triggerButtonSize="middle"
             onChange={(updatedValues) => {
               onFieldValueSelect({ ...field, value: updatedValues });

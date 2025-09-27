@@ -12,20 +12,37 @@
  */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ROUTES } from '../../constants/constants';
 import DomainRouter from './DomainRouter';
+
+// Mock i18n to prevent 'add' method error
+jest.mock('../../utils/i18next/LocalUtil', () => ({
+  __esModule: true,
+  default: {
+    t: (key: string) => key,
+  },
+}));
 
 jest.mock('../Domain/AddDomain/AddDomain.component', () => {
   return jest.fn().mockReturnValue(<div>AddDomain</div>);
 });
 
-jest.mock('../Domain/DomainPage.component', () => {
-  return jest.fn().mockReturnValue(<div>DomainPage</div>);
+jest.mock('../Domain/DomainDetailPage/DomainDetailPage.component', () => {
+  return jest.fn().mockReturnValue(<div>DomainDetailPage</div>);
+});
+
+jest.mock('../DomainListing/DomainListPage', () => {
+  return jest.fn().mockReturnValue(<div>DomainsListPage</div>);
 });
 
 jest.mock('./AdminProtectedRoute', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ children }) => children),
+}));
+
+jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: jest.fn(() => ({
+    permissions: {},
+  })),
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => {
@@ -49,21 +66,21 @@ describe('DomainRouter', () => {
 
   it('should render DomainPage component for the DOMAIN route when user has domain view permission', async () => {
     render(
-      <MemoryRouter initialEntries={[ROUTES.DOMAIN]}>
+      <MemoryRouter initialEntries={['/']}>
         <DomainRouter />
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('DomainPage')).toBeInTheDocument();
+    expect(await screen.findByText('DomainsListPage')).toBeInTheDocument();
   });
 
-  it('should render DomainPage component for the DOMAIN_DETAILS and DOMAIN_DETAILS_WITH_TAB routes when user has domain view permission', async () => {
+  it('should render DomainDetailPage component for the DOMAIN_DETAILS and DOMAIN_DETAILS_WITH_TAB routes when user has domain view permission', async () => {
     render(
-      <MemoryRouter initialEntries={[ROUTES.DOMAIN_DETAILS]}>
+      <MemoryRouter initialEntries={['/testDomain']}>
         <DomainRouter />
       </MemoryRouter>
     );
 
-    expect(await screen.findByText('DomainPage')).toBeInTheDocument();
+    expect(await screen.findByText('DomainDetailPage')).toBeInTheDocument();
   });
 });
