@@ -152,7 +152,13 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
           tagRender={SsoCustomTagRenderer}
           value={value}
           onBlur={() => props.onBlur(id, value)}
-          onChange={(value) => props.onChange(value)}
+          onChange={(value) => {
+            props.onChange(value);
+            // Clear field-specific error when value changes
+            if (props.formContext?.clearFieldError) {
+              props.formContext.clearFieldError(props.idSchema.$id);
+            }
+          }}
           onFocus={handleFocus}
           onKeyDown={(e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !options) {

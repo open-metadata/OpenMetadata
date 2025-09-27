@@ -119,7 +119,6 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
-  const [hasUserInteracted, setHasUserInteracted] = useState<boolean>(false);
   const fieldErrorsRef = useRef<ErrorSchema>({});
 
   const getProviderIcon = (provider: string) => {
@@ -434,6 +433,59 @@ const SSOConfigurationFormRJSF = ({
     },
     []
   );
+
+  // Clear errors for a specific field path
+  const clearFieldError = useCallback((fieldPath: string) => {
+    if (
+      !fieldErrorsRef.current ||
+      Object.keys(fieldErrorsRef.current).length === 0
+    ) {
+      return;
+    }
+
+    // Parse the field path (e.g., "root/authenticationConfiguration/adminPrincipals")
+    const pathParts = fieldPath.replace(/^root\//, '').split('/');
+
+    let current = fieldErrorsRef.current;
+
+    // Navigate through the error structure
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+
+      if (!current[part]) {
+        // Path doesn't exist in errors, nothing to clear
+        return;
+      }
+
+      if (i === pathParts.length - 1) {
+        // We're at the target field, clear its errors
+        delete current[part];
+
+        // Clean up empty parent objects
+        let cleanupCurrent = fieldErrorsRef.current;
+        const cleanupParts = pathParts.slice(0, -1);
+
+        for (let j = 0; j < cleanupParts.length; j++) {
+          const cleanupPart = cleanupParts[j];
+          if (
+            cleanupCurrent[cleanupPart] &&
+            typeof cleanupCurrent[cleanupPart] === 'object'
+          ) {
+            const obj = cleanupCurrent[cleanupPart] as ErrorSchema;
+            if (Object.keys(obj).length === 0) {
+              delete cleanupCurrent[cleanupPart];
+
+              break;
+            }
+            cleanupCurrent = obj;
+          }
+        }
+      } else {
+        // Navigate deeper
+        current = current[part] as ErrorSchema;
+      }
+    }
+  }, []);
 
   const handleValidationErrors = useCallback(
     (
@@ -1139,16 +1191,70 @@ const SSOConfigurationFormRJSF = ({
     hideBorder,
   ]);
 
+  // Helper function to find changed fields between two objects
+  const findChangedFields = (
+    oldData: unknown,
+    newData: unknown,
+    path: string[] = []
+  ): string[] => {
+    const changedFields: string[] = [];
+
+    if (!oldData || !newData) {
+      return changedFields;
+    }
+
+    // Type guard to check if value is an object
+    const isObject = (val: unknown): val is Record<string, unknown> => {
+      return typeof val === 'object' && val !== null && !Array.isArray(val);
+    };
+
+    if (!isObject(oldData) || !isObject(newData)) {
+      return changedFields;
+    }
+
+    // Get all keys from both objects
+    const allKeys = new Set([
+      ...Object.keys(oldData || {}),
+      ...Object.keys(newData || {}),
+    ]);
+
+    for (const key of allKeys) {
+      const currentPath = [...path, key];
+      const oldValue = oldData[key];
+      const newValue = newData[key];
+
+      // Check if values are different
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        // If the value is an object, recursively check for nested changes
+        if (isObject(newValue)) {
+          changedFields.push(
+            ...findChangedFields(oldValue, newValue, currentPath)
+          );
+        } else {
+          // Value has changed, add the field path
+          changedFields.push('root/' + currentPath.join('/'));
+        }
+      }
+    }
+
+    return changedFields;
+  };
+
   // Handle form data changes
   const handleOnChange = (e: IChangeEvent<FormData>) => {
     if (e.formData) {
       const newFormData = { ...e.formData };
       const authConfig = newFormData.authenticationConfiguration;
 
-      // Clear errors when user starts interacting with the form after errors are shown
-      if (hasUserInteracted && Object.keys(fieldErrorsRef.current).length > 0) {
-        fieldErrorsRef.current = {};
-        setHasUserInteracted(false); // Reset the flag
+      // Clear field-specific errors for changed fields
+      if (
+        fieldErrorsRef.current &&
+        Object.keys(fieldErrorsRef.current).length > 0
+      ) {
+        const changedFields = findChangedFields(internalData, newFormData);
+        changedFields.forEach((fieldPath) => {
+          clearFieldError(fieldPath);
+        });
       }
 
       // Check if client type changed
@@ -1233,39 +1339,6 @@ const SSOConfigurationFormRJSF = ({
       }
     }
   };
-
-  // Add DOM event listener for actual user input
-  useEffect(() => {
-    const handleUserInput = (event: Event) => {
-      // Only set the flag if we have errors and user is typing/changing/pasting inputs
-      if (Object.keys(fieldErrorsRef.current).length > 0) {
-        const target = event.target as HTMLElement;
-        if (
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT'
-        ) {
-          setHasUserInteracted(true);
-        }
-      }
-    };
-
-    if (showForm) {
-      // Listen for actual input events (including paste)
-      document.addEventListener('input', handleUserInput);
-      document.addEventListener('change', handleUserInput);
-      document.addEventListener('paste', handleUserInput);
-      // Also listen for cut event in case user cuts text
-      document.addEventListener('cut', handleUserInput);
-    }
-
-    return () => {
-      document.removeEventListener('input', handleUserInput);
-      document.removeEventListener('change', handleUserInput);
-      document.removeEventListener('paste', handleUserInput);
-      document.removeEventListener('cut', handleUserInput);
-    };
-  }, [showForm]);
 
   // Add DOM event listeners for field focus tracking
   useEffect(() => {
@@ -1364,77 +1437,9 @@ const SSOConfigurationFormRJSF = ({
       };
 
       try {
-        // Always validate configuration first
-        try {
-          const validationResponse: {
-            data:
-              | SecurityValidationResponse
-              | {
-                  status: string;
-                  errors: Array<{ field: string; error: string }>;
-                };
-          } = await validateSecurityConfiguration(payload);
-          const validationResult = validationResponse.data;
-
-          // Check for validation errors - handle both formats
-          // New format with field-level errors
-          if (
-            'errors' in validationResult &&
-            Array.isArray(validationResult.errors) &&
-            validationResult.errors.length > 0
-          ) {
-            handleValidationErrors(validationResult);
-            // Don't clear isValidating here - it's cleared in handleValidationErrors with a delay
-            // Only update main form loading state if not modal save
-            if (!isModalSave) {
-              setIsLoading(false);
-            }
-
-            return;
-          }
-
-          // Old format or status check
-          if (
-            validationResult.status === 'failed' ||
-            validationResult.status !== VALIDATION_STATUS.SUCCESS
-          ) {
-            handleValidationErrors(validationResult);
-            // Only update main form loading state if not modal save
-            if (!isModalSave) {
-              setIsLoading(false);
-            }
-
-            return;
-          }
-
-          // Validation successful
-        } catch (error) {
-          // Check if error response contains field-level validation errors
-          const axiosError = error as AxiosError;
-          if (
-            axiosError.response?.data &&
-            typeof axiosError.response.data === 'object' &&
-            'errors' in axiosError.response.data
-          ) {
-            handleValidationErrors(
-              axiosError.response.data as {
-                status: string;
-                errors: Array<{ field: string; error: string }>;
-              }
-            );
-          } else {
-            showErrorToast(error as AxiosError);
-          }
-          // Only update main form loading state if not modal save
-          if (!isModalSave) {
-            setIsLoading(false);
-          }
-
-          return;
-        }
-
-        // Use PATCH for existing configurations, PUT for new ones
+        // Use PATCH for existing configurations, PUT with validation for new ones
         if (hasExistingConfig && savedData) {
+          // For existing configurations, skip validation and directly PATCH
           // Generate patches for existing configuration
           const allPatches = generatePatches(savedData, cleanedFormData);
 
@@ -1443,7 +1448,75 @@ const SSOConfigurationFormRJSF = ({
             await patchSecurityConfiguration(allPatches);
           }
         } else {
-          // Use full PUT for new configurations
+          // For new configurations, validate first then apply
+          try {
+            const validationResponse: {
+              data:
+                | SecurityValidationResponse
+                | {
+                    status: string;
+                    errors: Array<{ field: string; error: string }>;
+                  };
+            } = await validateSecurityConfiguration(payload);
+            const validationResult = validationResponse.data;
+
+            // Check for validation errors - handle both formats
+            // New format with field-level errors
+            if (
+              'errors' in validationResult &&
+              Array.isArray(validationResult.errors) &&
+              validationResult.errors.length > 0
+            ) {
+              handleValidationErrors(validationResult);
+              // Only update main form loading state if not modal save
+              if (!isModalSave) {
+                setIsLoading(false);
+              }
+
+              return;
+            }
+
+            // Old format or status check
+            if (
+              validationResult.status === 'failed' ||
+              validationResult.status !== VALIDATION_STATUS.SUCCESS
+            ) {
+              handleValidationErrors(validationResult);
+              // Only update main form loading state if not modal save
+              if (!isModalSave) {
+                setIsLoading(false);
+              }
+
+              return;
+            }
+
+            // Validation successful
+          } catch (error) {
+            // Check if error response contains field-level validation errors
+            const axiosError = error as AxiosError;
+            if (
+              axiosError.response?.data &&
+              typeof axiosError.response.data === 'object' &&
+              'errors' in axiosError.response.data
+            ) {
+              handleValidationErrors(
+                axiosError.response.data as {
+                  status: string;
+                  errors: Array<{ field: string; error: string }>;
+                }
+              );
+            } else {
+              showErrorToast(error as AxiosError);
+            }
+            // Only update main form loading state if not modal save
+            if (!isModalSave) {
+              setIsLoading(false);
+            }
+
+            return;
+          }
+
+          // Use full PUT for new configurations after validation passes
           await applySecurityConfiguration(payload);
         }
       } catch (error) {
@@ -1713,6 +1786,9 @@ const SSOConfigurationFormRJSF = ({
           className="rjsf no-header"
           customValidate={customValidate}
           fields={customFields}
+          formContext={{
+            clearFieldError,
+          }}
           formData={internalData}
           idSeparator="/"
           liveValidate={Object.keys(fieldErrorsRef.current).length > 0}
