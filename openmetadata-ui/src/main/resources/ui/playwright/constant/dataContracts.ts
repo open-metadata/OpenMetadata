@@ -74,6 +74,25 @@ export const DATA_CONTRACT_CONTAIN_SEMANTICS = {
   ],
 };
 
+export const DATA_CONTRACT_NOT_CONTAIN_SEMANTICS = {
+  name: `data_contract_container_semantic_${uuid()}`,
+  description: 'new data contract semantic contains description ',
+  rules: [
+    {
+      field: 'Tier',
+      operator: 'Not Contains',
+    },
+    {
+      field: 'Tags',
+      operator: 'Not Contains',
+    },
+    {
+      field: 'Glossary Term',
+      operator: 'Not Contains',
+    },
+  ],
+};
+
 export interface DataContractSecuritySlaData {
   consumers: {
     accessPolicyName: string;

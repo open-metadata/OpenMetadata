@@ -13,7 +13,6 @@
 
 import { BarProps } from 'recharts';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
-import jsonLogicSearchClassBase from '../utils/JSONLogicSearchClassBase';
 
 export const CONTRACT_DATE_TIME_FORMAT = 'MM/dd/yyyy, h:mma';
 
@@ -50,8 +49,12 @@ export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
 ];
 
 export const SEMANTIC_OPERATORS = [
-  ...(jsonLogicSearchClassBase.defaultSelectOperators ?? []),
+  'select_any_in',
+  'select_not_any_in',
+  'is_null',
+  'is_not_null',
   'array_contains',
+  'array_not_contains',
 ];
 
 export const SLA_AVAILABILITY_TIME_FORMAT = 'HH:mm';
