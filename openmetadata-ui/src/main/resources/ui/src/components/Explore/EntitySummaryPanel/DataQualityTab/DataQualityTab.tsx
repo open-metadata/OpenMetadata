@@ -214,7 +214,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     ack: 0,
     total: 0,
   });
-  const [activeFilter, setActiveFilter] = useState<FilterStatus>('success');
+  const [activeFilter, setActiveFilter] = useState<FilterStatus>('all');
   const [activeTab, setActiveTab] = useState<string>('data-quality');
 
   // Incident-related state

@@ -116,7 +116,7 @@ export default function EntitySummaryPanel({
   const [lineageData, setLineageData] = useState<LineageData | null>(null);
   const [isLineageLoading, setIsLineageLoading] = useState<boolean>(false);
   const [lineageFilter, setLineageFilter] = useState<'upstream' | 'downstream'>(
-    'upstream'
+    'downstream'
   );
 
   const id = useMemo(() => {
