@@ -8,8 +8,9 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
@@ -18,7 +19,7 @@ public class CognitoAuthValidator {
   private static final String COGNITO_WELL_KNOWN_PATH = "/.well-known/openid-configuration";
   private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
 
-  public ValidationResult validateCognitoConfiguration(
+  public FieldError validateCognitoConfiguration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       return switch (authConfig.getClientType()) {
@@ -27,85 +28,75 @@ public class CognitoAuthValidator {
       };
     } catch (Exception e) {
       LOG.error("Cognito validation failed", e);
-      return new ValidationResult()
-          .withComponent("cognito")
-          .withStatus("failed")
-          .withMessage("Cognito validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Cognito validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateCognitoPublicClient(AuthenticationConfiguration authConfig) {
+  private FieldError validateCognitoPublicClient(AuthenticationConfiguration authConfig) {
     try {
       // Step 1: Validate authority URL format and extract Cognito details
       String authority = authConfig.getAuthority();
 
       CognitoDetails cognitoDetails = validateAndExtractCognitoDetails(authority);
 
-      ValidationResult poolValidation = validateUserPool(cognitoDetails);
-      if ("failed".equals(poolValidation.getStatus())) {
+      FieldError poolValidation = validateUserPool(cognitoDetails);
+      if (poolValidation != null) {
         return poolValidation;
       }
 
-      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, cognitoDetails);
-      if ("failed".equals(publicKeyValidation.getStatus())) {
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, cognitoDetails);
+      if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("cognito-public")
-          .withStatus("success")
-          .withMessage(
-              "Cognito public client validated successfully. Authority, client ID, and public key URLs are valid.");
+      return null; // Success - Cognito public client validated
     } catch (Exception e) {
       LOG.error("Cognito public client validation failed", e);
-      return new ValidationResult()
-          .withComponent("cognito-public")
-          .withStatus("failed")
-          .withMessage("Cognito public client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Cognito public client validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateCognitoConfidentialClient(
+  private FieldError validateCognitoConfidentialClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       CognitoDetails cognitoDetails = extractCognitoDetailsFromOidcConfig(oidcConfig);
 
-      ValidationResult poolValidation = validateUserPool(cognitoDetails);
-      if ("failed".equals(poolValidation.getStatus())) {
+      FieldError poolValidation = validateUserPool(cognitoDetails);
+      if (poolValidation != null) {
         return poolValidation;
       }
 
       // Validate against OIDC discovery document (scopes, response types, etc.)
-      ValidationResult discoveryCheck =
+      FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(
               cognitoDetails.discoveryUri, authConfig, oidcConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
-      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, cognitoDetails);
-      if ("failed".equals(publicKeyValidation.getStatus())) {
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, cognitoDetails);
+      if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
 
       // Validate client credentials
-      ValidationResult credentialsValidation =
-          validateClientCredentials(cognitoDetails, oidcConfig.getId(), oidcConfig.getSecret());
-      if ("failed".equals(credentialsValidation.getStatus())) {
+      FieldError credentialsValidation =
+          validateClientCredentials(
+              cognitoDetails,
+              oidcConfig.getId(),
+              oidcConfig.getSecret(),
+              oidcConfig.getCallbackUrl());
+      if (credentialsValidation != null) {
         return credentialsValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("cognito-confidential")
-          .withStatus("success")
-          .withMessage(
-              "Cognito confidential client validated successfully. Discovery URI, client ID, public key URLs, and secret are valid.");
+      return null; // Success - Cognito confidential client validated
     } catch (Exception e) {
       LOG.error("Cognito confidential client validation failed", e);
-      return new ValidationResult()
-          .withComponent("cognito-confidential")
-          .withStatus("failed")
-          .withMessage("Cognito confidential client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Cognito confidential client validation failed: " + e.getMessage());
     }
   }
 
@@ -170,38 +161,33 @@ public class CognitoAuthValidator {
     return new CognitoDetails(region, userPoolId, discoveryUri);
   }
 
-  private ValidationResult validateUserPool(CognitoDetails cognitoDetails) {
+  private FieldError validateUserPool(CognitoDetails cognitoDetails) {
     try {
       // Test discovery endpoint
       ValidationHttpUtil.HttpResponseData response =
           ValidationHttpUtil.safeGet(cognitoDetails.discoveryUri);
 
       if (response.getStatusCode() == 404) {
-        return new ValidationResult()
-            .withComponent("cognito-pool")
-            .withStatus("failed")
-            .withMessage(
-                "Cognito user pool '"
-                    + cognitoDetails.userPoolId
-                    + "' not found in region '"
-                    + cognitoDetails.region
-                    + "'. Please verify the user pool ID and region.");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Cognito user pool '"
+                + cognitoDetails.userPoolId
+                + "' not found in region '"
+                + cognitoDetails.region
+                + "'. Please verify the user pool ID and region.");
       } else if (response.getStatusCode() != 200) {
-        return new ValidationResult()
-            .withComponent("cognito-pool")
-            .withStatus("failed")
-            .withMessage(
-                "Failed to access Cognito discovery endpoint. HTTP response: "
-                    + response.getStatusCode());
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Failed to access Cognito discovery endpoint. HTTP response: "
+                + response.getStatusCode());
       }
 
       JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
 
       if (!discoveryDoc.has("issuer") || !discoveryDoc.has("authorization_endpoint")) {
-        return new ValidationResult()
-            .withComponent("cognito-pool")
-            .withStatus("failed")
-            .withMessage("Invalid Cognito discovery document format");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Invalid Cognito discovery document format");
       }
 
       // Validate issuer format
@@ -211,44 +197,36 @@ public class CognitoAuthValidator {
               "https://cognito-idp.%s.amazonaws.com/%s",
               cognitoDetails.region, cognitoDetails.userPoolId);
       if (!issuer.equals(expectedIssuer)) {
-        return new ValidationResult()
-            .withComponent("cognito-pool")
-            .withStatus("failed")
-            .withMessage(
-                "Unexpected issuer in Cognito discovery document. Expected: " + expectedIssuer);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Unexpected issuer in Cognito discovery document. Expected: " + expectedIssuer);
       }
 
       // Check for required Cognito endpoints
       if (!discoveryDoc.has("token_endpoint")
           || !discoveryDoc.has("userinfo_endpoint")
           || !discoveryDoc.has("jwks_uri")) {
-        return new ValidationResult()
-            .withComponent("cognito-pool")
-            .withStatus("failed")
-            .withMessage("Missing required Cognito endpoints in discovery document");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Missing required Cognito endpoints in discovery document");
       }
 
-      return new ValidationResult()
-          .withComponent("cognito-pool")
-          .withStatus("success")
-          .withMessage("Cognito user pool validated successfully");
+      return null; // Success - Cognito user pool validated
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("cognito-pool")
-          .withStatus("failed")
-          .withMessage("User pool validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+          "User pool validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validatePublicKeyUrls(
+  private FieldError validatePublicKeyUrls(
       AuthenticationConfiguration authConfig, CognitoDetails cognitoDetails) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        return new ValidationResult()
-            .withComponent("cognito-public-key-urls")
-            .withStatus("failed")
-            .withMessage("Public key URLs are required for Cognito clients");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "Public key URLs are required for Cognito clients");
       }
 
       String expectedJwksUri =
@@ -267,12 +245,9 @@ public class CognitoAuthValidator {
       }
 
       if (!hasCorrectCognitoJwksUrl) {
-        return new ValidationResult()
-            .withComponent("cognito-public-key-urls")
-            .withStatus("failed")
-            .withMessage(
-                "At least one public key URL must be the Cognito JWKS endpoint: "
-                    + expectedJwksUri);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "At least one public key URL must be the Cognito JWKS endpoint: " + expectedJwksUri);
       }
 
       for (String urlStr : publicKeyUrls) {
@@ -282,71 +257,117 @@ public class CognitoAuthValidator {
           // Validate domain matches Cognito pattern
           String host = url.getHost();
           if (!host.matches("cognito-idp\\.[a-z0-9-]+\\.amazonaws\\.com")) {
-            return new ValidationResult()
-                .withComponent("cognito-public-key-urls")
-                .withStatus("failed")
-                .withMessage("Public key URL domain doesn't match Cognito pattern: " + host);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Public key URL domain doesn't match Cognito pattern: " + host);
           }
 
           ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(urlStr);
 
           if (response.getStatusCode() != 200) {
-            return new ValidationResult()
-                .withComponent("cognito-public-key-urls")
-                .withStatus("failed")
-                .withMessage(
-                    "Public key URL is not accessible. HTTP response: "
-                        + response.getStatusCode()
-                        + " for URL: "
-                        + urlStr);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Public key URL is not accessible. HTTP response: "
+                    + response.getStatusCode()
+                    + " for URL: "
+                    + urlStr);
           }
 
           JsonNode jwks = JsonUtils.readTree(response.getBody());
           if (!jwks.has("keys")) {
-            return new ValidationResult()
-                .withComponent("cognito-public-key-urls")
-                .withStatus("failed")
-                .withMessage("Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Invalid JWKS format. Expected JSON with 'keys' array at: " + urlStr);
           }
 
           // Validate keys array is not empty
           if (jwks.get("keys").size() == 0) {
-            return new ValidationResult()
-                .withComponent("cognito-public-key-urls")
-                .withStatus("failed")
-                .withMessage("JWKS endpoint returned empty keys array: " + urlStr);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "JWKS endpoint returned empty keys array: " + urlStr);
           }
 
         } catch (Exception e) {
-          return new ValidationResult()
-              .withComponent("cognito-public-key-urls")
-              .withStatus("failed")
-              .withMessage("Invalid public key URL '" + urlStr + "': " + e.getMessage());
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+              "Invalid public key URL '" + urlStr + "': " + e.getMessage());
         }
       }
 
-      return new ValidationResult()
-          .withComponent("cognito-public-key-urls")
-          .withStatus("success")
-          .withMessage(
-              "Cognito public key URLs are valid and accessible. Found expected JWKS endpoint: "
-                  + expectedJwksUri);
+      return null; // Success - Cognito public key URLs validated
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("cognito-public-key-urls")
-          .withStatus("failed")
-          .withMessage("Public key URL validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+          "Public key URL validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateClientCredentials(
-      CognitoDetails cognitoDetails, String clientId, String clientSecret) {
+  private FieldError validateClientCredentials(
+      CognitoDetails cognitoDetails, String clientId, String clientSecret, String redirectUri) {
     try {
       if (nullOrEmpty(clientSecret)) {
-        return new ValidationResult()
-            .withComponent("cognito-credentials")
-            .withStatus("failed")
-            .withMessage("Client secret is required for confidential Cognito clients");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+            "Client secret is required for confidential Cognito clients");
+      }
+
+      // Get the actual authorization endpoint from discovery document
+      String authorizationEndpoint =
+          getAuthorizationEndpointFromDiscovery(cognitoDetails.discoveryUri);
+      if (authorizationEndpoint == null) {
+        // Fallback to constructed URL if we can't get from discovery
+        authorizationEndpoint =
+            String.format(
+                "https://cognito-idp.%s.amazonaws.com/%s/oauth2/authorize",
+                cognitoDetails.region, cognitoDetails.userPoolId);
+      }
+
+      // Build auth URL exactly as done in AuthenticationCodeFlowHandler
+      // Build query parameters similar to buildLoginParams in AuthenticationCodeFlowHandler
+      StringBuilder authUrlBuilder = new StringBuilder(authorizationEndpoint);
+      authUrlBuilder.append("?response_type=code");
+      authUrlBuilder.append("&client_id=").append(clientId);
+      authUrlBuilder
+          .append("&redirect_uri=")
+          .append(java.net.URLEncoder.encode(redirectUri, "UTF-8"));
+      authUrlBuilder.append("&scope=openid%20email%20profile");
+      authUrlBuilder.append("&response_mode=query");
+
+      String authUrl = authUrlBuilder.toString();
+      LOG.debug("Testing client ID with auth URL: {}", authUrl);
+
+      try {
+        ValidationHttpUtil.HttpResponseData authResponse =
+            ValidationHttpUtil.getNoRedirect(authUrl);
+        int statusCode = authResponse.getStatusCode();
+
+        if (statusCode == 302 || statusCode == 301) {
+          // Check the Location header to determine if client ID is valid
+          String locationHeader = authResponse.getLocationHeader();
+
+          LOG.debug(
+              "Cognito authorization response - Status: {}, Location: {}",
+              statusCode,
+              locationHeader);
+
+          if (locationHeader != null) {
+            // Check if redirect is to error page (invalid client) or login page (valid client)
+            if (locationHeader.contains("/error")
+                && locationHeader.contains("error=invalid_request")) {
+              return ValidationErrorBuilder.createFieldError(
+                  ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Invalid client ID");
+            } else if (locationHeader.contains("/login")) {
+              LOG.debug("Client ID validated successfully - redirects to login page");
+            }
+          }
+        } else if (statusCode == 400 || statusCode == 404) {
+          // Some Cognito configurations might return 400/404 directly
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Invalid client ID");
+        }
+      } catch (Exception e) {
+        // Log but continue - we'll try the full credentials next
+        LOG.debug("Could not validate client ID separately: {}", e.getMessage());
       }
 
       // Extract token endpoint from discovery document
@@ -374,10 +395,7 @@ public class CognitoAuthValidator {
       int responseCode = response.getStatusCode();
       if (responseCode == 200) {
         // Successfully obtained token
-        return new ValidationResult()
-            .withComponent("cognito-credentials")
-            .withStatus("success")
-            .withMessage("Cognito client credentials validated successfully");
+        return null; // Success - Cognito client credentials validated
       } else if (responseCode == 400 || responseCode == 401) {
         // Parse error response
         try {
@@ -386,17 +404,24 @@ public class CognitoAuthValidator {
           String errorDescription = errorResponse.path("error_description").asText();
 
           if ("invalid_client".equals(error)) {
-            return new ValidationResult()
-                .withComponent("cognito-credentials")
-                .withStatus("failed")
-                .withMessage(
-                    "Invalid client credentials. Please verify the client ID and secret are correct.");
+            // Check if we have more details in the error description
+            if (!errorDescription.isEmpty() && errorDescription.toLowerCase().contains("secret")) {
+              return ValidationErrorBuilder.createFieldError(
+                  ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Invalid client secret");
+            } else if (!errorDescription.isEmpty()
+                && errorDescription.toLowerCase().contains("client")) {
+              return ValidationErrorBuilder.createFieldError(
+                  ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Invalid client ID");
+            } else {
+              // Since we tried to validate client ID first, if we get invalid_client here
+              // it's more likely to be a secret issue
+              return ValidationErrorBuilder.createFieldError(
+                  ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Invalid client secret");
+            }
           } else if ("unauthorized_client".equals(error)) {
-            return new ValidationResult()
-                .withComponent("cognito-credentials")
-                .withStatus("failed")
-                .withMessage(
-                    "Client is not authorized. Please check app client settings in Cognito.");
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+                "Client is not authorized. Please check app client settings in Cognito.");
           } else if ("unsupported_grant_type".equals(error)) {
             // Client credentials grant not enabled - try fallback validation
             return tryFallbackCredentialsValidation(
@@ -426,20 +451,15 @@ public class CognitoAuthValidator {
               tokenEndpoint, clientId, clientSecret, "Could not parse error response");
         }
       } else {
-        return new ValidationResult()
-            .withComponent("cognito-credentials")
-            .withStatus("warning")
-            .withMessage("Could not fully validate credentials. HTTP response: " + responseCode);
+        // Warning case - treat as success since credentials format appears valid
+        LOG.warn("Could not fully validate Cognito credentials. HTTP response: {}", responseCode);
+        return null;
       }
     } catch (Exception e) {
       LOG.warn("Cognito credentials validation encountered an error", e);
-      return new ValidationResult()
-          .withComponent("cognito-credentials")
-          .withStatus("warning")
-          .withMessage(
-              "Could not fully validate credentials: "
-                  + e.getMessage()
-                  + ". Credentials format appears valid.");
+      // Warning case - treat as success since credentials format appears valid
+      LOG.warn("Could not fully validate Cognito credentials: {}", e.getMessage());
+      return null;
     }
   }
 
@@ -458,7 +478,24 @@ public class CognitoAuthValidator {
     return null;
   }
 
-  private ValidationResult tryFallbackCredentialsValidation(
+  private String getAuthorizationEndpointFromDiscovery(String discoveryUri) {
+    try {
+      ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(discoveryUri);
+      if (response.getStatusCode() == 200) {
+        JsonNode discoveryDoc = JsonUtils.readTree(response.getBody());
+        if (discoveryDoc.has("authorization_endpoint")) {
+          String authEndpoint = discoveryDoc.get("authorization_endpoint").asText();
+          LOG.debug("Found authorization endpoint from discovery: {}", authEndpoint);
+          return authEndpoint;
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to get authorization endpoint from discovery document", e);
+    }
+    return null;
+  }
+
+  private FieldError tryFallbackCredentialsValidation(
       String tokenEndpoint, String clientId, String clientSecret, String initialError) {
     try {
       // Try using an invalid authorization code to test if credentials are correct
@@ -481,45 +518,35 @@ public class CognitoAuthValidator {
           String error = errorResponse.path("error").asText();
 
           if ("invalid_client".equals(error)) {
-            // Credentials are definitely wrong
-            return new ValidationResult()
-                .withComponent("cognito-credentials")
-                .withStatus("failed")
-                .withMessage(
-                    "Invalid client credentials. Please verify the client ID and secret are correct.");
+            // Since we already checked client ID, this likely means wrong secret
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Invalid client secret");
           } else if ("invalid_grant".equals(error) || "invalid_request".equals(error)) {
             // Credentials are likely correct, just the code is invalid (as expected)
-            return new ValidationResult()
-                .withComponent("cognito-credentials")
-                .withStatus("success")
-                .withMessage(
-                    "Cognito client credentials validated successfully. Note: " + initialError);
+            return null; // Success - Cognito credentials validated with fallback method
           } else {
-            // Some other error, but credentials might still be valid
-            return new ValidationResult()
-                .withComponent("cognito-credentials")
-                .withStatus("warning")
-                .withMessage("Client credentials format appears valid. " + initialError);
+            // Some other error, but credentials might still be valid - treat warning as success
+            LOG.warn("Cognito credentials validation warning: {}", initialError);
+            return null;
           }
         } catch (Exception e) {
-          return new ValidationResult()
-              .withComponent("cognito-credentials")
-              .withStatus("warning")
-              .withMessage("Could not fully validate credentials. " + initialError);
+          // Warning case - treat as success since format appears valid
+          LOG.warn("Could not fully validate Cognito credentials. Initial error: {}", initialError);
+          return null;
         }
       } else {
-        return new ValidationResult()
-            .withComponent("cognito-credentials")
-            .withStatus("warning")
-            .withMessage("Could not fully validate credentials. " + initialError);
+        // Warning case - treat as success since format appears valid
+        LOG.warn("Could not fully validate Cognito credentials. Initial error: {}", initialError);
+        return null;
       }
     } catch (Exception e) {
       LOG.warn("Fallback validation failed", e);
-      return new ValidationResult()
-          .withComponent("cognito-credentials")
-          .withStatus("warning")
-          .withMessage(
-              "Could not fully validate credentials: " + e.getMessage() + ". " + initialError);
+      // Warning case - treat as success since format appears valid
+      LOG.warn(
+          "Cognito fallback validation failed: {}. Initial error: {}",
+          e.getMessage(),
+          initialError);
+      return null;
     }
   }
 

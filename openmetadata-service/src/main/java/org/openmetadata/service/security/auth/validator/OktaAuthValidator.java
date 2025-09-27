@@ -8,8 +8,9 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
@@ -18,7 +19,7 @@ public class OktaAuthValidator {
   private static final String OKTA_WELL_KNOWN_PATH = "/.well-known/openid-configuration";
   private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
 
-  public ValidationResult validateOktaConfiguration(
+  public FieldError validateOktaConfiguration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       String clientType = String.valueOf(authConfig.getClientType()).toLowerCase();
@@ -28,28 +29,25 @@ public class OktaAuthValidator {
       } else if ("confidential".equals(clientType)) {
         return validateOktaConfidentialClient(authConfig, oidcConfig);
       } else {
-        return new ValidationResult()
-            .withComponent("okta-client-type")
-            .withStatus("failed")
-            .withMessage(
-                "Unknown client type: "
-                    + authConfig.getClientType()
-                    + ". Must be 'public' or 'confidential'.");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_TYPE,
+            "Unknown client type: "
+                + authConfig.getClientType()
+                + ". Must be 'public' or 'confidential'.");
       }
     } catch (Exception e) {
       LOG.error("Okta validation failed", e);
-      return new ValidationResult()
-          .withComponent("okta")
-          .withStatus("failed")
-          .withMessage("Okta validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Okta validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateOktaPublicClient(AuthenticationConfiguration authConfig) {
+  private FieldError validateOktaPublicClient(AuthenticationConfiguration authConfig) {
     try {
       String oktaDomain = authConfig.getAuthority();
-      ValidationResult domainValidation = validateOktaDomain(oktaDomain);
-      if ("failed".equals(domainValidation.getStatus())) {
+      FieldError domainValidation =
+          validateOktaDomain(oktaDomain, ValidationErrorBuilder.FieldPaths.AUTH_AUTHORITY);
+      if (domainValidation != null) {
         return domainValidation;
       }
 
@@ -58,38 +56,31 @@ public class OktaAuthValidator {
       OidcClientConfig publicClientConfig =
           new OidcClientConfig().withId(authConfig.getClientId()).withDiscoveryUri(discoveryUri);
 
-      ValidationResult discoveryCheck =
+      FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, publicClientConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
-      ValidationResult clientIdValidation =
-          validatePublicClientId(oktaDomain, authConfig.getClientId());
-      if ("failed".equals(clientIdValidation.getStatus())) {
+      FieldError clientIdValidation = validatePublicClientId(oktaDomain, authConfig.getClientId());
+      if (clientIdValidation != null) {
         return clientIdValidation;
       }
 
-      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain);
-      if ("failed".equals(publicKeyValidation.getStatus())) {
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain);
+      if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("okta-public")
-          .withStatus("success")
-          .withMessage(
-              "Okta public client validated successfully. Authority, client ID, and public key URLs are valid.");
+      return null; // Success - Okta public client validated
     } catch (Exception e) {
       LOG.error("Okta public client validation failed", e);
-      return new ValidationResult()
-          .withComponent("okta-public")
-          .withStatus("failed")
-          .withMessage("Okta public client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Okta public client validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateOktaConfidentialClient(
+  private FieldError validateOktaConfidentialClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
 
@@ -97,44 +88,40 @@ public class OktaAuthValidator {
       String oktaDomain = extractOktaDomainFromOidcConfig(oidcConfig);
 
       // Step 2: Validate domain accessibility
-      ValidationResult domainValidation = validateOktaDomain(oktaDomain);
-      if ("failed".equals(domainValidation.getStatus())) {
+      FieldError domainValidation =
+          validateOktaDomain(oktaDomain, ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI);
+      if (domainValidation != null) {
         return domainValidation;
       }
 
       // Step 3: Validate against OIDC discovery document (scopes, response types, etc.)
-      String discoveryUri = oktaDomain + OKTA_WELL_KNOWN_PATH;
-      ValidationResult discoveryCheck =
-          discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      //   String discoveryUri = oktaDomain + OKTA_WELL_KNOWN_PATH;
+      FieldError discoveryCheck =
+          discoveryValidator.validateAgainstDiscovery(
+              oidcConfig.getDiscoveryUri(), authConfig, oidcConfig);
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
       // Step 4: Validate public key URLs (required for JWT signature verification)
-      ValidationResult publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain);
-      if ("failed".equals(publicKeyValidation.getStatus())) {
+      FieldError publicKeyValidation = validatePublicKeyUrls(authConfig, oktaDomain);
+      if (publicKeyValidation != null) {
         return publicKeyValidation;
       }
 
       // Step 5: Validate client credentials (secret)
       String clientId = oidcConfig.getId();
-      ValidationResult credentialsValidation =
+      FieldError credentialsValidation =
           validateClientCredentials(oktaDomain, clientId, oidcConfig.getSecret());
-      if ("failed".equals(credentialsValidation.getStatus())) {
+      if (credentialsValidation != null) {
         return credentialsValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("okta-confidential")
-          .withStatus("success")
-          .withMessage(
-              "Okta confidential client validated successfully. Discovery URI, client ID, public key URLs, and secret are valid.");
+      return null; // Success - Okta confidential client validated
     } catch (Exception e) {
       LOG.error("Okta confidential client validation failed", e);
-      return new ValidationResult()
-          .withComponent("okta-confidential")
-          .withStatus("failed")
-          .withMessage("Okta confidential client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Okta confidential client validation failed: " + e.getMessage());
     }
   }
 
@@ -155,12 +142,12 @@ public class OktaAuthValidator {
         "Unable to extract Okta domain from OIDC configuration. Please provide a valid discoveryUri");
   }
 
-  private ValidationResult validatePublicClientId(String oktaDomain, String clientId) {
+  private FieldError validatePublicClientId(String oktaDomain, String clientId) {
     return validateClientIdViaIntrospection(
         oktaDomain, clientId, "okta-public-client-id", "public");
   }
 
-  private ValidationResult validateClientIdViaIntrospection(
+  private FieldError validateClientIdViaIntrospection(
       String oktaDomain, String clientId, String componentName, String clientType) {
     try {
       String introspectUrl = oktaDomain + "/v1/introspect";
@@ -178,34 +165,26 @@ public class OktaAuthValidator {
         JsonNode result = JsonUtils.readTree(response.getBody());
         if (result.has("active")) {
           String clientTypeDesc = clientType.isEmpty() ? "" : clientType + " ";
-          return new ValidationResult()
-              .withComponent(componentName)
-              .withStatus("success")
-              .withMessage(
-                  "Okta " + clientTypeDesc + "client ID validated successfully via introspection");
+          return null; // Success - Okta client ID validated
         } else {
-          return new ValidationResult()
-              .withComponent(componentName)
-              .withStatus("failed")
-              .withMessage("Unexpected introspection response format - missing 'active' field");
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+              "Unexpected introspection response format - missing 'active' field");
         }
       } else {
-        return new ValidationResult()
-            .withComponent(componentName)
-            .withStatus("failed")
-            .withMessage("Client ID validation failed. HTTP response: " + response.getStatusCode());
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            "Client ID validation failed. HTTP response: " + response.getStatusCode());
       }
 
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent(componentName)
-          .withStatus("warning")
-          .withMessage(
-              "Client ID validation failed: " + e.getMessage() + ". Format appears valid.");
+      // Warning only - format appears valid, so don't fail validation
+      LOG.warn("Client ID validation warning: {}", e.getMessage());
+      return null; // Treat as success since format appears valid
     }
   }
 
-  private ValidationResult validatePublicKeyUrls(
+  private FieldError validatePublicKeyUrls(
       AuthenticationConfiguration authConfig, String oktaDomain) {
     try {
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
@@ -279,34 +258,23 @@ public class OktaAuthValidator {
         }
       }
 
-      return new ValidationResult()
-          .withComponent("okta-public-key-urls")
-          .withStatus("success")
-          .withMessage(
-              "Okta public key URLs are valid and accessible. Found expected JWKS endpoint: "
-                  + expectedJwksUrl);
+      return null; // Success - Okta public key URLs are valid
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("okta-public-key-urls")
-          .withStatus("failed")
-          .withMessage("Public key URL validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+          "Public key URL validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateOktaDomain(String oktaDomain) {
+  private FieldError validateOktaDomain(String oktaDomain, String fieldPath) {
     try {
       String discoveryUrl = oktaDomain + OKTA_WELL_KNOWN_PATH;
       testOktaDiscoveryEndpoint(discoveryUrl);
 
-      return new ValidationResult()
-          .withComponent("okta-domain")
-          .withStatus("success")
-          .withMessage("Okta domain validated successfully");
+      return null; // Success - Okta domain validated
     } catch (Exception e) {
-      return new ValidationResult()
-          .withComponent("okta-domain")
-          .withStatus("failed")
-          .withMessage("Domain validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          fieldPath, "Domain validation failed: " + e.getMessage());
     }
   }
 
@@ -337,7 +305,7 @@ public class OktaAuthValidator {
     }
   }
 
-  private ValidationResult validateClientCredentials(
+  private FieldError validateClientCredentials(
       String oktaDomain, String clientId, String clientSecret) {
     try {
 
@@ -352,34 +320,32 @@ public class OktaAuthValidator {
       int responseCode = response.getStatusCode();
 
       if (responseCode == 401) {
-        // 401 means invalid client credentials
-        return new ValidationResult()
-            .withComponent("okta-credentials")
-            .withStatus("failed")
-            .withMessage(
-                "Invalid client credentials. Please verify the client ID and secret are correct.");
+        JsonNode jsonNode = JsonUtils.readTree(response.getBody());
+        if (jsonNode.has("errorSummary")) {
+          String errorDescription = jsonNode.get("errorSummary").asText();
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, errorDescription);
+        }
+        if (jsonNode.has("error_description")) {
+          String errorDescription = jsonNode.get("error_description").asText();
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, errorDescription);
+        }
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+            "Invalid client credentials. Please verify the client ID and secret are correct.");
       } else if (responseCode == 400 || responseCode == 200) {
         // 400 or 200 means client authenticated successfully (but token was invalid/dummy)
-        return new ValidationResult()
-            .withComponent("okta-credentials")
-            .withStatus("success")
-            .withMessage("Okta client credentials validated successfully");
+        return null; // Success - Okta client credentials validated
       } else {
-        // Some other error
-        return new ValidationResult()
-            .withComponent("okta-credentials")
-            .withStatus("warning")
-            .withMessage("Could not fully validate credentials. HTTP response: " + responseCode);
+        // Some other error - treat warning as success since credentials format appears valid
+        LOG.warn("Could not fully validate Okta credentials. HTTP response: {}", responseCode);
+        return null;
       }
     } catch (Exception e) {
       LOG.warn("Okta credentials validation encountered an error", e);
-      return new ValidationResult()
-          .withComponent("okta-credentials")
-          .withStatus("warning")
-          .withMessage(
-              "Could not fully validate credentials: "
-                  + e.getMessage()
-                  + ". Credentials format appears valid.");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Could not validate credentials.");
     }
   }
 }

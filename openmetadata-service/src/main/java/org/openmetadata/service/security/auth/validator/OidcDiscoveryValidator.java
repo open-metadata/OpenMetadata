@@ -12,7 +12,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
+import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
@@ -70,15 +71,13 @@ public class OidcDiscoveryValidator {
     }
   }
 
-  public ValidationResult validateAgainstDiscovery(
+  public FieldError validateAgainstDiscovery(
       String discoveryUri, AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       if (nullOrEmpty(discoveryUri)) {
         LOG.debug("No discovery URI provided, skipping discovery validation");
-        return new ValidationResult()
-            .withComponent("oidc-discovery")
-            .withStatus("success")
-            .withMessage("Discovery validation skipped - no discovery URI configured");
+        // No discovery URI - this is not an error, just skip validation
+        return null;
       }
 
       LOG.debug("Fetching OIDC discovery document from: {}", discoveryUri);
@@ -89,11 +88,9 @@ public class OidcDiscoveryValidator {
             "Failed to fetch discovery document, status: {}, body: {}",
             response.getStatusCode(),
             response.getBody());
-        return new ValidationResult()
-            .withComponent("oidc-discovery")
-            .withStatus("failed")
-            .withMessage(
-                "Failed to fetch OIDC discovery document. Status: " + response.getStatusCode());
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Failed to fetch OIDC discovery document. Status: " + response.getStatusCode());
       }
 
       DiscoveryDocument discovery = DiscoveryDocument.fromJson(response.getBody());
@@ -111,10 +108,9 @@ public class OidcDiscoveryValidator {
       if (!errors.isEmpty()) {
         String errorMessage = String.join("; ", errors);
         LOG.error("Discovery validation failed: {}", errorMessage);
-        return new ValidationResult()
-            .withComponent("oidc-discovery")
-            .withStatus("failed")
-            .withMessage(errorMessage);
+        // Determine which field to map the error to based on the error message
+        String fieldPath = determineFieldPathFromErrors(errors);
+        return ValidationErrorBuilder.createFieldError(fieldPath, errorMessage);
       }
 
       String message = "OIDC configuration validated against discovery document.";
@@ -123,17 +119,14 @@ public class OidcDiscoveryValidator {
         LOG.warn("Discovery validation warnings: {}", warnings);
       }
 
-      return new ValidationResult()
-          .withComponent("oidc-discovery")
-          .withStatus("success")
-          .withMessage(message);
+      // Success - no error
+      return null;
 
     } catch (Exception e) {
       LOG.error("Error during discovery validation", e);
-      return new ValidationResult()
-          .withComponent("oidc-discovery")
-          .withStatus("failed")
-          .withMessage("Failed to validate against discovery document: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+          "Failed to validate against discovery document: " + e.getMessage());
     }
   }
 
@@ -301,5 +294,35 @@ public class OidcDiscoveryValidator {
           "Failed to fetch discovery document. Status: " + response.getStatusCode());
     }
     return DiscoveryDocument.fromJson(response.getBody());
+  }
+
+  private String determineFieldPathFromErrors(List<String> errors) {
+    // Join all errors to analyze them
+    String allErrors = String.join(" ", errors).toLowerCase();
+
+    // Check for specific error patterns
+    if (allErrors.contains("scope")) {
+      return ValidationErrorBuilder.FieldPaths.OIDC_SCOPE;
+    }
+    if (allErrors.contains("prompt")) {
+      return ValidationErrorBuilder.FieldPaths.OIDC_PROMPT;
+    }
+    if (allErrors.contains("response_type") || allErrors.contains("response type")) {
+      return ValidationErrorBuilder.FieldPaths
+          .OIDC_DISCOVERY_URI; // Response type is part of OIDC config
+    }
+    if (allErrors.contains("token") && allErrors.contains("auth")) {
+      return ValidationErrorBuilder.FieldPaths
+          .OIDC_CLIENT_SECRET; // Token auth method relates to secret
+    }
+    if (allErrors.contains("algorithm")
+        || allErrors.contains("jws")
+        || allErrors.contains("signing")) {
+      return ValidationErrorBuilder.FieldPaths
+          .OIDC_DISCOVERY_URI; // Algorithm issues relate to discovery config
+    }
+
+    // Default to discovery URI for general OIDC configuration errors
+    return ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI;
   }
 }
