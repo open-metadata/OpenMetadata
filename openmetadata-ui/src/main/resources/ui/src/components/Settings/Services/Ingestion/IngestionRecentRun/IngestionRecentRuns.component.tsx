@@ -65,10 +65,7 @@ export const IngestionRecentRuns = <
           queryParams
         );
 
-        const runs =
-          response.data
-            .sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
-            .slice(-5) ?? [];
+        const runs = response.data.splice(0, 5).reverse() ?? [];
 
         setRecentRunStatus(
           (runs.length === 0 && ingestionPipeline?.pipelineStatuses
@@ -89,11 +86,7 @@ export const IngestionRecentRuns = <
 
   useEffect(() => {
     if (!isEmpty(appRuns)) {
-      setRecentRunStatus(
-        appRuns
-          ?.sort((a, b) => (a.timestamp ?? 0) - (b.timestamp ?? 0))
-          .slice(-5) ?? []
-      );
+      setRecentRunStatus(appRuns?.splice(0, 5).reverse() ?? []);
     }
   }, [appRuns]);
 
