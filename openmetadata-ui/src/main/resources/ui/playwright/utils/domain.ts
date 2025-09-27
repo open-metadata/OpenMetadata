@@ -135,9 +135,11 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     state: 'detached',
   });
 
+  const domainApiRes = page.waitForResponse('/api/v1/domains/name/*');
+
   await page.getByRole('row', { name: domain.displayName }).click();
 
-  await page.waitForLoadState('networkidle');
+  await domainApiRes;
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
