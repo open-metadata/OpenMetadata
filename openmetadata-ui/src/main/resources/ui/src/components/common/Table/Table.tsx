@@ -289,7 +289,7 @@ const Table = <T extends Record<string, unknown>>(
               {rest.extraTableFilters}
               {isCustomizeColumnEnable && (
                 <Dropdown
-                  className="custom-column-dropdown-menu text-primary"
+                  className="custom-column-dropdown-menu"
                   menu={menu}
                   open={isDropdownVisible}
                   placement="bottomRight"

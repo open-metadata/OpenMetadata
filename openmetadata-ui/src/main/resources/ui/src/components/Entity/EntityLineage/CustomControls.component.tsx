@@ -34,12 +34,9 @@ import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { StyledMenu } from '../../LineageTable/LineageTable.styled';
-import { LineageControlProps } from './EntityLineage.interface';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
-const CustomControls: FC<LineageControlProps> = ({
-  onlyShowTabSwitch,
-}: LineageControlProps) => {
+const CustomControls: FC = () => {
   const { t } = useTranslation();
   const { setSelectedQuickFilters, nodes, selectedQuickFilters } =
     useLineageProvider();
@@ -158,41 +155,35 @@ const CustomControls: FC<LineageControlProps> = ({
   }, [filters]);
 
   return (
-    <div
-      className={classNames(
-        'd-flex w-full',
-        onlyShowTabSwitch ? 'justify-end' : 'justify-between'
-      )}>
-      {!onlyShowTabSwitch && (
-        <div className="d-flex items-center gap-4">
-          <LineageSearchSelect />
-          <Space className="m-l-xs" size={16}>
-            <Button
-              className="expand-btn"
-              variant="outlined"
-              onClick={handleAdvancedClick}>
-              {t('label.advanced')}
-              <RightOutlined />
-            </Button>
-            <StyledMenu
-              anchorEl={advanceEl}
-              open={Boolean(advanceEl)}
-              onClose={handleCloseAdvance}>
-              {filterMenu}
-            </StyledMenu>
+    <div className={classNames('d-flex w-full')}>
+      <div className="d-flex items-center gap-4">
+        <LineageSearchSelect />
+        <Space className="m-l-xs" size={16}>
+          <Button
+            className="expand-btn"
+            variant="outlined"
+            onClick={handleAdvancedClick}>
+            {t('label.advanced')}
+            <RightOutlined />
+          </Button>
+          <StyledMenu
+            anchorEl={advanceEl}
+            open={Boolean(advanceEl)}
+            onClose={handleCloseAdvance}>
+            {filterMenu}
+          </StyledMenu>
 
-            <ExploreQuickFilters
-              independent
-              aggregations={{}}
-              defaultQueryFilter={queryFilter}
-              fields={selectedQuickFilters ?? []}
-              index={SearchIndex.ALL}
-              showDeleted={false}
-              onFieldValueSelect={handleQuickFiltersValueSelect}
-            />
-          </Space>
-        </div>
-      )}
+          <ExploreQuickFilters
+            independent
+            aggregations={{}}
+            defaultQueryFilter={queryFilter}
+            fields={selectedQuickFilters ?? []}
+            index={SearchIndex.ALL}
+            showDeleted={false}
+            onFieldValueSelect={handleQuickFiltersValueSelect}
+          />
+        </Space>
+      </div>
       <div className="d-flex gap-4 items-center">
         <Button
           className="font-semibold"

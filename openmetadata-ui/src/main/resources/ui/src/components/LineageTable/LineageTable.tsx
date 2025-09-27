@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { SettingOutlined } from '@ant-design/icons';
-import { ListItemIcon, ListItemText } from '@mui/material';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import MenuItem from '@mui/material/MenuItem';
@@ -384,8 +383,8 @@ const LineageTable = () => {
                 handlePageChange(currentPage);
                 setImpactOnEl(null);
               }}>
-              <ListItemIcon>{option.icon}</ListItemIcon>
-              <ListItemText>{option.label}</ListItemText>
+              {option.icon}
+              {option.label}
             </MenuItem>
           ))}
         </StyledMenu>
@@ -555,6 +554,7 @@ const LineageTable = () => {
               <Button
                 endIcon={<DropdownIcon />}
                 sx={{
+                  fontWeight: 500,
                   '& .MuiButton-endIcon': {
                     svg: {
                       height: 12,
@@ -604,8 +604,11 @@ const LineageTable = () => {
               />
             </div>
             <Button
-              className="m-l-auto"
               size="small"
+              sx={{
+                fontWeight: 500,
+                color: theme.palette.primary.main,
+              }}
               variant="text"
               onClick={handleClearAllFilters}>
               {t('label.clear-entity', { entity: t('label.all') })}
@@ -866,15 +869,8 @@ const LineageTable = () => {
       }
     );
 
-    const newItems = updatedQuickFilters.filter(
-      (item) =>
-        !selectedQuickFilters.some(
-          (existingItem) => item.key === existingItem.key
-        )
-    );
-
-    if (newItems.length > 0) {
-      setSelectedQuickFilters(newItems);
+    if (updatedQuickFilters.length > 0) {
+      setSelectedQuickFilters(updatedQuickFilters);
     }
 
     // Toggle fullscreen view based on filter selection
