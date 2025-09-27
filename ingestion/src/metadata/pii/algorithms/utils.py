@@ -36,3 +36,7 @@ def get_top_classes(scores: Mapping[T, float], n: int, threshold: float) -> Sequ
     sorted_scores = sorted(scores.items(), key=lambda x: x[1], reverse=True)
     top_classes = [key for key, score in sorted_scores if score >= threshold]
     return top_classes[:n]
+
+
+def build_reason(tag_name: str, score: float) -> str:
+    return f"Chose {tag_name} with a classification score of {score:.2f}"

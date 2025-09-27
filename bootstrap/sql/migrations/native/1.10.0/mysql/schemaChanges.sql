@@ -44,3 +44,6 @@ CREATE TABLE IF NOT EXISTS notification_template_entity (
     INDEX idx_notification_template_name (name),
     INDEX idx_notification_template_provider (provider)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE tag_usage
+ADD COLUMN reason TEXT;

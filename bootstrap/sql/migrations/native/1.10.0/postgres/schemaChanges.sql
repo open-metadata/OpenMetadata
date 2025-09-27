@@ -47,3 +47,6 @@ CREATE TABLE IF NOT EXISTS notification_template_entity (
 
 CREATE INDEX IF NOT EXISTS idx_notification_template_name ON notification_template_entity(name);
 CREATE INDEX IF NOT EXISTS idx_notification_template_provider ON notification_template_entity(provider);
+
+ALTER TABLE tag_usage
+ADD COLUMN reason TEXT;
