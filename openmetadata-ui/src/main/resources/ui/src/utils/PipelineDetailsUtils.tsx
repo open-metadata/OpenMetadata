@@ -20,11 +20,10 @@ import { CustomPropertyTable } from '../components/common/CustomPropertyTable/Cu
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import ExecutionsTab from '../components/Pipeline/Execution/Execution.component';
 import { PipelineTaskTab } from '../components/Pipeline/PipelineTaskTab/PipelineTaskTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { StatusType, TaskStatus } from '../generated/entity/data/pipeline';
@@ -114,14 +113,12 @@ export const getPipelineDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
-            entity={pipelineDetails as SourceType}
-            entityType={EntityType.PIPELINE}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={pipelineDetails as SourceType}
+          entityType={EntityType.PIPELINE}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

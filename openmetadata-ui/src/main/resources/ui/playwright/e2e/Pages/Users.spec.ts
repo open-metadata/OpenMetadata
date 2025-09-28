@@ -102,7 +102,7 @@ const test = base.extend<{
   },
 });
 
-base.beforeAll('Setup pre-requests', async ({ browser }) => {
+test.beforeAll('Setup pre-requests', async ({ browser }) => {
   test.slow(true);
 
   const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -120,23 +120,6 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await role.create(apiContext, [policy.responseData.name]);
   await persona1.create(apiContext);
   await persona2.create(apiContext);
-
-  await afterAction();
-});
-
-base.afterAll('Cleanup', async ({ browser }) => {
-  test.slow(true);
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await dataStewardUser.delete(apiContext);
-  await tableEntity.delete(apiContext);
-  await tableEntity2.delete(apiContext);
-  await policy.delete(apiContext);
-  await role.delete(apiContext);
-  await persona1.delete(apiContext);
-  await persona2.delete(apiContext);
 
   await afterAction();
 });

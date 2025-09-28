@@ -21,9 +21,8 @@ import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import ModelTab from '../components/Dashboard/DataModel/DataModels/ModelTab/ModelTab.component';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SchemaEditor from '../components/Database/SchemaEditor/SchemaEditor';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { CSMode } from '../enums/codemirror.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
@@ -122,14 +121,12 @@ export const getDashboardDataModelDetailPageTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
-            entity={dataModelData as SourceType}
-            entityType={EntityType.DASHBOARD_DATA_MODEL}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={dataModelData as SourceType}
+          entityType={EntityType.DASHBOARD_DATA_MODEL}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {
