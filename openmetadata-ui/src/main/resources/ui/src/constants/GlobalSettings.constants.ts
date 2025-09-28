@@ -92,4 +92,9 @@ export enum GlobalSettingOptions {
   SSO = 'sso',
   CHARTS = 'charts',
   SECURITY = 'security',
+  DRIVES = 'drives',
+  DIRECTORIES = 'directories',
+  FILES = 'files',
+  SPREADSHEETS = 'spreadsheets',
+  WORKSHEETS = 'worksheets',
 }
