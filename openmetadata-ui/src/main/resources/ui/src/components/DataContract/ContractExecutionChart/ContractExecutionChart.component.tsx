@@ -35,11 +35,14 @@ import { DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS } from '../../../constants/D
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
-import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { getAllContractResults } from '../../../rest/contractAPI';
-import { getContractExecutionMonthTicks } from '../../../utils/DataContract/DataContractUtils';
 import {
-  formatMonth,
+  createContractExecutionCustomScale,
+  formatContractExecutionTick,
+  generateMonthTickPositions,
+  processContractExecutionData,
+} from '../../../utils/DataContract/DataContractUtils';
+import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
@@ -88,31 +91,24 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
     }
   };
 
-  const { processedChartData, executionMonthThicks } = useMemo(() => {
-    const processed = contractExecutionResultList.map((item) => {
-      return {
-        name: item.timestamp,
-        failed:
-          item.contractExecutionStatus === ContractExecutionStatus.Failed
-            ? 1
-            : 0,
-        success:
-          item.contractExecutionStatus === ContractExecutionStatus.Success
-            ? 1
-            : 0,
-        aborted:
-          item.contractExecutionStatus === ContractExecutionStatus.Aborted
-            ? 1
-            : 0,
-        data: item,
-      };
-    });
+  const { processedChartData, executionMonthThicks, customScale } =
+    useMemo(() => {
+      const processed = processContractExecutionData(
+        contractExecutionResultList
+      );
 
-    return {
-      processedChartData: processed,
-      executionMonthThicks: getContractExecutionMonthTicks(processed),
-    };
-  }, [contractExecutionResultList]);
+      // Create custom scale for positioning bars from the left
+      const customScaleFunction = createContractExecutionCustomScale(processed);
+
+      // Generate tick positions for month labels
+      const tickPositions = generateMonthTickPositions(processed);
+
+      return {
+        processedChartData: processed,
+        executionMonthThicks: tickPositions,
+        customScale: customScaleFunction,
+      };
+    }, [contractExecutionResultList]);
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     if (!isEqual(value, dateRangeObject)) {
@@ -151,8 +147,9 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
             <XAxis
               axisLine={false}
               dataKey="name"
-              domain={['min', 'max']}
-              tickFormatter={formatMonth}
+              domain={[dateRangeObject.startTs, dateRangeObject.endTs]}
+              scale={customScale}
+              tickFormatter={formatContractExecutionTick}
               tickMargin={10}
               ticks={executionMonthThicks}
             />
