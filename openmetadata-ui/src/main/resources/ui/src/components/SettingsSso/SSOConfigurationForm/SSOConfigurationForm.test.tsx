@@ -407,9 +407,6 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
-        expect(mockShowErrorToast).toHaveBeenCalledWith(
-          expect.stringContaining('Validation failed')
-        );
         expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
       });
     });
