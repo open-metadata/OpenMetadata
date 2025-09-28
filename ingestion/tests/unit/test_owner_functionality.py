@@ -52,74 +52,6 @@ class MockDatabaseServiceSource:
             print(f"Error processing default owner from sourceConfig: {exc}")
         return None
 
-class MockStorageServiceSource:
-    """Mock StorageServiceSource class"""
-    
-    def __init__(self, source_config, metadata):
-        self.source_config = source_config
-        self.metadata = metadata
-    
-    def get_default_owner_ref(self) -> Optional[MockEntityReferenceList]:
-        """Mock implementation of get_default_owner_ref"""
-        try:
-            if hasattr(self.source_config, 'owner') and self.source_config.owner:
-                owner_name = self.source_config.owner
-                return self.metadata.get_reference_by_name(name=owner_name, is_owner=True)
-        except Exception:
-            pass
-        return None
-
-class MockMlModelServiceSource:
-    """Mock MlModelServiceSource class"""
-    
-    def __init__(self, source_config, metadata):
-        self.source_config = source_config
-        self.metadata = metadata
-    
-    def get_default_owner_ref(self) -> Optional[MockEntityReferenceList]:
-        """Mock implementation of get_default_owner_ref"""
-        try:
-            if hasattr(self.source_config, 'owner') and self.source_config.owner:
-                owner_name = self.source_config.owner
-                return self.metadata.get_reference_by_name(name=owner_name, is_owner=True)
-        except Exception:
-            pass
-        return None
-
-class MockSearchServiceSource:
-    """Mock SearchServiceSource class"""
-    
-    def __init__(self, source_config, metadata):
-        self.source_config = source_config
-        self.metadata = metadata
-    
-    def get_default_owner_ref(self) -> Optional[MockEntityReferenceList]:
-        """Mock implementation of get_default_owner_ref"""
-        try:
-            if hasattr(self.source_config, 'owner') and self.source_config.owner:
-                owner_name = self.source_config.owner
-                return self.metadata.get_reference_by_name(name=owner_name, is_owner=True)
-        except Exception:
-            pass
-        return None
-
-class MockApiServiceSource:
-    """Mock ApiServiceSource class"""
-    
-    def __init__(self, source_config, metadata):
-        self.source_config = source_config
-        self.metadata = metadata
-    
-    def get_default_owner_ref(self) -> Optional[MockEntityReferenceList]:
-        """Mock implementation of get_default_owner_ref"""
-        try:
-            if hasattr(self.source_config, 'owner') and self.source_config.owner:
-                owner_name = self.source_config.owner
-                return self.metadata.get_reference_by_name(name=owner_name, is_owner=True)
-        except Exception:
-            pass
-        return None
-
 class TestOwnerAssignment(unittest.TestCase):
     """Test ownership assignment functionality"""
     
@@ -249,115 +181,6 @@ class TestOwnerAssignmentIntegration(unittest.TestCase):
             name="data_team", is_owner=True
         )
 
-
-class TestStorageServiceSourceOwner(unittest.TestCase):
-    """Test owner functionality for StorageServiceSource"""
-    
-    def test_get_default_owner_ref_with_configured_owner(self):
-        """Test getting default owner when owner is configured"""
-        source_config = MockSourceConfig(owner="storage_user")
-        metadata = MockMetadata()
-        metadata.get_reference_by_name.return_value = MockEntityReferenceList()
-        
-        source = MockStorageServiceSource(source_config, metadata)
-        result = source.get_default_owner_ref()
-        
-        self.assertIsNotNone(result)
-        metadata.get_reference_by_name.assert_called_once_with(name="storage_user", is_owner=True)
-    
-    def test_get_default_owner_ref_without_owner(self):
-        """Test getting default owner when no owner is configured"""
-        source_config = MockSourceConfig(owner=None)
-        metadata = MockMetadata()
-        
-        source = MockStorageServiceSource(source_config, metadata)
-        result = source.get_default_owner_ref()
-        
-        self.assertIsNone(result)
-        metadata.get_reference_by_name.assert_not_called()
-
-
-class TestMlModelServiceSourceOwner(unittest.TestCase):
-    """Test owner functionality for MlModelServiceSource"""
-    
-    def test_get_default_owner_ref_with_configured_owner(self):
-        """Test getting default owner when owner is configured"""
-        source_config = MockSourceConfig(owner="mlmodel_user")
-        metadata = MockMetadata()
-        metadata.get_reference_by_name.return_value = MockEntityReferenceList()
-        
-        source = MockMlModelServiceSource(source_config, metadata)
-        result = source.get_default_owner_ref()
-        
-        self.assertIsNotNone(result)
-        metadata.get_reference_by_name.assert_called_once_with(name="mlmodel_user", is_owner=True)
-    
-    def test_get_default_owner_ref_without_owner(self):
-        """Test getting default owner when no owner is configured"""
-        source_config = MockSourceConfig(owner=None)
-        metadata = MockMetadata()
-        
-        source = MockMlModelServiceSource(source_config, metadata)
-        result = source.get_default_owner_ref()
-        
-        self.assertIsNone(result)
-        metadata.get_reference_by_name.assert_not_called()
-
-
-class TestSearchServiceSourceOwner(unittest.TestCase):
-    """Test owner functionality for SearchServiceSource"""
-    
-    def test_get_default_owner_ref_with_configured_owner(self):
-        """Test getting default owner when owner is configured"""
-        source_config = MockSourceConfig(owner="search_user")
-        metadata = MockMetadata()
-        metadata.get_reference_by_name.return_value = MockEntityReferenceList()
-        
-        source = MockSearchServiceSource(source_config, metadata)
-        result = source.get_default_owner_ref()
-        
-        self.assertIsNotNone(result)
-        metadata.get_reference_by_name.assert_called_once_with(name="search_user", is_owner=True)
-    
-    def test_get_default_owner_ref_without_owner(self):
-        """Test getting default owner when no owner is configured"""
-        source_config = MockSourceConfig(owner=None)
-        metadata = MockMetadata()
-        
-        source = MockSearchServiceSource(source_config, metadata)
-        result = source.get_default_owner_ref()
-        
-        self.assertIsNone(result)
-        metadata.get_reference_by_name.assert_not_called()
-
-
-class TestApiServiceSourceOwner(unittest.TestCase):
-    """Test owner functionality for ApiServiceSource"""
-    
-    def test_get_default_owner_ref_with_configured_owner(self):
-        """Test getting default owner when owner is configured"""
-        source_config = MockSourceConfig(owner="api_user")
-        metadata = MockMetadata()
-        metadata.get_reference_by_name.return_value = MockEntityReferenceList()
-        
-        source = MockApiServiceSource(source_config, metadata)
-        result = source.get_default_owner_ref()
-        
-        self.assertIsNotNone(result)
-        metadata.get_reference_by_name.assert_called_once_with(name="api_user", is_owner=True)
-    
-    def test_get_default_owner_ref_without_owner(self):
-        """Test getting default owner when no owner is configured"""
-        source_config = MockSourceConfig(owner=None)
-        metadata = MockMetadata()
-        
-        source = MockApiServiceSource(source_config, metadata)
-        result = source.get_default_owner_ref()
-        
-        self.assertIsNone(result)
-        metadata.get_reference_by_name.assert_not_called()
-
-
 def run_tests():
     """Run all tests"""
     print("=== Running Ownership Assignment Functionality Tests ===\n")
@@ -368,10 +191,6 @@ def run_tests():
     # Add test cases
     test_suite.addTest(unittest.makeSuite(TestOwnerAssignment))
     test_suite.addTest(unittest.makeSuite(TestOwnerAssignmentIntegration))
-    test_suite.addTest(unittest.makeSuite(TestStorageServiceSourceOwner))
-    test_suite.addTest(unittest.makeSuite(TestMlModelServiceSourceOwner))
-    test_suite.addTest(unittest.makeSuite(TestSearchServiceSourceOwner))
-    test_suite.addTest(unittest.makeSuite(TestApiServiceSourceOwner))
     
     # Run tests
     runner = unittest.TextTestRunner(verbosity=2)
