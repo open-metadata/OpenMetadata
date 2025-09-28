@@ -173,7 +173,7 @@ public class S3LogStorage implements LogStorageInterface {
           S3Client.builder().region(Region.of(s3Config.getAwsConfig().getAwsRegion()));
 
       URI customEndpoint = s3Config.getAwsConfig().getEndPointURL();
-      if (customEndpoint != null) {
+      if (!nullOrEmpty(customEndpoint)) {
         s3Builder.endpointOverride(java.net.URI.create(customEndpoint.toString()));
         s3Builder.forcePathStyle(true); // Required for MinIO
         this.isCustomEndpoint = true;
