@@ -80,6 +80,7 @@ const AddServicePage = () => {
   const [saveServiceState, setSaveServiceState] =
     useState<LoadingState>('initial');
   const [activeField, setActiveField] = useState<string>('');
+
   const slashedBreadcrumb = getAddServiceEntityBreadcrumb(serviceCategory);
 
   const handleServiceTypeClick = (type: string) => {

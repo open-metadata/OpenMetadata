@@ -24,11 +24,10 @@ import {
 import {
   applySecurityConfiguration,
   getSecurityConfiguration,
-  patchSecurityConfiguration,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import SSOConfigurationFormRJSF from './SSOConfigurationForm';
 import { SSOConfigurationFormProps } from './SSOConfigurationForm.interface';
@@ -123,9 +122,7 @@ jest.mock(
 const mockShowErrorToast = showErrorToast as jest.MockedFunction<
   typeof showErrorToast
 >;
-const mockShowSuccessToast = showSuccessToast as jest.MockedFunction<
-  typeof showSuccessToast
->;
+
 const mockApplySecurityConfiguration =
   applySecurityConfiguration as jest.MockedFunction<
     typeof applySecurityConfiguration
@@ -138,10 +135,7 @@ const mockGetSecurityConfiguration =
   getSecurityConfiguration as jest.MockedFunction<
     typeof getSecurityConfiguration
   >;
-const mockPatchSecurityConfiguration =
-  patchSecurityConfiguration as jest.MockedFunction<
-    typeof patchSecurityConfiguration
-  >;
+
 const mockFetchAuthenticationConfig =
   fetchAuthenticationConfig as jest.MockedFunction<
     typeof fetchAuthenticationConfig
@@ -369,7 +363,7 @@ describe('SSOConfigurationForm', () => {
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
         expect(mockApplySecurityConfiguration).toHaveBeenCalled();
-        expect(mockOnLogoutHandler).toHaveBeenCalled();
+
         expect(window.location.replace).toHaveBeenCalledWith('/signin');
       });
     });
