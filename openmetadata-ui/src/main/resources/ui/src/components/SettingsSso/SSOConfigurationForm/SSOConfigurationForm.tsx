@@ -55,12 +55,10 @@ import {
   SecurityValidationResponse,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
-import { getAuthConfig } from '../../../utils/AuthProvider.util';
 import {
   createScrollToErrorHandler,
   transformErrors,
 } from '../../../utils/formUtils';
-import { transformErrors } from '../../../utils/formUtils';
 import {
   getProviderDisplayName,
   getProviderIcon,
