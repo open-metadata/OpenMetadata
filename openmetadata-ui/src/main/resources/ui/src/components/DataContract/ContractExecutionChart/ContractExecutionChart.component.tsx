@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isEqual, pick, sortBy } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { useEffect, useMemo, useState } from 'react';
@@ -137,7 +136,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
       {isLoading ? (
         <Loader />
       ) : (
-        <ResponsiveContainer className={classNames('contract-execution-chart')}>
+        <ResponsiveContainer className="contract-execution-chart">
           <BarChart data={processedChartData}>
             <CartesianGrid
               stroke={GREY_100}
