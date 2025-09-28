@@ -137,11 +137,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
       {isLoading ? (
         <Loader />
       ) : (
-        <ResponsiveContainer
-          className={classNames('contract-execution-chart', {
-            'contract-execution-chart-less-width':
-              contractExecutionResultList.length <= 16,
-          })}>
+        <ResponsiveContainer className={classNames('contract-execution-chart')}>
           <BarChart data={processedChartData}>
             <CartesianGrid
               stroke={GREY_100}
