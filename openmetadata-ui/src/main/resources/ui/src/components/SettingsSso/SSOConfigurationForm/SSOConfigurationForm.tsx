@@ -495,13 +495,6 @@ const SSOConfigurationFormRJSF = ({
           generalErrors.forEach((error) => {
             showErrorToast(error.error);
           });
-        } else if (fieldErrors.length === 0) {
-          // Only show generic message if there are no errors at all
-          showErrorToast(
-            validationResult.status === 'failed'
-              ? 'Validation failed'
-              : 'Please fix the validation errors'
-          );
         }
 
         return;
