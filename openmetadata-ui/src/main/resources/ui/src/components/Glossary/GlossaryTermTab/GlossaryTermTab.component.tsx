@@ -191,11 +191,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     trackVisibility: true,
     delay: 100,
   });
+  // handle search
+  const handleSearch = useCallback(async (value: string) => {
+    setSearchTerm(value);
+  }, []);
 
-  const debouncedSetSearchTerm = useMemo(
-    () => debounce((value: string) => setSearchTerm(value), 800),
-    []
-  );
+  const debouncedSetSearchTerm = useCallback(debounce(handleSearch, 500), [
+    handleSearch,
+  ]);
+
+  useEffect(() => {
+    debouncedSetSearchTerm(searchInput);
+  }, [searchInput]);
 
   const fetchChildTerms = async (parentFQN: string) => {
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
@@ -407,7 +414,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       currentFQN &&
       !isLoadingMore &&
       currentFQN !== previousGlossaryFQN &&
-      !toggleExpandBtn
+      !toggleExpandBtn &&
+      !searchTerm // Don't fetch if there's an active search
     ) {
       // Clear existing terms when switching glossaries
       setGlossaryChildTerms([]);
@@ -420,6 +428,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     isLoadingMore,
     previousGlossaryFQN,
     toggleExpandBtn,
+    searchTerm,
   ]);
 
   // Clear terms when component unmounts
@@ -476,7 +485,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     inView,
     paging.after,
     searchPaging.hasMore,
-    searchTerm,
     isLoadingMore,
     isTableLoading,
     toggleExpandBtn,
@@ -495,7 +503,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         scrollContainer &&
         canLoadMore &&
         !isLoadingMore &&
-        !toggleExpandBtn
+        !toggleExpandBtn &&
+        !isTableLoading // Added check to prevent multiple fetches
       ) {
         const { scrollHeight, clientHeight } = scrollContainer;
         // If content doesn't fill the viewport, load more
@@ -520,10 +529,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, [
     paging.after,
     searchPaging.hasMore,
-    searchTerm,
     isLoadingMore,
     findScrollContainer,
     toggleExpandBtn,
+    isTableLoading,
   ]);
 
   // Additional scroll handler for parent container
@@ -1017,15 +1026,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     });
   };
 
-  const handleSearchChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const value = e.target.value;
-      setSearchInput(value);
-      debouncedSetSearchTerm(value);
-    },
-    [debouncedSetSearchTerm]
-  );
-
   const extraTableFilters = useMemo(() => {
     return (
       <>
@@ -1036,7 +1036,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           })}
           style={{ width: 250 }}
           value={searchInput}
-          onChange={handleSearchChange}
+          onChange={(e) => {
+            const { value } = e.target;
+            setSearchInput(value);
+          }}
         />
 
         <Dropdown
@@ -1090,7 +1093,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     isStatusDropdownVisible,
     statusDropdownMenu,
     searchInput,
-    handleSearchChange,
     toggleExpandAll,
   ]);
 
@@ -1265,14 +1267,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   // Trigger new fetch when search term changes
   useEffect(() => {
-    if (activeGlossary) {
+    if (
+      activeGlossary &&
+      previousGlossaryFQN === activeGlossary?.fullyQualifiedName
+    ) {
+      // Only fetch if we're on the same glossary (not switching glossaries)
       // Reset search pagination when search term changes
       if (searchTerm) {
         setSearchPaging({ offset: 0, total: undefined, hasMore: true });
       }
       fetchAllTerms();
     }
-  }, [searchTerm, activeGlossary]);
+  }, [searchTerm]);
 
   // Check if this is due to search returning no results
   const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
