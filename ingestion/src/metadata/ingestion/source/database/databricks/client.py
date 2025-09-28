@@ -71,7 +71,9 @@ class DatabricksClient:
             "Content-Type": "application/json",
         }
         self.api_timeout = self.config.connectionTimeout or 120
+        self._job_table_lineage_executed: bool = False
         self.job_table_lineage: dict[str, list[dict[str, str]]] = {}
+        self._job_column_lineage_executed: bool = False
         self.job_column_lineage: dict[
             str, dict[Tuple[str, str], list[Tuple[str, str]]]
         ] = {}
@@ -198,7 +200,6 @@ class DatabricksClient:
         """
         Method returns List all the created jobs in a Databricks Workspace
         """
-        self.cache_lineage()
         try:
             iteration_count = 1
             data = {"limit": PAGE_SIZE, "expand_tasks": True, "offset": 0}
@@ -271,6 +272,10 @@ class DatabricksClient:
         Method returns table lineage for a job by the specified job_id
         """
         try:
+            if not self._job_table_lineage_executed:
+                logger.debug("Executing cache_lineage...")
+                self.cache_lineage()
+
             return self.job_table_lineage.get(str(job_id))
         except Exception as exc:
             logger.debug(
@@ -286,6 +291,10 @@ class DatabricksClient:
         Method returns column lineage for a job by the specified job_id and table key
         """
         try:
+            if not self._job_column_lineage_executed:
+                logger.debug("Job column lineage not found. Executing cache_lineage...")
+                self.cache_lineage()
+
             return self.job_column_lineage.get(str(job_id), {}).get(TableKey)
         except Exception as exc:
             logger.debug(
@@ -330,6 +339,7 @@ class DatabricksClient:
                         f"Error parsing row: {row} due to {traceback.format_exc()}"
                     )
                     continue
+        self._job_table_lineage_executed = True
 
         # Not every job has column lineage, so we need to check if the job exists in the column_lineage table
         # we will cache the column lineage for jobs that have column lineage
@@ -360,3 +370,5 @@ class DatabricksClient:
                         f"Error parsing row: {row} due to {traceback.format_exc()}"
                     )
                     continue
+        self._job_column_lineage_executed = True
+        logger.debug("Table and column lineage caching completed.")

@@ -96,6 +96,7 @@ DATABRICKS_GET_TABLE_LINEAGE_FOR_JOB = textwrap.dedent(
         target_table_full_name as target_table_full_name
     FROM system.access.table_lineage
     WHERE entity_type ILIKE 'job'
+        AND event_time >= current_date() - INTERVAL 90 DAYS
     """
 )
 
@@ -110,5 +111,6 @@ DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB = textwrap.dedent(
         target_column_name as target_column_name
     FROM system.access.column_lineage
     WHERE entity_type ILIKE 'job'
+        AND event_time >= current_date() - INTERVAL 90 DAYS
     """
 )

@@ -200,41 +200,6 @@ export const extractTermKeys = (objects: QueryFieldInterface[]): string[] => {
   return termKeys;
 };
 
-export const getSubLevelHierarchyKey = (
-  isDatabaseHierarchy = false,
-  filterField?: ExploreQuickFilterField[],
-  key?: EntityFields,
-  value?: string
-) => {
-  const queryFilter = {
-    query: { bool: {} },
-  };
-
-  if ((key && value) || filterField) {
-    (queryFilter.query.bool as EsBoolQuery).must = isUndefined(filterField)
-      ? { term: { [key ?? '']: value } }
-      : getExploreQueryFilterMust(filterField);
-  }
-
-  const bucketMapping = isDatabaseHierarchy
-    ? {
-        [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
-        [EntityFields.SERVICE]: EntityFields.DATABASE_DISPLAY_NAME,
-        [EntityFields.DATABASE_DISPLAY_NAME]:
-          EntityFields.DATABASE_SCHEMA_DISPLAY_NAME,
-        [EntityFields.DATABASE_SCHEMA_DISPLAY_NAME]: EntityFields.ENTITY_TYPE,
-      }
-    : {
-        [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
-        [EntityFields.SERVICE]: EntityFields.ENTITY_TYPE,
-      };
-
-  return {
-    bucket: bucketMapping[key as DatabaseFields] ?? EntityFields.SERVICE_TYPE,
-    queryFilter,
-  };
-};
-
 export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
   const must = [] as Array<QueryFieldInterface>;
 
@@ -279,6 +244,41 @@ export const getExploreQueryFilterMust = (data: ExploreQuickFilterField[]) => {
   });
 
   return must;
+};
+
+export const getSubLevelHierarchyKey = (
+  isDatabaseHierarchy = false,
+  filterField?: ExploreQuickFilterField[],
+  key?: EntityFields,
+  value?: string
+) => {
+  const queryFilter = {
+    query: { bool: {} },
+  };
+
+  if ((key && value) || filterField) {
+    (queryFilter.query.bool as EsBoolQuery).must = isUndefined(filterField)
+      ? { term: { [key ?? '']: value } }
+      : getExploreQueryFilterMust(filterField);
+  }
+
+  const bucketMapping = isDatabaseHierarchy
+    ? {
+        [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
+        [EntityFields.SERVICE]: EntityFields.DATABASE_DISPLAY_NAME,
+        [EntityFields.DATABASE_DISPLAY_NAME]:
+          EntityFields.DATABASE_SCHEMA_DISPLAY_NAME,
+        [EntityFields.DATABASE_SCHEMA_DISPLAY_NAME]: EntityFields.ENTITY_TYPE,
+      }
+    : {
+        [EntityFields.SERVICE_TYPE]: EntityFields.SERVICE,
+        [EntityFields.SERVICE]: EntityFields.ENTITY_TYPE,
+      };
+
+  return {
+    bucket: bucketMapping[key as DatabaseFields] ?? EntityFields.SERVICE_TYPE,
+    queryFilter,
+  };
 };
 
 export const updateTreeData = (
@@ -360,11 +360,12 @@ export const getAggregationOptions = async (
   key: string,
   value: string,
   filter: string,
-  isIndependent: boolean
+  isIndependent: boolean,
+  deleted = false
 ) => {
   return isIndependent
     ? postAggregateFieldOptions(index, key, value, filter)
-    : getAggregateFieldOptions(index, key, value, filter);
+    : getAggregateFieldOptions(index, key, value, filter, undefined, deleted);
 };
 
 export const updateTreeDataWithCounts = (
@@ -412,7 +413,7 @@ export const isElasticsearchError = (error: unknown): boolean => {
     return false;
   }
 
-  const data = axiosError.response.data as Record<string, any>;
+  const data = axiosError.response.data as Record<string, unknown>;
   const message = data.message as string;
 
   return (
