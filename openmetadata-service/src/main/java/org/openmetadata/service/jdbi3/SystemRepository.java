@@ -853,7 +853,7 @@ public class SystemRepository {
 
       if (authConfig.getPublicKeyUrls() == null || authConfig.getPublicKeyUrls().isEmpty()) {
         return ValidationErrorBuilder.createFieldError(
-            FieldPaths.AUTH_PUBLIC_KEYS, "Public key URLs are required");
+            FieldPaths.AUTH_PUBLIC_KEY_URLS, "Public key URLs are required");
       }
 
       if (nullOrEmpty(authConfig.getAuthority())) {
@@ -1176,6 +1176,12 @@ public class SystemRepository {
       if (authzConfig.getAdminPrincipals() == null || authzConfig.getAdminPrincipals().isEmpty()) {
         return ValidationErrorBuilder.createFieldError(
             FieldPaths.AUTHZ_ADMIN_PRINCIPALS, "At least one admin principal is required");
+      }
+
+      // Validate principal domain (required field)
+      if (nullOrEmpty(authzConfig.getPrincipalDomain())) {
+        return ValidationErrorBuilder.createFieldError(
+            FieldPaths.AUTHZ_PRINCIPAL_DOMAIN, "Principal domain is required");
       }
 
       // Try to instantiate the authorizer class

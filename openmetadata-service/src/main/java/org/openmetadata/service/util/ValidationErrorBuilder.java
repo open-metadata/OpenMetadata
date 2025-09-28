@@ -18,7 +18,6 @@ public class ValidationErrorBuilder {
     public static final String AUTH_CLIENT_TYPE = "authenticationConfiguration.clientType";
     public static final String AUTH_JWT_PRINCIPAL_CLAIMS =
         "authenticationConfiguration.jwtPrincipalClaims";
-    public static final String AUTH_PUBLIC_KEYS = "authenticationConfiguration.publicKeys";
     public static final String AUTH_PUBLIC_KEY_URLS = "authenticationConfiguration.publicKeyUrls";
     public static final String AUTH_AUTHORITY = "authenticationConfiguration.authority";
     public static final String AUTH_CLIENT_ID = "authenticationConfiguration.clientId";
