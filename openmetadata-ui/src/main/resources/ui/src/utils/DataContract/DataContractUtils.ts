@@ -146,7 +146,8 @@ export const getSematicRuleFields = () => {
     subfields: {
       tagFQN: {
         label: 'Tags',
-        type: 'select',
+        type: 'multiselect',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_OPERATORS,
         fieldSettings: {
@@ -175,7 +176,8 @@ export const getSematicRuleFields = () => {
     subfields: {
       tagFQN: {
         label: 'Tags',
-        type: 'select',
+        type: 'multiselect',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_OPERATORS,
         fieldSettings: {
@@ -200,6 +202,7 @@ export const getSematicRuleFields = () => {
       tagFQN: {
         label: 'Tags',
         type: 'multiselect',
+        defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
         operators: SEMANTIC_OPERATORS,
         fieldSettings: {
@@ -247,12 +250,12 @@ export const getContractExecutionMonthTicks = (
   return Array.from(monthMap.values());
 };
 
-// Utility function to convert string enum to options array for Ant Design Select
-export const enumToSelectOptions = <T extends Record<string, string>>(
-  enumObject: T
+// Utility function to convert string to options array for Ant Design Select
+export const generateSelectOptionsFromString = (
+  arrayItems: string[]
 ): Array<{ label: string; value: string }> => {
-  return Object.values(enumObject).map((value) => ({
+  return arrayItems.map((value) => ({
     label: t(`label.${value}`),
-    value: value, // Use the enum value as the actual value (hour, day, week, etc.)
+    value: value, // Use the string value as the actual value (hour, day, week, etc.)
   }));
 };

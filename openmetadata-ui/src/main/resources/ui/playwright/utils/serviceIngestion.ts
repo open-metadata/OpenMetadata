@@ -159,19 +159,12 @@ export const testConnection = async (page: Page) => {
 
   const warningBadge = page.locator('[data-testid="warning-badge"]');
 
-  const failBadge = page.locator('[data-testid="fail-badge"]');
-
-  await expect(successBadge.or(warningBadge).or(failBadge)).toBeVisible({
+  await expect(successBadge.or(warningBadge)).toBeVisible({
     timeout: 2.5 * 60 * 1000,
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
-    new RegExp(
-      'Connection test was successful.|' +
-        'Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details.|' +
-        'Test connection failed, please validate your connection and permissions for the failed steps.',
-      'g'
-    )
+    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
   );
 };
 
