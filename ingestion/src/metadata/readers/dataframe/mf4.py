@@ -14,7 +14,6 @@ MF4 DataFrame reader for processing MF4 (Measurement Data Format) files
 """
 
 import io
-import json
 
 import pandas as pd
 from asammdf import MDF
@@ -32,40 +31,6 @@ class MF4DataFrameReader(DataFrameReader):
     MF4 file reader implementation for extracting schema and data
     from MF4 (Measurement Data Format) files.
     """
-
-    @staticmethod
-    def extract_data_from_mf4(mf4_bytes: bytes) -> DatalakeColumnWrapper:
-        """
-        Extract group and channel structure from MF4 file without actual data.
-        Creates a schema-only DataFrame with group/channel hierarchy.
-        """
-
-        file_obj = io.BytesIO(mf4_bytes)
-
-        mdf = MDF(file_obj)
-
-        hierarchical_data = {}
-
-        for group in mdf.groups:
-            group_name = group.channel_group.acq_name
-            schema_columns = {}
-
-            for channel in group.channels:
-                try:
-                    if channel.name:
-                        channel_name = str(channel.name).strip()
-                        schema_columns[channel_name] = channel.dtype_fmt.name
-                except Exception as error:
-                    logger.debug(f"Could not process channel in {group_name}: {error}")
-
-            if schema_columns:
-                hierarchical_data[group_name] = json.dumps(schema_columns)
-        if hierarchical_data:
-            schema_df = pd.DataFrame([hierarchical_data], dtype="object", index=[0])
-
-            return DatalakeColumnWrapper(dataframes=dataframe_to_chunks(schema_df))
-
-        logger.info("No groups or channels found in MF4 file.")
 
     @staticmethod
     def extract_schema_from_header(mf4_bytes: bytes) -> DatalakeColumnWrapper:
@@ -100,7 +65,6 @@ class MF4DataFrameReader(DataFrameReader):
         """
         Convert MF4 file content to DatalakeColumnWrapper using header schema extraction.
         """
-        # Use the new header-based schema extraction
         return MF4DataFrameReader.extract_schema_from_header(mf4_bytes)
 
     def _read(self, *, key: str, bucket_name: str, **__) -> DatalakeColumnWrapper:
