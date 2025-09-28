@@ -32,8 +32,8 @@ public class GoogleAuthValidatorTest {
     FieldError result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
     assertEquals("failed", result != null ? "failed" : "success");
-    assertEquals("google-client-id", result != null ? result.getField() : "");
-    assertTrue(result != null && result.getError().contains("Invalid Google client ID format"));
+    assertEquals("authenticationConfiguration.clientId", result != null ? result.getField() : "");
+    assertTrue(result != null && result.getError().contains("Invalid client Id"));
   }
 
   @Test
@@ -59,7 +59,7 @@ public class GoogleAuthValidatorTest {
 
     // Should pass for public client with valid client ID
     assertEquals("success", result != null ? "failed" : "success");
-    assertEquals("google-public", result != null ? result.getField() : "");
+    assertEquals("", result != null ? result.getField() : "");
   }
 
   @Test
@@ -73,7 +73,7 @@ public class GoogleAuthValidatorTest {
     FieldError result = validator.validateGoogleConfiguration(authConfig, oidcConfig);
 
     assertEquals("failed", result != null ? "failed" : "success");
-    assertEquals("google-authority", result != null ? result.getField() : "");
+    assertEquals("authenticationConfiguration.authority", result != null ? result.getField() : "");
     assertTrue(result != null && result.getError().contains("Google authority must be exactly"));
   }
 
@@ -88,7 +88,9 @@ public class GoogleAuthValidatorTest {
 
     // The validator requires both client ID and secret for confidential clients
     assertEquals("failed", result != null ? "failed" : "success");
-    assertEquals("google-credentials", result != null ? result.getField() : "");
+    assertEquals(
+        "authenticationConfiguration.oidcConfiguration.secret",
+        result != null ? result.getField() : "");
     assertTrue(
         result != null && result.getError().contains("Client ID and Client Secret are required"));
   }
@@ -105,6 +107,8 @@ public class GoogleAuthValidatorTest {
 
     // The validator will try to validate the credentials and likely fail due to invalid secret
     assertEquals("failed", result != null ? "failed" : "success");
-    assertEquals("google-credentials", result != null ? result.getField() : "");
+    assertEquals(
+        "authenticationConfiguration.oidcConfiguration.id",
+        result != null ? result.getField() : "");
   }
 }

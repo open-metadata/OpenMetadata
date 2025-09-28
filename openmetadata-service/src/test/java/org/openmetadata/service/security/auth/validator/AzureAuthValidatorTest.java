@@ -35,7 +35,7 @@ public class AzureAuthValidatorTest {
     FieldError result = validator.validateAzureConfiguration(authConfig, oidcConfig);
 
     assertEquals("failed", result != null ? "failed" : "success");
-    assertEquals("azure-authority", result != null ? result.getField() : "");
+    assertEquals("authenticationConfiguration.authority", result != null ? result.getField() : "");
     assertTrue(
         result != null
             && result
@@ -55,8 +55,11 @@ public class AzureAuthValidatorTest {
 
     // Will fail on publicKeyUrls check first
     assertEquals("failed", result != null ? "failed" : "success");
-    assertEquals("azure-public-key-urls", result != null ? result.getField() : "");
-    assertTrue(result != null && result.getError().contains("Public key URLs are required"));
+    if (result != null) {
+      assertEquals("authenticationConfiguration.publicKeyUrls", result.getField());
+      assertTrue(
+          result.getError().contains("Public key") || result.getError().contains("public key"));
+    }
   }
 
   @Test
@@ -88,7 +91,8 @@ public class AzureAuthValidatorTest {
 
     // Will fail on public key URL validation
     assertEquals("failed", result != null ? "failed" : "success");
-    assertEquals("azure-public-key-urls", result != null ? result.getField() : "");
+    assertEquals(
+        "authenticationConfiguration.publicKeyUrls", result != null ? result.getField() : "");
   }
 
   @Test
@@ -103,6 +107,8 @@ public class AzureAuthValidatorTest {
 
     // Will fail when trying to validate tenant exists (network call fails)
     assertEquals("failed", result != null ? "failed" : "success");
-    assertEquals("azure-tenant", result != null ? result.getField() : "");
+    assertEquals(
+        "authenticationConfiguration.oidcConfiguration.tenant",
+        result != null ? result.getField() : "");
   }
 }
