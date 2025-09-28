@@ -760,13 +760,17 @@
   }
 }
 
-// Error state focus styling - remove blue outline for error fields
+// Error state styling for inputs and textareas
 .sso-configuration-form-card .rjsf .has-error input,
-.content-resizable-panel-container.sso-configured .rjsf .has-error input {
+.sso-configuration-form-card .rjsf .has-error textarea,
+.content-resizable-panel-container.sso-configured .rjsf .has-error input,
+.content-resizable-panel-container.sso-configured .rjsf .has-error textarea {
+  border-color: @error-color !important;
+
   &:focus {
     border-color: @error-color !important;
-    box-shadow: none !important;
-    outline: none !important;
+    box-shadow: none;
+    outline: none;
   }
 }
 

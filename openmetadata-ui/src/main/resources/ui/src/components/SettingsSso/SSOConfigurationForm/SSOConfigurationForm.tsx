@@ -990,7 +990,7 @@ const SSOConfigurationFormRJSF = ({
   // Dynamic UI schema using the optimized constants
   // Custom validate function to inject our validation errors
   const customValidate: CustomValidator<FormData> = useCallback(
-    (formData: FormData | undefined, errors: FormValidation<FormData>) => {
+    (_formData: FormData | undefined, errors: FormValidation<FormData>) => {
       // Add our custom validation errors
       if (
         fieldErrorsRef.current &&
