@@ -26,6 +26,7 @@ import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
   descriptionBox,
+  readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -478,7 +479,7 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await patchRequest;
   await clickOutside(page);
 
-  await expect(page.getByTestId('Tier')).toContainText('No Tier');
+  await expect(page.getByTestId('Tier')).toContainText('--');
 };
 
 export const assignCertification = async (
@@ -486,8 +487,24 @@ export const assignCertification = async (
   certification: TagClass,
   endpoint: string
 ) => {
+  const certificationResponse = page.waitForResponse(
+    '/api/v1/tags?parent=Certification&limit=50'
+  );
   await page.getByTestId('edit-certification').click();
+  await certificationResponse;
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await readElementInListWithScroll(
+    page,
+    page.getByTestId(
+      `radio-btn-${certification.responseData.fullyQualifiedName}`
+    ),
+    page.locator('[data-testid="certification-cards"] .ant-radio-group')
+  );
+
   await page
     .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
     .click();
@@ -503,15 +520,16 @@ export const assignCertification = async (
 
 export const removeCertification = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId('clear-certification').click();
   await patchRequest;
   await clickOutside(page);
 
-  await expect(page.getByTestId('certification-label')).toContainText(
-    'No Certification'
-  );
+  await expect(page.getByTestId('certification-label')).toContainText('--');
 };
 
 export const updateDescription = async (
@@ -1921,7 +1939,15 @@ export const checkExploreSearchFilter = async (
   entity?: EntityClass
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  if (filterKey === 'tier.tagFQN') {
+    const tierList = page.waitForResponse(
+      `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN**`
+    );
+    await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+    await tierList;
+  } else {
+    await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  }
   await searchAndClickOnOption(
     page,
     {

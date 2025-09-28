@@ -17,6 +17,12 @@
 // learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom/extend-expect';
 
+// Polyfill for TextEncoder and TextDecoder
+import { TextDecoder, TextEncoder } from 'util';
+
+// eslint-disable-next-line no-undef
+Object.assign(global, { TextDecoder, TextEncoder });
+
 // Reference: https://github.com/ant-design/ant-design/issues/21096
 Object.defineProperty(window, 'matchMedia', {
   writable: true,
@@ -148,3 +154,110 @@ jest.mock('./utils/AdvancedSearchClassBase', () => {
 jest.mock('./utils/EnvironmentUtils', () => ({
   isDev: jest.fn().mockReturnValue('test'),
 }));
+
+/**
+ * Mock MUI theme to provide proper theme context
+ */
+jest.mock('@mui/material/styles', () => {
+  const actual = jest.requireActual('@mui/material/styles');
+  const { createTheme } = actual;
+
+  const createMockPalette = () => {
+    return new Proxy(
+      {},
+      {
+        get: (target, prop) => {
+          if (typeof prop === 'string') {
+            return new Proxy(
+              {},
+              {
+                get: (colorTarget, colorProp) => {
+                  return `#mock-${prop}-${String(colorProp)}`;
+                },
+              }
+            );
+          }
+
+          return undefined;
+        },
+      }
+    );
+  };
+
+  const baseTheme = createTheme();
+  const mockTheme = {
+    ...baseTheme,
+    palette: {
+      ...baseTheme.palette,
+      allShades: createMockPalette(),
+    },
+  };
+
+  return {
+    ...actual,
+    useTheme: jest.fn().mockReturnValue(mockTheme),
+    ThemeProvider: ({ children }) => children,
+  };
+});
+
+/**
+ * Mock @mui/system useTheme to provide theme context
+ */
+jest.mock('@mui/system', () => {
+  const actual = jest.requireActual('@mui/system');
+
+  const createMockPalette = () => {
+    return new Proxy(
+      {},
+      {
+        get: () => new Proxy({}, { get: () => '#mock-color' }),
+      }
+    );
+  };
+
+  // Use a minimal but complete theme structure
+  const mockTheme = {
+    palette: { allShades: createMockPalette() },
+    spacing: (factor) => `${8 * (factor || 1)}px`,
+    breakpoints: { up: () => '', down: () => '', values: {} },
+    transitions: {
+      create: () => '',
+      duration: {},
+      easing: {},
+      getAutoHeightDuration: () => 200,
+    },
+    shadows: new Array(25).fill('none'),
+    shape: { borderRadius: 4 },
+    zIndex: {},
+  };
+
+  return {
+    ...actual,
+    useTheme: jest.fn().mockReturnValue(mockTheme),
+  };
+});
+
+/**
+ * Mock @mui/styled-engine to prevent styled-components/emotion conflicts in tests
+ */
+jest.mock('@mui/styled-engine', () => {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const React = require('react');
+
+  const styled = (component) => () => {
+    return React.forwardRef((props, ref) => {
+      return React.createElement(component, { ...props, ref });
+    });
+  };
+
+  return {
+    __esModule: true,
+    default: styled,
+    styled,
+    ThemeProvider: ({ children }) => children,
+    keyframes: () => 'mock-keyframes',
+    css: (...args) => args,
+    internal_mutateStyles: jest.fn(),
+    internal_serializeStyles: jest.fn(),
+  };
+});

@@ -12,9 +12,14 @@
  */
 
 import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
-import { get, toLower } from 'lodash';
+import { get, isEmpty, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
+import GlossaryIcon from '../assets/svg/book.svg';
+import DataProductIcon from '../assets/svg/ic-data-product.svg';
+import DatabaseIcon from '../assets/svg/ic-database.svg';
+import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
+import TagIcon from '../assets/svg/tag-grey.svg';
 import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
 import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
@@ -34,6 +39,7 @@ import {
   CLICKHOUSE,
   COCKROACH,
   COUCHBASE,
+  CUSTOM_DRIVE_DEFAULT,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
@@ -54,6 +60,7 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GOOGLE_DRIVE,
   GRAFANA,
   GREENPLUM,
   HIVE,
@@ -117,6 +124,7 @@ import {
   ApiServiceTypeSmallCaseType,
   DashboardServiceTypeSmallCaseType,
   DatabaseServiceTypeSmallCaseType,
+  DriveServiceTypeSmallCaseType,
   MessagingServiceTypeSmallCaseType,
   MetadataServiceTypeSmallCaseType,
   MlModelServiceTypeSmallCaseType,
@@ -144,6 +152,7 @@ import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getDriveConfig } from './DriveServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
 import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
@@ -173,8 +182,9 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
-    DriveServiceType.GoogleDrive,
     PipelineServiceType.Snowplow,
+    DriveServiceType.GoogleDrive,
+    DriveServiceType.SharePoint,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -226,6 +236,11 @@ class ServiceUtilClassBase {
     { [k: string]: string },
     SecurityServiceTypeSmallCaseType
   >(SecurityServiceType);
+
+  DriveServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    DriveServiceTypeSmallCaseType
+  >(DriveServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -321,6 +336,9 @@ class ServiceUtilClassBase {
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
       ).sort(customServiceComparator),
+      driveServices: this.filterUnsupportedServiceType(
+        Object.values(DriveServiceType) as string[]
+      ).sort(customServiceComparator),
       securityServices: this.filterUnsupportedServiceType(
         Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
@@ -365,6 +383,10 @@ class ServiceUtilClassBase {
 
     if (serviceTypes.securityServices.includes(serviceType)) {
       return EntityType.TABLE; // Security services typically work with tables
+    }
+
+    if (serviceTypes.driveServices.includes(serviceType)) {
+      return EntityType.DIRECTORY;
     }
 
     // Default fallback
@@ -655,6 +677,12 @@ class ServiceUtilClassBase {
       case this.DashboardServiceTypeSmallCase.Grafana:
         return GRAFANA;
 
+      case this.DriveServiceTypeSmallCase.CustomDrive:
+        return CUSTOM_DRIVE_DEFAULT;
+
+      case this.DriveServiceTypeSmallCase.GoogleDrive:
+        return GOOGLE_DRIVE;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -673,6 +701,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_SEARCH_DEFAULT;
         } else if (serviceTypes.securityServices.includes(type)) {
           logo = DEFAULT_SERVICE;
+        } else if (serviceTypes.driveServices.includes(type)) {
+          logo = CUSTOM_DRIVE_DEFAULT;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -688,9 +718,24 @@ class ServiceUtilClassBase {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
-    // metric entity does not have service so we need to handle it separately
-    if (entityType === EntityType.METRIC) {
-      return MetricIcon;
+    // Handle entities that don't have serviceType by using entity-specific icons
+    if (isEmpty(type)) {
+      switch (entityType) {
+        case EntityType.TAG:
+          return TagIcon;
+        case EntityType.GLOSSARY_TERM:
+          return GlossaryIcon;
+        case EntityType.DATABASE:
+          return DatabaseIcon;
+        case EntityType.DATABASE_SCHEMA:
+          return DatabaseSchemaIcon;
+        case EntityType.METRIC:
+          return MetricIcon;
+        case EntityType.DATA_PRODUCT:
+          return DataProductIcon;
+        default:
+          return this.getServiceLogo('');
+      }
     }
 
     return this.getServiceLogo(type);
@@ -789,6 +834,9 @@ class ServiceUtilClassBase {
 
   public getSecurityServiceConfig(type: SecurityServiceType) {
     return getSecurityConfig(type);
+  }
+  public getDriveServiceConfig(type: DriveServiceType) {
+    return getDriveConfig(type);
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {

@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   DATA_CONTRACT_CONTAIN_SEMANTICS,
   DATA_CONTRACT_DETAILS,
+  DATA_CONTRACT_NOT_CONTAIN_SEMANTICS,
+  DATA_CONTRACT_SECURITY_DETAILS_1,
+  DATA_CONTRACT_SECURITY_DETAILS_2,
+  DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
   DATA_CONTRACT_SEMANTICS1,
   DATA_CONTRACT_SEMANTICS2,
   NEW_TABLE_TEST_CASE,
@@ -37,7 +41,9 @@ import {
 } from '../../utils/common';
 import {
   saveAndTriggerDataContractValidation,
+  saveSecurityAndSLADetails,
   validateDataContractInsideBundleTestSuites,
+  validateSecurityAndSLADetails,
   waitForDataContractExecution,
 } from '../../utils/dataContracts';
 import {
@@ -118,20 +124,6 @@ test.describe('Data Contracts', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await testClassification.delete(apiContext);
-    await testTag.delete(apiContext);
-    await testGlossary.delete(apiContext);
-    await testGlossaryTerm.delete(apiContext);
-    await testPersona.delete(apiContext);
-    await adminUser.delete(apiContext);
-    await afterAction();
-  });
-
   test('Create Data Contract and validate', async ({ page }) => {
     test.setTimeout(360000);
 
@@ -165,6 +157,14 @@ test.describe('Data Contracts', () => {
       await page.locator('.rc-virtual-list-holder-inner li').first().click();
 
       await expect(page.getByTestId('user-tag')).toBeVisible();
+    });
+
+    await test.step('Fill the Terms of Service Detail', async () => {
+      await page.getByRole('button', { name: 'Terms of Service' }).click();
+      await page.fill(
+        '.om-block-editor .has-focus',
+        DATA_CONTRACT_DETAILS.termsOfService
+      );
     });
 
     await test.step('Fill Contract Schema form', async () => {
@@ -288,16 +288,14 @@ test.describe('Data Contracts', () => {
       await saveAndTriggerDataContractValidation(page, true);
 
       await expect(
-        page.getByTestId('contract-card-title-container').filter({
-          hasText: 'Contract Status',
-        })
-      ).toBeVisible();
-      await expect(
-        page.getByTestId('contract-status-card-item-Semantics-status')
+        page.getByTestId('contract-status-card-item-semantics-status')
       ).toContainText('Failed');
       await expect(
         page.getByTestId('data-contract-latest-result-btn')
       ).toContainText('Contract Failed');
+
+      await expect(page.getByText('Terms of Service')).toBeVisible();
+      await expect(page.getByTestId('contract-sla-card')).not.toBeVisible();
 
       await addOwner({
         page,
@@ -310,6 +308,12 @@ test.describe('Data Contracts', () => {
       const runNowResponse = page.waitForResponse(
         '/api/v1/dataContracts/*/validate'
       );
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
       await page.getByTestId('contract-run-now-button').click();
       await runNowResponse;
@@ -327,13 +331,19 @@ test.describe('Data Contracts', () => {
       });
 
       await expect(
-        page.getByTestId('contract-status-card-item-Semantics-status')
+        page.getByTestId('contract-status-card-item-semantics-status')
       ).toContainText('Passed');
     });
 
     await test.step(
       'Add table test case and validate for quality',
       async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
         await page.getByTestId('contract-edit-button').click();
 
         await page.getByRole('tab', { name: 'Quality' }).click();
@@ -412,7 +422,10 @@ test.describe('Data Contracts', () => {
         await page.click('[data-testid="create-btn"]');
         await testCaseResponse;
 
-        await page.waitForTimeout(100);
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(
           page
@@ -479,9 +492,24 @@ test.describe('Data Contracts', () => {
 
         await page.getByTestId('contract').click();
 
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
         await page.getByTestId('contract-edit-button').click();
 
+        const qualityResponse = page.waitForResponse(
+          '/api/v1/dataQuality/testCases/search/list**'
+        );
+
         await page.getByRole('tab', { name: 'Quality' }).click();
+
+        await qualityResponse;
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
@@ -523,6 +551,12 @@ test.describe('Data Contracts', () => {
     await test.step('Export YAML', async () => {
       const downloadPromise = page.waitForEvent('download');
 
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+
       await page.getByTestId('export-contract-button').click();
       const download = await downloadPromise;
       // Wait for the download process to complete and save the downloaded file somewhere.
@@ -530,6 +564,11 @@ test.describe('Data Contracts', () => {
     });
 
     await test.step('Edit and Validate Contract data', async () => {
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
       await page.getByTestId('contract-edit-button').click();
 
       await expect(page.getByTestId('save-contract-btn')).toBeDisabled();
@@ -554,18 +593,17 @@ test.describe('Data Contracts', () => {
       ).toBeVisible();
 
       // Move to Schema Tab
-      await page.getByRole('button', { name: 'Schema' }).click();
+      await page.getByRole('tab', { name: 'Schema' }).click();
 
-      // TODO: will enable this once nested column is fixed
-      //   await page.waitForSelector('[data-testid="loader"]', {
-      //     state: 'detached',
-      //   });
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-      //   await page.getByRole('checkbox', { name: 'Select all' }).click();
+      await page.getByRole('checkbox', { name: 'Select all' }).click();
 
-      //   await expect(
-      //     page.getByRole('checkbox', { name: 'Select all' })
-      //   ).not.toBeChecked();
+      await expect(
+        page.getByRole('checkbox', { name: 'Select all' })
+      ).not.toBeChecked();
 
       // Move to Semantic Tab
       await page.getByRole('button', { name: 'Semantics' }).click();
@@ -598,20 +636,22 @@ test.describe('Data Contracts', () => {
         page.getByTestId('contract-owner-card').getByTestId('admin')
       ).toBeVisible();
 
-      await expect(
-        page.locator(
-          '[data-testid="viewer-container"] [data-testid="markdown-parser"]'
-        )
-      ).toContainText(DATA_CONTRACT_DETAILS.description2);
+      // Description with header
+      await expect(page.getByText('DescriptionModified Data')).toBeVisible();
 
-      // TODO: will enable this once nested column is fixed
-      //   await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
+      await expect(page.getByTestId('schema-table-card')).not.toBeVisible();
     });
 
     await test.step('Delete contract', async () => {
       const deleteContractResponse = page.waitForResponse(
         'api/v1/dataContracts/*?hardDelete=true&recursive=true'
       );
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
       await page.getByTestId('delete-contract-button').click();
 
@@ -671,7 +711,11 @@ test.describe('Data Contracts', () => {
         await expect(page.getByTestId('user-tag')).toBeVisible();
 
         // Fill Contract Schema form
-        await page.getByRole('button', { name: 'Schema' }).click();
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Schema' })
+          .click();
+
         await page
           .locator('input[type="checkbox"][aria-label="Select all"]')
           .check();
@@ -681,7 +725,7 @@ test.describe('Data Contracts', () => {
         ).toBeChecked();
 
         // Fill Contract Semantics form
-        await page.getByRole('button', { name: 'Semantics' }).click();
+        await page.getByRole('tab', { name: 'Semantics' }).click();
 
         await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
 
@@ -721,12 +765,7 @@ test.describe('Data Contracts', () => {
         await saveAndTriggerDataContractValidation(page, true);
 
         await expect(
-          page.getByTestId('contract-card-title-container').filter({
-            hasText: 'Contract Status',
-          })
-        ).toBeVisible();
-        await expect(
-          page.getByTestId('contract-status-card-item-Semantics-status')
+          page.getByTestId('contract-status-card-item-semantics-status')
         ).toContainText('Failed');
         await expect(
           page.getByTestId('data-contract-latest-result-btn')
@@ -818,7 +857,7 @@ test.describe('Data Contracts', () => {
       await page.waitForLoadState('networkidle');
 
       // Navigate to Table customization
-      await page.getByText('Data Assets').click();
+      await page.getByTestId('data-assets').getByText('Data Assets').click();
       await page.getByText('Table', { exact: true }).click();
 
       await page.waitForSelector('[data-testid="loader"]', {
@@ -911,10 +950,13 @@ test.describe('Data Contracts', () => {
 
       await test.step('Fill Contract Schema form', async () => {
         const columnResponse = page.waitForResponse(
-          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+          '/api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
         );
 
-        await page.getByRole('button', { name: 'Schema' }).click();
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Schema' })
+          .click();
 
         await columnResponse;
         await page.waitForSelector('[data-testid="loader"]', {
@@ -932,7 +974,7 @@ test.describe('Data Contracts', () => {
         // Move to 2nd Page and Select columns
 
         const columnResponse2 = page.waitForResponse(
-          'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
+          '/api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
         );
 
         await page.getByTestId('next').click();
@@ -990,29 +1032,43 @@ test.describe('Data Contracts', () => {
 
         await saveContractResponse;
 
-        // Check all schema from 1 to 50
+        // Check all schema from 1 to 50, and 10 is the max-pagination chip
+        await expect(page.getByTitle('10')).toBeVisible();
+
         for (let i = 1; i <= 50; i++) {
           if (i < 10) {
             await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
           } else {
             await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
           }
-        }
 
-        // Schema from 51 to 75 Should not be visible
-        for (let i = 51; i <= 75; i++) {
-          await expect(page.getByText(`test_col_00${i}`)).not.toBeVisible();
+          // Click "Next Page" after every 5 checks
+          if (i % 5 === 0) {
+            // Schema from 51 to 75 Should not be visible
+            for (let i = 51; i <= 75; i++) {
+              await expect(page.getByText(`test_col_00${i}`)).not.toBeVisible();
+            }
+            await page.getByRole('listitem', { name: 'Next Page' }).click();
+          }
         }
       });
 
       await test.step('Update the Schema and Validate', async () => {
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
         await page.getByTestId('contract-edit-button').click();
 
         const columnResponse = page.waitForResponse(
           'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
         );
 
-        await page.getByRole('button', { name: 'Schema' }).click();
+        await page
+          .getByTestId('add-contract-card')
+          .getByRole('tab', { name: 'Schema' })
+          .click();
 
         await columnResponse;
         await page.waitForSelector('[data-testid="loader"]', {
@@ -1042,19 +1098,32 @@ test.describe('Data Contracts', () => {
         // Check all schema from 26 to 50
         for (let i = 26; i <= 50; i++) {
           await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
+
+          // Click "Next Page" after every 5 checks
+          if (i % 5 === 0) {
+            await page.getByRole('listitem', { name: 'Next Page' }).click();
+          }
         }
       });
 
       await test.step(
         'Re-select some columns on page 1, save and validate',
         async () => {
+          await page.getByTestId('manage-contract-actions').click();
+
+          await page.waitForSelector('.contract-action-dropdown', {
+            state: 'visible',
+          });
           await page.getByTestId('contract-edit-button').click();
 
           const columnResponse = page.waitForResponse(
             'api/v1/tables/name/sample_data.ecommerce_db.shopify.performance_test_table/columns?**'
           );
 
-          await page.getByRole('button', { name: 'Schema' }).click();
+          await page
+            .getByTestId('add-contract-card')
+            .getByRole('tab', { name: 'Schema' })
+            .click();
 
           await columnResponse;
           await page.waitForSelector('[data-testid="loader"]', {
@@ -1082,12 +1151,19 @@ test.describe('Data Contracts', () => {
           });
 
           // Check all schema from 1 to 5 and then, the one we didn't touch 26 to 50
-          for (let i = 1; i <= 5; i++) {
-            await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
-          }
-
           for (let i = 26; i <= 50; i++) {
             await expect(page.getByText(`test_col_00${i}`)).toBeVisible();
+
+            // Click "Next Page" after every 5 checks
+            if (i % 5 === 0) {
+              await page.getByRole('listitem', { name: 'Next Page' }).click();
+            }
+          }
+
+          await page.getByRole('listitem', { name: 'Next Page' }).click();
+
+          for (let i = 1; i <= 5; i++) {
+            await expect(page.getByText(`test_col_000${i}`)).toBeVisible();
           }
         }
       );
@@ -1110,6 +1186,12 @@ test.describe('Data Contracts', () => {
         const deleteContractResponse = page.waitForResponse(
           'api/v1/dataContracts/*?hardDelete=true&recursive=true'
         );
+
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
 
         await page.getByTestId('delete-contract-button').click();
 
@@ -1134,6 +1216,8 @@ test.describe('Data Contracts', () => {
   test('Semantic with Contains Operator should work for Tier, Tag and Glossary', async ({
     page,
   }) => {
+    test.slow(true);
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
@@ -1196,6 +1280,8 @@ test.describe('Data Contracts', () => {
       true
     );
 
+    await clickOutside(page);
+
     await page.getByRole('button', { name: 'Add New Rule' }).click();
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
@@ -1220,6 +1306,8 @@ test.describe('Data Contracts', () => {
       true
     );
 
+    await clickOutside(page);
+
     await page.getByTestId('save-semantic-button').click();
 
     await expect(
@@ -1241,12 +1329,7 @@ test.describe('Data Contracts', () => {
     await saveAndTriggerDataContractValidation(page, true);
 
     await expect(
-      page.getByTestId('contract-card-title-container').filter({
-        hasText: 'Contract Status',
-      })
-    ).toBeVisible();
-    await expect(
-      page.getByTestId('contract-status-card-item-Semantics-status')
+      page.getByTestId('contract-status-card-item-semantics-status')
     ).toContainText('Failed');
     await expect(
       page.getByTestId('data-contract-latest-result-btn')
@@ -1272,6 +1355,12 @@ test.describe('Data Contracts', () => {
       '/api/v1/dataContracts/*/validate'
     );
 
+    await page.getByTestId('manage-contract-actions').click();
+
+    await page.waitForSelector('.contract-action-dropdown', {
+      state: 'visible',
+    });
+
     await page.getByTestId('contract-run-now-button').click();
     await runNowResponse;
 
@@ -1285,8 +1374,175 @@ test.describe('Data Contracts', () => {
     });
 
     await expect(
-      page.getByTestId('contract-status-card-item-Semantics-status')
+      page.getByTestId('contract-status-card-item-semantics-status')
     ).toContainText('Passed');
+  });
+
+  test('Semantic with Not_Contains Operator should work for Tier, Tag and Glossary', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+    await page.click('[data-testid="contract"]');
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+
+    await page.getByRole('tab', { name: 'Semantics' }).click();
+
+    await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
+
+    await page.fill(
+      '#semantics_0_name',
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.name
+    );
+    await page.fill(
+      '#semantics_0_description',
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.description
+    );
+    const ruleLocator = page.locator('.group').nth(0);
+    await selectOption(
+      page,
+      ruleLocator.locator('.group--field .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[0].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[0].operator
+    );
+    await selectOption(
+      page,
+      ruleLocator.locator('.rule--value .ant-select'),
+      'Tier.Tier1',
+      true
+    );
+    await page.getByRole('button', { name: 'Add New Rule' }).click();
+
+    await expect(page.locator('.group--conjunctions')).toBeVisible();
+
+    const ruleLocator2 = page.locator('.rule').nth(1);
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--field .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[1].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[1].operator
+    );
+
+    await selectOption(
+      page,
+      ruleLocator2.locator('.rule--value .ant-select'),
+      testTag.responseData.name,
+      true
+    );
+
+    await clickOutside(page);
+
+    await page.getByRole('button', { name: 'Add New Rule' }).click();
+
+    await expect(page.locator('.group--conjunctions')).toBeVisible();
+
+    const ruleLocator3 = page.locator('.rule').nth(2);
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--field .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[2].field,
+      true
+    );
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--operator .ant-select'),
+      DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.rules[2].operator
+    );
+
+    await selectOption(
+      page,
+      ruleLocator3.locator('.rule--value .ant-select'),
+      testGlossaryTerm.responseData.name,
+      true
+    );
+
+    await clickOutside(page);
+
+    await page.getByTestId('save-semantic-button').click();
+
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-title')
+    ).toContainText(DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.name);
+    await expect(
+      page
+        .getByTestId('contract-semantics-card-0')
+        .locator('.semantic-form-item-description')
+    ).toContainText(DATA_CONTRACT_NOT_CONTAIN_SEMANTICS.description);
+
+    await page.locator('.expand-collapse-icon').click();
+
+    await expect(page.locator('.semantic-rule-editor-view-only')).toBeVisible();
+
+    // save and trigger contract validation
+    await saveAndTriggerDataContractValidation(page, true);
+
+    await expect(
+      page.getByTestId('contract-status-card-item-semantics-status')
+    ).toContainText('Passed');
+
+    await page.getByTestId('schema').click();
+
+    // Add the data in the Table Entity which Semantic Required
+    await assignTier(page, 'Tier1', EntityTypeEndpoint.Table);
+    await assignTag(
+      page,
+      testTag.responseData.displayName,
+      'Add',
+      EntityTypeEndpoint.Table,
+      'KnowledgePanel.Tags',
+      testTag.responseData.fullyQualifiedName
+    );
+    await assignGlossaryTerm(page, testGlossaryTerm.responseData);
+
+    await page.click('[data-testid="contract"]');
+
+    const runNowResponse = page.waitForResponse(
+      '/api/v1/dataContracts/*/validate'
+    );
+
+    await page.getByTestId('manage-contract-actions').click();
+
+    await page.waitForSelector('.contract-action-dropdown', {
+      state: 'visible',
+    });
+
+    await page.getByTestId('contract-run-now-button').click();
+    await runNowResponse;
+
+    await toastNotification(page, 'Contract validation trigger successfully.');
+
+    await page.reload();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(
+      page.getByTestId('contract-status-card-item-semantics-status')
+    ).toContainText('Failed');
+
+    await expect(
+      page.getByTestId('data-contract-latest-result-btn')
+    ).toContainText('Contract Failed');
   });
 
   test('Nested Column should not be selectable', async ({ page }) => {
@@ -1300,7 +1556,7 @@ test.describe('Data Contracts', () => {
 
     await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 
-    await page.getByRole('button', { name: 'Schema' }).click();
+    await page.getByRole('tab', { name: 'Schema' }).click();
 
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',
@@ -1618,5 +1874,100 @@ test.describe('Data Contracts', () => {
     await expect(
       page.getByTestId('contract-semantics-card-1')
     ).not.toBeVisible();
+  });
+
+  test('Add and update Security and SLA tabs', async ({ page }) => {
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+
+    await test.step('Add Security and SLA Details', async () => {
+      await page.click('[data-testid="contract"]');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await page.getByTestId('add-contract-button').click();
+
+      await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+
+      await saveSecurityAndSLADetails(
+        page,
+        DATA_CONTRACT_SECURITY_DETAILS_1,
+        true
+      );
+
+      await expect(page.getByTestId('contract-title')).toContainText(
+        DATA_CONTRACT_DETAILS.name
+      );
+    });
+
+    await test.step('Validate Security and SLA Details', async () => {
+      // Validate on Contract Detail Page
+      await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+      await expect(
+        page.getByText('Freshness: Data must be updated within the last 10 day')
+      ).toBeVisible();
+      await expect(
+        page.getByText(
+          'Completeness: Data availability is scheduled for 12:15 each day'
+        )
+      ).toBeVisible();
+      await expect(
+        page.getByText('Latency: Query response must be under 20 hour')
+      ).toBeVisible();
+      await expect(
+        page.getByText('Retention: Data should be retained for 30 week')
+      ).toBeVisible();
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+      await page.getByTestId('contract-edit-button').click();
+      await validateSecurityAndSLADetails(
+        page,
+        DATA_CONTRACT_SECURITY_DETAILS_1
+      );
+    });
+
+    await test.step('Update Security and SLA Details', async () => {
+      await saveSecurityAndSLADetails(page, DATA_CONTRACT_SECURITY_DETAILS_2);
+    });
+
+    await test.step(
+      'Validate the updated values Security and SLA Details',
+      async () => {
+        // Validate the updated data on Contract Detail Page
+        await expect(page.getByTestId('contract-sla-card')).toBeVisible();
+        await expect(
+          page.getByText(
+            'Freshness: Data must be updated within the last 50 hour'
+          )
+        ).toBeVisible();
+        await expect(
+          page.getByText(
+            'Completeness: Data availability is scheduled for 05:34 each day'
+          )
+        ).toBeVisible();
+        await expect(
+          page.getByText('Latency: Query response must be under 60 minute')
+        ).toBeVisible();
+        await expect(
+          page.getByText('Retention: Data should be retained for 70 year')
+        ).toBeVisible();
+
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+        await page.getByTestId('contract-edit-button').click();
+        await validateSecurityAndSLADetails(page, {
+          ...DATA_CONTRACT_SECURITY_DETAILS_2,
+          ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+        });
+      }
+    );
   });
 });

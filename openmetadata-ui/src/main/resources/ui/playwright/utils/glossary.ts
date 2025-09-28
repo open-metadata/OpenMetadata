@@ -718,7 +718,9 @@ export const validateGlossaryTerm = async (
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
+    await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
+    await expect(page.locator(statusSelector)).toBeVisible();
     await expect(page.locator(statusSelector)).toContainText(status);
   }
 };
@@ -839,19 +841,6 @@ export const updateNameForGlossaryTerm = async (
   );
 
   return data;
-};
-
-export const verifyGlossaryTermAssets = async (
-  page: Page,
-  glossary: GlossaryData,
-  glossaryTermData: GlossaryTermData,
-  assetsLength: number
-) => {
-  await page.click('[data-testid="overview"]');
-  await redirectToHomePage(page);
-  await sidebarClick(page, SidebarItem.GLOSSARY);
-  await selectActiveGlossary(page, glossary.displayName);
-  await goToAssetsTab(page, glossaryTermData.displayName, assetsLength);
 };
 
 export const renameGlossaryTerm = async (
@@ -1694,4 +1683,16 @@ export const setupGlossaryDenyPermissionTest = async (
     dataConsumerRole,
     cleanup,
   };
+};
+
+export const performExpandAll = async (page: Page) => {
+  const termRes = page.waitForResponse(
+    '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers*'
+  );
+  await page.getByTestId('expand-collapse-all-button').click();
+  await termRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };

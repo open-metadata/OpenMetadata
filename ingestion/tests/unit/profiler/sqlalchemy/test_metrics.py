@@ -444,8 +444,146 @@ class MetricsTest(TestCase):
         assert len(age_histogram["frequencies"]) == 1
         assert id_histogram
         assert len(id_histogram["frequencies"]) == 2
-        assert comments_histogram
-        assert len(comments_histogram["frequencies"]) == 1
+        assert comments_histogram is None
+
+    def test_cardinality_distribution(self):
+        """
+        Check cardinality distribution computation
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Test with string column that has repeated values (name column has "John" twice)
+        name_cardinality = res.get(User.name.name)[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
+
+        assert name_cardinality
+        assert "categories" in name_cardinality
+        assert "counts" in name_cardinality
+        assert "percentages" in name_cardinality
+        assert len(name_cardinality["categories"]) > 0
+        assert len(name_cardinality["counts"]) > 0
+        assert len(name_cardinality["percentages"]) > 0
+
+        # Check that "John" appears as a category (appears twice in test data)
+        assert "John" in name_cardinality["categories"]
+        john_index = name_cardinality["categories"].index("John")
+        assert name_cardinality["counts"][john_index] == 2
+
+        # Check that percentages sum to approximately 100%
+        assert abs(sum(name_cardinality["percentages"]) - 100.0) < 0.1
+
+    def test_cardinality_distribution_all_distinct(self):
+        """
+        Check cardinality distribution when all values are distinct
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Test with id column where all values are distinct
+        id_cardinality = res.get(User.id.name)[Metrics.CARDINALITY_DISTRIBUTION.name]
+
+        # Should return None when all values are distinct
+        assert id_cardinality is None
+
+    def test_cardinality_distribution_unsupported_type(self):
+        """
+        Check cardinality distribution with unsupported data types
+        """
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=self.sqa_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Test with integer column (not concatenable)
+        age_cardinality = res.get(User.age.name)[Metrics.CARDINALITY_DISTRIBUTION.name]
+
+        # Should return None for unsupported types
+        assert age_cardinality is None
+
+    def test_cardinality_distribution_empty_table(self):
+        """
+        Check cardinality distribution with empty table
+        """
+        # Create a new table with no data
+        class EmptyUser(Base):
+            __tablename__ = "empty_users"
+            id = Column(Integer, primary_key=True)
+            name = Column(String(256))
+
+        EmptyUser.__table__.create(bind=self.engine)
+
+        with patch.object(SQASampler, "build_table_orm", return_value=EmptyUser):
+            sampler = SQASampler(
+                service_connection_config=self.sqlite_conn,
+                ometa_client=None,
+                entity=None,
+            )
+        empty_profiler_interface = SQAProfilerInterface(
+            self.sqlite_conn,
+            None,
+            self.table_entity,
+            None,
+            sampler,
+            1,
+            43200,
+        )
+
+        cardinality_dist = Metrics.CARDINALITY_DISTRIBUTION.value
+        count = Metrics.COUNT.value
+        distinct_count = Metrics.DISTINCT_COUNT.value
+
+        res = (
+            Profiler(
+                cardinality_dist,
+                count,
+                distinct_count,
+                profiler_interface=empty_profiler_interface,
+            )
+            .compute_metrics()
+            ._column_results
+        )
+
+        # Should return None for empty table
+        name_cardinality = res.get(EmptyUser.name.name)[
+            Metrics.CARDINALITY_DISTRIBUTION.name
+        ]
+        assert name_cardinality is None
 
     def test_like_count(self):
         """
@@ -789,8 +927,8 @@ class MetricsTest(TestCase):
         Run the histogram on an empty table
         """
 
-        class EmptyUser(Base):
-            __tablename__ = "empty_users"
+        class EmptyUser2(Base):
+            __tablename__ = "empty_users2"
             id = Column(Integer, primary_key=True)
             name = Column(String(256))
             fullname = Column(String(256))
@@ -798,9 +936,9 @@ class MetricsTest(TestCase):
             comments = Column(TEXT)
             age = Column(Integer)
 
-        EmptyUser.__table__.create(bind=self.engine)
+        EmptyUser2.__table__.create(bind=self.engine)
 
-        with patch.object(SQASampler, "build_table_orm", return_value=EmptyUser):
+        with patch.object(SQASampler, "build_table_orm", return_value=EmptyUser2):
             sampler = SQASampler(
                 service_connection_config=self.sqlite_conn,
                 ometa_client=None,
@@ -826,7 +964,7 @@ class MetricsTest(TestCase):
             ._column_results
         )
 
-        assert res.get(EmptyUser.age.name) is None
+        assert res.get(EmptyUser2.age.name) is None
 
     def test_not_like_count(self):
         """

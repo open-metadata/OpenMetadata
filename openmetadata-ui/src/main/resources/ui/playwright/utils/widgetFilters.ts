@@ -56,28 +56,28 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
   ).toBeVisible();
 
-  const aToZFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword&sort_order=asc'
-  );
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
+  const aToZFilter = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword*&sort_order=asc*'
+  );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
 
-  const zToAFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword&sort_order=desc'
-  );
   await page
     .getByTestId(widgetKey)
     .getByTestId('widget-sort-by-dropdown')
     .click();
+  const zToAFilter = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword*&sort_order=desc*'
+  );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
 
   const latestFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=updatedAt&sort_order=desc'
+    '/api/v1/search/query?q=*&index=all*&sort_field=updatedAt*&sort_order=desc*'
   );
   await page
     .getByTestId(widgetKey)
@@ -115,6 +115,37 @@ export const verifyTotalDataAssetsFilters = async (
     .click();
   await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
   await last7DaysFilter;
+};
+
+export const verifyDataProductsFilters = async (
+  page: Page,
+  widgetKey: string
+) => {
+  const widget = page.getByTestId(widgetKey);
+  const sortDropdown = widget.getByTestId('widget-sort-by-dropdown');
+
+  await expect(sortDropdown).toBeVisible();
+
+  const aToZFilter = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=data_product*&sort_field=name.keyword&sort_order=asc'
+  );
+  await sortDropdown.click();
+  await page.getByRole('menuitem', { name: 'A to Z' }).click();
+  await aToZFilter;
+
+  const zToAFilter = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=data_product*&sort_field=name.keyword&sort_order=desc'
+  );
+  await sortDropdown.click();
+  await page.getByRole('menuitem', { name: 'Z to A' }).click();
+  await zToAFilter;
+
+  const latestFilter = page.waitForResponse(
+    '/api/v1/search/query?q=*&index=data_product*&sort_field=updatedAt&sort_order=desc'
+  );
+  await sortDropdown.click();
+  await page.getByRole('menuitem', { name: 'Latest' }).click();
+  await latestFilter;
 };
 
 export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {

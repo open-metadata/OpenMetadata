@@ -108,7 +108,7 @@ const TagPage = () => {
     tab?: string;
   }>();
   const { permissions, getEntityPermission } = usePermissionProvider();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
 

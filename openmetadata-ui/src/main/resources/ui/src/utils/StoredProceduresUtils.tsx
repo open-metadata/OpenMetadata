@@ -17,9 +17,8 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { StoredProcedureCodeCard } from '../components/Database/StoredProcedureCodeCard/StoredProcedureCodeCard';
-import Lineage from '../components/Lineage/Lineage.component';
+import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
@@ -82,14 +81,12 @@ export const getStoredProcedureDetailsPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
-            entity={storedProcedure as SourceType}
-            entityType={EntityType.STORED_PROCEDURE}
-            hasEditAccess={editLineagePermission}
-          />
-        </LineageProvider>
+        <EntityLineageTab
+          deleted={Boolean(deleted)}
+          entity={storedProcedure as SourceType}
+          entityType={EntityType.STORED_PROCEDURE}
+          hasEditAccess={editLineagePermission}
+        />
       ),
     },
     {

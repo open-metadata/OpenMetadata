@@ -535,6 +535,8 @@ export enum VerifySSL {
  *
  * Apply a set of operations on a service
  *
+ * Query Runner Request
+ *
  * Test Spark Engine Connection to test user provided configuration is valid or not.
  */
 export interface TestServiceConnectionRequest {
@@ -577,6 +579,14 @@ export interface TestServiceConnectionRequest {
      */
     type?: ReverseIngestionType;
     /**
+     * Query to be executed.
+     */
+    query?: string;
+    /**
+     * Optional value to indicate if the query should be transpiled.
+     */
+    transpile?: boolean;
+    /**
      * Spark Engine Configuration.
      */
     sparkEngine?: SparkEngineConfiguration;
@@ -602,6 +612,8 @@ export interface TestServiceConnectionRequest {
  * search Connection.
  *
  * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface RequestConnection {
     config?: ConfigObject;
@@ -832,6 +844,12 @@ export interface RequestConnection {
  * yet.
  *
  * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigObject {
     /**
@@ -905,6 +923,8 @@ export interface ConfigObject {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -1201,7 +1221,7 @@ export interface ConfigObject {
      *
      * Password to connect to ServiceNow.
      *
-     * Password to connect to Metabase.
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -1307,8 +1327,7 @@ export interface ConfigObject {
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
      *
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *
@@ -1593,6 +1612,8 @@ export interface ConfigObject {
      * client_id for PowerBI.
      *
      * client_id for Sigma.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -1681,6 +1702,9 @@ export interface ConfigObject {
     /**
      * API key to authenticate with the SAP ERP APIs.
      *
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
+     *
      * API key of the redash instance to access.
      *
      * The personal access token you can generate in the Lightdash app under the user settings
@@ -1720,12 +1744,16 @@ export interface ConfigObject {
      * clientSecret for PowerBI.
      *
      * clientSecret for Sigma.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
      * Azure Directory (tenant) ID for service principal authentication.
      *
      * Tenant ID for PowerBI.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -1826,6 +1854,8 @@ export interface ConfigObject {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -2316,6 +2346,28 @@ export interface ConfigObject {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
     [property: string]: any;
 }
 
@@ -3014,6 +3066,8 @@ export interface ConfigSourceConnection {
  *
  * GCP credentials configs.
  *
+ * GCP Credentials for Google Drive API
+ *
  * AWS credentials configs.
  */
 export interface SecurityConfigClass {
@@ -3545,6 +3599,8 @@ export enum InitialConsumerOffsets {
  * GCP Credentials
  *
  * GCP credentials configs.
+ *
+ * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
  *
@@ -4318,6 +4374,12 @@ export enum TransactionMode {
  * Custom search service type
  *
  * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
 export enum ConfigType {
     Adls = "ADLS",
@@ -4337,6 +4399,7 @@ export enum ConfigType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -4364,6 +4427,7 @@ export enum ConfigType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
     Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
@@ -4410,6 +4474,7 @@ export enum ConfigType {
     SapERP = "SapErp",
     SapHana = "SapHana",
     ServiceNow = "ServiceNow",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
@@ -4657,6 +4722,8 @@ export enum ReverseIngestionType {
  * connection steps.
  *
  * Apply a set of operations on a service
+ *
+ * Query Runner Response
  */
 export interface TestConnectionResult {
     /**
@@ -4665,6 +4732,8 @@ export interface TestConnectionResult {
     lastUpdatedAt?: number;
     /**
      * Test Connection Result computation status.
+     *
+     * Status of the query execution
      */
     status?: StatusType;
     /**
@@ -4677,8 +4746,10 @@ export interface TestConnectionResult {
     message?: string;
     /**
      * List of operations to be performed on the service
+     *
+     * Results of the query execution
      */
-    results?: ReverseIngestionOperationResult[];
+    results?: ReverseIngestionOperationResult[] | TableData;
     /**
      * The id of the service to be modified
      */
@@ -4688,6 +4759,14 @@ export interface TestConnectionResult {
      * connection issues.
      */
     success?: boolean;
+    /**
+     * Duration of the query execution in seconds
+     */
+    duration?: number;
+    /**
+     * Detailed error log in case of failure
+     */
+    errorLog?: string;
 }
 
 export interface ReverseIngestionOperationResult {
@@ -4707,9 +4786,29 @@ export interface ReverseIngestionOperationResult {
 }
 
 /**
+ * Results of the query execution
+ *
+ * This schema defines the type to capture rows of sample data for a table.
+ */
+export interface TableData {
+    /**
+     * List of local column names (not fully qualified column names) of the table.
+     */
+    columns?: string[];
+    /**
+     * Data for multiple rows of the table.
+     */
+    rows?: Array<any[]>;
+}
+
+/**
  * Test Connection Result computation status.
  *
  * Enum defining possible Test Connection Result status
+ *
+ * Status of the query execution
+ *
+ * Enum defining possible Query Runner status
  */
 export enum StatusType {
     Failed = "Failed",
@@ -4763,6 +4862,7 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
+    QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
     TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { APIResponse, expect, Page } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -159,19 +159,12 @@ export const testConnection = async (page: Page) => {
 
   const warningBadge = page.locator('[data-testid="warning-badge"]');
 
-  const failBadge = page.locator('[data-testid="fail-badge"]');
-
-  await expect(successBadge.or(warningBadge).or(failBadge)).toBeVisible({
+  await expect(successBadge.or(warningBadge)).toBeVisible({
     timeout: 2.5 * 60 * 1000,
   });
 
   await expect(page.getByTestId('messag-text')).toContainText(
-    new RegExp(
-      'Connection test was successful.|' +
-        'Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details.|' +
-        'Test connection failed, please validate your connection and permissions for the failed steps.',
-      'g'
-    )
+    /Connection test was successful.|Test connection partially successful: Some steps had failures, we will only ingest partial metadata. Click here to view details./g
   );
 };
 
@@ -182,17 +175,21 @@ export const checkServiceFieldSectionHighlighting = async (
   await page.waitForSelector(`[data-id="${field}"][data-highlighted="true"]`);
 };
 
-export const makeRetryRequest = async (data: {
-  url: string;
+type RetryRequestData = {
   page: Page;
   retries?: number;
-}) => {
-  const { url, page, retries = 3 } = data;
+} & (
+  | { url: string; fn?: never }
+  | { fn: () => Promise<APIResponse>; url?: never }
+);
+
+export const makeRetryRequest = async (data: RetryRequestData) => {
+  const { url, page, retries = 3, fn } = data;
   const { apiContext } = await getApiContext(page);
 
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await apiContext.get(url);
+      const response = await (fn ? fn() : apiContext.get(url));
 
       return response.json();
     } catch (error) {
