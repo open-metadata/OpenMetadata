@@ -600,18 +600,18 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     CreateDataProduct createDataProduct = createRequest(getEntityName(test));
     DataProduct dataProduct = createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
 
-    // Verify the data product is created with APPROVED status
+    // Verify the data product is created with UNPROCESSED status
     assertEquals(
-        EntityStatus.APPROVED,
+        EntityStatus.UNPROCESSED,
         dataProduct.getEntityStatus(),
-        "DataProduct should be created with APPROVED status");
+        "DataProduct should be created with UNPROCESSED status");
 
     // Update the entityStatus using PATCH operation
     String originalJson = JsonUtils.pojoToJson(dataProduct);
     dataProduct.setEntityStatus(EntityStatus.IN_REVIEW);
 
     ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
-    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
     DataProduct updatedDataProduct =
         patchEntityAndCheck(dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
