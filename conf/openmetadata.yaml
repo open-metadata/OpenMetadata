@@ -366,7 +366,9 @@ pipelineServiceClientConfiguration:
     bucketName: ${PIPELINE_SERVICE_CLIENT_LOG_BUCKET_NAME:-""}
     # optional path within the bucket to store the logs
     prefix: ${PIPELINE_SERVICE_CLIENT_LOG_PREFIX:-""}
-    region: ${PIPELINE_SERVICE_CLIENT_LOG_REGION:-""}
+    enableServerSideEncryption: ${PIPELINE_SERVICE_CLIENT_LOG_SSE_ENABLED:-true}
+    sseAlgorithm: ${ASSET_UPLOADER_S3_SSE_ALGORITHM:-"AES256"} # Allowed values: "AES256" or "aws:kms"
+    kmsKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_KMS_KEY_ID:-""} # Required only if sseAlgorithm is "aws:kms"
     awsConfig:
       awsAccessKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_ACCESS_KEY_ID:-""}
       awsSecretAccessKey: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_SECRET_ACCESS_KEY:-""}
