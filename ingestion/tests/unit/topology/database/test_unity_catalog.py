@@ -69,7 +69,7 @@ mock_unitycatalog_config = {
                 "type": "UnityCatalog",
                 "catalog": "hive_metastore",
                 "databaseSchema": "default",
-                "token": "123sawdtesttoken",
+                "authType": {"token": "123sawdtesttoken"},
                 "hostPort": "localhost:443",
                 "httpPath": "/sql/1.0/warehouses/abcdedfg",
                 "connectionTimeout": 120,

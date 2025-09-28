@@ -148,6 +148,6 @@
   "additionalProperties": false,
   "required": [
     "hostPort",
-    "token"
+    "authType"
   ]
 }
