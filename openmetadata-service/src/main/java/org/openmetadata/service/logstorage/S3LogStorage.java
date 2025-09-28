@@ -256,8 +256,9 @@ public class S3LogStorage implements LogStorageInterface {
     String accessKey = config.getAwsAccessKeyId();
     String secretKey = config.getAwsSecretAccessKey();
     String sessionToken = config.getAwsSessionToken();
-    if ((accessKey != null && secretKey != null) || !nullOrEmpty(config.getEndPointURL())) {
-      if (sessionToken != null) {
+    if ((!nullOrEmpty(accessKey) && !nullOrEmpty(secretKey))
+        || !nullOrEmpty(config.getEndPointURL())) {
+      if (!nullOrEmpty(sessionToken)) {
         return StaticCredentialsProvider.create(
             AwsSessionCredentials.create(accessKey, secretKey, sessionToken));
       } else {
