@@ -55,7 +55,8 @@ export interface EsBoolQuery {
   filter?: QueryFieldInterface | QueryFieldInterface[];
   must?: QueryFieldInterface | QueryFieldInterface[];
   must_not?: QueryFieldInterface | QueryFieldInterface[];
-  should?: QueryFieldInterface | QueryFieldInterface[];
+  should?: QueryFieldInterface | QueryFieldInterface[] | EsWildCard[];
+  minimum_should_match?: number;
 }
 
 export interface QueryFieldInterface {
