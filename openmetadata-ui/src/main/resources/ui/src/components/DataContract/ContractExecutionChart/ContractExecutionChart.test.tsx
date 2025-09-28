@@ -197,6 +197,7 @@ describe('ContractExecutionChart', () => {
       expect(getAllContractResults).toHaveBeenCalledWith('contract-1', {
         startTs: expect.any(Number),
         endTs: expect.any(Number),
+        limit: 10000,
       });
 
       await waitFor(() => {
@@ -232,6 +233,7 @@ describe('ContractExecutionChart', () => {
       expect(getAllContractResults).toHaveBeenLastCalledWith('contract-1', {
         startTs: 1640908800000,
         endTs: 1640995200000,
+        limit: 10000,
       });
     });
   });
@@ -352,6 +354,7 @@ describe('ContractExecutionChart', () => {
       expect(getAllContractResults).toHaveBeenCalledWith('contract-1', {
         startTs: expect.any(Number),
         endTs: 1640995200000, // Fixed current time
+        limit: 10000,
       });
     });
 
