@@ -236,6 +236,7 @@ export const processContractExecutionData = (
       failed: status === ContractExecutionStatus.Failed ? 1 : 0,
       success: status === ContractExecutionStatus.Success ? 1 : 0,
       aborted: status === ContractExecutionStatus.Aborted ? 1 : 0,
+      running: status === ContractExecutionStatus.Running ? 1 : 0,
       data: item,
     };
   });
