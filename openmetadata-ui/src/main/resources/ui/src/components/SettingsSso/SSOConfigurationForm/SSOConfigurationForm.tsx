@@ -13,11 +13,17 @@
 
 import { removeSession } from '@analytics/session-utils';
 import Form, { IChangeEvent } from '@rjsf/core';
-import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
+import {
+  CustomValidator,
+  ErrorSchema,
+  FormValidation,
+  RegistryFieldsType,
+  RJSFSchema,
+} from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import {
@@ -48,9 +54,11 @@ import {
   SecurityConfiguration,
   SecurityValidationResponse,
   validateSecurityConfiguration,
-  ValidationResult,
 } from '../../../rest/securityConfigAPI';
-import { transformErrors } from '../../../utils/formUtils';
+import {
+  createScrollToErrorHandler,
+  transformErrors,
+} from '../../../utils/formUtils';
 import {
   getProviderDisplayName,
   getProviderIcon,
@@ -106,6 +114,7 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
+  const fieldErrorsRef = useRef<ErrorSchema>({});
 
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
@@ -351,28 +360,147 @@ const SSOConfigurationFormRJSF = ({
     }
   }, [selectedProvider]);
 
-  const handleValidationErrors = useCallback(
-    (validationResult: SecurityValidationResponse) => {
-      const failedResults = validationResult.results.filter(
-        (result: ValidationResult) => result.status === VALIDATION_STATUS.FAILED
-      );
+  const scrollToFirstError = useCallback(
+    createScrollToErrorHandler({
+      scrollContainer: '.ant-card',
+      errorSelector: '.field-error.has-error, .ant-form-item-explain-error',
+      offsetTop: 100,
+      delay: 100,
+      behavior: 'smooth',
+    }),
+    []
+  );
 
-      if (failedResults.length > 0) {
-        const errorDetails = failedResults
-          .map(
-            (result: ValidationResult) =>
-              `${result.component}: ${result.message}`
-          )
-          .join('\n');
+  const parseValidationErrors = useCallback(
+    (errors: Array<{ field: string; error: string }>): ErrorSchema => {
+      const errorSchema: ErrorSchema = {};
 
-        const errorMessage = `${validationResult?.message}\n\n${errorDetails}`;
+      errors.forEach((error) => {
+        // Parse the field path to create nested error structure
+        // e.g., "authenticationConfiguration.oidcConfiguration.clientSecret" needs to become:
+        // { authenticationConfiguration: { oidcConfiguration: { clientSecret: { __errors: ["..."] } } } }
 
-        showErrorToast(errorMessage);
-      } else {
-        showErrorToast(validationResult.message);
-      }
+        const pathParts = error.field.split('.');
+        let current: ErrorSchema = errorSchema;
+
+        // Navigate/create the nested structure
+        for (let i = 0; i < pathParts.length; i++) {
+          const part = pathParts[i];
+
+          if (i === pathParts.length - 1) {
+            // Last part - add the actual error
+            if (!current[part]) {
+              current[part] = {};
+            }
+            current[part].__errors = [error.error];
+          } else {
+            // Intermediate part - create nested object if needed
+            if (!current[part]) {
+              current[part] = {};
+            }
+            current = current[part] as ErrorSchema;
+          }
+        }
+      });
+
+      return errorSchema;
     },
     []
+  );
+
+  // Clear errors for a specific field path
+  const clearFieldError = useCallback((fieldPath: string) => {
+    if (
+      !fieldErrorsRef.current ||
+      Object.keys(fieldErrorsRef.current).length === 0
+    ) {
+      return;
+    }
+
+    // Parse the field path (e.g., "root/authenticationConfiguration/adminPrincipals")
+    const pathParts = fieldPath.replace(/^root\//, '').split('/');
+
+    let current = fieldErrorsRef.current;
+
+    // Navigate through the error structure
+    for (let i = 0; i < pathParts.length; i++) {
+      const part = pathParts[i];
+
+      if (!current[part]) {
+        // Path doesn't exist in errors, nothing to clear
+        return;
+      }
+
+      if (i === pathParts.length - 1) {
+        // We're at the target field, clear its errors
+        delete current[part];
+
+        // Clean up empty parent objects
+        let cleanupCurrent = fieldErrorsRef.current;
+        const cleanupParts = pathParts.slice(0, -1);
+
+        for (let j = 0; j < cleanupParts.length; j++) {
+          const cleanupPart = cleanupParts[j];
+          if (
+            cleanupCurrent[cleanupPart] &&
+            typeof cleanupCurrent[cleanupPart] === 'object'
+          ) {
+            const obj = cleanupCurrent[cleanupPart] as ErrorSchema;
+            if (Object.keys(obj).length === 0) {
+              delete cleanupCurrent[cleanupPart];
+
+              break;
+            }
+            cleanupCurrent = obj;
+          }
+        }
+      } else {
+        // Navigate deeper
+        current = current[part] as ErrorSchema;
+      }
+    }
+  }, []);
+
+  const handleValidationErrors = useCallback(
+    (
+      validationResult:
+        | SecurityValidationResponse
+        | { status: string; errors: Array<{ field: string; error: string }> }
+    ) => {
+      if (
+        'errors' in validationResult &&
+        Array.isArray(validationResult.errors)
+      ) {
+        // Separate field errors from general errors
+        const fieldErrors = validationResult.errors.filter(
+          (e) => e.field && e.field.trim() !== ''
+        );
+        const generalErrors = validationResult.errors.filter(
+          (e) => !e.field || e.field.trim() === ''
+        );
+
+        // Parse field-level errors
+        if (fieldErrors.length > 0) {
+          const errorSchema = parseValidationErrors(fieldErrors);
+
+          // Store in ref immediately - this is what customValidate will use
+          fieldErrorsRef.current = errorSchema;
+
+          // Scroll to the first error field
+          scrollToFirstError();
+        }
+
+        // Show toast only for general errors (no field specified)
+        if (generalErrors.length > 0) {
+          generalErrors.forEach((error) => {
+            showErrorToast(error.error);
+          });
+        }
+
+        return;
+      }
+    },
+    [parseValidationErrors]
   );
   const toRecord = (obj: unknown): Record<string, unknown> => {
     if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
@@ -853,6 +981,85 @@ const SSOConfigurationFormRJSF = ({
   }, [currentProvider]);
 
   // Dynamic UI schema using the optimized constants
+  // Custom validate function to inject our validation errors
+  const customValidate: CustomValidator<FormData> = useCallback(
+    (_formData: FormData | undefined, errors: FormValidation<FormData>) => {
+      // Add our custom validation errors
+      if (
+        fieldErrorsRef.current &&
+        Object.keys(fieldErrorsRef.current).length > 0
+      ) {
+        // Traverse the error schema and add errors to the form errors object
+        const addErrors = (
+          errorObj: ErrorSchema,
+          formErrorObj: FormValidation<unknown>,
+          path: string[] = []
+        ) => {
+          Object.keys(errorObj).forEach((key) => {
+            if (key === '__errors' && Array.isArray(errorObj[key])) {
+              // RJSF expects errors to be added via addError method or direct assignment
+              // Check if addError method exists, otherwise use direct assignment
+              if (typeof formErrorObj.addError === 'function') {
+                (errorObj[key] as string[]).forEach((msg: string) => {
+                  formErrorObj.addError(msg);
+                });
+              } else {
+                // Direct assignment for error messages
+                if (!formErrorObj.__errors) {
+                  formErrorObj.__errors = [];
+                }
+                formErrorObj.__errors.push(...(errorObj[key] as string[]));
+              }
+            } else if (
+              typeof errorObj[key] === 'object' &&
+              errorObj[key] !== null
+            ) {
+              // Recurse into nested objects
+              // Cast to Record to allow string indexing
+              const formErrorObjRecord = formErrorObj as unknown as Record<
+                string,
+                FormValidation<unknown>
+              >;
+              if (!formErrorObjRecord[key]) {
+                // For nested fields that might not exist in the errors object yet
+                formErrorObjRecord[key] = {} as FormValidation<unknown>;
+              }
+              addErrors(errorObj[key] as ErrorSchema, formErrorObjRecord[key], [
+                ...path,
+                key,
+              ]);
+            }
+          });
+        };
+
+        // Apply errors to the appropriate fields
+        if (fieldErrorsRef.current.authenticationConfiguration) {
+          if (!errors.authenticationConfiguration) {
+            errors.authenticationConfiguration =
+              {} as FormValidation<AuthenticationConfiguration>;
+          }
+          addErrors(
+            fieldErrorsRef.current.authenticationConfiguration,
+            errors.authenticationConfiguration as FormValidation<unknown>
+          );
+        }
+        if (fieldErrorsRef.current.authorizerConfiguration) {
+          if (!errors.authorizerConfiguration) {
+            errors.authorizerConfiguration =
+              {} as FormValidation<AuthorizerConfiguration>;
+          }
+          addErrors(
+            fieldErrorsRef.current.authorizerConfiguration,
+            errors.authorizerConfiguration as FormValidation<unknown>
+          );
+        }
+      }
+
+      return errors;
+    },
+    []
+  );
+
   const uiSchema = useMemo(() => {
     if (!currentProvider) {
       return {};
@@ -951,11 +1158,71 @@ const SSOConfigurationFormRJSF = ({
     hideBorder,
   ]);
 
+  // Helper function to find changed fields between two objects
+  const findChangedFields = (
+    oldData: unknown,
+    newData: unknown,
+    path: string[] = []
+  ): string[] => {
+    const changedFields: string[] = [];
+
+    if (!oldData || !newData) {
+      return changedFields;
+    }
+
+    // Type guard to check if value is an object
+    const isObject = (val: unknown): val is Record<string, unknown> => {
+      return typeof val === 'object' && val !== null && !Array.isArray(val);
+    };
+
+    if (!isObject(oldData) || !isObject(newData)) {
+      return changedFields;
+    }
+
+    // Get all keys from both objects
+    const allKeys = new Set([
+      ...Object.keys(oldData || {}),
+      ...Object.keys(newData || {}),
+    ]);
+
+    for (const key of allKeys) {
+      const currentPath = [...path, key];
+      const oldValue = oldData[key];
+      const newValue = newData[key];
+
+      // Check if values are different
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        // If the value is an object, recursively check for nested changes
+        if (isObject(newValue)) {
+          changedFields.push(
+            ...findChangedFields(oldValue, newValue, currentPath)
+          );
+        } else {
+          // Value has changed, add the field path
+          changedFields.push('root/' + currentPath.join('/'));
+        }
+      }
+    }
+
+    return changedFields;
+  };
+
   // Handle form data changes
   const handleOnChange = (e: IChangeEvent<FormData>) => {
     if (e.formData) {
       const newFormData = { ...e.formData };
       const authConfig = newFormData.authenticationConfiguration;
+
+      // Clear field-specific errors for changed fields
+      if (
+        fieldErrorsRef.current &&
+        Object.keys(fieldErrorsRef.current).length > 0
+      ) {
+        const changedFields = findChangedFields(internalData, newFormData);
+        changedFields.forEach((fieldPath) => {
+          clearFieldError(fieldPath);
+        });
+      }
 
       // Check if client type changed
       const previousClientType =
@@ -1117,6 +1384,9 @@ const SSOConfigurationFormRJSF = ({
       setIsLoading(true);
     }
 
+    // Clear any existing field errors
+    fieldErrorsRef.current = {};
+
     try {
       const currentFormData = internalData;
 
@@ -1134,8 +1404,9 @@ const SSOConfigurationFormRJSF = ({
       };
 
       try {
-        // Use PATCH for existing configurations, PUT for new ones
+        // Use PATCH for existing configurations, PUT with validation for new ones
         if (hasExistingConfig && savedData) {
+          // For existing configurations, skip validation and directly PATCH
           // Generate patches for existing configuration
           const allPatches = generatePatches(savedData, cleanedFormData);
 
@@ -1146,26 +1417,96 @@ const SSOConfigurationFormRJSF = ({
         } else {
           // For new configurations, validate first then apply
           try {
-            const validationResponse: { data: SecurityValidationResponse } =
-              await validateSecurityConfiguration(payload);
+            const validationResponse: {
+              data:
+                | SecurityValidationResponse
+                | {
+                    status: string;
+                    errors: Array<{ field: string; error: string }>;
+                  };
+            } = await validateSecurityConfiguration(payload);
             const validationResult = validationResponse.data;
 
-            if (validationResult.status !== VALIDATION_STATUS.SUCCESS) {
+            // Check for validation errors - handle both formats
+            // New format with field-level errors
+            if (
+              'errors' in validationResult &&
+              Array.isArray(validationResult.errors) &&
+              validationResult.errors.length > 0
+            ) {
               handleValidationErrors(validationResult);
+              // Only update main form loading state if not modal save
+              if (!isModalSave) {
+                setIsLoading(false);
+              }
 
               return;
             }
+
+            // Old format or status check
+            if (
+              validationResult.status === 'failed' ||
+              validationResult.status !== VALIDATION_STATUS.SUCCESS
+            ) {
+              handleValidationErrors(validationResult);
+              // Only update main form loading state if not modal save
+              if (!isModalSave) {
+                setIsLoading(false);
+              }
+
+              return;
+            }
+
+            // Validation successful
           } catch (error) {
-            showErrorToast(error as AxiosError);
+            // Check if error response contains field-level validation errors
+            const axiosError = error as AxiosError;
+            if (
+              axiosError.response?.data &&
+              typeof axiosError.response.data === 'object' &&
+              'errors' in axiosError.response.data
+            ) {
+              handleValidationErrors(
+                axiosError.response.data as {
+                  status: string;
+                  errors: Array<{ field: string; error: string }>;
+                }
+              );
+            } else {
+              showErrorToast(error as AxiosError);
+            }
+            // Only update main form loading state if not modal save
+            if (!isModalSave) {
+              setIsLoading(false);
+            }
 
             return;
           }
 
-          // Use full PUT for new configurations
+          // Use full PUT for new configurations after validation passes
           await applySecurityConfiguration(payload);
         }
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        // Check if error response contains field-level validation errors
+        const axiosError = error as AxiosError;
+        if (
+          axiosError.response?.data &&
+          typeof axiosError.response.data === 'object' &&
+          'errors' in axiosError.response.data
+        ) {
+          handleValidationErrors(
+            axiosError.response.data as {
+              status: string;
+              errors: Array<{ field: string; error: string }>;
+            }
+          );
+        } else {
+          showErrorToast(error as AxiosError);
+        }
+        // Only update main form loading state if not modal save
+        if (!isModalSave) {
+          setIsLoading(false);
+        }
 
         return;
       }
@@ -1214,7 +1555,6 @@ const SSOConfigurationFormRJSF = ({
           ? error.message
           : t('message.configuration-save-failed');
       showErrorToast(errorMessage);
-
       // Only update main form loading state if not modal save
       if (!isModalSave) {
         setIsLoading(false);
@@ -1399,9 +1739,14 @@ const SSOConfigurationFormRJSF = ({
           focusOnFirstError
           noHtml5Validate
           className="rjsf no-header"
+          customValidate={customValidate}
           fields={customFields}
+          formContext={{
+            clearFieldError,
+          }}
           formData={internalData}
           idSeparator="/"
+          liveValidate={Object.keys(fieldErrorsRef.current).length > 0}
           schema={schema}
           showErrorList={false}
           templates={{
