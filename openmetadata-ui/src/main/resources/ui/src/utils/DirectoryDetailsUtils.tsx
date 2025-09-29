@@ -19,8 +19,19 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import { DirectoryDetailPageTabProps } from './DirectoryClassBase';
 import i18n from './i18next/LocalUtil';
+
+export interface DirectoryDetailPageTabProps {
+  childrenCount: number;
+  activityFeedTab: JSX.Element;
+  lineageTab: JSX.Element;
+  customPropertiesTab: JSX.Element;
+  activeTab: EntityTabs;
+  feedCount: {
+    totalCount: number;
+  };
+  labelMap?: Record<EntityTabs, string>;
+}
 
 export const defaultFields = [
   TabSpecificField.OWNERS,

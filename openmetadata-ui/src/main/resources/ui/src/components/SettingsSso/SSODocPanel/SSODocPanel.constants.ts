@@ -11,24 +11,7 @@
  *  limitations under the License.
  */
 
-import LdapIcon from '../../../assets/img/ic-ldap.svg';
-import SamlIcon from '../../../assets/img/ic-saml.svg';
-import Auth0Icon from '../../../assets/img/icon-auth0.png';
-import CognitoIcon from '../../../assets/img/icon-aws-cognito.png';
-import AzureIcon from '../../../assets/img/icon-azure.png';
-import GoogleIcon from '../../../assets/img/icon-google.png';
-import OktaIcon from '../../../assets/img/icon-okta.png';
 import { AuthProvider } from '../../../generated/settings/settings';
-
-export const PROVIDER_ICON_MAP: Record<string, string> = {
-  google: GoogleIcon,
-  azure: AzureIcon,
-  okta: OktaIcon,
-  auth0: Auth0Icon,
-  'aws-cognito': CognitoIcon,
-  ldap: LdapIcon,
-  saml: SamlIcon,
-};
 
 export const FIELD_MAPPINGS: Record<string, string> = {
   clientType: 'clientType',
