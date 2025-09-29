@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { DataContractSecuritySlaData } from '../constant/dataContracts';
+import {
+  DataContractSecuritySlaData,
+  DATA_CONTRACT_SECURITY_CONSUMER_DETAILS,
+} from '../constant/dataContracts';
 import { SidebarItem } from '../constant/sidebar';
 import { getApiContext } from './common';
 import { sidebarClick } from './sidebar';
@@ -120,14 +123,100 @@ export const waitForDataContractExecution = async (
 
 export const saveSecurityAndSLADetails = async (
   page: Page,
-  data: DataContractSecuritySlaData
+  data: DataContractSecuritySlaData,
+  addAnotherConsumer?: boolean
 ) => {
   await page.getByRole('tab', { name: 'Security' }).click();
 
-  await page.getByTestId('access-policy-input').fill(data.accessPolicyName);
   await page
     .getByTestId('data-classification-input')
     .fill(data.dataClassificationName);
+
+  await expect(page.getByTestId('add-consumer-button')).toBeDisabled();
+
+  await page
+    .getByTestId('access-policy-input-0')
+    .fill(data.consumers.accessPolicyName);
+
+  for (const identity of data.consumers.identities) {
+    await page.locator('#identities-input-0').fill(identity);
+    await page.locator('#identities-input-0').press('Enter');
+  }
+
+  // Add Column Information
+  for (const filter of data.consumers.row_filters) {
+    await page
+      .getByTestId(`columnName-input-0-${filter.index}`)
+      .fill(filter.column_name);
+
+    for (const value of filter.values) {
+      await page.locator(`#values-0-${filter.index}`).fill(value);
+      await page.locator(`#values-0-${filter.index}`).press('Enter');
+    }
+
+    if (filter.index === 0) {
+      await page.getByTestId('add-row-filter-button-0').click();
+    }
+  }
+
+  await page.getByTestId('save-consumer-button').click();
+
+  await expect(page.getByTestId('add-consumer-button')).not.toBeDisabled();
+  await expect(page.getByTestId('edit-consumer-0')).toBeVisible();
+  await expect(page.getByTestId('delete-consumer-0')).toBeVisible();
+  await expect(page.getByText(data.consumers.accessPolicyName)).toBeVisible();
+
+  if (addAnotherConsumer) {
+    await page.getByTestId('add-consumer-button').click();
+
+    await page
+      .getByTestId('access-policy-input-1')
+      .fill(DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.accessPolicyName);
+
+    for (const identity of DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.identities) {
+      await page.locator('#identities-input-1').fill(identity);
+      await page.locator('#identities-input-1').press('Enter');
+    }
+
+    // Add Column Information
+    for (const filter of DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.row_filters) {
+      await page
+        .getByTestId(`columnName-input-1-${filter.index}`)
+        .fill(filter.column_name);
+
+      for (const value of filter.values) {
+        await page.locator(`#values-1-${filter.index}`).fill(value);
+        await page.locator(`#values-1-${filter.index}`).press('Enter');
+      }
+
+      if (filter.index === 0) {
+        await page.getByTestId('add-row-filter-button-1').click();
+      }
+    }
+
+    await page.getByTestId('save-consumer-button').click();
+
+    await expect(
+      page.getByText(DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.accessPolicyName)
+    ).toBeVisible();
+
+    await page.getByTestId('edit-consumer-1').click();
+
+    // identities value check
+    await expect(
+      page.getByText(
+        DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.identities.join('')
+      )
+    ).toBeVisible();
+
+    await page.getByTestId('cancel-consumer-button').click();
+
+    await page.getByTestId('delete-consumer-1').click();
+
+    await expect(
+      page.getByText(DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.accessPolicyName)
+    ).not.toBeVisible();
+  }
 
   await page.getByRole('tab', { name: 'SLA' }).click();
 
@@ -186,12 +275,28 @@ export const validateSecurityAndSLADetails = async (
 ) => {
   await page.getByRole('tab', { name: 'Security' }).click();
 
-  await expect(page.getByTestId('access-policy-input')).toHaveValue(
-    data.accessPolicyName
-  );
+  await expect(page.getByTestId('add-consumer-button')).toBeDisabled();
   await expect(page.getByTestId('data-classification-input')).toHaveValue(
     data.dataClassificationName
   );
+
+  await expect(page.getByTestId('access-policy-input-0')).toHaveValue(
+    data.consumers.accessPolicyName
+  );
+
+  // identities value check
+  await expect(
+    page.getByText(data.consumers.identities.join(''))
+  ).toBeVisible();
+
+  //   Verify Consumer information
+  for (const filter of data.consumers.row_filters) {
+    await expect(
+      page.getByTestId(`columnName-input-0-${filter.index}`)
+    ).toHaveValue(filter.column_name);
+
+    await expect(page.getByText(filter.values.join(''))).toBeVisible();
+  }
 
   await page.getByRole('tab', { name: 'SLA' }).click();
 

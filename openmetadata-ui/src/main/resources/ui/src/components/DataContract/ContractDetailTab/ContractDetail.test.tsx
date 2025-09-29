@@ -226,7 +226,7 @@ describe('ContractDetail', () => {
     });
 
     it('should display contract actions', () => {
-      const { getByTestId, debug } = render(
+      const { getByTestId } = render(
         <ContractDetail
           contract={mockContract}
           onDelete={mockOnDelete}
@@ -234,7 +234,48 @@ describe('ContractDetail', () => {
         />,
         { wrapper: MemoryRouter }
       );
-      debug();
+
+      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+    });
+
+    it('should not display contract created by or created at if data is not present', () => {
+      const { getByTestId, queryByTestId } = render(
+        <ContractDetail
+          contract={mockContract}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(
+        queryByTestId('contract-created-by-label')
+      ).not.toBeInTheDocument();
+
+      expect(
+        queryByTestId('contract-created-at-label')
+      ).not.toBeInTheDocument();
+
+      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+    });
+
+    it('should display contract created by or created at if data is present', () => {
+      const { getByTestId, queryByTestId } = render(
+        <ContractDetail
+          contract={{
+            ...mockContract,
+            createdBy: 'admin',
+            createdAt: 1758556706799,
+          }}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(queryByTestId('contract-created-by-label')).toBeInTheDocument();
+
+      expect(queryByTestId('contract-created-at-label')).toBeInTheDocument();
 
       expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
     });
