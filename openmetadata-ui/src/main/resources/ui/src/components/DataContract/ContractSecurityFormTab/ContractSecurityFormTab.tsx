@@ -25,7 +25,7 @@ import {
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/ic-cross.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
@@ -38,8 +38,12 @@ import {
   DataConsumers,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
+import { filterSelectOptions } from '../../../utils/CommonUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import './contract-security-form-tab.less';
 
 export const ContractSecurityFormTab: React.FC<{
@@ -52,6 +56,7 @@ export const ContractSecurityFormTab: React.FC<{
 }> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const { data: tableData } = useGenericContext();
   const addFunctionRef = useRef<
     | ((
         defaultValue?: ContractSecurity,
@@ -67,13 +72,26 @@ export const ContractSecurityFormTab: React.FC<{
     form
   );
 
+  const columnOptions = useMemo(() => {
+    const { columns } = tableData as Table;
+    if (isEmpty(columns)) {
+      return [];
+    }
+
+    return columns.map((column) => ({
+      label: column.name,
+      value: column.name,
+      data: column,
+    }));
+  }, [tableData]);
+
   const handleAddConsumers = () => {
     addFunctionRef.current?.({
       accessPolicy: '',
       identities: [],
       rowFilters: [
         {
-          columnName: '',
+          columnName: undefined,
           values: [],
         },
       ],
@@ -119,7 +137,7 @@ export const ContractSecurityFormTab: React.FC<{
             identities: [],
             rowFilters: [
               {
-                columnName: '',
+                columnName: undefined,
                 values: [],
               },
             ],
@@ -352,8 +370,20 @@ export const ContractSecurityFormTab: React.FC<{
                                                           rowFilterField.name,
                                                           'columnName',
                                                         ]}>
-                                                        <Input
+                                                        <Select
+                                                          allowClear
+                                                          showSearch
                                                           data-testid={`columnName-input-${consumerIndex}-${rowFilterIndex}`}
+                                                          filterOption={
+                                                            filterSelectOptions
+                                                          }
+                                                          getPopupContainer={
+                                                            getPopupContainer
+                                                          }
+                                                          id={`columnName-input-${consumerIndex}-${rowFilterIndex}`}
+                                                          options={
+                                                            columnOptions
+                                                          }
                                                           placeholder={t(
                                                             'label.please-enter-entity-name',
                                                             {
