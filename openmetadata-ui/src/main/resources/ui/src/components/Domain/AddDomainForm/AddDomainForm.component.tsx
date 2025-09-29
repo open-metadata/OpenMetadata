@@ -176,6 +176,19 @@ const AddDomainForm = ({
           overlayClassName: 'domain-type-tooltip-container',
           tooltipPlacement: 'top-start',
           tooltipAlign: { targetOffset: [18, 0] },
+          slotProps: {
+            tooltip: {
+              sx: {
+                bgcolor: '#fff',
+                color: '#000',
+              },
+            },
+            arrow: {
+              sx: {
+                color: '#fff',
+              },
+            },
+          },
         },
       };
 

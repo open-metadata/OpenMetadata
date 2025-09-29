@@ -28,6 +28,7 @@ export interface MUIFormItemLabelProps {
   overlayInnerStyle?: React.CSSProperties;
   align?: TooltipProps['placement'];
   isBeta?: boolean;
+  slotProps?: Partial<TooltipProps>;
 }
 
 const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
@@ -37,6 +38,7 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
   label,
   placement = 'top',
   showHelperText = true,
+  slotProps,
 }) => {
   const { t } = useTranslation();
 
@@ -55,6 +57,7 @@ const MUIFormItemLabel: FC<MUIFormItemLabelProps> = ({
             <Tooltip
               arrow
               placement={placement || 'top'}
+              slotProps={slotProps}
               title={helperText || ''}>
               <Box
                 component="span"
