@@ -10,28 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  ContractExecutionStatus,
+  DataContractResult,
+} from '../../../generated/entity/datacontract/dataContractResult';
 
-@import (reference) '../../../styles/variables.less';
-
-.contract-execution-chart-container {
-  height: 280px;
-  display: flex;
-  flex-direction: column;
-
-  .contract-execution-data-picker {
-    display: flex;
-    justify-content: flex-end;
-  }
-
-  .contract-execution-chart {
-    width: 100%;
-    height: 100%;
-  }
-
-  .recharts-cartesian-axis-tick-line {
-    display: none;
-  }
-  .recharts-tooltip-cursor {
-    fill: @grey-100;
-  }
+export interface DataContractProcessedResultCharts {
+  name: string;
+  displayTimestamp: number;
+  value: number;
+  status: ContractExecutionStatus;
+  failed: number;
+  success: number;
+  aborted: number;
+  data: DataContractResult;
 }
