@@ -51,6 +51,7 @@ public class ReindexingUtil {
   public static final String ENTITY_NAME_LIST_KEY = "entityNameList";
   public static final String TIMESTAMP_KEY = "@timestamp";
   public static final String TARGET_INDEX_KEY = "targetIndex";
+  public static final String RECREATE_CONTEXT = "recreateContext";
 
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
     stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
