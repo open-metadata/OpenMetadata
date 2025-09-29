@@ -187,34 +187,12 @@ def get_columns(bq_schema):
             "max_length": field.max_length,
             "system_data_type": get_system_data_type(col_type),
             "is_complex": is_complex_type(str(col_type)),
-            "policy_tags": None,
+            "policy_tags": field.policy_tags,
         }
         if getattr(field, "fields", None):
             # Nested Columns available
             col_obj["children"] = get_columns(field.fields)
-        try:
-            if field.policy_tags:
-                policy_tag_name = field.policy_tags.names[0]
-                taxonomy_name = (
-                    policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
-                )
-                if not taxonomy_name:
-                    raise NotImplementedError(
-                        f"Taxonomy Name not present for {field.name}"
-                    )
-                col_obj["taxonomy"] = (
-                    PolicyTagManagerClient()
-                    .get_taxonomy(name=taxonomy_name)
-                    .display_name
-                )
-                col_obj["policy_tags"] = (
-                    PolicyTagManagerClient()
-                    .get_policy_tag(name=policy_tag_name)
-                    .display_name
-                )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Skipping Policy Tag: {exc}")
+
         col_list.append(col_obj)
     return col_list
 
@@ -513,6 +491,13 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         metadata=self.metadata,
                         system_tags=True,
                     )
+
+            if not self.service_connection.includePolicyTags:
+                logger.info(
+                    "'includePolicyTags' is set to false so skipping policy tag ingestion"
+                )
+                return
+
             # Fetching policy tags on the column level
             list_project_ids = [self.context.get().database]
             if not self.service_connection.taxonomyProjectID:
@@ -712,6 +697,32 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     table_tag_labels.append(tag_label)
         return table_tag_labels
 
+    def get_policy_tags_for_column(self, column: dict) -> dict:
+        try:
+            if column.get("policy_tags"):
+                policy_tag_name = column["policy_tags"].names[0]
+                taxonomy_name = (
+                    policy_tag_name.split("/policyTags/")[0] if policy_tag_name else ""
+                )
+                if not taxonomy_name:
+                    raise NotImplementedError(
+                        f"Taxonomy Name not present for {column['name']}"
+                    )
+                column["taxonomy"] = (
+                    PolicyTagManagerClient()
+                    .get_taxonomy(name=taxonomy_name)
+                    .display_name
+                )
+                column["policy_tags"] = (
+                    PolicyTagManagerClient()
+                    .get_policy_tag(name=policy_tag_name)
+                    .display_name
+                )
+                return column
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Skipping Policy Tag: {exc}")
+
     def get_column_tag_labels(
         self, table_name: str, column: dict
     ) -> Optional[List[TagLabel]]:
@@ -719,12 +730,14 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         This will only get executed if the tags context
         is properly informed
         """
-        if column.get("policy_tags"):
+        if self.service_connection.includePolicyTags and column.get("policy_tags"):
+            self.get_policy_tags_for_column(column)
             return fetch_tag_labels_om(
                 metadata=self.metadata,
                 tags=[column["policy_tags"]],
                 classification_name=column["taxonomy"],
-                include_tags=self.source_config.includeTags,
+                include_tags=self.source_config.includeTags
+                and self.service_connection.includePolicyTags,
             )
         return None
 
