@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "Seleccione o ingrese el código de color HEX.",
     "hex-color-validation": "La entrada no es un código HEX válido.",
     "hi-user-welcome-to": "Hola {{user}}, Bienvenido a",
+    "icon-aspect-ratio": "La relación de aspecto del icono debe ser 1:1 y el tamaño recomendado debe ser 64 x 64 px",
     "image-upload-error": "Subida de imágenes no soportada. Por favor use sintáxis Markdown para imágenes disponibles via URL.",
     "import-data-in-progress": "La importación está en progreso.",
     "import-entity-help": "Ahorre tiempo y esfuerzo cargando un archivo CSV con varios {{entity}} de una vez.",

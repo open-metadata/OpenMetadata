@@ -406,6 +406,7 @@ export const getField = (field: FieldProp) => {
           <MUIIconPicker
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
+            toolTip={helperText}
           />
         </Form.Item>
       );

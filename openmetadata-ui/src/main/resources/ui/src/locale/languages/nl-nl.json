@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "Selecteer of voer de HEX-kleurcode in.",
     "hex-color-validation": "Invoer is geen geldige HEX-code.",
     "hi-user-welcome-to": "Hoi {{user}}, welkom bij",
+    "icon-aspect-ratio": "De beeldverhouding van het pictogram moet 1:1 zijn en de aanbevolen grootte moet 64 x 64 px zijn",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
     "import-data-in-progress": "Import is bezig.",
     "import-entity-help": "Bespaar tijd en moeite door een CSV-bestand te uploaden met verschillende {{entity}} in één keer.",

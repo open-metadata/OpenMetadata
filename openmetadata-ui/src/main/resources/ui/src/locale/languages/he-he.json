@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "בחר או הזן קוד צבע HEX.",
     "hex-color-validation": "הקלט אינו קוד HEX תקין.",
     "hi-user-welcome-to": "שלום {{user}}, ברוך הבא אל",
+    "icon-aspect-ratio": "יחס הגובה-רוחב של האייקון צריך להיות 1:1 והגודל המומלץ צריך להיות 64 x 64 פיקסלים",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
     "import-data-in-progress": "ייבוא בתהליך.",
     "import-entity-help": "חסוך זמן ומאמץ על ידי העלאת קובץ CSV עם מספר {{entity}} בפעם אחת.",

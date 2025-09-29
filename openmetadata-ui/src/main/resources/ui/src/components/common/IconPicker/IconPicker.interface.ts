@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
+import { FC, ReactNode } from 'react';
 
 export interface IconDefinition {
   name: string;
@@ -36,4 +36,5 @@ export interface MUIIconPickerProps {
   helperText?: string;
   allowUrl?: boolean;
   backgroundColor?: string;
+  toolTip?: ReactNode;
 }

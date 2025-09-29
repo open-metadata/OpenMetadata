@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "Select or enter HEX color code.",
     "hex-color-validation": "Input is not valid HEX code.",
     "hi-user-welcome-to": "Hi {{user}}, Welcome to",
+    "icon-aspect-ratio": "Icon aspect ratio should be 1:1 and recommended size should be 64 x 64 px",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
     "import-data-in-progress": "Import is in progress.",
     "import-entity-help": "Save time & effort by uploading a CSV file with several {{entity}} in one go.",
