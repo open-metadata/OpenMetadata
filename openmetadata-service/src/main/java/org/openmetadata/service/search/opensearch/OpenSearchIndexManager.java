@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.stream.JsonParser;
+import java.io.IOException;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -18,6 +19,8 @@ import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexResponse;
 import os.org.opensearch.client.opensearch.indices.ExistsRequest;
+import os.org.opensearch.client.opensearch.indices.GetAliasRequest;
+import os.org.opensearch.client.opensearch.indices.GetAliasResponse;
 import os.org.opensearch.client.opensearch.indices.IndexSettings;
 import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.UpdateAliasesRequest;
@@ -62,60 +65,12 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       LOG.error("OpenSearch client is not available. Cannot create index.");
       return;
     }
-
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
-
-      if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
-        // Parse the mapping content
-        JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
-        JsonNode mappingsNode = rootNode.get("mappings");
-        JsonNode settingsNode = rootNode.get("settings");
-
-        // Build the request with mappings and settings
-        CreateIndexRequest createIndexRequest =
-            CreateIndexRequest.of(
-                builder -> {
-                  builder.index(indexName);
-
-                  // Add mappings if present
-                  if (mappingsNode != null && !mappingsNode.isNull()) {
-                    try {
-                      // Parse the mappings JSON into TypeMapping
-                      TypeMapping parseTypeMapping = parseTypeMapping(mappingsNode);
-                      builder.mappings(parseTypeMapping);
-                    } catch (Exception e) {
-                      LOG.warn("Failed to parse mappings, creating index without mappings", e);
-                    }
-                  }
-
-                  // Add settings if present
-                  if (settingsNode != null && !settingsNode.isNull()) {
-                    try {
-                      IndexSettings settings = parseIndexSettings(settingsNode);
-                      builder.settings(settings);
-                    } catch (Exception e) {
-                      LOG.warn("Failed to parse settings, creating index without settings", e);
-                    }
-                  }
-
-                  return builder;
-                });
-
-        CreateIndexResponse createIndexResponse = client.indices().create(createIndexRequest);
-        LOG.info("{} Created {}", indexName, createIndexResponse.acknowledged());
-      } else {
-        // Create index without mappings
-        CreateIndexRequest request = CreateIndexRequest.of(builder -> builder.index(indexName));
-        CreateIndexResponse createIndexResponse = client.indices().create(request);
-        LOG.info("{} Created without mappings {}", indexName, createIndexResponse.acknowledged());
-      }
-
-      // creating alias for indexes
+      createIndexInternal(indexName, indexMappingContent);
       createAliases(indexMapping);
     } catch (Exception e) {
-      LOG.error(
-          "Failed to create OpenSearch index [{}]", indexMapping.getIndexName(clusterAlias), e);
+      LOG.error("Failed to create index {} due to", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 
@@ -159,20 +114,8 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
-    if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot delete index.");
-      return;
-    }
-    try {
-      String indexName = indexMapping.getIndexName(clusterAlias);
-      os.org.opensearch.client.opensearch.indices.DeleteIndexRequest request =
-          DeleteIndexRequest.of(b -> b.index(indexName));
-      DeleteIndexResponse response = client.indices().delete(request);
-      LOG.info("{} Deleted: {}", indexName, response.acknowledged());
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to delete OpenSearch index: {}", indexMapping.getIndexName(clusterAlias), e);
-    }
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    deleteIndexInternal(indexName);
   }
 
   @Override
@@ -191,37 +134,9 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
-    if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot add index alias.");
-      return;
-    }
-    try {
-      String indexName = indexMapping.getIndexName(clusterAlias);
-
-      // Build the UpdateAliasesRequest
-      UpdateAliasesRequest request =
-          UpdateAliasesRequest.of(
-              updateBuilder -> {
-                for (String alias : aliasNames) {
-                  updateBuilder.actions(
-                      actionBuilder ->
-                          actionBuilder.add(
-                              addBuilder -> addBuilder.index(indexName).alias(alias)));
-                }
-                return updateBuilder;
-              });
-
-      UpdateAliasesResponse response = client.indices().updateAliases(request);
-
-      if (response.acknowledged()) {
-        LOG.info("Aliases {} added to index {}", Arrays.toString(aliasNames), indexName);
-      } else {
-        LOG.warn("Alias update for index {} was not acknowledged", indexName);
-      }
-
-    } catch (Exception e) {
-      LOG.error("Failed to create alias for {} due to", indexMapping.getAlias(clusterAlias), e);
-    }
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    Set<String> aliasSet = new HashSet<>(Arrays.asList(aliasNames));
+    addAliasesInternal(indexName, aliasSet);
   }
 
   private TypeMapping parseTypeMapping(JsonNode mappingsNode) {
@@ -292,5 +207,210 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       LOG.warn("Failed to transform stemmer settings for OpenSearch, using original settings", e);
       return settingsNode;
     }
+  }
+
+  @Override
+  public void createIndex(String indexName, String indexMappingContent) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot create index.");
+      return;
+    }
+    try {
+      createIndexInternal(indexName, indexMappingContent);
+    } catch (Exception e) {
+      LOG.error("Failed to create index {} due to", indexName, e);
+    }
+  }
+
+  private void createIndexInternal(String indexName, String indexMappingContent)
+      throws IOException {
+    if (indexMappingContent != null && !indexMappingContent.isEmpty()) {
+      // Parse the mapping content
+      JsonNode rootNode = JsonUtils.readTree(indexMappingContent);
+      JsonNode mappingsNode = rootNode.get("mappings");
+      JsonNode settingsNode = rootNode.get("settings");
+
+      // Build the request with mappings and settings
+      CreateIndexRequest createIndexRequest =
+          CreateIndexRequest.of(
+              builder -> {
+                builder.index(indexName);
+
+                // Add mappings if present
+                if (mappingsNode != null && !mappingsNode.isNull()) {
+                  try {
+                    // Parse the mappings JSON into TypeMapping
+                    TypeMapping parseTypeMapping = parseTypeMapping(mappingsNode);
+                    builder.mappings(parseTypeMapping);
+                  } catch (Exception e) {
+                    LOG.warn("Failed to parse mappings, creating index without mappings", e);
+                  }
+                }
+
+                // Add settings if present
+                if (settingsNode != null && !settingsNode.isNull()) {
+                  try {
+                    IndexSettings settings = parseIndexSettings(settingsNode);
+                    builder.settings(settings);
+                  } catch (Exception e) {
+                    LOG.warn("Failed to parse settings, creating index without settings", e);
+                  }
+                }
+
+                return builder;
+              });
+
+      CreateIndexResponse response = client.indices().create(createIndexRequest);
+
+      LOG.info("{} Created {}", indexName, response.acknowledged());
+    } else {
+      // Create index without mappings
+      CreateIndexRequest createIndexRequest =
+          CreateIndexRequest.of(builder -> builder.index(indexName));
+      CreateIndexResponse response = client.indices().create(createIndexRequest);
+
+      LOG.info("{} Created without mappings {}", indexName, response.acknowledged());
+    }
+  }
+
+  @Override
+  public void deleteIndex(String indexName) {
+    deleteIndexInternal(indexName);
+  }
+
+  private void deleteIndexInternal(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot delete index.");
+      return;
+    }
+    try {
+      DeleteIndexRequest request = DeleteIndexRequest.of(builder -> builder.index(indexName));
+      DeleteIndexResponse response = client.indices().delete(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Successfully deleted index: {}", indexName);
+      } else {
+        LOG.warn("Index deletion for {} was not acknowledged", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete index {} due to", indexName, e);
+    }
+  }
+
+  @Override
+  public void addAliases(String indexName, Set<String> aliases) {
+    addAliasesInternal(indexName, aliases);
+  }
+
+  private void addAliasesInternal(String indexName, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot add aliases.");
+      return;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      return;
+    }
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              updateBuilder -> {
+                for (String alias : aliases) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.add(
+                              addBuilder -> addBuilder.index(indexName).alias(alias)));
+                }
+                return updateBuilder;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Aliases {} added to index {}", aliases, indexName);
+      } else {
+        LOG.warn("Alias update for index {} was not acknowledged", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to add aliases {} to index {} due to", aliases, indexName, e);
+    }
+  }
+
+  @Override
+  public void removeAliases(String indexName, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot remove aliases.");
+      return;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      return;
+    }
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              updateBuilder -> {
+                for (String alias : aliases) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.remove(
+                              removeBuilder -> removeBuilder.index(indexName).alias(alias)));
+                }
+                return updateBuilder;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Aliases {} removed from index {}", aliases, indexName);
+      } else {
+        LOG.warn("Alias removal for index {} was not acknowledged", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to remove aliases {} from index {} due to", aliases, indexName, e);
+    }
+  }
+
+  @Override
+  public Set<String> getAliases(String indexName) {
+    Set<String> aliases = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot get aliases.");
+      return aliases;
+    }
+    try {
+      GetAliasRequest request = GetAliasRequest.of(g -> g.index(indexName));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      response
+          .result()
+          .forEach(
+              (index, aliasMetadata) -> {
+                aliases.addAll(aliasMetadata.aliases().keySet());
+              });
+
+      LOG.info("Retrieved aliases for index {}: {}", indexName, aliases);
+    } catch (Exception e) {
+      LOG.error("Failed to get aliases for index {} due to", indexName, e);
+    }
+    return aliases;
+  }
+
+  @Override
+  public Set<String> getIndicesByAlias(String aliasName) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot get indices by alias.");
+      return indices;
+    }
+    try {
+      GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      indices.addAll(response.result().keySet());
+
+      LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
+    } catch (Exception e) {
+      LOG.error("Failed to get indices for alias {} due to", aliasName, e);
+    }
+    return indices;
   }
 }

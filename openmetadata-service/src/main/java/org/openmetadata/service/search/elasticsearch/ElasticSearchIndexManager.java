@@ -6,10 +6,13 @@ import es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest;
 import es.co.elastic.clients.elasticsearch.indices.DeleteIndexResponse;
 import es.co.elastic.clients.elasticsearch.indices.ElasticsearchIndicesClient;
 import es.co.elastic.clients.elasticsearch.indices.ExistsRequest;
+import es.co.elastic.clients.elasticsearch.indices.GetAliasRequest;
+import es.co.elastic.clients.elasticsearch.indices.GetAliasResponse;
 import es.co.elastic.clients.elasticsearch.indices.PutMappingRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesRequest;
 import es.co.elastic.clients.elasticsearch.indices.UpdateAliasesResponse;
 import es.co.elastic.clients.transport.endpoints.BooleanResponse;
+import java.io.IOException;
 import java.io.StringReader;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -60,24 +63,10 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
     }
     try {
       String indexName = indexMapping.getIndexName(clusterAlias);
-
-      CreateIndexRequest request =
-          CreateIndexRequest.of(
-              builder -> {
-                builder.index(indexName);
-                if (indexMappingContent != null) {
-                  builder.withJson(new StringReader(indexMappingContent));
-                }
-                return builder;
-              });
-
-      client.indices().create(request);
-
-      LOG.info("Successfully created index: {}", indexName);
+      createIndexInternal(indexName, indexMappingContent);
       createAliases(indexMapping);
-
     } catch (Exception e) {
-      LOG.error("Failed to create index for {} due to", indexMapping.getIndexName(clusterAlias), e);
+      LOG.error("Failed to create index {} due to", indexMapping.getIndexName(clusterAlias), e);
     }
   }
 
@@ -113,22 +102,8 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
-    if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot delete index.");
-      return;
-    }
-    try {
-      String indexName = indexMapping.getIndexName(clusterAlias);
-
-      es.co.elastic.clients.elasticsearch.indices.DeleteIndexRequest request =
-          DeleteIndexRequest.of(b -> b.index(indexName));
-      DeleteIndexResponse response = client.indices().delete(request);
-
-      LOG.info("{} Deleted: {}", indexName, response.acknowledged());
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to delete Elasticsearch index: {}", indexMapping.getIndexName(clusterAlias), e);
-    }
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    deleteIndexInternal(indexName);
   }
 
   @Override
@@ -144,18 +119,82 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
 
   @Override
   public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    Set<String> aliasSet = new HashSet<>(Arrays.asList(aliasNames));
+    addAliasesInternal(indexName, aliasSet);
+  }
+
+  @Override
+  public void createIndex(String indexName, String indexMappingContent) {
     if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot add index alias.");
+      LOG.error("ElasticSearch client is not available. Cannot create index.");
       return;
     }
     try {
-      String indexName = indexMapping.getIndexName(clusterAlias);
+      createIndexInternal(indexName, indexMappingContent);
+    } catch (Exception e) {
+      LOG.error("Failed to create index {} due to", indexName, e);
+    }
+  }
 
-      // Build the request
+  private void createIndexInternal(String indexName, String indexMappingContent)
+      throws IOException {
+    CreateIndexRequest request =
+        CreateIndexRequest.of(
+            builder -> {
+              builder.index(indexName);
+              if (indexMappingContent != null) {
+                builder.withJson(new StringReader(indexMappingContent));
+              }
+              return builder;
+            });
+
+    client.indices().create(request);
+    LOG.info("Successfully created index: {}", indexName);
+  }
+
+  @Override
+  public void deleteIndex(String indexName) {
+    deleteIndexInternal(indexName);
+  }
+
+  private void deleteIndexInternal(String indexName) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot delete index.");
+      return;
+    }
+    try {
+      DeleteIndexRequest request = DeleteIndexRequest.of(builder -> builder.index(indexName));
+      DeleteIndexResponse response = client.indices().delete(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Successfully deleted index: {}", indexName);
+      } else {
+        LOG.warn("Index deletion for {} was not acknowledged", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete index {} due to", indexName, e);
+    }
+  }
+
+  @Override
+  public void addAliases(String indexName, Set<String> aliases) {
+    addAliasesInternal(indexName, aliases);
+  }
+
+  private void addAliasesInternal(String indexName, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot add aliases.");
+      return;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      return;
+    }
+    try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
               u -> {
-                for (String alias : aliasNames) {
+                for (String alias : aliases) {
                   u.actions(a -> a.add(add -> add.index(indexName).alias(alias)));
                 }
                 return u;
@@ -164,13 +203,88 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       UpdateAliasesResponse response = client.indices().updateAliases(request);
 
       if (response.acknowledged()) {
-        LOG.info("Aliases {} added to index {}", Arrays.toString(aliasNames), indexName);
+        LOG.info("Aliases {} added to index {}", aliases, indexName);
       } else {
         LOG.warn("Alias update for index {} was not acknowledged", indexName);
       }
-
     } catch (Exception e) {
-      LOG.error("Failed to create alias for {} due to", indexMapping.getAlias(clusterAlias), e);
+      LOG.error("Failed to add aliases {} to index {} due to", aliases, indexName, e);
     }
+  }
+
+  @Override
+  public void removeAliases(String indexName, Set<String> aliases) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot remove aliases.");
+      return;
+    }
+    if (aliases == null || aliases.isEmpty()) {
+      return;
+    }
+    try {
+      UpdateAliasesRequest request =
+          UpdateAliasesRequest.of(
+              u -> {
+                for (String alias : aliases) {
+                  u.actions(a -> a.remove(remove -> remove.index(indexName).alias(alias)));
+                }
+                return u;
+              });
+
+      UpdateAliasesResponse response = client.indices().updateAliases(request);
+
+      if (response.acknowledged()) {
+        LOG.info("Aliases {} removed from index {}", aliases, indexName);
+      } else {
+        LOG.warn("Alias removal for index {} was not acknowledged", indexName);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to remove aliases {} from index {} due to", aliases, indexName, e);
+    }
+  }
+
+  @Override
+  public Set<String> getAliases(String indexName) {
+    Set<String> aliases = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot get aliases.");
+      return aliases;
+    }
+    try {
+      GetAliasRequest request = GetAliasRequest.of(g -> g.index(indexName));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      response
+          .result()
+          .forEach(
+              (index, aliasDetails) -> {
+                aliases.addAll(aliasDetails.aliases().keySet());
+              });
+
+      LOG.info("Retrieved aliases for index {}: {}", indexName, aliases);
+    } catch (Exception e) {
+      LOG.error("Failed to get aliases for index {} due to", indexName, e);
+    }
+    return aliases;
+  }
+
+  @Override
+  public Set<String> getIndicesByAlias(String aliasName) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot get indices by alias.");
+      return indices;
+    }
+    try {
+      GetAliasRequest request = GetAliasRequest.of(g -> g.name(aliasName));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      indices.addAll(response.result().keySet());
+
+      LOG.info("Retrieved indices for alias {}: {}", aliasName, indices);
+    } catch (Exception e) {
+      LOG.error("Failed to get indices for alias {} due to", aliasName, e);
+    }
+    return indices;
   }
 }

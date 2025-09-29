@@ -386,18 +386,6 @@ public interface SearchClient<T> extends IndexManagementClient {
 
   ElasticSearchConfiguration.SearchType getSearchType();
 
-  void createIndex(String indexName, String indexMappingContent);
-
-  void deleteIndex(String indexName);
-
-  Set<String> getAliases(String indexName);
-
-  void addAliases(String indexName, Set<String> aliases);
-
-  void removeAliases(String indexName, Set<String> aliases);
-
-  Set<String> getIndicesByAlias(String aliasName);
-
   Response previewSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
       throws IOException;

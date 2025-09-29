@@ -30,7 +30,6 @@ import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditi
 import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -62,7 +61,6 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -138,8 +136,6 @@ import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
-import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
-import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
@@ -156,7 +152,6 @@ import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
-import os.org.opensearch.client.indices.CreateIndexRequest;
 import os.org.opensearch.client.indices.DataStream;
 import os.org.opensearch.client.indices.DeleteDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamRequest;
@@ -329,125 +324,32 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void createIndex(String indexName, String indexMappingContent) {
-    if (!Boolean.TRUE.equals(isClientAvailable)) {
-      LOG.error(
-          "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
-      return;
-    }
-    try {
-      CreateIndexRequest request = new CreateIndexRequest(indexName);
-      request.source(indexMappingContent, XContentType.JSON);
-      client.indices().create(request, RequestOptions.DEFAULT);
-      LOG.debug("Created staged index {}", indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to create staged index %s due to", indexName), e);
-    }
+    indexManager.createIndex(indexName, indexMappingContent);
   }
 
   @Override
   public void deleteIndex(String indexName) {
-    if (!Boolean.TRUE.equals(isClientAvailable)) {
-      return;
-    }
-    try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexName);
-      client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug("Deleted index {}", indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to delete index %s due to", indexName), e);
-    }
+    indexManager.deleteIndex(indexName);
   }
 
   @Override
   public Set<String> getAliases(String indexName) {
-    Set<String> aliases = new HashSet<>();
-    if (!Boolean.TRUE.equals(isClientAvailable)) {
-      return aliases;
-    }
-    try {
-      Request request = new Request("GET", String.format("/%s/_alias", indexName));
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
-      JsonNode root = JsonUtils.readTree(responseBody);
-      JsonNode indexNode = root.get(indexName);
-      if (indexNode != null && indexNode.has("aliases")) {
-        JsonNode aliasesNode = indexNode.get("aliases");
-        aliasesNode.fieldNames().forEachRemaining(aliases::add);
-      }
-    } catch (Exception e) {
-      LOG.warn(String.format("Failed to retrieve aliases for index %s", indexName), e);
-    }
-    return aliases;
+    return indexManager.getAliases(indexName);
   }
 
   @Override
   public void addAliases(String indexName, Set<String> aliases) {
-    if (!Boolean.TRUE.equals(isClientAvailable) || nullOrEmpty(aliases)) {
-      return;
-    }
-    try {
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      for (String alias : aliases) {
-        aliasesRequest.addAliasAction(
-            IndicesAliasesRequest.AliasActions.add().index(indexName).alias(alias));
-      }
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-      LOG.debug("Added aliases {} to index {}", aliases, indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to add aliases %s to index %s", aliases, indexName), e);
-    }
+    indexManager.addAliases(indexName, aliases);
   }
 
   @Override
   public void removeAliases(String indexName, Set<String> aliases) {
-    if (!Boolean.TRUE.equals(isClientAvailable) || nullOrEmpty(aliases)) {
-      return;
-    }
-    try {
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      for (String alias : aliases) {
-        aliasesRequest.addAliasAction(
-            IndicesAliasesRequest.AliasActions.remove().index(indexName).alias(alias));
-      }
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-      LOG.debug("Removed aliases {} from index {}", aliases, indexName);
-    } catch (Exception e) {
-      if (e instanceof ResponseException responseException
-          && responseException.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.debug(
-            "Aliases {} not present on index {} while attempting removal (ignored).",
-            aliases,
-            indexName);
-        return;
-      }
-      LOG.error(String.format("Failed to remove aliases %s from index %s", aliases, indexName), e);
-    }
+    indexManager.removeAliases(indexName, aliases);
   }
 
   @Override
   public Set<String> getIndicesByAlias(String aliasName) {
-    Set<String> indices = new HashSet<>();
-    if (!Boolean.TRUE.equals(isClientAvailable) || aliasName == null || aliasName.isBlank()) {
-      return indices;
-    }
-    try {
-      Request request = new Request("GET", String.format("/_alias/%s", aliasName));
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
-      JsonNode root = JsonUtils.readTree(responseBody);
-      root.fieldNames().forEachRemaining(indices::add);
-    } catch (ResponseException ex) {
-      if (ex.getResponse() != null && ex.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.debug("Alias '{}' not found while resolving indices.", aliasName);
-      } else {
-        LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), ex);
-      }
-    } catch (Exception e) {
-      LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), e);
-    }
-    return indices;
+    return indexManager.getIndicesByAlias(aliasName);
   }
 
   @Override
