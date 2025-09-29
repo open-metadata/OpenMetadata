@@ -69,7 +69,7 @@ class UnityCatalogClient(DatabricksClient):
         if auth_args.get("access_token"):
             return {"Authorization": f"Bearer {auth_args['access_token']}"}
 
-        return {"Authorization": auth_args["credentials_provider"]()}
+        return auth_args["credentials_provider"]()()
 
     def get_table_lineage(self, table_name: str) -> LineageTableStreams:
         """
