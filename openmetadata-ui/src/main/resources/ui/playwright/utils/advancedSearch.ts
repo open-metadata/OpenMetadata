@@ -261,7 +261,7 @@ export const fillRule = async (
       const aggregateRes2 = page.waitForResponse(
         `/api/v1/search/aggregate?*${getEncodedFqn(
           escapeESReservedCharacters(searchData)
-        )}`
+        )}*`
       );
 
       await dropdownInput.fill(searchData);

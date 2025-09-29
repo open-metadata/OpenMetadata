@@ -160,10 +160,10 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
           op: 'add',
           path: '/dataProducts/0',
           value: {
-            id: EntityDataClass.dataProduct2.responseData.id,
+            id: EntityDataClass.dataProduct3.responseData.id,
             type: 'dataProduct',
-            name: EntityDataClass.dataProduct2.responseData.name,
-            displayName: EntityDataClass.dataProduct2.responseData.displayName,
+            name: EntityDataClass.dataProduct3.responseData.name,
+            displayName: EntityDataClass.dataProduct3.responseData.displayName,
           },
         },
       ],
@@ -290,7 +290,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
       'dataProducts.displayName.keyword': [
         EntityDataClass.dataProduct1.data.displayName,
-        EntityDataClass.dataProduct2.data.displayName,
+        EntityDataClass.dataProduct3.data.displayName,
       ],
     };
 
