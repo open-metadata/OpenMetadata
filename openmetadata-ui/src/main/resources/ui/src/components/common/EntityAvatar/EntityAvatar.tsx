@@ -13,7 +13,6 @@
 
 import { Avatar, useTheme } from '@mui/material';
 import { FC } from 'react';
-import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import {
   getDefaultIconForEntityType,
   ICON_MAP,
@@ -47,9 +46,6 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
 }) => {
   const theme = useTheme();
   const bgColor = entity.style?.color || theme.palette.allShades.brand[600];
-
-  // Check if it's a sub-domain
-  const isSubDomain = entity.parent?.type === 'domain';
 
   // Check if it's a URL (for Avatar src prop)
   const isUrl =
@@ -100,12 +96,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
   }
 
   // Default icons when no iconURL is provided
-  let DefaultIcon;
-  if (isSubDomain) {
-    DefaultIcon = SubDomainIcon;
-  } else {
-    DefaultIcon = getDefaultIconForEntityType(entity.entityType);
-  }
+  const DefaultIcon = getDefaultIconForEntityType(entity.entityType);
 
   return (
     <Avatar
