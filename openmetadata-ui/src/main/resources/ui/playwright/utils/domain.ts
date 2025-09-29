@@ -213,7 +213,7 @@ export const selectDataProduct = async (
     .getByRole('textbox', { name: 'Search' });
 
   const dpRes = page.waitForResponse(
-    '/api/v1/search/query?q=&index=data_product_search_index*'
+    '/api/v1/search/query?q=*&index=data_product_search_index*'
   );
 
   await searchBox.fill(dataProduct.name);
@@ -376,7 +376,7 @@ export const createSubDomain = async (
 
   await fillDomainForm(page, subDomain, false);
   const saveRes = page.waitForResponse('/api/v1/domains');
-  await page.getByTestId('save-sub-domain').click();
+  await page.getByTestId('save-btn').click();
   await saveRes;
 };
 

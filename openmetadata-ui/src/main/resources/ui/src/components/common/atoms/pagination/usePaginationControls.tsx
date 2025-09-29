@@ -42,6 +42,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
   const paginationControls = useMemo(
     () => (
       <Box
+        data-testid="pagination"
         sx={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -53,6 +54,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
         }}>
         <Button
           color="secondary"
+          data-testid="previous"
           disabled={config.currentPage === 1}
           size="small"
           startIcon={
@@ -77,6 +79,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
 
         <Button
           color="secondary"
+          data-testid="next"
           disabled={config.currentPage === config.totalPages}
           endIcon={
             <ArrowRight

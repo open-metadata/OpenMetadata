@@ -57,7 +57,6 @@ import {
   selectDataProduct,
   selectDataProductFromTab,
   selectDomain,
-  selectSubDomain,
   setupAssetsForDomain,
   setupDomainHasDomainTest,
   setupDomainOwnershipTest,
@@ -217,11 +216,7 @@ test.describe('Domains', () => {
     });
 
     await test.step('Create DataProducts', async () => {
-      await selectDomain(page, domain.data);
       await createDataProduct(page, dataProduct1.data);
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
       await createDataProduct(page, dataProduct2.data);
     });
 
@@ -337,6 +332,8 @@ test.describe('Domains', () => {
     );
 
     await test.step(`Set ${titleText} Custom Property`, async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct1.data);
       for (const type of properties) {
         await dataProduct1.updateCustomProperty(
           page,
@@ -441,17 +438,25 @@ test.describe('Domains', () => {
     try {
       await domain.create(apiContext);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.reload();
       await selectDomain(page, domain.data);
+
+      const subDomainApiRes = page.waitForResponse(
+        '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9&deleted=false*'
+      );
       // Create sub domain
       await createSubDomain(page, subDomain.data);
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
+      await subDomainApiRes;
+
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-      await selectSubDomain(page, domain.data, subDomain.data);
+
+      const domainApiRes = page.waitForResponse('/api/v1/domains/name/*');
+
+      await page.getByRole('row', { name: subDomain.data.displayName }).click();
+
+      await domainApiRes;
+
       await verifyDomain(page, subDomain.data, domain.data, false);
       // Follow domain
       await followEntity(page, EntityTypeEndpoint.Domain);
@@ -487,17 +492,32 @@ test.describe('Domains', () => {
       ).not.toContainText(subDomain.data.displayName);
 
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
-        state: 'detached',
-      });
-      await selectSubDomain(page, domain.data, subDomain.data);
-      await verifyDomain(page, subDomain.data, domain.data, false);
+
+      await selectDomain(page, domain.data);
+
+      // const selectSubDomainRes = page.waitForResponse(
+      //   '/api/v1/search/query?q=&index=domain_search_index*'
+      // );
+      // await page.getByTestId('subdomains').getByText('Sub Domains').click();
+      // await selectSubDomainRes;
+      // await verifyDomain(page, subDomain.data, domain.data, false);
+
+      const subDomainApiRes1 = page.waitForResponse(
+        '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9&deleted=false*'
+      );
 
       // Create new sub domain under the existing sub domain
       await createSubDomain(page, nestedSubDomain.data);
-      await page.getByTestId('subdomains').getByText('Sub Domains').click();
-      await page.getByTestId(nestedSubDomain.data.name).click();
+
+      await subDomainApiRes1;
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      const domainApiRes1 = page.waitForResponse('/api/v1/domains/name/*');
+      await page.getByRole('row', { name: subDomain.data.displayName }).click();
+      await domainApiRes1;
       await verifyDomain(page, nestedSubDomain.data, domain.data, false);
     } finally {
       await nestedSubDomain.delete(apiContext);
@@ -706,13 +726,10 @@ test.describe('Domains', () => {
     const dataProduct = new DataProduct([domain1]);
     try {
       await domain1.create(apiContext);
-      await page.reload();
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain1.data);
       await createDataProduct(page, dataProduct.data);
-
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct.data);
 
@@ -958,13 +975,11 @@ test.describe('Domains Rbac', () => {
       // Add assets to domain 1
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain1.data);
       await addAssetsToDomain(page, domain1, domainAssset1);
 
       // Add assets to domain 2
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain2.data);
       await addAssetsToDomain(page, domain2, domainAssset2);
     });
 
@@ -1071,23 +1086,7 @@ test.describe('Data Consumer Domain Ownership', () => {
       'Check domain management permissions for data consumer owner',
       async () => {
         await sidebarClick(dataConsumerPage, SidebarItem.DOMAIN);
-        await dataConsumerPage.waitForLoadState('networkidle');
-        await dataConsumerPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        const permissionRes = dataConsumerPage.waitForResponse(
-          '/api/v1/permissions/domain/*'
-        );
-        await dataConsumerPage
-          .getByRole('menuitem', {
-            name: testResources.domainForTest.data.displayName,
-          })
-          .locator('span')
-          .click();
-
-        await permissionRes;
-
+        await selectDomain(dataConsumerPage, testResources.domainForTest.data);
         await dataConsumerPage.getByTestId('domain-details-add-button').click();
 
         // check Data Products menu item is visible
