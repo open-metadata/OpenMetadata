@@ -201,6 +201,8 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.resources.teams.RoleResource;
 import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -252,6 +254,8 @@ import software.amazon.awssdk.utils.Either;
 public abstract class EntityRepository<T extends EntityInterface> {
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
+  private static InheritedFieldEntitySearch inheritedFieldEntitySearch;
+
   public static final LoadingCache<Pair<String, String>, EntityInterface> CACHE_WITH_NAME =
       CacheBuilder.newBuilder()
           .maximumSize(20000)
@@ -264,6 +268,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
+  protected static InheritedFieldEntitySearch getInheritedFieldEntitySearch() {
+    if (inheritedFieldEntitySearch == null) {
+      SearchRepository searchRepo = Entity.getSearchRepository();
+      if (searchRepo != null) {
+        inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepo);
+      }
+    }
+    return inheritedFieldEntitySearch;
+  }
+
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;

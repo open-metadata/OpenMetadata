@@ -22,6 +22,7 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -147,7 +151,28 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private List<EntityReference> getAssets(Domain entity) {
-    return findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
+    InheritedFieldEntitySearch inheritedFieldEntitySearch = getInheritedFieldEntitySearch();
+
+    if (inheritedFieldEntitySearch == null) {
+      // Fallback to direct assets when search is unavailable
+      Map<UUID, List<EntityReference>> assets =
+          batchFetchDirectAssets(Collections.singletonList(entity));
+      return assets.getOrDefault(entity.getId(), new ArrayList<>());
+    }
+
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain(entity.getFullyQualifiedName());
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForFieldWithFallback(
+            query,
+            () -> {
+              Map<UUID, List<EntityReference>> assets =
+                  batchFetchDirectAssets(Collections.singletonList(entity));
+              List<EntityReference> domainAssets =
+                  assets.getOrDefault(entity.getId(), new ArrayList<>());
+              return new InheritedFieldResult(
+                  domainAssets, domainAssets.size(), Collections.emptyMap());
+            });
+    return result.getEntities();
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
@@ -348,10 +373,36 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private Map<UUID, List<EntityReference>> batchFetchAssets(List<Domain> domains) {
-    var assetsMap = new HashMap<UUID, List<EntityReference>>();
     if (domains == null || domains.isEmpty()) {
-      return assetsMap;
+      return new HashMap<>();
     }
+
+    InheritedFieldEntitySearch inheritedFieldEntitySearch = getInheritedFieldEntitySearch();
+    if (inheritedFieldEntitySearch != null) {
+      var assetsMap = new HashMap<UUID, List<EntityReference>>();
+      for (Domain domain : domains) {
+        InheritedFieldQuery query = InheritedFieldQuery.forDomain(domain.getFullyQualifiedName());
+        InheritedFieldResult result =
+            inheritedFieldEntitySearch.getEntitiesForFieldWithFallback(
+                query,
+                () -> {
+                  Map<UUID, List<EntityReference>> singleDomainMap =
+                      batchFetchDirectAssets(Collections.singletonList(domain));
+                  List<EntityReference> domainAssets =
+                      singleDomainMap.getOrDefault(domain.getId(), new ArrayList<>());
+                  return new InheritedFieldResult(
+                      domainAssets, domainAssets.size(), Collections.emptyMap());
+                });
+        assetsMap.put(domain.getId(), result.getEntities());
+      }
+      return assetsMap;
+    } else {
+      return batchFetchDirectAssets(domains);
+    }
+  }
+
+  private Map<UUID, List<EntityReference>> batchFetchDirectAssets(List<Domain> domains) {
+    var assetsMap = new HashMap<UUID, List<EntityReference>>();
 
     // Initialize empty lists for all domains
     domains.forEach(domain -> assetsMap.put(domain.getId(), new ArrayList<>()));

@@ -17,6 +17,7 @@ import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDa
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -68,6 +69,8 @@ import org.openmetadata.service.search.RecreateIndexHandler.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -99,6 +102,10 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private static final String DISABLED = "Disabled";
   private static final String RECREATE_INDEX = "recreateIndex";
   private static final String ENTITY_TYPE_KEY = "entityType";
+
+  // Fields excluded during reindexing for each entityType
+  private static final Map<String, Set<String>> REINDEX_EXCLUDED_FIELDS =
+      Map.of(Entity.DOMAIN, Set.of(Entity.FIELD_ASSETS));
 
   // String constants to avoid duplication
   private static final String APP_SCHEDULE_RUN = "AppScheduleRun";
@@ -1378,6 +1385,18 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
       return List.of(); // Empty list for time series
     }
+
+    Set<String> excludedFields = REINDEX_EXCLUDED_FIELDS.get(entityType);
+
+    if (excludedFields != null && !excludedFields.isEmpty()) {
+      // Return all allowed fields minus excluded ones
+      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+      Fields fieldsWithExclusions =
+          EntityUtil.Fields.createWithExcludedFields(
+              repository.getAllowedFieldsCopy(), excludedFields);
+      return new ArrayList<>(fieldsWithExclusions.getFieldList());
+    }
+
     return List.of("*");
   }
 
