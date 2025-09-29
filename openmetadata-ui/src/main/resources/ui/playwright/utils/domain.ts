@@ -137,9 +137,11 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
 
   const domainApiRes = page.waitForResponse('/api/v1/domains/name/*');
 
-  await page.getByRole('row', { name: domain.displayName }).click();
+  await page.locator('td').filter({ hasText: domain.displayName }).click();
 
   await domainApiRes;
+
+  await page.waitForLoadState('networkidle');
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
@@ -226,7 +228,7 @@ export const selectDataProduct = async (
 
   const dpApiRes = page.waitForResponse('/api/v1/dataProducts/name/*');
 
-  await page.getByRole('row', { name: dataProduct.displayName }).click();
+  await page.locator('td').filter({ hasText: dataProduct.displayName }).click();
 
   await dpApiRes;
 
@@ -239,8 +241,8 @@ const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
   await checkDomainDisplayName(page, domain.displayName);
 
-  const assetRes = page.waitForResponse('/api/v1/search/query*');
-  await page.getByRole('tab', { name: /Assets/ }).click();
+  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all*');
+  await page.getByTestId('assets').click();
   await assetRes;
 
   await page.waitForLoadState('networkidle');
