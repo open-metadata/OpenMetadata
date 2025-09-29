@@ -144,6 +144,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
                   alias,
                   target,
                   entityType);
+
+              if (searchClient.indexExists(target)) {
+                searchClient.deleteIndex(target);
+                LOG.debug("Replaced old index '{}' for entity '{}'.", target, entityType);
+              }
             }
           }
 
