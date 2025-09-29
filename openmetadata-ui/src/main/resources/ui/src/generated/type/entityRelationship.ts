@@ -69,6 +69,7 @@ export enum RelationshipType {
     CreatedBy = "createdBy",
     DefaultsTo = "defaultsTo",
     EditedBy = "editedBy",
+    EvaluatedWith = "evaluatedWith",
     Expert = "expert",
     Follows = "follows",
     Has = "has",
@@ -83,10 +84,8 @@ export enum RelationshipType {
     RepliedTo = "repliedTo",
     Reviews = "reviews",
     TestedBy = "testedBy",
-    TestedWith = "testedWith",
     TrainedWith = "trainedWith",
     Upstream = "upstream",
     Uses = "uses",
-    ValidatedWith = "validatedWith",
     Voted = "voted",
 }

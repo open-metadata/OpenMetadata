@@ -54,6 +54,10 @@ export interface Mlmodel {
      */
     entityStatus?: EntityStatus;
     /**
+     * Datasets used to validate/test the model.
+     */
+    evaluationDatasets?: EntityReference[];
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -131,11 +135,7 @@ export interface Mlmodel {
      */
     target?: string;
     /**
-     * Datasets used for final model testing and evaluation.
-     */
-    testDatasets?: EntityReference[];
-    /**
-     * Datasets (tables, files, feature stores) used to train this ML Model.
+     * Datasets used to train the model.
      */
     trainingDatasets?: EntityReference[];
     /**
@@ -151,10 +151,6 @@ export interface Mlmodel {
      * Latest usage information for this ML Model.
      */
     usageSummary?: UsageDetails;
-    /**
-     * Datasets used for model validation during training.
-     */
-    validationDatasets?: EntityReference[];
     /**
      * Metadata version of the entity.
      */
