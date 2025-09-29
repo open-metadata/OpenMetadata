@@ -27,6 +27,7 @@ import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
+import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -79,6 +80,10 @@ import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
 import {
+  showNotistackError,
+  showNotistackSuccess,
+} from '../../../utils/NotistackUtils';
+import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
 } from '../../../utils/PermissionsUtils';
@@ -91,7 +96,6 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
@@ -118,6 +122,7 @@ const DomainDetailsPage = ({
   handleFollowingClick,
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
+  const { enqueueSnackbar } = useSnackbar();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const navigate = useNavigate();
   const { tab: activeTab, version } = useRequiredParams<{
@@ -182,11 +187,13 @@ const DomainDetailsPage = ({
         setAssetCount(totalCount);
       } catch (error) {
         setAssetCount(0);
-        showErrorToast(
+        showNotistackError(
+          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
-          })
+          }),
+          { vertical: 'top', horizontal: 'center' }
         );
       }
     }
@@ -228,7 +235,8 @@ const DomainDetailsPage = ({
               domain.fullyQualifiedName ?? '',
             ];
             await addDataProducts(formData as CreateDataProduct);
-            showSuccessToast(
+            showNotistackSuccess(
+              enqueueSnackbar,
               t('server.create-entity-success', {
                 entity: t('label.data-product'),
               })
@@ -239,7 +247,8 @@ const DomainDetailsPage = ({
             onUpdate?.(domain);
             closeDataProductDrawer();
           } catch (error) {
-            showErrorToast(
+            showNotistackError(
+              enqueueSnackbar,
               getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
                 ? t('server.entity-already-exist', {
                     entity: t('label.data-product'),
@@ -249,7 +258,8 @@ const DomainDetailsPage = ({
                 : (error as AxiosError),
               t('server.add-entity-error', {
                 entity: t('label.data-product').toLowerCase(),
-              })
+              }),
+              { vertical: 'top', horizontal: 'center' }
             );
           } finally {
             setIsDataProductLoading(false);
@@ -333,7 +343,8 @@ const DomainDetailsPage = ({
           try {
             (formData as CreateDomain).parent = domain.fullyQualifiedName;
             await addDomains(formData as CreateDomain);
-            showSuccessToast(
+            showNotistackSuccess(
+              enqueueSnackbar,
               t('server.create-entity-success', {
                 entity: t('label.sub-domain'),
               })
@@ -343,7 +354,8 @@ const DomainDetailsPage = ({
             handleTabChange(EntityTabs.SUBDOMAINS);
             closeSubDomainDrawer();
           } catch (error) {
-            showErrorToast(
+            showNotistackError(
+              enqueueSnackbar,
               getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
                 ? t('server.entity-already-exist', {
                     entity: t('label.sub-domain'),
@@ -353,7 +365,8 @@ const DomainDetailsPage = ({
                 : (error as AxiosError),
               t('server.add-entity-error', {
                 entity: t('label.sub-domain').toLowerCase(),
-              })
+              }),
+              { vertical: 'top', horizontal: 'center' }
             );
           } finally {
             setIsSubDomainLoading(false);
@@ -421,11 +434,13 @@ const DomainDetailsPage = ({
         setSubDomainsCount(totalCount);
       } catch (error) {
         setSubDomainsCount(0);
-        showErrorToast(
+        showNotistackError(
+          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.sub-domain-lowercase'),
-          })
+          }),
+          { vertical: 'top', horizontal: 'center' }
         );
       }
     }
@@ -442,7 +457,8 @@ const DomainDetailsPage = ({
         await addDomains(data as CreateDomain);
         fetchSubDomainsCount();
       } catch (error) {
-        showErrorToast(
+        showNotistackError(
+          enqueueSnackbar,
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
             ? t('server.entity-already-exist', {
                 entity: t('label.sub-domain'),
@@ -452,7 +468,8 @@ const DomainDetailsPage = ({
             : (error as AxiosError),
           t('server.add-entity-error', {
             entity: t('label.sub-domain-lowercase'),
-          })
+          }),
+          { vertical: 'top', horizontal: 'center' }
         );
       } finally {
         closeSubDomainDrawer();
@@ -485,11 +502,13 @@ const DomainDetailsPage = ({
         setDataProductsCount(res.data.hits.total.value ?? 0);
       } catch (error) {
         setDataProductsCount(0);
-        showErrorToast(
+        showNotistackError(
+          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.data-product-lowercase'),
-          })
+          }),
+          { vertical: 'top', horizontal: 'center' }
         );
       }
     }
@@ -503,7 +522,10 @@ const DomainDetailsPage = ({
       );
       setDomainPermission(response);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
+        vertical: 'top',
+        horizontal: 'center',
+      });
     }
   };
 
