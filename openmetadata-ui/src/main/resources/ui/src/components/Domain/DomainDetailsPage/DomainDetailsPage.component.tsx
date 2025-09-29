@@ -32,8 +32,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as DomainIcon } from '../../../assets/svg/ic-domain.svg';
-import { ReactComponent as SubDomainIcon } from '../../../assets/svg/ic-subdomain.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
@@ -43,7 +41,7 @@ import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/As
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
-import { DE_ACTIVE_COLOR, ERROR_MESSAGE } from '../../../constants/constants';
+import { ERROR_MESSAGE } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -97,6 +95,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
@@ -681,36 +680,14 @@ const DomainDetailsPage = ({
   }, [domainFqn, fetchSubDomainsCount]);
 
   const iconData = useMemo(() => {
-    if (domain.style?.iconURL) {
-      return (
-        <img
-          alt="domain-icon"
-          className="align-middle"
-          data-testid="icon"
-          height={36}
-          src={domain.style.iconURL}
-          width={32}
-        />
-      );
-    } else if (isSubDomain) {
-      return (
-        <SubDomainIcon
-          className="align-middle"
-          color={DE_ACTIVE_COLOR}
-          height={36}
-          name="folder"
-          width={32}
-        />
-      );
-    }
-
     return (
-      <DomainIcon
-        className="align-middle"
-        color={DE_ACTIVE_COLOR}
-        height={36}
-        name="folder"
-        width={32}
+      <EntityAvatar
+        entity={{
+          ...domain,
+          entityType: 'domain',
+          parent: isSubDomain ? { type: 'domain' } : undefined,
+        }}
+        size={36}
       />
     );
   }, [domain, isSubDomain]);
