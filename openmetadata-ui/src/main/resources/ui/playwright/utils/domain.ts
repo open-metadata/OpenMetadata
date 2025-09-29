@@ -36,7 +36,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addOwner, waitForAllLoadersToDisappear } from './entity';
+import { addOwner } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
@@ -206,22 +206,45 @@ export const selectDataProductFromTab = async (
 
 export const selectDataProduct = async (
   page: Page,
-  domain: Domain['data'],
   dataProduct: DataProduct['data']
 ) => {
-  await page
-    .getByRole('menuitem', { name: domain.displayName })
-    .locator('span')
-    .click();
+  const searchBox = page
+    .getByTestId('page-layout-v1')
+    .getByRole('textbox', { name: 'Search' });
 
-  await selectDataProductFromTab(page, dataProduct);
+  const dpRes = page.waitForResponse(
+    '/api/v1/search/query?q=&index=data_product_search_index*'
+  );
+
+  await searchBox.fill(dataProduct.name);
+
+  await dpRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  const dpApiRes = page.waitForResponse('/api/v1/dataProducts/name/*');
+
+  await page.getByRole('row', { name: dataProduct.displayName }).click();
+
+  await dpApiRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
 
 const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await selectDomain(page, domain);
   await checkDomainDisplayName(page, domain.displayName);
+
+  const assetRes = page.waitForResponse('/api/v1/search/query*');
   await page.getByRole('tab', { name: /Assets/ }).click();
-  await waitForAllLoadersToDisappear(page);
+  await assetRes;
+
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 };
 
 const fillCommonFormItems = async (
@@ -579,7 +602,7 @@ export const createDataProduct = async (
 
   await fillCommonFormItems(page, dataProduct);
   const saveRes = page.waitForResponse('/api/v1/dataProducts');
-  await page.getByTestId('save-data-product').click();
+  await page.getByTestId('save-btn').click();
   await saveRes;
 };
 
@@ -604,12 +627,14 @@ export const verifyDataProductAssetsAfterDelete = async (
 
   await test.step('Add assets to DataProduct Sales', async () => {
     await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.DOMAIN);
+
     if (subDomain) {
+      await sidebarClick(page, SidebarItem.DOMAIN);
       await selectSubDomain(page, domain.data, subDomain.data);
       await selectDataProductFromTab(page, dataProduct1.data);
     } else {
-      await selectDataProduct(page, domain.data, dataProduct1.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct1.data);
     }
     await addAssetsToDataProduct(
       page,
@@ -620,12 +645,14 @@ export const verifyDataProductAssetsAfterDelete = async (
 
   await test.step('Add assets to DataProduct Finance', async () => {
     await redirectToHomePage(page);
-    await sidebarClick(page, SidebarItem.DOMAIN);
+
     if (subDomain) {
+      await sidebarClick(page, SidebarItem.DOMAIN);
       await selectSubDomain(page, domain.data, subDomain.data);
       await selectDataProductFromTab(page, dataProduct2.data);
     } else {
-      await selectDataProduct(page, domain.data, dataProduct2.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct2.data);
     }
     await addAssetsToDataProduct(
       page,
@@ -657,12 +684,14 @@ export const verifyDataProductAssetsAfterDelete = async (
     'Verify assets are not present in the newly created data product',
     async () => {
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
+
       if (subDomain) {
+        await sidebarClick(page, SidebarItem.DOMAIN);
         await selectSubDomain(page, domain.data, subDomain.data);
         await selectDataProductFromTab(page, newDataProduct1.data);
       } else {
-        await selectDataProduct(page, domain.data, newDataProduct1.data);
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, newDataProduct1.data);
       }
       await checkAssetsCount(page, 0);
     }

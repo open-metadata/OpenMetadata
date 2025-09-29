@@ -49,6 +49,7 @@
   overflow: hidden;
 
   .ant-select-selection-overflow {
+    padding-left: 2px !important;
     padding-right: @size-md;
     gap: @size-xxs;
     padding-bottom: 0;
@@ -60,9 +61,9 @@
     gap: @size-xxs;
     background: @blue-29;
     border: 1px solid @blue-30;
-    border-radius: @border-rad-xs;
+    border-radius: 6px;
     margin: 0;
-    min-height: @size-xl;
+    min-height: @size-lg;
     height: auto;
     color: @grey-900;
     font-size: @size-sm;
@@ -246,6 +247,49 @@
         box-shadow: @box-shadow-ant-select !important;
         outline: none !important;
       }
+    }
+  }
+}
+
+// Error state styling - should override all other states
+.sso-array-field.has-error {
+  // Error styling for input fields
+  input[type='text'],
+  input[type='email'],
+  input[type='url'],
+  input[type='number'],
+  .ant-input,
+  .form-control {
+    border-color: @red-23 !important;
+
+    &:focus,
+    &:focus-visible,
+    &:focus-within,
+    &:active {
+      border-color: @red-23 !important;
+      box-shadow: none !important;
+      outline: none !important;
+    }
+  }
+
+  // Error styling for select fields
+  .ant-select-status-error {
+    .ant-select-selector {
+      border-color: @red-23 !important;
+
+      &:hover {
+        border-color: @red-23 !important;
+      }
+    }
+
+    &.ant-select-focused .ant-select-selector,
+    &.ant-select-open .ant-select-selector,
+    .ant-select-selector:focus,
+    .ant-select-selector:focus-within,
+    .ant-select-selector:active {
+      border-color: @red-23 !important;
+      outline: none !important;
+      box-shadow: none !important;
     }
   }
 }

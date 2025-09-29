@@ -131,6 +131,7 @@ export const getField = (field: FieldProp) => {
       label={label}
       placement={props?.tooltipPlacement as MUITooltipProps['placement']}
       showHelperText={showHelperText}
+      slotProps={props?.slotProps as Partial<MUITooltipProps>}
     />
   );
 

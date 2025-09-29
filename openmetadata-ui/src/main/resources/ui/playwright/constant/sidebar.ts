@@ -21,7 +21,7 @@ export enum SidebarItem {
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
   DOMAINS = 'domains-section',
-  DATA_PRODUCTS = 'data-products',
+  DATA_PRODUCT = 'data-product',
   TAGS = 'tags',
   INSIGHTS = 'data-insight',
   SETTINGS = 'settings',
@@ -47,6 +47,7 @@ export const SIDEBAR_LIST_ITEMS = {
   [SidebarItem.TAGS]: [SidebarItem.GOVERNANCE, SidebarItem.TAGS],
   [SidebarItem.METRICS]: [SidebarItem.GOVERNANCE, SidebarItem.METRICS],
   [SidebarItem.DOMAIN]: [SidebarItem.DOMAINS, SidebarItem.DOMAIN],
+  [SidebarItem.DATA_PRODUCT]: [SidebarItem.DOMAINS, SidebarItem.DATA_PRODUCT],
 
   // Profile Dropdown
   'user-name': ['dropdown-profile', 'user-name'],
