@@ -48,6 +48,9 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     props.idSchema.$id.includes('Url') ||
     props.uiSchema?.['ui:validateUrl'] === true;
 
+  // Check if this is the OIDC scope field that needs array UI with string backend
+  const isScopeField = props.idSchema.$id.includes('scope');
+
   const isFilterPatternField = (id: string) => {
     return /FilterPattern/.test(id);
   };
@@ -87,7 +90,19 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   };
 
   const id = props.idSchema.$id;
-  const value = props.formData ?? [];
+
+  // Handle scope field conversion between string (backend) and array (UI)
+  let value: string[];
+  if (isScopeField) {
+    // Convert string to array for UI display
+    value =
+      typeof props.formData === 'string'
+        ? props.formData.split(' ').filter(Boolean)
+        : props.formData ?? [];
+  } else {
+    value = props.formData ?? [];
+  }
+
   const options = generateOptions();
   const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
 
@@ -119,9 +134,12 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     if (!isEmpty(processedValues)) {
       // Use Set to ensure unique values
       const uniqueValues = Array.from(new Set([...value, ...processedValues]));
-      props.onChange(uniqueValues);
+      const convertedValue = isScopeField
+        ? uniqueValues.join(' ')
+        : uniqueValues;
+      props.onChange(convertedValue);
     }
-  }, [onPasteFromClipBoard, props.onChange, value, isUrlField]);
+  }, [onPasteFromClipBoard, props.onChange, value, isUrlField, isScopeField]);
 
   const handleInputSplit = useCallback(
     (inputValue: string) => {
@@ -132,7 +150,10 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
       // Add the input value (valid or invalid)
       if (isUrlField) {
         const uniqueValues = Array.from(new Set([...value, inputValue]));
-        props.onChange(uniqueValues);
+        const convertedValue = isScopeField
+          ? uniqueValues.join(' ')
+          : uniqueValues;
+        props.onChange(convertedValue);
 
         // No temporary error handling needed - persistent validation handles it
       } else {
@@ -142,10 +163,13 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
         const uniqueValues = Array.from(
           new Set([...value, ...processedValues])
         );
-        props.onChange(uniqueValues);
+        const convertedValue = isScopeField
+          ? uniqueValues.join(' ')
+          : uniqueValues;
+        props.onChange(convertedValue);
       }
     },
-    [value, props.onChange, isUrlField]
+    [value, props.onChange, isUrlField, isScopeField]
   );
 
   return (
@@ -173,9 +197,19 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
           status={hasError ? 'error' : undefined}
           tagRender={SsoCustomTagRenderer}
           value={value}
-          onBlur={() => props.onBlur(id, value)}
-          onChange={(value) => {
-            props.onChange(value);
+          onBlur={() => {
+            const convertedValue = isScopeField ? value.join(' ') : value;
+            props.onBlur(id, convertedValue);
+          }}
+          onChange={(newValue) => {
+            // Handle scope field conversion from array (UI) to string (backend)
+            const convertedValue = isScopeField
+              ? Array.isArray(newValue)
+                ? newValue.join(' ')
+                : newValue
+              : newValue;
+
+            props.onChange(convertedValue);
             // Clear field-specific error when value changes
             if (props.formContext?.clearFieldError) {
               props.formContext.clearFieldError(props.idSchema.$id);
