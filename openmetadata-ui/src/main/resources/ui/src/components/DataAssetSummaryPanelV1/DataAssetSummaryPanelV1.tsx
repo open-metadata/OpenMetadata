@@ -205,12 +205,13 @@ export const DataAssetSummaryPanelV1 = ({
     if (typeof getEntityOverview !== 'function') {
       return [] as any[];
     }
-
-    return getEntityOverview(
-      entityType,
-      dataAsset ?? ({} as any),
-      additionalInfo
-    );
+    if (dataAsset) {
+      return getEntityOverview(
+        entityType,
+        dataAsset ?? ({} as any),
+        additionalInfo
+      );
+    }
   }, [dataAsset, additionalInfo, entityType]);
 
   useMemo(() => {
@@ -354,7 +355,8 @@ export const DataAssetSummaryPanelV1 = ({
       fetchTestCases();
       fetchEntityBasedDetails();
     }
-  }, [entityPermissions, dataAsset.fullyQualifiedName]);
+  }, [entityPermissions, dataAsset?.fullyQualifiedName]);
+
   const commonEntitySummaryInfo = useMemo(() => {
     switch (entityType) {
       case EntityType.API_COLLECTION:
@@ -403,6 +405,27 @@ export const DataAssetSummaryPanelV1 = ({
             )}
             {entityType === EntityType.CHART && (
               <span data-testid="ChartSummary" />
+            )}
+            {entityType === EntityType.DATABASE && (
+              <span data-testid="DatabaseSummary" />
+            )}
+            {entityType === EntityType.DATABASE_SCHEMA && (
+              <span data-testid="DatabaseSchemaSummary" />
+            )}
+            {entityType === EntityType.CONTAINER && (
+              <span data-testid="ContainerSummary" />
+            )}
+            {entityType === EntityType.SEARCH_INDEX && (
+              <span data-testid="SearchIndexSummary" />
+            )}
+            {entityType === EntityType.API_COLLECTION && (
+              <span data-testid="APIServiceSummary" />
+            )}
+            {entityType === EntityType.DIRECTORY && (
+              <span data-testid="DirectorySummary" />
+            )}
+            {entityType === EntityType.DASHBOARD_DATA_MODEL && (
+              <span data-testid="DashboardDataModelSummary" />
             )}
             <DescriptionSection
               description={dataAsset.description}
@@ -553,14 +576,20 @@ export const DataAssetSummaryPanelV1 = ({
         );
       case EntityType.GLOSSARY_TERM:
         return (
-          <GlossaryTermSummary
-            entityDetails={dataAsset as any}
-            isLoading={false}
-          />
+          <>
+            <span data-testid="GlossaryTermSummary" />
+            <GlossaryTermSummary
+              entityDetails={dataAsset as any}
+              isLoading={false}
+            />
+          </>
         );
       case EntityType.TAG:
         return (
-          <TagsSummary entityDetails={dataAsset as any} isLoading={false} />
+          <>
+            <span data-testid="TagSummary" />
+            <TagsSummary entityDetails={dataAsset as any} isLoading={false} />
+          </>
         );
       default:
         return null;
