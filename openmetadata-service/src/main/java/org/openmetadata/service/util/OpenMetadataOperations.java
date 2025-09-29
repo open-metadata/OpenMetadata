@@ -148,7 +148,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -1440,6 +1440,76 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
       LOG.debug("Data Insights index cleanup error details: ", e);
+    }
+  }
+
+  @Command(
+      name = "remove-security-config",
+      description =
+          "Remove security configuration (authentication and authorization) from the database. "
+              + "WARNING: This will delete all authentication and authorization settings!")
+  public Integer removeSecurityConfig(
+      @Option(
+              names = {"--force"},
+              description = "Force removal without confirmation prompt.",
+              defaultValue = "false")
+          boolean force) {
+    try {
+      if (!force) {
+        LOG.warn(
+            "WARNING: This will remove all authentication and authorization configuration from the database!");
+        LOG.warn("This includes authenticationConfiguration and authorizerConfiguration settings.");
+        LOG.info("Use --force to skip this confirmation.");
+
+        Scanner scanner = new Scanner(System.in);
+        LOG.info("Enter 'DELETE' to confirm removal of security configuration: ");
+        String input = scanner.next();
+        if (!input.equals("DELETE")) {
+          LOG.info("Operation cancelled.");
+          return 0;
+        }
+      }
+
+      LOG.info("Removing security configuration from database...");
+      parseConfig();
+
+      SystemRepository systemRepository = Entity.getSystemRepository();
+
+      // Remove authentication configuration
+      try {
+        Settings authenticationSettings =
+            systemRepository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+        if (authenticationSettings != null) {
+          systemRepository.deleteSettings(SettingsType.AUTHENTICATION_CONFIGURATION);
+          LOG.info("Removed authenticationConfiguration from database.");
+        } else {
+          LOG.info("No authenticationConfiguration found in database.");
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to remove authenticationConfiguration: {}", e.getMessage());
+      }
+
+      // Remove authorizer configuration
+      try {
+        Settings authorizerSettings =
+            systemRepository.getConfigWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
+        if (authorizerSettings != null) {
+          systemRepository.deleteSettings(SettingsType.AUTHORIZER_CONFIGURATION);
+          LOG.info("Removed authorizerConfiguration from database.");
+        } else {
+          LOG.info("No authorizerConfiguration found in database.");
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to remove authorizerConfiguration: {}", e.getMessage());
+      }
+
+      LOG.info("Security configuration removal completed.");
+      LOG.info(
+          "Note: You will need to restart the OpenMetadata service for changes to take effect.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to remove security configuration due to ", e);
+      return 1;
     }
   }
 
