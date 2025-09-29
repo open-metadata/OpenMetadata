@@ -50,22 +50,22 @@ CREATE INDEX IF NOT EXISTS idx_notification_template_provider ON notification_te
 
 -- Optimize table listing queries by indexing the schema hash prefix
 ALTER TABLE table_entity
-ADD COLUMN databaseSchemaHash VARCHAR(768)
+ADD COLUMN IF NOT EXISTS databaseSchemaHash VARCHAR(768)
 GENERATED ALWAYS AS (
-    concat_ws('.', split_part(fqnhash, '.', 1), split_part(fqnhash, '.', 2), split_part(fqnhash, '.', 3))
+  array_to_string( (string_to_array(fqnhash, '.'))[1:3], '.' )
 ) STORED;
 
-CREATE INDEX idx_table_entity_schema_listing
+CREATE INDEX IF NOT EXISTS idx_table_entity_schema_listing
 ON table_entity (deleted, databaseSchemaHash, name, id);
 
 -- Optimize stored procedure listing queries by indexing the schema hash prefix
 ALTER TABLE stored_procedure_entity
-ADD COLUMN databaseSchemaHash VARCHAR(768)
+ADD COLUMN IF NOT EXISTS databaseSchemaHash VARCHAR(768)
 GENERATED ALWAYS AS (
-    concat_ws('.', split_part(fqnhash, '.', 1), split_part(fqnhash, '.', 2), split_part(fqnhash, '.', 3))
+  array_to_string( (string_to_array(fqnhash, '.'))[1:3], '.' )
 ) STORED;
 
 DROP INDEX IF EXISTS idx_stored_procedure_entity_deleted_name_id;
 
-CREATE INDEX idx_stored_procedure_schema_listing
+CREATE INDEX IF NOT EXISTS idx_stored_procedure_schema_listing
 ON stored_procedure_entity (deleted, databaseSchemaHash, name, id);
