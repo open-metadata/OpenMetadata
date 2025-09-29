@@ -13,31 +13,30 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from metadata.sdk import OpenMetadata, OpenMetadataConfig
-from metadata.sdk.entities.database_services import DatabaseServices
-from metadata.sdk.entities.databases import Databases
-from metadata.sdk.entities.databaseschemas import DatabaseSchemas
-from metadata.sdk.entities.tables import Tables
-from metadata.sdk.entities.glossaries import Glossaries
-
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
-)
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseServiceType,
-    DatabaseConnection,
-)
-from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-    MysqlConnection,
-)
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
+from metadata.generated.schema.api.services.createDatabaseService import (
+    CreateDatabaseServiceRequest,
+)
 from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.data.table import DataType as ColumnDataType
-
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseConnection,
+    DatabaseServiceType,
+)
+from metadata.generated.schema.type.basic import Markdown
+from metadata.sdk import OpenMetadata, OpenMetadataConfig
+from metadata.sdk.entities.database_services import DatabaseServices
+from metadata.sdk.entities.databases import Databases
+from metadata.sdk.entities.databaseschemas import DatabaseSchemas
+from metadata.sdk.entities.glossaries import Glossaries
+from metadata.sdk.entities.tables import Tables
 
 # ------------------------
 # Example-local builders
@@ -63,9 +62,13 @@ class DatabaseServiceBuilderPy:
         self.type_val = st
         return self
 
-    def mysql_connection(self, host_port: str, username: str, database: Optional[str] = None) -> "DatabaseServiceBuilderPy":
+    def mysql_connection(
+        self, host_port: str, username: str, database: Optional[str] = None
+    ) -> "DatabaseServiceBuilderPy":
         conn = DatabaseConnection(
-            config=MysqlConnection(hostPort=host_port, username=username, databaseName=database)
+            # Many fields in generated models are optional but pyright treats them as required.
+            # Provide minimal args and suppress spurious call-argument noise.
+            config=MysqlConnection(hostPort=host_port, username=username, databaseName=database)  # type: ignore[reportCallIssue]
         )
         self.connection_val = conn
         self.type_val = DatabaseServiceType.Mysql
@@ -76,7 +79,7 @@ class DatabaseServiceBuilderPy:
             raise ValueError("Service name is required")
         if not self.type_val:
             raise ValueError("Service type is required")
-        return CreateDatabaseServiceRequest(
+        return CreateDatabaseServiceRequest(  # type: ignore[reportCallIssue]
             name=self.name_val,
             description=self.description_val,
             serviceType=self.type_val,
@@ -110,7 +113,7 @@ class DatabaseBuilderPy:
             raise ValueError("Database name is required")
         if not self.service_fqn_val:
             raise ValueError("Database service FQN is required")
-        return CreateDatabaseRequest(
+        return CreateDatabaseRequest(  # type: ignore[reportCallIssue]
             name=self.name_val,
             description=self.description_val,
             service=self.service_fqn_val,
@@ -143,7 +146,7 @@ class SchemaBuilderPy:
             raise ValueError("Schema name is required")
         if not self.database_fqn_val:
             raise ValueError("Database FQN is required")
-        return CreateDatabaseSchemaRequest(
+        return CreateDatabaseSchemaRequest(  # type: ignore[reportCallIssue]
             name=self.name_val,
             description=self.description_val,
             database=self.database_fqn_val,
@@ -172,8 +175,10 @@ class TableBuilderPy:
         self.schema_fqn_val = schema_fqn
         return self
 
-    def add_column(self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None) -> "TableBuilderPy":
-        col = Column(name=name, dataType=dtype)
+    def add_column(
+        self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None
+    ) -> "TableBuilderPy":
+        col = Column(name=name, dataType=dtype)  # type: ignore[reportCallIssue]
         if dtype == ColumnDataType.VARCHAR and length:
             # pydantic model uses dataLength for varchar
             col.dataLength = length
@@ -187,7 +192,7 @@ class TableBuilderPy:
             raise ValueError("Schema FQN is required")
         if not self.columns_val:
             raise ValueError("At least one column is required")
-        return CreateTableRequest(
+        return CreateTableRequest(  # type: ignore[reportCallIssue]
             name=self.name_val,
             description=self.description_val,
             databaseSchema=self.schema_fqn_val,
@@ -202,7 +207,7 @@ def main() -> None:
     # 0) Configure SDK client
     config = OpenMetadataConfig(
         server_url="http://localhost:8585",  # Update if needed
-        jwt_token="YOUR_JWT_OR_API_KEY",     # Update before running
+        jwt_token="YOUR_JWT_OR_API_KEY",  # Update before running
         verify_ssl=False,
     )
     OpenMetadata.initialize(config)
@@ -212,10 +217,16 @@ def main() -> None:
         DatabaseServiceBuilderPy()
         .name("mysql_prod")
         .description("Production MySQL")
-        .mysql_connection(host_port="localhost:3306", username="om_user", database="prod")
+        .mysql_connection(
+            host_port="localhost:3306", username="om_user", database="prod"
+        )
         .create()
     )
-    service_fqn = service.fullyQualifiedName or service.name
+    service_fqn = (
+        service.fullyQualifiedName.root
+        if service.fullyQualifiedName
+        else str(service.name.root)
+    )
 
     # 2) Database (builder)
     database = (
@@ -225,7 +236,11 @@ def main() -> None:
         .in_service(service_fqn)
         .create()
     )
-    database_fqn = database.fullyQualifiedName or database.name
+    database_fqn = (
+        database.fullyQualifiedName.root
+        if database.fullyQualifiedName
+        else str(database.name.root)
+    )
 
     # 3) Schema (builder)
     schema = (
@@ -235,7 +250,11 @@ def main() -> None:
         .in_database(database_fqn)
         .create()
     )
-    schema_fqn = schema.fullyQualifiedName or schema.name
+    schema_fqn = (
+        schema.fullyQualifiedName.root
+        if schema.fullyQualifiedName
+        else str(schema.name.root)
+    )
 
     # 4) Table (builder)
     table = (
@@ -248,17 +267,22 @@ def main() -> None:
         .create()
     )
     # 5) Update description (builder-like: reuse entity, call SDK update)
-    table.description = "Updated description: includes PII columns"
+    table.description = Markdown(root="Updated description: includes PII columns")
     table = Tables.update(table)
 
     # Add tag via helper (still chained by intent)
-    table = Tables.add_tag(table.id, "PII.Sensitive")
+    table = Tables.add_tag(table.id.root, "PII.Sensitive")
 
     # 6) Glossary export/import using SDK's CSV operations
     glossary_name = "BusinessGlossary"  # adjust to your glossary
     csv_text = Glossaries.export_csv(glossary_name).execute()
     # dry run
-    _ = Glossaries.import_csv(glossary_name).set_dry_run(True).with_data(csv_text).execute()
+    _ = (
+        Glossaries.import_csv(glossary_name)
+        .set_dry_run(True)
+        .with_data(csv_text)
+        .execute()
+    )
     # apply
     _ = Glossaries.import_csv(glossary_name).with_data(csv_text).execute()
 
@@ -267,4 +291,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
