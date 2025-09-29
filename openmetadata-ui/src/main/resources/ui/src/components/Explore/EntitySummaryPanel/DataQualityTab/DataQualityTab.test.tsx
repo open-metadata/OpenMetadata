@@ -407,17 +407,35 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      // By default, only success test cases are shown
+      // By default, all test cases are shown (filter is 'all')
+      // Look for status badges within test case cards specifically
       const statusBadges = screen.getAllByTestId('status-badge');
 
-      expect(statusBadges).toHaveLength(1);
+      // Filter out status badges from the overview section (which show counts)
+      // and only count those from actual test case cards
+      const testCaseStatusBadges = statusBadges.filter((badge) => {
+        const card = badge.closest('.test-case-card');
+
+        return card !== null;
+      });
+
+      expect(testCaseStatusBadges).toHaveLength(3); // All 3 test cases should be visible
 
       // Click on failed filter to see failed test cases
       const failedButton = screen.getByText('label.failed');
       fireEvent.click(failedButton);
-      const failedStatusBadges = screen.getAllByTestId('status-badge');
 
-      expect(failedStatusBadges).toHaveLength(1);
+      // Wait for the filter to apply
+      await waitFor(() => {
+        const allStatusBadges = screen.getAllByTestId('status-badge');
+        const failedStatusBadges = allStatusBadges.filter((badge) => {
+          const card = badge.closest('.test-case-card');
+
+          return card !== null;
+        });
+
+        expect(failedStatusBadges).toHaveLength(1);
+      });
     });
 
     it('should render column names for test cases', async () => {
@@ -472,10 +490,21 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      // Success is the default filter, so Test Case 1 should already be visible
+      // Default filter is 'all', so all test cases should be visible initially
       expect(screen.getByText('Test Case 1')).toBeInTheDocument();
-      expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
-      expect(screen.queryByText('Test Case 3')).not.toBeInTheDocument();
+      expect(screen.getByText('Test Case 2')).toBeInTheDocument();
+      expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+
+      // Click on success filter to see only success test cases
+      const successButton = screen.getByText('label.success');
+      fireEvent.click(successButton);
+
+      // Wait for the filter to apply and then check results
+      await waitFor(() => {
+        expect(screen.getByText('Test Case 1')).toBeInTheDocument();
+        expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
+        expect(screen.queryByText('Test Case 3')).not.toBeInTheDocument();
+      });
     });
 
     it('should filter test cases by failed status', async () => {
