@@ -30,18 +30,8 @@ import i18n from './i18next/LocalUtil';
 import {
   getWorksheetDetailsPageTabs,
   getWorksheetWidgetsFromKey,
+  WorksheetDetailPageTabProps,
 } from './WorksheetDetailsUtils';
-
-export interface WorksheetDetailPageTabProps {
-  activityFeedTab: JSX.Element;
-  lineageTab: JSX.Element;
-  customPropertiesTab: JSX.Element;
-  activeTab: EntityTabs;
-  feedCount: {
-    totalCount: number;
-  };
-  labelMap?: Record<EntityTabs, string>;
-}
 
 type WorksheetWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION

@@ -1862,11 +1862,19 @@ export interface ConfigObject {
      */
     delegatedEmail?: string;
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
      * Specific shared drive ID to connect to
      *
      * SharePoint drive ID. If not provided, default document library will be used
      */
     driveId?: string;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
     /**
      * Extract metadata only for Google Sheets files
      */
@@ -1875,6 +1883,14 @@ export interface ConfigObject {
      * Include shared/team drives in metadata extraction
      */
     includeTeamDrives?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
     /**
      * SharePoint site URL
      */
@@ -1931,6 +1947,14 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only fetch search indexes that matches the pattern.
  *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
+ *
  * Regex to only fetch databases that matches the pattern.
  *
  * Regex to only fetch tables or databases that matches the pattern.
@@ -1941,14 +1965,6 @@ export interface UsernamePasswordAuthentication {
  *
  * Regex to only compute metrics for table that matches the given tag, tiers, gloassary
  * pattern.
- *
- * Regex to only include/exclude directories that matches the pattern.
- *
- * Regex to only include/exclude files that matches the pattern.
- *
- * Regex to only include/exclude spreadsheets that matches the pattern.
- *
- * Regex to only include/exclude worksheets that matches the pattern.
  *
  * Regex to only fetch tags that matches the pattern.
  */
