@@ -29,7 +29,6 @@ export interface ClassificationDetailsProps {
   handleUpdateClassification?: (
     updatedClassification: Classification
   ) => Promise<void>;
-  handleEditClassificationClick?: () => void;
 }
 export interface ClassificationDetailsRef {
   refreshClassificationTags: () => void;
