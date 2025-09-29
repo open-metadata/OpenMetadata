@@ -148,12 +148,11 @@ class BaseTableParameter:
                 and data_diff_class is not BaseTableParameter
                 and data_diff_class is not cls
             ):
-                
-                    
-                    # Call as instance method to avoid recursion
-                    return data_diff_class()._get_service_connection_config(
-                        service_connection_config
-                    )
+
+                # Call as instance method to avoid recursion
+                return data_diff_class()._get_service_connection_config(
+                    service_connection_config
+                )
 
             if not connection_class:
                 return (
@@ -198,9 +197,7 @@ class BaseTableParameter:
         url = urlparse(source_url)
         # remove the driver name from the url because table-diff doesn't support it
         kwargs = {"scheme": url.scheme.split("+")[0]}
-        service, database, schema, table = fqn.split(  # pylint: disable=unused-variable
-            table_fqn
-        )
+        _, database, schema, _ = fqn.split(table_fqn)  # pylint: disable=unused-variable
         # path needs to include the database AND schema in some of the connectors
         if hasattr(db_service.connection.config, "supportsDatabase"):
             if kwargs["scheme"] in {Dialects.UnityCatalog, Dialects.Databricks}:
