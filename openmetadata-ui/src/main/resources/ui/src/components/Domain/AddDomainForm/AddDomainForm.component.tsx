@@ -133,6 +133,7 @@ const AddDomainForm = ({
           'data-testid': 'description',
           initialValue: '',
           height: 'auto',
+          className: 'add-domain-form-description',
         },
       },
       {
