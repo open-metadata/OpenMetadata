@@ -2581,6 +2581,7 @@
     "user-mentioned-in-comment": "{{user}} bir yorumda senden bahsetti.",
     "user-verified-successfully": "Kullanıcı Başarıyla Doğrulandı",
     "valid-url-endpoint": "Uç noktalar geçerli URL olmalıdır",
+    "valid-urls-required": "Lütfen geçerli URL'ler girin (örn. https://example.com)",
     "validation-error-assets": "Lütfen eklenen tüm varlıklarınızı inceleyin",
     "value-must-be-greater-than": "{{field}} değeri {{minimum}} dan büyük olmalıdır.",
     "value-should-equal-to-value": "Değer {{value}} değerine eşit olmalıdır.",
