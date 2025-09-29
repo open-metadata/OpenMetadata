@@ -74,6 +74,7 @@ VERSIONS = {
 
 COMMONS = {
     "datalake": {
+        VERSIONS["asammdf"],
         VERSIONS["avro"],
         VERSIONS["boto3"],
         VERSIONS["pandas"],
@@ -169,7 +170,6 @@ base_requirements = {
 }
 
 plugins: Dict[str, Set[str]] = {
-    "adls": {VERSIONS["asammdf"]},
     "airflow": {
         "opentelemetry-exporter-otlp==1.27.0",
         "protobuf<5",
