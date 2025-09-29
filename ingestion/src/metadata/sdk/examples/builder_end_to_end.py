@@ -25,6 +25,8 @@ from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.entity.data.table import DataType as ColumnDataType
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
+    MySQLScheme,
+    MySQLType,
 )
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
@@ -66,9 +68,30 @@ class DatabaseServiceBuilderPy:
         self, host_port: str, username: str, database: Optional[str] = None
     ) -> "DatabaseServiceBuilderPy":
         conn = DatabaseConnection(
-            # Many fields in generated models are optional but pyright treats them as required.
-            # Provide minimal args and suppress spurious call-argument noise.
-            config=MysqlConnection(hostPort=host_port, username=username, databaseName=database)  # type: ignore[reportCallIssue]
+            config=MysqlConnection(
+                type=MySQLType.Mysql,
+                scheme=MySQLScheme.mysql_pymysql,
+                username=username,
+                authType=None,
+                hostPort=host_port,
+                databaseName=database,
+                databaseSchema=None,
+                sslConfig=None,
+                connectionOptions=None,
+                connectionArguments=None,
+                schemaFilterPattern=None,
+                tableFilterPattern=None,
+                databaseFilterPattern=None,
+                supportsMetadataExtraction=None,
+                supportsDBTExtraction=None,
+                supportsProfiler=None,
+                supportsQueryComment=None,
+                sampleDataStorageConfig=None,
+                supportsDataDiff=None,
+                supportsUsageExtraction=None,
+                supportsLineageExtraction=None,
+                useSlowLogs=False,
+            )
         )
         self.connection_val = conn
         self.type_val = DatabaseServiceType.Mysql
@@ -79,11 +102,17 @@ class DatabaseServiceBuilderPy:
             raise ValueError("Service name is required")
         if not self.type_val:
             raise ValueError("Service type is required")
-        return CreateDatabaseServiceRequest(  # type: ignore[reportCallIssue]
+        return CreateDatabaseServiceRequest(
             name=self.name_val,
             description=self.description_val,
             serviceType=self.type_val,
             connection=self.connection_val,
+            displayName=None,
+            tags=None,
+            owners=None,
+            dataProducts=None,
+            domains=None,
+            ingestionRunner=None,
         )
 
     def create(self):
@@ -113,10 +142,21 @@ class DatabaseBuilderPy:
             raise ValueError("Database name is required")
         if not self.service_fqn_val:
             raise ValueError("Database service FQN is required")
-        return CreateDatabaseRequest(  # type: ignore[reportCallIssue]
+        return CreateDatabaseRequest(
             name=self.name_val,
             description=self.description_val,
             service=self.service_fqn_val,
+            displayName=None,
+            tags=None,
+            owners=None,
+            dataProducts=None,
+            default=False,
+            retentionPeriod=None,
+            extension=None,
+            sourceUrl=None,
+            domains=None,
+            lifeCycle=None,
+            sourceHash=None,
         )
 
     def create(self):
@@ -146,10 +186,20 @@ class SchemaBuilderPy:
             raise ValueError("Schema name is required")
         if not self.database_fqn_val:
             raise ValueError("Database FQN is required")
-        return CreateDatabaseSchemaRequest(  # type: ignore[reportCallIssue]
+        return CreateDatabaseSchemaRequest(
             name=self.name_val,
             description=self.description_val,
             database=self.database_fqn_val,
+            displayName=None,
+            owners=None,
+            dataProducts=None,
+            tags=None,
+            retentionPeriod=None,
+            extension=None,
+            sourceUrl=None,
+            domains=None,
+            lifeCycle=None,
+            sourceHash=None,
         )
 
     def create(self):
@@ -178,10 +228,25 @@ class TableBuilderPy:
     def add_column(
         self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None
     ) -> "TableBuilderPy":
-        col = Column(name=name, dataType=dtype)  # type: ignore[reportCallIssue]
-        if dtype == ColumnDataType.VARCHAR and length:
-            # pydantic model uses dataLength for varchar
-            col.dataLength = length
+        col = Column(
+            name=name,
+            displayName=None,
+            dataType=dtype,
+            arrayDataType=None,
+            dataLength=length if (dtype == ColumnDataType.VARCHAR and length) else None,
+            precision=None,
+            scale=None,
+            dataTypeDisplay=None,
+            description=None,
+            fullyQualifiedName=None,
+            tags=None,
+            constraint=None,
+            ordinalPosition=None,
+            jsonSchema=None,
+            children=None,
+            profile=None,
+            customMetrics=None,
+        )
         self.columns_val.append(col)
         return self
 
@@ -192,11 +257,29 @@ class TableBuilderPy:
             raise ValueError("Schema FQN is required")
         if not self.columns_val:
             raise ValueError("At least one column is required")
-        return CreateTableRequest(  # type: ignore[reportCallIssue]
+        return CreateTableRequest(
             name=self.name_val,
             description=self.description_val,
             databaseSchema=self.schema_fqn_val,
             columns=self.columns_val,
+            displayName=None,
+            tableType=None,
+            dataModel=None,
+            locationPath=None,
+            tableConstraints=None,
+            tablePartition=None,
+            tableProfilerConfig=None,
+            owners=None,
+            tags=None,
+            schemaDefinition=None,
+            retentionPeriod=None,
+            extension=None,
+            sourceUrl=None,
+            domains=None,
+            dataProducts=None,
+            fileFormat=None,
+            lifeCycle=None,
+            sourceHash=None,
         )
 
     def create(self):
