@@ -21,7 +21,7 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
 )
-from metadata.generated.schema.entity.data.table import Column
+from metadata.generated.schema.entity.data.table import Column, ColumnName
 from metadata.generated.schema.entity.data.table import DataType as ColumnDataType
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
@@ -32,7 +32,11 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
-from metadata.generated.schema.type.basic import Markdown
+from metadata.generated.schema.type.basic import (
+    EntityName,
+    FullyQualifiedEntityName,
+    Markdown,
+)
 from metadata.sdk import OpenMetadata, OpenMetadataConfig
 from metadata.sdk.entities.database_services import DatabaseServices
 from metadata.sdk.entities.databases import Databases
@@ -103,8 +107,10 @@ class DatabaseServiceBuilderPy:
         if not self.type_val:
             raise ValueError("Service type is required")
         return CreateDatabaseServiceRequest(
-            name=self.name_val,
-            description=self.description_val,
+            name=EntityName(self.name_val),
+            description=Markdown(self.description_val)
+            if self.description_val
+            else None,
             serviceType=self.type_val,
             connection=self.connection_val,
             displayName=None,
@@ -143,9 +149,11 @@ class DatabaseBuilderPy:
         if not self.service_fqn_val:
             raise ValueError("Database service FQN is required")
         return CreateDatabaseRequest(
-            name=self.name_val,
-            description=self.description_val,
-            service=self.service_fqn_val,
+            name=EntityName(self.name_val),
+            description=Markdown(self.description_val)
+            if self.description_val
+            else None,
+            service=FullyQualifiedEntityName(self.service_fqn_val),
             displayName=None,
             tags=None,
             owners=None,
@@ -187,9 +195,11 @@ class SchemaBuilderPy:
         if not self.database_fqn_val:
             raise ValueError("Database FQN is required")
         return CreateDatabaseSchemaRequest(
-            name=self.name_val,
-            description=self.description_val,
-            database=self.database_fqn_val,
+            name=EntityName(self.name_val),
+            description=Markdown(self.description_val)
+            if self.description_val
+            else None,
+            database=FullyQualifiedEntityName(self.database_fqn_val),
             displayName=None,
             owners=None,
             dataProducts=None,
@@ -229,7 +239,7 @@ class TableBuilderPy:
         self, name: str, dtype: ColumnDataType, *, length: Optional[int] = None
     ) -> "TableBuilderPy":
         col = Column(
-            name=name,
+            name=ColumnName(name),
             displayName=None,
             dataType=dtype,
             arrayDataType=None,
@@ -258,9 +268,11 @@ class TableBuilderPy:
         if not self.columns_val:
             raise ValueError("At least one column is required")
         return CreateTableRequest(
-            name=self.name_val,
-            description=self.description_val,
-            databaseSchema=self.schema_fqn_val,
+            name=EntityName(self.name_val),
+            description=Markdown(self.description_val)
+            if self.description_val
+            else None,
+            databaseSchema=FullyQualifiedEntityName(self.schema_fqn_val),
             columns=self.columns_val,
             displayName=None,
             tableType=None,
@@ -287,13 +299,12 @@ class TableBuilderPy:
 
 
 def main() -> None:
-    # 0) Configure SDK client
     config = OpenMetadataConfig(
-        server_url="http://localhost:8585",  # Update if needed
-        jwt_token="YOUR_JWT_OR_API_KEY",  # Update before running
+        server_url="http://localhost:8585",
+        jwt_token="YOUR_JWT_OR_API_KEY",
         verify_ssl=False,
     )
-    OpenMetadata.initialize(config)
+    _ = OpenMetadata.initialize(config)
 
     # 1) Service (builder)
     service = (
