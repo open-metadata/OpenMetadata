@@ -138,6 +138,12 @@
       "title": "Supports Data Diff Extraction.",
       "$ref": "../connectionBasicType.json#/definitions/supportsDataDiff"
     },
+    "supportsQueryRunner": {
+      "title": "Supports Query Runner",
+      "description": "BigQuery supports Query Runner for programmatic query execution",
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner",
+      "default": true
+    },
     "costPerTB": {
       "title": "Cost Per TiB",
       "description": "Cost per TiB for BigQuery usage",

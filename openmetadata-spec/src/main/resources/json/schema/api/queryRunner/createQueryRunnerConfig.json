@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/api/queryRunner/createQueryRunnerConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CreateQueryRunnerConfigRequest",
+  "description": "Create Query Runner Configuration request",
+  "type": "object",
+  "javaType": "io.collate.service.schema.api.queryRunner.CreateQueryRunnerConfigRequest",
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Query Runner Configuration.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Query Runner Configuration.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Query Runner Configuration.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Database service type (BigQuery or Snowflake).",
+      "type": "string",
+      "enum": ["BigQuery", "Snowflake"]
+    },
+    "authConfig": {
+      "description": "Authentication configuration for query runner. Structure must match the selected service type.",
+      "type": "object"
+    },
+    "querySettings": {
+      "description": "Query execution settings",
+      "type": "object",
+      "properties": {
+        "timeout": {
+          "description": "Query timeout in seconds",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600,
+          "default": 300
+        },
+        "maxResultSize": {
+          "description": "Maximum result size in MB",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100
+        },
+        "enableCache": {
+          "description": "Enable query result caching",
+          "type": "boolean",
+          "default": true
+        },
+        "cacheTTL": {
+          "description": "Cache time-to-live in seconds",
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 86400,
+          "default": 3600
+        }
+      }
+    },
+    "enabled": {
+      "description": "Whether this query runner config is enabled.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["name", "serviceType", "authConfig"],
+  "additionalProperties": false
+}

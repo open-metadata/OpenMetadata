@@ -90,6 +90,11 @@
       "type": "boolean",
       "default": true
     },
+    "supportsQueryRunner": {
+      "description": "Supports Query Runner execution capability for running queries programmatically.",
+      "type": "boolean",
+      "default": false
+    },
     "dataStorageConfig": {
       "description": "Storage config to store sample data",
       "type": "object",
