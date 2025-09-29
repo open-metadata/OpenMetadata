@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close.svg';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import { splitCSV } from '../../../utils/CSV/CSV.utils';
+import { isValidUrl } from '../../../utils/SSOUtils';
 import './sso-configuration-form-array-field-template.less';
 
 const SsoCustomTagRenderer = (props: CustomTagProps) => {
@@ -40,6 +41,13 @@ const SsoCustomTagRenderer = (props: CustomTagProps) => {
 
 const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const { t } = useTranslation();
+
+  // Check if this is a URL field that needs validation
+  const isUrlField =
+    props.idSchema.$id.includes('publicKeyUrls') ||
+    props.idSchema.$id.includes('Url') ||
+    props.uiSchema?.['ui:validateUrl'] === true;
+
   const isFilterPatternField = (id: string) => {
     return /FilterPattern/.test(id);
   };
@@ -83,8 +91,11 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const options = generateOptions();
   const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
 
-  // Check if field has errors
-  const hasError = props.rawErrors && props.rawErrors.length > 0;
+  // Check if field has errors (including invalid URLs)
+  const hasInvalidUrls =
+    isUrlField && value.some((url: string) => !isValidUrl(url));
+  const hasError =
+    (props.rawErrors && props.rawErrors.length > 0) || hasInvalidUrls;
 
   const handlePaste = useCallback(async () => {
     const text = await onPasteFromClipBoard();
@@ -110,20 +121,31 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
       const uniqueValues = Array.from(new Set([...value, ...processedValues]));
       props.onChange(uniqueValues);
     }
-  }, [onPasteFromClipBoard, props.onChange, value]);
+  }, [onPasteFromClipBoard, props.onChange, value, isUrlField]);
 
   const handleInputSplit = useCallback(
     (inputValue: string) => {
       if (isEmpty(inputValue)) {
         return;
       }
-      const processedValues = splitCSV(inputValue);
 
-      // Use Set to ensure unique values
-      const uniqueValues = Array.from(new Set([...value, ...processedValues]));
-      props.onChange(uniqueValues);
+      // Add the input value (valid or invalid)
+      if (isUrlField) {
+        const uniqueValues = Array.from(new Set([...value, inputValue]));
+        props.onChange(uniqueValues);
+
+        // No temporary error handling needed - persistent validation handles it
+      } else {
+        // For non-URL fields, use CSV splitting
+        const processedValues = splitCSV(inputValue);
+        // Use Set to ensure unique values
+        const uniqueValues = Array.from(
+          new Set([...value, ...processedValues])
+        );
+        props.onChange(uniqueValues);
+      }
     },
-    [value, props.onChange]
+    [value, props.onChange, isUrlField]
   );
 
   return (
@@ -175,6 +197,11 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
             }
           }}
         />
+        {hasInvalidUrls && (
+          <div className="ant-form-item-explain-error m-t-xss">
+            {t('message.valid-urls-required')}
+          </div>
+        )}
       </Col>
     </Row>
   );
