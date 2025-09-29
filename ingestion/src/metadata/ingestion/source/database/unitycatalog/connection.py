@@ -159,11 +159,13 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnection) -> Engine:
     connection.connectionArguments = deepcopy(original_connection_arguments)
     connection.connectionArguments.root.update(auth_args)
 
-    return create_generic_db_connection(
+    engine = create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
+    connection.connectionArguments = original_connection_arguments
+    return engine
 
 
 def test_connection(
