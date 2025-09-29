@@ -26,16 +26,47 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-// Mock SVG icons
-jest.mock('../../../assets/svg/close-icon.svg', () => ({
-  ReactComponent: () => <div data-testid="close-icon-svg">Close</div>,
-}));
 jest.mock('../../../assets/svg/edit.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon-svg">Edit</div>,
 }));
-jest.mock('../../../assets/svg/tick.svg', () => ({
-  ReactComponent: () => <div data-testid="tick-icon-svg">Tick</div>,
-}));
+
+// Mock ModalWithMarkdownEditor to a simple inline component for predictable DOM
+jest.mock(
+  '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor',
+  () => {
+    return {
+      ModalWithMarkdownEditor: ({
+        visible,
+        onCancel,
+        onSave,
+        header,
+      }: {
+        visible: boolean;
+        onCancel: () => void;
+        onSave?: (value: string) => void;
+        header: string;
+      }) => {
+        if (!visible) {
+          return null;
+        }
+
+        return (
+          <div data-testid="markdown-editor">
+            <div data-testid="header">{header}</div>
+            <button data-testid="cancel" onClick={onCancel}>
+              Cancel
+            </button>
+            <button
+              data-testid="save"
+              onClick={() => onSave?.('New description')}>
+              Save
+            </button>
+          </div>
+        );
+      },
+    };
+  }
+);
 
 // Mock RichTextEditorPreviewerV1 to render markdown within a .markdown-parser element
 jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () => {
@@ -105,7 +136,7 @@ describe('DescriptionSection', () => {
   });
 
   describe('Edit Mode - Empty Description', () => {
-    it('enters edit mode, shows textarea, and cancels back to view', () => {
+    it('opens modal on edit and cancels back to view', () => {
       render(<DescriptionSection onDescriptionUpdate={jest.fn()} />);
 
       const editTrigger = document.querySelector(
@@ -113,26 +144,16 @@ describe('DescriptionSection', () => {
       ) as HTMLElement;
       fireEvent.click(editTrigger);
 
-      expect(
-        document.querySelector('.inline-edit-container')
-      ).toBeInTheDocument();
-      expect(
-        document.querySelector('.description-textarea')
-      ).toBeInTheDocument();
-      expect(document.querySelector('.edit-actions')).toBeInTheDocument();
+      expect(screen.getByTestId('markdown-editor')).toBeInTheDocument();
 
-      const cancel = document.querySelector(
-        '.edit-actions .cursor-pointer'
-      ) as HTMLElement; // first is cancel
-      fireEvent.click(cancel);
+      const cancelBtn = screen.getByTestId('cancel');
+      fireEvent.click(cancelBtn);
 
-      expect(
-        document.querySelector('.inline-edit-container')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument();
       expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
     });
 
-    it('saves edited description and exits edit mode', async () => {
+    it('saves edited description and closes modal', async () => {
       const onUpdate = jest.fn().mockResolvedValue(undefined);
 
       render(<DescriptionSection onDescriptionUpdate={onUpdate} />);
@@ -142,24 +163,14 @@ describe('DescriptionSection', () => {
       ) as HTMLElement;
       fireEvent.click(editTrigger);
 
-      const textarea = document.querySelector(
-        '.description-textarea'
-      ) as HTMLTextAreaElement;
-      fireEvent.change(textarea, { target: { value: 'New description' } });
-
-      const actionButtons = document.querySelectorAll(
-        '.edit-actions .cursor-pointer'
-      );
-      const save = actionButtons[1] as HTMLElement; // second is save
-      fireEvent.click(save);
+      const saveBtn = screen.getByTestId('save');
+      fireEvent.click(saveBtn);
 
       await waitFor(() => {
         expect(onUpdate).toHaveBeenCalledWith('New description');
       });
 
-      expect(
-        document.querySelector('.inline-edit-container')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument();
     });
   });
 
@@ -181,7 +192,7 @@ describe('DescriptionSection', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('allows entering edit mode from non-empty view and cancel back', () => {
+    it('opens modal from non-empty view and cancel back', () => {
       render(
         <DescriptionSection
           description="Content"
@@ -194,18 +205,12 @@ describe('DescriptionSection', () => {
       ) as HTMLElement;
       fireEvent.click(editTrigger);
 
-      expect(
-        document.querySelector('.inline-edit-container')
-      ).toBeInTheDocument();
+      expect(screen.getByTestId('markdown-editor')).toBeInTheDocument();
 
-      const cancel = document.querySelector(
-        '.edit-actions .cursor-pointer'
-      ) as HTMLElement;
-      fireEvent.click(cancel);
+      const cancelBtn = screen.getByTestId('cancel');
+      fireEvent.click(cancelBtn);
 
-      expect(
-        document.querySelector('.inline-edit-container')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('markdown-editor')).not.toBeInTheDocument();
       expect(screen.getByText('Content')).toBeInTheDocument();
     });
   });

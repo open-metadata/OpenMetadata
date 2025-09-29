@@ -12,9 +12,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
-import { ReactComponent as TickIcon } from '../../../assets/svg/tick.svg';
+import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
 import './DescriptionSection.less';
 interface DescriptionSectionProps {
@@ -31,7 +30,6 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   const { t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditDescription, setIsEditDescription] = useState(false);
-  const [editValue, setEditValue] = useState(description || '');
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -56,28 +54,24 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
 
   // Callback to handle the edit button from description
   const handleEditDescription = useCallback(() => {
-    setEditValue(description || '');
     setIsEditDescription(true);
   }, [description]);
 
   // Callback to handle the cancel button
   const handleCancelEditDescription = useCallback(() => {
-    setEditValue(description || '');
     setIsEditDescription(false);
   }, [description]);
 
-  // Callback to handle the save button
-  const handleSaveDescription = useCallback(async () => {
-    if (onDescriptionUpdate) {
-      await onDescriptionUpdate(editValue);
-    }
-    setIsEditDescription(false);
-  }, [editValue, onDescriptionUpdate]);
-
-  // Update editValue when description prop changes
-  useEffect(() => {
-    setEditValue(description || '');
-  }, [description]);
+  // Callback to handle the description change from modal
+  const handleDescriptionChange = useCallback(
+    async (updatedDescription: string) => {
+      if (onDescriptionUpdate) {
+        await onDescriptionUpdate(updatedDescription);
+      }
+      setIsEditDescription(false);
+    },
+    [onDescriptionUpdate]
+  );
 
   // Check if text is truncated when description changes or component mounts
   useEffect(() => {
@@ -97,37 +91,21 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               <EditIcon />
             </span>
           )}
-          {isEditDescription && (
-            <div className="edit-actions">
-              <span
-                className="cursor-pointer"
-                onClick={handleCancelEditDescription}>
-                <CloseIcon />
-              </span>
-              <span className="cursor-pointer" onClick={handleSaveDescription}>
-                <TickIcon />
-              </span>
-            </div>
-          )}
         </div>
         <div className="description-content">
-          {isEditDescription ? (
-            <div className="inline-edit-container">
-              <textarea
-                className="description-textarea"
-                placeholder={t('label.enter-entity', {
-                  entity: t('label.description'),
-                })}
-                rows={4}
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-              />
-            </div>
-          ) : (
-            <span className="no-data-placeholder">
-              {t('label.no-data-found')}
-            </span>
-          )}
+          <span className="no-data-placeholder">
+            {t('label.no-data-found')}
+          </span>
+          <ModalWithMarkdownEditor
+            header={t('label.edit-entity', { entity: t('label.description') })}
+            placeholder={t('label.enter-entity', {
+              entity: t('label.description'),
+            })}
+            value={description || ''}
+            visible={Boolean(isEditDescription)}
+            onCancel={handleCancelEditDescription}
+            onSave={handleDescriptionChange}
+          />
         </div>
       </div>
     );
@@ -142,55 +120,39 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
             <EditIcon />
           </span>
         )}
-        {isEditDescription && (
-          <div className="edit-actions">
-            <span
-              className="cursor-pointer"
-              onClick={handleCancelEditDescription}>
-              <CloseIcon />
-            </span>
-            <span className="cursor-pointer" onClick={handleSaveDescription}>
-              <TickIcon />
-            </span>
-          </div>
-        )}
       </div>
       <div className="description-content">
-        {isEditDescription ? (
-          <div className="inline-edit-container">
-            <textarea
-              className="description-textarea"
-              placeholder={t('label.enter-entity', {
-                entity: t('label.description'),
-              })}
-              rows={4}
-              value={editValue}
-              onChange={(e) => setEditValue(e.target.value)}
+        <div className="description-display">
+          <div
+            className={`description-text ${
+              isExpanded ? 'expanded' : 'collapsed'
+            }`}
+            ref={containerRef}>
+            <RichTextEditorPreviewerV1
+              enableSeeMoreVariant={false}
+              isDescriptionExpanded={isExpanded}
+              markdown={description}
             />
           </div>
-        ) : (
-          <div className="description-display">
-            <div
-              className={`description-text ${
-                isExpanded ? 'expanded' : 'collapsed'
-              }`}
-              ref={containerRef}>
-              <RichTextEditorPreviewerV1
-                enableSeeMoreVariant={false}
-                isDescriptionExpanded={isExpanded}
-                markdown={description}
-              />
-            </div>
-            {shouldShowButton && (
-              <button
-                className="show-more-button"
-                type="button"
-                onClick={toggleExpanded}>
-                {isExpanded ? t('label.show-less') : t('label.show-more')}
-              </button>
-            )}
-          </div>
-        )}
+          {shouldShowButton && (
+            <button
+              className="show-more-button"
+              type="button"
+              onClick={toggleExpanded}>
+              {isExpanded ? t('label.show-less') : t('label.show-more')}
+            </button>
+          )}
+          <ModalWithMarkdownEditor
+            header={t('label.edit-entity', { entity: t('label.description') })}
+            placeholder={t('label.enter-entity', {
+              entity: t('label.description'),
+            })}
+            value={description || ''}
+            visible={Boolean(isEditDescription)}
+            onCancel={handleCancelEditDescription}
+            onSave={handleDescriptionChange}
+          />
+        </div>
       </div>
     </div>
   );
