@@ -1,19 +1,7 @@
-/*
- *  Copyright 2021 Collate
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
-
 package org.openmetadata.service.search.elasticsearch;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -399,6 +387,219 @@ class ElasticSearchIndexManagerIntegrationTest extends OpenMetadataApplicationTe
     for (int i = 0; i < threadCount; i++) {
       assertTrue(results[i], "Thread " + i + " should have completed successfully");
     }
+  }
+
+  @Test
+  void testAddAliases_IntegrationTest() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+    Set<String> aliasesToAdd =
+        Set.of(
+            testIndexPrefix + "_bulk_alias1",
+            testIndexPrefix + "_bulk_alias2",
+            testIndexPrefix + "_bulk_alias3");
+
+    // Create index first
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Add multiple aliases
+    assertDoesNotThrow(
+        () -> indexManager.addAliases(indexName, aliasesToAdd),
+        "Adding bulk aliases should not throw exception");
+
+    // Verify all aliases were added
+    Set<String> retrievedAliases = indexManager.getAliases(indexName);
+    for (String alias : aliasesToAdd) {
+      assertTrue(retrievedAliases.contains(alias), "Alias should exist: " + alias);
+    }
+
+    LOG.info("Successfully added and verified bulk aliases: {}", aliasesToAdd);
+  }
+
+  @Test
+  void testRemoveAliases_IntegrationTest() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+    Set<String> aliasesToAdd =
+        Set.of(
+            testIndexPrefix + "_remove_alias1",
+            testIndexPrefix + "_remove_alias2",
+            testIndexPrefix + "_remove_alias3");
+    Set<String> aliasesToRemove =
+        Set.of(testIndexPrefix + "_remove_alias1", testIndexPrefix + "_remove_alias3");
+
+    // Create index and add aliases
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    indexManager.addAliases(indexName, aliasesToAdd);
+
+    // Verify aliases were added
+    Set<String> aliasesBeforeRemoval = indexManager.getAliases(indexName);
+    for (String alias : aliasesToAdd) {
+      assertTrue(
+          aliasesBeforeRemoval.contains(alias), "Alias should exist before removal: " + alias);
+    }
+
+    // Remove some aliases
+    assertDoesNotThrow(
+        () -> indexManager.removeAliases(indexName, aliasesToRemove),
+        "Removing aliases should not throw exception");
+
+    // Verify specific aliases were removed
+    Set<String> aliasesAfterRemoval = indexManager.getAliases(indexName);
+    for (String alias : aliasesToRemove) {
+      assertFalse(
+          aliasesAfterRemoval.contains(alias), "Alias should not exist after removal: " + alias);
+    }
+
+    // Verify remaining aliases still exist
+    assertTrue(
+        aliasesAfterRemoval.contains(testIndexPrefix + "_remove_alias2"),
+        "Remaining alias should still exist");
+
+    LOG.info("Successfully removed specific aliases: {}", aliasesToRemove);
+  }
+
+  @Test
+  void testGetAliases_IntegrationTest() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+    String mainAlias = testIndexMapping.getAlias(TEST_CLUSTER_ALIAS);
+    List<String> parentAliases = testIndexMapping.getParentAliases(TEST_CLUSTER_ALIAS);
+
+    // Create index (which creates default aliases)
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+    assertTrue(indexManager.indexExists(indexName), "Index should exist after creation");
+
+    // Get aliases
+    Set<String> retrievedAliases = indexManager.getAliases(indexName);
+
+    // Verify default aliases are present
+    assertFalse(retrievedAliases.isEmpty(), "Retrieved aliases should not be empty");
+    assertTrue(retrievedAliases.contains(mainAlias), "Main alias should be present");
+
+    for (String parentAlias : parentAliases) {
+      assertTrue(
+          retrievedAliases.contains(parentAlias), "Parent alias should be present: " + parentAlias);
+    }
+
+    // Add additional aliases and verify they are retrieved
+    Set<String> additionalAliases =
+        Set.of(testIndexPrefix + "_get_test_alias1", testIndexPrefix + "_get_test_alias2");
+    indexManager.addAliases(indexName, additionalAliases);
+
+    // Retrieve aliases again
+    Set<String> updatedAliases = indexManager.getAliases(indexName);
+    for (String alias : additionalAliases) {
+      assertTrue(updatedAliases.contains(alias), "Additional alias should be present: " + alias);
+    }
+
+    LOG.info("Successfully retrieved all aliases: {}", updatedAliases);
+  }
+
+  @Test
+  void testGetIndicesByAlias_IntegrationTest() {
+    String alias1 = testIndexPrefix + "_shared_alias";
+    String alias2 = testIndexPrefix + "_unique_alias";
+
+    // Create multiple indices with shared and unique aliases
+    IndexMapping index1Mapping = createTestIndexMapping(testIndexPrefix + "_idx1");
+    IndexMapping index2Mapping = createTestIndexMapping(testIndexPrefix + "_idx2");
+    IndexMapping index3Mapping = createTestIndexMapping(testIndexPrefix + "_idx3");
+
+    String index1Name = index1Mapping.getIndexName(TEST_CLUSTER_ALIAS);
+    String index2Name = index2Mapping.getIndexName(TEST_CLUSTER_ALIAS);
+    String index3Name = index3Mapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create indices
+    indexManager.createIndex(index1Mapping, SAMPLE_MAPPING_JSON);
+    indexManager.createIndex(index2Mapping, SAMPLE_MAPPING_JSON);
+    indexManager.createIndex(index3Mapping, SAMPLE_MAPPING_JSON);
+
+    // Add shared alias to indices 1 and 2
+    indexManager.addAliases(index1Name, Set.of(alias1));
+    indexManager.addAliases(index2Name, Set.of(alias1));
+
+    // Add unique alias to index 3
+    indexManager.addAliases(index3Name, Set.of(alias2));
+
+    // Test getting indices by shared alias
+    Set<String> indicesWithSharedAlias = indexManager.getIndicesByAlias(alias1);
+    assertEquals(2, indicesWithSharedAlias.size(), "Shared alias should be on 2 indices");
+    assertTrue(indicesWithSharedAlias.contains(index1Name), "Index1 should have shared alias");
+    assertTrue(indicesWithSharedAlias.contains(index2Name), "Index2 should have shared alias");
+
+    // Test getting indices by unique alias
+    Set<String> indicesWithUniqueAlias = indexManager.getIndicesByAlias(alias2);
+    assertEquals(1, indicesWithUniqueAlias.size(), "Unique alias should be on 1 index");
+    assertTrue(indicesWithUniqueAlias.contains(index3Name), "Index3 should have unique alias");
+
+    // Test with non-existent alias
+    Set<String> indicesWithNonExistentAlias =
+        indexManager.getIndicesByAlias(testIndexPrefix + "_nonexistent");
+    assertTrue(indicesWithNonExistentAlias.isEmpty(), "Non-existent alias should return empty set");
+
+    // Clean up additional test indices
+    indexManager.deleteIndex(index1Mapping);
+    indexManager.deleteIndex(index2Mapping);
+    indexManager.deleteIndex(index3Mapping);
+
+    LOG.info(
+        "Successfully tested getIndicesByAlias with shared alias: {} and unique alias: {}",
+        alias1,
+        alias2);
+  }
+
+  @Test
+  void testAliasOperations_FullWorkflow() {
+    String indexName = testIndexMapping.getIndexName(TEST_CLUSTER_ALIAS);
+
+    // Create index
+    indexManager.createIndex(testIndexMapping, SAMPLE_MAPPING_JSON);
+
+    // Step 1: Add bulk aliases
+    Set<String> initialAliases =
+        Set.of(
+            testIndexPrefix + "_workflow_alias1",
+            testIndexPrefix + "_workflow_alias2",
+            testIndexPrefix + "_workflow_alias3",
+            testIndexPrefix + "_workflow_alias4");
+    indexManager.addAliases(indexName, initialAliases);
+
+    // Step 2: Verify all aliases exist
+    Set<String> allAliases = indexManager.getAliases(indexName);
+    for (String alias : initialAliases) {
+      assertTrue(allAliases.contains(alias), "Initial alias should exist: " + alias);
+    }
+
+    // Step 3: Test getIndicesByAlias for each alias
+    for (String alias : initialAliases) {
+      Set<String> indicesWithAlias = indexManager.getIndicesByAlias(alias);
+      assertTrue(indicesWithAlias.contains(indexName), "Index should be found by alias: " + alias);
+    }
+
+    // Step 4: Remove some aliases
+    Set<String> aliasesToRemove =
+        Set.of(testIndexPrefix + "_workflow_alias2", testIndexPrefix + "_workflow_alias4");
+    indexManager.removeAliases(indexName, aliasesToRemove);
+
+    // Step 5: Verify specific aliases were removed
+    Set<String> remainingAliases = indexManager.getAliases(indexName);
+    for (String alias : aliasesToRemove) {
+      assertFalse(remainingAliases.contains(alias), "Removed alias should not exist: " + alias);
+    }
+
+    // Step 6: Verify remaining aliases still exist
+    Set<String> expectedRemaining =
+        Set.of(testIndexPrefix + "_workflow_alias1", testIndexPrefix + "_workflow_alias3");
+    for (String alias : expectedRemaining) {
+      assertTrue(remainingAliases.contains(alias), "Remaining alias should exist: " + alias);
+
+      // Also verify via getIndicesByAlias
+      Set<String> indicesWithAlias = indexManager.getIndicesByAlias(alias);
+      assertTrue(
+          indicesWithAlias.contains(indexName),
+          "Index should still be found by remaining alias: " + alias);
+    }
+
+    LOG.info("Successfully completed full alias operations workflow");
   }
 
   /**

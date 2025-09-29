@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,6 +51,7 @@ import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -156,18 +158,25 @@ public class S3LogStorage implements LogStorageInterface {
 
       S3ClientBuilder s3Builder = S3Client.builder().region(Region.of(s3Config.getRegion()));
 
-      String customEndpoint = (String) config.get("endpoint");
+      URI customEndpoint = s3Config.getAwsConfig().getEndPointURL();
       if (customEndpoint != null) {
-        s3Builder.endpointOverride(java.net.URI.create(customEndpoint));
+        s3Builder.endpointOverride(java.net.URI.create(customEndpoint.toString()));
         s3Builder.forcePathStyle(true); // Required for MinIO
         this.isCustomEndpoint = true;
       }
 
-      String accessKey = (String) config.get("accessKey");
-      String secretKey = (String) config.get("secretKey");
+      String accessKey = s3Config.getAwsConfig().getAwsAccessKeyId();
+      String secretKey = s3Config.getAwsConfig().getAwsSecretAccessKey();
+      String sessionToken = s3Config.getAwsConfig().getAwsSessionToken();
       if (accessKey != null && secretKey != null) {
-        s3Builder.credentialsProvider(
-            StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)));
+        if (sessionToken != null) {
+          s3Builder.credentialsProvider(
+              StaticCredentialsProvider.create(
+                  AwsSessionCredentials.create(accessKey, secretKey, sessionToken)));
+        } else {
+          s3Builder.credentialsProvider(
+              StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)));
+        }
       } else {
         AwsCredentialsProvider credentialsProvider =
             getCredentialsProvider(s3Config.getAwsConfig());

@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import java.util.Set;
 import org.openmetadata.search.IndexMapping;
 
 /**
@@ -54,4 +55,51 @@ public interface IndexManagementClient {
    * @param aliasName the alias names to add
    */
   void addIndexAlias(IndexMapping indexMapping, String... aliasName);
+
+  /**
+   * Create a new index with the given name and mapping content.
+   *
+   * @param indexName the name of the index to create
+   * @param indexMappingContent the JSON content for index mapping
+   */
+  void createIndex(String indexName, String indexMappingContent);
+
+  /**
+   * Delete an index by name.
+   *
+   * @param indexName the name of the index to delete
+   */
+  void deleteIndex(String indexName);
+
+  /**
+   * Add aliases to an index.
+   *
+   * @param indexName the name of the index
+   * @param aliases the set of aliases to add
+   */
+  void addAliases(String indexName, Set<String> aliases);
+
+  /**
+   * Remove aliases from an index.
+   *
+   * @param indexName the name of the index
+   * @param aliases the set of aliases to remove
+   */
+  void removeAliases(String indexName, Set<String> aliases);
+
+  /**
+   * Get all aliases for an index.
+   *
+   * @param indexName the name of the index
+   * @return set of aliases for the index
+   */
+  Set<String> getAliases(String indexName);
+
+  /**
+   * Get all indices that have a specific alias.
+   *
+   * @param aliasName the name of the alias
+   * @return set of indices that have the alias
+   */
+  Set<String> getIndicesByAlias(String aliasName);
 }

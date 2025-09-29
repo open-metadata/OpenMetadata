@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,6 +26,8 @@ import os.org.opensearch.client.opensearch.indices.CreateIndexResponse;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexRequest;
 import os.org.opensearch.client.opensearch.indices.DeleteIndexResponse;
 import os.org.opensearch.client.opensearch.indices.ExistsRequest;
+import os.org.opensearch.client.opensearch.indices.GetAliasRequest;
+import os.org.opensearch.client.opensearch.indices.GetAliasResponse;
 import os.org.opensearch.client.opensearch.indices.OpenSearchIndicesClient;
 import os.org.opensearch.client.opensearch.indices.PutMappingRequest;
 import os.org.opensearch.client.opensearch.indices.PutMappingResponse;
@@ -48,6 +51,8 @@ class OpenSearchIndexManagerTest {
   @Mock private DeleteIndexResponse deleteIndexResponse;
 
   @Mock private UpdateAliasesResponse updateAliasesResponse;
+
+  @Mock private GetAliasResponse getAliasResponse;
 
   @Mock private IndexMapping indexMapping;
 
@@ -316,5 +321,127 @@ class OpenSearchIndexManagerTest {
     indexManager.createAliases(indexMapping);
 
     verify(indicesClient).updateAliases(any(UpdateAliasesRequest.class));
+  }
+
+  @Test
+  void testAddAliases_SuccessfulAddition() throws IOException {
+    Set<String> aliases = Set.of("alias1", "alias2");
+    when(indicesClient.updateAliases(any(UpdateAliasesRequest.class)))
+        .thenReturn(updateAliasesResponse);
+
+    indexManager.addAliases(TEST_INDEX, aliases);
+
+    verify(indicesClient).updateAliases(any(UpdateAliasesRequest.class));
+  }
+
+  @Test
+  void testAddAliases_HandlesException() throws IOException {
+    Set<String> aliases = Set.of("alias1", "alias2");
+    when(indicesClient.updateAliases(any(UpdateAliasesRequest.class)))
+        .thenThrow(new IOException("Add aliases failed"));
+
+    assertDoesNotThrow(() -> indexManager.addAliases(TEST_INDEX, aliases));
+    verify(indicesClient).updateAliases(any(UpdateAliasesRequest.class));
+  }
+
+  @Test
+  void testAddAliases_ClientNotAvailable() {
+    OpenSearchIndexManager managerWithNullClient = new OpenSearchIndexManager(null, CLUSTER_ALIAS);
+    Set<String> aliases = Set.of("alias1", "alias2");
+
+    assertDoesNotThrow(() -> managerWithNullClient.addAliases(TEST_INDEX, aliases));
+    verifyNoInteractions(indicesClient);
+  }
+
+  @Test
+  void testRemoveAliases_SuccessfulRemoval() throws IOException {
+    Set<String> aliases = Set.of("alias1", "alias2");
+    when(indicesClient.updateAliases(any(UpdateAliasesRequest.class)))
+        .thenReturn(updateAliasesResponse);
+
+    indexManager.removeAliases(TEST_INDEX, aliases);
+
+    verify(indicesClient).updateAliases(any(UpdateAliasesRequest.class));
+  }
+
+  @Test
+  void testRemoveAliases_HandlesException() throws IOException {
+    Set<String> aliases = Set.of("alias1", "alias2");
+    when(indicesClient.updateAliases(any(UpdateAliasesRequest.class)))
+        .thenThrow(new IOException("Remove aliases failed"));
+
+    assertDoesNotThrow(() -> indexManager.removeAliases(TEST_INDEX, aliases));
+    verify(indicesClient).updateAliases(any(UpdateAliasesRequest.class));
+  }
+
+  @Test
+  void testRemoveAliases_ClientNotAvailable() {
+    OpenSearchIndexManager managerWithNullClient = new OpenSearchIndexManager(null, CLUSTER_ALIAS);
+    Set<String> aliases = Set.of("alias1", "alias2");
+
+    assertDoesNotThrow(() -> managerWithNullClient.removeAliases(TEST_INDEX, aliases));
+    verifyNoInteractions(indicesClient);
+  }
+
+  @Test
+  void testGetAliases_SuccessfulRetrieval() throws IOException {
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+
+    Set<String> result = indexManager.getAliases(TEST_INDEX);
+
+    verify(indicesClient).getAlias(any(GetAliasRequest.class));
+    assertNotNull(result);
+  }
+
+  @Test
+  void testGetAliases_HandlesException() throws IOException {
+    when(indicesClient.getAlias(any(GetAliasRequest.class)))
+        .thenThrow(new IOException("Get aliases failed"));
+
+    Set<String> result = indexManager.getAliases(TEST_INDEX);
+
+    assertTrue(result.isEmpty());
+    verify(indicesClient).getAlias(any(GetAliasRequest.class));
+  }
+
+  @Test
+  void testGetAliases_ClientNotAvailable() {
+    OpenSearchIndexManager managerWithNullClient = new OpenSearchIndexManager(null, CLUSTER_ALIAS);
+
+    Set<String> result = managerWithNullClient.getAliases(TEST_INDEX);
+
+    assertTrue(result.isEmpty());
+    verifyNoInteractions(indicesClient);
+  }
+
+  @Test
+  void testGetIndicesByAlias_SuccessfulRetrieval() throws IOException {
+    when(indicesClient.getAlias(any(GetAliasRequest.class))).thenReturn(getAliasResponse);
+
+    Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
+
+    verify(indicesClient).getAlias(any(GetAliasRequest.class));
+    assertNotNull(result);
+  }
+
+  @Test
+  void testGetIndicesByAlias_HandlesException() throws IOException {
+    when(indicesClient.getAlias(any(GetAliasRequest.class)))
+        .thenThrow(new IOException("Get indices by alias failed"));
+
+    Set<String> result = indexManager.getIndicesByAlias(TEST_ALIAS);
+
+    assertTrue(result.isEmpty());
+    verify(indicesClient).getAlias(any(GetAliasRequest.class));
+  }
+
+  @Test
+  void testGetIndicesByAlias_ClientNotAvailable() {
+    OpenSearchIndexManager managerWithNullClient = new OpenSearchIndexManager(null, CLUSTER_ALIAS);
+
+    Set<String> result = managerWithNullClient.getIndicesByAlias(TEST_ALIAS);
+
+    assertTrue(result.isEmpty());
+    verifyNoInteractions(indicesClient);
   }
 }

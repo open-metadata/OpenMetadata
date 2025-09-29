@@ -189,6 +189,26 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = MetricIcon;
 
       break;
+    case SearchIndex.DIRECTORY_SEARCH_INDEX:
+      label = i18next.t('label.directory-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.FILE_SEARCH_INDEX:
+      label = i18next.t('label.file-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.SPREADSHEET_SEARCH_INDEX:
+      label = i18next.t('label.spreadsheet-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.WORKSHEET_SEARCH_INDEX:
+      label = i18next.t('label.worksheet-plural');
+      GroupIcon = MetricIcon;
+
+      break;
 
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =

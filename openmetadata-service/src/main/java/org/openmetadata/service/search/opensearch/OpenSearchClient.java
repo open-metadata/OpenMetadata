@@ -22,7 +22,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
-import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
@@ -65,8 +64,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
-import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -87,7 +87,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.Paging;
-import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
@@ -314,6 +313,36 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void createAliases(IndexMapping indexMapping) {
     indexManager.createAliases(indexMapping);
+  }
+
+  @Override
+  public void createIndex(String indexName, String indexMappingContent) {
+    indexManager.createIndex(indexName, indexMappingContent);
+  }
+
+  @Override
+  public void deleteIndex(String indexName) {
+    indexManager.deleteIndex(indexName);
+  }
+
+  @Override
+  public Set<String> getAliases(String indexName) {
+    return indexManager.getAliases(indexName);
+  }
+
+  @Override
+  public void addAliases(String indexName, Set<String> aliases) {
+    indexManager.addAliases(indexName, aliases);
+  }
+
+  @Override
+  public void removeAliases(String indexName, Set<String> aliases) {
+    indexManager.removeAliases(indexName, aliases);
+  }
+
+  @Override
+  public Set<String> getIndicesByAlias(String aliasName) {
+    return indexManager.getIndicesByAlias(aliasName);
   }
 
   @Override
@@ -917,63 +946,31 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    int upstreamDepth = lineageRequest.getUpstreamDepth();
-    int downstreamDepth = lineageRequest.getDownstreamDepth();
-    SearchLineageResult result =
-        lineageGraphBuilder.getDownstreamLineage(
-            lineageRequest
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
-                .withDirection(LineageDirection.DOWNSTREAM)
-                .withDirectionValue(
-                    getLineageDirection(
-                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    SearchLineageResult upstreamLineage =
-        lineageGraphBuilder.getUpstreamLineage(
-            lineageRequest
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
-                .withDirection(LineageDirection.UPSTREAM)
-                .withDirectionValue(
-                    getLineageDirection(
-                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-
-    // Here we are merging everything from downstream paging into upstream paging
-    for (var nodeFromDownstream : result.getNodes().entrySet()) {
-      if (upstreamLineage.getNodes().containsKey(nodeFromDownstream.getKey())) {
-        NodeInformation existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
-        LayerPaging existingPaging = existingNode.getPaging();
-        existingPaging.setEntityDownstreamCount(
-            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
-      }
-    }
-    // since paging from downstream is merged into upstream, we can just put the upstream result
-    result.getNodes().putAll(upstreamLineage.getNodes());
-    result.getUpstreamEdges().putAll(upstreamLineage.getUpstreamEdges());
-    return result;
+    return lineageGraphBuilder.searchLineage(lineageRequest);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    int upstreamDepth = lineageRequest.getUpstreamDepth();
-    int downstreamDepth = lineageRequest.getDownstreamDepth();
-    if (lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
-      return lineageGraphBuilder.getUpstreamLineage(
-          lineageRequest
-              .withUpstreamDepth(upstreamDepth + 1)
-              .withDownstreamDepth(downstreamDepth + 1)
-              .withDirectionValue(
-                  getLineageDirection(
-                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    } else {
-      return lineageGraphBuilder.getDownstreamLineage(
-          lineageRequest
-              .withUpstreamDepth(upstreamDepth + 1)
-              .withDownstreamDepth(downstreamDepth + 1)
-              .withDirectionValue(
-                  getLineageDirection(
-                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    }
+    return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
+    return lineageGraphBuilder.getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+  }
+
+  @Override
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
   @Override
