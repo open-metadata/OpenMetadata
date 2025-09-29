@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -44,6 +45,7 @@ const DomainListPage = () => {
   const domainListing = useDomainListingData();
   const theme = useTheme();
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -124,7 +126,7 @@ const DomainListPage = () => {
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
-    createPermission: true,
+    createPermission: permissions.domain?.Create || false,
     addButtonLabelKey: 'label.add-domain',
     onAddClick: openDrawer,
   });
