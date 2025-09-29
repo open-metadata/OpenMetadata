@@ -143,21 +143,16 @@ class BaseTableParameter:
             # Check if the data diff class is not BaseTableParameter, but an overridden table parameter, then get that
             data_diff_class = service_spec_patch.get_data_diff_class()
             # Check if method is truly overridden (not just different class)
-            if data_diff_class and data_diff_class is not BaseTableParameter:
-                # Compare method objects to ensure it's overridden
-                class_method = getattr(
-                    data_diff_class, "_get_service_connection_config", None
-                )
-                base_method = getattr(
-                    BaseTableParameter, "_get_service_connection_config", None
-                )
-
-                if class_method is not base_method:
-                    # Method is overridden, create instance and call it
-                    instance = data_diff_class()
+            if (
+                data_diff_class
+                and data_diff_class is not BaseTableParameter
+                and data_diff_class is not cls
+            ):
+                
+                    
                     # Call as instance method to avoid recursion
-                    return instance._get_service_connection_config.__func__(
-                        instance, service_connection_config
+                    return data_diff_class()._get_service_connection_config(
+                        service_connection_config
                     )
 
             if not connection_class:

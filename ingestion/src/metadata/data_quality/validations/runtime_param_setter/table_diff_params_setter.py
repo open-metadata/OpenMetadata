@@ -58,8 +58,6 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             DatabaseService, self.table_entity.service.id, nullable=False
         )
 
-        # Use the class method - each connector can override as needed
-        # This is scalable: any connector can override _get_service_connection_config
         service1_url = data_diff_class._get_service_connection_config(
             self.service_connection_config
         )
