@@ -742,16 +742,18 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
     CreateTag createTag = createRequest(getEntityName(test));
     Tag tag = createEntity(createTag, ADMIN_AUTH_HEADERS);
 
-    // Verify the tag is created with APPROVED status
+    // Verify the tag is created with UNPROCESSED status
     assertEquals(
-        EntityStatus.APPROVED, tag.getEntityStatus(), "Tag should be created with APPROVED status");
+        EntityStatus.UNPROCESSED,
+        tag.getEntityStatus(),
+        "Tag should be created with UNPROCESSED status");
 
     // Update the entityStatus using PATCH operation
     String originalJson = JsonUtils.pojoToJson(tag);
     tag.setEntityStatus(EntityStatus.IN_REVIEW);
 
     ChangeDescription change = getChangeDescription(tag, MINOR_UPDATE);
-    fieldUpdated(change, "entityStatus", EntityStatus.APPROVED, EntityStatus.IN_REVIEW);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
     Tag updatedTag =
         patchEntityAndCheck(tag, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
 
@@ -790,5 +792,109 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
   public Classification getClassification(String name) throws IOException {
     return classificationResourceTest.getEntityByName(
         name, classificationResourceTest.getAllowedFields(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  @Order(100) // Run this test later to ensure environment is ready
+  void test_bulkSetFieldsForTags(TestInfo test) throws IOException {
+    // This test verifies that bulk operations (like those used during reindexing)
+    // correctly set classification and parent relationships for tags
+
+    // Create a classification
+    String classificationName =
+        "BulkTestClassification_" + UUID.randomUUID().toString().substring(0, 8);
+    Classification classification = createClassification(classificationName);
+
+    // Create a parent tag
+    String parentTagName = "BulkParentTag_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateTag createParent =
+        createRequest(parentTagName).withClassification(classification.getFullyQualifiedName());
+    Tag parentTag = createEntity(createParent, ADMIN_AUTH_HEADERS);
+
+    // Create multiple child tags
+    List<Tag> childTags = new ArrayList<>();
+    for (int i = 0; i < 5; i++) {
+      String childTagName =
+          "BulkChildTag_" + i + "_" + UUID.randomUUID().toString().substring(0, 8);
+      CreateTag createChild =
+          createRequest(childTagName)
+              .withClassification(classification.getFullyQualifiedName())
+              .withParent(parentTag.getFullyQualifiedName());
+      Tag childTag = createEntity(createChild, ADMIN_AUTH_HEADERS);
+      childTags.add(childTag);
+    }
+
+    // Get TagRepository to test bulk operations
+    org.openmetadata.service.jdbi3.TagRepository tagRepository =
+        (org.openmetadata.service.jdbi3.TagRepository) Entity.getEntityRepository(Entity.TAG);
+
+    // Fetch tags without fields (simulating initial reindexing fetch)
+    // During reindexing, tags are fetched without relationships populated
+    List<Tag> tagsWithoutFields = new ArrayList<>();
+    for (Tag childTag : childTags) {
+      // Create a minimal tag object to simulate what happens during reindexing
+      // when tags are fetched in bulk without relationship fields
+      Tag tagWithoutFields = new Tag();
+      tagWithoutFields.setId(childTag.getId());
+      tagWithoutFields.setName(childTag.getName());
+      tagWithoutFields.setFullyQualifiedName(childTag.getFullyQualifiedName());
+      tagWithoutFields.setDescription(childTag.getDescription());
+      // Classification and parent are intentionally not set - simulating bulk fetch without
+      // relationships
+      tagsWithoutFields.add(tagWithoutFields);
+    }
+
+    // Test setFieldsInBulk method
+    org.openmetadata.service.util.EntityUtil.Fields fields =
+        new org.openmetadata.service.util.EntityUtil.Fields(
+            java.util.Set.of("classification", "parent", "usageCount"));
+    tagRepository.setFieldsInBulk(fields, tagsWithoutFields);
+
+    // Verify all tags now have their classification and parent set correctly
+    for (Tag tag : tagsWithoutFields) {
+      assertNotNull(tag.getClassification(), "Classification should be set after bulk operation");
+      assertEquals(
+          classification.getId(),
+          tag.getClassification().getId(),
+          "Classification ID should match");
+      assertEquals(
+          classification.getFullyQualifiedName(),
+          tag.getClassification().getFullyQualifiedName(),
+          "Classification FQN should match");
+
+      assertNotNull(tag.getParent(), "Parent should be set after bulk operation");
+      assertEquals(parentTag.getId(), tag.getParent().getId(), "Parent ID should match");
+      assertEquals(
+          parentTag.getFullyQualifiedName(),
+          tag.getParent().getFullyQualifiedName(),
+          "Parent FQN should match");
+
+      assertNotNull(tag.getUsageCount(), "Usage count should be set");
+      assertTrue(tag.getUsageCount() >= 0, "Usage count should be non-negative");
+    }
+
+    // Test edge case: empty list
+    List<Tag> emptyList = new ArrayList<>();
+    tagRepository.setFieldsInBulk(fields, emptyList);
+    assertTrue(emptyList.isEmpty(), "Empty list should remain empty");
+
+    // Test with parent tag (which has no parent)
+    List<Tag> parentTagList = new ArrayList<>();
+    Tag parentWithoutFields = new Tag();
+    parentWithoutFields.setId(parentTag.getId());
+    parentWithoutFields.setName(parentTag.getName());
+    parentWithoutFields.setFullyQualifiedName(parentTag.getFullyQualifiedName());
+    parentWithoutFields.setDescription(parentTag.getDescription());
+    parentTagList.add(parentWithoutFields);
+
+    tagRepository.setFieldsInBulk(fields, parentTagList);
+
+    assertNotNull(
+        parentWithoutFields.getClassification(), "Parent tag should have classification set");
+    assertEquals(
+        classification.getId(),
+        parentWithoutFields.getClassification().getId(),
+        "Parent tag classification should match");
+    assertNull(parentWithoutFields.getParent(), "Parent tag should not have a parent");
   }
 }
