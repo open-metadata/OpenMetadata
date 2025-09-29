@@ -41,6 +41,7 @@ import {
 import { Table } from '../../../generated/entity/data/table';
 import { filterSelectOptions } from '../../../utils/CommonUtils';
 import { getPopupContainer } from '../../../utils/formUtils';
+import { getColumnOptionsFromTableColumn } from '../../../utils/TableUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
@@ -78,11 +79,7 @@ export const ContractSecurityFormTab: React.FC<{
       return [];
     }
 
-    return columns.map((column) => ({
-      label: column.name,
-      value: column.name,
-      data: column,
-    }));
+    return getColumnOptionsFromTableColumn(columns, true);
   }, [tableData]);
 
   const handleAddConsumers = () => {
