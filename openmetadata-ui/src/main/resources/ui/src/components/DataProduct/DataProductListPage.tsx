@@ -17,6 +17,7 @@ import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../constants/constants';
+import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -44,6 +45,7 @@ const DataProductListPage = () => {
   const dataProductListing = useDataProductListingData();
   const theme = useTheme();
   const { t } = useTranslation();
+  const { permissions } = usePermissionProvider();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -125,7 +127,7 @@ const DataProductListPage = () => {
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
     descriptionMessageKey: 'message.data-product-description',
-    createPermission: true,
+    createPermission: permissions.dataProduct?.Create || false,
     addButtonLabelKey: 'label.add-data-product',
     onAddClick: openDrawer,
   });
