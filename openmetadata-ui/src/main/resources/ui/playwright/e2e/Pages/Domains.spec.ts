@@ -227,8 +227,8 @@ test.describe('Domains', () => {
 
     await test.step('Follow & Un-follow DataProducts', async () => {
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDataProduct(page, domain.data, dataProduct1.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct1.data);
       await followEntity(page, EntityTypeEndpoint.DataProduct);
       await redirectToHomePage(page);
 
@@ -240,8 +240,8 @@ test.describe('Domains', () => {
         page.locator('[data-testid="following-widget"]')
       ).toContainText(dataProduct1.data.displayName);
 
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDataProduct(page, domain.data, dataProduct1.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct1.data);
       await unFollowEntity(page, EntityTypeEndpoint.DataProduct);
       await redirectToHomePage(page);
 
@@ -256,8 +256,8 @@ test.describe('Domains', () => {
 
     await test.step('Add assets to DataProducts', async () => {
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDataProduct(page, domain.data, dataProduct1.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct1.data);
       await addAssetsToDataProduct(
         page,
         dataProduct1.data.fullyQualifiedName ?? '',
@@ -267,8 +267,8 @@ test.describe('Domains', () => {
 
     await test.step('Remove assets from DataProducts', async () => {
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDataProduct(page, domain.data, dataProduct1.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
       await checkAssetsCount(page, 0);
     });
@@ -555,11 +555,11 @@ test.describe('Domains', () => {
           await newDomainDP2.create(apiContext);
           await page.reload();
           await redirectToHomePage(page);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDataProduct(page, domain1.data, newDomainDP1.data);
+          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+          await selectDataProduct(page, newDomainDP1.data);
           await checkAssetsCount(page, 0);
-          await sidebarClick(page, SidebarItem.DOMAIN);
-          await selectDataProduct(page, domain1.data, newDomainDP2.data);
+          await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+          await selectDataProduct(page, newDomainDP2.data);
           await checkAssetsCount(page, 0);
         }
       );
@@ -607,9 +607,8 @@ test.describe('Domains', () => {
       await page.reload();
       await redirectToHomePage(page);
 
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDomain(page, domain.data);
-      await selectDataProduct(page, domain.data, dataProduct.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
 
       await expect(
         page.getByTestId('domain-owner-name').getByTestId('owner-label')
@@ -714,8 +713,8 @@ test.describe('Domains', () => {
       await createDataProduct(page, dataProduct.data);
 
       await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await selectDataProduct(page, domain1.data, dataProduct.data);
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await selectDataProduct(page, dataProduct.data);
 
       await addTagsAndGlossaryToDomain(page, {
         tagFqn: tag.responseData.fullyQualifiedName,
@@ -824,11 +823,7 @@ test.describe('Domains', () => {
           // Navigate to domain page
           await sidebarClick(page, SidebarItem.DOMAIN);
 
-          // Select the domain
-          await page
-            .getByRole('menuitem', { name: domain.data.displayName })
-            .locator('span')
-            .click();
+          await selectDomain(page, domain.data);
 
           // Click on custom properties tab
           await page.getByTestId('custom_properties').click();
@@ -866,10 +861,7 @@ test.describe('Domains', () => {
 
           // Navigate back to the domain and custom properties
           await sidebarClick(page, SidebarItem.DOMAIN);
-          await page
-            .getByRole('menuitem', { name: domain.data.displayName })
-            .locator('span')
-            .click();
+          await selectDomain(page, domain.data);
 
           await page.getByTestId('custom_properties').click();
 
