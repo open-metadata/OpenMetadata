@@ -535,13 +535,15 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         )}
         <div className="d-flex justify-between items-center p-x-xss">
           <div className="d-flex gap-2">
-            <StyledIconButton
-              color={filterSelectionActive ? 'primary' : 'default'}
-              size="large"
-              title={t('label.filter-plural')}
-              onClick={handleToggleFilterSelection}>
-              <FilterLinesIcon />
-            </StyledIconButton>
+            <Tooltip arrow placement="top" title={t('label.filter-plural')}>
+              <StyledIconButton
+                color={filterSelectionActive ? 'primary' : 'default'}
+                size="large"
+                title={t('label.filter-plural')}
+                onClick={handleToggleFilterSelection}>
+                <FilterLinesIcon />
+              </StyledIconButton>
+            </Tooltip>
 
             <Searchbar
               removeMargin
@@ -588,7 +590,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               onClick={() => navigate({ search: '?mode=impact_analysis' })}>
               {t('label.impact-analysis')}
             </Button>
-            <Tooltip title="Export as CSV">
+            <Tooltip
+              arrow
+              placement="top"
+              title={t('label.export-as-type', { type: t('label.csv') })}>
               <StyledIconButton
                 size="large"
                 onClick={() =>
@@ -597,7 +602,10 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
                 <DownloadIcon />
               </StyledIconButton>
             </Tooltip>
-            <Tooltip title={t('label.lineage-configuration')}>
+            <Tooltip
+              arrow
+              placement="top"
+              title={t('label.lineage-configuration')}>
               <StyledIconButton
                 size="large"
                 onClick={() => setDialogVisible(true)}>
@@ -605,7 +613,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
               </StyledIconButton>
             </Tooltip>
             <Tooltip
-              title={isFullScreen ? 'Exit Full Screen' : 'Full Screen View'}>
+              arrow
+              placement="top"
+              title={
+                isFullScreen
+                  ? t('label.exit-full-screen')
+                  : t('label.full-screen-view')
+              }>
               <StyledIconButton
                 size="large"
                 onClick={() => updateURLParams({ fullscreen: !isFullScreen })}>
@@ -722,26 +736,26 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const tableColumns: ColumnsType<SearchSourceAlias> = useMemo(
     () => [
       {
-        title: 'Name',
+        title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
         sorter: true,
         render: renderName,
       },
       {
-        title: 'Node Depth',
+        title: t('label.node-depth'),
         dataIndex: 'nodeDepth',
         key: 'nodeDepth',
       },
       {
-        title: 'Description',
+        title: t('label.description'),
         dataIndex: 'description',
         key: 'description',
         ellipsis: true,
         render: (text: string) => <span>{text}</span>,
       },
       {
-        title: 'Domain',
+        title: t('label.domain-plural'),
         dataIndex: 'domains',
         key: 'domains',
         render: (domains: EntityReference[]) => (
@@ -756,7 +770,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ),
       },
       {
-        title: 'Owners',
+        title: t('label.owner-plural'),
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
@@ -808,7 +822,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           ),
       },
       {
-        title: 'Glossary Terms',
+        title: t('label.glossary-term-plural'),
         dataIndex: 'tags',
         key: 'glossary-terms',
         render: (
@@ -862,7 +876,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const columnImpactColumns: ColumnsType<SearchSourceAlias> = useMemo(
     () => [
       {
-        title: 'Source Table',
+        title: t('label.source'),
         dataIndex:
           lineageDirection === LineageDirection.Downstream
             ? 'fromEntity'
@@ -891,7 +905,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ),
       },
       {
-        title: 'Source Column',
+        title: t('label.source-column'),
         dataIndex:
           lineageDirection === LineageDirection.Downstream
             ? ['column', 'fromColumns']
@@ -904,7 +918,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         render: columnNameRender,
       },
       {
-        title: 'Impacted Table',
+        title: t('label.impacted'),
         dataIndex:
           lineageDirection === LineageDirection.Upstream
             ? 'fromEntity'
@@ -933,7 +947,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ),
       },
       {
-        title: 'Impacted Columns',
+        title: t('label.impacted-column-plural'),
         dataIndex:
           lineageDirection === LineageDirection.Upstream
             ? ['column', 'fromColumns']

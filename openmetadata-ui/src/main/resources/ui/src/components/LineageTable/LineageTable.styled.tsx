@@ -16,11 +16,10 @@ import {
   styled,
   ToggleButtonGroup,
   ToggleButtonGroupProps,
-  Tooltip,
-  TooltipProps,
 } from '@mui/material';
 import type { MenuProps } from '@mui/material/Menu';
 import Menu from '@mui/material/Menu';
+import React from 'react';
 
 export const StyledMenu = styled((props: MenuProps) => <Menu {...props} />)(
   ({ theme }) => ({
@@ -91,9 +90,11 @@ export const StyledToggleButtonGroup = styled(
   },
 }));
 
-export const StyledIconButton = styled((props: IconButtonProps) => (
-  <IconButton {...props} />
-))(({ theme }) => ({
+export const StyledIconButton = styled(
+  React.forwardRef<HTMLButtonElement, IconButtonProps>((props, ref) => (
+    <IconButton {...props} ref={ref} />
+  ))
+)(({ theme }) => ({
   height: 40,
   width: 40,
 
@@ -126,7 +127,3 @@ export const StyledIconButton = styled((props: IconButtonProps) => (
     },
   },
 }));
-
-export const StyledTooltip = styled((props: TooltipProps) => (
-  <Tooltip {...props} />
-))(({ theme }) => ({}));
