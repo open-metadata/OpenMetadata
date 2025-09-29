@@ -16,14 +16,14 @@
 
 .entity-summary-panel-container {
   height: 100%;
-  background: #fff;
+  background: @white;
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
   .entity-title-link {
     text-decoration: none;
     font-size: 13px;
     font-weight: 700;
-    color: #20293a;
+    color: @text-color-2;
     &:hover {
       text-decoration: none;
     }
@@ -34,10 +34,6 @@
 
     &:active {
       text-decoration: none;
-    }
-    .text-highlighter {
-      color: #20293a;
-      background-color: #f9fafc;
     }
   }
 }
@@ -54,7 +50,7 @@
   border-bottom: none !important;
   border-radius: 0px !important;
   display: flex;
-  border-color: #f2f3f9 !important;
+  border-color: @grey-38 !important;
   border-top: none !important;
 
   .ant-card-head {
@@ -191,7 +187,7 @@
     flex-direction: column;
     padding-top: 16px;
     padding-bottom: 16px;
-    background-image: linear-gradient(to right, #cdd5e0 66%, #fff 0%);
+    background-image: linear-gradient(to right, @grey-15 66%, @white 0%);
     background-position: bottom;
     background-size: 3px 1px;
     background-repeat: repeat-x;
@@ -204,7 +200,7 @@
 
     .property-name {
       font-size: 13px;
-      color: '#364254';
+      color: @grey-700;
       font-weight: 600;
       margin-bottom: 4px;
     }
@@ -222,10 +218,10 @@
     border-top-right-radius: 10px;
     border-top-left-radius: 10px;
     thead {
-      background-color: #f8f9fc;
+      background-color: @grey-9;
     }
     th {
-      color: '#364254';
+      color: @grey-700;
       font-weight: 600;
       padding-top: 10px;
       padding-bottom: 11px;
@@ -305,14 +301,14 @@
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-  background-color: #f2f5f9;
+  background-color: @grey-39;
   border-radius: 9px;
   margin-left: 4px;
-  color: #21263c;
+  color: @text-color-2;
   font-size: 10px;
   display: flex;
   &.active {
-    color: #3a8ce9;
+    color: @primary-7;
   }
 }
 
@@ -326,7 +322,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
+  background: @white;
   padding: 0px 4px;
   gap: 4px;
 
@@ -351,13 +347,13 @@
       padding: 0 7px;
 
       border: 1px solid #e3e8f0;
-      background-color: #fff;
+      background-color: @white;
       color: #595959;
 
       &.active {
-        border: 1px solid #1b6ce7;
-        background-color: #1b6ce7;
-        color: #ffffff;
+        border: 1px solid @primary-7;
+        background-color: @primary-7;
+        color: @white;
       }
     }
   }
@@ -366,7 +362,7 @@
     margin-right: -16px;
     margin-left: -16px;
     .lineage-item-card {
-      border-bottom: 1px solid #eaecf5;
+      border-bottom: 1px solid @grey-15;
       padding-bottom: 18px;
       padding-right: 16px;
       padding-left: 16px;
@@ -401,8 +397,8 @@
       .ant-badge {
         .ant-badge-status-text {
           font-size: 11px;
-          color: #8c8c8c;
-          background-color: #f5f5f5;
+          color: @grey-10;
+          background-color: @grey-100;
           padding: 2px 8px;
           border-radius: 12px;
         }

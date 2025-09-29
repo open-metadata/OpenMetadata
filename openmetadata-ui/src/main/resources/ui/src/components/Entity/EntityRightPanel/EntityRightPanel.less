@@ -10,18 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
 
 .entity-right-panel-container {
   display: flex;
   height: 100%;
-  background: #fff;
+  background: @white;
 
   .entity-right-panel-content {
     flex: 1;
     padding: 16px;
     overflow-y: auto;
-    border-right: 1px solid #d9d9d9;
-
+    border-right: 1px solid @grey-22;
+    border-top: none;
     .entity-right-panel-tab-content {
       height: 100%;
     }

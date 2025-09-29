@@ -18,8 +18,8 @@
   right: 0px;
   position: relative;
   height: 100vh;
-  background: #fff;
-  border-left: 0.75px solid #f2f3f9;
+  background: @white;
+  border-left: 0.75px solid @grey-38;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -53,7 +53,6 @@
         height: 16px;
       }
 
-      /* Hover: only icon gets light bg, label turns blue */
       &.ant-menu-item-active:not(.ant-menu-item-selected),
       &:hover:not(.ant-menu-item-selected) {
         background: transparent;
@@ -65,10 +64,9 @@
         }
       }
 
-      /* Selected state: only icon bg blue, label blue */
       &.ant-menu-item-selected {
         background: transparent;
-        color: @primary-7; // affects label
+        color: @primary-7;
 
         &::after {
           display: none;
@@ -76,7 +74,7 @@
 
         .ant-menu-item-icon {
           background: @primary-color;
-          color: @white; // make svg stroke white
+          color: @white;
         }
 
         .ant-menu-title-content {
@@ -84,8 +82,6 @@
           font-weight: 600;
         }
       }
-
-      /* Icon container and svg coloring */
       .ant-menu-item-icon {
         padding: 8px;
         margin-bottom: 2px;
@@ -104,12 +100,10 @@
         font-size: 16px;
       }
 
-      /* Match left sidebar: hollow icons that follow currentColor */
       svg {
         fill: transparent !important;
       }
 
-      /* Force svg strokes (and fills) to follow current text color */
       svg * {
         stroke: currentColor !important;
         fill: transparent !important;
