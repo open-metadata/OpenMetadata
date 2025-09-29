@@ -86,7 +86,7 @@ import org.openmetadata.service.cache.RelationshipCache;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.events.EventFilter;
-import org.openmetadata.service.events.EventPubSub;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
@@ -112,7 +112,7 @@ import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitor;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorFactory;
-import org.openmetadata.service.monitoring.EventMonitorPublisher;
+import org.openmetadata.service.monitoring.EventMonitorHandler;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
@@ -299,9 +299,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Health Check
     registerHealthCheck(environment);
-
-    // start event hub before registering publishers
-    EventPubSub.start();
 
     ApplicationHandler.initialize(catalogConfig);
     registerResources(catalogConfig, environment, jdbi);
@@ -822,10 +819,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           EventMonitorFactory.createEventMonitor(
               openMetadataApplicationConfig.getEventMonitorConfiguration(),
               openMetadataApplicationConfig.getClusterName());
-      EventMonitorPublisher eventMonitorPublisher =
-          new EventMonitorPublisher(
-              openMetadataApplicationConfig.getEventMonitorConfiguration(), eventMonitor);
-      EventPubSub.addEventHandler(eventMonitorPublisher);
+      EventMonitorHandler eventMonitorHandler = new EventMonitorHandler(eventMonitor);
+      EntityLifecycleEventDispatcher.getInstance().registerHandler(eventMonitorHandler);
     }
   }
 
@@ -938,7 +933,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     public void stop() throws InterruptedException, SchedulerException {
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
-      EventPubSub.shutdown();
+      EntityLifecycleEventDispatcher.getInstance().shutdown();
       AppScheduler.shutDown();
       EventSubscriptionScheduler.shutDown();
       LOG.info("Stopping the application");
