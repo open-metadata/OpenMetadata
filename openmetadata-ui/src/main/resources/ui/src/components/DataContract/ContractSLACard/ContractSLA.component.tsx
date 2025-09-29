@@ -51,7 +51,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.availabilityTime) {
       slaList.push({
         key: DATA_CONTRACT_SLA.TIME_AVAILABILITY,
         label: (
@@ -67,7 +67,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.maxLatency) {
       slaList.push({
         key: DATA_CONTRACT_SLA.MAX_LATENCY,
         label: (
@@ -85,7 +85,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.retention) {
       slaList.push({
         key: DATA_CONTRACT_SLA.RETENTION,
         label: (

@@ -398,7 +398,8 @@ public class TagRepository extends EntityRepository<Tag> {
     var records =
         daoCollection
             .relationshipDAO()
-            .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), Entity.CLASSIFICATION);
+            .findFromBatch(
+                entityIds, Relationship.CONTAINS.ordinal(), Entity.CLASSIFICATION, NON_DELETED);
 
     if (records.isEmpty()) {
       return Map.of();
@@ -441,7 +442,7 @@ public class TagRepository extends EntityRepository<Tag> {
     var records =
         daoCollection
             .relationshipDAO()
-            .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), TAG);
+            .findFromBatch(entityIds, Relationship.CONTAINS.ordinal(), TAG, NON_DELETED);
 
     if (records.isEmpty()) {
       return Map.of();

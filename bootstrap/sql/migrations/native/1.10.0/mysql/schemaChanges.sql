@@ -45,6 +45,26 @@ CREATE TABLE IF NOT EXISTS notification_template_entity (
     INDEX idx_notification_template_provider (provider)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- Optimize table listing queries by indexing the schema hash prefix
+ALTER TABLE table_entity
+ADD COLUMN databaseSchemaHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
+GENERATED ALWAYS AS (SUBSTRING_INDEX(fqnHash, '.', 3)) STORED;
+
+CREATE INDEX idx_table_entity_schema_listing
+ON table_entity (deleted, databaseSchemaHash, name, id);
+
+-- Optimize stored procedure listing queries by indexing the schema hash prefix
+ALTER TABLE stored_procedure_entity
+ADD COLUMN databaseSchemaHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin
+GENERATED ALWAYS AS (SUBSTRING_INDEX(fqnHash, '.', 3)) STORED;
+
+ALTER TABLE stored_procedure_entity
+DROP INDEX idx_stored_procedure_entity_deleted_name_id;
+
+CREATE INDEX idx_stored_procedure_schema_listing
+ON stored_procedure_entity (deleted, databaseSchemaHash, name, id);
+
+
 -- Increase Flowable ACTIVITY_ID_ column size to support longer user-defined workflow node names
 ALTER TABLE ACT_RU_EVENT_SUBSCR MODIFY ACTIVITY_ID_ varchar(255);
 

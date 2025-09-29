@@ -19,6 +19,7 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     MigrationUtil migrationUtil = new MigrationUtil(handle, ConnectionType.MYSQL);
     migrationUtil.migrateEntityStatusForExistingEntities();
+    migrationUtil.cleanupOrphanedDataContracts();
     // Initialize WorkflowHandler before attempting to update workflows
     // This ensures that Flowable engine is ready for validation
     initializeWorkflowHandler();

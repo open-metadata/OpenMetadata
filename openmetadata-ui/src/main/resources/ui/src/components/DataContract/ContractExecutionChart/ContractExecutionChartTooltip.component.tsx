@@ -23,15 +23,19 @@ const ContractExecutionChartTooltip = (
 
   const data = payload.length ? payload[0].payload.data : {};
 
-  if (!active || payload.length === 0) {
+  if (!active || payload.length === 0 || !data) {
     return null;
   }
+
+  const timestamp =
+    payload[0].payload.displayTimestamp ||
+    payload[0].payload.name.split('_')[0];
 
   return (
     <Card
       title={
         <Typography.Title level={5}>
-          {formatDateTimeLong(payload[0].payload.name)}
+          {formatDateTimeLong(timestamp)}
         </Typography.Title>
       }>
       <ul
@@ -43,7 +47,7 @@ const ContractExecutionChartTooltip = (
           <span className="flex items-center text-grey-muted">
             {t('label.contract-execution-status')}
           </span>
-          <span className="font-medium">{data.contractExecutionStatus}</span>
+          <span className="font-medium">{data?.contractExecutionStatus}</span>
         </li>
       </ul>
     </Card>
