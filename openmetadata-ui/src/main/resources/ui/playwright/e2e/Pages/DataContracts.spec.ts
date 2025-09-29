@@ -781,9 +781,12 @@ test.describe('Data Contracts', () => {
 
     await test.step('Create Persona and assign user to it', async () => {
       await redirectToHomePage(page);
+
+      const personaGetResponse = page.waitForResponse('/api/v1/personas**');
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
+      await personaGetResponse;
+
+      await page.waitForSelector('.ant-skeleton-content', {
         state: 'detached',
       });
 
