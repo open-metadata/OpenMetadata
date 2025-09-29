@@ -1,0 +1,98 @@
+>           raise AssertionError(_error_message()) from cause
+E           AssertionError: expected call not found.
+E           Expected: get_by_id(entity=<class 'metadata.generated.schema.entity.teams.user.User'>, entity_id='350e8400-e29b-41d4-a716-446655440000', fields=['teams', 'roles', 'owns'])
+E             Actual: get_by_id(entity=<class 'metadata.generated.schema.entity.teams.user.User'>, entity_id='350e8400-e29b-41d4-a716-446655440000', fields=['teams', 'roles', 'owns'], nullable=False)
+
+/opt/homebrew/Cellar/python@3.13/3.13.3_1/Frameworks/Python.framework/Versions/3.13/lib/python3.13/unittest/mock.py:979: AssertionError
+================================================================================= short test summary info ==================================================================================
+FAILED ingestion/tests/unit/sdk/test_api_collection_entity.py::TestAPICollectionEntity::test_retrieve_api_collection_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_api_collection_entity.py::TestAPICollectionEntity::test_retrieve_api_collection_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_api_endpoint_entity.py::TestAPIEndpointEntity::test_retrieve_api_endpoint_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_api_endpoint_entity.py::TestAPIEndpointEntity::test_retrieve_api_endpoint_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_base_entity.py::TestBaseEntity::test_export_csv - AttributeError: type object 'Tables' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_base_entity.py::TestBaseEntity::test_import_csv - AttributeError: type object 'Tables' has no attribute 'import_csv'
+FAILED ingestion/tests/unit/sdk/test_base_entity.py::TestBaseEntity::test_retrieve_entity_with_fields - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_base_entity.py::TestAsyncOperations::test_csv_export_async - AttributeError: type object 'Tables' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_base_entity.py::TestAsyncOperations::test_csv_import_async - AttributeError: type object 'Tables' has no attribute 'import_csv'
+FAILED ingestion/tests/unit/sdk/test_base_entity.py::TestAsyncOperations::test_list_all_method - AssertionError: False is not true
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_add_followers - AttributeError: type object 'Charts' has no attribute 'add_followers'
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_export_charts_csv - AttributeError: type object 'Charts' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_get_specific_version - AttributeError: type object 'Charts' has no attribute 'get_specific_version'
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_get_versions - AttributeError: type object 'Charts' has no attribute 'get_versions'
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_import_charts_csv - AttributeError: type object 'Charts' has no attribute 'import_csv'
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_remove_followers - AttributeError: type object 'Charts' has no attribute 'remove_followers'
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_restore_chart - AttributeError: type object 'Charts' has no attribute 'restore'
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_retrieve_chart_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_retrieve_chart_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_chart_entity.py::TestChartEntity::test_retrieve_chart_with_fields - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_classification_entity.py::TestClassificationEntity::test_retrieve_classification_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_classification_entity.py::TestClassificationEntity::test_retrieve_classification_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_container_entity.py::TestContainerEntity::test_retrieve_container_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_container_entity.py::TestContainerEntity::test_retrieve_container_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_container_entity.py::TestContainerEntity::test_retrieve_container_with_children - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_csv_mixin.py::TestBaseEntityCsvIntegration::test_export_csv_integration - AttributeError: type object 'TestEntity' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_csv_mixin.py::TestBaseEntityCsvIntegration::test_import_csv_integration - AttributeError: type object 'TestEntity' has no attribute 'import_csv'
+FAILED ingestion/tests/unit/sdk/test_csv_mixin.py::TestBaseEntityCsvIntegration::test_async_export_integration - AttributeError: type object 'TestEntity' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_csv_mixin.py::TestBaseEntityCsvIntegration::test_async_import_integration - AttributeError: type object 'TestEntity' has no attribute 'import_csv'
+FAILED ingestion/tests/unit/sdk/test_csv_operations.py::TestCsvMixinOperations::test_base_entity_csv_export_integration - AttributeError: type object 'TestEntity' has no attribute 'set_default_client'
+FAILED ingestion/tests/unit/sdk/test_csv_operations.py::TestCsvMixinOperations::test_base_entity_csv_import_integration - AttributeError: type object 'TestEntity' has no attribute 'set_default_client'
+FAILED ingestion/tests/unit/sdk/test_custom_properties.py::TestIntegrationWithBaseEntity::test_update_custom_properties_from_base_entity - AttributeError: type object 'Tables' has no attribute 'update_custom_properties'
+FAILED ingestion/tests/unit/sdk/test_custom_properties.py::TestIntegrationWithBaseEntity::test_update_custom_properties_by_name_from_base_entity - AttributeError: type object 'Tables' has no attribute 'update_custom_properties_by_name'
+FAILED ingestion/tests/unit/sdk/test_dashboard_data_model_entity.py::TestDashboardDataModelEntity::test_retrieve_dashboard_data_model_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_dashboard_data_model_entity.py::TestDashboardDataModelEntity::test_retrieve_dashboard_data_model_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_dashboard_entity.py::TestDashboardEntity::test_retrieve_dashboard_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_dashboard_entity.py::TestDashboardEntity::test_retrieve_dashboard_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_dashboard_entity.py::TestDashboardEntity::test_retrieve_dashboard_with_charts - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_data_product_entity.py::TestDataProductEntity::test_retrieve_data_product_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_data_product_entity.py::TestDataProductEntity::test_retrieve_data_product_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_database_entity.py::TestDatabaseEntity::test_export_database_csv - AttributeError: type object 'Databases' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_database_entity.py::TestDatabaseEntity::test_import_database_csv - AttributeError: type object 'Databases' has no attribute 'import_csv'
+FAILED ingestion/tests/unit/sdk/test_database_entity.py::TestDatabaseEntity::test_retrieve_database_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_database_entity.py::TestDatabaseEntity::test_retrieve_database_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_database_schema_entity.py::TestDatabaseSchemaEntity::test_retrieve_schema_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_database_schema_entity.py::TestDatabaseSchemaEntity::test_retrieve_schema_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_database_schema_entity.py::TestDatabaseSchemaEntity::test_retrieve_schema_with_tables - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_domain_entity.py::TestDomainEntity::test_retrieve_domain_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_domain_entity.py::TestDomainEntity::test_retrieve_domain_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_glossary_entity.py::TestGlossaryEntity::test_retrieve_glossary_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_glossary_entity.py::TestGlossaryEntity::test_retrieve_glossary_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_glossary_entity.py::TestGlossaryTermEntity::test_retrieve_term_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_metric_entity.py::TestMetricEntity::test_add_followers - AttributeError: type object 'Metrics' has no attribute 'add_followers'
+FAILED ingestion/tests/unit/sdk/test_metric_entity.py::TestMetricEntity::test_add_related_metrics - AttributeError: type object 'Metrics' has no attribute 'add_related_metrics'
+FAILED ingestion/tests/unit/sdk/test_metric_entity.py::TestMetricEntity::test_export_metrics_csv - AttributeError: type object 'Metrics' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_metric_entity.py::TestMetricEntity::test_get_versions - AttributeError: type object 'Metrics' has no attribute 'get_versions'
+FAILED ingestion/tests/unit/sdk/test_metric_entity.py::TestMetricEntity::test_import_metrics_csv - AttributeError: type object 'Metrics' has no attribute 'import_csv'
+FAILED ingestion/tests/unit/sdk/test_metric_entity.py::TestMetricEntity::test_restore_metric - AttributeError: type object 'Metrics' has no attribute 'restore'
+FAILED ingestion/tests/unit/sdk/test_metric_entity.py::TestMetricEntity::test_retrieve_metric_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_metric_entity.py::TestMetricEntity::test_retrieve_metric_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_pipeline_entity.py::TestPipelineEntity::test_retrieve_pipeline_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_pipeline_entity.py::TestPipelineEntity::test_retrieve_pipeline_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_query_entity.py::TestQueryEntity::test_retrieve_query_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_query_entity.py::TestQueryEntity::test_retrieve_query_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_sdk_apis.py::TestSDKAPIs::test_lineage_builder - pydantic_core._pydantic_core.ValidationError: 1 validation error for EntityLineage
+FAILED ingestion/tests/unit/sdk/test_sdk_apis.py::TestSDKAPIs::test_lineage_get - pydantic_core._pydantic_core.ValidationError: 1 validation error for EntityLineage
+FAILED ingestion/tests/unit/sdk/test_sdk_entities.py::TestSDKEntities::test_table_async_operations - AttributeError: type object 'Tables' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_sdk_entities.py::TestSDKEntities::test_table_retrieve - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_sdk_fluent_api.py::TestSDKFluentAPI::test_tables_retrieve_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_sdk_fluent_api.py::TestSDKFluentAPI::test_databases_list - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_sdk_fluent_api.py::TestSDKFluentAPI::test_database_schemas_search - AttributeError: type object 'DatabaseSchemas' has no attribute 'search'
+FAILED ingestion/tests/unit/sdk/test_sdk_plural_entities.py::TestChartsSDK::test_retrieve_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_sdk_plural_entities.py::TestPipelinesSDK::test_search_pipelines - AttributeError: type object 'Pipelines' has no attribute 'search'
+FAILED ingestion/tests/unit/sdk/test_search_index_entity.py::TestSearchIndexEntity::test_retrieve_search_index_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_search_index_entity.py::TestSearchIndexEntity::test_retrieve_search_index_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_stored_procedure_entity.py::TestStoredProcedureEntity::test_retrieve_stored_procedure_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_stored_procedure_entity.py::TestStoredProcedureEntity::test_retrieve_stored_procedure_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_table_entity.py::TestTableEntity::test_export_table_csv - AttributeError: type object 'Tables' has no attribute 'export_csv'
+FAILED ingestion/tests/unit/sdk/test_table_entity.py::TestTableEntity::test_import_table_csv - AttributeError: type object 'Tables' has no attribute 'import_csv'
+FAILED ingestion/tests/unit/sdk/test_table_entity.py::TestTableEntity::test_retrieve_table_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_table_entity.py::TestTableEntity::test_retrieve_table_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_tag_entity.py::TestTagEntity::test_retrieve_tag_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_tag_entity.py::TestTagEntity::test_retrieve_tag_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_team_entity.py::TestTeamEntity::test_retrieve_team_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_team_entity.py::TestTeamEntity::test_retrieve_team_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_team_entity.py::TestTeamEntity::test_retrieve_team_with_users - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_user_entity.py::TestUserEntity::test_retrieve_user_by_id - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_user_entity.py::TestUserEntity::test_retrieve_user_by_name - AssertionError: expected call not found.
+FAILED ingestion/tests/unit/sdk/test_user_entity.py::TestUserEntity::test_retrieve_user_with_teams - AssertionError: expected call not found.
+======================================================================== 89 failed, 199 passed, 1 skipped in 1.65s =========================================================================
+(env)                             --   --  (sdks)     

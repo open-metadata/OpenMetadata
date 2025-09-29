@@ -271,7 +271,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self.config.pipelineRunId:
                 self._run_id = str(self.config.pipelineRunId.root)
             else:
-                self._run_id = str(uuid.uuid4())
+                self._run_id = str(uuid.uuid4())  # pylint: disable=no-member
 
         return self._run_id
 
