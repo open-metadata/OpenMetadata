@@ -130,7 +130,9 @@ const CustomControls: FC = () => {
   const handleCloseAdvance = useCallback(() => setAdvanceEl(null), []);
 
   const handleImpactAnalysisClick = useCallback(() => {
-    navigate({ search: '?mode=impact_analysis' });
+    const params = new URLSearchParams(window.location.search);
+    params.set('mode', 'impact_analysis');
+    navigate({ search: params.toString() });
   }, [navigate]);
 
   const filterMenu = useMemo(() => {
@@ -155,7 +157,7 @@ const CustomControls: FC = () => {
   }, [filters]);
 
   return (
-    <div className={classNames('d-flex w-full')}>
+    <div className={classNames('d-flex w-full justify-between')}>
       <div className="d-flex items-center gap-4">
         <LineageSearchSelect />
         <Space className="m-l-xs" size={16}>

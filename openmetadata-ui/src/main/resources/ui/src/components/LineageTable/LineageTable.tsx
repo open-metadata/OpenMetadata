@@ -144,11 +144,9 @@ const LineageTable = () => {
     useState<null | HTMLElement>(null);
 
   const { isFullScreen, nodeDepth, lineageDirection } = useMemo(() => {
-    const queryParams = QueryString.parse(
-      location.search.endsWith('?')
-        ? location.search.slice(0, -1)
-        : location.search
-    );
+    const queryParams = QueryString.parse(location.search, {
+      ignoreQueryPrefix: true,
+    });
 
     return {
       isFullScreen: queryParams['fullscreen'] === 'true',
@@ -509,7 +507,14 @@ const LineageTable = () => {
             <Button
               className="font-semibold"
               variant="outlined"
-              onClick={() => navigate({ search: '?mode=lineage' })}>
+              onClick={() => {
+                const params = new URLSearchParams();
+                params.set('mode', 'lineage');
+                if (isFullScreen) {
+                  params.set('fullscreen', 'true');
+                }
+                navigate({ search: params.toString() });
+              }}>
               {t('label.lineage')}
             </Button>
             <Button
@@ -634,7 +639,7 @@ const LineageTable = () => {
     nodeDepthAnchorEl,
     navigate,
     handleClearAllFilters,
-    t,
+    isFullScreen,
   ]);
 
   // Render function for column names with search highlighting
@@ -715,7 +720,7 @@ const LineageTable = () => {
         },
       },
       {
-        title: 'Tags',
+        title: t('label.tag-plural'),
         dataIndex: 'tags',
         key: 'tags',
         render: (
@@ -738,6 +743,33 @@ const LineageTable = () => {
               showInlineEditTagButton={false}
               tags={tags}
               type={TagSource.Classification}
+            />
+          ),
+      },
+      {
+        title: 'Glossary Terms',
+        dataIndex: 'tags',
+        key: 'glossary-terms',
+        render: (
+          tags: TagLabel[],
+          record: SearchedDataProps['data'][number]['_source'],
+          index: number
+        ) =>
+          isEmpty(tags) ? (
+            NO_DATA
+          ) : (
+            <TableTags
+              isReadOnly
+              newLook
+              entityFqn=""
+              entityType={record.entityType as EntityType}
+              handleTagSelection={() => Promise.resolve()}
+              hasTagEditAccess={false}
+              index={index}
+              record={record}
+              showInlineEditTagButton={false}
+              tags={tags}
+              type={TagSource.Glossary}
             />
           ),
       },
@@ -872,9 +904,6 @@ const LineageTable = () => {
     if (updatedQuickFilters.length > 0) {
       setSelectedQuickFilters(updatedQuickFilters);
     }
-
-    // Toggle fullscreen view based on filter selection
-    updateURLParams({ fullscreen: filterSelectionActive });
   }, []);
 
   // Determine columns and dataSource based on impactLevel
