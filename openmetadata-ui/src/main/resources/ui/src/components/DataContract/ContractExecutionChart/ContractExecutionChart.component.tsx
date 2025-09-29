@@ -31,6 +31,7 @@ import {
   RED_3,
   YELLOW_3,
 } from '../../../constants/Color.constants';
+import { ES_MAX_PAGE_SIZE } from '../../../constants/constants';
 import { DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS } from '../../../constants/DataContract.constants';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
@@ -78,6 +79,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
       setIsLoading(true);
       const results = await getAllContractResults(contract.id, {
         ...pick(dateRangeObj, ['startTs', 'endTs']),
+        limit: ES_MAX_PAGE_SIZE,
       });
       setContractExecutionResultList(sortBy(results.data, 'timestamp'));
     } catch (err) {
@@ -138,7 +140,7 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
         <ResponsiveContainer
           className={classNames('contract-execution-chart', {
             'contract-execution-chart-less-width':
-              contractExecutionResultList.length <= 8,
+              contractExecutionResultList.length <= 16,
           })}>
           <BarChart data={processedChartData}>
             <CartesianGrid

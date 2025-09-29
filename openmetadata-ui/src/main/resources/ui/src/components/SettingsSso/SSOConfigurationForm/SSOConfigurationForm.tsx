@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { removeSession } from '@analytics/session-utils';
 import Form, { IChangeEvent } from '@rjsf/core';
 import { RegistryFieldsType, RJSFSchema } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
@@ -18,13 +19,6 @@ import { Button, Card, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import LdapIcon from '../../../assets/img/ic-ldap.svg';
-import SamlIcon from '../../../assets/img/ic-saml.svg';
-import Auth0Icon from '../../../assets/img/icon-auth0.png';
-import CognitoIcon from '../../../assets/img/icon-aws-cognito.png';
-import AzureIcon from '../../../assets/img/icon-azure.png';
-import GoogleIcon from '../../../assets/img/icon-google.png';
-import OktaIcon from '../../../assets/img/icon-okta.png';
 
 import {
   AuthenticationConfiguration,
@@ -41,14 +35,11 @@ import {
   SAML_SSO_DEFAULTS,
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
+import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider, ClientType } from '../../../generated/settings/settings';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import authenticationConfigSchema from '../../../jsons/configuration/authenticationConfiguration.json';
 import authorizerConfigSchema from '../../../jsons/configuration/authorizerConfiguration.json';
-import {
-  fetchAuthenticationConfig,
-  fetchAuthorizerConfig,
-} from '../../../rest/miscAPI';
 import {
   applySecurityConfiguration,
   getSecurityConfiguration,
@@ -59,11 +50,16 @@ import {
   validateSecurityConfiguration,
   ValidationResult,
 } from '../../../rest/securityConfigAPI';
-import { getAuthConfig } from '../../../utils/AuthProvider.util';
 import { transformErrors } from '../../../utils/formUtils';
-import { getProviderDisplayName } from '../../../utils/SSOUtils';
+import {
+  getProviderDisplayName,
+  getProviderIcon,
+} from '../../../utils/SSOUtils';
+import {
+  setOidcToken,
+  setRefreshToken,
+} from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
-import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import DescriptionFieldTemplate from '../../common/Form/JSONSchema/JSONSchemaTemplate/DescriptionFieldTemplate';
 import { FieldErrorTemplate } from '../../common/Form/JSONSchema/JSONSchemaTemplate/FieldErrorTemplate/FieldErrorTemplate';
 import SelectWidget from '../../common/Form/JSONSchema/JsonSchemaWidgets/SelectWidget';
@@ -94,8 +90,7 @@ const SSOConfigurationFormRJSF = ({
   securityConfig,
 }: SSOConfigurationFormProps) => {
   const { t } = useTranslation();
-  const { setAuthConfig, setAuthorizerConfig } = useApplicationStore();
-  const { onLogoutHandler } = useAuthProvider();
+  const { setIsAuthenticated, setCurrentUser } = useApplicationStore();
 
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -111,27 +106,6 @@ const SSOConfigurationFormRJSF = ({
   const [showCancelModal, setShowCancelModal] = useState<boolean>(false);
   const [modalSaveLoading, setModalSaveLoading] = useState<boolean>(false);
   const [isModalSave, setIsModalSave] = useState<boolean>(false);
-
-  const getProviderIcon = (provider: string) => {
-    switch (provider) {
-      case AuthProvider.Azure:
-        return AzureIcon;
-      case AuthProvider.Google:
-        return GoogleIcon;
-      case AuthProvider.Okta:
-        return OktaIcon;
-      case AuthProvider.Auth0:
-        return Auth0Icon;
-      case AuthProvider.AwsCognito:
-        return CognitoIcon;
-      case AuthProvider.LDAP:
-        return LdapIcon;
-      case AuthProvider.Saml:
-        return SamlIcon;
-      default:
-        return null;
-    }
-  };
 
   // Helper function to setup configuration state - extracted to avoid redundancy
   const setupConfigurationState = useCallback(
@@ -1198,37 +1172,25 @@ const SSOConfigurationFormRJSF = ({
 
       // Only do logout process for new configurations, not existing ones
       if (!hasExistingConfig) {
-        // Reload authentication configuration to get the updated SSO settings
+        // Keep the loading state active to prevent blank screen
+        // The page will navigate away so we don't need to reset states
+
+        // Clear session and navigate to signin
+        // Don't update the auth config in the store to avoid triggering re-renders
+        // The signin page will fetch the fresh config when it loads
         try {
-          const [newAuthConfig, newAuthorizerConfig] = await Promise.all([
-            fetchAuthenticationConfig(),
-            fetchAuthorizerConfig(),
-          ]);
-
-          // Update the authentication configuration in the store
-          const configWithScope = getAuthConfig(newAuthConfig);
-          setAuthConfig(configWithScope);
-          setAuthorizerConfig(newAuthorizerConfig);
-
-          // Update saved data with the new configuration
-          setSavedData(cleanedFormData);
-          setHasExistingConfig(true);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-
-        // Only update main form loading state if not modal save
-        if (!isModalSave) {
-          setIsLoading(false);
-          setIsEditMode(false);
-        }
-
-        try {
-          await onLogoutHandler();
-        } catch (logoutError) {
-          // Clear client-side storage as fallback when server logout fails
+          // Clear tokens and session
           sessionStorage.clear();
           localStorage.clear();
+          await setOidcToken('');
+          await setRefreshToken('');
+
+          // Reset user details without triggering logout flow
+          setIsAuthenticated(false);
+          setCurrentUser({} as User);
+          removeSession();
+        } catch (error) {
+          // Silent fail for storage operations
         }
 
         // Force navigation to signin page to test new SSO configuration
@@ -1492,7 +1454,7 @@ const SSOConfigurationFormRJSF = ({
                       data-testid="cancel-sso-configuration"
                       type="link"
                       onClick={handleCancelClick}>
-                      {t('label.cancel-lowercase')}
+                      {t('label.cancel')}
                     </Button>
                     <Button
                       className="save-sso-configuration text-md"
@@ -1582,6 +1544,7 @@ const SSOConfigurationFormRJSF = ({
         firstPanel={{
           children: (
             <>
+              <div className="sso-form-sticky-header" />
               {wrappedFormContent}
               {isEditMode && (
                 <div className="form-actions-bottom">
@@ -1590,7 +1553,7 @@ const SSOConfigurationFormRJSF = ({
                     data-testid="cancel-sso-configuration"
                     type="link"
                     onClick={handleCancelClick}>
-                    {t('label.cancel-lowercase')}
+                    {t('label.cancel')}
                   </Button>
                   <Button
                     className="save-sso-configuration text-md"

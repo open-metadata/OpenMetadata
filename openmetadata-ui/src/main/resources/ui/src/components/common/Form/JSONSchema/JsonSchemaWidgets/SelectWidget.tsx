@@ -13,6 +13,7 @@
 import { WidgetProps } from '@rjsf/utils';
 import { Select } from 'antd';
 import { FC } from 'react';
+import { getPopupContainer } from '../../../../../utils/formUtils';
 import TreeSelectWidget from './TreeSelectWidget';
 
 const SelectWidget: FC<WidgetProps> = (props) => {
@@ -29,6 +30,7 @@ const SelectWidget: FC<WidgetProps> = (props) => {
       className="d-block w-full"
       data-testid={`select-widget-${rest.id}`}
       disabled={rest.disabled}
+      getPopupContainer={getPopupContainer}
       id={rest.id}
       mode={rest.multiple ? 'multiple' : undefined}
       open={props.readonly ? false : undefined}
