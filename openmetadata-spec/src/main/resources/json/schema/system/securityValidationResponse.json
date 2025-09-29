@@ -8,6 +8,7 @@
   "definitions": {
     "validationResult": {
       "javaType": "org.openmetadata.schema.system.ValidationResult",
+      "description": "Legacy validation result for backward compatibility",
       "type": "object",
       "properties": {
         "component": {
@@ -25,25 +26,38 @@
       },
       "required": ["component", "status", "message"],
       "additionalProperties": false
+    },
+    "fieldError": {
+      "javaType": "org.openmetadata.schema.system.FieldError",
+      "type": "object",
+      "properties": {
+        "field": {
+          "description": "Field path that has the error (e.g., 'authenticationConfiguration.oidcConfiguration.clientId')",
+          "type": "string"
+        },
+        "error": {
+          "description": "Concise error message for display under form field",
+          "type": "string"
+        }
+      },
+      "required": ["field", "error"],
+      "additionalProperties": false
     }
   },
   "properties": {
     "status": {
-      "description": "Overall validation status",
-      "type": "string"
+      "description": "Overall validation status (success/failed)",
+      "type": "string",
+      "enum": ["success", "failed"]
     },
-    "message": {
-      "description": "Overall validation message",
-      "type": "string"
-    },
-    "results": {
-      "description": "Individual validation results",
+    "errors": {
+      "description": "List of field errors (only present when status is 'failed')",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/validationResult"
+        "$ref": "#/definitions/fieldError"
       }
     }
   },
-  "required": ["status", "message", "results"],
+  "required": ["status"],
   "additionalProperties": false
 } 

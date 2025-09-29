@@ -11,8 +11,9 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
@@ -20,7 +21,7 @@ public class CustomOidcValidator {
 
   private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
 
-  public ValidationResult validateCustomOidcConfiguration(
+  public FieldError validateCustomOidcConfiguration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       return switch (authConfig.getClientType()) {
@@ -29,130 +30,108 @@ public class CustomOidcValidator {
       };
     } catch (Exception e) {
       LOG.error("Custom OIDC validation failed", e);
-      return new ValidationResult()
-          .withComponent("custom-oidc")
-          .withStatus("failed")
-          .withMessage("Custom OIDC validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "authenticationConfiguration", "Custom OIDC validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateCustomOidcPublicClient(
+  private FieldError validateCustomOidcPublicClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       String discoveryUri = extractDiscoveryUri(authConfig, oidcConfig);
       if (nullOrEmpty(discoveryUri)) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-discovery")
-            .withStatus("failed")
-            .withMessage(
-                "Discovery URI is required for custom OIDC validation. Provide either authority + /.well-known/openid-configuration or explicit discoveryUri");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Discovery URI is required for custom OIDC validation. Provide either authority + /.well-known/openid-configuration or explicit discoveryUri");
       }
 
-      ValidationResult discoveryCheck =
+      FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
       DiscoveryEndpoints endpoints = extractEndpointsFromDiscovery(discoveryUri);
       if (endpoints == null) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-endpoints")
-            .withStatus("failed")
-            .withMessage("Failed to extract required endpoints from discovery document");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Failed to extract required endpoints from discovery document");
       }
 
-      ValidationResult jwksValidation = validateJwksEndpoint(endpoints.jwksUri, authConfig);
-      if ("failed".equals(jwksValidation.getStatus())) {
+      FieldError jwksValidation = validateJwksEndpoint(endpoints.jwksUri, authConfig);
+      if (jwksValidation != null) {
         return jwksValidation;
       }
 
-      ValidationResult flowValidation = validateAuthorizationFlow(endpoints, authConfig);
-      if ("failed".equals(flowValidation.getStatus())) {
+      FieldError flowValidation = validateAuthorizationFlow(endpoints, authConfig);
+      if (flowValidation != null) {
         return flowValidation;
       }
 
-      return new ValidationResult()
-          .withComponent("custom-oidc-public")
-          .withStatus("success")
-          .withMessage(
-              "Custom OIDC public client validated successfully. Discovery, JWKS, and authorization flow are properly configured.");
+      return null; // Success - Custom OIDC public client validated
 
     } catch (Exception e) {
       LOG.error("Custom OIDC public client validation failed", e);
-      return new ValidationResult()
-          .withComponent("custom-oidc-public")
-          .withStatus("failed")
-          .withMessage("Custom OIDC public client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "authenticationConfiguration",
+          "Custom OIDC public client validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateCustomOidcConfidentialClient(
+  private FieldError validateCustomOidcConfidentialClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       String discoveryUri = extractDiscoveryUri(authConfig, oidcConfig);
       if (nullOrEmpty(discoveryUri)) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-discovery")
-            .withStatus("failed")
-            .withMessage(
-                "Discovery URI is required for custom OIDC validation. Provide either oidcConfig.discoveryUri or authConfig.authority");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Discovery URI is required for custom OIDC validation. Provide either oidcConfig.discoveryUri or authConfig.authority");
       }
 
-      ValidationResult discoveryCheck =
+      FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
       DiscoveryEndpoints endpoints = extractEndpointsFromDiscovery(discoveryUri);
       if (endpoints == null) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-endpoints")
-            .withStatus("failed")
-            .withMessage("Failed to extract required endpoints from discovery document");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Failed to extract required endpoints from discovery document");
       }
 
-      ValidationResult jwksValidation = validateJwksEndpoint(endpoints.jwksUri, authConfig);
-      if ("failed".equals(jwksValidation.getStatus())) {
+      FieldError jwksValidation = validateJwksEndpoint(endpoints.jwksUri, authConfig);
+      if (jwksValidation != null) {
         return jwksValidation;
       }
 
-      if (nullOrEmpty(oidcConfig.getId()) || nullOrEmpty(oidcConfig.getSecret())) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-credentials")
-            .withStatus("failed")
-            .withMessage("Client ID and Client Secret are required for confidential clients");
+      if (nullOrEmpty(oidcConfig.getId())) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            "Client ID is required for confidential clients");
+      }
+      if (nullOrEmpty(oidcConfig.getSecret())) {
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+            "Client Secret is required for confidential clients");
       }
 
-      ValidationResult credentialsValidation =
+      FieldError credentialsValidation =
           validateClientCredentialsWithTokenExchange(
               endpoints.tokenEndpoint, oidcConfig.getId(), oidcConfig.getSecret(), oidcConfig);
 
-      if ("success".equals(credentialsValidation.getStatus())) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-confidential")
-            .withStatus("success")
-            .withMessage(
-                "Custom OIDC confidential client validated successfully. Discovery, JWKS, and client credentials verified via token exchange.");
-      } else {
-        // Token exchange returned warning - configuration is valid but credentials couldn't be
-        // fully verified
-        return new ValidationResult()
-            .withComponent("custom-oidc-confidential")
-            .withStatus("success")
-            .withMessage(
-                "Custom OIDC configuration validated successfully. Discovery and JWKS are properly configured. "
-                    + "Note: "
-                    + credentialsValidation.getMessage());
+      if (credentialsValidation != null) {
+        return credentialsValidation;
       }
+
+      return null; // Success - Custom OIDC confidential client validated
 
     } catch (Exception e) {
       LOG.error("Custom OIDC confidential client validation failed", e);
-      return new ValidationResult()
-          .withComponent("custom-oidc-confidential")
-          .withStatus("failed")
-          .withMessage("Custom OIDC confidential client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "authenticationConfiguration",
+          "Custom OIDC confidential client validation failed: " + e.getMessage());
     }
   }
 
@@ -222,50 +201,42 @@ public class CustomOidcValidator {
     }
   }
 
-  private ValidationResult validateJwksEndpoint(
-      String jwksUri, AuthenticationConfiguration authConfig) {
+  private FieldError validateJwksEndpoint(String jwksUri, AuthenticationConfiguration authConfig) {
     try {
       // Check if JWKS URI is accessible
       ValidationHttpUtil.HttpResponseData response = ValidationHttpUtil.safeGet(jwksUri);
       if (response.getStatusCode() != 200) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-jwks")
-            .withStatus("failed")
-            .withMessage(
-                "JWKS endpoint is not accessible. HTTP status: " + response.getStatusCode());
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "JWKS endpoint is not accessible. HTTP status: " + response.getStatusCode());
       }
 
       // Validate it's a proper JWKS format
       JsonNode jwks = JsonUtils.readTree(response.getBody());
       if (!jwks.has("keys") || !jwks.get("keys").isArray() || jwks.get("keys").size() == 0) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-jwks")
-            .withStatus("failed")
-            .withMessage("JWKS endpoint returned invalid or empty keys");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "JWKS endpoint returned invalid or empty keys");
       }
 
       // Verify publicKeyUrls is configured and contains the JWKS URI
       List<String> publicKeyUrls = authConfig.getPublicKeyUrls();
       if (publicKeyUrls == null || publicKeyUrls.isEmpty()) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-jwks")
-            .withStatus("failed")
-            .withMessage(
-                "publicKeyUrls is required. Please configure it with the JWKS URI: " + jwksUri);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "publicKeyUrls is required. Please configure it with the JWKS URI: " + jwksUri);
       }
 
       // Check if the JWKS URI from discovery is in publicKeyUrls
       boolean hasJwksUri = publicKeyUrls.stream().anyMatch(url -> url.equals(jwksUri));
       if (!hasJwksUri) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-jwks")
-            .withStatus("failed")
-            .withMessage(
-                "publicKeyUrls must include the JWKS URI from discovery. "
-                    + "Expected: "
-                    + jwksUri
-                    + " but found: "
-                    + publicKeyUrls);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "publicKeyUrls must include the JWKS URI from discovery. "
+                + "Expected: "
+                + jwksUri
+                + " but found: "
+                + publicKeyUrls);
       }
 
       // Also validate that each configured publicKeyUrl is accessible
@@ -274,60 +245,47 @@ public class CustomOidcValidator {
           ValidationHttpUtil.HttpResponseData publicKeyResponse =
               ValidationHttpUtil.safeGet(publicKeyUrl);
           if (publicKeyResponse.getStatusCode() != 200) {
-            return new ValidationResult()
-                .withComponent("custom-oidc-jwks")
-                .withStatus("failed")
-                .withMessage(
-                    "Public key URL is not accessible: "
-                        + publicKeyUrl
-                        + " (HTTP "
-                        + publicKeyResponse.getStatusCode()
-                        + ")");
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Public key URL is not accessible: "
+                    + publicKeyUrl
+                    + " (HTTP "
+                    + publicKeyResponse.getStatusCode()
+                    + ")");
           }
 
           // Verify it's a valid JWKS
           JsonNode publicKeyJwks = JsonUtils.readTree(publicKeyResponse.getBody());
           if (!publicKeyJwks.has("keys") || !publicKeyJwks.get("keys").isArray()) {
-            return new ValidationResult()
-                .withComponent("custom-oidc-jwks")
-                .withStatus("failed")
-                .withMessage("Public key URL does not return valid JWKS format: " + publicKeyUrl);
+            return ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+                "Public key URL does not return valid JWKS format: " + publicKeyUrl);
           }
         } catch (Exception e) {
-          return new ValidationResult()
-              .withComponent("custom-oidc-jwks")
-              .withStatus("failed")
-              .withMessage(
-                  "Failed to validate public key URL: "
-                      + publicKeyUrl
-                      + ". Error: "
-                      + e.getMessage());
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+              "Failed to validate public key URL: " + publicKeyUrl + ". Error: " + e.getMessage());
         }
       }
 
-      return new ValidationResult()
-          .withComponent("custom-oidc-jwks")
-          .withStatus("success")
-          .withMessage("JWKS endpoint is accessible and valid");
+      return null; // Success - JWKS endpoint is accessible and valid
 
     } catch (Exception e) {
       LOG.error("JWKS validation failed", e);
-      return new ValidationResult()
-          .withComponent("custom-oidc-jwks")
-          .withStatus("failed")
-          .withMessage("JWKS validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+          "JWKS validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateAuthorizationFlow(
+  private FieldError validateAuthorizationFlow(
       DiscoveryEndpoints endpoints, AuthenticationConfiguration authConfig) {
     try {
       // For public clients, verify authorization endpoint exists
       if (nullOrEmpty(endpoints.authorizationEndpoint)) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-auth-flow")
-            .withStatus("failed")
-            .withMessage("Authorization endpoint is required for public clients");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+            "Authorization endpoint is required for public clients");
       }
 
       // Try to access authorization endpoint with test parameters
@@ -345,42 +303,39 @@ public class CustomOidcValidator {
 
       // Success if we get a redirect to login page (302) or login form (200)
       if (response.getStatusCode() == 302 || response.getStatusCode() == 200) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-auth-flow")
-            .withStatus("success")
-            .withMessage("Authorization flow is properly configured");
+        return null; // Success - Authorization flow is properly configured
       } else if (response.getStatusCode() == 400 || response.getStatusCode() == 401) {
         // Client ID might be invalid
-        return new ValidationResult()
-            .withComponent("custom-oidc-auth-flow")
-            .withStatus("warning")
-            .withMessage(
-                "Authorization endpoint responded with error. Client ID may be invalid or not configured properly.");
+        // Warning - treat as success
+        LOG.warn(
+            "Authorization endpoint responded with error. Client ID may be invalid or not configured properly.");
+        return null;
       } else {
-        return new ValidationResult()
-            .withComponent("custom-oidc-auth-flow")
-            .withStatus("warning")
-            .withMessage(
-                "Unexpected response from authorization endpoint: " + response.getStatusCode());
+        // Warning - treat as success
+        LOG.warn("Unexpected response from authorization endpoint: {}", response.getStatusCode());
+        return null;
       }
 
     } catch (Exception e) {
       LOG.warn("Authorization flow validation encountered an error", e);
-      return new ValidationResult()
-          .withComponent("custom-oidc-auth-flow")
-          .withStatus("warning")
-          .withMessage("Could not fully validate authorization flow: " + e.getMessage());
+      // Warning - treat as success
+      LOG.warn("Could not fully validate authorization flow: {}", e.getMessage());
+      return null;
     }
   }
 
-  private ValidationResult validateClientCredentialsWithTokenExchange(
+  private FieldError validateClientCredentialsWithTokenExchange(
       String tokenEndpoint, String clientId, String clientSecret, OidcClientConfig oidcConfig) {
     try {
       if (nullOrEmpty(clientId) || nullOrEmpty(clientSecret)) {
-        return new ValidationResult()
-            .withComponent("custom-oidc-credentials")
-            .withStatus("failed")
-            .withMessage("Client ID and Client Secret are required for confidential clients");
+        if (nullOrEmpty(clientId)) {
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+              "Client ID is required for confidential clients");
+        }
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+            "Client Secret is required for confidential clients");
       }
 
       // Attempt standard OAuth2 client_credentials grant
@@ -419,23 +374,16 @@ public class CustomOidcValidator {
           JsonNode tokenResponse = JsonUtils.readTree(responseBody);
           if (tokenResponse.has("access_token")) {
             LOG.info("Token exchange successful for client: {}", clientId);
-            return new ValidationResult()
-                .withComponent("custom-oidc-credentials")
-                .withStatus("success")
-                .withMessage(
-                    "Client credentials validated successfully via token exchange. Access token obtained. "
-                        + "Provider is properly configured for client_credentials grant.");
+            return null; // Success - Client credentials validated via token exchange
           } else {
-            return new ValidationResult()
-                .withComponent("custom-oidc-credentials")
-                .withStatus("warning")
-                .withMessage("Token endpoint returned 200 but no access_token found in response");
+            // Warning - treat as success
+            LOG.warn("Token endpoint returned 200 but no access_token found in response");
+            return null;
           }
         } catch (Exception e) {
-          return new ValidationResult()
-              .withComponent("custom-oidc-credentials")
-              .withStatus("warning")
-              .withMessage("Token endpoint returned 200 but response was not valid JSON");
+          // Warning - treat as success
+          LOG.warn("Token endpoint returned 200 but response was not valid JSON");
+          return null;
         }
       } else if (statusCode == 401 || statusCode == 403) {
         // Authentication failed - make this lenient (warning instead of failure)
@@ -444,17 +392,12 @@ public class CustomOidcValidator {
         // 401/403 could mean either invalid credentials OR provider not configured for
         // client_credentials
         LOG.warn("Client authentication failed with status {}. Error: {}", statusCode, errorDetail);
-        return new ValidationResult()
-            .withComponent("custom-oidc-credentials")
-            .withStatus("warning")
-            .withMessage(
-                "Client credentials could not be validated via token exchange. "
-                    + "This may be due to invalid credentials or provider configuration. "
-                    + "Status: "
-                    + statusCode
-                    + ". "
-                    + errorDetail
-                    + " Please ensure your OIDC provider is configured for machine-to-machine authentication.");
+        // Warning - treat as success
+        LOG.warn(
+            "Client credentials could not be validated via token exchange. Status: {}. {}",
+            statusCode,
+            errorDetail);
+        return null;
       } else if (statusCode == 400) {
         // Bad request - could be unsupported grant type or scope issue
         String errorDetail = extractErrorFromResponse(responseBody);
@@ -462,13 +405,10 @@ public class CustomOidcValidator {
         if (errorDetail.contains("unsupported_grant_type")) {
           // Provider doesn't support client_credentials - make lenient
           LOG.warn("Client credentials grant type not supported. Error: {}", errorDetail);
-          return new ValidationResult()
-              .withComponent("custom-oidc-credentials")
-              .withStatus("warning")
-              .withMessage(
-                  "Client credentials grant type is not supported by the provider. "
-                      + "Please enable service account or machine-to-machine authentication for this client in your OIDC provider. "
-                      + errorDetail);
+          // Warning - treat as success
+          LOG.warn(
+              "Client credentials grant type is not supported by the provider. {}", errorDetail);
+          return null;
         }
 
         if (errorDetail.contains("invalid_scope") || errorDetail.contains("scope")) {
@@ -480,37 +420,27 @@ public class CustomOidcValidator {
 
         // All other 400 errors - make lenient as it could be provider configuration
         LOG.warn("Token exchange failed with 400. Error: {}", errorDetail);
-        return new ValidationResult()
-            .withComponent("custom-oidc-credentials")
-            .withStatus("warning")
-            .withMessage(
-                "Client credentials validation encountered issues. "
-                    + errorDetail
-                    + " This may require additional provider configuration.");
+        // Warning - treat as success
+        LOG.warn("Client credentials validation encountered issues. {}", errorDetail);
+        return null;
       } else {
         // Unexpected status code - make lenient as it could be provider-specific behavior
-        return new ValidationResult()
-            .withComponent("custom-oidc-credentials")
-            .withStatus("warning")
-            .withMessage(
-                "Client credentials validation could not be completed. Unexpected response from token endpoint: "
-                    + statusCode
-                    + ". Provider may require additional configuration.");
+        // Warning - treat as success
+        LOG.warn(
+            "Client credentials validation could not be completed. Unexpected response: {}",
+            statusCode);
+        return null;
       }
 
     } catch (Exception e) {
       LOG.warn("Client credentials validation encountered an error", e);
-      return new ValidationResult()
-          .withComponent("custom-oidc-credentials")
-          .withStatus("warning")
-          .withMessage(
-              "Could not complete token exchange validation: "
-                  + e.getMessage()
-                  + ". Credentials format appears valid.");
+      // Warning - treat as success
+      LOG.warn("Could not complete token exchange validation: {}", e.getMessage());
+      return null;
     }
   }
 
-  private ValidationResult attemptTokenExchangeWithoutScope(
+  private FieldError attemptTokenExchangeWithoutScope(
       String tokenEndpoint, String clientId, String clientSecret, OidcClientConfig oidcConfig) {
     try {
       // Some OIDC providers don't accept scope parameter for client_credentials
@@ -536,11 +466,7 @@ public class CustomOidcValidator {
           JsonNode tokenResponse = JsonUtils.readTree(responseBody);
           if (tokenResponse.has("access_token")) {
             LOG.info("Token exchange successful without scope parameter");
-            return new ValidationResult()
-                .withComponent("custom-oidc-credentials")
-                .withStatus("success")
-                .withMessage(
-                    "Client credentials validated successfully via token exchange (without scope). Access token obtained.");
+            return null; // Success - Client credentials validated via token exchange without scope
           }
         } catch (Exception e) {
           LOG.debug("Failed to parse token response", e);
@@ -549,29 +475,22 @@ public class CustomOidcValidator {
         String errorDetail = extractErrorFromResponse(responseBody);
 
         // Authentication failed - make lenient
-        return new ValidationResult()
-            .withComponent("custom-oidc-credentials")
-            .withStatus("warning")
-            .withMessage(
-                "Client authentication could not be verified. "
-                    + errorDetail
-                    + " Provider configuration may be required.");
+        // Warning - treat as success
+        LOG.warn("Client authentication could not be verified. {}", errorDetail);
+        return null;
       }
 
       // Any other response - make lenient
-      return new ValidationResult()
-          .withComponent("custom-oidc-credentials")
-          .withStatus("warning")
-          .withMessage(
-              "Client credentials validation could not be completed. Unable to obtain access token. "
-                  + "Provider may require additional configuration.");
+      // Warning - treat as success
+      LOG.warn(
+          "Client credentials validation could not be completed. Unable to obtain access token.");
+      return null;
 
     } catch (Exception e) {
       LOG.warn("Token exchange without scope failed", e);
-      return new ValidationResult()
-          .withComponent("custom-oidc-credentials")
-          .withStatus("warning")
-          .withMessage("Token exchange validation error: " + e.getMessage());
+      // Warning - treat as success
+      LOG.warn("Token exchange validation error: {}", e.getMessage());
+      return null;
     }
   }
 
