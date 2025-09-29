@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { SettingOutlined } from '@ant-design/icons';
+import { SettingsOutlined } from '@mui/icons-material';
 import Button from '@mui/material/Button';
 import Chip from '@mui/material/Chip';
 import MenuItem from '@mui/material/MenuItem';
@@ -22,12 +22,14 @@ import Card from 'antd/lib/card/Card';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
 import QueryString from 'qs';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
 import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
+import { ReactComponent as ExitFullScreenIcon } from '../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FilterLinesIcon } from '../../assets/svg/ic-filter-lines.svg';
+import { ReactComponent as FullscreenIcon } from '../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../constants/AdvancedSearch.constants';
 import {
@@ -62,6 +64,7 @@ import {
   Transi18next,
 } from '../../utils/CommonUtils';
 import {
+  getEntityBreadcrumbs,
   getEntityLinkFromType,
   getEntityName,
   highlightSearchText,
@@ -81,13 +84,17 @@ import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Searchbar from '../common/SearchBarComponent/SearchBar.component';
 import Table from '../common/Table/Table';
 import TierTag from '../common/TierTag';
+import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableTags from '../Database/TableTags/TableTags.component';
 import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';
 import LineageConfigModal from '../Entity/EntityLineage/LineageConfigModal';
 import { ExploreQuickFilterField } from '../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../Explore/ExploreQuickFilters';
 import { LineageNode } from '../Lineage/Lineage.interface';
-import { SearchedDataProps } from '../SearchedData/SearchedData.interface';
+import {
+  SearchedDataProps,
+  SourceType,
+} from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
 import {
   StyledIconButton,
@@ -96,7 +103,7 @@ import {
 } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
 
-const LineageTable = () => {
+const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const {
     selectedQuickFilters,
     setSelectedQuickFilters,
@@ -148,13 +155,25 @@ const LineageTable = () => {
       ignoreQueryPrefix: true,
     });
 
+    const direction =
+      (queryParams['dir'] as LineageDirection) || LineageDirection.Downstream;
+
+    const depth = Number(queryParams['depth']);
+
     return {
       isFullScreen: queryParams['fullscreen'] === 'true',
-      nodeDepth: Number(queryParams['depth']) || 1,
-      lineageDirection:
-        (queryParams['dir'] as LineageDirection) || LineageDirection.Downstream,
+      nodeDepth:
+        depth ??
+        (direction === LineageDirection.Downstream
+          ? lineageConfig.downstreamDepth
+          : lineageConfig.upstreamDepth),
+      lineageDirection: direction,
     };
-  }, [location.search]);
+  }, [
+    location.search,
+    lineageConfig.downstreamDepth,
+    lineageConfig.upstreamDepth,
+  ]);
 
   const defaultQueryFilter = useMemo(() => {
     const nodeIds = (filterNodes ?? [])
@@ -188,10 +207,9 @@ const LineageTable = () => {
         fullscreen: boolean;
       }>
     ) => {
-      const search = location.search.endsWith('?')
-        ? location.search.slice(0, -1)
-        : location.search;
-      const params = QueryString.parse(search);
+      const params = QueryString.parse(location.search, {
+        ignoreQueryPrefix: true,
+      });
       Object.entries(data).forEach(([key, value]) => {
         if (value !== undefined) {
           params[key] = String(value);
@@ -199,9 +217,12 @@ const LineageTable = () => {
       });
 
       navigate(
-        `${location.pathname}${QueryString.stringify(params, {
-          encode: false,
-        })}`,
+        {
+          search: QueryString.stringify(params, {
+            encode: false,
+            addQueryPrefix: true,
+          }),
+        },
         { replace: true }
       );
       setNodeDepthAnchorEl(null);
@@ -475,20 +496,50 @@ const LineageTable = () => {
   }, [queryFilter, nodeDepth, currentPage, lineageDirection, pageSize]);
 
   const handleClearAllFilters = useCallback(() => {
-    setSelectedQuickFilters([]);
+    setSelectedQuickFilters((prev) =>
+      (prev ?? []).map((filter) => ({ ...filter, value: [] }))
+    );
   }, [setSelectedQuickFilters]);
+
+  const handleToggleFilterSelection = useCallback(() => {
+    toggleFilterSelection();
+
+    // In case of filters we need to bring fullscreen mode if not
+    if (!filterSelectionActive) {
+      // update fullscreen param in url
+      updateURLParams({ fullscreen: !filterSelectionActive });
+    }
+  }, [filterSelectionActive, toggleFilterSelection]);
+
+  const breadcrumbs = useMemo(
+    () =>
+      entity
+        ? [
+            ...getEntityBreadcrumbs(entity, entityType),
+            {
+              name: t('label.lineage'),
+              url: '',
+              activeTitle: true,
+            },
+          ]
+        : [],
+    [entity]
+  );
 
   // Card header with search and filter options
   const cardHeader = useMemo(() => {
     return (
       <>
+        {isFullScreen && breadcrumbs.length > 0 && (
+          <TitleBreadcrumb className="p-b-lg" titleLinks={breadcrumbs} />
+        )}
         <div className="d-flex justify-between items-center p-x-xss">
           <div className="d-flex gap-2">
             <StyledIconButton
               color={filterSelectionActive ? 'primary' : 'default'}
               size="large"
               title={t('label.filter-plural')}
-              onClick={toggleFilterSelection}>
+              onClick={handleToggleFilterSelection}>
               <FilterLinesIcon />
             </StyledIconButton>
 
@@ -546,11 +597,21 @@ const LineageTable = () => {
                 <DownloadIcon />
               </StyledIconButton>
             </Tooltip>
-            <StyledIconButton
-              size="large"
-              onClick={() => setDialogVisible(true)}>
-              <SettingOutlined />
-            </StyledIconButton>
+            <Tooltip title={t('label.lineage-configuration')}>
+              <StyledIconButton
+                size="large"
+                onClick={() => setDialogVisible(true)}>
+                <SettingsOutlined />
+              </StyledIconButton>
+            </Tooltip>
+            <Tooltip
+              title={isFullScreen ? 'Exit Full Screen' : 'Full Screen View'}>
+              <StyledIconButton
+                size="large"
+                onClick={() => updateURLParams({ fullscreen: !isFullScreen })}>
+                {isFullScreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
+              </StyledIconButton>
+            </Tooltip>
           </div>
         </div>
         {filterSelectionActive ? (
@@ -815,7 +876,7 @@ const LineageTable = () => {
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
-              record?.entityType as EntityType,
+              record?.type as EntityType,
               record
             )}>
             {stringToHTML(
@@ -857,7 +918,7 @@ const LineageTable = () => {
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
-              record?.entityType as EntityType,
+              record?.type as EntityType,
               record
             )}>
             {stringToHTML(
@@ -897,7 +958,11 @@ const LineageTable = () => {
           (filter) => filter.key === selectedFilterItem.key
         );
 
-        return { ...(originalFilterItem || selectedFilterItem), value: [] };
+        return {
+          ...(originalFilterItem || selectedFilterItem),
+          // preserve original values if exists else set to empty array
+          value: originalFilterItem?.value || [],
+        };
       }
     );
 

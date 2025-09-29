@@ -244,10 +244,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const lineageLayer = useMemo(() => {
-    const param = location.search;
-    const searchData = QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
+    const searchData = QueryString.parse(location.search, {
+      ignoreQueryPrefix: true,
+    });
 
     return searchData.layers as LineageLayer[] | undefined;
   }, [location.search]);
@@ -480,11 +479,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }
 
       if (isPlatformLineage) {
-        const searchData = QueryString.parse(
-          location.search.startsWith('?')
-            ? location.search.substring(1)
-            : location.search
-        );
+        const searchData = QueryString.parse(location.search, {
+          ignoreQueryPrefix: true,
+        });
         navigate({
           search: QueryString.stringify({
             ...searchData,

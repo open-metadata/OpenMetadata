@@ -16,6 +16,8 @@ import {
   styled,
   ToggleButtonGroup,
   ToggleButtonGroupProps,
+  Tooltip,
+  TooltipProps,
 } from '@mui/material';
 import type { MenuProps } from '@mui/material/Menu';
 import Menu from '@mui/material/Menu';
@@ -105,6 +107,16 @@ export const StyledIconButton = styled((props: IconButtonProps) => (
   backgroundColor: theme.palette.allShades.gray[50],
   border: '1px solid',
 
+  '&:hover': {
+    backgroundColor: theme.palette.allShades.white,
+    borderColor: theme.palette.allShades.blue[700],
+    color: theme.palette.allShades.blue[700],
+
+    '& svg': {
+      color: theme.palette.allShades.blue[700],
+    },
+  },
+
   '&.MuiIconButton-colorPrimary': {
     borderColor: theme.palette.allShades.blue[700],
     backgroundColor: theme.palette.allShades.blue[50],
@@ -114,3 +126,7 @@ export const StyledIconButton = styled((props: IconButtonProps) => (
     },
   },
 }));
+
+export const StyledTooltip = styled((props: TooltipProps) => (
+  <Tooltip {...props} />
+))(({ theme }) => ({}));

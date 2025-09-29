@@ -59,7 +59,7 @@ export const prepareColumnLevelNodesFromEdges = (
   direction: LineageDirection = LineageDirection.Downstream
 ) => {
   const entityKey =
-    direction === LineageDirection.Upstream ? 'toEntity' : 'fromEntity';
+    direction === LineageDirection.Upstream ? 'fromEntity' : 'toEntity';
 
   return edges.reduce((acc: ColumnLevelLineageNode[], node: EdgeDetails) => {
     if (node.columns?.length ?? 0 > 0) {
