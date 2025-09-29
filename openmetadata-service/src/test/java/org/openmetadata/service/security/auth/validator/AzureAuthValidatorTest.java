@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
 
 public class AzureAuthValidatorTest {
   private AzureAuthValidator validator;
@@ -32,12 +32,15 @@ public class AzureAuthValidatorTest {
     authConfig.setClientId("12345678-1234-1234-1234-123456789012");
     authConfig.setClientType(ClientType.PUBLIC);
 
-    ValidationResult result = validator.validateAzureConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateAzureConfiguration(authConfig, oidcConfig);
 
-    assertEquals("failed", result.getStatus());
-    assertEquals("azure-authority", result.getComponent());
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertEquals("authenticationConfiguration.authority", result != null ? result.getField() : "");
     assertTrue(
-        result.getMessage().contains("Azure authority must use login.microsoftonline.com domain"));
+        result != null
+            && result
+                .getError()
+                .contains("Azure authority must use login.microsoftonline.com domain"));
   }
 
   @Test
@@ -48,12 +51,15 @@ public class AzureAuthValidatorTest {
     authConfig.setClientType(ClientType.PUBLIC);
     // Not setting publicKeyUrls to trigger error
 
-    ValidationResult result = validator.validateAzureConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateAzureConfiguration(authConfig, oidcConfig);
 
     // Will fail on publicKeyUrls check first
-    assertEquals("failed", result.getStatus());
-    assertEquals("azure-public-key-urls", result.getComponent());
-    assertTrue(result.getMessage().contains("Public key URLs are required"));
+    assertEquals("failed", result != null ? "failed" : "success");
+    if (result != null) {
+      assertEquals("authenticationConfiguration.publicKeyUrls", result.getField());
+      assertTrue(
+          result.getError().contains("Public key") || result.getError().contains("public key"));
+    }
   }
 
   @Test
@@ -63,10 +69,10 @@ public class AzureAuthValidatorTest {
     authConfig.setClientId("12345678-1234-1234-1234-123456789012");
     authConfig.setClientType(ClientType.PUBLIC);
 
-    ValidationResult result = validator.validateAzureConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateAzureConfiguration(authConfig, oidcConfig);
 
-    assertEquals("failed", result.getStatus());
-    assertTrue(result.getMessage().contains("Invalid tenant ID format"));
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertTrue(result != null && result.getError().contains("Invalid tenant ID format"));
   }
 
   @Test
@@ -81,11 +87,12 @@ public class AzureAuthValidatorTest {
     publicKeyUrls.add("https://example.com/keys");
     authConfig.setPublicKeyUrls(publicKeyUrls);
 
-    ValidationResult result = validator.validateAzureConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateAzureConfiguration(authConfig, oidcConfig);
 
     // Will fail on public key URL validation
-    assertEquals("failed", result.getStatus());
-    assertEquals("azure-public-key-urls", result.getComponent());
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertEquals(
+        "authenticationConfiguration.publicKeyUrls", result != null ? result.getField() : "");
   }
 
   @Test
@@ -96,10 +103,12 @@ public class AzureAuthValidatorTest {
     authConfig.setClientId("87654321-4321-4321-4321-210987654321");
     authConfig.setClientType(ClientType.PUBLIC);
 
-    ValidationResult result = validator.validateAzureConfiguration(authConfig, oidcConfig);
+    FieldError result = validator.validateAzureConfiguration(authConfig, oidcConfig);
 
     // Will fail when trying to validate tenant exists (network call fails)
-    assertEquals("failed", result.getStatus());
-    assertEquals("azure-tenant", result.getComponent());
+    assertEquals("failed", result != null ? "failed" : "success");
+    assertEquals(
+        "authenticationConfiguration.oidcConfiguration.tenant",
+        result != null ? result.getField() : "");
   }
 }
