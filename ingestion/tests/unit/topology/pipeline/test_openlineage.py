@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
+from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -24,9 +25,11 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
 from metadata.ingestion.source.pipeline.openlineage.models import OpenLineageEvent
 from metadata.ingestion.source.pipeline.openlineage.utils import (
+    FQNNotFoundException,
     message_to_open_lineage_event,
 )
 
@@ -138,10 +141,10 @@ class OpenLineageUnitTest(unittest.TestCase):
             MOCK_OL_CONFIG["source"],
             config.workflowConfig.openMetadataServerConfig,
         )
-        self.open_lineage_source.context.__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.open_lineage_source.context.__dict__[
-            "pipeline_service"
-        ] = MOCK_PIPELINE_SERVICE.name.root
+        self.open_lineage_source.context.get().pipeline = MOCK_PIPELINE.name.root
+        self.open_lineage_source.context.get().pipeline_service = (
+            MOCK_PIPELINE_SERVICE.name.root
+        )
         self.open_lineage_source.source_config.lineageInformation = {
             "dbServiceNames": ["skun"]
         }
@@ -527,6 +530,72 @@ class OpenLineageUnitTest(unittest.TestCase):
 
         self.assertEqual(col_lineage, expected_col_lineage)
         self.assertEqual(table_lineage, expected_table_lineage)
+
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_table_fqn_from_om"
+    )
+    @patch(
+        "metadata.ingestion.source.pipeline.openlineage.metadata.OpenlineageSource._get_schema_fqn_from_om"
+    )
+    def test_get_create_table_request(self, mock_get_schema_fqn, mock_get_table_fqn):
+        """Test successful table creation request with multiple columns when table doesn't exist"""
+        # Setup: Table doesn't exist, schema exists
+        mock_get_table_fqn.side_effect = FQNNotFoundException("Table not found")
+        mock_get_schema_fqn.return_value = "testService.testDatabase.testSchema"
+        table_data = {
+            "name": "testSchema.employees",
+            "namespace": "bigquery",
+            "facets": {
+                "schema": {
+                    "fields": [
+                        {"name": "employee_id", "type": "INT64"},
+                        {"name": "first_name", "type": "STRING"},
+                        {"name": "last_name", "type": "STRING"},
+                        {"name": "email", "type": "STRING"},
+                        {"name": "salary", "type": "FLOAT64"},
+                        {"name": "hire_date", "type": "TIMESTAMP"},
+                        {"name": "department_id", "type": "INT64"},
+                        {"name": "is_active", "type": "BOOLEAN"},
+                    ]
+                }
+            },
+        }
+
+        result = self.open_lineage_source.get_create_table_request(table_data)
+
+        # Assertions
+        self.assertIsInstance(result, Either)
+        self.assertIsNone(result.left)
+        self.assertIsNotNone(result.right)
+
+        create_request = result.right
+        self.assertIsInstance(create_request, CreateTableRequest)
+        self.assertEqual(create_request.name.root, "employees")
+        self.assertEqual(
+            create_request.databaseSchema.root, "testService.testDatabase.testSchema"
+        )
+        self.assertEqual(len(create_request.columns), 8)
+
+        # Verify all columns are created with correct types
+        expected_columns = [
+            ("employee_id", "BIGINT", "INT64"),
+            ("first_name", "STRING", "STRING"),
+            ("last_name", "STRING", "STRING"),
+            ("email", "STRING", "STRING"),
+            ("salary", "DOUBLE", "FLOAT64"),
+            ("hire_date", "TIMESTAMP", "TIMESTAMP"),
+            ("department_id", "BIGINT", "INT64"),
+            ("is_active", "BOOLEAN", "BOOLEAN"),
+        ]
+
+        for i, (expected_name, expected_type, expected_type_display) in enumerate(
+            expected_columns
+        ):
+            self.assertEqual(create_request.columns[i].name.root, expected_name)
+            self.assertEqual(create_request.columns[i].dataType.value, expected_type)
+            self.assertEqual(
+                create_request.columns[i].dataTypeDisplay, expected_type_display
+            )
 
 
 if __name__ == "__main__":

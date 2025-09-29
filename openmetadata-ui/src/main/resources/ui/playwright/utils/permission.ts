@@ -165,12 +165,27 @@ export const validateViewPermissions = async (
   await page.click('[data-testid="table_queries"]');
   await page.waitForLoadState('domcontentloaded');
   await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
+
+  const profilerResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/tables/') &&
+      response.url().includes('/systemProfile?') &&
+      response.url().includes('startTs=') &&
+      response.url().includes('endTs=')
+  );
   await page.click('[data-testid="profiler"]');
+  await profilerResponse;
+  await page.waitForLoadState('networkidle');
   await page
     .getByTestId('table-profiler-container')
     .getByTestId('loader')
     .waitFor({ state: 'detached' });
   await page.waitForLoadState('domcontentloaded');
+
+  await page
+    .getByTestId('profiler-tab-left-panel')
+    .getByText('Data Quality')
+    .waitFor({ state: 'visible' });
   await page
     .getByTestId('profiler-tab-left-panel')
     .getByText('Data Quality')

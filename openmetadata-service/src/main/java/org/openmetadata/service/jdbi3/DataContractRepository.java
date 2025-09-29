@@ -136,6 +136,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
     if (!update) {
       validateEntityReference(entityRef);
+      dataContract.setCreatedAt(dataContract.getUpdatedAt());
+      dataContract.setCreatedBy(dataContract.getUpdatedBy());
     }
 
     // Validate schema fields and throw exception if there are failures
@@ -155,12 +157,6 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       dataContract.setReviewers(EntityUtil.populateEntityReferences(dataContract.getReviewers()));
     }
     createOrUpdateDataContractTestSuite(dataContract, update);
-  }
-
-  @Override
-  protected void setDefaultStatus(DataContract entity, boolean update) {
-    // If the contract status is marked as null, let it be null, If it is not marked as null, leave
-    // it as is, so no implementation here
   }
 
   // Ensure we have a pipeline after creation if needed
@@ -936,6 +932,9 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       updateSchema(original, updated);
       updateQualityExpectations(original, updated);
       updateSemantics(original, updated);
+      // Preserve immutable creation fields
+      updated.setCreatedAt(original.getCreatedAt());
+      updated.setCreatedBy(original.getCreatedBy());
     }
 
     private void updateSchema(DataContract original, DataContract updated) {
@@ -1048,8 +1047,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         .withId(original.getId())
         .withName(original.getName())
         .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withUpdatedAt(original.getUpdatedAt())
-        .withUpdatedBy(original.getUpdatedBy());
+        .withCreatedAt(original.getCreatedAt())
+        .withCreatedBy(original.getCreatedBy());
   }
 
   private void validateEntityReference(EntityReference entity) {

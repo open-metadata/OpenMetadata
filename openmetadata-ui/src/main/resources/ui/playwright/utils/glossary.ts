@@ -718,7 +718,9 @@ export const validateGlossaryTerm = async (
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
+    await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
+    await expect(page.locator(statusSelector)).toBeVisible();
     await expect(page.locator(statusSelector)).toContainText(status);
   }
 };
@@ -1689,4 +1691,8 @@ export const performExpandAll = async (page: Page) => {
   );
   await page.getByTestId('expand-collapse-all-button').click();
   await termRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
