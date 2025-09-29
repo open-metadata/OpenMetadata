@@ -14,6 +14,7 @@
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { useSnackbar } from 'notistack';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../constants/constants';
@@ -22,7 +23,10 @@ import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { addDataProducts } from '../../rest/dataProductAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  showNotistackError,
+  showNotistackSuccess,
+} from '../../utils/NotistackUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -44,6 +48,7 @@ const DataProductListPage = () => {
   const dataProductListing = useDataProductListingData();
   const theme = useTheme();
   const { t } = useTranslation();
+  const { enqueueSnackbar } = useSnackbar();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -80,7 +85,8 @@ const DataProductListPage = () => {
           setIsLoading(true);
           try {
             await addDataProducts(formData as CreateDataProduct);
-            showSuccessToast(
+            showNotistackSuccess(
+              enqueueSnackbar,
               t('server.create-entity-success', {
                 entity: t('label.data-product'),
               })
@@ -89,7 +95,8 @@ const DataProductListPage = () => {
             closeDrawer();
             dataProductListing.refetch();
           } catch (error) {
-            showErrorToast(
+            showNotistackError(
+              enqueueSnackbar,
               getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
                 ? t('server.entity-already-exist', {
                     entity: t('label.data-product'),
@@ -99,7 +106,8 @@ const DataProductListPage = () => {
                 : (error as AxiosError),
               t('server.add-entity-error', {
                 entity: t('label.data-product').toLowerCase(),
-              })
+              }),
+              { vertical: 'top', horizontal: 'center' }
             );
             // Keep drawer open on error so user can fix and retry
           } finally {

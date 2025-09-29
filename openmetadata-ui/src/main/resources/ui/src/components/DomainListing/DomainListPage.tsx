@@ -14,6 +14,7 @@
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
+import { useSnackbar } from 'notistack';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../constants/constants';
@@ -22,7 +23,10 @@ import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { addDomains } from '../../rest/domainAPI';
 import { getIsErrorMatch } from '../../utils/CommonUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import {
+  showNotistackError,
+  showNotistackSuccess,
+} from '../../utils/NotistackUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
@@ -46,6 +50,7 @@ const DomainListPage = () => {
   const { t } = useTranslation();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
+  const { enqueueSnackbar } = useSnackbar();
 
   // Use the simplified domain filters configuration
   const { quickFilters, defaultFilters } = useDomainFilters({
@@ -80,7 +85,8 @@ const DomainListPage = () => {
           setIsLoading(true);
           try {
             await addDomains(formData as CreateDomain);
-            showSuccessToast(
+            showNotistackSuccess(
+              enqueueSnackbar,
               t('server.create-entity-success', {
                 entity: t('label.domain'),
               })
@@ -89,7 +95,8 @@ const DomainListPage = () => {
             closeDrawer();
             domainListing.refetch();
           } catch (error) {
-            showErrorToast(
+            showNotistackError(
+              enqueueSnackbar,
               getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
                 ? t('server.entity-already-exist', {
                     entity: t('label.domain'),
@@ -99,7 +106,8 @@ const DomainListPage = () => {
                 : (error as AxiosError),
               t('server.add-entity-error', {
                 entity: t('label.domain').toLowerCase(),
-              })
+              }),
+              { vertical: 'top', horizontal: 'center' }
             );
           } finally {
             setIsLoading(false);
