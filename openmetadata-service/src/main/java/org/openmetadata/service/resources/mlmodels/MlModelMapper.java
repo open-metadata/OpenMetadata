@@ -22,7 +22,6 @@ public class MlModelMapper implements EntityMapper<MlModel, CreateMlModel> {
         .withSourceUrl(create.getSourceUrl())
         .withSourceHash(create.getSourceHash())
         .withTrainingDatasets(create.getTrainingDatasets())
-        .withValidationDatasets(create.getValidationDatasets())
-        .withTestDatasets(create.getTestDatasets());
+        .withEvaluationDatasets(create.getEvaluationDatasets());
   }
 }

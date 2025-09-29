@@ -36,8 +36,7 @@
         "defaultsTo",
         "relatesTo",
         "trainedWith",
-        "validatedWith",
-        "testedWith"
+        "evaluatedWith"
       ],
       "javaEnums": [
         { "name": "CONTAINS" },
@@ -64,8 +63,7 @@
         { "name":  "DEFAULTS_TO" },
         { "name": "RELATES_TO" },
         { "name": "TRAINED_WITH" },
-        { "name": "VALIDATED_WITH" },
-        { "name": "TESTED_WITH" }
+        { "name": "EVALUATED_WITH" }
       ]
     }
   },

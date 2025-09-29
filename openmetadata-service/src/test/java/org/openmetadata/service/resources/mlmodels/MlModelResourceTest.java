@@ -427,18 +427,14 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     CreateMlModel create =
         createRequest(test)
             .withTrainingDatasets(List.of(TABLE_REFERENCE))
-            .withValidationDatasets(List.of(TABLE_REFERENCE))
-            .withTestDatasets(List.of(TABLE_REFERENCE));
+            .withEvaluationDatasets(List.of(TABLE_REFERENCE));
     MlModel model = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertNotNull(model.getTrainingDatasets());
     assertEquals(1, model.getTrainingDatasets().size());
     assertEquals(TABLE_REFERENCE.getId(), model.getTrainingDatasets().get(0).getId());
-    assertNotNull(model.getValidationDatasets());
-    assertEquals(1, model.getValidationDatasets().size());
-    assertEquals(TABLE_REFERENCE.getId(), model.getValidationDatasets().get(0).getId());
-    assertNotNull(model.getTestDatasets());
-    assertEquals(1, model.getTestDatasets().size());
-    assertEquals(TABLE_REFERENCE.getId(), model.getTestDatasets().get(0).getId());
+    assertNotNull(model.getEvaluationDatasets());
+    assertEquals(1, model.getEvaluationDatasets().size());
+    assertEquals(TABLE_REFERENCE.getId(), model.getEvaluationDatasets().get(0).getId());
   }
 
   @Test
@@ -481,27 +477,13 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
   }
 
   @Test
-  void put_MlModelAddValidationDatasets_200(TestInfo test) throws IOException {
+  void put_MlModelAddEvaluationDatasets_200(TestInfo test) throws IOException {
     CreateMlModel request = createRequest(test);
     MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
     ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
-    fieldAdded(change, "validationDatasets", List.of(TABLE_REFERENCE));
+    fieldAdded(change, "evaluationDatasets", List.of(TABLE_REFERENCE));
     updateAndCheckEntity(
-        request.withValidationDatasets(List.of(TABLE_REFERENCE)),
-        Status.OK,
-        ADMIN_AUTH_HEADERS,
-        MINOR_UPDATE,
-        change);
-  }
-
-  @Test
-  void put_MlModelAddTestDatasets_200(TestInfo test) throws IOException {
-    CreateMlModel request = createRequest(test);
-    MlModel model = createAndCheckEntity(request, ADMIN_AUTH_HEADERS);
-    ChangeDescription change = getChangeDescription(model, MINOR_UPDATE);
-    fieldAdded(change, "testDatasets", List.of(TABLE_REFERENCE));
-    updateAndCheckEntity(
-        request.withTestDatasets(List.of(TABLE_REFERENCE)),
+        request.withEvaluationDatasets(List.of(TABLE_REFERENCE)),
         Status.OK,
         ADMIN_AUTH_HEADERS,
         MINOR_UPDATE,
@@ -684,8 +666,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
     assertDatasetReferences(
         createRequest.getTrainingDatasets(), createdEntity.getTrainingDatasets());
     assertDatasetReferences(
-        createRequest.getValidationDatasets(), createdEntity.getValidationDatasets());
-    assertDatasetReferences(createRequest.getTestDatasets(), createdEntity.getTestDatasets());
+        createRequest.getEvaluationDatasets(), createdEntity.getEvaluationDatasets());
 
     // Validate MlStore including artifactUri
     if (createRequest.getMlStore() != null && createdEntity.getMlStore() != null) {
@@ -732,9 +713,7 @@ public class MlModelResourceTest extends EntityResourceTest<MlModel, CreateMlMod
       MlStore expectedMlStore = (MlStore) expected;
       MlStore actualMlStore = JsonUtils.readValue(actual.toString(), MlStore.class);
       assertEquals(expectedMlStore, actualMlStore);
-    } else if (fieldName.contains("trainingDatasets")
-        || fieldName.contains("validationDatasets")
-        || fieldName.contains("testDatasets")) {
+    } else if (fieldName.contains("trainingDatasets") || fieldName.contains("evaluationDatasets")) {
       assertEntityReferencesFieldChange(expected, actual);
     } else {
       assertCommonFieldChange(fieldName, expected, actual);

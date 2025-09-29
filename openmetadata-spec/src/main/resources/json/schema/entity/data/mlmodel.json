@@ -196,15 +196,11 @@
       "default": null
     },
     "trainingDatasets": {
-      "description": "Datasets (tables, files, feature stores) used to train this ML Model.",
+      "description": "Datasets used to train the model.",
       "$ref": "../../type/entityReferenceList.json"
     },
-    "validationDatasets": {
-      "description": "Datasets used for model validation during training.",
-      "$ref": "../../type/entityReferenceList.json"
-    },
-    "testDatasets": {
-      "description": "Datasets used for final model testing and evaluation.",
+    "evaluationDatasets": {
+      "description": "Datasets used to validate/test the model.",
       "$ref": "../../type/entityReferenceList.json"
     },
     "target": {

@@ -58,10 +58,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class MlModelRepository extends EntityRepository<MlModel> {
-  private static final String MODEL_UPDATE_FIELDS =
-      "dashboard,trainingDatasets,validationDatasets,testDatasets";
-  private static final String MODEL_PATCH_FIELDS =
-      "dashboard,trainingDatasets,validationDatasets,testDatasets";
+  private static final String MODEL_UPDATE_FIELDS = "dashboard,trainingDatasets,evaluationDatasets";
+  private static final String MODEL_PATCH_FIELDS = "dashboard,trainingDatasets,evaluationDatasets";
 
   public MlModelRepository() {
     super(
@@ -113,14 +111,10 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         fields.contains("trainingDatasets")
             ? getToEntityRefs(mlModel.getId(), Relationship.TRAINED_WITH, Entity.TABLE)
             : mlModel.getTrainingDatasets());
-    mlModel.setValidationDatasets(
-        fields.contains("validationDatasets")
-            ? getToEntityRefs(mlModel.getId(), Relationship.VALIDATED_WITH, Entity.TABLE)
-            : mlModel.getValidationDatasets());
-    mlModel.setTestDatasets(
-        fields.contains("testDatasets")
-            ? getToEntityRefs(mlModel.getId(), Relationship.TESTED_WITH, Entity.TABLE)
-            : mlModel.getTestDatasets());
+    mlModel.setEvaluationDatasets(
+        fields.contains("evaluationDatasets")
+            ? getToEntityRefs(mlModel.getId(), Relationship.EVALUATED_WITH, Entity.TABLE)
+            : mlModel.getEvaluationDatasets());
   }
 
   @Override
@@ -306,11 +300,8 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     if (mlModel.getTrainingDatasets() != null) {
       mlModel.setTrainingDatasets(validateDatasetReferences(mlModel.getTrainingDatasets()));
     }
-    if (mlModel.getValidationDatasets() != null) {
-      mlModel.setValidationDatasets(validateDatasetReferences(mlModel.getValidationDatasets()));
-    }
-    if (mlModel.getTestDatasets() != null) {
-      mlModel.setTestDatasets(validateDatasetReferences(mlModel.getTestDatasets()));
+    if (mlModel.getEvaluationDatasets() != null) {
+      mlModel.setEvaluationDatasets(validateDatasetReferences(mlModel.getEvaluationDatasets()));
     }
   }
 
@@ -320,23 +311,20 @@ public class MlModelRepository extends EntityRepository<MlModel> {
     EntityReference dashboard = mlModel.getDashboard();
     EntityReference service = mlModel.getService();
     List<EntityReference> trainingDatasets = mlModel.getTrainingDatasets();
-    List<EntityReference> validationDatasets = mlModel.getValidationDatasets();
-    List<EntityReference> testDatasets = mlModel.getTestDatasets();
+    List<EntityReference> evaluationDatasets = mlModel.getEvaluationDatasets();
 
     mlModel
         .withService(null)
         .withDashboard(null)
         .withTrainingDatasets(null)
-        .withValidationDatasets(null)
-        .withTestDatasets(null);
+        .withEvaluationDatasets(null);
     store(mlModel, update);
 
     mlModel
         .withService(service)
         .withDashboard(dashboard)
         .withTrainingDatasets(trainingDatasets)
-        .withValidationDatasets(validationDatasets)
-        .withTestDatasets(testDatasets);
+        .withEvaluationDatasets(evaluationDatasets);
   }
 
   @Override
@@ -365,27 +353,15 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       }
     }
 
-    // Add relationships for validation datasets
-    if (mlModel.getValidationDatasets() != null) {
-      for (EntityReference dataset : mlModel.getValidationDatasets()) {
+    // Add relationships for evaluation datasets
+    if (mlModel.getEvaluationDatasets() != null) {
+      for (EntityReference dataset : mlModel.getEvaluationDatasets()) {
         addRelationship(
             mlModel.getId(),
             dataset.getId(),
             Entity.MLMODEL,
             Entity.TABLE,
-            Relationship.VALIDATED_WITH);
-      }
-    }
-
-    // Add relationships for test datasets
-    if (mlModel.getTestDatasets() != null) {
-      for (EntityReference dataset : mlModel.getTestDatasets()) {
-        addRelationship(
-            mlModel.getId(),
-            dataset.getId(),
-            Entity.MLMODEL,
-            Entity.TABLE,
-            Relationship.TESTED_WITH);
+            Relationship.EVALUATED_WITH);
       }
     }
 
@@ -533,8 +509,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       updateServer(original, updated);
       updateTarget(original, updated);
       updateTrainingDatasets(original, updated);
-      updateValidationDatasets(original, updated);
-      updateTestDatasets(original, updated);
+      updateEvaluationDatasets(original, updated);
       recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
     }
@@ -647,22 +622,22 @@ public class MlModelRepository extends EntityRepository<MlModel> {
           EntityUtil.entityReferenceMatch);
     }
 
-    private void updateValidationDatasets(MlModel origModel, MlModel updatedModel) {
+    private void updateEvaluationDatasets(MlModel origModel, MlModel updatedModel) {
       // Delete existing relationships and reassign
-      deleteFrom(origModel.getId(), Entity.MLMODEL, Relationship.VALIDATED_WITH, Entity.TABLE);
-      if (updatedModel.getValidationDatasets() != null) {
-        for (EntityReference dataset : updatedModel.getValidationDatasets()) {
+      deleteFrom(origModel.getId(), Entity.MLMODEL, Relationship.EVALUATED_WITH, Entity.TABLE);
+      if (updatedModel.getEvaluationDatasets() != null) {
+        for (EntityReference dataset : updatedModel.getEvaluationDatasets()) {
           addRelationship(
               origModel.getId(),
               dataset.getId(),
               Entity.MLMODEL,
               Entity.TABLE,
-              Relationship.VALIDATED_WITH);
+              Relationship.EVALUATED_WITH);
         }
       }
 
-      List<EntityReference> origDatasets = listOrEmpty(origModel.getValidationDatasets());
-      List<EntityReference> updatedDatasets = listOrEmpty(updatedModel.getValidationDatasets());
+      List<EntityReference> origDatasets = listOrEmpty(origModel.getEvaluationDatasets());
+      List<EntityReference> updatedDatasets = listOrEmpty(updatedModel.getEvaluationDatasets());
 
       origDatasets.sort(EntityUtil.compareEntityReference);
       updatedDatasets.sort(EntityUtil.compareEntityReference);
@@ -671,39 +646,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       List<EntityReference> deleted = new ArrayList<>();
 
       recordListChange(
-          "validationDatasets",
-          origDatasets,
-          updatedDatasets,
-          added,
-          deleted,
-          EntityUtil.entityReferenceMatch);
-    }
-
-    private void updateTestDatasets(MlModel origModel, MlModel updatedModel) {
-      // Delete existing relationships and reassign
-      deleteFrom(origModel.getId(), Entity.MLMODEL, Relationship.TESTED_WITH, Entity.TABLE);
-      if (updatedModel.getTestDatasets() != null) {
-        for (EntityReference dataset : updatedModel.getTestDatasets()) {
-          addRelationship(
-              origModel.getId(),
-              dataset.getId(),
-              Entity.MLMODEL,
-              Entity.TABLE,
-              Relationship.TESTED_WITH);
-        }
-      }
-
-      List<EntityReference> origDatasets = listOrEmpty(origModel.getTestDatasets());
-      List<EntityReference> updatedDatasets = listOrEmpty(updatedModel.getTestDatasets());
-
-      origDatasets.sort(EntityUtil.compareEntityReference);
-      updatedDatasets.sort(EntityUtil.compareEntityReference);
-
-      List<EntityReference> added = new ArrayList<>();
-      List<EntityReference> deleted = new ArrayList<>();
-
-      recordListChange(
-          "testDatasets",
+          "evaluationDatasets",
           origDatasets,
           updatedDatasets,
           added,
