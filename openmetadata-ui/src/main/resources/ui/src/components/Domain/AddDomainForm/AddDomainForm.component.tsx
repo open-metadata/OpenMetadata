@@ -30,7 +30,10 @@ import {
   FieldTypes,
   FormItemLayout,
 } from '../../../interface/FormUtils.interface';
-import { domainTypeTooltipDataRender } from '../../../utils/DomainUtils';
+import {
+  domainTypeTooltipDataRender,
+  iconTooltipDataRender,
+} from '../../../utils/DomainUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import '../domain.less';
@@ -65,6 +68,7 @@ const AddDomainForm = ({
     muiLabel: t('label.icon'),
     required: false,
     type: FieldTypes.ICON_PICKER_MUI,
+    helperText: iconTooltipDataRender(),
     props: {
       'data-testid': 'icon-url',
       allowUrl: true,

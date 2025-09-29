@@ -41,6 +41,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   label,
   placeholder = 'Enter icon URL',
   value,
+  toolTip,
   onChange,
 }) => {
   const theme = useTheme();
@@ -129,7 +130,12 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
 
   return (
     <FormControl component="fieldset" disabled={disabled}>
-      {label && <FormLabel>{label}</FormLabel>}
+      {label && (
+        <Box sx={{ display: 'inline-flex' }}>
+          <FormLabel>{label}</FormLabel>
+          {toolTip}
+        </Box>
+      )}
 
       {/* Inline icon display - just a box */}
       <Box

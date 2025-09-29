@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "選取或輸入 HEX 色碼。",
     "hex-color-validation": "輸入不是有效的 HEX 色碼。",
     "hi-user-welcome-to": "嗨 {{user}}，歡迎來到",
+    "icon-aspect-ratio": "圖示長寬比應為1:1，建議大小應為64 x 64像素",
     "image-upload-error": "不支援圖片上傳。請對可透過 URL 取得的圖片使用 Markdown 語法。",
     "import-data-in-progress": "正在匯入。",
     "import-entity-help": "透過一次上傳包含多個 {{entity}} 的 CSV 檔案，節省時間和精力。",

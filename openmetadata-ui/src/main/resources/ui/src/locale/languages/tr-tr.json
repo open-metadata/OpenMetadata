@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "HEX renk kodunu seçin veya girin.",
     "hex-color-validation": "Giriş geçerli bir HEX kodu değil.",
     "hi-user-welcome-to": "Merhaba {{user}}, Hoş Geldiniz",
+    "icon-aspect-ratio": "Simge en boy oranı 1:1 olmalı ve önerilen boyut 64 x 64 piksel olmalıdır",
     "image-upload-error": "Resim yükleme desteklenmiyor. Lütfen URL üzerinden kullanılabilen resimler için Markdown sözdizimini kullanın.",
     "import-data-in-progress": "İçe aktarma devam ediyor.",
     "import-entity-help": "Bir CSV dosyasını tek seferde birkaç {{entity}} ile yükleyerek zamandan ve emekten tasarruf edin.",

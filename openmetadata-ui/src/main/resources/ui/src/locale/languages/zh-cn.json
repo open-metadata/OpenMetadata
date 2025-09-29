@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "选择或输入 HEX 颜色代码",
     "hex-color-validation": "输入不是有效的 HEX 颜色代码",
     "hi-user-welcome-to": "Hi {{user}}, 欢迎来到",
+    "icon-aspect-ratio": "图标宽高比应为1:1，建议尺寸为64 x 64像素",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
     "import-data-in-progress": "导入正在进行中。",
     "import-entity-help": "通过上传 CSV 文件批量维护术语, 节约时间并提高效率。",

@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "Wählen Sie einen HEX-Farbcode oder geben Sie ihn ein.",
     "hex-color-validation": "Die Eingabe ist kein gültiger HEX-Code.",
     "hi-user-welcome-to": "Hallo {{user}}, Willkommen bei",
+    "icon-aspect-ratio": "Das Seitenverhältnis des Symbols sollte 1:1 sein und die empfohlene Größe sollte 64 x 64 px betragen",
     "image-upload-error": "Das Hochladen von Bildern wird nicht unterstützt. Bitte verwenden Sie die Markdown-Syntax für Bilder, die über eine URL verfügbar sind.",
     "import-data-in-progress": "Import läuft.",
     "import-entity-help": "Sparen Sie Zeit und Aufwand, indem Sie eine CSV-Datei mit mehreren {{entity}} in einem Durchgang hochladen.",

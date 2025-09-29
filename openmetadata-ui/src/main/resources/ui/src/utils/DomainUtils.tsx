@@ -10,6 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import { Box, Tooltip as MUITooltip } from '@mui/material';
 import { Divider, Space, Tooltip, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import classNames from 'classnames';
@@ -193,6 +195,29 @@ export const domainTypeTooltipDataRender = () => (
       </Fragment>
     ))}
   </Space>
+);
+
+export const iconTooltipDataRender = () => (
+  <MUITooltip arrow placement="top" title={t('message.icon-aspect-ratio')}>
+    <Box
+      component="span"
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        cursor: 'help',
+        lineHeight: 0,
+        pointerEvents: 'auto',
+      }}>
+      <InfoOutlinedIcon
+        data-testid="mui-helper-icon"
+        sx={{
+          fontSize: 16,
+          color: 'text.secondary',
+          pointerEvents: 'auto',
+        }}
+      />
+    </Box>
+  </MUITooltip>
 );
 
 export const getDomainOptions = (domains: Domain[] | EntityReference[]) => {

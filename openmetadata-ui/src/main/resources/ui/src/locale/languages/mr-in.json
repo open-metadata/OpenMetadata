@@ -2181,6 +2181,7 @@
     "hex-code-placeholder": "HEX रंग कोड निवडा किंवा प्रविष्ट करा.",
     "hex-color-validation": "इनपुट वैध HEX कोड नाही.",
     "hi-user-welcome-to": "नमस्कार {{user}}, स्वागत आहे",
+    "icon-aspect-ratio": "आयकॉनचे आस्पेक्ट रेशो 1:1 असावे आणि शिफारसीत आकार 64 x 64 px असावा",
     "image-upload-error": "प्रतिमा अपलोड समर्थित नाही. कृपया URL द्वारे उपलब्ध प्रतिमांसाठी मार्कडाउन सिंटॅक्स वापरा.",
     "import-data-in-progress": "आयात सुरू आहे.",
     "import-entity-help": "एकाच वेळी अनेक {{entity}} सह CSV फाइल अपलोड करून वेळ आणि प्रयत्न वाचवा.",
