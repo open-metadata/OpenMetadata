@@ -986,6 +986,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 
@@ -993,6 +994,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team2, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 
@@ -1000,6 +1002,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team3, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 

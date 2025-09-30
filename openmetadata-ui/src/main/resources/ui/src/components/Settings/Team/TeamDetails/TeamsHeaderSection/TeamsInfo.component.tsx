@@ -65,7 +65,11 @@ const TeamsInfo = ({
   const { hasEditPermission, hasAccess } = useMemo(
     () => ({
       hasEditPermission: entityPermissions.EditAll && !isTeamDeleted,
-      hasAccess: isAdminUser && !isTeamDeleted,
+      hasAccess:
+        (isAdminUser ||
+          entityPermissions.EditAll ||
+          entityPermissions.EditOwners) &&
+        !isTeamDeleted,
     }),
 
     [entityPermissions, isTeamDeleted]
@@ -307,7 +311,10 @@ const TeamsInfo = ({
   ]);
 
   return (
-    <Space className="teams-info-header-container" size={0}>
+    <Space
+      className="teams-info-header-container"
+      data-testid="teams-info-header"
+      size={0}>
       <DomainLabel
         headerLayout
         multiple
