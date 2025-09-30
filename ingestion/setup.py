@@ -152,7 +152,7 @@ base_requirements = {
     "PyYAML~=6.0",
     "requests>=2.23",
     "requests-aws4auth~=1.1",  # Only depends on requests as external package. Leaving as base.
-    "sqlalchemy>=1.4.0,<2",
+    "sqlalchemy>=1.4.0,<3",
     "collate-sqllineage~=1.6.0",
     "tabulate==0.9.0",
     "typing-inspect",
