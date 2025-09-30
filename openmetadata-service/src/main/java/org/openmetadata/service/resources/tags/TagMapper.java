@@ -16,6 +16,9 @@ public class TagMapper implements EntityMapper<Tag, CreateTag> {
         .withParent(getEntityReference(TAG, create.getParent()))
         .withClassification(getEntityReference(CLASSIFICATION, create.getClassification()))
         .withProvider(create.getProvider())
-        .withMutuallyExclusive(create.getMutuallyExclusive());
+        .withMutuallyExclusive(create.getMutuallyExclusive())
+        .withRecognizers(create.getRecognizers())
+        .withAutoClassificationEnabled(create.getAutoClassificationEnabled())
+        .withAutoClassificationPriority(create.getAutoClassificationPriority());
   }
 }
