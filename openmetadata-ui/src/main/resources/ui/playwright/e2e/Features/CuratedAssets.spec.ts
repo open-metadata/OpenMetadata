@@ -280,7 +280,8 @@ test.describe('Curated Assets Widget', () => {
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=all')
+        response.url().includes('index=all') &&
+        response.url().includes('deleted%22:true')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -632,7 +633,8 @@ test.describe('Curated Assets Widget', () => {
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=all')
+        response.url().includes('index=all') &&
+        response.url().includes('tier.tier5')
     );
 
     await page.locator('[data-testid="saveButton"]').click();

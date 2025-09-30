@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { toLower } from 'lodash';
 import { ADVANCED_SEARCH_SUGGESTION_FIELDS } from '../../constant/advancedSearch';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -94,10 +95,9 @@ test.describe('Advanced Search Suggestions', () => {
 
       await aggregateRes1;
 
-      const searchText = getFieldsSuggestionSearchText(
-        field.label,
-        testData.fieldSearchData
-      ).toLowerCase();
+      const searchText = toLower(
+        getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
+      );
 
       const aggregateRes2 = page.waitForResponse(
         `/api/v1/search/aggregate?*${getEncodedFqn(
