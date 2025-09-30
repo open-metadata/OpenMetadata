@@ -133,7 +133,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   return (
     <FormControl component="fieldset" disabled={disabled}>
       {label && (
-        <Box sx={{ display: 'inline-flex' }}>
+        <Box sx={{ display: 'inline-flex', gap: '2px' }}>
           <FormLabel>{label}</FormLabel>
           {toolTip}
         </Box>
