@@ -26,23 +26,7 @@ public class Glossary {
 
   // Static CRUD methods
   public static org.openmetadata.schema.entity.data.Glossary create(CreateGlossary request) {
-    // Convert CreateGlossary to Glossary
-    org.openmetadata.schema.entity.data.Glossary entity =
-        new org.openmetadata.schema.entity.data.Glossary();
-    entity.setName(request.getName());
-    if (request.getDisplayName() != null) {
-      entity.setDisplayName(request.getDisplayName());
-    }
-    if (request.getDescription() != null) {
-      entity.setDescription(request.getDescription());
-    }
-    if (request.getOwners() != null) {
-      entity.setOwners(request.getOwners());
-    }
-    if (request.getTags() != null) {
-      entity.setTags(request.getTags());
-    }
-    return getClient().glossaries().create(entity);
+    return getClient().glossaries().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Glossary retrieve(String id) {
