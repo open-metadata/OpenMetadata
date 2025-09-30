@@ -47,7 +47,7 @@ public class TeamMockTest {
     expectedTeam.setTeamType(CreateTeam.TeamType.DEPARTMENT);
     expectedTeam.setFullyQualifiedName("engineering");
 
-    when(mockTeamService.create(any(Team.class))).thenReturn(expectedTeam);
+    when(mockTeamService.create(any(CreateTeam.class))).thenReturn(expectedTeam);
 
     // Act
     Team result = org.openmetadata.sdk.entities.Team.create(createRequest);
@@ -57,7 +57,7 @@ public class TeamMockTest {
     assertEquals("engineering", result.getName());
     assertEquals("Engineering Team", result.getDisplayName());
     assertEquals(CreateTeam.TeamType.DEPARTMENT, result.getTeamType());
-    verify(mockTeamService).create(any(Team.class));
+    verify(mockTeamService).create(any(CreateTeam.class));
   }
 
   @Test
