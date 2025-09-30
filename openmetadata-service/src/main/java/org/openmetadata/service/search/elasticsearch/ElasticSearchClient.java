@@ -49,8 +49,6 @@ import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
-import es.org.elasticsearch.index.query.TermQueryBuilder;
-import es.org.elasticsearch.index.reindex.DeleteByQueryRequest;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.script.Script;
@@ -1742,30 +1740,18 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     entityManager.deleteByRangeQuery(index, fieldName, gt, gte, lt, lte);
   }
 
-  @SneakyThrows
+  @Override
   public void deleteByRangeAndTerm(
-      String index, String rangeQueryStr, String termKey, String termValue) {
-    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
-    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
-    // first token from the Parser
-    XContentParser rangeParser = createXContentParser(rangeQueryStr);
-    rangeParser.nextToken();
-    RangeQueryBuilder rangeQuery = RangeQueryBuilder.fromXContent(rangeParser);
-
-    TermQueryBuilder termQuery = QueryBuilders.termQuery(termKey, termValue);
-
-    BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
-    deleteRequest.setQuery(query);
-    deleteEntityFromElasticSearchByQuery(deleteRequest);
-  }
-
-  @SneakyThrows
-  private void deleteEntityFromElasticSearchByQuery(DeleteByQueryRequest deleteRequest) {
-    if (deleteRequest != null && isClientAvailable) {
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      deleteRequest.setRefresh(true);
-      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
-    }
+      String index,
+      String rangeFieldName,
+      Object gt,
+      Object gte,
+      Object lt,
+      Object lte,
+      String termKey,
+      String termValue)
+      throws IOException {
+    entityManager.deleteByRangeAndTerm(index, rangeFieldName, gt, gte, lt, lte, termKey, termValue);
   }
 
   @Override

@@ -175,10 +175,8 @@ import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
-import os.org.opensearch.index.query.TermQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import os.org.opensearch.index.reindex.DeleteByQueryRequest;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
 import os.org.opensearch.script.Script;
@@ -1889,29 +1887,18 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     entityManager.deleteByRangeQuery(index, fieldName, gt, gte, lt, lte);
   }
 
-  @SneakyThrows
+  @Override
   public void deleteByRangeAndTerm(
-      String index, String rangeQueryStr, String termKey, String termValue) {
-    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
-    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
-    // first token from the Parser
-    XContentParser rangeParser = createXContentParser(rangeQueryStr);
-    rangeParser.nextToken();
-    RangeQueryBuilder rangeQuery = RangeQueryBuilder.fromXContent(rangeParser);
-
-    TermQueryBuilder termQuery = QueryBuilders.termQuery(termKey, termValue);
-
-    BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
-    deleteRequest.setQuery(query);
-    deleteEntityFromOpenSearchByQuery(deleteRequest);
-  }
-
-  @SneakyThrows
-  private void deleteEntityFromOpenSearchByQuery(DeleteByQueryRequest deleteRequest) {
-    if (deleteRequest != null && isClientAvailable) {
-      deleteRequest.setRefresh(true);
-      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
-    }
+      String index,
+      String rangeFieldName,
+      Object gt,
+      Object gte,
+      Object lt,
+      Object lte,
+      String termKey,
+      String termValue)
+      throws IOException {
+    entityManager.deleteByRangeAndTerm(index, rangeFieldName, gt, gte, lt, lte, termKey, termValue);
   }
 
   /** */

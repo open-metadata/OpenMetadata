@@ -206,4 +206,29 @@ public interface EntityManagementClient {
   void deleteByRangeQuery(
       String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
       throws IOException;
+
+  /**
+   * Deletes entities matching both a range query and a term query.
+   * This combines a range condition on a timestamp field with an exact match on a term field.
+   *
+   * @param index the index name
+   * @param rangeFieldName the field name to apply the range query on
+   * @param gt greater than value (exclusive), can be null
+   * @param gte greater than or equal to value (inclusive), can be null
+   * @param lt less than value (exclusive), can be null
+   * @param lte less than or equal to value (inclusive), can be null
+   * @param termKey the field name for the term query
+   * @param termValue the value for the term query
+   * @throws IOException if there's an error during the delete operation
+   */
+  void deleteByRangeAndTerm(
+      String index,
+      String rangeFieldName,
+      Object gt,
+      Object gte,
+      Object lt,
+      Object lte,
+      String termKey,
+      String termValue)
+      throws IOException;
 }

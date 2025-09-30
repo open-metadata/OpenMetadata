@@ -526,8 +526,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
       String dataReportIndex)
       throws IOException;
 
-  void deleteByRangeAndTerm(String index, String rangeQueryStr, String termKey, String termValue);
-
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);

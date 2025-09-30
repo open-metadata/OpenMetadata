@@ -550,39 +550,6 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
   }
 
-  private void upsertDocument(String indexName, String docId, String doc, String operation)
-      throws IOException {
-    if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot {}.", operation);
-      return;
-    }
-    client.update(
-        u ->
-            u.index(indexName)
-                .id(docId)
-                .refresh(Refresh.True)
-                .docAsUpsert(true)
-                .doc(toJsonData(doc)),
-        Map.class);
-    LOG.info("Successfully {} in OpenSearch for index: {}, docId: {}", operation, indexName, docId);
-  }
-
-  private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
-    return JsonUtils.getMap(map).entrySet().stream()
-        .filter(entry -> entry.getValue() != null)
-        .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
-  }
-
-  private JsonData toJsonData(String doc) {
-    Map<String, Object> docMap;
-    try {
-      docMap = objectMapper.readValue(doc, new TypeReference<>() {});
-    } catch (JsonProcessingException e) {
-      throw new IllegalArgumentException("Invalid JSON input", e);
-    }
-    return JsonData.of(docMap);
-  }
-
   @Override
   public void updateByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
@@ -710,5 +677,92 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               .collect(Collectors.joining("; "));
       LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
     }
+  }
+
+  @Override
+  public void deleteByRangeAndTerm(
+      String index,
+      String rangeFieldName,
+      Object gt,
+      Object gte,
+      Object lt,
+      Object lte,
+      String termKey,
+      String termValue)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot delete by range and term query.");
+      return;
+    }
+
+    // Build the range query
+    Query rangeQuery =
+        Query.of(
+            q ->
+                q.range(
+                    r -> {
+                      RangeQuery.Builder builder = new RangeQuery.Builder().field(rangeFieldName);
+                      if (gt != null) builder.gt(JsonData.of(gt));
+                      if (gte != null) builder.gte(JsonData.of(gte));
+                      if (lt != null) builder.lt(JsonData.of(lt));
+                      if (lte != null) builder.lte(JsonData.of(lte));
+                      return builder;
+                    }));
+
+    // Build the term query
+    Query termQuery = Query.of(q -> q.term(t -> t.field(termKey).value(FieldValue.of(termValue))));
+
+    // Combine both queries with a bool query
+    Query combinedQuery = Query.of(q -> q.bool(b -> b.must(rangeQuery).must(termQuery)));
+
+    // Execute delete-by-query with refresh
+    DeleteByQueryResponse response =
+        client.deleteByQuery(d -> d.index(index).query(combinedQuery).refresh(true));
+
+    LOG.info(
+        "DeleteByRangeAndTerm response from OS - Deleted: {}, Failures: {}",
+        response.deleted(),
+        response.failures().size());
+
+    if (!response.failures().isEmpty()) {
+      String failureDetails =
+          response.failures().stream()
+              .map(BulkIndexByScrollFailure::toString)
+              .collect(Collectors.joining("; "));
+      LOG.error("DeleteByRangeAndTerm encountered failures: {}", failureDetails);
+    }
+  }
+
+  private void upsertDocument(String indexName, String docId, String doc, String operation)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot {}.", operation);
+      return;
+    }
+    client.update(
+        u ->
+            u.index(indexName)
+                .id(docId)
+                .refresh(Refresh.True)
+                .docAsUpsert(true)
+                .doc(toJsonData(doc)),
+        Map.class);
+    LOG.info("Successfully {} in OpenSearch for index: {}, docId: {}", operation, indexName, docId);
+  }
+
+  private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
+    return JsonUtils.getMap(map).entrySet().stream()
+        .filter(entry -> entry.getValue() != null)
+        .collect(Collectors.toMap(Map.Entry::getKey, entry -> JsonData.of(entry.getValue())));
+  }
+
+  private JsonData toJsonData(String doc) {
+    Map<String, Object> docMap;
+    try {
+      docMap = objectMapper.readValue(doc, new TypeReference<>() {});
+    } catch (JsonProcessingException e) {
+      throw new IllegalArgumentException("Invalid JSON input", e);
+    }
+    return JsonData.of(docMap);
   }
 }

@@ -274,7 +274,11 @@ public class DataAssetsWorkflow {
             .getSearchClient()
             .deleteByRangeAndTerm(
                 dataStreamName,
-                rangeTermQuery,
+                "@timestamp",
+                null,
+                startTimestamp,
+                null,
+                endTimestamp,
                 "service.name.keyword",
                 dataAssetsConfig.getServiceFilter().getServiceName());
       }
