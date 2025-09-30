@@ -33,7 +33,6 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
-import { resetTokenFromBotPage } from '../../utils/bot';
 import {
   clickOutside,
   redirectToHomePage,
@@ -116,10 +115,10 @@ test.describe('Data Contracts', () => {
       ],
     });
 
-    if (!process.env.PLAYWRIGHT_IS_OSS) {
-      // Todo: Remove this patch once the issue is fixed #19140
-      await resetTokenFromBotPage(page, 'testsuite-bot');
-    }
+    // if (!process.env.PLAYWRIGHT_IS_OSS) {
+    //   // Todo: Remove this patch once the issue is fixed #19140
+    //   await resetTokenFromBotPage(page, 'testsuite-bot');
+    // }
 
     await afterAction();
   });
@@ -1949,6 +1948,37 @@ test.describe('Data Contracts', () => {
     });
 
     await test.step('Validate Security and SLA Details', async () => {
+      // Validate on Contract Detail Page For Security
+      await expect(page.getByTestId('security-card')).toBeVisible();
+
+      await expect(
+        page.getByTestId('contract-security-classification')
+      ).toContainText(DATA_CONTRACT_SECURITY_DETAILS_1.dataClassificationName);
+
+      await expect(
+        page.getByTestId('contract-security-access-policy-0')
+      ).toContainText(
+        DATA_CONTRACT_SECURITY_DETAILS_1.consumers.accessPolicyName
+      );
+
+      for (const identity of DATA_CONTRACT_SECURITY_DETAILS_1.consumers
+        .identities) {
+        await expect(
+          page.getByTestId(`contract-security-identities-0-${identity}`)
+        ).toBeVisible();
+      }
+
+      for (const filter of DATA_CONTRACT_SECURITY_DETAILS_1.consumers
+        .row_filters) {
+        await expect(
+          page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
+        ).toContainText(
+          `${table.columnsName[filter.index]} = ${filter.values[0]},${
+            filter.values[1]
+          }`
+        );
+      }
+
       // Validate on Contract Detail Page
       await expect(page.getByTestId('contract-sla-card')).toBeVisible();
       await expect(
@@ -1990,6 +2020,40 @@ test.describe('Data Contracts', () => {
     await test.step(
       'Validate the updated values Security and SLA Details',
       async () => {
+        const updatedContractSecurityData = {
+          ...DATA_CONTRACT_SECURITY_DETAILS_2,
+          ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+        };
+
+        // Validate on Contract Detail Page For Security
+        await expect(page.getByTestId('security-card')).toBeVisible();
+
+        await expect(
+          page.getByTestId('contract-security-classification')
+        ).toContainText(updatedContractSecurityData.dataClassificationName);
+
+        await expect(
+          page.getByTestId('contract-security-access-policy-0')
+        ).toContainText(updatedContractSecurityData.consumers.accessPolicyName);
+
+        for (const identity of updatedContractSecurityData.consumers
+          .identities) {
+          await expect(
+            page.getByTestId(`contract-security-identities-0-${identity}`)
+          ).toBeVisible();
+        }
+
+        for (const filter of updatedContractSecurityData.consumers
+          .row_filters) {
+          await expect(
+            page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
+          ).toContainText(
+            `${table.columnsName[filter.index]} = ${filter.values[0]},${
+              filter.values[1]
+            },${filter.values[2]},${filter.values[3]}`
+          );
+        }
+
         // Validate the updated data on Contract Detail Page
         await expect(page.getByTestId('contract-sla-card')).toBeVisible();
         await expect(
