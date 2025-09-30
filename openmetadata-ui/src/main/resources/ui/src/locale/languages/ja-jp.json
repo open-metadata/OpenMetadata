@@ -2582,6 +2582,7 @@
     "user-mentioned-in-comment": "{{user}}がコメントであなたにメンションしました。",
     "user-verified-successfully": "ユーザー認証に成功しました",
     "valid-url-endpoint": "エンドポイントは有効なURLでなければなりません",
+    "valid-urls-required": "有効なURLを入力してください（例：https://example.com）",
     "validation-error-assets": "追加されるすべてのアセットを確認してください",
     "value-must-be-greater-than": "{{field}} は {{minimum}} より大きくなければなりません",
     "value-should-equal-to-value": "値は{{value}}と等しくなければなりません。",

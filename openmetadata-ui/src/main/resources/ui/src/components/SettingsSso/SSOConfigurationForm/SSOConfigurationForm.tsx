@@ -899,7 +899,10 @@ const SSOConfigurationFormRJSF = ({
     return cleanedData;
   };
 
-  const getProviderSpecificSchema = (provider: string | undefined) => {
+  const getProviderSpecificSchema = (
+    provider: string | undefined,
+    isConfigured = false
+  ) => {
     const baseSchema = {
       properties: {
         authenticationConfiguration: authenticationConfigSchema,
@@ -913,6 +916,17 @@ const SSOConfigurationFormRJSF = ({
 
     // Deep clone the schema to avoid mutating the original
     const authSchema = JSON.parse(JSON.stringify(authenticationConfigSchema));
+
+    // For configured SSO, remove providerName from required fields
+    if (
+      isConfigured &&
+      authSchema.required &&
+      Array.isArray(authSchema.required)
+    ) {
+      authSchema.required = authSchema.required.filter(
+        (field: string) => field !== 'providerName'
+      );
+    }
 
     // For SAML, remove callbackUrl from required fields and properties
     if (provider === AuthProvider.Saml) {
@@ -969,7 +983,13 @@ const SSOConfigurationFormRJSF = ({
       } as RJSFSchema;
     }
 
-    return baseSchema;
+    // Return the modified schema for all cases
+    return {
+      properties: {
+        authenticationConfiguration: authSchema,
+        authorizerConfiguration: authorizerConfigSchema,
+      },
+    } as RJSFSchema;
   };
 
   const customFields: RegistryFieldsType = {
@@ -977,8 +997,8 @@ const SSOConfigurationFormRJSF = ({
   };
 
   const schema = useMemo(() => {
-    return getProviderSpecificSchema(currentProvider);
-  }, [currentProvider]);
+    return getProviderSpecificSchema(currentProvider, hasExistingConfig);
+  }, [currentProvider, hasExistingConfig]);
 
   // Dynamic UI schema using the optimized constants
   // Custom validate function to inject our validation errors
