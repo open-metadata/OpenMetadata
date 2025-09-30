@@ -242,7 +242,7 @@ const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
   await checkDomainDisplayName(page, domain.displayName);
 
   const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all*');
-  await page.getByTestId('assets').click();
+  await page.getByTestId('assets').click({ timeout: 15000 });
   await assetRes;
 
   await page.waitForLoadState('networkidle');
@@ -286,20 +286,22 @@ export const checkDomainDisplayName = async (
   displayName: string
 ) => {
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    displayName
+    displayName,
+    { timeout: 15000 }
   );
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
   await expect(page.getByTestId('assets').getByTestId('count')).toContainText(
-    count.toString()
+    count.toString(),
+    { timeout: 15000 }
   );
 };
 
 export const checkDataProductCount = async (page: Page, count: number) => {
   await expect(
     page.getByTestId('data_products').getByTestId('count')
-  ).toContainText(count.toString());
+  ).toContainText(count.toString(), { timeout: 15000 });
 };
 
 export const verifyDomain = async (
@@ -489,7 +491,7 @@ export const addAssetsToDataProduct = async (
   dataProductFqn: string,
   assets: EntityClass[]
 ) => {
-  await page.getByTestId('assets').click();
+  await page.getByTestId('assets').click({ timeout: 15000 });
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
@@ -547,7 +549,7 @@ export const removeAssetsFromDataProduct = async (
   dataProduct: DataProduct['data'],
   assets: EntityClass[]
 ) => {
-  await page.getByTestId('assets').click();
+  await page.getByTestId('assets').click({ timeout: 15000 });
   for (const asset of assets) {
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
     await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();

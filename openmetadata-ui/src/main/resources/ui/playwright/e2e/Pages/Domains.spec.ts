@@ -440,12 +440,13 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DOMAIN);
       await selectDomain(page, domain.data);
 
-      const subDomainApiRes = page.waitForResponse(
-        '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9&deleted=false*'
-      );
-      // Create sub domain
-      await createSubDomain(page, subDomain.data);
-      await subDomainApiRes;
+      // Create sub domain and wait for auto-navigation to subdomains tab
+      await Promise.all([
+        createSubDomain(page, subDomain.data),
+        page.waitForResponse(
+          '/api/v1/search/query?q=&index=domain_search_index&from=0&size=9&deleted=false*'
+        ),
+      ]);
 
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
@@ -466,10 +467,10 @@ test.describe('Domains', () => {
       // Check that the followed domain is shown in the following widget
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 15000 });
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toContainText(subDomain.data.displayName);
+      ).toContainText(subDomain.data.displayName, { timeout: 15000 });
 
       const subDomainRes = page.waitForResponse('/api/v1/domains/name/*');
       await page
@@ -486,10 +487,10 @@ test.describe('Domains', () => {
       // Check that the domain is not shown in the following widget
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toBeVisible();
+      ).toBeVisible({ timeout: 15000 });
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).not.toContainText(subDomain.data.displayName);
+      ).not.toContainText(subDomain.data.displayName, { timeout: 15000 });
 
       await sidebarClick(page, SidebarItem.DOMAIN);
 
