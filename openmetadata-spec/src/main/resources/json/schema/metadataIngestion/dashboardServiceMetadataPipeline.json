@@ -61,6 +61,11 @@
       "type": "boolean",
       "default": false
     },
+    "owner": {
+      "title": "Owner",
+      "description": "Set a default owner for the ingested entities. This owner will be applied to all entities that don't have an owner specified in the source. The value should be the name or email of a user or team in OpenMetadata.",
+      "type": "string"
+    },
     "markDeletedDashboards": {
       "description": "Optional configuration to soft delete dashboards in OpenMetadata if the source dashboards are deleted. Also, if the dashboard is deleted, all the associated entities like lineage, etc., with that dashboard will be deleted",
       "type": "boolean",

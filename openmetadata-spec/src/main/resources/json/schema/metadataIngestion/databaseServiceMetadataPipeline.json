@@ -96,6 +96,11 @@
       "type": "boolean",
       "default": false
     },
+    "owner": {
+      "title": "Owner",
+      "description": "Set a default owner for the ingested entities. This owner will be applied to all entities that don't have an owner specified in the source. The value should be the name or email of a user or team in OpenMetadata.",
+      "type": "string"
+    },
     "includeStoredProcedures": {
       "description": "Optional configuration to toggle the Stored Procedures ingestion.",
       "type": "boolean",
