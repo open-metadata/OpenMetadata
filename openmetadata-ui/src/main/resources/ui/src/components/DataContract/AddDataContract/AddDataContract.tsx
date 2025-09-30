@@ -90,7 +90,8 @@ const AddDataContract: React.FC<{
           policies: formValues.security.policies?.map((policy) => ({
             ...policy,
             rowFilters: policy.rowFilters?.filter(
-              (filter) => !isEmpty(filter.columnName) && !isEmpty(filter.values)
+              (filter) =>
+                !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
             ),
           })),
         }
