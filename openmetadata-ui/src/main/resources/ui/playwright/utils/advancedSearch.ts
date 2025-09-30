@@ -566,8 +566,8 @@ export const checkAddRuleOrGroupWithOperator = async (
 
   const searchRes = page.waitForResponse(
     `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchCriteria1
-    )}*${getEncodedFqn(searchCriteria2)}*`
+      searchCriteria1.toLowerCase()
+    )}*${getEncodedFqn(searchCriteria2.toLowerCase())}*`
   );
   await page.getByTestId('apply-btn').click();
 
