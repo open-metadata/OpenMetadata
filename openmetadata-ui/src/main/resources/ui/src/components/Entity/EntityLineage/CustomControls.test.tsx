@@ -14,6 +14,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import CustomControlsComponent from './CustomControls.component';
 
@@ -108,6 +109,12 @@ jest.mock('../../../rest/lineageAPI', () => ({
   exportLineageByEntityCountAsync: jest.fn(),
 }));
 
+jest.mock('../../../hooks/useCustomLocation/useCustomLocation', () => {
+  return jest.fn().mockImplementation(() => ({
+    search: '?mode=lineage&depth=3&dir=downstream',
+  }));
+});
+
 // Mock window.location
 Object.defineProperty(window, 'location', {
   value: {
@@ -141,7 +148,9 @@ describe('CustomControls', () => {
   });
 
   it('shows SearchBar when in impact analysis mode', () => {
-    window.location.search = '?mode=impact_analysis&depth=3&dir=downstream';
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=3&dir=downstream',
+    }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: MemoryRouter,
@@ -233,7 +242,9 @@ describe('CustomControls', () => {
   });
 
   it('shows node depth selector in impact analysis mode with filters active', () => {
-    window.location.search = '?mode=impact_analysis&depth=3&dir=downstream';
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=3&dir=downstream',
+    }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: MemoryRouter,
@@ -253,7 +264,9 @@ describe('CustomControls', () => {
   });
 
   it('opens node depth menu and selects new depth', () => {
-    window.location.search = '?mode=impact_analysis&depth=3&dir=downstream';
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=3&dir=downstream',
+    }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: MemoryRouter,
@@ -274,7 +287,9 @@ describe('CustomControls', () => {
   });
 
   it('calls onSearchValueChange when search value changes in impact analysis mode', () => {
-    window.location.search = '?mode=impact_analysis&depth=3&dir=downstream';
+    (useCustomLocation as jest.Mock).mockImplementation(() => ({
+      search: '?mode=impact_analysis&depth=3&dir=downstream',
+    }));
 
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: MemoryRouter,
