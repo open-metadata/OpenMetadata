@@ -5,9 +5,10 @@ Test script: Verify ownership assignment support at metadata ingestion level
 This script demonstrates how to use the new owner field in ingestion configurations to specify default owners.
 """
 
-import json
+from typing import Any, Dict
+
 import yaml
-from typing import Dict, Any
+
 
 def create_sample_config_with_owner() -> Dict[str, Any]:
     """
@@ -23,32 +24,28 @@ def create_sample_config_with_owner() -> Dict[str, Any]:
                     "username": "root",
                     "password": "password",
                     "hostPort": "localhost:3306",
-                    "database": "sample_db"
+                    "database": "sample_db",
                 }
             },
             "sourceConfig": {
                 "config": {
                     "type": "DatabaseMetadata",
                     "includeOwners": True,
-                    "owner": "data_team"  # New owner field
+                    "owner": "data_team",  # New owner field
                 }
-            }
+            },
         },
-        "sink": {
-            "type": "metadata-rest",
-            "config": {}
-        },
+        "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "openMetadataServerConfig": {
                 "hostPort": "http://localhost:8585/api",
                 "authProvider": "openmetadata",
-                "securityConfig": {
-                    "jwtToken": "your-jwt-token-here"
-                }
+                "securityConfig": {"jwtToken": "your-jwt-token-here"},
             }
-        }
+        },
     }
     return config
+
 
 def create_dashboard_config_with_owner() -> Dict[str, Any]:
     """
@@ -63,58 +60,65 @@ def create_dashboard_config_with_owner() -> Dict[str, Any]:
                     "type": "Superset",
                     "hostPort": "http://localhost:8088",
                     "username": "admin",
-                    "password": "admin"
+                    "password": "admin",
                 }
             },
             "sourceConfig": {
                 "config": {
                     "type": "DashboardMetadata",
                     "includeOwners": True,
-                    "owner": "analytics_team"  # New owner field
+                    "owner": "analytics_team",  # New owner field
                 }
-            }
+            },
         },
-        "sink": {
-            "type": "metadata-rest",
-            "config": {}
-        },
+        "sink": {"type": "metadata-rest", "config": {}},
         "workflowConfig": {
             "openMetadataServerConfig": {
                 "hostPort": "http://localhost:8585/api",
                 "authProvider": "openmetadata",
-                "securityConfig": {
-                    "jwtToken": "your-jwt-token-here"
-                }
+                "securityConfig": {"jwtToken": "your-jwt-token-here"},
             }
-        }
+        },
     }
     return config
+
 
 def main():
     """
     Main function: Generate example configuration files
     """
-    print("=== OpenMetadata Ingestion Configuration Examples - Ownership Assignment Support ===\n")
-    
+    print(
+        "=== OpenMetadata Ingestion Configuration Examples - Ownership Assignment Support ===\n"
+    )
+
     # Generate database ingestion configuration
     db_config = create_sample_config_with_owner()
     print("1. Database Ingestion Configuration (MySQL):")
     print(yaml.dump(db_config, default_flow_style=False, allow_unicode=True))
-    print("\n" + "="*50 + "\n")
-    
+    print("\n" + "=" * 50 + "\n")
+
     # Generate dashboard ingestion configuration
     dashboard_config = create_dashboard_config_with_owner()
     print("2. Dashboard Ingestion Configuration (Superset):")
     print(yaml.dump(dashboard_config, default_flow_style=False, allow_unicode=True))
-    print("\n" + "="*50 + "\n")
-    
+    print("\n" + "=" * 50 + "\n")
+
     print("Usage Instructions:")
     print("- Add 'owner' field to sourceConfig.config")
-    print("- The owner field value should be a user or team name that already exists in OpenMetadata")
-    print("- All assets created through this ingestion pipeline will be automatically assigned to the specified owner")
-    print("- If the specified owner is not found, the system will log a warning and continue processing")
+    print(
+        "- The owner field value should be a user or team name that already exists in OpenMetadata"
+    )
+    print(
+        "- All assets created through this ingestion pipeline will be automatically assigned to the specified owner"
+    )
+    print(
+        "- If the specified owner is not found, the system will log a warning and continue processing"
+    )
     print("- This feature currently supports Database and Dashboard services")
-    print("- Pipeline and Messaging services are not currently supported by this feature")
+    print(
+        "- Pipeline and Messaging services are not currently supported by this feature"
+    )
+
 
 if __name__ == "__main__":
     main()

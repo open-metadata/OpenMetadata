@@ -236,7 +236,6 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
 
         self.container_source_state.add(container_fqn)
 
-
     def test_connection(self) -> None:
         test_connection_common(
             self.metadata, self.connection_obj, self.service_connection

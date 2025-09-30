@@ -589,7 +589,7 @@ class DatabaseServiceSource(
             default_owner_ref = self.get_default_owner_ref()
             if default_owner_ref:
                 return default_owner_ref
-            
+
             # Fall back to extracting owner from database metadata
             if self.source_config.includeOwners and hasattr(
                 self.inspector, "get_table_owner"
@@ -614,10 +614,10 @@ class DatabaseServiceSource(
         """
         try:
             # Check if owner is configured in sourceConfig
-            if hasattr(self.source_config, 'owner') and self.source_config.owner:
+            if hasattr(self.source_config, "owner") and self.source_config.owner:
                 owner_name = self.source_config.owner
                 logger.debug(f"Using default owner from sourceConfig: {owner_name}")
-                
+
                 # Try to get owner reference by name (could be user or team)
                 owner_ref = self.metadata.get_reference_by_name(
                     name=owner_name, is_owner=True

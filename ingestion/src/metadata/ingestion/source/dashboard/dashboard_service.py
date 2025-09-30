@@ -474,7 +474,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         default_owner_ref = self.get_default_owner_ref()
         if default_owner_ref:
             return default_owner_ref
-            
+
         logger.debug(
             f"Processing ownership is not supported for {self.service_connection.type.name}"
         )
@@ -486,10 +486,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         try:
             # Check if owner is configured in sourceConfig
-            if hasattr(self.source_config, 'owner') and self.source_config.owner:
+            if hasattr(self.source_config, "owner") and self.source_config.owner:
                 owner_name = self.source_config.owner
                 logger.debug(f"Using default owner from sourceConfig: {owner_name}")
-                
+
                 # Try to get owner reference by name (could be user or team)
                 owner_ref = self.metadata.get_reference_by_name(
                     name=owner_name, is_owner=True
