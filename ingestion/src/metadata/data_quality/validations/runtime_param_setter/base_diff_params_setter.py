@@ -140,20 +140,6 @@ class BaseTableParameter:
 
         try:
             connection_class = service_spec_patch.get_connection_class()
-            # Check if the data diff class is not BaseTableParameter, but an overridden table parameter, then get that
-            data_diff_class = service_spec_patch.get_data_diff_class()
-            # Check if method is truly overridden (not just different class)
-            if (
-                data_diff_class
-                and data_diff_class is not BaseTableParameter
-                and data_diff_class is not cls
-            ):
-
-                # Call as instance method to avoid recursion
-                return data_diff_class()._get_service_connection_config(
-                    service_connection_config
-                )
-
             if not connection_class:
                 return (
                     str(get_connection(service_connection_config).url)
@@ -186,7 +172,7 @@ class BaseTableParameter:
             str: The url for the data diff service
         """
         source_url = (
-            self.__class__._get_service_connection_config(db_service.connection.config)
+            self._get_service_connection_config(db_service.connection.config)
             if not override_url
             else override_url
         )
