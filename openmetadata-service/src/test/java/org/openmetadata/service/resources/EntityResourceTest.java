@@ -7437,7 +7437,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             .withState(TagLabel.State.CONFIRMED));
 
     // Update entity with tags using reflection
-    entityWithTags.getClass().getMethod("setTags", List.class).invoke(entityWithTags, tags);
+    entityWithTags.setTags(tags);
 
     // Update with SDK
     T updatedEntity = null;
@@ -7470,13 +7470,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     assertNotNull(updatedEntity);
-    List<TagLabel> updatedTags =
-        (List<TagLabel>) updatedEntity.getClass().getMethod("getTags").invoke(updatedEntity);
+    List<TagLabel> updatedTags = updatedEntity.getTags();
     assertEquals(2, updatedTags.size());
 
     // Remove one tag and update
     updatedTags.remove(0);
-    updatedEntity.getClass().getMethod("setTags", List.class).invoke(updatedEntity, updatedTags);
+    updatedEntity.setTags(updatedTags);
 
     T finalEntity = null;
     switch (entityType) {
@@ -7507,8 +7506,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       }
     }
 
-    List<TagLabel> finalTags =
-        (List<TagLabel>) finalEntity.getClass().getMethod("getTags").invoke(finalEntity);
+    List<TagLabel> finalTags = finalEntity.getTags();
     assertEquals(1, finalTags.size());
     assertEquals("PII.Sensitive", finalTags.get(0).getTagFQN());
 
@@ -7561,30 +7559,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     assertNotNull(createdEntity);
     String entityId = createdEntity.getId().toString();
 
-    // Fetch with owners field
-    T entityWithOwners = null;
-    switch (entityType) {
-      case Entity.TABLE -> {
-        Tables.setDefaultClient(sdkClient);
-        entityWithOwners = (T) Tables.find(entityId).includeOwners().fetch().get();
-      }
-      case Entity.DATABASE -> {
-        Databases.setDefaultClient(sdkClient);
-        entityWithOwners = (T) Databases.find(entityId).includeOwners().fetch().get();
-      }
-      case Entity.DATABASE_SCHEMA -> {
-        DatabaseSchemas.setDefaultClient(sdkClient);
-        entityWithOwners = (T) DatabaseSchemas.find(entityId).includeOwners().fetch().get();
-      }
-    }
-
     // Add owners
     List<EntityReference> owners = new ArrayList<>();
     owners.add(new EntityReference().withId(USER1.getId()).withType(Entity.USER));
     owners.add(new EntityReference().withId(TEAM11.getId()).withType(Entity.TEAM));
-
-    // Update entity with owners using reflection
-    entityWithOwners.getClass().getMethod("setOwners", List.class).invoke(entityWithOwners, owners);
 
     // Update with SDK
     T updatedEntity = null;
@@ -7592,74 +7570,66 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       case Entity.TABLE -> {
         Tables.setDefaultClient(sdkClient);
         var fluentTable = Tables.find(entityId).fetch();
-        var tableEntity = fluentTable.get();
-        tableEntity.setOwners(
-            ((org.openmetadata.schema.entity.data.Table) entityWithOwners).getOwners());
+        fluentTable.withOwners(owners);
         updatedEntity = (T) fluentTable.save().get();
       }
       case Entity.DATABASE -> {
         Databases.setDefaultClient(sdkClient);
         var fluentDatabase = Databases.find(entityId).fetch();
-        var dbEntity = fluentDatabase.get();
-        dbEntity.setOwners(
-            ((org.openmetadata.schema.entity.data.Database) entityWithOwners).getOwners());
+        fluentDatabase.withOwners(owners);
         updatedEntity = (T) fluentDatabase.save().get();
       }
       case Entity.DATABASE_SCHEMA -> {
         DatabaseSchemas.setDefaultClient(sdkClient);
         var fluentSchema = DatabaseSchemas.find(entityId).fetch();
-        var schemaEntity = fluentSchema.get();
-        schemaEntity.setOwners(
-            ((org.openmetadata.schema.entity.data.DatabaseSchema) entityWithOwners).getOwners());
+        fluentSchema.withOwners(owners);
         updatedEntity = (T) fluentSchema.save().get();
       }
     }
 
     assertNotNull(updatedEntity);
-    List<EntityReference> updatedOwners =
-        (List<EntityReference>)
-            updatedEntity.getClass().getMethod("getOwners").invoke(updatedEntity);
+    List<EntityReference> updatedOwners = updatedEntity.getOwners();
     assertEquals(2, updatedOwners.size());
 
     // Remove one owner and add another
     updatedOwners.remove(0);
     updatedOwners.add(new EntityReference().withId(USER2.getId()).withType(Entity.USER));
-    updatedEntity
-        .getClass()
-        .getMethod("setOwners", List.class)
-        .invoke(updatedEntity, updatedOwners);
+    updatedEntity.setOwners(updatedOwners);
 
     T finalEntity = null;
     switch (entityType) {
       case Entity.TABLE -> {
         Tables.setDefaultClient(sdkClient);
         var fluentTable = Tables.find(entityId).fetch();
-        var tableEntity = fluentTable.get();
-        tableEntity.setTags(((org.openmetadata.schema.entity.data.Table) updatedEntity).getTags());
-        tableEntity.setDescription(updatedEntity.getDescription());
+        fluentTable
+            .withOwners(updatedOwners)
+            .withTags(updatedEntity.getTags())
+            .withDescription(updatedEntity.getDescription());
         finalEntity = (T) fluentTable.save().get();
       }
       case Entity.DATABASE -> {
         Databases.setDefaultClient(sdkClient);
         var fluentDatabase = Databases.find(entityId).fetch();
-        var dbEntity = fluentDatabase.get();
-        dbEntity.setTags(((org.openmetadata.schema.entity.data.Database) updatedEntity).getTags());
-        dbEntity.setDescription(updatedEntity.getDescription());
-        finalEntity = (T) fluentDatabase.save().get();
+        fluentDatabase
+            .withOwners(updatedOwners)
+            .withTags(updatedEntity.getTags())
+            .withDescription(updatedEntity.getDescription());
+        fluentDatabase.save();
+        finalEntity = (T) Databases.find(entityId).includeOwners().fetch().get();
       }
       case Entity.DATABASE_SCHEMA -> {
         DatabaseSchemas.setDefaultClient(sdkClient);
         var fluentSchema = DatabaseSchemas.find(entityId).fetch();
-        var schemaEntity = fluentSchema.get();
-        schemaEntity.setTags(
-            ((org.openmetadata.schema.entity.data.DatabaseSchema) updatedEntity).getTags());
-        schemaEntity.setDescription(updatedEntity.getDescription());
-        finalEntity = (T) fluentSchema.save().get();
+        fluentSchema
+            .withOwners(updatedOwners)
+            .withTags(updatedEntity.getTags())
+            .withDescription(updatedEntity.getDescription());
+        fluentSchema.save();
+        finalEntity = (T) DatabaseSchemas.find(entityId).includeOwners().fetch().get();
       }
     }
 
-    List<EntityReference> finalOwners =
-        (List<EntityReference>) finalEntity.getClass().getMethod("getOwners").invoke(finalEntity);
+    List<EntityReference> finalOwners = finalEntity.getOwners();
     assertEquals(2, finalOwners.size());
 
     // Clean up
@@ -7741,23 +7711,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Set domain
     EntityReference domain = new EntityReference().withId(DOMAIN.getId()).withType(Entity.DOMAIN);
-    entityWithDomain
-        .getClass()
-        .getMethod("setDomain", EntityReference.class)
-        .invoke(entityWithDomain, domain);
+    entityWithDomain.setDataProducts(List.of(domain));
 
     // Set data products (if entity supports it - skip if NoSuchMethodException)
-    try {
-      List<EntityReference> dataProducts = new ArrayList<>();
-      dataProducts.add(
-          new EntityReference().withId(DOMAIN_DATA_PRODUCT.getId()).withType(Entity.DATA_PRODUCT));
-      entityWithDomain
-          .getClass()
-          .getMethod("setDataProducts", List.class)
-          .invoke(entityWithDomain, dataProducts);
-    } catch (NoSuchMethodException e) {
-      // Entity doesn't support dataProducts, continue with just domain
-    }
+    List<EntityReference> dataProducts = new ArrayList<>();
+    dataProducts.add(
+        new EntityReference().withId(DOMAIN_DATA_PRODUCT.getId()).withType(Entity.DATA_PRODUCT));
+    entityWithDomain.setDataProducts(dataProducts);
 
     // Update with SDK
     T updatedEntity = null;
@@ -7789,20 +7749,13 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     }
 
     assertNotNull(updatedEntity);
-    EntityReference updatedDomain =
-        (EntityReference) updatedEntity.getClass().getMethod("getDomain").invoke(updatedEntity);
+    List<EntityReference> updatedDomain = updatedEntity.getDomains();
     assertNotNull(updatedDomain);
-    assertEquals(DOMAIN.getId(), updatedDomain.getId());
+    assertReferenceList(List.of(DOMAIN.getEntityReference()), updatedDomain);
 
     // Check data products if supported
-    try {
-      List<EntityReference> updatedDataProducts =
-          (List<EntityReference>)
-              updatedEntity.getClass().getMethod("getDataProducts").invoke(updatedEntity);
-      assertEquals(1, updatedDataProducts.size());
-    } catch (NoSuchMethodException e) {
-      // Entity doesn't support dataProducts
-    }
+    List<EntityReference> updatedDataProducts = updatedEntity.getDataProducts();
+    assertEquals(1, updatedDataProducts.size());
 
     // Clean up
     WebTarget target = getResource(createdEntity.getId());

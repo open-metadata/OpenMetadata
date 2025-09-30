@@ -4,6 +4,8 @@ import java.util.*;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -293,6 +295,18 @@ public final class Tables {
 
     public FluentTable withDisplayName(String displayName) {
       table.setDisplayName(displayName);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withOwners(List<EntityReference> owners) {
+      table.setOwners(owners);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withTags(List<TagLabel> tags) {
+      table.setTags(tags);
       modified = true;
       return this;
     }
