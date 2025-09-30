@@ -8,7 +8,6 @@ import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
-import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
@@ -48,7 +47,6 @@ import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
-import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchHits;
@@ -95,7 +93,6 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import javax.net.ssl.SSLContext;
 import lombok.Getter;
-import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
@@ -1715,15 +1712,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData) {
     entityManager.updateLineage(indexName, fieldAndValue, lineageData);
-  }
-
-  @SneakyThrows
-  private void updateElasticSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
-    if (updateByQueryRequest != null && isClientAvailable) {
-      updateByQueryRequest.setRefresh(true);
-      LOG.info(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
-    }
   }
 
   /** */

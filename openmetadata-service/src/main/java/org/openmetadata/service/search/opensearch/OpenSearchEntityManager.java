@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
@@ -144,7 +145,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     }
 
     DeleteResponse response =
-        client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.WaitFor));
+        client.delete(d -> d.index(indexName).id(docId).refresh(Refresh.True));
     LOG.info(
         "Successfully deleted entity from OpenSearch for index: {}, docId: {}, result: {}",
         indexName,
@@ -557,15 +558,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   @Override
   public void updateByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
-    Query prefixQuery =
-        Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldParentFQN)));
-
-    Map<String, JsonData> params =
-        Map.of(
-            "oldParentFQN", JsonData.of(oldParentFQN),
-            "newParentFQN", JsonData.of(newParentFQN));
-
     try {
+      Query prefixQuery =
+          Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldParentFQN)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldParentFQN", JsonData.of(oldParentFQN),
+              "newParentFQN", JsonData.of(newParentFQN));
+
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
@@ -596,6 +597,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   }
 
   @Override
+  @SneakyThrows
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData) {
     if (!isClientAvailable) {
@@ -603,43 +605,38 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    try {
-      Map<String, JsonData> params =
-          Collections.singletonMap("lineageData", JsonData.of(JsonUtils.getMap(lineageData)));
+    Map<String, JsonData> params =
+        Collections.singletonMap("lineageData", JsonData.of(JsonUtils.getMap(lineageData)));
 
-      UpdateByQueryResponse response =
-          client.updateByQuery(
-              u ->
-                  u.index(indexName)
-                      .query(
-                          q ->
-                              q.match(
-                                  m ->
-                                      m.field(fieldAndValue.getKey())
-                                          .query(FieldValue.of(fieldAndValue.getValue()))
-                                          .operator(Operator.And)))
-                      .script(
-                          s ->
-                              s.inline(
-                                  inline ->
-                                      inline
-                                          .lang(ScriptLanguage.Painless.jsonValue())
-                                          .source(ADD_UPDATE_LINEAGE)
-                                          .params(params)))
-                      .refresh(true));
+    UpdateByQueryResponse response =
+        client.updateByQuery(
+            u ->
+                u.index(indexName)
+                    .query(
+                        q ->
+                            q.match(
+                                m ->
+                                    m.field(fieldAndValue.getKey())
+                                        .query(FieldValue.of(fieldAndValue.getValue()))
+                                        .operator(Operator.And)))
+                    .script(
+                        s ->
+                            s.inline(
+                                inline ->
+                                    inline
+                                        .lang(ScriptLanguage.Painless.jsonValue())
+                                        .source(ADD_UPDATE_LINEAGE)
+                                        .params(params)))
+                    .refresh(true));
 
-      LOG.info("Successfully updated lineage in OpenSearch for index: {}", indexName);
+    LOG.info("Successfully updated lineage in OpenSearch for index: {}", indexName);
 
-      if (!response.failures().isEmpty()) {
-        String failureDetails =
-            response.failures().stream()
-                .map(BulkIndexByScrollFailure::toString)
-                .collect(Collectors.joining("; "));
-        LOG.error("Update lineage encountered failures: {}", failureDetails);
-      }
-
-    } catch (Exception e) {
-      LOG.error("Failed to update lineage in OpenSearch for index: {}", indexName, e);
+    if (!response.failures().isEmpty()) {
+      String failureDetails =
+          response.failures().stream()
+              .map(BulkIndexByScrollFailure::toString)
+              .collect(Collectors.joining("; "));
+      LOG.error("Update lineage encountered failures: {}", failureDetails);
     }
   }
 
@@ -745,10 +742,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    Map<String, JsonData> params =
-        Collections.singletonMap("columnUpdates", JsonData.of(originalUpdatedColumnFqnMap));
-
     try {
+      Map<String, JsonData> params =
+          Collections.singletonMap("columnUpdates", JsonData.of(originalUpdatedColumnFqnMap));
+
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
@@ -788,10 +785,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    Map<String, JsonData> params =
-        Collections.singletonMap("deletedFQNs", JsonData.of(deletedColumns));
-
     try {
+      Map<String, JsonData> params =
+          Collections.singletonMap("deletedFQNs", JsonData.of(deletedColumns));
+
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->
@@ -832,15 +829,15 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    Query prefixQuery =
-        Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
-
-    Map<String, JsonData> params =
-        Map.of(
-            "oldParentFQN", JsonData.of(oldFqnPrefix),
-            "newParentFQN", JsonData.of(newFqnPrefix));
-
     try {
+      Query prefixQuery =
+          Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
+
+      Map<String, JsonData> params =
+          Map.of(
+              "oldParentFQN", JsonData.of(oldFqnPrefix),
+              "newParentFQN", JsonData.of(newFqnPrefix));
+
       UpdateByQueryResponse updateResponse =
           client.updateByQuery(
               req ->

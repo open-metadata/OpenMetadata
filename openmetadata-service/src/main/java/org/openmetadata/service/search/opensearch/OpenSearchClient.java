@@ -176,7 +176,6 @@ import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
@@ -1866,15 +1865,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       List<UUID> entityIds) {
     entityManager.reindexWithEntityIds(
         sourceIndices, destinationIndex, pipelineName, entityType, entityIds);
-  }
-
-  @SneakyThrows
-  private void updateOpenSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
-    if (updateByQueryRequest != null && isClientAvailable) {
-      updateByQueryRequest.setRefresh(true);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
-    }
   }
 
   @Override
