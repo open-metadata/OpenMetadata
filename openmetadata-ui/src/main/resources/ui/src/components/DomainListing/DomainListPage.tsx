@@ -104,6 +104,7 @@ const DomainListPage = () => {
             // Close drawer only on successful creation
             closeDrawer();
             domainListing.refetch();
+            form.resetFields();
           } catch (error) {
             showNotistackError(
               enqueueSnackbar,

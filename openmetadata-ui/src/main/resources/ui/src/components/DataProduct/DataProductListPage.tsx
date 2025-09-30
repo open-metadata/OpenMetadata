@@ -104,6 +104,7 @@ const DataProductListPage = () => {
             // Close drawer only on successful creation
             closeDrawer();
             dataProductListing.refetch();
+            form.resetFields();
           } catch (error) {
             showNotistackError(
               enqueueSnackbar,

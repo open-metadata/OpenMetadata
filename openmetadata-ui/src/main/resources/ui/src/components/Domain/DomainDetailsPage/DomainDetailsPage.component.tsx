@@ -249,6 +249,7 @@ const DomainDetailsPage = ({
             handleTabChange(EntityTabs.DATA_PRODUCTS);
             onUpdate?.(domain);
             closeDataProductDrawer();
+            dataProductForm.resetFields();
           } catch (error) {
             showNotistackError(
               enqueueSnackbar,
@@ -365,6 +366,7 @@ const DomainDetailsPage = ({
             // Navigate to the subdomains tab
             handleTabChange(EntityTabs.SUBDOMAINS);
             closeSubDomainDrawer();
+            subDomainForm.resetFields();
           } catch (error) {
             showNotistackError(
               enqueueSnackbar,
