@@ -129,7 +129,6 @@ class BaseTableParameter:
     ) -> Optional[Union[str, dict]]:
         """
         Get the connection dictionary for the service.
-        This is now a classmethod so subclasses can override it properly.
         """
         if not service_connection_config:
             return None

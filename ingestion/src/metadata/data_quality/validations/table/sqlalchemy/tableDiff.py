@@ -71,6 +71,7 @@ SUPPORTED_DIALECTS = [
     Dialects.Trino,
     SapHanaScheme.hana.value,
     Dialects.Databricks,
+    Dialects.UnityCatalog,
 ]
 
 
