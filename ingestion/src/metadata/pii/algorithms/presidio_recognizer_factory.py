@@ -88,7 +88,7 @@ class PresidioRecognizerFactory:
     @staticmethod
     def _get_regex_flags(flags: Optional[RegexFlags]) -> Optional[int]:
         if flags is None:
-            return re.IGNORECASE | re.DOTALL | re.UNICODE
+            return re.IGNORECASE | re.DOTALL | re.MULTILINE
 
         re_flags = 0
         if flags.ignoreCase:
