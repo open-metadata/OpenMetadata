@@ -7711,7 +7711,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Set domain
     EntityReference domain = new EntityReference().withId(DOMAIN.getId()).withType(Entity.DOMAIN);
-    entityWithDomain.setDataProducts(List.of(domain));
+    entityWithDomain.setDomains(List.of(domain));
 
     // Set data products (if entity supports it - skip if NoSuchMethodException)
     List<EntityReference> dataProducts = new ArrayList<>();
@@ -7725,25 +7725,19 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       case Entity.TABLE -> {
         Tables.setDefaultClient(sdkClient);
         var fluentTable = Tables.find(entityId).fetch();
-        var tableEntity = fluentTable.get();
-        tableEntity.setDomains(
-            ((org.openmetadata.schema.entity.data.Table) entityWithDomain).getDomains());
+        fluentTable.withDomains(entityWithDomain.getDomains());
         updatedEntity = (T) fluentTable.save().get();
       }
       case Entity.DATABASE -> {
         Databases.setDefaultClient(sdkClient);
         var fluentDatabase = Databases.find(entityId).fetch();
-        var dbEntity = fluentDatabase.get();
-        dbEntity.setDomains(
-            ((org.openmetadata.schema.entity.data.Database) entityWithDomain).getDomains());
+        fluentDatabase.withDomains(entityWithDomain.getDomains());
         updatedEntity = (T) fluentDatabase.save().get();
       }
       case Entity.DATABASE_SCHEMA -> {
         DatabaseSchemas.setDefaultClient(sdkClient);
         var fluentSchema = DatabaseSchemas.find(entityId).fetch();
-        var schemaEntity = fluentSchema.get();
-        schemaEntity.setDomains(
-            ((org.openmetadata.schema.entity.data.DatabaseSchema) entityWithDomain).getDomains());
+        fluentSchema.withDomains(entityWithDomain.getDomains());
         updatedEntity = (T) fluentSchema.save().get();
       }
     }

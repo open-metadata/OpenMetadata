@@ -309,6 +309,18 @@ public final class Databases {
       return this;
     }
 
+    public FluentDatabase withDomains(List<EntityReference> domain) {
+      database.setDomains(domain);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabase withDataProducts(List<EntityReference> dataProducts) {
+      database.setDataProducts(dataProducts);
+      modified = true;
+      return this;
+    }
+
     public FluentDatabase save() {
       if (modified) {
         Database updated = client.databases().update(database.getId().toString(), database);

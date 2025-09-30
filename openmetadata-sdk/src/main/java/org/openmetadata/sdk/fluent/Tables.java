@@ -311,6 +311,18 @@ public final class Tables {
       return this;
     }
 
+    public FluentTable withDomains(List<EntityReference> domain) {
+      table.setDomains(domain);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withDataProducts(List<EntityReference> dataProducts) {
+      table.setDataProducts(dataProducts);
+      modified = true;
+      return this;
+    }
+
     public FluentTable save() {
       if (modified) {
         Table updated = client.tables().update(table.getId().toString(), table);

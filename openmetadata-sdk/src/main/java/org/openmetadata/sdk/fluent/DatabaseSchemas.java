@@ -311,6 +311,18 @@ public final class DatabaseSchemas {
       return this;
     }
 
+    public FluentDatabaseSchema withDomains(List<EntityReference> domain) {
+      databaseSchema.setDomains(domain);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabaseSchema withDataProducts(List<EntityReference> dataProducts) {
+      databaseSchema.setDataProducts(dataProducts);
+      modified = true;
+      return this;
+    }
+
     public FluentDatabaseSchema save() {
       if (modified) {
         DatabaseSchema updated =
