@@ -623,7 +623,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator3.locator('.rule--value .ant-select'),
-      'Tier.Tier5'
+      'tier.tier5'
     );
 
     // Wait for save button to be enabled
