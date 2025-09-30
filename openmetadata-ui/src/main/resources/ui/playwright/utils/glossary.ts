@@ -1684,9 +1684,7 @@ export const setupGlossaryDenyPermissionTest = async (
 };
 
 export const performExpandAll = async (page: Page) => {
-  const termRes = page.waitForResponse(
-    '/api/v1/glossaryTerms?directChildrenOf=*&fields=childrenCount%2Cowners%2Creviewers*'
-  );
+  const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
   await page.getByTestId('expand-collapse-all-button').click();
   await termRes;
 
