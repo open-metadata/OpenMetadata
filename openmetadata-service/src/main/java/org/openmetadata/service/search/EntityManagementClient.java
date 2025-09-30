@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 
 /**
  * Interface for entity management operations in search.
@@ -169,4 +170,40 @@ public interface EntityManagementClient {
       String pipelineName,
       String entityType,
       List<UUID> entityIds);
+
+  /**
+   * Updates entities by FQN prefix by replacing old parent FQN with new parent FQN.
+   *
+   * @param indexName the name of the index
+   * @param oldParentFQN the old parent FQN to be replaced
+   * @param newParentFQN the new parent FQN to replace with
+   * @param prefixFieldCondition the field name to match for prefix query
+   */
+  void updateByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition);
+
+  /**
+   * Updates lineage information for entities.
+   *
+   * @param indexName the name of the index
+   * @param fieldAndValue field and value pair to match entities
+   * @param lineageData the lineage data to update
+   */
+  void updateLineage(
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData);
+
+  /**
+   * Deletes entities matching a range query on a specific field.
+   *
+   * @param index the index name
+   * @param fieldName the field name to apply the range query on
+   * @param gt greater than value (exclusive), can be null
+   * @param gte greater than or equal to value (inclusive), can be null
+   * @param lt less than value (exclusive), can be null
+   * @param lte less than or equal to value (inclusive), can be null
+   * @throws IOException if there's an error during the delete operation
+   */
+  void deleteByRangeQuery(
+      String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
+      throws IOException;
 }

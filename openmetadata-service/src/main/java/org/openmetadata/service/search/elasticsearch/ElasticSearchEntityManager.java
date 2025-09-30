@@ -2,6 +2,8 @@ package org.openmetadata.service.search.elasticsearch;
 
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
+import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
+import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -10,12 +12,14 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.BulkIndexByScrollFailure;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorCause;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
 import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.RangeQuery;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
@@ -34,6 +38,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
@@ -573,5 +578,136 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       throw new IllegalArgumentException("Invalid JSON input", e);
     }
     return JsonData.of(docMap);
+  }
+
+  @Override
+  public void updateByFqnPrefix(
+      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
+    Query prefixQuery =
+        Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldParentFQN)));
+
+    Map<String, JsonData> params =
+        Map.of(
+            "oldParentFQN", JsonData.of(oldParentFQN),
+            "newParentFQN", JsonData.of(newParentFQN));
+
+    try {
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .query(prefixQuery)
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless)
+                                          .source(UPDATE_FQN_PREFIX_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update FQN prefix: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void updateLineage(
+      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData) {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot update lineage.");
+      return;
+    }
+
+    try {
+      Map<String, JsonData> params =
+          Collections.singletonMap("lineageData", JsonData.of(JsonUtils.getMap(lineageData)));
+
+      UpdateByQueryResponse response =
+          client.updateByQuery(
+              u ->
+                  u.index(indexName)
+                      .query(
+                          q ->
+                              q.match(
+                                  m ->
+                                      m.field(fieldAndValue.getKey())
+                                          .query(fieldAndValue.getValue())
+                                          .operator(Operator.And)))
+                      .script(
+                          s ->
+                              s.inline(
+                                  inline ->
+                                      inline
+                                          .lang(ScriptLanguage.Painless)
+                                          .source(ADD_UPDATE_LINEAGE)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info("Successfully updated lineage in ElasticSearch for index: {}", indexName);
+
+      if (!response.failures().isEmpty()) {
+        String failureDetails =
+            response.failures().stream()
+                .map(BulkIndexByScrollFailure::toString)
+                .collect(Collectors.joining("; "));
+        LOG.error("Update lineage encountered failures: {}", failureDetails);
+      }
+
+    } catch (IOException | ElasticsearchException e) {
+      LOG.error("Failed to update lineage in ElasticSearch for index: {}", indexName, e);
+    }
+  }
+
+  @Override
+  public void deleteByRangeQuery(
+      String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot delete by range query.");
+      return;
+    }
+
+    // Build the range query
+    Query query =
+        Query.of(
+            q ->
+                q.range(
+                    r -> {
+                      RangeQuery.Builder builder = new RangeQuery.Builder().field(fieldName);
+                      if (gt != null) builder.gt(JsonData.of(gt));
+                      if (gte != null) builder.gte(JsonData.of(gte));
+                      if (lt != null) builder.lt(JsonData.of(lt));
+                      if (lte != null) builder.lte(JsonData.of(lte));
+                      return builder;
+                    }));
+
+    // Execute delete-by-query with refresh
+    DeleteByQueryResponse response =
+        client.deleteByQuery(d -> d.index(index).query(query).refresh(true));
+
+    LOG.info(
+        "DeleteByQuery response from ES - Deleted: {}, Failures: {}",
+        response.deleted(),
+        response.failures().size());
+
+    if (!response.failures().isEmpty()) {
+      String failureDetails =
+          response.failures().stream()
+              .map(BulkIndexByScrollFailure::toString)
+              .collect(Collectors.joining("; "));
+      LOG.error("DeleteByQuery encountered failures: {}", failureDetails);
+    }
   }
 }

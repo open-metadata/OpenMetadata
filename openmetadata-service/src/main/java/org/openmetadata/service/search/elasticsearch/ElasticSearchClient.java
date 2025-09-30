@@ -44,8 +44,6 @@ import es.org.elasticsearch.common.ParsingException;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
-import es.org.elasticsearch.index.query.MatchQueryBuilder;
-import es.org.elasticsearch.index.query.Operator;
 import es.org.elasticsearch.index.query.PrefixQueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
@@ -1687,47 +1685,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void updateByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
-    // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
-    PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
-
-    UpdateByQueryRequest updateByQueryRequest =
-        new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-    updateByQueryRequest.setQuery(prefixQuery);
-
-    Map<String, Object> params = new HashMap<>();
-    params.put("oldParentFQN", oldParentFQN);
-    params.put("newParentFQN", newParentFQN);
-
-    String painlessScript =
-        "String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN); "
-            + "ctx._source.fullyQualifiedName = updatedFQN; "
-            + "ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length; "
-            + "if (ctx._source.containsKey('parent')) { "
-            + "    if (ctx._source.parent.containsKey('fullyQualifiedName')) { "
-            + "        String parentFQN = ctx._source.parent.fullyQualifiedName; "
-            + "        ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN); "
-            + "    } "
-            + "} "
-            + "if (ctx._source.containsKey('tags')) { "
-            + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
-            + "        if (ctx._source.tags[i].containsKey('tagFQN')) { "
-            + "            String tagFQN = ctx._source.tags[i].tagFQN; "
-            + "            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
-            + "        } "
-            + "    } "
-            + "}";
-
-    Script inlineScript =
-        new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, painlessScript, params);
-
-    updateByQueryRequest.setScript(inlineScript);
-
-    try {
-      updateElasticSearchByQuery(updateByQueryRequest);
-      LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
-    } catch (Exception e) {
-      LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
-    }
+    entityManager.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
   }
 
   @Override
@@ -1761,18 +1719,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-      updateByQueryRequest.setQuery(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-              .operator(Operator.AND));
-      Map<String, Object> params =
-          Collections.singletonMap("lineageData", JsonUtils.getMap(lineageData));
-      Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, ADD_UPDATE_LINEAGE, params);
-      updateByQueryRequest.setScript(script);
-      updateElasticSearchByQuery(updateByQueryRequest);
-    }
+    entityManager.updateLineage(indexName, fieldAndValue, lineageData);
   }
 
   @SneakyThrows
@@ -1788,15 +1735,11 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void close() {}
 
-  @SneakyThrows
-  public void deleteByQuery(String index, String query) {
-    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
-    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
-    // first token from the Parser
-    XContentParser parser = createXContentParser(query);
-    parser.nextToken();
-    deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
-    deleteEntityFromElasticSearchByQuery(deleteRequest);
+  @Override
+  public void deleteByRangeQuery(
+      String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
+      throws IOException {
+    entityManager.deleteByRangeQuery(index, fieldName, gt, gte, lt, lte);
   }
 
   @SneakyThrows

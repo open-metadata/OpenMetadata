@@ -11,12 +11,10 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
-import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -113,6 +111,27 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
               ctx._source.tags[i].source == 'Glossary' &&
               ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
             ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+          }
+        }
+      }
+      """;
+
+  String UPDATE_FQN_PREFIX_SCRIPT =
+      """
+      String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+      ctx._source.fullyQualifiedName = updatedFQN;
+      ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
+      if (ctx._source.containsKey('parent')) {
+        if (ctx._source.parent.containsKey('fullyQualifiedName')) {
+          String parentFQN = ctx._source.parent.fullyQualifiedName;
+          ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+        }
+      }
+      if (ctx._source.containsKey('tags')) {
+        for (int i = 0; i < ctx._source.tags.size(); i++) {
+          if (ctx._source.tags[i].containsKey('tagFQN')) {
+            String tagFQN = ctx._source.tags[i].tagFQN;
+            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
           }
         }
       }
@@ -495,12 +514,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
-  void updateByFqnPrefix(
-      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition);
-
-  void updateLineage(
-      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData);
-
   Response listDataInsightChartResult(
       Long startTs,
       Long endTs,
@@ -512,9 +525,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
       String queryFilter,
       String dataReportIndex)
       throws IOException;
-
-  // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
-  void deleteByQuery(String index, String query);
 
   void deleteByRangeAndTerm(String index, String rangeQueryStr, String termKey, String termValue);
 
