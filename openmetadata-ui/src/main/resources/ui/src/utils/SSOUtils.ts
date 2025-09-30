@@ -29,18 +29,10 @@ import { isDev } from './EnvironmentUtils';
  * @returns True if the URL is valid, false otherwise
  */
 export const isValidUrl = (urlString: string): boolean => {
-  if (!urlString?.trim()) {
-    return false;
-  }
+  // Regular expression to validate HTTP/HTTPS URLs with hostname
+  const urlRegex = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
 
-  try {
-    const url = new URL(urlString.trim());
-
-    // Check if the protocol is http or https and has a valid hostname
-    return ['http:', 'https:'].includes(url.protocol) && !!url.hostname;
-  } catch {
-    return false;
-  }
+  return urlRegex.test(urlString.trim());
 };
 
 export interface ProviderOption {
