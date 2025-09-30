@@ -491,6 +491,36 @@ class SupersetUnitTest(TestCase):
         )
         self.assertEqual(result, [69])
 
+    def test_charts_of_dashboard_superset_5(self):
+        """
+        Test for Superset 5.0.0+ where position_json is missing from list endpoint
+        Mock the client.fetch_dashboard to return position_json
+        """
+        from unittest.mock import Mock
+        from metadata.ingestion.source.dashboard.superset.models import DashboardResult
+        
+        # Create a dashboard without position_json (Superset 5.0.0 list endpoint)
+        dashboard_without_position = DashboardResult(
+            id=10,
+            dashboard_title="Test Dashboard",
+            url="/superset/dashboard/test/",
+            position_json=None
+        )
+        
+        # Mock the client's fetch_dashboard method to return position_json
+        mock_response = {
+            "result": {
+                "position_json": '{"CHART-test123": {"meta": {"chartId": 69}}}'
+            }
+        }
+        self.superset_api.client.fetch_dashboard = Mock(return_value=mock_response)
+        
+        result = self.superset_api._get_charts_of_dashboard(  # pylint: disable=protected-access
+            dashboard_without_position
+        )
+        self.assertEqual(result, [69])
+        self.superset_api.client.fetch_dashboard.assert_called_once_with(10)
+
     # disabled due to container being flaky
     def x_test_datamodels_of_dashboard(self):
         """

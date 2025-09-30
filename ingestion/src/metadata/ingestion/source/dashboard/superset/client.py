@@ -147,6 +147,25 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard list")
         return SupersetDashboardCount()
 
+    def fetch_dashboard(self, dashboard_id: int):
+        """
+        Fetch individual dashboard details including position_json
+        This is needed for Superset 5.0.0+ where position_json was removed from list endpoint
+
+        Args:
+            dashboard_id (int): dashboard ID
+
+        Returns:
+            dict: Dashboard details
+        """
+        try:
+            response = self.client.get(f"/dashboard/{dashboard_id}")
+            return response
+        except Exception:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to fetch dashboard {dashboard_id}")
+        return None
+
     def get_chart_count(self) -> int:
         resp_chart = self.client.get("/chart/?q=(page:0,page_size:1)")
         if resp_chart:
