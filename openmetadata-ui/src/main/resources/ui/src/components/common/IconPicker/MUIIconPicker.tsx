@@ -27,7 +27,7 @@ import { FC, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { renderIcon } from '../../../utils/IconUtils';
 import { useSearch } from '../atoms/navigation/useSearch';
-import { AVAILABLE_ICONS, DEFAULT_ICON } from './IconPicker.constants';
+import { AVAILABLE_ICONS, DEFAULT_ICON_NAME } from './IconPicker.constants';
 import {
   IconPickerTabValue,
   IconPickerValue,
@@ -42,6 +42,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   placeholder = 'Enter icon URL',
   value,
   toolTip,
+  defaultIcon,
   onChange,
 }) => {
   const theme = useTheme();
@@ -49,10 +50,11 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   const anchorRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const resolvedIconName = defaultIcon?.name || DEFAULT_ICON_NAME;
 
   const parseValue = (val: string | IconPickerValue | undefined) => {
     if (!val) {
-      return { type: 'icons' as IconPickerTabValue, value: DEFAULT_ICON };
+      return { type: 'icons' as IconPickerTabValue, value: resolvedIconName };
     }
     if (typeof val === 'string') {
       if (val.startsWith('http') || val.startsWith('/')) {
@@ -241,7 +243,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                   </Box>
 
                   <Box
-                    aria-label={`Select icon ${DEFAULT_ICON}`}
+                    aria-label={`Select icon ${resolvedIconName}`}
                     role="button"
                     sx={{
                       position: 'relative',
@@ -255,7 +257,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                       transition: 'all 0.2s',
                       backgroundColor: 'transparent',
                       color:
-                        selectedIcon === DEFAULT_ICON
+                        selectedIcon === resolvedIconName
                           ? theme.palette.primary?.main
                           : theme.palette.grey?.[700],
                       '&:hover': {
@@ -264,14 +266,14 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
                       mb: 2,
                     }}
                     tabIndex={0}
-                    onClick={() => handleIconSelect(DEFAULT_ICON)}
+                    onClick={() => handleIconSelect(resolvedIconName)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        handleIconSelect(DEFAULT_ICON);
+                        handleIconSelect(resolvedIconName);
                       }
                     }}>
-                    {AVAILABLE_ICONS[0].component({
+                    {(defaultIcon?.component || AVAILABLE_ICONS[0].component)({
                       size: 20,
                       style: { display: 'block', strokeWidth: 1.25 },
                     })}

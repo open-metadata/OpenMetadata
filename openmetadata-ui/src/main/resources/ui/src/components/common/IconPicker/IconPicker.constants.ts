@@ -56,7 +56,17 @@ import {
 } from '@untitledui/icons';
 import { IconDefinition } from './IconPicker.interface';
 
-export const DEFAULT_ICON = 'Cube01';
+export const DEFAULT_ICON_NAME = 'Cube01';
+export const DEFAULT_DOMAIN_ICON: IconDefinition = {
+  name: 'Globe01',
+  component: Globe01,
+  category: 'default',
+};
+export const DEFAULT_DATA_PRODUCT_ICON: IconDefinition = {
+  name: 'Cube01',
+  component: Cube01,
+  category: 'default',
+};
 
 export const AVAILABLE_ICONS: IconDefinition[] = [
   { name: 'Cube01', component: Cube01, category: 'default' },

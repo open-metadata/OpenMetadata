@@ -36,6 +36,10 @@ import {
 } from '../../../utils/DomainUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
+import {
+  DEFAULT_DATA_PRODUCT_ICON,
+  DEFAULT_DOMAIN_ICON,
+} from '../../common/IconPicker';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { AddDomainFormProps } from './AddDomainForm.interface';
@@ -74,6 +78,10 @@ const AddDomainForm = ({
       allowUrl: true,
       placeholder: t('label.icon-url'),
       backgroundColor: selectedColor,
+      defaultIcon:
+        type === DomainFormType.DATA_PRODUCT
+          ? DEFAULT_DATA_PRODUCT_ICON
+          : DEFAULT_DOMAIN_ICON,
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {
