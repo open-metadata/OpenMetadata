@@ -441,6 +441,8 @@ class JSONLogicSearchClassBase {
         type: 'date',
         mainWidgetProps: this.mainWidgetProps,
         operators: [
+          'equal',
+          'not_equal',
           ...RANGE_FIELD_OPERATORS,
           'less',
           'less_or_equal',
