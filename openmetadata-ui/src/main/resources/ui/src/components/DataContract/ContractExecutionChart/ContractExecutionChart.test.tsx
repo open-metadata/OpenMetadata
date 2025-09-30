@@ -183,6 +183,7 @@ jest.mock('react-i18next', () => ({
         'label.success': 'Success',
         'label.failed': 'Failed',
         'label.aborted': 'Aborted',
+        'label.running': 'Running',
       };
 
       return translations[key] || key;
@@ -391,6 +392,9 @@ describe('ContractExecutionChart', () => {
       expect(await screen.findByTestId('bar-aborted')).toHaveTextContent(
         'Aborted'
       );
+      expect(await screen.findByTestId('bar-running')).toHaveTextContent(
+        'Running'
+      );
     });
 
     it('should use correct colors for bars', async () => {
@@ -408,6 +412,10 @@ describe('ContractExecutionChart', () => {
         expect(screen.getByTestId('bar-aborted')).toHaveAttribute(
           'data-fill',
           '#f79009'
+        );
+        expect(screen.getByTestId('bar-running')).toHaveAttribute(
+          'data-fill',
+          '#175cd3'
         );
       });
     });
