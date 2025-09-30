@@ -133,10 +133,13 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     const lineageDirection =
       (queryParams['dir'] as LineageDirection) || LineageDirection.Downstream;
 
-    const nodeDepth = isNaN(Number(queryParams['depth']))
-      ? lineageDirection === LineageDirection.Downstream
+    const directionalDepth =
+      lineageDirection === LineageDirection.Downstream
         ? lineageConfig.downstreamDepth
-        : lineageConfig.upstreamDepth
+        : lineageConfig.upstreamDepth;
+
+    const nodeDepth = Number.isNaN(Number(queryParams['depth']))
+      ? directionalDepth
       : Number(queryParams['depth']);
 
     return {
@@ -161,11 +164,11 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       const params = QueryString.parse(location.search, {
         ignoreQueryPrefix: true,
       });
-      Object.entries(data).forEach(([key, value]) => {
+      for (const [key, value] of Object.entries(data)) {
         if (value !== undefined) {
           params[key] = String(value);
         }
-      });
+      }
 
       navigate(
         {

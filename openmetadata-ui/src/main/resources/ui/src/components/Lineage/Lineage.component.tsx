@@ -12,18 +12,13 @@
  */
 import { Card } from 'antd';
 import classNames from 'classnames';
-import Qs from 'qs';
 import { DragEvent, useCallback, useEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
-import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   customEdges,
   dragHandle,
@@ -47,12 +42,8 @@ const Lineage = ({
   entityType,
   isPlatformLineage,
 }: LineageProps) => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  const location = useCustomLocation();
   const {
     nodes,
     edges,
@@ -68,21 +59,6 @@ const Lineage = ({
     onInitReactFlow,
     updateEntityData,
   } = useLineageProvider();
-
-  const queryParams = new URLSearchParams(location.search);
-  const isFullScreen = queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
-
-  const onFullScreenClick = useCallback(() => {
-    navigate({
-      search: Qs.stringify({ [FULLSCREEN_QUERY_PARAM_KEY]: true }),
-    });
-  }, []);
-
-  const onExitFullScreenViewClick = useCallback(() => {
-    navigate({
-      search: '',
-    });
-  }, []);
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
@@ -149,13 +125,7 @@ const Lineage = ({
               <LineageControlButtons
                 deleted={deleted}
                 entityType={entityType}
-                handleFullScreenViewClick={
-                  !isFullScreen ? onFullScreenClick : undefined
-                }
                 hasEditAccess={hasEditAccess}
-                onExitFullScreenViewClick={
-                  isFullScreen ? onExitFullScreenViewClick : undefined
-                }
               />
               <ReactFlow
                 elevateEdgesOnSelect

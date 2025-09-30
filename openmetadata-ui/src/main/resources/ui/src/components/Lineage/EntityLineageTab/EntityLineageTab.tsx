@@ -45,7 +45,7 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
     () => (
       <Lineage
         deleted={deleted}
-        entity={entity as SourceType}
+        entity={entity}
         entityType={entityType}
         hasEditAccess={hasEditAccess}
       />
@@ -54,7 +54,7 @@ export const EntityLineageTab: FC<EntityLineageTabProps> = ({
   );
 
   const lineageTable = useMemo(
-    () => <LineageTable entity={entity as SourceType} />,
+    () => <LineageTable entity={entity} />,
     [entity]
   );
 

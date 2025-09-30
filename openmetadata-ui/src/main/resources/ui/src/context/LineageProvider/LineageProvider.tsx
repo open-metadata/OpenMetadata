@@ -555,7 +555,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         });
 
         const currentNodes: Record<string, NodeData> = {};
-        entityLineage.nodes?.forEach((node) => {
+        for (const node of entityLineage.nodes ?? []) {
           currentNodes[node.fullyQualifiedName ?? ''] = {
             entity: node,
             paging: (node as LineageEntityReference).paging ?? {
@@ -563,7 +563,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               entityUpstreamCount: 0,
             },
           };
-        });
+        }
         const concatenatedLineageData = {
           nodes: {
             ...currentNodes,
@@ -607,7 +607,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         // remove the nodes and edges from the lineageData
         const visibleNodes: Record<string, NodeData> = {};
-        uniqueNodes.forEach((node: EntityReference) => {
+        for (const node of uniqueNodes) {
           visibleNodes[node.fullyQualifiedName ?? ''] = {
             entity: node,
             paging: (node as LineageEntityReference).paging ?? {
@@ -615,7 +615,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               entityUpstreamCount: 0,
             },
           };
-        });
+        }
 
         const currentNode = updatedEntityLineage.nodes.find(
           (n) => n.fullyQualifiedName === node.fullyQualifiedName
@@ -1459,7 +1459,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       // remove the nodes and edges from the lineageData
       const visibleNodes: Record<string, NodeData> = {};
-      updatedNodes.forEach((node) => {
+      for (const node of updatedNodes) {
         visibleNodes[node.fullyQualifiedName ?? ''] = {
           entity: node,
           paging: (node as LineageEntityReference).paging ?? {
@@ -1467,7 +1467,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             entityUpstreamCount: 0,
           },
         };
-      });
+      }
 
       updateLineageData(
         {

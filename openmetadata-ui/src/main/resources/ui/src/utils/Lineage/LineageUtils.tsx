@@ -62,8 +62,8 @@ export const prepareColumnLevelNodesFromEdges = (
     direction === LineageDirection.Upstream ? 'fromEntity' : 'toEntity';
 
   return edges.reduce((acc: ColumnLevelLineageNode[], node: EdgeDetails) => {
-    if (node.columns?.length ?? 0 > 0) {
-      node.columns?.forEach((col) => {
+    if ((node.columns?.length ?? 0) > 0) {
+      for (const col of node.columns ?? []) {
         const entityData = get(
           nodes[node[entityKey].fullyQualifiedName ?? ''],
           'entity'
@@ -92,7 +92,7 @@ export const prepareColumnLevelNodesFromEdges = (
           nodeDepth,
           ...picked,
         });
-      });
+      }
     }
 
     return acc;

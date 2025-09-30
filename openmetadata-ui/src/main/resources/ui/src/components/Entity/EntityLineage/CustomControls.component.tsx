@@ -38,6 +38,7 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
+import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { exportLineageByEntityCountAsync } from '../../../rest/lineageAPI';
@@ -80,6 +81,7 @@ const CustomControls: FC<{
   const [nodeDepthAnchorEl, setNodeDepthAnchorEl] =
     useState<null | HTMLElement>(null);
   const navigate = useNavigate();
+  const location = useCustomLocation();
   const theme = useTheme();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
@@ -163,10 +165,10 @@ const CustomControls: FC<{
     }
   }, []);
   const queryParams = useMemo(() => {
-    return QueryString.parse(window.location.search, {
+    return QueryString.parse(location.search, {
       ignoreQueryPrefix: true,
     });
-  }, [window.location.search]);
+  }, [location.search]);
 
   const { isFullScreen, nodeDepth, lineageDirection, activeTab } =
     useMemo(() => {
@@ -175,10 +177,13 @@ const CustomControls: FC<{
           ? LineageDirection.Upstream
           : LineageDirection.Downstream;
 
-      const nodeDepth = isNaN(Number(queryParams['depth']))
-        ? lineageDirection === LineageDirection.Downstream
+      const directionalDepth =
+        lineageDirection === LineageDirection.Downstream
           ? lineageConfig.downstreamDepth
-          : lineageConfig.upstreamDepth
+          : lineageConfig.upstreamDepth;
+
+      const nodeDepth = Number.isNaN(Number(queryParams['depth']))
+        ? directionalDepth
         : Number(queryParams['depth']);
 
       return {
@@ -216,11 +221,11 @@ const CustomControls: FC<{
       const params = QueryString.parse(location.search, {
         ignoreQueryPrefix: true,
       });
-      Object.entries(data).forEach(([key, value]) => {
+      for (const [key, value] of Object.entries(data)) {
         if (value !== undefined) {
           params[key] = String(value);
         }
-      });
+      }
 
       navigate(
         {
