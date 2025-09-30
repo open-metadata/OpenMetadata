@@ -53,6 +53,7 @@ import org.openmetadata.schema.services.connections.pipeline.WherescapeConnectio
 import org.openmetadata.schema.services.connections.search.ElasticSearchConnection;
 import org.openmetadata.schema.services.connections.security.RangerConnection;
 import org.openmetadata.schema.services.connections.storage.GCSConnection;
+import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 
 /** Factory class to get a `ClassConverter` based on the service class. */
 public final class ClassConverterFactory {
@@ -76,6 +77,7 @@ public final class ClassConverterFactory {
             Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
             Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
             Map.entry(GCSConnection.class, new GcpConnectionClassConverter()),
+            Map.entry(GoogleDriveConnection.class, new GoogleDriveConnectionClassConverter()),
             Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
             Map.entry(IcebergConnection.class, new IcebergConnectionClassConverter()),
             Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),

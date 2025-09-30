@@ -15,6 +15,10 @@
  */
 export interface CreateSpreadsheet {
     /**
+     * Spreadsheet creation timestamp
+     */
+    createdTime?: number;
+    /**
      * List of fully qualified names of data products this entity is part of.
      */
     dataProducts?: string[];
@@ -50,6 +54,10 @@ export interface CreateSpreadsheet {
      * MIME type of the spreadsheet file
      */
     mimeType?: SpreadsheetMIMEType;
+    /**
+     * Last modification timestamp
+     */
+    modifiedTime?: number;
     /**
      * Name that identifies this spreadsheet.
      */
