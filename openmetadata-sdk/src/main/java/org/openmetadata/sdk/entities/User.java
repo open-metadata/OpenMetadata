@@ -25,20 +25,7 @@ public class User extends org.openmetadata.schema.entity.teams.User {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.teams.User create(CreateUser request) {
-    // Convert CreateUser to User entity
-    org.openmetadata.schema.entity.teams.User user =
-        new org.openmetadata.schema.entity.teams.User();
-    user.setName(request.getName());
-    user.setEmail(request.getEmail());
-    user.setDisplayName(request.getDisplayName());
-    user.setDescription(request.getDescription());
-    user.setProfile(request.getProfile());
-    user.setTimezone(request.getTimezone());
-    user.setIsBot(request.getIsBot());
-    user.setIsAdmin(request.getIsAdmin());
-    user.setAuthenticationMechanism(request.getAuthenticationMechanism());
-
-    return (org.openmetadata.schema.entity.teams.User) getClient().users().create(user);
+    return getClient().users().create(request);
   }
 
   public static org.openmetadata.schema.entity.teams.User retrieve(String id) {
