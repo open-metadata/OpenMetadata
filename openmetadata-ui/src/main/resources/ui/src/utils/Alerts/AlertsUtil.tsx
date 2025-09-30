@@ -1283,6 +1283,8 @@ export const handleAlertSave = async ({
         category: d.category,
         timeout: data.timeout,
         readTimeout: data.readTimeout,
+        notifyDownstream: d.notifyDownstream,
+        downstreamDepth: d.downstreamDepth,
       };
     });
     let alertDetails;

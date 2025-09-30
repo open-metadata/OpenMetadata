@@ -25,6 +25,7 @@ import {
   XAxis,
 } from 'recharts';
 import {
+  BLUE_1,
   GREEN_4,
   GREY_100,
   RED_3,
@@ -174,6 +175,15 @@ const ContractExecutionChart = ({ contract }: { contract: DataContract }) => {
               dataKey="aborted"
               fill={YELLOW_3}
               name={t('label.aborted')}
+              stackId="single"
+              {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
+            />
+
+            <Bar
+              activeBar={<Rectangle fill={BLUE_1} stroke={BLUE_1} />}
+              dataKey="running"
+              fill={BLUE_1}
+              name={t('label.running')}
               stackId="single"
               {...DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS}
             />
