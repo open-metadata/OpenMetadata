@@ -50,6 +50,7 @@ export const useTableRow = <T extends { id: string }>(
     () => (
       <TableRow
         hover
+        data-testid={(config.entity as any).name}
         sx={{ cursor: 'pointer' }}
         onClick={() => config.onEntityClick(config.entity)}>
         {config.enableSelection && (

@@ -101,7 +101,7 @@ test.describe('Ingestion Bot ', () => {
         state: 'detached',
       });
       await selectDomain(page, domain1.data);
-      await addAssetsToDomain(page, domain1, domainAsset1);
+      await addAssetsToDomain(page, domain1, domainAsset1, true, true);
 
       // Add assets to domain 2
       await sidebarClick(page, SidebarItem.DOMAIN);
@@ -110,7 +110,7 @@ test.describe('Ingestion Bot ', () => {
         state: 'detached',
       });
       await selectDomain(page, domain2.data);
-      await addAssetsToDomain(page, domain2, domainAsset2);
+      await addAssetsToDomain(page, domain2, domainAsset2, true, true);
     });
 
     await test.step(

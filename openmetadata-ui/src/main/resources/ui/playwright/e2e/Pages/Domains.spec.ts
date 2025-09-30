@@ -452,11 +452,10 @@ test.describe('Domains', () => {
         state: 'detached',
       });
 
-      const domainApiRes = page.waitForResponse('/api/v1/domains/name/*');
-
-      await page.getByRole('row', { name: subDomain.data.displayName }).click();
-
-      await domainApiRes;
+      await Promise.all([
+        page.getByTestId(subDomain.data.name).click(),
+        page.waitForResponse('/api/v1/domains/name/*'),
+      ]);
 
       await verifyDomain(page, subDomain.data, domain.data, false);
       // Follow domain
@@ -516,9 +515,10 @@ test.describe('Domains', () => {
         state: 'detached',
       });
 
-      const domainApiRes1 = page.waitForResponse('/api/v1/domains/name/*');
-      await page.getByRole('row', { name: subDomain.data.displayName }).click();
-      await domainApiRes1;
+      await Promise.all([
+        page.getByTestId(subDomain.data.name).click(),
+        page.waitForResponse('/api/v1/domains/name/*'),
+      ]);
       await verifyDomain(page, nestedSubDomain.data, domain.data, false);
     } finally {
       await nestedSubDomain.delete(apiContext);

@@ -121,25 +121,21 @@ export const validateDomainForm = async (page: Page) => {
 export const selectDomain = async (page: Page, domain: Domain['data']) => {
   const searchBox = page
     .getByTestId('page-layout-v1')
-    .getByRole('textbox', { name: 'Search' });
+    .getByPlaceholder('Search');
 
-  const domainRes = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=domain_search_index*'
-  );
-
-  await searchBox.fill(domain.name);
-
-  await domainRes;
+  await Promise.all([
+    searchBox.fill(domain.name),
+    page.waitForResponse('/api/v1/search/query?q=*&index=domain_search_index*'),
+  ]);
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
 
-  const domainApiRes = page.waitForResponse('/api/v1/domains/name/*');
-
-  await page.locator('td').filter({ hasText: domain.displayName }).click();
-
-  await domainApiRes;
+  await Promise.all([
+    page.locator('td').filter({ hasText: domain.displayName }).click(),
+    page.waitForResponse('/api/v1/domains/name/*'),
+  ]);
 
   await page.waitForLoadState('networkidle');
 
@@ -197,13 +193,13 @@ export const selectDataProductFromTab = async (
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  const dpDataRes = page.waitForResponse('/api/v1/dataProducts/name/*');
-
-  await page
-    .getByTestId(`explore-card-${dataProduct.name}`)
-    .getByTestId('entity-link')
-    .click();
-  await dpDataRes;
+  await Promise.all([
+    page
+      .getByTestId(`explore-card-${dataProduct.name}`)
+      .getByTestId('entity-link')
+      .click(),
+    page.waitForResponse('/api/v1/dataProducts/name/*'),
+  ]);
 };
 
 export const selectDataProduct = async (
@@ -212,38 +208,44 @@ export const selectDataProduct = async (
 ) => {
   const searchBox = page
     .getByTestId('page-layout-v1')
-    .getByRole('textbox', { name: 'Search' });
+    .getByPlaceholder('Search');
 
-  const dpRes = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=data_product_search_index*'
-  );
-
-  await searchBox.fill(dataProduct.name);
-
-  await dpRes;
+  await Promise.all([
+    searchBox.fill(dataProduct.name),
+    page.waitForResponse(
+      '/api/v1/search/query?q=*&index=data_product_search_index*'
+    ),
+  ]);
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
 
-  const dpApiRes = page.waitForResponse('/api/v1/dataProducts/name/*');
-
-  await page.locator('td').filter({ hasText: dataProduct.displayName }).click();
-
-  await dpApiRes;
+  await Promise.all([
+    page.locator('td').filter({ hasText: dataProduct.displayName }).click(),
+    page.waitForResponse('/api/v1/dataProducts/name/*'),
+  ]);
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
 };
 
-const goToAssetsTab = async (page: Page, domain: Domain['data']) => {
-  await selectDomain(page, domain);
+const goToAssetsTab = async (
+  page: Page,
+  domain: Domain['data'],
+  skipDomainSelection = false
+) => {
+  if (!skipDomainSelection) {
+    await selectDomain(page, domain);
+  }
+
   await checkDomainDisplayName(page, domain.displayName);
 
-  const assetRes = page.waitForResponse('/api/v1/search/query?q=&index=all*');
-  await page.getByTestId('assets').click({ timeout: 15000 });
-  await assetRes;
+  await Promise.all([
+    page.getByTestId('assets').click({ timeout: 15000 }),
+    page.waitForResponse('/api/v1/search/query?q=&index=all*'),
+  ]);
 
   await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -388,10 +390,11 @@ export const addAssetsToDomain = async (
   page: Page,
   domain: Domain,
   assets: EntityClass[],
-  navigateToAssetsTab = true
+  navigateToAssetsTab = true,
+  skipDomainSelection = false
 ) => {
   if (navigateToAssetsTab) {
-    await goToAssetsTab(page, domain.data);
+    await goToAssetsTab(page, domain.data, skipDomainSelection);
   }
   await checkAssetsCount(page, 0);
 
