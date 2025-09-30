@@ -12,7 +12,9 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityType } from '../../../enums/entity.enum';
+import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import CustomControlsComponent from './CustomControls.component';
 
 const mockOnExportClick = jest.fn();
@@ -115,10 +117,6 @@ Object.defineProperty(window, 'location', {
 });
 
 describe('CustomControls', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
   it('renders all main control buttons', () => {
     render(<CustomControlsComponent {...defaultProps} />, {
       wrapper: MemoryRouter,
@@ -333,5 +331,83 @@ describe('CustomControls', () => {
     // Component should render with default values
     expect(screen.getByText('label.lineage')).toBeInTheDocument();
     expect(screen.getByText('label.impact-analysis')).toBeInTheDocument();
+  });
+
+  it('should pass nodeIds to ExploreQuickFilters when ids passed through props', () => {
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      onExportClick: mockOnExportClick,
+      onLineageConfigUpdate: mockOnLineageConfigUpdate,
+      selectedQuickFilters: [],
+      setSelectedQuickFilters: mockSetSelectedQuickFilters,
+      lineageConfig: mockLineageConfig,
+      nodes: [
+        { id: 'node1', name: 'Node 1' },
+        { id: 'node2', name: 'Node 2' },
+      ],
+    }));
+
+    render(
+      <CustomControlsComponent
+        {...defaultProps}
+        queryFilterNodeIds={['customNode1', 'customNode2']}
+      />,
+      {
+        wrapper: MemoryRouter,
+      }
+    );
+
+    const filterButton = screen.getByLabelText('label.filter-plural');
+    fireEvent.click(filterButton);
+
+    expect(ExploreQuickFilters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultQueryFilter: {
+          query: {
+            bool: {
+              must: { terms: { 'id.keyword': ['customNode1', 'customNode2'] } },
+            },
+          },
+        },
+      }),
+      expect.anything()
+    );
+
+    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
+  });
+
+  it('should pass nodeIds to ExploreQuickFilters from provider when ids not passed through props', () => {
+    (useLineageProvider as jest.Mock).mockImplementation(() => ({
+      onExportClick: mockOnExportClick,
+      onLineageConfigUpdate: mockOnLineageConfigUpdate,
+      selectedQuickFilters: [],
+      setSelectedQuickFilters: mockSetSelectedQuickFilters,
+      lineageConfig: mockLineageConfig,
+      nodes: [
+        { data: { node: { id: 'node1', name: 'Node 1' } } },
+        { data: { node: { id: 'node2', name: 'Node 2' } } },
+      ],
+    }));
+
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: MemoryRouter,
+    });
+
+    const filterButton = screen.getByLabelText('label.filter-plural');
+    fireEvent.click(filterButton);
+
+    expect(ExploreQuickFilters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        defaultQueryFilter: {
+          query: {
+            bool: {
+              must: { terms: { 'id.keyword': ['node1', 'node2'] } },
+            },
+          },
+        },
+      }),
+      expect.anything()
+    );
+
+    expect(screen.getByTestId('explore-quick-filters')).toBeInTheDocument();
   });
 });

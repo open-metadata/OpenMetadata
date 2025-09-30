@@ -59,7 +59,13 @@ const CustomControls: FC<{
   nodeDepthOptions?: number[];
   onSearchValueChange?: (value: string) => void;
   searchValue?: string;
-}> = ({ nodeDepthOptions, onSearchValueChange, searchValue }) => {
+  queryFilterNodeIds?: string[];
+}> = ({
+  nodeDepthOptions,
+  onSearchValueChange,
+  searchValue,
+  queryFilterNodeIds,
+}) => {
   const { t } = useTranslation();
   const {
     setSelectedQuickFilters,
@@ -88,13 +94,13 @@ const CustomControls: FC<{
         bool: {
           must: {
             terms: {
-              'id.keyword': nodeIds,
+              'id.keyword': queryFilterNodeIds ?? nodeIds,
             },
           },
         },
       },
     };
-  }, [nodes]);
+  }, [nodes, queryFilterNodeIds]);
 
   // Query filter for table data & search values
   const quickFilters = useMemo(() => {

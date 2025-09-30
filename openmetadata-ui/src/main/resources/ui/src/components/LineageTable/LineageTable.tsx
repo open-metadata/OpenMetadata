@@ -437,16 +437,21 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     lineagePagingInfo?.upstreamDepthInfo,
   ]);
 
+  const filterNodeIds = useMemo(() => {
+    return filterNodes.map((node) => node.id ?? '');
+  }, [filterNodes]);
+
   // Card header with search and filter options
   const cardHeader = useMemo(() => {
     return (
       <CustomControlsComponent
         nodeDepthOptions={nodeDepthOptions}
+        queryFilterNodeIds={filterNodeIds}
         searchValue={searchValue}
         onSearchValueChange={setSearchValue}
       />
     );
-  }, [searchValue, lineagePagingInfo, nodeDepthOptions]);
+  }, [searchValue, lineagePagingInfo, nodeDepthOptions, filterNodeIds]);
 
   // Render function for column names with search highlighting
   const renderName = useCallback(
