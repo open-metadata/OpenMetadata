@@ -200,10 +200,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     handleSearch,
   ]);
 
-  useEffect(() => {
-    debouncedSetSearchTerm(searchInput);
-  }, [searchInput]);
-
   const fetchChildTerms = async (parentFQN: string) => {
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
     try {
@@ -1026,6 +1022,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     });
   };
 
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const value = e.target.value;
+      setSearchInput(value);
+      debouncedSetSearchTerm(value);
+    },
+    [debouncedSetSearchTerm]
+  );
+
   const extraTableFilters = useMemo(() => {
     return (
       <>
@@ -1036,10 +1041,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           })}
           style={{ width: 250 }}
           value={searchInput}
-          onChange={(e) => {
-            const { value } = e.target;
-            setSearchInput(value);
-          }}
+          onChange={handleSearchChange}
         />
 
         <Dropdown
@@ -1065,6 +1067,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         <Button
           className="text-primary remove-button-background-hover"
           data-testid="expand-collapse-all-button"
+          disabled={isExpandingAll}
           size="small"
           type="text"
           onClick={toggleExpandAll}>
