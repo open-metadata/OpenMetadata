@@ -219,6 +219,9 @@ const DomainDetailsPage = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    onCancel: () => {
+      dataProductForm.resetFields();
+    },
     form: (
       <AddDomainForm
         isFormInDialog
@@ -227,7 +230,7 @@ const DomainDetailsPage = ({
         parentDomain={domain}
         type={DomainFormType.DATA_PRODUCT}
         onCancel={() => {
-          // No-op: Drawer close is handled by useFormDrawerWithRef
+          // No-op: Drawer close and form reset handled by useFormDrawerWithRef
         }}
         onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsDataProductLoading(true);
@@ -271,6 +274,8 @@ const DomainDetailsPage = ({
               }),
               { vertical: 'top', horizontal: 'center' }
             );
+
+            throw error; // Re-throw to reject the promise
           } finally {
             setIsDataProductLoading(false);
           }
@@ -339,6 +344,9 @@ const DomainDetailsPage = ({
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    onCancel: () => {
+      subDomainForm.resetFields();
+    },
     form: (
       <AddDomainForm
         isFormInDialog
@@ -346,7 +354,7 @@ const DomainDetailsPage = ({
         loading={isSubDomainLoading}
         type={DomainFormType.SUBDOMAIN}
         onCancel={() => {
-          // No-op: Drawer close is handled by useFormDrawerWithRef
+          // No-op: Drawer close and form reset handled by useFormDrawerWithRef
         }}
         onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsSubDomainLoading(true);
@@ -387,6 +395,8 @@ const DomainDetailsPage = ({
               }),
               { vertical: 'top', horizontal: 'center' }
             );
+
+            throw error; // Re-throw to reject the promise
           } finally {
             setIsSubDomainLoading(false);
           }
@@ -494,6 +504,8 @@ const DomainDetailsPage = ({
           }),
           { vertical: 'top', horizontal: 'center' }
         );
+
+        throw error; // Re-throw to reject the promise
       } finally {
         closeSubDomainDrawer();
       }

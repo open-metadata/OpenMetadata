@@ -80,6 +80,9 @@ const DataProductListPage = () => {
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    onCancel: () => {
+      form.resetFields();
+    },
     form: (
       <AddDomainForm
         isFormInDialog
@@ -87,7 +90,7 @@ const DataProductListPage = () => {
         loading={isLoading}
         type={DomainFormType.DATA_PRODUCT}
         onCancel={() => {
-          // No-op: Drawer close is handled by useFormDrawerWithRef
+          // No-op: Drawer close and form reset handled by useFormDrawerWithRef
         }}
         onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsLoading(true);
@@ -126,7 +129,9 @@ const DataProductListPage = () => {
               }),
               { vertical: 'top', horizontal: 'center' }
             );
+
             // Keep drawer open on error so user can fix and retry
+            throw error; // Re-throw to reject the promise
           } finally {
             setIsLoading(false);
           }

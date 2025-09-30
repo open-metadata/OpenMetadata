@@ -80,6 +80,9 @@ const DomainListPage = () => {
     anchor: 'right',
     width: 670,
     closeOnEscape: false,
+    onCancel: () => {
+      form.resetFields();
+    },
     form: (
       <AddDomainForm
         isFormInDialog
@@ -87,7 +90,7 @@ const DomainListPage = () => {
         loading={isLoading}
         type={DomainFormType.DOMAIN}
         onCancel={() => {
-          // No-op: Drawer close is handled by useFormDrawerWithRef
+          // No-op: Drawer close and form reset handled by useFormDrawerWithRef
         }}
         onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsLoading(true);
@@ -126,6 +129,8 @@ const DomainListPage = () => {
               }),
               { vertical: 'top', horizontal: 'center' }
             );
+
+            throw error; // Re-throw to reject the promise
           } finally {
             setIsLoading(false);
           }

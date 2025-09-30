@@ -321,7 +321,12 @@ const AddDomainForm = ({
       delete (data as CreateDomain & { domains?: unknown }).domains;
     }
 
-    onSubmit(data).then(() => form.resetFields());
+    onSubmit(data)
+      .then(() => form.resetFields())
+      .catch(() => {
+        // Form will not be reset on error
+        // Error is already handled by parent component
+      });
   };
 
   return (

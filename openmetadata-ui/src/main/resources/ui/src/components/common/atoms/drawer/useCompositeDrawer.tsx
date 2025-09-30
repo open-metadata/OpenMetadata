@@ -113,8 +113,15 @@ export const useCompositeDrawer = (config: CompositeDrawerConfig = {}) => {
     return <Component {...DrawerComponent.props} children={drawerContent} />;
   }, [baseDrawer.drawer, drawerContent]);
 
+  // Override closeDrawer to call onBeforeClose
+  const closeDrawer = useCallback(() => {
+    onBeforeClose?.();
+    baseDrawer.closeDrawer();
+  }, [onBeforeClose, baseDrawer.closeDrawer]);
+
   return {
     ...baseDrawer,
+    closeDrawer, // Override with our version that calls onBeforeClose
     compositeDrawer,
     drawerHeader,
     drawerBody,
