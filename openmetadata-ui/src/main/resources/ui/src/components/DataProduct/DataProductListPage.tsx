@@ -55,7 +55,7 @@ const DataProductListPage = () => {
   const dataProductListing = useDataProductListingData();
   const theme = useTheme();
   const { t } = useTranslation();
-  const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { permissions } = usePermissionProvider();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
@@ -102,7 +102,8 @@ const DataProductListPage = () => {
                 {t('server.create-entity-success', {
                   entity: t('label.data-product'),
                 })}
-              </Typography>
+              </Typography>,
+              closeSnackbar
             );
             // Close drawer only on successful creation
             closeDrawer();
@@ -127,7 +128,8 @@ const DataProductListPage = () => {
               t('server.add-entity-error', {
                 entity: t('label.data-product').toLowerCase(),
               }),
-              { vertical: 'top', horizontal: 'center' }
+              { vertical: 'top', horizontal: 'center' },
+              closeSnackbar
             );
 
             // Keep drawer open on error so user can fix and retry

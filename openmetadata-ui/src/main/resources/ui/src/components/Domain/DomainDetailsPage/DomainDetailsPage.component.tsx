@@ -123,7 +123,7 @@ const DomainDetailsPage = ({
   handleFollowingClick,
 }: DomainDetailsPageProps) => {
   const { t } = useTranslation();
-  const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const navigate = useNavigate();
   const { tab: activeTab, version } = useRequiredParams<{
@@ -245,7 +245,8 @@ const DomainDetailsPage = ({
                 {t('server.create-entity-success', {
                   entity: t('label.data-product'),
                 })}
-              </MuiTypography>
+              </MuiTypography>,
+              closeSnackbar
             );
             fetchDataProducts();
             // Navigate to the data products tab
@@ -272,7 +273,8 @@ const DomainDetailsPage = ({
               t('server.add-entity-error', {
                 entity: t('label.data-product').toLowerCase(),
               }),
-              { vertical: 'top', horizontal: 'center' }
+              { vertical: 'top', horizontal: 'center' },
+              closeSnackbar
             );
 
             throw error; // Re-throw to reject the promise
@@ -367,7 +369,8 @@ const DomainDetailsPage = ({
                 {t('server.create-entity-success', {
                   entity: t('label.sub-domain'),
                 })}
-              </MuiTypography>
+              </MuiTypography>,
+              closeSnackbar
             );
             fetchSubDomainsCount();
             // Navigate to the subdomains tab
@@ -393,7 +396,8 @@ const DomainDetailsPage = ({
               t('server.add-entity-error', {
                 entity: t('label.sub-domain').toLowerCase(),
               }),
-              { vertical: 'top', horizontal: 'center' }
+              { vertical: 'top', horizontal: 'center' },
+              closeSnackbar
             );
 
             throw error; // Re-throw to reject the promise
