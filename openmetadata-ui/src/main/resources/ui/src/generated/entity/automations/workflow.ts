@@ -4795,6 +4795,10 @@ export interface TestConnectionResult {
      * Detailed error log in case of failure
      */
     errorLog?: string;
+    /**
+     * The actual query that was executed (may be transpiled or modified from the original)
+     */
+    executedQuery?: string;
 }
 
 export interface ReverseIngestionOperationResult {
