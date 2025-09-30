@@ -40,7 +40,7 @@ import { addOwner } from './entity';
 import { sidebarClick } from './sidebar';
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
-  await page.getByTestId('add-entity-button').click();
+  await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
@@ -66,7 +66,7 @@ export const assignDomain = async (page: Page, domain: Domain['data']) => {
 };
 
 export const updateDomain = async (page: Page, domain: Domain['data']) => {
-  await page.getByTestId('add-entity-button').click();
+  await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   await page.getByTestId('selectable-list').getByTestId('searchbar').clear();
   const searchDomain = page.waitForResponse(
@@ -85,7 +85,7 @@ export const updateDomain = async (page: Page, domain: Domain['data']) => {
 };
 
 export const removeDomain = async (page: Page) => {
-  await page.getByTestId('add-entity-button').click();
+  await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await expect(page.getByTestId('remove-owner').locator('path')).toBeVisible();
@@ -339,7 +339,7 @@ export const createDomain = async (
   domain: Domain['data'],
   validate = false
 ) => {
-  await page.click('[data-testid="add-entity-button"]');
+  await page.click('[data-testid="add-domain"]');
 
   await page.waitForSelector('h6:has-text("Add Domain")', { timeout: 5000 });
 

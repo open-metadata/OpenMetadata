@@ -794,7 +794,7 @@ test.describe('Domains', () => {
 
       await fillDomainForm(page, domain1.data);
       const domainRes = page.waitForResponse('/api/v1/domains');
-      await page.click('[data-testid="save-domain"]');
+      await page.click('[data-testid="save-btn"]');
       await domainRes;
 
       await toastNotification(

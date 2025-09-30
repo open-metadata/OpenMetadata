@@ -158,6 +158,7 @@ const DomainListPage = () => {
     descriptionMessageKey: 'message.domain-description',
     createPermission: permissions.domain?.Create || false,
     addButtonLabelKey: 'label.add-domain',
+    addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
   });
 
