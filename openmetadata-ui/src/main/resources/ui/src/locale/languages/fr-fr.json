@@ -2590,6 +2590,7 @@
     "user-mentioned-in-comment": "{{user}} vous a mentionné dans un commentaire.",
     "user-verified-successfully": "L'utilisateur a été vérifié avec succès",
     "valid-url-endpoint": "Les points de terminaison doivent être une URL valide",
+    "valid-urls-required": "Veuillez saisir des URLs valides (ex., https://exemple.com)",
     "validation-error-assets": "Veuillez exmanier tous les actifs qui sont ajoutés",
     "value-must-be-greater-than": "{{field}} doit être supérieur à {{minimum}}",
     "value-should-equal-to-value": "La valeur devrait être égale à {{value}}.",
