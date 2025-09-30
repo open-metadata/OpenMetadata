@@ -99,13 +99,13 @@ test.describe.serial('Add role and assign it to the user', () => {
     await page.click(`[title="${roleName}"]`);
 
     await clickOutside(page);
-    const userResponse = page.waitForResponse(`/api/v1/users`);
 
     await page.waitForSelector('[data-testid="save-user"]', {
       state: 'visible',
     });
-    await page.click('[data-testid="save-user"]');
 
+    const userResponse = page.waitForResponse('/api/v1/users');
+    await page.click('[data-testid="save-user"]');
     await userResponse;
   });
 
