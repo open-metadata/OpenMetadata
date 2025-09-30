@@ -105,7 +105,11 @@ class ElasticSearchEntityManagerIntegrationTest extends OpenMetadataApplicationT
           testIndexPrefix + "_source",
           testIndexPrefix + "_dest",
           testIndexPrefix + "_multi1",
-          testIndexPrefix + "_multi2"
+          testIndexPrefix + "_multi2",
+          testIndexPrefix + "_range_test",
+          testIndexPrefix + "_range_term_test",
+          testIndexPrefix + "_fqn_update_test",
+          testIndexPrefix + "_lineage_test"
         };
 
         for (String indexName : indicesToDelete) {
@@ -731,6 +735,203 @@ class ElasticSearchEntityManagerIntegrationTest extends OpenMetadataApplicationT
     assertTrue(completionLatch.await(30, TimeUnit.SECONDS));
   }
 
+  @Test
+  void testDeleteByRangeQuery() throws Exception {
+    String indexName = testIndexPrefix + "_range_test";
+    createTestIndex(indexName);
+
+    long now = System.currentTimeMillis();
+    for (int i = 1; i <= 5; i++) {
+      final String docId = "range-test-" + i;
+      final long timestamp = now - (i * 86400000L);
+      final String docJson =
+          SAMPLE_ENTITY_JSON
+              .replace("test-entity-1", docId)
+              .replace("\"created\": \"2024-01-01T00:00:00.000Z\"", "\"created\": " + timestamp);
+
+      client.index(
+          idx -> idx.index(indexName).id(docId).document(parseJson(docJson)).refresh(Refresh.True));
+    }
+
+    Thread.sleep(1000);
+
+    SearchResponse<Map> beforeDelete =
+        client.search(SearchRequest.of(s -> s.index(indexName).size(10)), Map.class);
+    assertEquals(5, beforeDelete.hits().total().value());
+
+    long threeDaysAgo = now - (3 * 86400000L);
+
+    assertDoesNotThrow(
+        () -> {
+          entityManager.deleteByRangeQuery(indexName, "created", null, null, null, threeDaysAgo);
+        });
+
+    Thread.sleep(1000);
+
+    SearchResponse<Map> afterDelete =
+        client.search(SearchRequest.of(s -> s.index(indexName).size(10)), Map.class);
+
+    assertEquals(2, afterDelete.hits().total().value());
+  }
+
+  @Test
+  void testUpdateByFqnPrefix() throws Exception {
+    String indexName = testIndexPrefix + "_fqn_update_test";
+
+    // Get the actual index name that will be used by updateByFqnPrefix (includes cluster alias)
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+
+    // Create index with the actual name that will be used
+    createTestIndex(actualIndexName);
+
+    // Create parent and child entities with hierarchical FQNs
+    String parentDoc =
+        """
+        {
+          "id": "parent-1",
+          "name": "Parent Table",
+          "fullyQualifiedName": "database.schema.parent",
+          "fqnDepth": 3,
+          "entityType": "table"
+        }
+        """;
+
+    String child1Doc =
+        """
+        {
+          "id": "child-1",
+          "name": "Child Column 1",
+          "fullyQualifiedName": "database.schema.parent.column1",
+          "fqnDepth": 4,
+          "entityType": "column",
+          "parent": {
+            "fullyQualifiedName": "database.schema.parent"
+          }
+        }
+        """;
+
+    String child2Doc =
+        """
+        {
+          "id": "child-2",
+          "name": "Child Column 2",
+          "fullyQualifiedName": "database.schema.parent.column2",
+          "fqnDepth": 4,
+          "entityType": "column",
+          "parent": {
+            "fullyQualifiedName": "database.schema.parent"
+          }
+        }
+        """;
+
+    // Index documents using the actual index name
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("parent-1")
+                .document(parseJson(parentDoc))
+                .refresh(Refresh.True));
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("child-1")
+                .document(parseJson(child1Doc))
+                .refresh(Refresh.True));
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("child-2")
+                .document(parseJson(child2Doc))
+                .refresh(Refresh.True));
+
+    Thread.sleep(1000);
+
+    // Update FQN prefix from "database.schema.parent" to "database.newschema.newparent"
+    assertDoesNotThrow(
+        () -> {
+          // Call with the original index name (without alias) - the method will resolve it
+          entityManager.updateByFqnPrefix(
+              indexName,
+              "database.schema.parent",
+              "database.newschema.newparent",
+              "fullyQualifiedName");
+        });
+
+    Thread.sleep(1000);
+
+    // Verify parent FQN was updated - search using actual index name
+    GetResponse<Map> parentResponse =
+        client.get(g -> g.index(actualIndexName).id("parent-1"), Map.class);
+    assertEquals("database.newschema.newparent", parentResponse.source().get("fullyQualifiedName"));
+    assertEquals(3, parentResponse.source().get("fqnDepth"));
+
+    // Verify child FQNs were updated - search using actual index name
+    GetResponse<Map> child1Response =
+        client.get(g -> g.index(actualIndexName).id("child-1"), Map.class);
+    assertEquals(
+        "database.newschema.newparent.column1", child1Response.source().get("fullyQualifiedName"));
+    assertEquals(4, child1Response.source().get("fqnDepth"));
+    Map<String, Object> child1Parent = (Map<String, Object>) child1Response.source().get("parent");
+    assertEquals("database.newschema.newparent", child1Parent.get("fullyQualifiedName"));
+
+    GetResponse<Map> child2Response =
+        client.get(g -> g.index(actualIndexName).id("child-2"), Map.class);
+    assertEquals(
+        "database.newschema.newparent.column2", child2Response.source().get("fullyQualifiedName"));
+  }
+
+  @Test
+  void testDeleteByRangeAndTerm() throws Exception {
+    String indexName = testIndexPrefix + "_range_term_test";
+    createTestIndex(indexName);
+
+    long now = System.currentTimeMillis();
+    for (int i = 1; i <= 6; i++) {
+      final String docId = "range-term-test-" + i;
+      final long timestamp = now - (i * 86400000L);
+      final String entityType = i <= 3 ? "table" : "column";
+      final String docJson =
+          SAMPLE_ENTITY_JSON
+              .replace("test-entity-1", docId)
+              .replace("\"created\": \"2024-01-01T00:00:00.000Z\"", "\"created\": " + timestamp)
+              .replace("\"entityType\": \"table\"", "\"entityType\": \"" + entityType + "\"");
+
+      client.index(
+          idx -> idx.index(indexName).id(docId).document(parseJson(docJson)).refresh(Refresh.True));
+    }
+
+    Thread.sleep(1000);
+
+    SearchResponse<Map> beforeDelete =
+        client.search(SearchRequest.of(s -> s.index(indexName).size(10)), Map.class);
+    assertEquals(6, beforeDelete.hits().total().value());
+
+    long threeDaysAgo = now - (3 * 86400000L);
+
+    assertDoesNotThrow(
+        () -> {
+          entityManager.deleteByRangeAndTerm(
+              indexName, "created", null, null, null, threeDaysAgo, "entityType", "table");
+        });
+
+    Thread.sleep(1000);
+
+    SearchResponse<Map> afterDelete =
+        client.search(SearchRequest.of(s -> s.index(indexName).size(10)), Map.class);
+
+    assertEquals(5, afterDelete.hits().total().value());
+
+    SearchResponse<Map> tableEntitiesLeft =
+        client.search(
+            SearchRequest.of(
+                s ->
+                    s.index(indexName)
+                        .query(q -> q.term(t -> t.field("entityType").value("table")))),
+            Map.class);
+
+    assertEquals(2, tableEntitiesLeft.hits().total().value());
+  }
+
   private void createTestIndex(String indexName) {
     try {
       CreateIndexRequest request =
@@ -740,9 +941,17 @@ class ElasticSearchEntityManagerIntegrationTest extends OpenMetadataApplicationT
                       .mappings(
                           m ->
                               m.properties("id", p -> p.keyword(k -> k))
-                                  .properties("name", p -> p.text(t -> t))
+                                  .properties(
+                                      "name",
+                                      p ->
+                                          p.text(
+                                              t -> t.fields("keyword", f -> f.keyword(kw -> kw))))
                                   .properties("description", p -> p.text(t -> t))
-                                  .properties("fullyQualifiedName", p -> p.keyword(k -> k))
+                                  .properties(
+                                      "fullyQualifiedName",
+                                      p ->
+                                          p.text(
+                                              t -> t.fields("keyword", f -> f.keyword(kw -> kw))))
                                   .properties("entityType", p -> p.keyword(k -> k))
                                   .properties("tags", p -> p.keyword(k -> k))
                                   .properties("deleted", p -> p.boolean_(b -> b))
@@ -762,7 +971,7 @@ class ElasticSearchEntityManagerIntegrationTest extends OpenMetadataApplicationT
 
   private Map<String, Object> parseJson(String json) {
     try {
-      return objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {});
+      return objectMapper.readValue(json, new TypeReference<>() {});
     } catch (Exception e) {
       throw new RuntimeException("Failed to parse JSON: " + json, e);
     }
