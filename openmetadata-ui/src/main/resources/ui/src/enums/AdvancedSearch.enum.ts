@@ -115,4 +115,5 @@ export enum EntityReferenceFields {
   CHANGE_DESCRIPTION = 'changeDescription',
   DELETED = 'deleted',
   UPDATED_AT = 'updatedAt',
+  VERSION = 'version',
 }

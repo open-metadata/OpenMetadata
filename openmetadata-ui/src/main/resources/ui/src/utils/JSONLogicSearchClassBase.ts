@@ -448,6 +448,12 @@ class JSONLogicSearchClassBase {
           'greater_or_equal',
         ],
       },
+      [EntityReferenceFields.VERSION]: {
+        label: t('label.version'),
+        type: 'text',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: TEXT_FIELD_OPERATORS,
+      },
     };
   }
 
