@@ -28,9 +28,11 @@ import {
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
@@ -63,7 +65,7 @@ const TeamsInfo = ({
     () => ({
       hasEditPermission: entityPermissions.EditAll && !isTeamDeleted,
       hasEditOwnerPermission:
-        (entityPermissions.EditAll || entityPermissions.EditOwners) &&
+        getPrioritizedEditPermission(entityPermissions, Operation.EditOwners) &&
         !isTeamDeleted,
     }),
 
