@@ -760,6 +760,20 @@
   }
 }
 
+// Error state styling for inputs and textareas
+.sso-configuration-form-card .rjsf .has-error input,
+.sso-configuration-form-card .rjsf .has-error textarea,
+.content-resizable-panel-container.sso-configured .rjsf .has-error input,
+.content-resizable-panel-container.sso-configured .rjsf .has-error textarea {
+  border-color: @error-color !important;
+
+  &:focus {
+    border-color: @error-color !important;
+    box-shadow: none;
+    outline: none;
+  }
+}
+
 // Styles for disabled inputs and selects in SSO forms
 .sso-configuration-form-card,
 .sso-settings-page .content-resizable-panel-container.sso-configured {
