@@ -26,6 +26,11 @@ export const SnackbarContent = styled(MaterialDesignContent)(({ theme }) => ({
     padding: '12px 16px',
     fontFamily: 'var(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
 
+    // Hide default notistack icons only (not our custom icons)
+    '& > #notistack-snackbar > svg:first-child': {
+      display: 'none !important',
+    },
+
     // Override default notistack styles
     '& .notistack-MuiContent-message': {
       padding: 0,
@@ -34,25 +39,25 @@ export const SnackbarContent = styled(MaterialDesignContent)(({ theme }) => ({
     },
   },
 
-  // Variant-specific border colors
+  // Variant-specific styles with [25] shade backgrounds and gray[300] borders
   '&.notistack-MuiContent-error': {
-    backgroundColor: theme.palette.background.paper || '#FFFFFF',
-    borderColor: theme.palette.error.light || '#F79E9E',
+    backgroundColor: theme.palette.allShades?.error?.[25] || '#FFF5F6',
+    borderColor: theme.palette.grey?.[300] || '#D2D4DB',
     color: theme.palette.text.primary || '#181D27',
   },
   '&.notistack-MuiContent-success': {
-    backgroundColor: theme.palette.background.paper || '#FFFFFF',
-    borderColor: theme.palette.success.light || '#83D2A3',
+    backgroundColor: theme.palette.allShades?.success?.[25] || '#F6FEF9',
+    borderColor: theme.palette.grey?.[300] || '#D2D4DB',
     color: theme.palette.text.primary || '#181D27',
   },
   '&.notistack-MuiContent-warning': {
-    backgroundColor: theme.palette.background.paper || '#FFFFFF',
-    borderColor: theme.palette.warning.light || '#FFBE7F',
+    backgroundColor: theme.palette.allShades?.warning?.[25] || '#FFFCF5',
+    borderColor: theme.palette.grey?.[300] || '#D2D4DB',
     color: theme.palette.text.primary || '#181D27',
   },
   '&.notistack-MuiContent-info': {
-    backgroundColor: theme.palette.background.paper || '#FFFFFF',
-    borderColor: theme.palette.info.light || '#7BAEFF',
+    backgroundColor: theme.palette.allShades?.brand?.[25] || '#F5FAFF',
+    borderColor: theme.palette.grey?.[300] || '#D2D4DB',
     color: theme.palette.text.primary || '#181D27',
   },
   '&.notistack-MuiContent-default': {

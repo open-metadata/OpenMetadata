@@ -13,6 +13,8 @@
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
 import { VariantType } from 'notistack';
+import React from 'react';
+import NotificationMessage from '../components/common/atoms/notifications/NotificationMessage';
 import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
@@ -26,42 +28,52 @@ import { getErrorText } from './StringsUtils';
  */
 export const showNotistackError = (
   enqueueSnackbar: (
-    message: string,
+    message: string | React.ReactNode,
     options?: {
       variant?: VariantType;
       anchorOrigin?: {
         vertical: 'top' | 'bottom';
         horizontal: 'left' | 'center' | 'right';
       };
+      autoHideDuration?: number;
     }
   ) => void,
-  error: AxiosError | string,
+  error: AxiosError | string | React.ReactNode,
   fallbackText?: string,
   anchorOrigin?: {
     vertical: 'top' | 'bottom';
     horizontal: 'left' | 'center' | 'right';
   }
 ) => {
-  let errorMessage: string;
+  let errorMessage: string | React.ReactNode;
 
-  if (isString(error)) {
+  if (React.isValidElement(error)) {
+    errorMessage = error;
+  } else if (isString(error)) {
     errorMessage = error.toString();
-  } else if ('config' in error && 'response' in error) {
-    const method = error.config?.method?.toUpperCase();
+  } else if (
+    error &&
+    typeof error === 'object' &&
+    'config' in error &&
+    'response' in error
+  ) {
+    const axiosError = error as AxiosError;
+    const method = axiosError.config?.method?.toUpperCase();
     const fallback =
       fallbackText && fallbackText.length > 0
         ? fallbackText
         : i18n.t('server.unexpected-error');
-    errorMessage = getErrorText(error, fallback);
+    errorMessage = getErrorText(axiosError, fallback);
 
     // do not show error toasts for 401
     // since they will be intercepted and the user will be redirected to the signin page
     // except for principal domain mismatch errors
     if (
-      error &&
-      (error.response?.status === ClientErrors.UNAUTHORIZED ||
-        (error.response?.status === ClientErrors.FORBIDDEN &&
+      axiosError &&
+      (axiosError.response?.status === ClientErrors.UNAUTHORIZED ||
+        (axiosError.response?.status === ClientErrors.FORBIDDEN &&
           method === 'GET')) &&
+      typeof errorMessage === 'string' &&
       !errorMessage.includes('principal domain')
     ) {
       return;
@@ -70,10 +82,16 @@ export const showNotistackError = (
     errorMessage = fallbackText ?? i18n.t('server.unexpected-error');
   }
 
-  enqueueSnackbar(errorMessage, {
-    variant: 'error',
-    anchorOrigin: anchorOrigin || { vertical: 'top', horizontal: 'right' },
-  });
+  enqueueSnackbar(
+    React.createElement(NotificationMessage, {
+      message: errorMessage,
+      variant: 'error',
+    }),
+    {
+      variant: 'error',
+      anchorOrigin: anchorOrigin || { vertical: 'top', horizontal: 'right' },
+    }
+  );
 };
 
 /**
@@ -83,12 +101,18 @@ export const showNotistackError = (
  */
 export const showNotistackSuccess = (
   enqueueSnackbar: (
-    message: string,
+    message: string | React.ReactNode,
     options?: { variant?: VariantType }
   ) => void,
-  message: string
+  message: string | React.ReactNode
 ) => {
-  enqueueSnackbar(message, { variant: 'success' });
+  enqueueSnackbar(
+    React.createElement(NotificationMessage, {
+      message,
+      variant: 'success',
+    }),
+    { variant: 'success' }
+  );
 };
 
 /**
@@ -98,12 +122,18 @@ export const showNotistackSuccess = (
  */
 export const showNotistackInfo = (
   enqueueSnackbar: (
-    message: string,
+    message: string | React.ReactNode,
     options?: { variant?: VariantType }
   ) => void,
-  message: string
+  message: string | React.ReactNode
 ) => {
-  enqueueSnackbar(message, { variant: 'info' });
+  enqueueSnackbar(
+    React.createElement(NotificationMessage, {
+      message,
+      variant: 'info',
+    }),
+    { variant: 'info' }
+  );
 };
 
 /**
@@ -113,10 +143,16 @@ export const showNotistackInfo = (
  */
 export const showNotistackWarning = (
   enqueueSnackbar: (
-    message: string,
+    message: string | React.ReactNode,
     options?: { variant?: VariantType }
   ) => void,
-  message: string
+  message: string | React.ReactNode
 ) => {
-  enqueueSnackbar(message, { variant: 'warning' });
+  enqueueSnackbar(
+    React.createElement(NotificationMessage, {
+      message,
+      variant: 'warning',
+    }),
+    { variant: 'warning' }
+  );
 };

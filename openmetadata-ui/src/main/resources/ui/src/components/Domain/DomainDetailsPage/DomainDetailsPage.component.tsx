@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
+import { Typography as MuiTypography } from '@mui/material';
 import {
   Button,
   Col,
@@ -237,9 +238,11 @@ const DomainDetailsPage = ({
             await addDataProducts(formData as CreateDataProduct);
             showNotistackSuccess(
               enqueueSnackbar,
-              t('server.create-entity-success', {
-                entity: t('label.data-product'),
-              })
+              <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
+                {t('server.create-entity-success', {
+                  entity: t('label.data-product'),
+                })}
+              </MuiTypography>
             );
             fetchDataProducts();
             // Navigate to the data products tab
@@ -249,13 +252,20 @@ const DomainDetailsPage = ({
           } catch (error) {
             showNotistackError(
               enqueueSnackbar,
-              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-                ? t('server.entity-already-exist', {
+              getIsErrorMatch(
+                error as AxiosError,
+                ERROR_MESSAGE.alreadyExist
+              ) ? (
+                <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
+                  {t('server.entity-already-exist', {
                     entity: t('label.data-product'),
                     entityPlural: 'data-products',
                     name: formData.name,
-                  })
-                : (error as AxiosError),
+                  })}
+                </MuiTypography>
+              ) : (
+                (error as AxiosError)
+              ),
               t('server.add-entity-error', {
                 entity: t('label.data-product').toLowerCase(),
               }),
@@ -345,9 +355,11 @@ const DomainDetailsPage = ({
             await addDomains(formData as CreateDomain);
             showNotistackSuccess(
               enqueueSnackbar,
-              t('server.create-entity-success', {
-                entity: t('label.sub-domain'),
-              })
+              <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
+                {t('server.create-entity-success', {
+                  entity: t('label.sub-domain'),
+                })}
+              </MuiTypography>
             );
             fetchSubDomainsCount();
             // Navigate to the subdomains tab
@@ -356,13 +368,20 @@ const DomainDetailsPage = ({
           } catch (error) {
             showNotistackError(
               enqueueSnackbar,
-              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-                ? t('server.entity-already-exist', {
+              getIsErrorMatch(
+                error as AxiosError,
+                ERROR_MESSAGE.alreadyExist
+              ) ? (
+                <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
+                  {t('server.entity-already-exist', {
                     entity: t('label.sub-domain'),
                     entityPlural: 'sub-domains',
                     name: formData.name,
-                  })
-                : (error as AxiosError),
+                  })}
+                </MuiTypography>
+              ) : (
+                (error as AxiosError)
+              ),
               t('server.add-entity-error', {
                 entity: t('label.sub-domain').toLowerCase(),
               }),
@@ -459,13 +478,17 @@ const DomainDetailsPage = ({
       } catch (error) {
         showNotistackError(
           enqueueSnackbar,
-          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-            ? t('server.entity-already-exist', {
+          getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
+            <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
+              {t('server.entity-already-exist', {
                 entity: t('label.sub-domain'),
                 entityPlural: t('label.sub-domain-lowercase-plural'),
                 name: data.name,
-              })
-            : (error as AxiosError),
+              })}
+            </MuiTypography>
+          ) : (
+            (error as AxiosError)
+          ),
           t('server.add-entity-error', {
             entity: t('label.sub-domain-lowercase'),
           }),

@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Paper, TableContainer, useTheme } from '@mui/material';
+import {
+  Box,
+  Paper,
+  TableContainer,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import { useSnackbar } from 'notistack';
@@ -89,9 +95,11 @@ const DomainListPage = () => {
             await addDomains(formData as CreateDomain);
             showNotistackSuccess(
               enqueueSnackbar,
-              t('server.create-entity-success', {
-                entity: t('label.domain'),
-              })
+              <Typography sx={{ fontWeight: 600 }} variant="body2">
+                {t('server.create-entity-success', {
+                  entity: t('label.domain'),
+                })}
+              </Typography>
             );
             // Close drawer only on successful creation
             closeDrawer();
@@ -99,13 +107,20 @@ const DomainListPage = () => {
           } catch (error) {
             showNotistackError(
               enqueueSnackbar,
-              getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
-                ? t('server.entity-already-exist', {
+              getIsErrorMatch(
+                error as AxiosError,
+                ERROR_MESSAGE.alreadyExist
+              ) ? (
+                <Typography sx={{ fontWeight: 600 }} variant="body2">
+                  {t('server.entity-already-exist', {
                     entity: t('label.domain'),
                     entityPlural: 'domains',
                     name: formData.name,
-                  })
-                : (error as AxiosError),
+                  })}
+                </Typography>
+              ) : (
+                (error as AxiosError)
+              ),
               t('server.add-entity-error', {
                 entity: t('label.domain').toLowerCase(),
               }),
