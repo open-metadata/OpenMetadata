@@ -85,11 +85,16 @@ describe('DataContractUtils', () => {
           timestamp: 1234567891000,
           contractExecutionStatus: ContractExecutionStatus.Aborted,
         },
+        {
+          id: '4',
+          timestamp: 1234567891000,
+          contractExecutionStatus: ContractExecutionStatus.Running,
+        },
       ];
 
       const result = processContractExecutionData(executionData as any);
 
-      expect(result).toHaveLength(3);
+      expect(result).toHaveLength(4);
       expect(result[0]).toEqual({
         name: '1234567890000_0',
         displayTimestamp: 1234567890000,
@@ -98,6 +103,7 @@ describe('DataContractUtils', () => {
         failed: 0,
         success: 1,
         aborted: 0,
+        running: 0,
         data: executionData[0],
       });
       expect(result[1]).toEqual({
@@ -108,6 +114,7 @@ describe('DataContractUtils', () => {
         failed: 1,
         success: 0,
         aborted: 0,
+        running: 0,
         data: executionData[1],
       });
       expect(result[2]).toEqual({
@@ -118,7 +125,19 @@ describe('DataContractUtils', () => {
         failed: 0,
         success: 0,
         aborted: 1,
+        running: 0,
         data: executionData[2],
+      });
+      expect(result[3]).toEqual({
+        name: '1234567891000_3',
+        displayTimestamp: 1234567891000,
+        value: 1,
+        status: ContractExecutionStatus.Running,
+        failed: 0,
+        success: 0,
+        aborted: 0,
+        running: 1,
+        data: executionData[3],
       });
     });
 
