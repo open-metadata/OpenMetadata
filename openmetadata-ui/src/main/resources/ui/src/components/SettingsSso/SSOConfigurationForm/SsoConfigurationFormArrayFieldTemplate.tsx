@@ -13,6 +13,7 @@
 
 import { FieldProps } from '@rjsf/utils';
 import { Col, Row, Select, Typography } from 'antd';
+import classNames from 'classnames';
 import { isArray, isEmpty, isObject, startCase } from 'lodash';
 import type { CustomTagProps } from 'rc-select/lib/BaseSelect';
 import { useCallback } from 'react';
@@ -82,6 +83,9 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   const options = generateOptions();
   const { onPasteFromClipBoard } = useClipboard(JSON.stringify(value));
 
+  // Check if field has errors
+  const hasError = props.rawErrors && props.rawErrors.length > 0;
+
   const handlePaste = useCallback(async () => {
     const text = await onPasteFromClipBoard();
     if (!text) {
@@ -123,7 +127,7 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
   );
 
   return (
-    <Row>
+    <Row className={classNames('field-error', { 'has-error': hasError })}>
       <Col span={24}>
         <Typography
           className={`array-field-label ${
@@ -134,7 +138,9 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
       </Col>
       <Col className="sso-select-container" span={24}>
         <Select
-          className="m-t-xss w-full"
+          className={classNames('m-t-xss w-full', {
+            'ant-select-status-error': hasError,
+          })}
           data-testid={`sso-configuration-form-array-field-template-${props.name}`}
           disabled={props.disabled}
           id={id}
@@ -142,10 +148,17 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
           open={options ? undefined : false}
           options={options}
           placeholder={getPlaceholderText()}
+          status={hasError ? 'error' : undefined}
           tagRender={SsoCustomTagRenderer}
           value={value}
           onBlur={() => props.onBlur(id, value)}
-          onChange={(value) => props.onChange(value)}
+          onChange={(value) => {
+            props.onChange(value);
+            // Clear field-specific error when value changes
+            if (props.formContext?.clearFieldError) {
+              props.formContext.clearFieldError(props.idSchema.$id);
+            }
+          }}
           onFocus={handleFocus}
           onKeyDown={(e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !options) {
