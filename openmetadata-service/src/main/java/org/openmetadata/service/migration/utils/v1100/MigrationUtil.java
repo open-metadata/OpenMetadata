@@ -508,7 +508,7 @@ public class MigrationUtil {
                                                                               "name": "CheckIfGlossaryTermIsNew",
                                                                               "displayName": "Check if Glossary Term is New",
                                                                               "config": {
-                                                                                "rules": "{\\"==\\":[{\\"var\\":\\"version\\"},0.1]}"
+                                                                                "rules": "{\\"and\\":[{\\"==\\":[{\\"var\\":\\"version\\"},0.1]}]}"
                                                                               },
                                                                               "inputNamespaceMap": {
                                                                                 "relatedEntity": "global"
