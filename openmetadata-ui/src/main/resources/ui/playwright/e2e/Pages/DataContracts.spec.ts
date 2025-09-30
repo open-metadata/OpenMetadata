@@ -1939,6 +1939,7 @@ test.describe('Data Contracts', () => {
       await saveSecurityAndSLADetails(
         page,
         DATA_CONTRACT_SECURITY_DETAILS_1,
+        table,
         true
       );
 
@@ -1973,12 +1974,17 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('contract-edit-button').click();
       await validateSecurityAndSLADetails(
         page,
-        DATA_CONTRACT_SECURITY_DETAILS_1
+        DATA_CONTRACT_SECURITY_DETAILS_1,
+        table
       );
     });
 
     await test.step('Update Security and SLA Details', async () => {
-      await saveSecurityAndSLADetails(page, DATA_CONTRACT_SECURITY_DETAILS_2);
+      await saveSecurityAndSLADetails(
+        page,
+        DATA_CONTRACT_SECURITY_DETAILS_2,
+        table
+      );
     });
 
     await test.step(
@@ -2009,10 +2015,14 @@ test.describe('Data Contracts', () => {
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
-        await validateSecurityAndSLADetails(page, {
-          ...DATA_CONTRACT_SECURITY_DETAILS_2,
-          ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
-        });
+        await validateSecurityAndSLADetails(
+          page,
+          {
+            ...DATA_CONTRACT_SECURITY_DETAILS_2,
+            ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+          },
+          table
+        );
       }
     );
   });

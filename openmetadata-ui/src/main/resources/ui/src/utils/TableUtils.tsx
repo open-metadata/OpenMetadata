@@ -1147,21 +1147,31 @@ export const tableConstraintRendererBasedOnType = (
  * @param columns Table Columns for creating options in table constraint form
  * @returns column options with label and value
  */
-export const getColumnOptionsFromTableColumn = (columns: Column[]) => {
+export const getColumnOptionsFromTableColumn = (
+  columns: Column[],
+  useFullyQualifiedName = false
+) => {
   const options: {
     label: string;
     value: string;
   }[] = [];
 
   columns.forEach((item) => {
-    if (!isEmpty(item.children)) {
-      options.push(...getColumnOptionsFromTableColumn(item.children ?? []));
-    }
-
     options.push({
       label: item.name,
-      value: item.name,
+      value: useFullyQualifiedName
+        ? item.fullyQualifiedName ?? item.name
+        : item.name,
     });
+
+    if (!isEmpty(item.children)) {
+      options.push(
+        ...getColumnOptionsFromTableColumn(
+          item.children ?? [],
+          useFullyQualifiedName
+        )
+      );
+    }
   });
 
   return options;
