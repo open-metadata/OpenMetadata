@@ -1,0 +1,135 @@
+{
+  "$id": "https://open-metadata.org/schema/type/recognizer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Recognizer",
+  "description": "Configuration for automatic entity recognition and classification, supporting both pattern-based and context-aware detection methods.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.Recognizer",
+  "definitions": {
+    "recognizerException": {
+      "description": "Exception entry for entities where recognizer should not run",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.RecognizerException",
+      "properties": {
+        "entityLink": {
+          "description": "Entity link to exclude from recognition",
+          "$ref": "basic.json#/definitions/entityLink"
+        },
+        "reason": {
+          "description": "Reason for exclusion",
+          "type": "string"
+        },
+        "addedBy": {
+          "description": "User who added this exception",
+          "$ref": "entityReference.json"
+        },
+        "addedAt": {
+          "$ref": "basic.json#/definitions/timestamp"
+        },
+        "feedbackId": {
+          "description": "ID of the feedback that triggered this exception",
+          "$ref": "basic.json#/definitions/uuid"
+        }
+      },
+      "required": ["entityLink"],
+      "additionalProperties": false
+    },
+    "recognizerType": {
+      "description": "Type of recognizer to use for detection",
+      "type": "string",
+      "enum": ["pattern", "deny_list", "context", "predefined", "custom"],
+      "default": "pattern"
+    },
+    "recognizerConfig": {
+      "description": "Complete recognizer configuration",
+      "oneOf": [
+        {"$ref": "patternRecognizer.json"},
+        {"$ref": "denyListRecognizer.json"},
+        {"$ref": "contextRecognizer.json"},
+        {"$ref": "customRecognizer.json"},
+        {"$ref": "predefinedRecognizer.json"}
+      ]
+    },
+    "patternRecognizerType": {
+      "$ref": "patternRecognizer.json"
+    },
+    "denyListRecognizerType": {
+      "$ref": "denyListRecognizer.json"
+    },
+    "contextRecognizerType": {
+      "$ref": "contextRecognizer.json"
+    },
+    "customRecognizerType": {
+      "$ref": "customRecognizer.json"
+    },
+    "predefinedRecognizerType": {
+      "$ref": "predefinedRecognizer.json"
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the recognizer",
+      "$ref": "basic.json#/definitions/uuid"
+    },
+    "name": {
+      "description": "Name of the recognizer",
+      "$ref": "basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display name for the recognizer",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of what this recognizer detects",
+      "$ref": "basic.json#/definitions/markdown"
+    },
+    "enabled": {
+      "description": "Whether this recognizer is enabled",
+      "type": "boolean",
+      "default": true
+    },
+    "isSystemDefault": {
+      "description": "Whether this is a system default recognizer",
+      "type": "boolean",
+      "default": false
+    },
+    "recognizerConfig": {
+      "$ref": "#/definitions/recognizerConfig"
+    },
+    "confidenceThreshold": {
+      "description": "Minimum confidence score required for detection",
+      "type": "number",
+      "minimum": 0.0,
+      "maximum": 1.0,
+      "default": 0.6
+    },
+    "exceptionList": {
+      "description": "Entity links where this recognizer should NOT run (based on user feedback)",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/recognizerException"
+      },
+      "default": []
+    },
+    "version": {
+      "description": "Version of the recognizer configuration",
+      "$ref": "entityHistory.json#/definitions/entityVersion"
+    },
+    "updatedAt": {
+      "description": "Last update time in Unix epoch time milliseconds",
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update",
+      "type": "string"
+    },
+    "target": {
+      "type": "string",
+      "enum": ["content", "column_name"],
+      "default": "content",
+      "description": "What the recognizer will analyze for classification. `column_name` means it classifies based on the column's name, `content` uses sample data from the column instead."
+    }
+  },
+  "required": ["name", "recognizerConfig"],
+  "additionalProperties": false
+}

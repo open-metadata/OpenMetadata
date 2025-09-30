@@ -136,6 +136,9 @@ test.describe('Data Contracts', () => {
       'Open contract section and start adding contract',
       async () => {
         await page.click('[data-testid="contract"]');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -688,6 +691,9 @@ test.describe('Data Contracts', () => {
 
         // Open contract section and start adding contract
         await page.click('[data-testid="contract"]');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -775,9 +781,12 @@ test.describe('Data Contracts', () => {
 
     await test.step('Create Persona and assign user to it', async () => {
       await redirectToHomePage(page);
+
+      const personaGetResponse = page.waitForResponse('/api/v1/personas**');
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
+      await personaGetResponse;
+
+      await page.waitForSelector('.ant-skeleton-content', {
         state: 'detached',
       });
 
@@ -932,6 +941,9 @@ test.describe('Data Contracts', () => {
         'Open contract section and start adding contract',
         async () => {
           await page.click('[data-testid="contract"]');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
 
           await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
           await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -1221,6 +1233,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1350,6 +1366,9 @@ test.describe('Data Contracts', () => {
     await assignGlossaryTerm(page, testGlossaryTerm.responseData);
 
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const runNowResponse = page.waitForResponse(
       '/api/v1/dataContracts/*/validate'
@@ -1384,6 +1403,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1513,6 +1536,9 @@ test.describe('Data Contracts', () => {
     await assignGlossaryTerm(page, testGlossaryTerm.responseData);
 
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const runNowResponse = page.waitForResponse(
       '/api/v1/dataContracts/*/validate'
@@ -1550,6 +1576,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1613,6 +1643,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1685,6 +1719,10 @@ test.describe('Data Contracts', () => {
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
     await page.getByTestId('add-contract-button').click();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
     await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
@@ -1769,6 +1807,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1819,6 +1861,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
