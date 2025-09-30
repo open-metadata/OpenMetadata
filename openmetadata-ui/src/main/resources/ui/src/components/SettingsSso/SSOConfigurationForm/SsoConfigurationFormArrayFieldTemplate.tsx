@@ -172,6 +172,29 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
     [value, props.onChange, isUrlField, isScopeField]
   );
 
+  const handleChange = useCallback(
+    (newValue: string[]) => {
+      // Handle scope field conversion from array (UI) to string (backend)
+      const convertedValue = isScopeField
+        ? Array.isArray(newValue)
+          ? newValue.join(' ')
+          : newValue
+        : newValue;
+
+      props.onChange(convertedValue);
+      // Clear field-specific error when value changes
+      if (props.formContext?.clearFieldError) {
+        props.formContext.clearFieldError(props.idSchema.$id);
+      }
+    },
+    [isScopeField, props.onChange, props.formContext, props.idSchema.$id]
+  );
+
+  const handleBlur = useCallback(() => {
+    const convertedValue = isScopeField ? value.join(' ') : value;
+    props.onBlur(id, convertedValue);
+  }, [isScopeField, value, props.onBlur, id]);
+
   return (
     <Row className={classNames('field-error', { 'has-error': hasError })}>
       <Col span={24}>
@@ -197,24 +220,8 @@ const SsoConfigurationFormArrayFieldTemplate = (props: FieldProps) => {
           status={hasError ? 'error' : undefined}
           tagRender={SsoCustomTagRenderer}
           value={value}
-          onBlur={() => {
-            const convertedValue = isScopeField ? value.join(' ') : value;
-            props.onBlur(id, convertedValue);
-          }}
-          onChange={(newValue) => {
-            // Handle scope field conversion from array (UI) to string (backend)
-            const convertedValue = isScopeField
-              ? Array.isArray(newValue)
-                ? newValue.join(' ')
-                : newValue
-              : newValue;
-
-            props.onChange(convertedValue);
-            // Clear field-specific error when value changes
-            if (props.formContext?.clearFieldError) {
-              props.formContext.clearFieldError(props.idSchema.$id);
-            }
-          }}
+          onBlur={handleBlur}
+          onChange={handleChange}
           onFocus={handleFocus}
           onKeyDown={(e) => {
             if ((e.ctrlKey || e.metaKey) && e.key === 'v' && !options) {
