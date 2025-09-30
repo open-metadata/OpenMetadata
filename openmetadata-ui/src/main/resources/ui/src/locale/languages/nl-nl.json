@@ -1127,6 +1127,7 @@
     "notification": "Melding",
     "notification-alert": "Melding alert",
     "notification-plural": "Meldingen",
+    "notify-downstream": "Stroomafwaarts Melden",
     "november": "november",
     "null": "Null",
     "number": "Number",

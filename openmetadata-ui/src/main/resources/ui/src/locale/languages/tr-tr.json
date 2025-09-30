@@ -1127,6 +1127,7 @@
     "notification": "Bildirim",
     "notification-alert": "Bildirim Uyarısı",
     "notification-plural": "Bildirimler",
+    "notify-downstream": "Alt Akışı Bilgilendir",
     "november": "Kasım",
     "null": "Boş",
     "number": "Sayı",
