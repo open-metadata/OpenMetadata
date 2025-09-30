@@ -2584,6 +2584,7 @@
     "valid-url-endpoint": "Конечные точки должны быть действительным URL",
     "validation-error-assets": "Пожалуйста, проверьте добавляемые объекты",
     "value-must-be-greater-than": "Значение «{{field}}» должно быть больше чем {{minimum}}",
+    "valid-urls-required": "Пожалуйста, введите действительные URL (например, https://example.com)",
     "value-should-equal-to-value": "Значение должно быть равно {{value}}.",
     "value-should-not-equal-to-value": "Значение не должно быть равно {{value}}.",
     "version-released-try-now": "Выпущена версия {{version}} <0>Посмотрите, что нового!</0>",
