@@ -321,7 +321,7 @@ const AddDomainForm = ({
       delete (data as CreateDomain & { domains?: unknown }).domains;
     }
 
-    onSubmit(data).then(() => form.resetFields());
+    onSubmit(data);
   };
 
   return (
