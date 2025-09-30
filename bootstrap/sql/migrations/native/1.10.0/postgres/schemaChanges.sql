@@ -47,3 +47,35 @@ CREATE TABLE IF NOT EXISTS notification_template_entity (
 
 CREATE INDEX IF NOT EXISTS idx_notification_template_name ON notification_template_entity(name);
 CREATE INDEX IF NOT EXISTS idx_notification_template_provider ON notification_template_entity(provider);
+
+-- Optimize table listing queries by indexing the schema hash prefix
+ALTER TABLE table_entity
+ADD COLUMN IF NOT EXISTS databaseSchemaHash VARCHAR(768)
+GENERATED ALWAYS AS (
+  rtrim(
+    split_part(fqnhash, '.', 1) || '.' ||
+    split_part(fqnhash, '.', 2) || '.' ||
+    split_part(fqnhash, '.', 3),
+    '.'
+  )
+) STORED;
+
+CREATE INDEX IF NOT EXISTS idx_table_entity_schema_listing
+ON table_entity (deleted, databaseSchemaHash, name, id);
+
+-- Optimize stored procedure listing queries by indexing the schema hash prefix
+ALTER TABLE stored_procedure_entity
+ADD COLUMN IF NOT EXISTS databaseSchemaHash VARCHAR(768)
+GENERATED ALWAYS AS (
+  rtrim(
+    split_part(fqnhash, '.', 1) || '.' ||
+    split_part(fqnhash, '.', 2) || '.' ||
+    split_part(fqnhash, '.', 3),
+    '.'
+  )
+) STORED;
+
+DROP INDEX IF EXISTS idx_stored_procedure_entity_deleted_name_id;
+
+CREATE INDEX IF NOT EXISTS idx_stored_procedure_schema_listing
+ON stored_procedure_entity (deleted, databaseSchemaHash, name, id);

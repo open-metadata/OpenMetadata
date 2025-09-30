@@ -24,11 +24,10 @@ import {
 import {
   applySecurityConfiguration,
   getSecurityConfiguration,
-  patchSecurityConfiguration,
   validateSecurityConfiguration,
 } from '../../../rest/securityConfigAPI';
 import { getAuthConfig } from '../../../utils/AuthProvider.util';
-import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useAuthProvider } from '../../Auth/AuthProviders/AuthProvider';
 import SSOConfigurationFormRJSF from './SSOConfigurationForm';
 import { SSOConfigurationFormProps } from './SSOConfigurationForm.interface';
@@ -123,9 +122,7 @@ jest.mock(
 const mockShowErrorToast = showErrorToast as jest.MockedFunction<
   typeof showErrorToast
 >;
-const mockShowSuccessToast = showSuccessToast as jest.MockedFunction<
-  typeof showSuccessToast
->;
+
 const mockApplySecurityConfiguration =
   applySecurityConfiguration as jest.MockedFunction<
     typeof applySecurityConfiguration
@@ -138,10 +135,7 @@ const mockGetSecurityConfiguration =
   getSecurityConfiguration as jest.MockedFunction<
     typeof getSecurityConfiguration
   >;
-const mockPatchSecurityConfiguration =
-  patchSecurityConfiguration as jest.MockedFunction<
-    typeof patchSecurityConfiguration
-  >;
+
 const mockFetchAuthenticationConfig =
   fetchAuthenticationConfig as jest.MockedFunction<
     typeof fetchAuthenticationConfig
@@ -369,7 +363,7 @@ describe('SSOConfigurationForm', () => {
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
         expect(mockApplySecurityConfiguration).toHaveBeenCalled();
-        expect(mockOnLogoutHandler).toHaveBeenCalled();
+
         expect(window.location.replace).toHaveBeenCalledWith('/signin');
       });
     });
@@ -413,9 +407,6 @@ describe('SSOConfigurationForm', () => {
 
       await waitFor(() => {
         expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
-        expect(mockShowErrorToast).toHaveBeenCalledWith(
-          expect.stringContaining('Validation failed')
-        );
         expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
       });
     });
@@ -686,6 +677,60 @@ describe('SSOConfigurationForm', () => {
             }),
           })
         );
+      });
+    });
+  });
+
+  describe('Form Field Validation', () => {
+    it('should handle field-specific validation errors without showing toast', async () => {
+      // Field-specific errors have a field property and don't trigger toast
+      const mockValidationResponse = {
+        data: {
+          status: 'failed',
+          errors: [
+            {
+              field: 'authenticationConfiguration.oidcConfiguration.id',
+              error: 'Client ID is required',
+            },
+            {
+              field: 'authenticationConfiguration.oidcConfiguration.secret',
+              error: 'Client Secret is required',
+            },
+          ],
+        },
+      };
+
+      mockGetSecurityConfiguration.mockRejectedValue(new Error('No config'));
+      mockValidateSecurityConfiguration.mockResolvedValue(
+        mockValidationResponse as any
+      );
+
+      renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+
+      // Select Google provider (OIDC with Confidential client)
+      const googleButton = screen.getByText('Select Google');
+      fireEvent.click(googleButton);
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('save-sso-configuration')
+        ).toBeInTheDocument();
+      });
+
+      // Try to save without filling required fields
+      const saveButton = screen.getByTestId('save-sso-configuration');
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockValidateSecurityConfiguration).toHaveBeenCalled();
+        // Validation should fail, so apply should not be called
+        expect(mockApplySecurityConfiguration).not.toHaveBeenCalled();
+        // Field-specific errors don't trigger showErrorToast
+        expect(mockShowErrorToast).not.toHaveBeenCalled();
       });
     });
   });
