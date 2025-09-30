@@ -37,4 +37,5 @@ export interface MUIIconPickerProps {
   allowUrl?: boolean;
   backgroundColor?: string;
   toolTip?: ReactNode;
+  defaultIcon?: IconDefinition;
 }
