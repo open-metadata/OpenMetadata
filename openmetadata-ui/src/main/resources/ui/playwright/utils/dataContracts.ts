@@ -16,6 +16,7 @@ import {
   DATA_CONTRACT_SECURITY_CONSUMER_DETAILS,
 } from '../constant/dataContracts';
 import { SidebarItem } from '../constant/sidebar';
+import { TableClass } from '../support/entity/TableClass';
 import { getApiContext } from './common';
 import { sidebarClick } from './sidebar';
 
@@ -124,6 +125,7 @@ export const waitForDataContractExecution = async (
 export const saveSecurityAndSLADetails = async (
   page: Page,
   data: DataContractSecuritySlaData,
+  tableData: TableClass,
   addAnotherConsumer?: boolean
 ) => {
   await page.getByRole('tab', { name: 'Security' }).click();
@@ -146,8 +148,9 @@ export const saveSecurityAndSLADetails = async (
   // Add Column Information
   for (const filter of data.consumers.row_filters) {
     await page
-      .getByTestId(`columnName-input-0-${filter.index}`)
-      .fill(filter.column_name);
+      .locator(`#columnName-input-0-${filter.index}`)
+      .fill(tableData.columnsName[0]);
+    await page.locator(`#columnName-input-0-${filter.index}`).press('Enter');
 
     for (const value of filter.values) {
       await page.locator(`#values-0-${filter.index}`).fill(value);
@@ -181,8 +184,9 @@ export const saveSecurityAndSLADetails = async (
     // Add Column Information
     for (const filter of DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.row_filters) {
       await page
-        .getByTestId(`columnName-input-1-${filter.index}`)
-        .fill(filter.column_name);
+        .locator(`#columnName-input-1-${filter.index}`)
+        .fill(tableData.columnsName[1]);
+      await page.locator(`#columnName-input-1-${filter.index}`).press('Enter');
 
       for (const value of filter.values) {
         await page.locator(`#values-1-${filter.index}`).fill(value);
@@ -271,7 +275,8 @@ export const saveSecurityAndSLADetails = async (
 
 export const validateSecurityAndSLADetails = async (
   page: Page,
-  data: DataContractSecuritySlaData
+  data: DataContractSecuritySlaData,
+  table: TableClass
 ) => {
   await page.getByRole('tab', { name: 'Security' }).click();
 
@@ -292,8 +297,10 @@ export const validateSecurityAndSLADetails = async (
   //   Verify Consumer information
   for (const filter of data.consumers.row_filters) {
     await expect(
-      page.getByTestId(`columnName-input-0-${filter.index}`)
-    ).toHaveValue(filter.column_name);
+      page
+        .getByTestId(`columnName-input-0-${filter.index}`)
+        .getByText(table.columnsName[0])
+    ).toBeVisible();
 
     await expect(page.getByText(filter.values.join(''))).toBeVisible();
   }
