@@ -173,7 +173,7 @@ public final class Databases {
     }
 
     public DatabaseFinder includeAll() {
-      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains", "dataProducts"));
       return this;
     }
 

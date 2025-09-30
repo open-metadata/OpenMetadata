@@ -7562,7 +7562,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     // Add owners
     List<EntityReference> owners = new ArrayList<>();
     owners.add(new EntityReference().withId(USER1.getId()).withType(Entity.USER));
-    owners.add(new EntityReference().withId(TEAM11.getId()).withType(Entity.TEAM));
+    owners.add(new EntityReference().withId(USER2.getId()).withType(Entity.USER));
 
     // Update with SDK
     T updatedEntity = null;
@@ -7593,7 +7593,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Remove one owner and add another
     updatedOwners.remove(0);
-    updatedOwners.add(new EntityReference().withId(USER2.getId()).withType(Entity.USER));
+    updatedOwners.add(new EntityReference().withId(USER3.getId()).withType(Entity.USER));
     updatedEntity.setOwners(updatedOwners);
 
     T finalEntity = null;
@@ -7711,13 +7711,11 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
     // Set domain
     EntityReference domain = new EntityReference().withId(DOMAIN.getId()).withType(Entity.DOMAIN);
-    entityWithDomain.setDomains(List.of(domain));
 
     // Set data products (if entity supports it - skip if NoSuchMethodException)
     List<EntityReference> dataProducts = new ArrayList<>();
     dataProducts.add(
         new EntityReference().withId(DOMAIN_DATA_PRODUCT.getId()).withType(Entity.DATA_PRODUCT));
-    entityWithDomain.setDataProducts(dataProducts);
 
     // Update with SDK
     T updatedEntity = null;
@@ -7725,20 +7723,23 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
       case Entity.TABLE -> {
         Tables.setDefaultClient(sdkClient);
         var fluentTable = Tables.find(entityId).fetch();
-        fluentTable.withDomains(entityWithDomain.getDomains());
-        updatedEntity = (T) fluentTable.save().get();
+        fluentTable.withDomains(List.of(domain)).withDataProducts(dataProducts);
+        fluentTable.save();
+        updatedEntity = (T) Tables.find(entityId).includeAll().fetch().get();
       }
       case Entity.DATABASE -> {
         Databases.setDefaultClient(sdkClient);
         var fluentDatabase = Databases.find(entityId).fetch();
-        fluentDatabase.withDomains(entityWithDomain.getDomains());
-        updatedEntity = (T) fluentDatabase.save().get();
+        fluentDatabase.withDomains(List.of(domain)).withDataProducts(dataProducts);
+        fluentDatabase.save();
+        updatedEntity = (T) Databases.find(entityId).includeAll().fetch().get();
       }
       case Entity.DATABASE_SCHEMA -> {
         DatabaseSchemas.setDefaultClient(sdkClient);
         var fluentSchema = DatabaseSchemas.find(entityId).fetch();
-        fluentSchema.withDomains(entityWithDomain.getDomains());
-        updatedEntity = (T) fluentSchema.save().get();
+        fluentSchema.withDomains(List.of(domain)).withDataProducts(dataProducts);
+        fluentSchema.save();
+        updatedEntity = (T) DatabaseSchemas.find(entityId).includeAll().fetch().get();
       }
     }
 

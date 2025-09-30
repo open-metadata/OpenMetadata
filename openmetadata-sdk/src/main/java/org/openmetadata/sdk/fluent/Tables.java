@@ -3,6 +3,7 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
@@ -172,7 +173,7 @@ public final class Tables {
     }
 
     public TableFinder includeAll() {
-      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains", "dataProducts"));
       return this;
     }
 
@@ -319,6 +320,12 @@ public final class Tables {
 
     public FluentTable withDataProducts(List<EntityReference> dataProducts) {
       table.setDataProducts(dataProducts);
+      modified = true;
+      return this;
+    }
+
+    public FluentTable withColumns(List<Column> columns) {
+      table.setColumns(columns);
       modified = true;
       return this;
     }

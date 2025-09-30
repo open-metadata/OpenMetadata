@@ -5279,7 +5279,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Update the table using the clean API
     var fluentTable = Tables.find(createdTable.getId().toString()).fetch();
-    fluentTable.get().setColumns(createdTable.getColumns());
+    fluentTable.withColumns(createdTable.getColumns());
     Table updatedTable = fluentTable.save().get();
     assertNotNull(updatedTable);
     assertEquals(4, updatedTable.getColumns().size());
