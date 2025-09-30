@@ -1123,6 +1123,7 @@
     "notification": "Notification",
     "notification-alert": "Alerte de Notification",
     "notification-plural": "Notifications",
+    "notify-downstream": "Notifier en Aval",
     "november": "Novembre",
     "null": "Null",
     "number": "Number",
