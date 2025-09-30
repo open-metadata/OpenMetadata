@@ -156,25 +156,27 @@ public class DirectoryRepository extends EntityRepository<Directory> {
   public void setFields(Directory directory, EntityUtil.Fields fields) {
     directory.withService(getService(directory));
     directory.withParent(getParentDirectory(directory));
-    
+
     // Calculate and set directory statistics
-    if (fields.contains("children") || fields.contains("numberOfFiles") 
-        || fields.contains("numberOfSubDirectories") || fields.contains("totalSize")) {
+    if (fields.contains("children")
+        || fields.contains("numberOfFiles")
+        || fields.contains("numberOfSubDirectories")
+        || fields.contains("totalSize")) {
       List<EntityReference> children = getChildrenRefs(directory);
       directory.withChildren(fields.contains("children") ? children : null);
-      
+
       // Calculate statistics from children
       if (children != null && !children.isEmpty()) {
         int fileCount = 0;
         int dirCount = 0;
         long totalSize = 0L;
-        
+
         for (EntityReference child : children) {
           if (FILE.equals(child.getType())) {
             fileCount++;
             // Get file size if available
             try {
-              org.openmetadata.schema.entity.data.File file = 
+              org.openmetadata.schema.entity.data.File file =
                   Entity.getEntity(child, "", Include.NON_DELETED);
               if (file.getSize() != null) {
                 totalSize += file.getSize();
@@ -187,7 +189,7 @@ public class DirectoryRepository extends EntityRepository<Directory> {
           } else if (SPREADSHEET.equals(child.getType())) {
             fileCount++; // Count spreadsheets as files
             try {
-              org.openmetadata.schema.entity.data.Spreadsheet spreadsheet = 
+              org.openmetadata.schema.entity.data.Spreadsheet spreadsheet =
                   Entity.getEntity(child, "", Include.NON_DELETED);
               if (spreadsheet.getSize() != null) {
                 totalSize += spreadsheet.getSize();
@@ -197,16 +199,18 @@ public class DirectoryRepository extends EntityRepository<Directory> {
             }
           }
         }
-        
+
         directory.withNumberOfFiles(fileCount);
         directory.withNumberOfSubDirectories(dirCount);
         // Convert long to Integer, checking for overflow
-        directory.withTotalSize(totalSize > 0 ? (totalSize > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalSize) : null);
+        directory.withTotalSize(
+            totalSize > 0
+                ? (totalSize > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalSize)
+                : null);
       }
     } else {
       directory.withChildren(null);
     }
-    
   }
 
   @Override

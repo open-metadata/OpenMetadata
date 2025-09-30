@@ -342,8 +342,10 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                       Pair.of(10, TagLabel.TagSource.GLOSSARY))))
           .withDomains(getDomains(printer, csvRecord, 11))
           .withDataProducts(getDataProducts(printer, csvRecord, 12))
-          .withCreatedTime(nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15)))
-          .withModifiedTime(nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16)));
+          .withCreatedTime(
+              nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15)))
+          .withModifiedTime(
+              nullOrEmpty(csvRecord.get(16)) ? null : Long.parseLong(csvRecord.get(16)));
 
       if (processRecord) {
         createEntity(printer, csvRecord, newSpreadsheet, SPREADSHEET);
@@ -357,9 +359,11 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
       addField(recordList, entity.getDisplayName());
       addField(recordList, entity.getDescription());
       addField(recordList, entity.getDirectory().getFullyQualifiedName());
-      addField(recordList, entity.getMimeType().toString());
-      addField(recordList, entity.getCreatedTime() != null ? entity.getCreatedTime().toString() : "");
-      addField(recordList, entity.getModifiedTime() != null ? entity.getModifiedTime().toString() : "");
+      addField(recordList, entity.getMimeType() != null ? entity.getMimeType().toString() : "");
+      addField(
+          recordList, entity.getCreatedTime() != null ? entity.getCreatedTime().toString() : "");
+      addField(
+          recordList, entity.getModifiedTime() != null ? entity.getModifiedTime().toString() : "");
       addField(recordList, entity.getPath());
       addField(recordList, entity.getSize() != null ? entity.getSize().toString() : "");
       addField(recordList, entity.getFileVersion());
