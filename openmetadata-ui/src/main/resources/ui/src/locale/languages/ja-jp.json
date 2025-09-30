@@ -1554,6 +1554,7 @@
     "source": "ソース",
     "source-aligned": "ソース整列",
     "source-column": "ソースカラム",
+    "source-column-plural": "Source Columns",
     "source-label": "ソース:",
     "source-match": "イベントソースで一致",
     "source-plural": "ソース",

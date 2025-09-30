@@ -1554,6 +1554,7 @@
     "source": "Kaynak",
     "source-aligned": "Kaynak Odaklı",
     "source-column": "Kaynak Sütun",
+    "source-column-plural": "Source Columns",
     "source-label": "Source:",
     "source-match": "Olay Kaynağına Göre Eşleştir",
     "source-plural": "Kaynaklar",

@@ -1554,6 +1554,7 @@
     "source": "來源",
     "source-aligned": "來源導向",
     "source-column": "來源欄位",
+    "source-column-plural": "Source Columns",
     "source-label": "來源：",
     "source-match": "依事件來源比對",
     "source-plural": "來源",

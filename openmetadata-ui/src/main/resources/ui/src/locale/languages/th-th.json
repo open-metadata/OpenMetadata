@@ -1554,6 +1554,7 @@
     "source": "แหล่งที่มา",
     "source-aligned": "ตรงตามแหล่งที่มา",
     "source-column": "คอลัมน์แหล่งที่มา",
+    "source-column-plural": "Source Columns",
     "source-label": "Source:",
     "source-match": "จับคู่ตามแหล่งที่มาของเหตุการณ์",
     "source-plural": "แหล่งที่มาหลายรายการ",

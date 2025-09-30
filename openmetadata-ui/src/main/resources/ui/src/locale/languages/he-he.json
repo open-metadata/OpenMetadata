@@ -1554,6 +1554,7 @@
     "source": "מקור",
     "source-aligned": "מקור מתואם",
     "source-column": "עמודת מקור",
+    "source-column-plural": "Source Columns",
     "source-label": "Source:",
     "source-match": "התאמה לפי מקור אירוע",
     "source-plural": "מקורות",

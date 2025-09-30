@@ -48,7 +48,6 @@ import { useFqn } from '../../hooks/useFqn';
 import { SearchSourceAlias } from '../../interface/search.interface';
 import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import {
-  exportLineageByEntityCountAsync,
   getLineageByEntityCount,
   getLineagePagingData,
 } from '../../rest/lineageAPI';
@@ -306,27 +305,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     return JSON.stringify(query);
   }, [selectedQuickFilters, searchValue]);
 
-  // Function to handle export click
-  const handleExportClick = useCallback(
-    () =>
-      exportLineageByEntityCountAsync({
-        fqn: fqn ?? '',
-        type: entityType ?? '',
-        direction: lineageDirection,
-        nodeDepth: nodeDepth,
-        query_filter: queryFilter,
-      }),
-    [
-      fqn,
-      entityType,
-      lineageDirection,
-      nodeDepth,
-      currentPage,
-      pageSize,
-      queryFilter,
-    ]
-  );
-
   // Define table columns
   const extraTableFilters = useMemo(() => {
     return (
@@ -375,7 +353,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         </StyledMenu>
       </div>
     );
-  }, [navigate, streamButtonGroup, impactOnEl, impactLevel, handleExportClick]);
+  }, [navigate, streamButtonGroup, impactOnEl, impactLevel]);
 
   // Function to fetch nodes based on current filters and pagination
   const fetchNodes = useCallback(async () => {
@@ -662,7 +640,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         ),
       },
       {
-        title: t('label.source-column'),
+        title: t('label.source-column-plural'),
         dataIndex:
           lineageDirection === LineageDirection.Downstream
             ? ['column', 'fromColumns']

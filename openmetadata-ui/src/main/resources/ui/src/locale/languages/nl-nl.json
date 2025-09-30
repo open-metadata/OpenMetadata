@@ -1554,6 +1554,7 @@
     "source": "Bron",
     "source-aligned": "Bron-georiënteerd",
     "source-column": "Bronkolom",
+    "source-column-plural": "Source Columns",
     "source-label": "Source:",
     "source-match": "Overeenkomst op eventbron",
     "source-plural": "Bronnen",

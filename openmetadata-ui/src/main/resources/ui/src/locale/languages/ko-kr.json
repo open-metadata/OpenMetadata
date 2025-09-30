@@ -1554,6 +1554,7 @@
     "source": "소스",
     "source-aligned": "소스 정렬",
     "source-column": "소스 열",
+    "source-column-plural": "Source Columns",
     "source-label": "Source:",
     "source-match": "이벤트 소스로 매칭",
     "source-plural": "소스들",

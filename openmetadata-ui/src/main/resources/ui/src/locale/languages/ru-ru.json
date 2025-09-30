@@ -1554,6 +1554,7 @@
     "source": "Источник",
     "source-aligned": "Выровненный по источнику",
     "source-column": "Источник столбца",
+    "source-column-plural": "Source Columns",
     "source-label": "Source:",
     "source-match": "Сопоставление по источнику события",
     "source-plural": "Источники",

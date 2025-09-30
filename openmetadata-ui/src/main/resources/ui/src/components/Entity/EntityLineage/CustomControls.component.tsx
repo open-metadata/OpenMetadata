@@ -262,10 +262,10 @@ const CustomControls: FC<{
   );
 
   const handleExportClick = useCallback(() => {
-    if (activeTab === 'lineage') {
-      onExportClick([ExportTypes.CSV, ExportTypes.PNG]);
-    } else {
+    if (activeTab === 'impact_analysis') {
       onExportClick([ExportTypes.CSV], handleImpactAnalysisExport);
+    } else {
+      onExportClick([ExportTypes.CSV, ExportTypes.PNG]);
     }
   }, [activeTab, onExportClick]);
 
@@ -354,7 +354,7 @@ const CustomControls: FC<{
             arrow
             placement="top"
             title={t('label.export-as-type', { type: t('label.csv') })}>
-            <StyledIconButton size="large" onClick={() => handleExportClick}>
+            <StyledIconButton size="large" onClick={handleExportClick}>
               <DownloadIcon />
             </StyledIconButton>
           </Tooltip>

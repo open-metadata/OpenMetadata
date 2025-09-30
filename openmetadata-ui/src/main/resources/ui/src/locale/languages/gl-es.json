@@ -1554,6 +1554,7 @@
     "source": "Fonte",
     "source-aligned": "Aliñado coa fonte",
     "source-column": "Columna de orixe",
+    "source-column-plural": "Source Columns",
     "source-label": "Source:",
     "source-match": "Coincidencia por fonte de evento",
     "source-plural": "Fontes",
