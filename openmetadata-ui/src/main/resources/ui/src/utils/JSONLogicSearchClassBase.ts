@@ -22,7 +22,10 @@ import {
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
-import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
+import {
+  RANGE_FIELD_OPERATORS,
+  TEXT_FIELD_OPERATORS,
+} from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
@@ -88,6 +91,10 @@ class JSONLogicSearchClassBase {
       ...this.baseConfig.types.text,
       valueSources: ['value'],
     },
+    date: {
+      ...this.baseConfig.types.date,
+      valueSources: ['value'],
+    },
   };
   configWidgets: Config['widgets'] = {
     ...this.baseConfig.widgets,
@@ -113,6 +120,17 @@ class JSONLogicSearchClassBase {
     },
     text: {
       ...this.baseConfig.widgets.text,
+    },
+    date: {
+      ...this.baseConfig.widgets.date,
+      jsonLogic: function (val) {
+        // Convert date to Unix timestamp (milliseconds)
+        return this.utils.moment.utc(val).valueOf();
+      },
+      jsonLogicImport: function (val) {
+        // Check if valueFormat indicates timestamp
+        return this.utils.moment.utc(val).toISOString();
+      },
     },
   };
   configOperators: Config['operators'] = {
@@ -417,6 +435,18 @@ class JSONLogicSearchClassBase {
           }),
           useAsyncSearch: true,
         },
+      },
+      [EntityReferenceFields.UPDATED_AT]: {
+        label: t('label.updated-on'),
+        type: 'date',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          ...RANGE_FIELD_OPERATORS,
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
       },
     };
   }
