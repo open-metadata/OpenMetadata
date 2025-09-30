@@ -275,11 +275,14 @@ public class WorkflowHandler {
       // Step 3: Delete old deployments to prevent confusion with old process definitions
       // This is critical for periodicBatchEntity triggers that may have changed format
       try {
-        // Delete old trigger deployments without entity type suffix
+        // Delete ALL trigger deployments that start with the trigger key
+        // This includes both the base trigger (e.g., "SetTierForMLModelTrigger") and
+        // any entity-specific variants (e.g., "SetTierForMLModelTrigger-dashboard",
+        // "SetTierForMLModelTrigger-table")
         List<ProcessDefinition> oldTriggerDefinitions =
             repositoryService
                 .createProcessDefinitionQuery()
-                .processDefinitionKey(triggerWorkflowKey)
+                .processDefinitionKeyLike(triggerWorkflowKey + "%")
                 .list();
 
         for (ProcessDefinition pd : oldTriggerDefinitions) {
