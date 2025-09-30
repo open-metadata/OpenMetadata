@@ -12,7 +12,7 @@
  */
 
 export const shadows = {
-  xs: "0px 1px 2px rgba(10, 13, 18, 0.05)",
+  xs: "0px 1px 2px 0px rgba(10, 13, 18, 0.05)",
   sm: "0px 1px 3px rgba(10, 13, 18, 0.1), 0px 1px 2px -1px rgba(10, 13, 18, 0.1)",
   md: "0px 4px 6px -1px rgba(10, 13, 18, 0.1), 0px 2px 4px -2px rgba(10, 13, 18, 0.06)",
   lg: "0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03)",

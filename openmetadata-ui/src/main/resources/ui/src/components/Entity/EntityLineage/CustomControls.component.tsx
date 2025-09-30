@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { Button, useTheme } from '@mui/material';
+import { Button, MenuItem, Tooltip, useTheme } from '@mui/material';
 import classNames from 'classnames';
+import QueryString from 'qs';
 import {
   FC,
   memo,
@@ -24,24 +25,58 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
+import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.svg';
+import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
+import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
+import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-v1.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
+import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
+import { ExportTypes } from '../../../constants/Export.constants';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
+import { useFqn } from '../../../hooks/useFqn';
+import { QueryFieldInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
+import { exportLineageByEntityCountAsync } from '../../../rest/lineageAPI';
+import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
+import { getSearchNameEsQuery } from '../../../utils/Lineage/LineageUtils';
+import { useRequiredParams } from '../../../utils/useRequiredParams';
+import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
-import { StyledIconButton } from '../../LineageTable/LineageTable.styled';
+import {
+  StyledIconButton,
+  StyledMenu,
+} from '../../LineageTable/LineageTable.styled';
+import { LineageConfig } from './EntityLineage.interface';
+import LineageConfigModal from './LineageConfigModal';
 import LineageSearchSelect from './LineageSearchSelect/LineageSearchSelect';
 
-const CustomControls: FC = () => {
+const CustomControls: FC<{
+  nodeDepthOptions?: number[];
+  onSearchValueChange?: (value: string) => void;
+  searchValue?: string;
+}> = ({ nodeDepthOptions, onSearchValueChange, searchValue }) => {
   const { t } = useTranslation();
-  const { setSelectedQuickFilters, nodes, selectedQuickFilters } =
-    useLineageProvider();
+  const {
+    setSelectedQuickFilters,
+    nodes,
+    selectedQuickFilters,
+    lineageConfig,
+    onExportClick,
+    onLineageConfigUpdate,
+  } = useLineageProvider();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
-
-  //   const [filters, setFilters] = useState<ExploreQuickFilterField[]>([]);
+  const [dialogVisible, setDialogVisible] = useState(false);
+  const [nodeDepthAnchorEl, setNodeDepthAnchorEl] =
+    useState<null | HTMLElement>(null);
   const navigate = useNavigate();
   const theme = useTheme();
+  const { fqn } = useFqn();
+  const { entityType } = useRequiredParams<{ entityType: EntityType }>();
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
@@ -60,6 +95,30 @@ const CustomControls: FC = () => {
       },
     };
   }, [nodes]);
+
+  // Query filter for table data & search values
+  const quickFilters = useMemo(() => {
+    const quickFilterQuery = getQuickFilterQuery(selectedQuickFilters);
+    const mustClauses: QueryFieldInterface[] = [];
+
+    // Add quick filter conditions (e.g., service field conditions)
+    if (quickFilterQuery?.query?.bool?.must) {
+      mustClauses.push(...quickFilterQuery.query.bool.must);
+    }
+
+    // Add search value conditions for name and displayName using wildcard
+    if (searchValue) {
+      mustClauses.push(getSearchNameEsQuery(searchValue));
+    }
+
+    // Build final query only if we have conditions
+    const query =
+      mustClauses.length > 0
+        ? { query: { bool: { must: mustClauses } } }
+        : undefined;
+
+    return JSON.stringify(query);
+  }, [selectedQuickFilters, searchValue]);
 
   const handleQuickFiltersValueSelect = useCallback(
     (field: ExploreQuickFilterField) => {
@@ -97,16 +156,91 @@ const CustomControls: FC = () => {
       setSelectedQuickFilters(updatedQuickFilters);
     }
   }, []);
+  const queryParams = useMemo(() => {
+    return QueryString.parse(window.location.search, {
+      ignoreQueryPrefix: true,
+    });
+  }, [window.location.search]);
+
+  const { isFullScreen, nodeDepth, lineageDirection, activeTab } =
+    useMemo(() => {
+      const lineageDirection =
+        queryParams['dir'] === LineageDirection.Upstream
+          ? LineageDirection.Upstream
+          : LineageDirection.Downstream;
+
+      const nodeDepth = isNaN(Number(queryParams['depth']))
+        ? lineageDirection === LineageDirection.Downstream
+          ? lineageConfig.downstreamDepth
+          : lineageConfig.upstreamDepth
+        : Number(queryParams['depth']);
+
+      return {
+        activeTab:
+          queryParams['mode'] === 'impact_analysis'
+            ? 'impact_analysis'
+            : 'lineage',
+        isFullScreen: queryParams[FULLSCREEN_QUERY_PARAM_KEY] === 'true',
+        nodeDepth,
+        lineageDirection,
+      };
+    }, [
+      queryParams,
+      lineageConfig.downstreamDepth,
+      lineageConfig.upstreamDepth,
+    ]);
 
   const handleImpactAnalysisClick = useCallback(() => {
-    const params = new URLSearchParams(window.location.search);
-    params.set('mode', 'impact_analysis');
-    navigate({ search: params.toString() });
-  }, [navigate]);
+    queryParams['mode'] = 'impact_analysis';
+    navigate({ search: QueryString.stringify(queryParams) });
+  }, [navigate, queryParams]);
 
-  const toggleFilterSelection: MouseEventHandler<HTMLButtonElement> = () => {
-    setFilterSelectionActive((prev) => !prev);
-  };
+  const handleLineageClick = useCallback(() => {
+    queryParams['mode'] = 'lineage';
+    navigate({ search: QueryString.stringify(queryParams) });
+  }, [navigate, queryParams]);
+
+  const updateURLParams = useCallback(
+    (
+      data: Partial<{
+        depth: number;
+        [FULLSCREEN_QUERY_PARAM_KEY]: boolean;
+      }>
+    ) => {
+      const params = QueryString.parse(location.search, {
+        ignoreQueryPrefix: true,
+      });
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          params[key] = String(value);
+        }
+      });
+
+      navigate(
+        {
+          search: QueryString.stringify(params, {
+            encode: false,
+            addQueryPrefix: true,
+          }),
+        },
+        { replace: true }
+      );
+      setNodeDepthAnchorEl(null);
+    },
+    [location.search]
+  );
+
+  const toggleFilterSelection: MouseEventHandler<HTMLButtonElement> =
+    useCallback(() => {
+      setFilterSelectionActive((prev) => !prev);
+      // In case of filters we need to bring fullscreen mode if not
+      if (!filterSelectionActive) {
+        // update fullscreen param in url
+        updateURLParams({
+          [FULLSCREEN_QUERY_PARAM_KEY]: !filterSelectionActive,
+        });
+      }
+    }, [filterSelectionActive, updateURLParams]);
 
   const handleClearAllFilters = useCallback(() => {
     setSelectedQuickFilters((prev) =>
@@ -114,59 +248,202 @@ const CustomControls: FC = () => {
     );
   }, [setSelectedQuickFilters]);
 
+  // Function to handle export click
+  const handleImpactAnalysisExport = useCallback(
+    () =>
+      exportLineageByEntityCountAsync({
+        fqn: fqn ?? '',
+        type: entityType ?? '',
+        direction: lineageDirection,
+        nodeDepth: nodeDepth,
+        query_filter: quickFilters,
+      }),
+    [fqn, entityType, lineageDirection, nodeDepth, quickFilters]
+  );
+
+  const handleExportClick = useCallback(() => {
+    if (activeTab === 'lineage') {
+      onExportClick([ExportTypes.CSV, ExportTypes.PNG]);
+    } else {
+      onExportClick([ExportTypes.CSV], handleImpactAnalysisExport);
+    }
+  }, [activeTab, onExportClick]);
+
+  const handleDialogSave = (newConfig: LineageConfig) => {
+    // Implement save logic here
+    onLineageConfigUpdate?.(newConfig);
+    setDialogVisible(false);
+  };
+
+  const buttonActiveStyle = {
+    outlineColor: theme.palette.allShades.blue[700],
+    backgroundColor: theme.palette.allShades.blue[50],
+    color: theme.palette.allShades.blue[700],
+    outline: '1px solid',
+    boxShadow: 'none',
+
+    '&:hover': {
+      outlineColor: theme.palette.allShades.blue[100],
+      backgroundColor: theme.palette.allShades.blue[100],
+      color: theme.palette.allShades.blue[700],
+      boxShadow: 'none',
+    },
+  };
+
+  const filterApplied = useMemo(() => {
+    return selectedQuickFilters.some(
+      (filter) => (filter.value ?? []).length > 0
+    );
+  }, [selectedQuickFilters]);
+
+  const searchBarComponent = useMemo(() => {
+    return activeTab === 'impact_analysis' && onSearchValueChange ? (
+      <Searchbar
+        removeMargin
+        inputClassName="w-80"
+        placeholder={t('label.search-for-type', {
+          type: t('label.asset-or-column'),
+        })}
+        searchValue={searchValue}
+        typingInterval={0}
+        onSearch={onSearchValueChange}
+      />
+    ) : (
+      <LineageSearchSelect />
+    );
+  }, [searchValue, onSearchValueChange]);
+
+  const handleNodeDepthUpdate = useCallback(
+    (depth: number) => {
+      updateURLParams({ depth });
+      setNodeDepthAnchorEl(null);
+    },
+    [updateURLParams]
+  );
+
   return (
     <div>
       <div className={classNames('d-flex w-full justify-between')}>
         <div className="d-flex items-center gap-4">
-          <StyledIconButton
-            color={filterSelectionActive ? 'primary' : 'default'}
-            size="large"
-            title={t('label.filter-plural')}
-            onClick={toggleFilterSelection}>
-            <FilterLinesIcon />
-          </StyledIconButton>
-          <LineageSearchSelect />
+          <Tooltip arrow placement="top" title={t('label.filter-plural')}>
+            <StyledIconButton
+              color={filterSelectionActive ? 'primary' : 'default'}
+              size="large"
+              onClick={toggleFilterSelection}>
+              <FilterLinesIcon />
+            </StyledIconButton>
+          </Tooltip>
+          {searchBarComponent}
         </div>
         <div className="d-flex gap-4 items-center">
           <Button
             className="font-semibold"
-            sx={{
-              outlineColor: theme.palette.allShades.blue[700],
-              backgroundColor: theme.palette.allShades.blue[50],
-              color: theme.palette.allShades.blue[700],
-              outline: '1px solid',
-              boxShadow: 'none',
-
-              '&:hover': {
-                outlineColor: theme.palette.allShades.blue[100],
-                backgroundColor: theme.palette.allShades.blue[100],
-                color: theme.palette.allShades.blue[700],
-                boxShadow: 'none',
-              },
-            }}
-            variant="outlined">
+            sx={activeTab === 'lineage' ? buttonActiveStyle : {}}
+            variant="outlined"
+            onClick={handleLineageClick}>
             {t('label.lineage')}
           </Button>
           <Button
             className="font-semibold"
+            sx={activeTab === 'impact_analysis' ? buttonActiveStyle : {}}
             variant="outlined"
             onClick={handleImpactAnalysisClick}>
             {t('label.impact-analysis')}
           </Button>
+          <Tooltip
+            arrow
+            placement="top"
+            title={t('label.export-as-type', { type: t('label.csv') })}>
+            <StyledIconButton size="large" onClick={() => handleExportClick}>
+              <DownloadIcon />
+            </StyledIconButton>
+          </Tooltip>
+          <Tooltip
+            arrow
+            placement="top"
+            title={t('label.lineage-configuration')}>
+            <StyledIconButton
+              size="large"
+              onClick={() => setDialogVisible(true)}>
+              <SettingsOutlined />
+            </StyledIconButton>
+          </Tooltip>
+          <Tooltip
+            arrow
+            placement="top"
+            title={
+              isFullScreen
+                ? t('label.exit-full-screen')
+                : t('label.full-screen-view')
+            }>
+            <StyledIconButton
+              size="large"
+              onClick={() =>
+                updateURLParams({ [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen })
+              }>
+              {isFullScreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
+            </StyledIconButton>
+          </Tooltip>
         </div>
       </div>
-      {filterSelectionActive && (
-        <div className="m-t-sm d-flex justify-between items-center">
-          <ExploreQuickFilters
-            independent
-            aggregations={{}}
-            defaultQueryFilter={queryFilter}
-            fields={selectedQuickFilters ?? []}
-            index={SearchIndex.ALL}
-            showDeleted={false}
-            onFieldValueSelect={handleQuickFiltersValueSelect}
-          />
+      {filterSelectionActive ? (
+        <div className="m-t-sm d-flex items-center justify-between">
+          <div>
+            {activeTab === 'impact_analysis' && (
+              <>
+                <Button
+                  endIcon={<DropdownIcon />}
+                  sx={{
+                    fontWeight: 500,
+                    '& .MuiButton-endIcon': {
+                      svg: {
+                        height: 12,
+                      },
+                    },
+                  }}
+                  variant="text"
+                  onClick={(e) => setNodeDepthAnchorEl(e.currentTarget)}>
+                  {`${t('label.node-depth')}:`}{' '}
+                  <span className="text-primary m-l-xss">{nodeDepth}</span>
+                </Button>
+                <StyledMenu
+                  anchorEl={nodeDepthAnchorEl}
+                  open={Boolean(nodeDepthAnchorEl)}
+                  slotProps={{
+                    paper: {
+                      style: {
+                        maxHeight: 48 * 4.5,
+                        width: '10ch',
+                      },
+                    },
+                    list: {
+                      'aria-labelledby': 'long-button',
+                    },
+                  }}
+                  onClose={() => setNodeDepthAnchorEl(null)}>
+                  {(nodeDepthOptions ?? [])?.map((depth) => (
+                    <MenuItem
+                      key={depth}
+                      selected={depth === nodeDepth}
+                      onClick={() => handleNodeDepthUpdate(depth)}>
+                      {depth}
+                    </MenuItem>
+                  ))}
+                </StyledMenu>
+              </>
+            )}
+            <ExploreQuickFilters
+              independent
+              aggregations={{}}
+              defaultQueryFilter={queryFilter}
+              fields={selectedQuickFilters}
+              index={SearchIndex.ALL}
+              showDeleted={false}
+              onFieldValueSelect={handleQuickFiltersValueSelect}
+            />
+          </div>
           <Button
+            disabled={!filterApplied}
             size="small"
             sx={{
               fontWeight: 500,
@@ -177,7 +454,16 @@ const CustomControls: FC = () => {
             {t('label.clear-entity', { entity: t('label.all') })}
           </Button>
         </div>
+      ) : (
+        <></>
       )}
+
+      <LineageConfigModal
+        config={lineageConfig}
+        visible={dialogVisible}
+        onCancel={() => setDialogVisible(false)}
+        onSave={handleDialogSave}
+      />
     </div>
   );
 };
