@@ -109,12 +109,20 @@ describe('ContractSecurityCard', () => {
     render(<ContractSecurityCard />);
 
     expect(screen.getByText('label.classification')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-security-classification')
+    ).toBeInTheDocument();
     expect(screen.getByText('label.policy-plural')).toBeInTheDocument();
+    // Should show NO_DATA_PLACEHOLDER when security is undefined
+    expect(screen.getAllByText(NO_DATA_PLACEHOLDER)).toHaveLength(1);
   });
 
   it('should render classification tags when dataClassification is provided', () => {
     render(<ContractSecurityCard security={mockSecurityWithPolicies} />);
 
+    expect(
+      screen.getByTestId('contract-security-classification')
+    ).toBeInTheDocument();
     expect(screen.getByText('PII')).toBeInTheDocument();
     expect(screen.getByText('Sensitive')).toBeInTheDocument();
   });
@@ -127,19 +135,50 @@ describe('ContractSecurityCard', () => {
 
     render(<ContractSecurityCard security={security} />);
 
+    expect(
+      screen.getByTestId('contract-security-classification')
+    ).toBeInTheDocument();
     expect(screen.getByText('PII')).toBeInTheDocument();
     expect(screen.getByText('Sensitive')).toBeInTheDocument();
     expect(screen.getByText('Financial')).toBeInTheDocument();
   });
 
+  it('should render NO_DATA_PLACEHOLDER when dataClassification is empty', () => {
+    const security: ContractSecurity = {
+      dataClassification: '',
+      policies: [],
+    };
+
+    render(<ContractSecurityCard security={security} />);
+
+    expect(
+      screen.getByTestId('contract-security-classification')
+    ).toBeInTheDocument();
+    // Should show NO_DATA_PLACEHOLDER for empty dataClassification
+    expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
+  });
+
   it('should render policies with access policy and identities', () => {
     render(<ContractSecurityCard security={mockSecurityWithPolicies} />);
 
-    expect(screen.getByText(/Read Only/)).toBeInTheDocument();
-    expect(screen.getByText(/Full Access/)).toBeInTheDocument();
-    expect(screen.getByText('user1@example.com')).toBeInTheDocument();
-    expect(screen.getByText('user2@example.com')).toBeInTheDocument();
-    expect(screen.getByText('admin@example.com')).toBeInTheDocument();
+    // Check access policies with data-testid
+    expect(
+      screen.getByTestId('contract-security-access-policy-0')
+    ).toHaveTextContent('Read Only');
+    expect(
+      screen.getByTestId('contract-security-access-policy-1')
+    ).toHaveTextContent('Full Access');
+
+    // Check identities with data-testid
+    expect(
+      screen.getByTestId('contract-security-identities-0-user1@example.com')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-security-identities-0-user2@example.com')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-security-identities-1-admin@example.com')
+    ).toBeInTheDocument();
   });
 
   it('should render NO_DATA_PLACEHOLDER when access policy is undefined', () => {
@@ -154,14 +193,21 @@ describe('ContractSecurityCard', () => {
 
     render(<ContractSecurityCard security={security} />);
 
-    expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-security-access-policy-0')
+    ).toHaveTextContent(NO_DATA_PLACEHOLDER);
   });
 
   it('should render row filters with column names from tableColumnNameMap', () => {
     render(<ContractSecurityCard security={mockSecurityWithPolicies} />);
 
-    expect(screen.getByText(/Customer ID =/)).toBeInTheDocument();
-    expect(screen.getByText(/Account Balance =/)).toBeInTheDocument();
+    // Check row filters with data-testid
+    expect(
+      screen.getByTestId('contract-security-rowFilter-0-0')
+    ).toHaveTextContent('Customer ID =');
+    expect(
+      screen.getByTestId('contract-security-rowFilter-1-0')
+    ).toHaveTextContent('Account Balance =');
   });
 
   it('should render row filter values correctly', () => {
@@ -183,9 +229,9 @@ describe('ContractSecurityCard', () => {
 
     expect(rowFilterValues[0].textContent).toBe('123,');
     expect(rowFilterValues[1].textContent).toBe('456,');
-    expect(rowFilterValues[2].textContent).toBe('789null');
+    expect(rowFilterValues[2].textContent).toBe('789');
     expect(rowFilterValues[3].textContent).toBe('1000,');
-    expect(rowFilterValues[4].textContent).toBe('5000null');
+    expect(rowFilterValues[4].textContent).toBe('5000');
   });
 
   it('should use column name directly when not found in tableColumnNameMap', () => {
@@ -217,12 +263,31 @@ describe('ContractSecurityCard', () => {
     expect(identitiesLabels).toHaveLength(2);
   });
 
-  it('should render row filters label for each policy', () => {
+  it('should render row filters label only for policies with non-empty rowFilters', () => {
     render(<ContractSecurityCard security={mockSecurityWithPolicies} />);
 
+    // Both policies have row filters in mockSecurityWithPolicies
     const rowFiltersLabels = screen.getAllByText('label.row-filter-plural');
 
     expect(rowFiltersLabels).toHaveLength(2);
+  });
+
+  it('should not render row filter section when rowFilters is undefined', () => {
+    const policyWithUndefinedRowFilters: Policy = {
+      accessPolicy: 'Read',
+      identities: ['user@example.com'],
+      rowFilters: undefined,
+    };
+    const security: ContractSecurity = {
+      dataClassification: 'Public',
+      policies: [policyWithUndefinedRowFilters],
+    };
+
+    render(<ContractSecurityCard security={security} />);
+
+    expect(
+      screen.queryByText('label.row-filter-plural')
+    ).not.toBeInTheDocument();
   });
 
   it('should render empty state when no policies are provided', () => {
@@ -245,11 +310,15 @@ describe('ContractSecurityCard', () => {
 
     render(<ContractSecurityCard security={security} />);
 
-    expect(screen.getByText(/Read/)).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-security-access-policy-0')
+    ).toHaveTextContent('Read');
     expect(screen.getByText('label.identities')).toBeInTheDocument();
+    // Should show NO_DATA_PLACEHOLDER for empty identities
+    expect(screen.getAllByText(NO_DATA_PLACEHOLDER)).toHaveLength(1);
   });
 
-  it('should handle empty rowFilters array in policy', () => {
+  it('should not render row filters section when rowFilters array is empty', () => {
     const policyWithoutRowFilters: Policy = {
       accessPolicy: 'Read',
       identities: ['user@example.com'],
@@ -262,7 +331,10 @@ describe('ContractSecurityCard', () => {
 
     render(<ContractSecurityCard security={security} />);
 
-    expect(screen.getByText('label.row-filter-plural')).toBeInTheDocument();
+    // Row filters section should not be rendered when empty
+    expect(
+      screen.queryByText('label.row-filter-plural')
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/=/)).not.toBeInTheDocument();
   });
 
@@ -356,7 +428,9 @@ describe('ContractSecurityCard', () => {
 
     render(<ContractSecurityCard security={security} />);
 
-    expect(screen.getByText(/Customer ID =/)).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-security-rowFilter-0-0')
+    ).toHaveTextContent('Customer ID =');
   });
 
   it('should handle row filters with undefined values', () => {
@@ -377,6 +451,29 @@ describe('ContractSecurityCard', () => {
 
     render(<ContractSecurityCard security={security} />);
 
-    expect(screen.getByText(/Customer ID =/)).toBeInTheDocument();
+    expect(
+      screen.getByTestId('contract-security-rowFilter-0-0')
+    ).toHaveTextContent('Customer ID =');
+  });
+
+  it('should handle policies with undefined identities', () => {
+    const policyWithUndefinedIdentities: Policy = {
+      accessPolicy: 'Read',
+      identities: undefined,
+      rowFilters: [],
+    };
+    const security: ContractSecurity = {
+      dataClassification: 'Public',
+      policies: [policyWithUndefinedIdentities],
+    };
+
+    render(<ContractSecurityCard security={security} />);
+
+    expect(
+      screen.getByTestId('contract-security-access-policy-0')
+    ).toHaveTextContent('Read');
+    expect(screen.getByText('label.identities')).toBeInTheDocument();
+    // Should show NO_DATA_PLACEHOLDER for undefined identities
+    expect(screen.getByText(NO_DATA_PLACEHOLDER)).toBeInTheDocument();
   });
 });

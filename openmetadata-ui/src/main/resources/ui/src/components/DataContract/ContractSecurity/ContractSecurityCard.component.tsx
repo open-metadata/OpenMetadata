@@ -57,7 +57,7 @@ const ContractSecurityCard: React.FC<{
             <Typography.Text
               className="access-policy-value"
               data-testid={`contract-security-access-policy-${index}`}>
-              {policy.accessPolicy ?? NO_DATA_PLACEHOLDER}
+              {policy.accessPolicy || NO_DATA_PLACEHOLDER}
             </Typography.Text>
           </div>
         }>
@@ -65,43 +65,50 @@ const ContractSecurityCard: React.FC<{
           <Typography.Text className="contract-security-policy-subtitle-label">
             {t('label.identities')}
           </Typography.Text>
-          {policy.identities?.map((identity) => (
-            <Tag
-              className="custom-tag"
-              data-testid={`contract-security-identities-${index}-${identity}`}
-              key={identity}>
-              {identity}
-            </Tag>
-          ))}
+
+          {isEmpty(policy.identities)
+            ? NO_DATA_PLACEHOLDER
+            : policy.identities?.map((identity) => (
+                <Tag
+                  className="custom-tag"
+                  data-testid={`contract-security-identities-${index}-${identity}`}
+                  key={identity}>
+                  {identity}
+                </Tag>
+              ))}
         </div>
 
-        <Divider className="contract-dash-separator" />
+        {!isEmpty(policy.rowFilters) && (
+          <>
+            <Divider className="contract-dash-separator" />
 
-        <div className="contract-security-policy-card-row-filter-container">
-          <Typography.Text className="contract-security-policy-subtitle-label">
-            {t('label.row-filter-plural')}
-          </Typography.Text>
+            <div className="contract-security-policy-card-row-filter-container">
+              <Typography.Text className="contract-security-policy-subtitle-label">
+                {t('label.row-filter-plural')}
+              </Typography.Text>
 
-          {policy.rowFilters?.map((filter, filterIndex) => {
-            return (
-              <Tag
-                className="custom-tag"
-                data-testid={`contract-security-rowFilter-${index}-${filterIndex}`}
-                key={filter.columnName}>
-                {`${
-                  tableColumnNameMap?.get(filter.columnName ?? '') ??
-                  filter.columnName ??
-                  NO_DATA_PLACEHOLDER
-                } = `}
-                {filter.values?.map((item, index) => (
-                  <span className="row-filter-value">{`${item}${
-                    filter.values?.length === index + 1 ? '' : ','
-                  }`}</span>
-                ))}
-              </Tag>
-            );
-          })}
-        </div>
+              {policy.rowFilters?.map((filter, filterIndex) => {
+                return (
+                  <Tag
+                    className="custom-tag"
+                    data-testid={`contract-security-rowFilter-${index}-${filterIndex}`}
+                    key={filter.columnName}>
+                    {`${
+                      tableColumnNameMap?.get(filter.columnName ?? '') ??
+                      filter.columnName ??
+                      NO_DATA_PLACEHOLDER
+                    } = `}
+                    {filter.values?.map((item, index) => (
+                      <span className="row-filter-value">{`${item}${
+                        filter.values?.length === index + 1 ? '' : ','
+                      }`}</span>
+                    ))}
+                  </Tag>
+                );
+              })}
+            </div>
+          </>
+        )}
       </Card>
     ));
   }, [security?.policies]);
@@ -116,11 +123,13 @@ const ContractSecurityCard: React.FC<{
             {t('label.classification')}
           </Typography.Text>
 
-          {security?.dataClassification?.split(',').map((item) => (
-            <Tag className="custom-tag" color="pink">
-              {item}
-            </Tag>
-          ))}
+          {isEmpty(security?.dataClassification)
+            ? NO_DATA_PLACEHOLDER
+            : security?.dataClassification?.split(',').map((item) => (
+                <Tag className="custom-tag" color="pink">
+                  {item}
+                </Tag>
+              ))}
         </Card>
       </Col>
 
