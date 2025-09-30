@@ -170,7 +170,6 @@ import os.org.opensearch.index.IndexNotFoundException;
 import os.org.opensearch.index.query.BoolQueryBuilder;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.Operator;
-import os.org.opensearch.index.query.PrefixQueryBuilder;
 import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.index.query.QueryStringQueryBuilder;
@@ -179,8 +178,6 @@ import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
-import os.org.opensearch.script.Script;
-import os.org.opensearch.script.ScriptType;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
@@ -2657,34 +2654,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
-    if (isClientAvailable) {
-      // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
-      PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
-
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-      updateByQueryRequest.setQuery(prefixQuery);
-
-      Map<String, Object> params = new HashMap<>();
-      params.put("oldParentFQN", oldParentFQN);
-      params.put("newParentFQN", newParentFQN);
-
-      Script inlineScript =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT,
-              params);
-
-      updateByQueryRequest.setScript(inlineScript);
-
-      try {
-        updateOpenSearchByQuery(updateByQueryRequest);
-        LOG.info("Successfully Updated FQN for Glossary Term: {}", oldParentFQN);
-      } catch (Exception e) {
-        LOG.error("Error while updating Glossary Term tag FQN: {}", e.getMessage(), e);
-      }
-    }
+    entityManager.updateGlossaryTermByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
   }
 
   @Override

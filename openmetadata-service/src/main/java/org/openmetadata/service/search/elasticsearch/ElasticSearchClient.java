@@ -44,15 +44,12 @@ import es.org.elasticsearch.common.ParsingException;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
 import es.org.elasticsearch.core.TimeValue;
 import es.org.elasticsearch.index.query.BoolQueryBuilder;
-import es.org.elasticsearch.index.query.PrefixQueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilder;
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.index.query.RangeQueryBuilder;
 import es.org.elasticsearch.index.reindex.UpdateByQueryRequest;
 import es.org.elasticsearch.rest.RestStatus;
-import es.org.elasticsearch.script.Script;
-import es.org.elasticsearch.script.ScriptType;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchHits;
 import es.org.elasticsearch.search.aggregations.AggregationBuilder;
@@ -2581,34 +2578,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
-    if (isClientAvailable) {
-      // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
-      PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
-
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-      updateByQueryRequest.setQuery(prefixQuery);
-
-      Map<String, Object> params = new HashMap<>();
-      params.put("oldParentFQN", oldParentFQN);
-      params.put("newParentFQN", newParentFQN);
-
-      Script inlineScript =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT,
-              params);
-
-      updateByQueryRequest.setScript(inlineScript);
-
-      try {
-        updateElasticSearchByQuery(updateByQueryRequest);
-        LOG.info("Successfully Updated FQN for Glossary Term: {}", oldParentFQN);
-      } catch (Exception e) {
-        LOG.error("Error while updating Glossary Term tag FQN: {}", e.getMessage(), e);
-      }
-    }
+    entityManager.updateGlossaryTermByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
   }
 
   @Override

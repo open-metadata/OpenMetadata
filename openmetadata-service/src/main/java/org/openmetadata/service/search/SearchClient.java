@@ -620,9 +620,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
 
-  void updateGlossaryTermByFqnPrefix(
-      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
-
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
 

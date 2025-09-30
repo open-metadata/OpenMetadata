@@ -252,4 +252,17 @@ public interface EntityManagementClient {
    * @param deletedColumns list of column FQNs to be deleted
    */
   void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
+
+  /**
+   * Updates glossary term tags by FQN prefix in the specified index.
+   * This method finds all documents matching the prefix condition and updates glossary term tags
+   * that start with the old FQN prefix to use the new FQN prefix.
+   *
+   * @param indexName the name of the index
+   * @param oldFqnPrefix the old fully qualified name prefix to be replaced
+   * @param newFqnPrefix the new fully qualified name prefix to replace with
+   * @param prefixFieldCondition the field to match on (e.g., "fullyQualifiedName")
+   */
+  void updateGlossaryTermByFqnPrefix(
+      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
 }

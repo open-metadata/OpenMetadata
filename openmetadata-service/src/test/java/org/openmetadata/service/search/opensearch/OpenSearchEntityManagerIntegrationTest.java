@@ -136,7 +136,8 @@ class OpenSearchEntityManagerIntegrationTest extends OpenMetadataApplicationTest
           testIndexPrefix + "_range_term_test",
           testIndexPrefix + "_fqn_update_test",
           testIndexPrefix + "_lineage_test",
-          testIndexPrefix + "_delete_lineage_test"
+          testIndexPrefix + "_delete_lineage_test",
+          testIndexPrefix + "_glossary_update_test"
         };
 
         for (String indexName : indicesToDelete) {
@@ -1204,6 +1205,140 @@ class OpenSearchEntityManagerIntegrationTest extends OpenMetadataApplicationTest
   }
 
   @Test
+  void testUpdateGlossaryTermByFqnPrefix() throws Exception {
+    String indexName = testIndexPrefix + "_glossary_update_test";
+
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+
+    createTestIndex(actualIndexName);
+
+    String term1Doc =
+        """
+        {
+          "id": "term-1",
+          "name": "Marketing Term 1",
+          "fullyQualifiedName": "Glossary.Marketing.MarketingTerm1",
+          "entityType": "glossaryTerm",
+          "tags": [
+            {
+              "tagFQN": "Glossary.Marketing.OldTag",
+              "labelType": "Manual",
+              "source": "Glossary"
+            },
+            {
+              "tagFQN": "Glossary.Marketing.AnotherTag",
+              "labelType": "Manual",
+              "source": "Glossary"
+            }
+          ]
+        }
+        """;
+
+    String term2Doc =
+        """
+        {
+          "id": "term-2",
+          "name": "Sales Term 1",
+          "fullyQualifiedName": "Glossary.Sales.SalesTerm1",
+          "entityType": "glossaryTerm",
+          "tags": [
+            {
+              "tagFQN": "Glossary.Marketing.OldTag",
+              "labelType": "Manual",
+              "source": "Glossary"
+            },
+            {
+              "tagFQN": "Glossary.Sales.SalesTag",
+              "labelType": "Manual",
+              "source": "Glossary"
+            }
+          ]
+        }
+        """;
+
+    String term3Doc =
+        """
+        {
+          "id": "term-3",
+          "name": "Marketing Term 2",
+          "fullyQualifiedName": "Glossary.Marketing.MarketingTerm2",
+          "entityType": "glossaryTerm",
+          "tags": [
+            {
+              "tagFQN": "Glossary.Finance.FinanceTag",
+              "labelType": "Manual",
+              "source": "Classification"
+            }
+          ]
+        }
+        """;
+
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("term-1")
+                .document(JsonData.of(parseJson(term1Doc)))
+                .refresh(Refresh.True));
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("term-2")
+                .document(JsonData.of(parseJson(term2Doc)))
+                .refresh(Refresh.True));
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("term-3")
+                .document(JsonData.of(parseJson(term3Doc)))
+                .refresh(Refresh.True));
+
+    Thread.sleep(1000);
+
+    assertDoesNotThrow(
+        () -> {
+          entityManager.updateGlossaryTermByFqnPrefix(
+              indexName, "Glossary.Marketing", "Glossary.NewMarketing", "fullyQualifiedName");
+        });
+
+    Thread.sleep(1000);
+
+    GetResponse<Map> term1Response =
+        client.get(g -> g.index(actualIndexName).id("term-1"), Map.class);
+    List<Map<String, Object>> tags1 =
+        (List<Map<String, Object>>) term1Response.source().get("tags");
+    assertNotNull(tags1);
+    assertEquals(2, tags1.size());
+    boolean hasNewMarketingTag =
+        tags1.stream().anyMatch(tag -> "Glossary.NewMarketing.OldTag".equals(tag.get("tagFQN")));
+    assertTrue(hasNewMarketingTag);
+    boolean hasAnotherTag =
+        tags1.stream()
+            .anyMatch(tag -> "Glossary.NewMarketing.AnotherTag".equals(tag.get("tagFQN")));
+    assertTrue(hasAnotherTag);
+
+    GetResponse<Map> term2Response =
+        client.get(g -> g.index(actualIndexName).id("term-2"), Map.class);
+    List<Map<String, Object>> tags2 =
+        (List<Map<String, Object>>) term2Response.source().get("tags");
+    assertNotNull(tags2);
+    assertEquals(2, tags2.size());
+    boolean hasOldMarketingTagInTerm2 =
+        tags2.stream().anyMatch(tag -> "Glossary.Marketing.OldTag".equals(tag.get("tagFQN")));
+    assertTrue(hasOldMarketingTagInTerm2);
+    boolean hasSalesTag =
+        tags2.stream().anyMatch(tag -> "Glossary.Sales.SalesTag".equals(tag.get("tagFQN")));
+    assertTrue(hasSalesTag);
+
+    GetResponse<Map> term3Response =
+        client.get(g -> g.index(actualIndexName).id("term-3"), Map.class);
+    List<Map<String, Object>> tags3 =
+        (List<Map<String, Object>>) term3Response.source().get("tags");
+    assertNotNull(tags3);
+    assertEquals(1, tags3.size());
+    assertEquals("Glossary.Finance.FinanceTag", tags3.get(0).get("tagFQN"));
+  }
+
+  @Test
   void testDeleteByRangeAndTerm() throws Exception {
     String indexName = testIndexPrefix + "_range_term_test";
     createTestIndex(indexName);
@@ -1275,13 +1410,8 @@ class OpenSearchEntityManagerIntegrationTest extends OpenMetadataApplicationTest
                                           p.text(
                                               t -> t.fields("keyword", f -> f.keyword(kw -> kw))))
                                   .properties("description", p -> p.text(t -> t))
-                                  .properties(
-                                      "fullyQualifiedName",
-                                      p ->
-                                          p.text(
-                                              t -> t.fields("keyword", f -> f.keyword(kw -> kw))))
+                                  .properties("fullyQualifiedName", p -> p.keyword(k -> k))
                                   .properties("entityType", p -> p.keyword(k -> k))
-                                  .properties("tags", p -> p.keyword(k -> k))
                                   .properties("deleted", p -> p.boolean_(b -> b))
                                   .properties("created", p -> p.date(d -> d))
                                   .properties("updated", p -> p.date(d -> d))
