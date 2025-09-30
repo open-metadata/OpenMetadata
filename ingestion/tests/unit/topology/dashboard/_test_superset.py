@@ -497,7 +497,10 @@ class SupersetUnitTest(TestCase):
         Mock the client.fetch_dashboard to return position_json
         """
         from unittest.mock import Mock
-        from metadata.ingestion.source.dashboard.superset.models import DashboardResult
+        from metadata.ingestion.source.dashboard.superset.models import (
+            DashboardResult,
+            FetchedDashboard,
+        )
         
         # Create a dashboard without position_json (Superset 5.0.0 list endpoint)
         dashboard_without_position = DashboardResult(
@@ -507,12 +510,13 @@ class SupersetUnitTest(TestCase):
             position_json=None
         )
         
-        # Mock the client's fetch_dashboard method to return position_json
-        mock_response = {
-            "result": {
-                "position_json": '{"CHART-test123": {"meta": {"chartId": 69}}}'
-            }
-        }
+        # Mock the client's fetch_dashboard method to return FetchedDashboard model
+        mock_response = FetchedDashboard(
+            id=10,
+            result=DashboardResult(
+                position_json='{"CHART-test123": {"meta": {"chartId": 69}}}'
+            )
+        )
         self.superset_api.client.fetch_dashboard = Mock(return_value=mock_response)
         
         result = self.superset_api._get_charts_of_dashboard(  # pylint: disable=protected-access

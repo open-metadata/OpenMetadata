@@ -145,8 +145,8 @@ class SupersetSourceMixin(DashboardServiceSource):
             # In this case, fetch individual dashboard details
             if not raw_position_data and hasattr(self, 'client'):
                 dashboard_response = self.client.fetch_dashboard(dashboard_details.id)
-                if dashboard_response and dashboard_response.get("result"):
-                    raw_position_data = dashboard_response["result"].get("position_json")
+                if dashboard_response and dashboard_response.result:
+                    raw_position_data = dashboard_response.result.position_json
             
             if raw_position_data:
                 position_data = json.loads(raw_position_data)

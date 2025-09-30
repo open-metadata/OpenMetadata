@@ -20,6 +20,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.supersetCon
 from metadata.ingestion.ometa.auth_provider import AuthenticationProvider
 from metadata.ingestion.ometa.client import REST, ClientConfig
 from metadata.ingestion.source.dashboard.superset.models import (
+    FetchedDashboard,
     ListDatabaseResult,
     SupersetChart,
     SupersetDashboardCount,
@@ -147,7 +148,7 @@ class SupersetAPIClient:
             logger.warning("Failed to fetch the dashboard list")
         return SupersetDashboardCount()
 
-    def fetch_dashboard(self, dashboard_id: int):
+    def fetch_dashboard(self, dashboard_id: int) -> FetchedDashboard:
         """
         Fetch individual dashboard details including position_json
         This is needed for Superset 5.0.0+ where position_json was removed from list endpoint
@@ -156,15 +157,17 @@ class SupersetAPIClient:
             dashboard_id (int): dashboard ID
 
         Returns:
-            dict: Dashboard details
+            FetchedDashboard: Dashboard details
         """
         try:
             response = self.client.get(f"/dashboard/{dashboard_id}")
-            return response
+            if response:
+                dashboard = FetchedDashboard(**response)
+                return dashboard
         except Exception:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch dashboard {dashboard_id}")
-        return None
+        return FetchedDashboard()
 
     def get_chart_count(self) -> int:
         resp_chart = self.client.get("/chart/?q=(page:0,page_size:1)")
