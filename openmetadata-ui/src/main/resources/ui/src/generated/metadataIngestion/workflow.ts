@@ -1020,7 +1020,11 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?:   FilterPattern;
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
