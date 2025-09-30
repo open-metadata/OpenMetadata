@@ -10,14 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { IconButton } from '@mui/material';
+import { X } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { isString } from 'lodash';
-import { VariantType } from 'notistack';
 import React from 'react';
 import NotificationMessage from '../components/common/atoms/notifications/NotificationMessage';
 import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringsUtils';
+
+const CloseButton = ({ closeSnackbar }: { closeSnackbar?: () => void }) => (
+  <IconButton
+    data-testid="alert-icon-close"
+    size="small"
+    sx={{ color: 'currentColor' }}
+    onClick={closeSnackbar}>
+    <X size={16} />
+  </IconButton>
+);
 
 /**
  * Display an error using notistack
@@ -27,23 +38,14 @@ import { getErrorText } from './StringsUtils';
  * @param anchorOrigin Optional position for the snackbar (defaults to top-right)
  */
 export const showNotistackError = (
-  enqueueSnackbar: (
-    message: string | React.ReactNode,
-    options?: {
-      variant?: VariantType;
-      anchorOrigin?: {
-        vertical: 'top' | 'bottom';
-        horizontal: 'left' | 'center' | 'right';
-      };
-      autoHideDuration?: number;
-    }
-  ) => void,
+  enqueueSnackbar: any,
   error: AxiosError | string | React.ReactNode,
   fallbackText?: string,
   anchorOrigin?: {
     vertical: 'top' | 'bottom';
     horizontal: 'left' | 'center' | 'right';
-  }
+  },
+  closeSnackbar?: (key?: string | number) => void
 ) => {
   let errorMessage: string | React.ReactNode;
 
@@ -90,6 +92,15 @@ export const showNotistackError = (
     {
       variant: 'error',
       anchorOrigin: anchorOrigin || { vertical: 'top', horizontal: 'right' },
+      SnackbarProps: {
+        'data-testid': 'alert-bar',
+      },
+      action: closeSnackbar
+        ? (snackbarId) =>
+            React.createElement(CloseButton, {
+              closeSnackbar: () => closeSnackbar(snackbarId),
+            })
+        : undefined,
     }
   );
 };
@@ -100,18 +111,27 @@ export const showNotistackError = (
  * @param message success message
  */
 export const showNotistackSuccess = (
-  enqueueSnackbar: (
-    message: string | React.ReactNode,
-    options?: { variant?: VariantType }
-  ) => void,
-  message: string | React.ReactNode
+  enqueueSnackbar: any,
+  message: string | React.ReactNode,
+  closeSnackbar?: (key?: string | number) => void
 ) => {
   enqueueSnackbar(
     React.createElement(NotificationMessage, {
       message,
       variant: 'success',
     }),
-    { variant: 'success' }
+    {
+      variant: 'success',
+      SnackbarProps: {
+        'data-testid': 'alert-bar',
+      },
+      action: closeSnackbar
+        ? (snackbarId) =>
+            React.createElement(CloseButton, {
+              closeSnackbar: () => closeSnackbar(snackbarId),
+            })
+        : undefined,
+    }
   );
 };
 
@@ -121,18 +141,27 @@ export const showNotistackSuccess = (
  * @param message info message
  */
 export const showNotistackInfo = (
-  enqueueSnackbar: (
-    message: string | React.ReactNode,
-    options?: { variant?: VariantType }
-  ) => void,
-  message: string | React.ReactNode
+  enqueueSnackbar: any,
+  message: string | React.ReactNode,
+  closeSnackbar?: (key?: string | number) => void
 ) => {
   enqueueSnackbar(
     React.createElement(NotificationMessage, {
       message,
       variant: 'info',
     }),
-    { variant: 'info' }
+    {
+      variant: 'info',
+      SnackbarProps: {
+        'data-testid': 'alert-bar',
+      },
+      action: closeSnackbar
+        ? (snackbarId) =>
+            React.createElement(CloseButton, {
+              closeSnackbar: () => closeSnackbar(snackbarId),
+            })
+        : undefined,
+    }
   );
 };
 
@@ -142,17 +171,26 @@ export const showNotistackInfo = (
  * @param message warning message
  */
 export const showNotistackWarning = (
-  enqueueSnackbar: (
-    message: string | React.ReactNode,
-    options?: { variant?: VariantType }
-  ) => void,
-  message: string | React.ReactNode
+  enqueueSnackbar: any,
+  message: string | React.ReactNode,
+  closeSnackbar?: (key?: string | number) => void
 ) => {
   enqueueSnackbar(
     React.createElement(NotificationMessage, {
       message,
       variant: 'warning',
     }),
-    { variant: 'warning' }
+    {
+      variant: 'warning',
+      SnackbarProps: {
+        'data-testid': 'alert-bar',
+      },
+      action: closeSnackbar
+        ? (snackbarId) =>
+            React.createElement(CloseButton, {
+              closeSnackbar: () => closeSnackbar(snackbarId),
+            })
+        : undefined,
+    }
   );
 };

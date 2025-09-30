@@ -82,6 +82,7 @@ const NotificationMessage: React.FC<NotificationMessageProps> = ({
   return (
     <Box sx={{ display: 'flex', alignItems: 'center' }}>
       <Box
+        data-testid="alert-icon"
         sx={{
           ...iconRingVariants.notification,
           display: 'flex',

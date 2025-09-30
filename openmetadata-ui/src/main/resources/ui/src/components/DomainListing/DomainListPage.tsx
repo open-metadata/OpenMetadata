@@ -58,7 +58,7 @@ const DomainListPage = () => {
   const { permissions } = usePermissionProvider();
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
-  const { enqueueSnackbar } = useSnackbar();
+  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
 
   // Use the simplified domain filters configuration
   const { quickFilters, defaultFilters } = useDomainFilters({
@@ -102,7 +102,8 @@ const DomainListPage = () => {
                 {t('server.create-entity-success', {
                   entity: t('label.domain'),
                 })}
-              </Typography>
+              </Typography>,
+              closeSnackbar
             );
             // Close drawer only on successful creation
             closeDrawer();
@@ -127,7 +128,8 @@ const DomainListPage = () => {
               t('server.add-entity-error', {
                 entity: t('label.domain').toLowerCase(),
               }),
-              { vertical: 'top', horizontal: 'center' }
+              { vertical: 'top', horizontal: 'center' },
+              closeSnackbar
             );
 
             throw error; // Re-throw to reject the promise
