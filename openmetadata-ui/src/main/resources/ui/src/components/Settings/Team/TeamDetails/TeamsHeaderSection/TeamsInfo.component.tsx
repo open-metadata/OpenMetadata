@@ -30,7 +30,6 @@ import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
@@ -49,8 +48,6 @@ const TeamsInfo = ({
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
 
-  const { isAdminUser } = useAuth();
-
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -62,13 +59,11 @@ const TeamsInfo = ({
     [currentTeam]
   );
 
-  const { hasEditPermission, hasAccess } = useMemo(
+  const { hasEditPermission, hasEditOwnerPermission } = useMemo(
     () => ({
       hasEditPermission: entityPermissions.EditAll && !isTeamDeleted,
-      hasAccess:
-        (isAdminUser ||
-          entityPermissions.EditAll ||
-          entityPermissions.EditOwners) &&
+      hasEditOwnerPermission:
+        (entityPermissions.EditAll || entityPermissions.EditOwners) &&
         !isTeamDeleted,
     }),
 
@@ -327,7 +322,7 @@ const TeamsInfo = ({
       <Divider className="vertical-divider" type="vertical" />
       <OwnerLabel
         className="text-sm"
-        hasPermission={hasAccess}
+        hasPermission={hasEditOwnerPermission}
         isCompactView={false}
         owners={owners}
         onUpdate={updateOwner}
