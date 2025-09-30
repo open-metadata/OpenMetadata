@@ -42,6 +42,7 @@ import {
 } from '../../common/IconPicker';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
+import './add-domain-form.less';
 import { AddDomainFormProps } from './AddDomainForm.interface';
 
 const AddDomainForm = ({
