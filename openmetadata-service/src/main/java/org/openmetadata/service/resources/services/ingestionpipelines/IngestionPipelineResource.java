@@ -963,9 +963,15 @@ public class IngestionPipelineResource
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
     IngestionPipeline ingestionPipeline =
-        getInternal(uriInfo, securityContext, id, "pipelineStatuses", Include.NON_DELETED);
+        getInternal(
+            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner", Include.NON_DELETED);
     Map<String, String> lastIngestionLogs;
-    if (ingestionPipeline.getEnableStreamableLogs()) {
+    boolean useStreamableLogs =
+        ingestionPipeline.getEnableStreamableLogs()
+            || (ingestionPipeline.getIngestionRunner() != null
+                && repository.isIngestionRunnerStreamableLogsEnabled(
+                    ingestionPipeline.getIngestionRunner()));
+    if (useStreamableLogs) {
       // Get logs using the repository's log storage picking up the last runId
       String runId = ingestionPipeline.getPipelineStatuses().getRunId();
       if (!CommonUtil.nullOrEmpty(runId)) {

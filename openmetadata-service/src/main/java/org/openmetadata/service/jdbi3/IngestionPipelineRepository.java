@@ -850,4 +850,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       IngestionPipeline ingestionPipeline, ServiceEntityInterface service) {
     return pipelineServiceClient.deployPipeline(ingestionPipeline, service);
   }
+
+  public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
+    return false; // Default implementation
+  }
 }
