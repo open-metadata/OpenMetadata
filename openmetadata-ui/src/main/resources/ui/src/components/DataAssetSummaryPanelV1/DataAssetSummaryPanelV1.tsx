@@ -200,19 +200,10 @@ export const DataAssetSummaryPanelV1 = ({
     ack: 0,
     total: 0,
   });
-  const entityInfo = useMemo(() => {
-    // In tests, EntityUtils may be partially mocked and not export getEntityOverview
-    if (typeof getEntityOverview !== 'function') {
-      return [] as any[];
-    }
-    if (dataAsset) {
-      return getEntityOverview(
-        entityType,
-        dataAsset ?? ({} as any),
-        additionalInfo
-      );
-    }
-  }, [dataAsset, additionalInfo, entityType]);
+  const entityInfo = useMemo(
+    () => getEntityOverview(entityType, dataAsset, additionalInfo),
+    [dataAsset, additionalInfo, entityType]
+  );
 
   useMemo(() => {
     return getEntityChildDetails(
@@ -389,43 +380,46 @@ export const DataAssetSummaryPanelV1 = ({
         return (
           <>
             {entityType === EntityType.TABLE && (
-              <span data-testid="TableSummary" />
+              <span className="d-none" data-testid="TableSummary" />
             )}
             {entityType === EntityType.TOPIC && (
-              <span data-testid="TopicSummary" />
+              <span className="d-none" data-testid="TopicSummary" />
             )}
             {entityType === EntityType.DASHBOARD && (
-              <span data-testid="DashboardSummary" />
+              <span className="d-none" data-testid="DashboardSummary" />
             )}
             {entityType === EntityType.PIPELINE && (
-              <span data-testid="PipelineSummary" />
+              <span className="d-none" data-testid="PipelineSummary" />
             )}
             {entityType === EntityType.MLMODEL && (
-              <span data-testid="MlModelSummary" />
+              <span className="d-none" data-testid="MlModelSummary" />
             )}
             {entityType === EntityType.CHART && (
-              <span data-testid="ChartSummary" />
+              <span className="d-none" data-testid="ChartSummary" />
             )}
             {entityType === EntityType.DATABASE && (
-              <span data-testid="DatabaseSummary" />
+              <span className="d-none" data-testid="DatabaseSummary" />
             )}
             {entityType === EntityType.DATABASE_SCHEMA && (
-              <span data-testid="DatabaseSchemaSummary" />
+              <span className="d-none" data-testid="DatabaseSchemaSummary" />
             )}
             {entityType === EntityType.CONTAINER && (
-              <span data-testid="ContainerSummary" />
+              <span className="d-none" data-testid="ContainerSummary" />
             )}
             {entityType === EntityType.SEARCH_INDEX && (
-              <span data-testid="SearchIndexSummary" />
+              <span className="d-none" data-testid="SearchIndexSummary" />
             )}
             {entityType === EntityType.API_COLLECTION && (
-              <span data-testid="APIServiceSummary" />
+              <span className="d-none" data-testid="APIServiceSummary" />
             )}
             {entityType === EntityType.DIRECTORY && (
-              <span data-testid="DirectorySummary" />
+              <span className="d-none" data-testid="DirectorySummary" />
             )}
             {entityType === EntityType.DASHBOARD_DATA_MODEL && (
-              <span data-testid="DashboardDataModelSummary" />
+              <span
+                className="d-none"
+                data-testid="DashboardDataModelSummary"
+              />
             )}
             <DescriptionSection
               description={dataAsset.description}

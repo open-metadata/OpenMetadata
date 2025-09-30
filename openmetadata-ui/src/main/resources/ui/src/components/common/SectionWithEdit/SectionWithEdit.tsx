@@ -10,9 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Typography } from 'antd';
+import { Typography } from 'antd';
 import React from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
+import { t } from '../../../utils/i18next/LocalUtil';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import './SectionWithEdit.less';
 
 interface SectionWithEditProps {
@@ -43,11 +46,15 @@ const SectionWithEdit: React.FC<SectionWithEditProps> = ({
           title
         )}
         {showEditButton && onEdit && (
-          <Button
-            className="section-edit-button"
-            icon={<EditIcon height={16} width={16} />}
+          <EditIconButton
+            newLook
+            data-testid="edit-button"
+            disabled={false}
+            icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
             size="small"
-            type="text"
+            title={t('label.edit-entity', {
+              entity: title,
+            })}
             onClick={onEdit}
           />
         )}

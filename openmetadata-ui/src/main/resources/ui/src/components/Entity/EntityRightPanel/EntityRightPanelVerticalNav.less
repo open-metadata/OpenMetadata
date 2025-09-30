@@ -14,15 +14,16 @@
 @import (reference) '../../../styles/variables.less';
 
 .entity-right-panel-vertical-nav {
-  width: 80px;
+  width: 62px;
   right: 0px;
   position: relative;
   height: 100vh;
   background: @white;
-  border-left: 0.75px solid @grey-38;
   display: flex;
   flex-direction: column;
   align-items: center;
+  border: 1px solid @grey-38;
+  border-radius: 8px;
   padding-top: -12px;
   .ant-menu-vertical .ant-menu-item:not(:last-child) {
     margin-bottom: 0px;
@@ -34,22 +35,20 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    align-items: center;
+    gap: 10px;
     .ant-menu-item {
       display: flex;
+      gap: 4px;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      border-radius: 6px;
       border: none;
       padding: 0;
-      height: 65px;
+      height: 32px;
       margin-top: 0px;
-      margin-bottom: 0px;
+      margin-bottom: 18px !important;
       background: transparent;
       .ant-menu-item-icon {
-        padding: 8px;
-
         height: 16px;
       }
 
@@ -59,7 +58,7 @@
         color: @primary-7;
 
         .ant-menu-item-icon {
-          background: @primary-1;
+          //   background: @primary-1;
           color: @primary-7;
         }
       }
@@ -67,14 +66,14 @@
       &.ant-menu-item-selected {
         background: transparent;
         color: @primary-7;
-
+        border-left: 3px solid @primary-7;
+        border-radius: 2px;
         &::after {
           display: none;
         }
 
         .ant-menu-item-icon {
-          background: @primary-color;
-          color: @white;
+          color: @primary-7;
         }
 
         .ant-menu-title-content {
@@ -83,14 +82,11 @@
         }
       }
       .ant-menu-item-icon {
-        padding: 8px;
-        margin-bottom: 2px;
         display: flex;
         align-items: center;
         justify-content: center;
-        width: 30px;
-        height: 30px;
-        border-radius: 8px;
+        width: 16px;
+        height: 18px;
         transition: all 0.2s ease;
         background: transparent;
         color: @grey-600;
@@ -112,9 +108,10 @@
       .ant-menu-title-content {
         display: block;
         font-size: 10px;
-        font-weight: 400;
+        font-weight: 600;
         text-align: center;
-        line-height: 1.1;
+        line-height: 100%;
+        width: 54px;
         word-break: break-word;
         white-space: normal;
         margin: 0 auto;

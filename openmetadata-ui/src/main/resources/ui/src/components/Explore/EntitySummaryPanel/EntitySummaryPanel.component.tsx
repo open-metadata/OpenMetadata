@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import { Button, Card, Tooltip, Typography } from 'antd';
+import { Card, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconExternalLinkOutlined } from '../../../assets/svg/redirect-icon.svg';
 import { LineageData } from '../../../components/Lineage/Lineage.interface';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -829,7 +828,45 @@ export default function EntitySummaryPanel({
   const renderTabContent = () => {
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
-        return <div className="overview-tab-content">{summaryComponentV1}</div>;
+        return (
+          <>
+            {viewPermission && (
+              <div className="title-container">
+                <Tooltip
+                  mouseEnterDelay={0.5}
+                  placement="topLeft"
+                  title={entityDetails.details.name}
+                  trigger="hover">
+                  <div className="d-flex items-center">
+                    <span className="entity-icon">
+                      {searchClassBase.getEntityIcon(
+                        entityDetails.details.entityType ?? ''
+                      )}
+                    </span>
+                    <Typography.Text
+                      className="entity-title-link"
+                      data-testid="entity-link"
+                      role="link"
+                      onClick={() => {
+                        const target =
+                          searchClassBase.getSearchEntityLinkTarget(
+                            entityDetails.details
+                          );
+                        if (target === '_blank') {
+                          window.open(entityLink as string, '_blank');
+                        } else {
+                          window.open(entityLink as string, '_blank');
+                        }
+                      }}>
+                      {stringToHTML(getEntityName(entityDetails.details))}
+                    </Typography.Text>
+                  </div>
+                </Tooltip>
+              </div>
+            )}
+            <div className="overview-tab-content">{summaryComponentV1}</div>
+          </>
+        );
       case EntityRightPanelTab.SCHEMA:
         return (
           <div className="entity-summary-panel-tab-content">
@@ -891,52 +928,19 @@ export default function EntitySummaryPanel({
 
   return (
     <div className="entity-summary-panel-container">
-      {viewPermission && (
-        <div className="title-container">
-          <Tooltip
-            mouseEnterDelay={0.5}
-            placement="topLeft"
-            title={entityDetails.details.name}
-            trigger="hover">
-            <Typography.Text
-              className="entity-title-link"
-              data-testid="entity-link">
-              {stringToHTML(getEntityName(entityDetails.details))}
-            </Typography.Text>
-          </Tooltip>
-          <div className="p-r-md">
-            <Button
-              className="entity-redirect-button"
-              icon={<IconExternalLinkOutlined />}
-              size="middle"
-              type="text"
-              onClick={() => {
-                const target = searchClassBase.getSearchEntityLinkTarget(
-                  entityDetails.details
-                );
-                if (target === '_blank') {
-                  window.open(entityLink as string, '_blank');
-                } else {
-                  window.open(entityLink as string, '_blank');
-                }
-              }}
-            />
-          </div>
-        </div>
-      )}
-      <div>
-        <Card className="summary-panel-container">
+      <div className="d-flex gap-2">
+        <Card bordered={false} className="summary-panel-container">
           <Card
             className="content-area"
             style={{ width: '80%', display: 'block' }}>
             {renderTabContent()}
           </Card>
-          <EntityRightPanelVerticalNav
-            activeTab={activeTab}
-            entityType={entityType}
-            onTabChange={handleTabChange}
-          />
         </Card>
+        <EntityRightPanelVerticalNav
+          activeTab={activeTab}
+          entityType={entityType}
+          onTabChange={handleTabChange}
+        />
       </div>
     </div>
   );

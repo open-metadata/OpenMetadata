@@ -16,9 +16,7 @@
 
 .entity-summary-panel-container {
   height: 100%;
-  background: @white;
-  border-top-left-radius: 10px;
-  border-top-right-radius: 10px;
+  background: @background-primary;
   .entity-title-link {
     text-decoration: none;
     font-size: 13px;
@@ -45,10 +43,11 @@
 .summary-panel-container {
   position: sticky;
   box-shadow: none;
+  flex: 1;
   font-size: 14px;
   overflow: hidden;
   border-bottom: none !important;
-  border-radius: 0px !important;
+  border-radius: 8px !important;
   display: flex;
   border-color: @grey-38 !important;
   border-top: none !important;
@@ -77,7 +76,7 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
     height: 100%;
-    border-radius: 0px;
+    border-radius: 8px;
     &::-webkit-scrollbar {
       width: 0px;
       background: transparent;
@@ -155,22 +154,32 @@
   background-color: @grey-9;
   border: 0.5px solid #eaecf5;
 }
+.entity-icon {
+  color: @primary-7;
+  width: 16px !important;
+  height: 16px !important;
+  margin-left: 4px;
+  display: inline;
+  align-items: center;
+}
 .title-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-left: 16px;
+  margin: 4px;
+  border-radius: 8px;
   height: 49px;
-  border: 1px solid #f2f3f9;
+  padding-left: 4px;
+  margin-bottom: 16px;
   background-color: #f8f9fc;
-  border-top-right-radius: 10px;
-  border-top-left-radius: 10px;
 
   .entity-title-link {
     flex: 1;
     min-width: 0;
-    max-width: 200px;
     overflow: hidden;
+    font-size: 16px;
+    cursor: pointer;
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
     text-decoration: none;

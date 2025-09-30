@@ -56,9 +56,7 @@ describe('SectionWithEdit', () => {
       </SectionWithEdit>
     );
 
-    const button = document.querySelector(
-      '.section-edit-button'
-    ) as HTMLElement;
+    const button = screen.getByTestId('edit-button');
 
     expect(button).toBeInTheDocument();
     expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
@@ -75,13 +73,13 @@ describe('SectionWithEdit', () => {
       </SectionWithEdit>
     );
 
-    expect(document.querySelector('.section-edit-button')).toBeNull();
+    expect(screen.queryByTestId('edit-button')).toBeNull();
   });
 
   it('hides edit button when onEdit is not provided', () => {
     render(<SectionWithEdit title="Title">Content</SectionWithEdit>);
 
-    expect(document.querySelector('.section-edit-button')).toBeNull();
+    expect(screen.queryByTestId('edit-button')).toBeNull();
   });
 
   it('applies custom class names to wrapper, header and content', () => {
