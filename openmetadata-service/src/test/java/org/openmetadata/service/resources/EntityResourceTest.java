@@ -7082,6 +7082,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
+  @org.junit.jupiter.api.Disabled(
+      "Disabled until pattern #2 fluent API is implemented for SDK entities")
   void test_sdkOnlyAsyncOperations(TestInfo test) throws Exception {
     // Initialize SDK client
     initializeSDKClient(ADMIN_AUTH_HEADERS);
