@@ -99,6 +99,6 @@ class OpenSearchBulkSinkSimpleTest {
   void testAddEntityToVectorIndex() {
     // Test default implementation does nothing (no exception thrown)
     // This should not throw any exception as the default implementation is empty
-    openSearchBulkSink.addEntityToVectorIndex(null, null, true);
+    openSearchBulkSink.addEntityToVectorIndex(null, null, true, null);
   }
 }
