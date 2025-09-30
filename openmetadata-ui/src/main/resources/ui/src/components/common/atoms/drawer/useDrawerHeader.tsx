@@ -90,7 +90,9 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
         }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flex: 1 }}>
           {typeof title === 'string' ? (
-            <Typography variant="h6">{title}</Typography>
+            <Typography data-testid="form-heading" variant="h6">
+              {title}
+            </Typography>
           ) : (
             title
           )}
