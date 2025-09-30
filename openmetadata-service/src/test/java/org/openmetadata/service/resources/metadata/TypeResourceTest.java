@@ -478,6 +478,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     return new CreateType()
         .withName(name)
         .withCategory(Category.Field)
+        .withDescription("Type Test Description")
         .withSchema(INT_TYPE.getSchema());
   }
 
