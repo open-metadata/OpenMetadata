@@ -52,6 +52,7 @@ class MockDatabaseServiceSource:
             print(f"Error processing default owner from sourceConfig: {exc}")
         return None
 
+
 class TestOwnerAssignment(unittest.TestCase):
     """Test ownership assignment functionality"""
     
@@ -180,6 +181,9 @@ class TestOwnerAssignmentIntegration(unittest.TestCase):
         metadata.get_reference_by_name.assert_called_with(
             name="data_team", is_owner=True
         )
+
+
+
 
 def run_tests():
     """Run all tests"""

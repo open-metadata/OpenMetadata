@@ -206,5 +206,6 @@ class MlModelServiceSource(TopologyRunnerMixin, Source, ABC):
 
         self.mlmodel_source_state.add(mlmodel_fqn)
 
+
     def prepare(self):
         """By default, nothing to prepare"""

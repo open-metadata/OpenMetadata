@@ -90,90 +90,6 @@ def create_dashboard_config_with_owner() -> Dict[str, Any]:
     }
     return config
 
-def create_pipeline_config_with_owner() -> Dict[str, Any]:
-    """
-    Create a pipeline ingestion configuration with owner field
-    """
-    config = {
-        "source": {
-            "type": "airflow",
-            "serviceName": "sample_airflow",
-            "serviceConnection": {
-                "config": {
-                    "type": "Airflow",
-                    "hostPort": "http://localhost:8080",
-                    "connection": {
-                        "type": "Postgres",
-                        "username": "airflow",
-                        "password": "airflow",
-                        "hostPort": "localhost:5432",
-                        "database": "airflow"
-                    }
-                }
-            },
-            "sourceConfig": {
-                "config": {
-                    "type": "PipelineMetadata",
-                    "includeOwners": True,
-                    "owner": "data_engineering_team"  # New owner field
-                }
-            }
-        },
-        "sink": {
-            "type": "metadata-rest",
-            "config": {}
-        },
-        "workflowConfig": {
-            "openMetadataServerConfig": {
-                "hostPort": "http://localhost:8585/api",
-                "authProvider": "openmetadata",
-                "securityConfig": {
-                    "jwtToken": "your-jwt-token-here"
-                }
-            }
-        }
-    }
-    return config
-
-def create_messaging_config_with_owner() -> Dict[str, Any]:
-    """
-    Create a messaging service ingestion configuration with owner field
-    """
-    config = {
-        "source": {
-            "type": "kafka",
-            "serviceName": "sample_kafka",
-            "serviceConnection": {
-                "config": {
-                    "type": "Kafka",
-                    "bootstrapServers": "localhost:9092",
-                    "schemaRegistryURL": "http://localhost:8081"
-                }
-            },
-            "sourceConfig": {
-                "config": {
-                    "type": "MessagingMetadata",
-                    "includeOwners": True,
-                    "owner": "streaming_team"  # New owner field
-                }
-            }
-        },
-        "sink": {
-            "type": "metadata-rest",
-            "config": {}
-        },
-        "workflowConfig": {
-            "openMetadataServerConfig": {
-                "hostPort": "http://localhost:8585/api",
-                "authProvider": "openmetadata",
-                "securityConfig": {
-                    "jwtToken": "your-jwt-token-here"
-                }
-            }
-        }
-    }
-    return config
-
 def main():
     """
     Main function: Generate example configuration files
@@ -192,24 +108,13 @@ def main():
     print(yaml.dump(dashboard_config, default_flow_style=False, allow_unicode=True))
     print("\n" + "="*50 + "\n")
     
-    # Generate pipeline ingestion configuration
-    pipeline_config = create_pipeline_config_with_owner()
-    print("3. Pipeline Ingestion Configuration (Airflow):")
-    print(yaml.dump(pipeline_config, default_flow_style=False, allow_unicode=True))
-    print("\n" + "="*50 + "\n")
-    
-    # Generate messaging service ingestion configuration
-    messaging_config = create_messaging_config_with_owner()
-    print("4. Messaging Service Ingestion Configuration (Kafka):")
-    print(yaml.dump(messaging_config, default_flow_style=False, allow_unicode=True))
-    print("\n" + "="*50 + "\n")
-    
     print("Usage Instructions:")
     print("- Add 'owner' field to sourceConfig.config")
     print("- The owner field value should be a user or team name that already exists in OpenMetadata")
     print("- All assets created through this ingestion pipeline will be automatically assigned to the specified owner")
     print("- If the specified owner is not found, the system will log a warning and continue processing")
-    print("- This feature applies to all types of ingestion sources: databases, dashboards, pipelines, messaging services, etc.")
+    print("- This feature currently supports Database and Dashboard services")
+    print("- Pipeline and Messaging services are not currently supported by this feature")
 
 if __name__ == "__main__":
     main()

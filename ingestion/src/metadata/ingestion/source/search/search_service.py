@@ -264,5 +264,6 @@ class SearchServiceSource(TopologyRunnerMixin, Source, ABC):
 
         self.index_source_state.add(index_fqn)
 
+
     def close(self):
         """Nothing to close by default"""
