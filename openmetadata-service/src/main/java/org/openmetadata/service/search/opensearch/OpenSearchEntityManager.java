@@ -3,6 +3,8 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_ENTITY_RELATIONSHIP;
 import static org.openmetadata.service.search.SearchClient.ADD_UPDATE_LINEAGE;
+import static org.openmetadata.service.search.SearchClient.DELETE_COLUMN_LINEAGE_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.UPDATE_COLUMN_LINEAGE_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.UPDATE_FQN_PREFIX_SCRIPT;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -13,6 +15,7 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -634,7 +637,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         LOG.error("Update lineage encountered failures: {}", failureDetails);
       }
 
-    } catch (IOException | OpenSearchException e) {
+    } catch (Exception e) {
       LOG.error("Failed to update lineage in OpenSearch for index: {}", indexName, e);
     }
   }
@@ -730,6 +733,93 @@ public class OpenSearchEntityManager implements EntityManagementClient {
               .map(BulkIndexByScrollFailure::toString)
               .collect(Collectors.joining("; "));
       LOG.error("DeleteByRangeAndTerm encountered failures: {}", failureDetails);
+    }
+  }
+
+  @Override
+  public void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot update columns in upstream lineage.");
+      return;
+    }
+
+    Map<String, JsonData> params =
+        Collections.singletonMap("columnUpdates", JsonData.of(originalUpdatedColumnFqnMap));
+
+    try {
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(UPDATE_COLUMN_LINEAGE_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully updated columns in upstream lineage for index: {}, updated: {}",
+          indexName,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to update columns in upstream lineage: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while updating columns in upstream lineage: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot delete columns from upstream lineage.");
+      return;
+    }
+
+    Map<String, JsonData> params =
+        Collections.singletonMap("deletedFQNs", JsonData.of(deletedColumns));
+
+    try {
+      UpdateByQueryResponse updateResponse =
+          client.updateByQuery(
+              req ->
+                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                      .script(
+                          s ->
+                              s.inline(
+                                  i ->
+                                      i.lang(ScriptLanguage.Painless.jsonValue())
+                                          .source(DELETE_COLUMN_LINEAGE_SCRIPT)
+                                          .params(params)))
+                      .refresh(true));
+
+      LOG.info(
+          "Successfully deleted columns from upstream lineage for index: {}, updated: {}",
+          indexName,
+          updateResponse.updated());
+
+      if (!updateResponse.failures().isEmpty()) {
+        String errorMessage =
+            updateResponse.failures().stream()
+                .map(BulkIndexByScrollFailure::cause)
+                .map(ErrorCause::reason)
+                .collect(Collectors.joining(", "));
+        LOG.error("Failed to delete columns from upstream lineage: {}", errorMessage);
+      }
+
+    } catch (Exception e) {
+      LOG.error("Error while deleting columns from upstream lineage: {}", e.getMessage(), e);
     }
   }
 

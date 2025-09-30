@@ -135,7 +135,8 @@ class OpenSearchEntityManagerIntegrationTest extends OpenMetadataApplicationTest
           testIndexPrefix + "_range_test",
           testIndexPrefix + "_range_term_test",
           testIndexPrefix + "_fqn_update_test",
-          testIndexPrefix + "_lineage_test"
+          testIndexPrefix + "_lineage_test",
+          testIndexPrefix + "_delete_lineage_test"
         };
 
         for (String indexName : indicesToDelete) {
@@ -943,6 +944,263 @@ class OpenSearchEntityManagerIntegrationTest extends OpenMetadataApplicationTest
         client.get(g -> g.index(actualIndexName).id("child-2"), Map.class);
     assertEquals(
         "database.newschema.newparent.column2", child2Response.source().get("fullyQualifiedName"));
+  }
+
+  @Test
+  void testUpdateColumnsInUpstreamLineage() throws Exception {
+    String indexName = testIndexPrefix + "_lineage_test";
+
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+
+    createTestIndex(actualIndexName);
+
+    String entity1Doc =
+        """
+        {
+          "id": "table-1",
+          "name": "Test Table 1",
+          "fullyQualifiedName": "database.schema.table1",
+          "entityType": "table",
+          "upstreamLineage": [
+            {
+              "fromEntity": {
+                "id": "source-table-1",
+                "type": "table",
+                "fullyQualifiedName": "source.schema.table"
+              },
+              "toEntity": {
+                "id": "table-1",
+                "type": "table",
+                "fullyQualifiedName": "database.schema.table1"
+              },
+              "columns": [
+                {
+                  "fromColumns": ["source.schema.table.old_column1", "source.schema.table.old_column2"],
+                  "toColumn": "database.schema.table1.target_column"
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
+    String entity2Doc =
+        """
+        {
+          "id": "table-2",
+          "name": "Test Table 2",
+          "fullyQualifiedName": "database.schema.table2",
+          "entityType": "table",
+          "upstreamLineage": [
+            {
+              "fromEntity": {
+                "id": "source-table-2",
+                "type": "table",
+                "fullyQualifiedName": "source.schema.table2"
+              },
+              "toEntity": {
+                "id": "table-2",
+                "type": "table",
+                "fullyQualifiedName": "database.schema.table2"
+              },
+              "columns": [
+                {
+                  "fromColumns": ["source.schema.table.old_column1"],
+                  "toColumn": "database.schema.table2.another_column"
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("table-1")
+                .document(JsonData.of(parseJson(entity1Doc)))
+                .refresh(Refresh.True));
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("table-2")
+                .document(JsonData.of(parseJson(entity2Doc)))
+                .refresh(Refresh.True));
+
+    Thread.sleep(1000);
+
+    HashMap<String, String> columnUpdates = new HashMap<>();
+    columnUpdates.put("source.schema.table.old_column1", "source.schema.table.new_column1");
+    columnUpdates.put("source.schema.table.old_column2", "source.schema.table.new_column2");
+
+    assertDoesNotThrow(
+        () -> {
+          entityManager.updateColumnsInUpstreamLineage(indexName, columnUpdates);
+        });
+
+    Thread.sleep(1000);
+
+    GetResponse<Map> table1Response =
+        client.get(g -> g.index(actualIndexName).id("table-1"), Map.class);
+    List<Map<String, Object>> upstreamLineage1 =
+        (List<Map<String, Object>>) table1Response.source().get("upstreamLineage");
+    assertNotNull(upstreamLineage1);
+    assertEquals(1, upstreamLineage1.size());
+
+    List<Map<String, Object>> columns1 =
+        (List<Map<String, Object>>) upstreamLineage1.get(0).get("columns");
+    assertNotNull(columns1);
+    assertEquals(1, columns1.size());
+
+    List<String> fromColumns1 = (List<String>) columns1.get(0).get("fromColumns");
+    assertTrue(fromColumns1.contains("source.schema.table.new_column1"));
+    assertTrue(fromColumns1.contains("source.schema.table.new_column2"));
+    assertFalse(fromColumns1.contains("source.schema.table.old_column1"));
+    assertFalse(fromColumns1.contains("source.schema.table.old_column2"));
+
+    GetResponse<Map> table2Response =
+        client.get(g -> g.index(actualIndexName).id("table-2"), Map.class);
+    List<Map<String, Object>> upstreamLineage2 =
+        (List<Map<String, Object>>) table2Response.source().get("upstreamLineage");
+    assertNotNull(upstreamLineage2);
+
+    List<Map<String, Object>> columns2 =
+        (List<Map<String, Object>>) upstreamLineage2.get(0).get("columns");
+    assertNotNull(columns2);
+
+    List<String> fromColumns2 = (List<String>) columns2.get(0).get("fromColumns");
+    assertTrue(fromColumns2.contains("source.schema.table.new_column1"));
+    assertFalse(fromColumns2.contains("source.schema.table.old_column1"));
+  }
+
+  @Test
+  void testDeleteColumnsInUpstreamLineage() throws Exception {
+    String indexName = testIndexPrefix + "_delete_lineage_test";
+
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+
+    createTestIndex(actualIndexName);
+
+    String entity1Doc =
+        """
+        {
+          "id": "table-1",
+          "name": "Test Table 1",
+          "fullyQualifiedName": "database.schema.table1",
+          "entityType": "table",
+          "upstreamLineage": [
+            {
+              "fromEntity": {
+                "id": "source-table-1",
+                "type": "table",
+                "fullyQualifiedName": "source.schema.table"
+              },
+              "toEntity": {
+                "id": "table-1",
+                "type": "table",
+                "fullyQualifiedName": "database.schema.table1"
+              },
+              "columns": [
+                {
+                  "fromColumns": ["source.schema.table.column1", "source.schema.table.column2"],
+                  "toColumn": "database.schema.table1.target_column"
+                },
+                {
+                  "fromColumns": ["source.schema.table.column3"],
+                  "toColumn": "database.schema.table1.column_to_delete"
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
+    String entity2Doc =
+        """
+        {
+          "id": "table-2",
+          "name": "Test Table 2",
+          "fullyQualifiedName": "database.schema.table2",
+          "entityType": "table",
+          "upstreamLineage": [
+            {
+              "fromEntity": {
+                "id": "source-table-2",
+                "type": "table",
+                "fullyQualifiedName": "source.schema.table2"
+              },
+              "toEntity": {
+                "id": "table-2",
+                "type": "table",
+                "fullyQualifiedName": "database.schema.table2"
+              },
+              "columns": [
+                {
+                  "fromColumns": ["source.schema.table.column1"],
+                  "toColumn": "database.schema.table2.another_column"
+                },
+                {
+                  "fromColumns": ["source.schema.table.column4"],
+                  "toColumn": "database.schema.table1.column_to_delete"
+                }
+              ]
+            }
+          ]
+        }
+        """;
+
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("table-1")
+                .document(JsonData.of(parseJson(entity1Doc)))
+                .refresh(Refresh.True));
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("table-2")
+                .document(JsonData.of(parseJson(entity2Doc)))
+                .refresh(Refresh.True));
+
+    Thread.sleep(1000);
+
+    List<String> columnsToDelete = new ArrayList<>();
+    columnsToDelete.add("source.schema.table.column1");
+    columnsToDelete.add("database.schema.table1.column_to_delete");
+
+    assertDoesNotThrow(
+        () -> {
+          entityManager.deleteColumnsInUpstreamLineage(indexName, columnsToDelete);
+        });
+
+    Thread.sleep(1000);
+
+    GetResponse<Map> table1Response =
+        client.get(g -> g.index(actualIndexName).id("table-1"), Map.class);
+    List<Map<String, Object>> upstreamLineage1 =
+        (List<Map<String, Object>>) table1Response.source().get("upstreamLineage");
+    assertNotNull(upstreamLineage1);
+    assertEquals(1, upstreamLineage1.size());
+
+    List<Map<String, Object>> columns1 =
+        (List<Map<String, Object>>) upstreamLineage1.get(0).get("columns");
+    assertNotNull(columns1);
+    assertEquals(1, columns1.size());
+
+    List<String> fromColumns1 = (List<String>) columns1.get(0).get("fromColumns");
+    assertFalse(fromColumns1.contains("source.schema.table.column1"));
+    assertTrue(fromColumns1.contains("source.schema.table.column2"));
+
+    GetResponse<Map> table2Response =
+        client.get(g -> g.index(actualIndexName).id("table-2"), Map.class);
+    List<Map<String, Object>> upstreamLineage2 =
+        (List<Map<String, Object>>) table2Response.source().get("upstreamLineage");
+    assertNotNull(upstreamLineage2);
+
+    List<Map<String, Object>> columns2 =
+        (List<Map<String, Object>>) upstreamLineage2.get(0).get("columns");
+    assertNotNull(columns2);
+    assertEquals(0, columns2.size());
   }
 
   @Test

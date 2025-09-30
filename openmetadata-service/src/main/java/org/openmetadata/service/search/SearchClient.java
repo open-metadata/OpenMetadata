@@ -5,7 +5,6 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -623,11 +622,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
 
   void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
-
-  void updateColumnsInUpstreamLineage(
-      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap);
-
-  void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
 
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;

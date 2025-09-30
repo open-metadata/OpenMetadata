@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -231,4 +232,24 @@ public interface EntityManagementClient {
       String termKey,
       String termValue)
       throws IOException;
+
+  /**
+   * Updates column FQNs in upstream lineage data across all documents in the index.
+   * This method updates both toColumn and fromColumns fields in the lineage column mappings.
+   *
+   * @param indexName the name of the index
+   * @param originalUpdatedColumnFqnMap map of original column FQN to updated column FQN
+   */
+  void updateColumnsInUpstreamLineage(
+      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap);
+
+  /**
+   * Deletes columns from upstream lineage data across all documents in the index.
+   * This method removes column FQNs from both toColumn and fromColumns fields in the lineage
+   * column mappings.
+   *
+   * @param indexName the name of the index
+   * @param deletedColumns list of column FQNs to be deleted
+   */
+  void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
 }
