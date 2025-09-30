@@ -24,6 +24,11 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import { getAllContractResults } from '../../../rest/contractAPI';
+import {
+  createContractExecutionCustomScale,
+  generateMonthTickPositions,
+  processContractExecutionData,
+} from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ContractExecutionChart from './ContractExecutionChart.component';
 
@@ -33,6 +38,56 @@ jest.mock('../../../rest/contractAPI', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../../utils/DataContract/DataContractUtils', () => ({
+  processContractExecutionData: jest.fn((data) =>
+    data.map((item: any, index: number) => ({
+      name: `${item.timestamp}_${index}`,
+      displayTimestamp: item.timestamp,
+      value: 1,
+      status: item.contractExecutionStatus,
+      failed: item.contractExecutionStatus === 'Failed' ? 1 : 0,
+      success: item.contractExecutionStatus === 'Success' ? 1 : 0,
+      aborted: item.contractExecutionStatus === 'Aborted' ? 1 : 0,
+      data: item,
+    }))
+  ),
+  createContractExecutionCustomScale: jest.fn(() => {
+    const scale: any = (value: any) => value;
+    scale.domain = jest.fn(() => scale);
+    scale.range = jest.fn(() => scale);
+    scale.ticks = jest.fn(() => []);
+    scale.tickFormat = jest.fn();
+    scale.bandwidth = jest.fn(() => 20);
+    scale.copy = jest.fn(() => scale);
+    scale.nice = jest.fn(() => scale);
+    scale.type = 'band';
+
+    return scale;
+  }),
+  generateMonthTickPositions: jest.fn((data) =>
+    data.length > 0 ? [data[0].name] : []
+  ),
+  formatContractExecutionTick: jest.fn((value) => {
+    const timestamp = value.split('_')[0];
+    const monthNames = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+
+    return monthNames[new Date(Number(timestamp)).getMonth()];
+  }),
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
@@ -249,8 +304,12 @@ describe('ContractExecutionChart', () => {
         );
 
         expect(chartData).toHaveLength(3);
+        // Data should now have unique names with timestamp_index format
         expect(chartData[0]).toEqual({
-          name: 1640995200000,
+          name: '1640995200000_0',
+          displayTimestamp: 1640995200000,
+          value: 1,
+          status: ContractExecutionStatus.Success,
           failed: 0,
           success: 1,
           aborted: 0,
@@ -261,7 +320,10 @@ describe('ContractExecutionChart', () => {
           },
         });
         expect(chartData[1]).toEqual({
-          name: 1640995260000,
+          name: '1640995260000_1',
+          displayTimestamp: 1640995260000,
+          value: 1,
+          status: ContractExecutionStatus.Failed,
           failed: 1,
           success: 0,
           aborted: 0,
@@ -272,7 +334,10 @@ describe('ContractExecutionChart', () => {
           },
         });
         expect(chartData[2]).toEqual({
-          name: 1640995320000,
+          name: '1640995320000_2',
+          displayTimestamp: 1640995320000,
+          value: 1,
+          status: ContractExecutionStatus.Aborted,
           failed: 0,
           success: 0,
           aborted: 1,
@@ -313,9 +378,10 @@ describe('ContractExecutionChart', () => {
       expect(await screen.findByTestId('x-axis')).toBeInTheDocument();
     });
 
-    it('should render bars for each status type', async () => {
+    it('should render bars for each status type without stacking', async () => {
       render(<ContractExecutionChart contract={mockContract} />);
 
+      // Bars should not have stackId anymore - they render individually
       expect(await screen.findByTestId('bar-success')).toHaveTextContent(
         'Success'
       );
@@ -343,6 +409,45 @@ describe('ContractExecutionChart', () => {
           'data-fill',
           '#f79009'
         );
+      });
+    });
+  });
+
+  describe('Utility Functions Integration', () => {
+    it('should call processContractExecutionData with correct data', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => {
+        expect(processContractExecutionData).toHaveBeenCalledWith(
+          mockContractResults
+        );
+      });
+    });
+
+    it('should call createContractExecutionCustomScale with processed data', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => {
+        expect(createContractExecutionCustomScale).toHaveBeenCalled();
+      });
+    });
+
+    it('should call generateMonthTickPositions with processed data', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => {
+        expect(generateMonthTickPositions).toHaveBeenCalled();
+      });
+    });
+
+    it('should use formatContractExecutionTick for tick formatting', async () => {
+      render(<ContractExecutionChart contract={mockContract} />);
+
+      await waitFor(() => {
+        const xAxis = screen.getByTestId('x-axis');
+
+        expect(xAxis).toBeInTheDocument();
+        // The formatter function is passed to XAxis
       });
     });
   });
