@@ -516,7 +516,7 @@ test.describe('Domains', () => {
       });
 
       await Promise.all([
-        page.getByTestId(subDomain.data.name).click(),
+        page.getByTestId(nestedSubDomain.data.name).click(),
         page.waitForResponse('/api/v1/domains/name/*'),
       ]);
       await verifyDomain(page, nestedSubDomain.data, domain.data, false);

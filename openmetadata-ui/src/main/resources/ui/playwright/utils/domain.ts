@@ -39,6 +39,13 @@ import {
 import { addOwner } from './entity';
 import { sidebarClick } from './sidebar';
 
+const waitForAssetModalInitialLoad = async (page: Page) => {
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+    timeout: 10000,
+  });
+};
+
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -133,7 +140,7 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
   });
 
   await Promise.all([
-    page.locator('td').filter({ hasText: domain.displayName }).click(),
+    page.getByTestId(domain.name).click({ timeout: 15000 }),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
@@ -405,6 +412,8 @@ export const addAssetsToDomain = async (
   await page.getByTestId('domain-details-add-button').click();
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
 
+  await waitForAssetModalInitialLoad(page);
+
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
@@ -420,7 +429,9 @@ export const addAssetsToDomain = async (
       .fill(visibleName);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .check({ timeout: 15000 });
 
     await expect(
       page.locator(
@@ -464,6 +475,8 @@ export const addServicesToDomain = async (
   await page.getByTestId('domain-details-add-button').click();
   await page.getByRole('menuitem', { name: 'Assets', exact: true }).click();
 
+  await waitForAssetModalInitialLoad(page);
+
   for (const asset of assets) {
     const name = get(asset, 'name');
     const fqn = get(asset, 'fullyQualifiedName');
@@ -477,7 +490,9 @@ export const addServicesToDomain = async (
       .fill(name);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .check({ timeout: 15000 });
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -503,6 +518,8 @@ export const addAssetsToDataProduct = async (
 
   await page.getByTestId('data-product-details-add-button').click();
 
+  await waitForAssetModalInitialLoad(page);
+
   for (const asset of assets) {
     const name = get(asset, 'entityResponseData.name');
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
@@ -513,7 +530,9 @@ export const addAssetsToDataProduct = async (
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
 
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .check({ timeout: 15000 });
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -555,7 +574,9 @@ export const removeAssetsFromDataProduct = async (
   await page.getByTestId('assets').click({ timeout: 15000 });
   for (const asset of assets) {
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
+    await page
+      .locator(`[data-testid="table-data-card_${fqn}"] input`)
+      .check({ timeout: 15000 });
   }
 
   const assetsRemoveRes = page.waitForResponse(
@@ -605,7 +626,9 @@ export const createDataProduct = async (
   await page.getByTestId('domain-details-add-button').click();
   await page.getByRole('menuitem', { name: 'Data Products' }).click();
 
-  await expect(page.getByText('Add Data Product')).toBeVisible();
+  await expect(page.getByTestId('form-heading')).toContainText(
+    'Add Data Product'
+  );
 
   await fillCommonFormItems(page, dataProduct);
   const saveRes = page.waitForResponse('/api/v1/dataProducts');

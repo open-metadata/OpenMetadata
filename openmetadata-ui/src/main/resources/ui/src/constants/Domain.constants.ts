@@ -113,10 +113,6 @@ export const SUB_DOMAIN_FILTERS = [
     key: EntityFields.OWNERS,
   },
   {
-    label: i18n.t('label.domain-plural'),
-    key: EntityFields.DOMAINS,
-  },
-  {
     label: i18n.t('label.tag-plural'),
     key: EntityFields.CLASSIFICATION_TAGS,
   },
