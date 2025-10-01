@@ -45,6 +45,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.api.VoteRequest;
@@ -56,7 +57,11 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.PipelineExecutionTrendList;
+import org.openmetadata.schema.type.PipelineMetrics;
 import org.openmetadata.schema.type.PipelineObservabilityResponse;
+import org.openmetadata.schema.type.PipelineRuntimeTrendList;
+import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -66,6 +71,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Path("/v1/pipelines")
 @Tag(
@@ -103,6 +109,10 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   public static class PipelineStatusList extends ResultList<PipelineStatus> {
+    /* Required for serde */
+  }
+
+  public static class PipelineSummaryList extends ResultList<PipelineSummary> {
     /* Required for serde */
   }
 
@@ -593,6 +603,103 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   }
 
   @GET
+  @Path("/summary")
+  @Operation(
+      operationId = "listPipelineSummaries",
+      summary = "List pipeline summaries with impacted assets count",
+      description = "Get a paginated list of pipeline summaries including impacted assets count",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of pipeline summaries",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineSummaryList.class)))
+      })
+  public ResultList<PipelineSummary> listPipelineSummaries(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Fields requested in the returned resource") @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Filter by service name") @QueryParam("service") String serviceParam,
+      @Parameter(description = "Limit the number of results (1 to 1000, default = 10)")
+          @DefaultValue("10")
+          @Min(value = 1, message = "Limit must be at least 1")
+          @Max(value = 1000, message = "Limit cannot exceed 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Returns list before this cursor") @QueryParam("before")
+          String before,
+      @Parameter(description = "Returns list after this cursor") @QueryParam("after") String after,
+      @Parameter(description = "Include all, deleted, or non-deleted entities")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    Fields fields = getFields(fieldsParam);
+    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
+
+    return repository.listPipelineSummaries(
+        uriInfo, securityContext, fields, filter, limitParam, before, after);
+  }
+
+  @GET
+  @Path("/metrics")
+  @Operation(
+      operationId = "getPipelineMetrics",
+      summary = "Get aggregated pipeline metrics",
+      description =
+          "Get aggregated metrics about pipelines from Elasticsearch. Returns default values if ES is unavailable.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline metrics (may include default values if ES unavailable)",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineMetrics.class))),
+        @ApiResponse(responseCode = "503", description = "Service temporarily unavailable")
+      })
+  public Response getPipelineMetrics(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Use database fallback if ES unavailable")
+          @QueryParam("allowFallback")
+          @DefaultValue("true")
+          boolean allowFallback) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+
+    try {
+      authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
+      PipelineMetrics metrics = repository.getPipelineMetrics(allowFallback);
+      return Response.ok(metrics).build();
+    } catch (Exception e) {
+      // Error logging removed due to access restrictions
+
+      if (!allowFallback) {
+        return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+            .entity(
+                new PipelineMetrics()
+                    .withDataAvailable(false)
+                    .withErrorMessage("Metrics service temporarily unavailable"))
+            .build();
+      }
+
+      PipelineMetrics emptyMetrics =
+          new PipelineMetrics()
+              .withTotalPipelines(0)
+              .withDataAvailable(false)
+              .withErrorMessage(e.getMessage());
+      return Response.ok(emptyMetrics).build();
+    }
+  }
+
+  @GET
   @Path("/{id}/observability")
   @Operation(
       operationId = "getPipelineObservability",
@@ -619,6 +726,124 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     PipelineObservabilityResponse response = repository.getPipelineObservability(id);
     return Response.ok(response).build();
+  }
+
+  @GET
+  @Path("/executionTrend")
+  @Operation(
+      operationId = "getPipelineExecutionTrend",
+      summary = "Get pipeline execution trend",
+      description =
+          "Get day-wise pipeline execution trend showing succeeded and failed counts from Elasticsearch.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline execution trend data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineExecutionTrendList.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response getPipelineExecutionTrend(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Start timestamp for trend analysis",
+              schema = @Schema(type = "number"),
+              required = true)
+          @QueryParam("startTs")
+          @NotNull
+          Long startTs,
+      @Parameter(
+              description = "End timestamp for trend analysis",
+              schema = @Schema(type = "number"),
+              required = true)
+          @QueryParam("endTs")
+          @NotNull
+          Long endTs,
+      @Parameter(description = "Filter by specific pipeline ID", schema = @Schema(type = "UUID"))
+          @QueryParam("pipelineId")
+          UUID pipelineId,
+      @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
+          @QueryParam("serviceType")
+          String serviceType) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+
+    try {
+      PipelineExecutionTrendList trendList =
+          repository.getPipelineExecutionTrend(startTs, endTs, pipelineId, serviceType);
+      return Response.ok(trendList).build();
+    } catch (Exception e) {
+      PipelineExecutionTrendList emptyTrend =
+          new PipelineExecutionTrendList()
+              .withData(new ArrayList<>())
+              .withDataAvailable(false)
+              .withErrorMessage(e.getMessage());
+      return Response.ok(emptyTrend).build();
+    }
+  }
+
+  @GET
+  @Path("/runtimeTrend")
+  @Operation(
+      operationId = "getPipelineRuntimeTrend",
+      summary = "Get pipeline runtime trend",
+      description =
+          "Get day-wise pipeline runtime trend showing max, min, and average runtime from Elasticsearch.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Pipeline runtime trend data",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = PipelineRuntimeTrendList.class))),
+        @ApiResponse(responseCode = "400", description = "Bad request")
+      })
+  public Response getPipelineRuntimeTrend(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Start timestamp for trend analysis",
+              schema = @Schema(type = "number"),
+              required = true)
+          @QueryParam("startTs")
+          @NotNull
+          Long startTs,
+      @Parameter(
+              description = "End timestamp for trend analysis",
+              schema = @Schema(type = "number"),
+              required = true)
+          @QueryParam("endTs")
+          @NotNull
+          Long endTs,
+      @Parameter(description = "Filter by specific pipeline ID", schema = @Schema(type = "UUID"))
+          @QueryParam("pipelineId")
+          UUID pipelineId,
+      @Parameter(description = "Filter by service type", schema = @Schema(type = "string"))
+          @QueryParam("serviceType")
+          String serviceType) {
+
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
+    authorizer.authorize(securityContext, operationContext, getResourceContext());
+
+    try {
+      PipelineRuntimeTrendList trendList =
+          repository.getPipelineRuntimeTrend(startTs, endTs, pipelineId, serviceType);
+      return Response.ok(trendList).build();
+    } catch (Exception e) {
+      PipelineRuntimeTrendList emptyTrend =
+          new PipelineRuntimeTrendList()
+              .withData(new ArrayList<>())
+              .withDataAvailable(false)
+              .withErrorMessage(e.getMessage());
+      return Response.ok(emptyTrend).build();
+    }
   }
 
   @DELETE

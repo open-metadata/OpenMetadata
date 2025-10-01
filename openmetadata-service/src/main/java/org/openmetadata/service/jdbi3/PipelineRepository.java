@@ -27,11 +27,16 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutually
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.UriInfo;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Triple;
@@ -42,13 +47,21 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.type.PipelineExecutionTrend;
+import org.openmetadata.schema.type.PipelineExecutionTrendList;
+import org.openmetadata.schema.type.PipelineMetrics;
 import org.openmetadata.schema.type.PipelineObservabilityResponse;
+import org.openmetadata.schema.type.PipelineRuntimeTrend;
+import org.openmetadata.schema.type.PipelineRuntimeTrendList;
+import org.openmetadata.schema.type.PipelineSummary;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.ServiceBreakdown;
 import org.openmetadata.schema.type.Status;
 import org.openmetadata.schema.type.TableObservabilityData;
 import org.openmetadata.schema.type.TagLabel;
@@ -1009,5 +1022,816 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     if (timestamp == null) return "";
     return new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
         .format(new java.util.Date(timestamp));
+  }
+
+  public ResultList<PipelineSummary> listPipelineSummaries(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      ListFilter filter,
+      int limit,
+      String before,
+      String after) {
+
+    // Create combined fields set
+    Set<String> requiredFieldSet = new HashSet<>(fields.getFieldList());
+    requiredFieldSet.addAll(Set.of("service", "serviceType", "scheduleInterval", "pipelineStatus"));
+    Fields requiredFields = new Fields(requiredFieldSet);
+
+    // Use correct base method based on pagination direction
+    ResultList<Pipeline> pipelines;
+    if (before != null) {
+      pipelines = listBefore(uriInfo, requiredFields, filter, limit, before);
+    } else {
+      pipelines = listAfter(uriInfo, requiredFields, filter, limit, after);
+    }
+
+    List<PipelineSummary> summaries = new ArrayList<>();
+    for (Pipeline pipeline : pipelines.getData()) {
+      try {
+        PipelineSummary summary = buildPipelineSummary(pipeline);
+        summaries.add(summary);
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to build summary for pipeline {}: {}",
+            pipeline.getFullyQualifiedName(),
+            e.getMessage());
+        summaries.add(buildFallbackSummary(pipeline));
+      }
+    }
+
+    // Extract pagination info correctly
+    String beforeCursor = pipelines.getPaging() != null ? pipelines.getPaging().getBefore() : null;
+    String afterCursor = pipelines.getPaging() != null ? pipelines.getPaging().getAfter() : null;
+    Integer total = pipelines.getPaging() != null ? pipelines.getPaging().getTotal() : 0;
+
+    return new ResultList<>(summaries, beforeCursor, afterCursor, total != null ? total : 0);
+  }
+
+  private PipelineSummary buildPipelineSummary(Pipeline pipeline) {
+    PipelineSummary summary = new PipelineSummary();
+
+    summary.setPipelineId(pipeline.getId());
+    summary.setPipelineName(pipeline.getName());
+    summary.setPipelineFqn(pipeline.getFullyQualifiedName());
+    summary.setServiceType(pipeline.getServiceType());
+
+    if (pipeline.getPipelineStatus() != null) {
+      summary.setLastRunTime(pipeline.getPipelineStatus().getTimestamp());
+      if (pipeline.getPipelineStatus().getExecutionStatus() != null) {
+        String statusString = pipeline.getPipelineStatus().getExecutionStatus().toString();
+        summary.setLastRunStatus(PipelineSummary.LastRunStatus.fromValue(statusString));
+      }
+    }
+
+    summary.setScheduleInterval(pipeline.getScheduleInterval());
+
+    int impactedCount = getImpactedAssetsCount(pipeline.getFullyQualifiedName());
+    summary.setImpactedAssetsCount(impactedCount);
+
+    return summary;
+  }
+
+  private PipelineSummary buildFallbackSummary(Pipeline pipeline) {
+    return new PipelineSummary()
+        .withPipelineId(pipeline.getId())
+        .withPipelineName(pipeline.getName())
+        .withPipelineFqn(pipeline.getFullyQualifiedName())
+        .withServiceType(pipeline.getServiceType())
+        .withLastRunTime(null)
+        .withLastRunStatus(null)
+        .withScheduleInterval(pipeline.getScheduleInterval())
+        .withImpactedAssetsCount(0);
+  }
+
+  private int getImpactedAssetsCount(String pipelineFqn) {
+    if (nullOrEmpty(pipelineFqn)) {
+      return 0;
+    }
+
+    try {
+      String extensionKey = "table.pipelineObservability." + pipelineFqn;
+      List<CollectionDAO.ExtensionWithIdAndSchemaObject> records =
+          daoCollection.entityExtensionDAO().getExtensionsByPrefixBatch(extensionKey);
+
+      // Count unique table IDs
+      Set<String> uniqueTableIds = new HashSet<>();
+      for (CollectionDAO.ExtensionWithIdAndSchemaObject record : records) {
+        uniqueTableIds.add(record.getId());
+      }
+
+      return uniqueTableIds.size();
+
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to get impacted assets count for pipeline '{}': {}", pipelineFqn, e.getMessage());
+      return 0;
+    }
+  }
+
+  public PipelineMetrics getPipelineMetrics(boolean allowFallback) {
+    try {
+      return getPipelineMetricsFromES();
+    } catch (Exception e) {
+      LOG.warn("Failed to get metrics from Elasticsearch: {}", e.getMessage());
+
+      if (allowFallback) {
+        try {
+          return getPipelineMetricsFromDB();
+        } catch (Exception dbException) {
+          LOG.error("Database fallback also failed: {}", dbException.getMessage());
+          return createEmptyMetrics("Both ES and DB queries failed");
+        }
+      }
+
+      return createEmptyMetrics("Elasticsearch unavailable");
+    }
+  }
+
+  private PipelineMetrics getPipelineMetricsFromES() throws IOException {
+    try {
+      String pipelineIndex = "pipeline_search_index";
+
+      String query =
+          "{\n"
+              + "  \"size\": 0,\n"
+              + "  \"track_total_hits\": true,\n"
+              + "  \"aggs\": {\n"
+              + "    \"service_count\": {\n"
+              + "      \"cardinality\": {\n"
+              + "        \"field\": \"service.name.keyword\",\n"
+              + "        \"precision_threshold\": 100\n"
+              + "      }\n"
+              + "    },\n"
+              + "    \"state_breakdown\": {\n"
+              + "      \"terms\": {\n"
+              + "        \"field\": \"state\",\n"
+              + "        \"size\": 10,\n"
+              + "        \"missing\": \"Unknown\"\n"
+              + "      }\n"
+              + "    },\n"
+              + "    \"status_breakdown\": {\n"
+              + "      \"terms\": {\n"
+              + "        \"field\": \"pipelineStatus.executionStatus\",\n"
+              + "        \"size\": 20,\n"
+              + "        \"missing\": \"Never Run\"\n"
+              + "      }\n"
+              + "    },\n"
+              + "    \"service_breakdown\": {\n"
+              + "      \"terms\": {\n"
+              + "        \"field\": \"service.name.keyword\",\n"
+              + "        \"size\": 100,\n"
+              + "        \"min_doc_count\": 1\n"
+              + "      },\n"
+              + "      \"aggs\": {\n"
+              + "        \"service_type\": {\n"
+              + "          \"terms\": {\n"
+              + "            \"field\": \"serviceType\",\n"
+              + "            \"size\": 1,\n"
+              + "            \"missing\": \"Unknown\"\n"
+              + "          }\n"
+              + "        }\n"
+              + "      }\n"
+              + "    }\n"
+              + "  }\n"
+              + "}";
+
+      AggregationRequest aggregationRequest =
+          new AggregationRequest().withIndex(pipelineIndex).withQuery("*").withSize(0);
+
+      Response response =
+          Entity.getSearchRepository().getSearchClient().aggregate(aggregationRequest);
+      String responseStr = response.getEntity() != null ? response.getEntity().toString() : "{}";
+
+      return parseMetricsFromESResponse(responseStr);
+
+    } catch (Exception e) {
+      LOG.error("ES query execution failed: {}", e.getMessage());
+      throw new IOException("Failed to execute ES query", e);
+    }
+  }
+
+  private PipelineMetrics parseMetricsFromESResponse(String response) {
+    PipelineMetrics metrics = new PipelineMetrics();
+    metrics.setDataAvailable(true);
+
+    try {
+      Map<String, Object> responseMap = JsonUtils.readValue(response, Map.class);
+
+      Map<String, Object> hits = (Map<String, Object>) responseMap.get("hits");
+      if (hits != null && hits.get("total") != null) {
+        Map<String, Object> total = (Map<String, Object>) hits.get("total");
+        if (total != null && total.get("value") != null) {
+          metrics.setTotalPipelines(((Number) total.get("value")).intValue());
+        }
+      }
+
+      Map<String, Object> aggregations = (Map<String, Object>) responseMap.get("aggregations");
+      if (aggregations != null) {
+        parseServiceCount(aggregations, metrics);
+        parseStateBreakdown(aggregations, metrics);
+        parseStatusBreakdown(aggregations, metrics);
+        parseServiceBreakdown(aggregations, metrics);
+      }
+
+    } catch (Exception e) {
+      LOG.warn("Failed to parse ES response: {}", e.getMessage());
+      metrics.setErrorMessage("Failed to parse ES response");
+    }
+
+    return metrics;
+  }
+
+  private void parseServiceCount(Map<String, Object> aggregations, PipelineMetrics metrics) {
+    try {
+      Map<String, Object> serviceCount = (Map<String, Object>) aggregations.get("service_count");
+      if (serviceCount != null && serviceCount.get("value") != null) {
+        metrics.setServiceCount(((Number) serviceCount.get("value")).intValue());
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to parse service count: {}", e.getMessage());
+      metrics.setServiceCount(0);
+    }
+  }
+
+  private void parseStateBreakdown(Map<String, Object> aggregations, PipelineMetrics metrics) {
+    try {
+      Map<String, Object> stateBreakdown =
+          (Map<String, Object>) aggregations.get("state_breakdown");
+      if (stateBreakdown != null && stateBreakdown.get("buckets") != null) {
+        List<Map<String, Object>> buckets =
+            (List<Map<String, Object>>) stateBreakdown.get("buckets");
+
+        int active = 0, inactive = 0;
+        for (Map<String, Object> bucket : buckets) {
+          String state = (String) bucket.get("key");
+          int count = ((Number) bucket.get("doc_count")).intValue();
+
+          if ("Active".equalsIgnoreCase(state)) {
+            active = count;
+          } else if ("Inactive".equalsIgnoreCase(state)) {
+            inactive = count;
+          }
+        }
+
+        metrics.setActivePipelines(active);
+        metrics.setInactivePipelines(inactive);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to parse state breakdown: {}", e.getMessage());
+      metrics.setActivePipelines(0);
+      metrics.setInactivePipelines(0);
+    }
+  }
+
+  private void parseStatusBreakdown(Map<String, Object> aggregations, PipelineMetrics metrics) {
+    try {
+      Map<String, Object> statusBreakdown =
+          (Map<String, Object>) aggregations.get("status_breakdown");
+      if (statusBreakdown != null && statusBreakdown.get("buckets") != null) {
+        List<Map<String, Object>> buckets =
+            (List<Map<String, Object>>) statusBreakdown.get("buckets");
+
+        int failed = 0, successful = 0, neverRun = 0;
+        for (Map<String, Object> bucket : buckets) {
+          String status = (String) bucket.get("key");
+          int count = ((Number) bucket.get("doc_count")).intValue();
+
+          if ("Failed".equalsIgnoreCase(status)) {
+            failed = count;
+          } else if ("Successful".equalsIgnoreCase(status)) {
+            successful = count;
+          } else if ("Never Run".equalsIgnoreCase(status)) {
+            neverRun = count;
+          }
+        }
+
+        metrics.setFailedPipelines(failed);
+        metrics.setSuccessfulPipelines(successful);
+        metrics.setPipelinesWithoutStatus(neverRun);
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to parse status breakdown: {}", e.getMessage());
+      metrics.setFailedPipelines(0);
+      metrics.setSuccessfulPipelines(0);
+      metrics.setPipelinesWithoutStatus(0);
+    }
+  }
+
+  private void parseServiceBreakdown(Map<String, Object> aggregations, PipelineMetrics metrics) {
+    List<ServiceBreakdown> serviceBreakdowns = new ArrayList<>();
+
+    try {
+      Map<String, Object> serviceBreakdown =
+          (Map<String, Object>) aggregations.get("service_breakdown");
+      if (serviceBreakdown != null && serviceBreakdown.get("buckets") != null) {
+        List<Map<String, Object>> buckets =
+            (List<Map<String, Object>>) serviceBreakdown.get("buckets");
+
+        for (Map<String, Object> bucket : buckets) {
+          try {
+            ServiceBreakdown breakdown = new ServiceBreakdown();
+            breakdown.setServiceName(
+                bucket.get("key") != null ? bucket.get("key").toString() : "Unknown");
+            breakdown.setCount(
+                bucket.get("doc_count") != null
+                    ? ((Number) bucket.get("doc_count")).intValue()
+                    : 0);
+
+            Map<String, Object> subAggs = (Map<String, Object>) bucket.get("service_type");
+            if (subAggs != null && subAggs.get("buckets") != null) {
+              List<Map<String, Object>> serviceTypeBuckets =
+                  (List<Map<String, Object>>) subAggs.get("buckets");
+              if (!serviceTypeBuckets.isEmpty()) {
+                breakdown.setServiceType(
+                    serviceTypeBuckets.get(0).get("key") != null
+                        ? serviceTypeBuckets.get(0).get("key").toString()
+                        : null);
+              }
+            }
+
+            serviceBreakdowns.add(breakdown);
+          } catch (Exception e) {
+            LOG.warn("Failed to parse service bucket: {}", e.getMessage());
+          }
+        }
+      }
+    } catch (Exception e) {
+      LOG.warn("Failed to parse service breakdown: {}", e.getMessage());
+    }
+
+    metrics.setServiceBreakdown(serviceBreakdowns);
+  }
+
+  private PipelineMetrics getPipelineMetricsFromDB() {
+    PipelineMetrics metrics = new PipelineMetrics();
+    metrics.setDataAvailable(false);
+
+    try {
+      ListFilter filter = new ListFilter(Include.NON_DELETED);
+      int totalCount = daoCollection.pipelineDAO().listCount(filter);
+      metrics.setTotalPipelines(totalCount);
+
+      List<Pipeline> samples = listAfter(null, Fields.EMPTY_FIELDS, filter, 100, null).getData();
+
+      if (!nullOrEmpty(samples)) {
+        Set<String> services = new HashSet<>();
+        int active = 0, failed = 0, successful = 0;
+
+        for (Pipeline pipeline : samples) {
+          if (pipeline.getService() != null) {
+            services.add(pipeline.getService().getName());
+          }
+
+          if (pipeline.getState() != null && "Active".equals(pipeline.getState().toString())) {
+            active++;
+          }
+
+          if (pipeline.getPipelineStatus() != null
+              && pipeline.getPipelineStatus().getExecutionStatus() != null) {
+            String status = pipeline.getPipelineStatus().getExecutionStatus().toString();
+            if ("Failed".equals(status)) {
+              failed++;
+            } else if ("Successful".equals(status)) {
+              successful++;
+            }
+          }
+        }
+
+        metrics.setServiceCount(services.size());
+
+        if (samples.size() > 0) {
+          double ratio = (double) totalCount / samples.size();
+          metrics.setActivePipelines((int) (active * ratio));
+          metrics.setFailedPipelines((int) (failed * ratio));
+          metrics.setSuccessfulPipelines((int) (successful * ratio));
+        }
+      }
+
+      metrics.setErrorMessage("Using database fallback - limited metrics available");
+
+    } catch (Exception e) {
+      LOG.error("Database fallback failed: {}", e.getMessage());
+      metrics.setErrorMessage("Database query failed: " + e.getMessage());
+    }
+
+    return metrics;
+  }
+
+  private PipelineMetrics createEmptyMetrics(String errorMessage) {
+    return new PipelineMetrics()
+        .withTotalPipelines(0)
+        .withServiceCount(0)
+        .withActivePipelines(0)
+        .withInactivePipelines(0)
+        .withFailedPipelines(0)
+        .withSuccessfulPipelines(0)
+        .withPipelinesWithoutStatus(0)
+        .withServiceBreakdown(new ArrayList<>())
+        .withDataAvailable(false)
+        .withErrorMessage(errorMessage);
+  }
+
+  public PipelineExecutionTrendList getPipelineExecutionTrend(
+      Long startTs, Long endTs, UUID pipelineId, String serviceType) {
+    try {
+      return getPipelineExecutionTrendFromES(startTs, endTs, pipelineId, serviceType);
+    } catch (Exception e) {
+      LOG.warn("Failed to get execution trend from Elasticsearch: {}", e.getMessage());
+      return createEmptyExecutionTrend("Elasticsearch unavailable: " + e.getMessage());
+    }
+  }
+
+  private PipelineExecutionTrendList getPipelineExecutionTrendFromES(
+      Long startTs, Long endTs, UUID pipelineId, String serviceType) throws IOException {
+    try {
+      String pipelineStatusIndex = "pipeline_status_search_index";
+
+      String pipelineIdFilter = "";
+      if (pipelineId != null) {
+        pipelineIdFilter =
+            """
+            ,{
+              "term": {
+                "pipelineId": "%s"
+              }
+            }
+            """
+                .formatted(pipelineId);
+      }
+
+      String serviceTypeFilter = "";
+      if (serviceType != null && !serviceType.isEmpty()) {
+        serviceTypeFilter =
+            """
+            ,{
+              "term": {
+                "serviceType": "%s"
+              }
+            }
+            """
+                .formatted(serviceType);
+      }
+
+      String query =
+          """
+          {
+            "size": 0,
+            "track_total_hits": true,
+            "query": {
+              "bool": {
+                "must": [
+                  {
+                    "range": {
+                      "timestamp": {
+                        "gte": %d,
+                        "lte": %d
+                      }
+                    }
+                  }%s%s
+                ]
+              }
+            },
+            "aggs": {
+              "execution_by_date": {
+                "date_histogram": {
+                  "field": "timestamp",
+                  "calendar_interval": "day",
+                  "min_doc_count": 0,
+                  "extended_bounds": {
+                    "min": %d,
+                    "max": %d
+                  }
+                },
+                "aggs": {
+                  "status_breakdown": {
+                    "terms": {
+                      "field": "executionStatus",
+                      "size": 10
+                    }
+                  }
+                }
+              }
+            }
+          }
+          """
+              .formatted(startTs, endTs, pipelineIdFilter, serviceTypeFilter, startTs, endTs);
+
+      AggregationRequest aggregationRequest =
+          new AggregationRequest().withIndex(pipelineStatusIndex).withQuery("*").withSize(0);
+
+      Response response =
+          Entity.getSearchRepository().getSearchClient().aggregate(aggregationRequest);
+      String responseStr = response.getEntity() != null ? response.getEntity().toString() : "{}";
+
+      return parseExecutionTrendFromESResponse(responseStr, startTs, endTs);
+
+    } catch (Exception e) {
+      LOG.error("ES query execution failed: {}", e.getMessage());
+      throw new IOException("Failed to execute ES query", e);
+    }
+  }
+
+  private PipelineExecutionTrendList parseExecutionTrendFromESResponse(
+      String response, Long startTs, Long endTs) {
+    PipelineExecutionTrendList trendList = new PipelineExecutionTrendList();
+    trendList.setDataAvailable(true);
+    List<PipelineExecutionTrend> trends = new ArrayList<>();
+
+    int totalSuccess = 0;
+    int totalFailed = 0;
+    int totalExecutions = 0;
+
+    try {
+      Map<String, Object> responseMap = JsonUtils.readValue(response, Map.class);
+      Map<String, Object> aggregations = (Map<String, Object>) responseMap.get("aggregations");
+
+      if (aggregations != null) {
+        Map<String, Object> executionByDate =
+            (Map<String, Object>) aggregations.get("execution_by_date");
+        if (executionByDate != null && executionByDate.get("buckets") != null) {
+          List<Map<String, Object>> buckets =
+              (List<Map<String, Object>>) executionByDate.get("buckets");
+
+          for (Map<String, Object> bucket : buckets) {
+            try {
+              Long timestamp = ((Number) bucket.get("key")).longValue();
+              String dateStr = bucket.get("key_as_string").toString();
+
+              PipelineExecutionTrend trend = new PipelineExecutionTrend();
+              trend.setTimestamp(timestamp);
+              trend.setDate(dateStr);
+
+              int success = 0, failed = 0, pending = 0, skipped = 0, total = 0;
+
+              Map<String, Object> statusBreakdown =
+                  (Map<String, Object>) bucket.get("status_breakdown");
+              if (statusBreakdown != null && statusBreakdown.get("buckets") != null) {
+                List<Map<String, Object>> statusBuckets =
+                    (List<Map<String, Object>>) statusBreakdown.get("buckets");
+
+                for (Map<String, Object> statusBucket : statusBuckets) {
+                  String status = (String) statusBucket.get("key");
+                  int count = ((Number) statusBucket.get("doc_count")).intValue();
+
+                  if ("Successful".equalsIgnoreCase(status)) {
+                    success = count;
+                  } else if ("Failed".equalsIgnoreCase(status)) {
+                    failed = count;
+                  } else if ("Pending".equalsIgnoreCase(status)) {
+                    pending = count;
+                  } else if ("Skipped".equalsIgnoreCase(status)) {
+                    skipped = count;
+                  }
+                  total += count;
+                }
+              }
+
+              trend.setSuccessCount(success);
+              trend.setFailedCount(failed);
+              trend.setPendingCount(pending);
+              trend.setSkippedCount(skipped);
+              trend.setTotalCount(total);
+
+              totalSuccess += success;
+              totalFailed += failed;
+              totalExecutions += total;
+
+              trends.add(trend);
+            } catch (Exception e) {
+              LOG.warn("Failed to parse execution trend bucket: {}", e.getMessage());
+            }
+          }
+        }
+      }
+
+      trendList.setData(trends);
+      trendList.setTotalSuccessful(totalSuccess);
+      trendList.setTotalFailed(totalFailed);
+      trendList.setTotalExecutions(totalExecutions);
+
+      java.time.Instant startInstant = java.time.Instant.ofEpochMilli(startTs);
+      java.time.Instant endInstant = java.time.Instant.ofEpochMilli(endTs);
+      trendList.setStartDate(startInstant.toString());
+      trendList.setEndDate(endInstant.toString());
+
+    } catch (Exception e) {
+      LOG.warn("Failed to parse ES response: {}", e.getMessage());
+      trendList.setErrorMessage("Failed to parse ES response: " + e.getMessage());
+    }
+
+    return trendList;
+  }
+
+  private PipelineExecutionTrendList createEmptyExecutionTrend(String errorMessage) {
+    return new PipelineExecutionTrendList()
+        .withData(new ArrayList<>())
+        .withDataAvailable(false)
+        .withErrorMessage(errorMessage)
+        .withTotalSuccessful(0)
+        .withTotalFailed(0)
+        .withTotalExecutions(0);
+  }
+
+  public PipelineRuntimeTrendList getPipelineRuntimeTrend(
+      Long startTs, Long endTs, UUID pipelineId, String serviceType) {
+    try {
+      return getPipelineRuntimeTrendFromES(startTs, endTs, pipelineId, serviceType);
+    } catch (Exception e) {
+      LOG.warn("Failed to get runtime trend from Elasticsearch: {}", e.getMessage());
+      return createEmptyRuntimeTrend("Elasticsearch unavailable: " + e.getMessage());
+    }
+  }
+
+  private PipelineRuntimeTrendList getPipelineRuntimeTrendFromES(
+      Long startTs, Long endTs, UUID pipelineId, String serviceType) throws IOException {
+    try {
+      String pipelineStatusIndex = "pipeline_status_search_index";
+
+      String pipelineIdFilter = "";
+      if (pipelineId != null) {
+        pipelineIdFilter =
+            """
+            ,{
+              "term": {
+                "pipelineId": "%s"
+              }
+            }
+            """
+                .formatted(pipelineId);
+      }
+
+      String serviceTypeFilter = "";
+      if (serviceType != null && !serviceType.isEmpty()) {
+        serviceTypeFilter =
+            """
+            ,{
+              "term": {
+                "serviceType": "%s"
+              }
+            }
+            """
+                .formatted(serviceType);
+      }
+
+      String query =
+          """
+          {
+            "size": 0,
+            "track_total_hits": true,
+            "query": {
+              "bool": {
+                "must": [
+                  {
+                    "range": {
+                      "timestamp": {
+                        "gte": %d,
+                        "lte": %d
+                      }
+                    }
+                  },
+                  {
+                    "exists": {
+                      "field": "endTime"
+                    }
+                  }%s%s
+                ]
+              }
+            },
+            "aggs": {
+              "runtime_by_date": {
+                "date_histogram": {
+                  "field": "timestamp",
+                  "calendar_interval": "day",
+                  "min_doc_count": 0,
+                  "extended_bounds": {
+                    "min": %d,
+                    "max": %d
+                  }
+                },
+                "aggs": {
+                  "max_runtime": {
+                    "max": {
+                      "script": {
+                        "source": "doc.containsKey('endTime') && doc['endTime'].size() > 0 && doc.containsKey('timestamp') && doc['timestamp'].size() > 0 ? Math.max(0, doc['endTime'].value - doc['timestamp'].value) : 0"
+                      }
+                    }
+                  },
+                  "min_runtime": {
+                    "min": {
+                      "script": {
+                        "source": "doc.containsKey('endTime') && doc['endTime'].size() > 0 && doc.containsKey('timestamp') && doc['timestamp'].size() > 0 ? Math.max(0, doc['endTime'].value - doc['timestamp'].value) : Long.MAX_VALUE"
+                      }
+                    }
+                  },
+                  "avg_runtime": {
+                    "avg": {
+                      "script": {
+                        "source": "doc.containsKey('endTime') && doc['endTime'].size() > 0 && doc.containsKey('timestamp') && doc['timestamp'].size() > 0 ? Math.max(0, doc['endTime'].value - doc['timestamp'].value) : 0"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+          """
+              .formatted(startTs, endTs, pipelineIdFilter, serviceTypeFilter, startTs, endTs);
+
+      AggregationRequest aggregationRequest =
+          new AggregationRequest().withIndex(pipelineStatusIndex).withQuery("*").withSize(0);
+
+      Response response =
+          Entity.getSearchRepository().getSearchClient().aggregate(aggregationRequest);
+      String responseStr = response.getEntity() != null ? response.getEntity().toString() : "{}";
+
+      return parseRuntimeTrendFromESResponse(responseStr, startTs, endTs);
+
+    } catch (Exception e) {
+      LOG.error("ES query execution failed: {}", e.getMessage());
+      throw new IOException("Failed to execute ES query", e);
+    }
+  }
+
+  private PipelineRuntimeTrendList parseRuntimeTrendFromESResponse(
+      String response, Long startTs, Long endTs) {
+    PipelineRuntimeTrendList trendList = new PipelineRuntimeTrendList();
+    trendList.setDataAvailable(true);
+    List<PipelineRuntimeTrend> trends = new ArrayList<>();
+
+    try {
+      Map<String, Object> responseMap = JsonUtils.readValue(response, Map.class);
+      Map<String, Object> aggregations = (Map<String, Object>) responseMap.get("aggregations");
+
+      if (aggregations != null) {
+        Map<String, Object> runtimeByDate =
+            (Map<String, Object>) aggregations.get("runtime_by_date");
+        if (runtimeByDate != null && runtimeByDate.get("buckets") != null) {
+          List<Map<String, Object>> buckets =
+              (List<Map<String, Object>>) runtimeByDate.get("buckets");
+
+          for (Map<String, Object> bucket : buckets) {
+            try {
+              Long timestamp = ((Number) bucket.get("key")).longValue();
+              String dateStr = bucket.get("key_as_string").toString();
+
+              PipelineRuntimeTrend trend = new PipelineRuntimeTrend();
+              trend.setTimestamp(timestamp);
+              trend.setDate(dateStr);
+
+              long maxRuntime = 0;
+              long minRuntime = 0;
+              double avgRuntime = 0.0;
+              int totalPipelines = ((Number) bucket.get("doc_count")).intValue();
+
+              Map<String, Object> maxRuntimeAgg = (Map<String, Object>) bucket.get("max_runtime");
+              if (maxRuntimeAgg != null && maxRuntimeAgg.get("value") != null) {
+                maxRuntime = ((Number) maxRuntimeAgg.get("value")).longValue();
+              }
+
+              Map<String, Object> minRuntimeAgg = (Map<String, Object>) bucket.get("min_runtime");
+              if (minRuntimeAgg != null && minRuntimeAgg.get("value") != null) {
+                long minValue = ((Number) minRuntimeAgg.get("value")).longValue();
+                minRuntime = (minValue == Long.MAX_VALUE) ? 0 : minValue;
+              }
+
+              Map<String, Object> avgRuntimeAgg = (Map<String, Object>) bucket.get("avg_runtime");
+              if (avgRuntimeAgg != null && avgRuntimeAgg.get("value") != null) {
+                avgRuntime = ((Number) avgRuntimeAgg.get("value")).doubleValue();
+              }
+
+              trend.setMaxRuntime(maxRuntime);
+              trend.setMinRuntime(minRuntime);
+              trend.setAvgRuntime(avgRuntime);
+              trend.setTotalPipelines(totalPipelines);
+
+              trends.add(trend);
+            } catch (Exception e) {
+              LOG.warn("Failed to parse runtime trend bucket: {}", e.getMessage());
+            }
+          }
+        }
+      }
+
+      trendList.setData(trends);
+
+      java.time.Instant startInstant = java.time.Instant.ofEpochMilli(startTs);
+      java.time.Instant endInstant = java.time.Instant.ofEpochMilli(endTs);
+      trendList.setStartDate(startInstant.toString());
+      trendList.setEndDate(endInstant.toString());
+
+    } catch (Exception e) {
+      LOG.warn("Failed to parse ES response: {}", e.getMessage());
+      trendList.setErrorMessage("Failed to parse ES response: " + e.getMessage());
+    }
+
+    return trendList;
+  }
+
+  private PipelineRuntimeTrendList createEmptyRuntimeTrend(String errorMessage) {
+    return new PipelineRuntimeTrendList()
+        .withData(new ArrayList<>())
+        .withDataAvailable(false)
+        .withErrorMessage(errorMessage);
   }
 }
