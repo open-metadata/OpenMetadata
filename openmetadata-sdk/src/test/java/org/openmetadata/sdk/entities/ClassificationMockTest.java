@@ -51,7 +51,7 @@ public class ClassificationMockTest {
     expectedClassification.setDisplayName("Data Classification");
     expectedClassification.setFullyQualifiedName("DataClassification");
 
-    when(mockClassificationService.create(any(Classification.class)))
+    when(mockClassificationService.create(any(CreateClassification.class)))
         .thenReturn(expectedClassification);
 
     // Act
@@ -61,7 +61,7 @@ public class ClassificationMockTest {
     assertNotNull(result);
     assertEquals("DataClassification", result.getName());
     assertEquals("Data Classification", result.getDisplayName());
-    verify(mockClassificationService).create(any(Classification.class));
+    verify(mockClassificationService).create(any(CreateClassification.class));
   }
 
   @Test
@@ -79,7 +79,7 @@ public class ClassificationMockTest {
     expectedTag.setDisplayName("Personally Identifiable Information");
     expectedTag.setFullyQualifiedName("DataClassification.PII");
 
-    when(mockTagService.create(any(Tag.class))).thenReturn(expectedTag);
+    when(mockTagService.create(any(CreateTag.class))).thenReturn(expectedTag);
 
     // Act
     Tag result = org.openmetadata.sdk.entities.Tag.create(createRequest);
@@ -89,7 +89,7 @@ public class ClassificationMockTest {
     assertEquals("PII", result.getName());
     assertEquals("Personally Identifiable Information", result.getDisplayName());
     assertEquals("DataClassification.PII", result.getFullyQualifiedName());
-    verify(mockTagService).create(any(Tag.class));
+    verify(mockTagService).create(any(CreateTag.class));
   }
 
   @Test

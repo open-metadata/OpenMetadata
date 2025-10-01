@@ -25,17 +25,7 @@ public class Team extends org.openmetadata.schema.entity.teams.Team {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.teams.Team create(CreateTeam request) {
-    // Convert CreateTeam to Team entity
-    org.openmetadata.schema.entity.teams.Team team =
-        new org.openmetadata.schema.entity.teams.Team();
-    team.setName(request.getName());
-    team.setDisplayName(request.getDisplayName());
-    team.setDescription(request.getDescription());
-    team.setTeamType(request.getTeamType());
-    team.setIsJoinable(request.getIsJoinable());
-    team.setProfile(request.getProfile());
-
-    return (org.openmetadata.schema.entity.teams.Team) getClient().teams().create(team);
+    return getClient().teams().create(request);
   }
 
   public static org.openmetadata.schema.entity.teams.Team retrieve(String id) {

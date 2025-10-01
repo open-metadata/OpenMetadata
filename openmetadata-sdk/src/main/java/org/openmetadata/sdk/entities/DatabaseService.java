@@ -23,25 +23,7 @@ public class DatabaseService extends org.openmetadata.schema.entity.services.Dat
   // Static CRUD methods
   public static org.openmetadata.schema.entity.services.DatabaseService create(
       CreateDatabaseService request) {
-    // Convert CreateDatabaseService to DatabaseService
-    org.openmetadata.schema.entity.services.DatabaseService service =
-        new org.openmetadata.schema.entity.services.DatabaseService();
-    service.setName(request.getName());
-    if (request.getDisplayName() != null) {
-      service.setDisplayName(request.getDisplayName());
-    }
-    if (request.getDescription() != null) {
-      service.setDescription(request.getDescription());
-    }
-    service.setServiceType(request.getServiceType());
-    service.setConnection(request.getConnection());
-    if (request.getTags() != null) {
-      service.setTags(request.getTags());
-    }
-    if (request.getOwners() != null) {
-      service.setOwners(request.getOwners());
-    }
-    return getClient().databaseServices().create(service);
+    return getClient().databaseServices().create(request);
   }
 
   public static org.openmetadata.schema.entity.services.DatabaseService retrieve(String id) {
