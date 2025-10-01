@@ -16,7 +16,6 @@ MF4 DataFrame reader for processing MF4 (Measurement Data Format) files
 import io
 
 import pandas as pd
-from asammdf import MDF
 
 from metadata.readers.dataframe.base import DataFrameReader
 from metadata.readers.dataframe.common import dataframe_to_chunks
@@ -38,6 +37,7 @@ class MF4DataFrameReader(DataFrameReader):
         Extract schema from MF4 header common properties.
         This method uses the MDF header metadata instead of actual data extraction.
         """
+        from asammdf import MDF
 
         file_obj = io.BytesIO(mf4_bytes)
 
