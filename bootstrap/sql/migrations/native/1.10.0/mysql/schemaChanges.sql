@@ -82,3 +82,6 @@ CREATE TABLE IF NOT EXISTS recognizer_feedback_entity (
     INDEX idx_feedback_status (status),
     INDEX idx_feedback_created (createdAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+ALTER TABLE tag_usage
+ADD COLUMN reason TEXT;
