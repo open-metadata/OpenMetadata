@@ -531,7 +531,13 @@ export const checkAddRuleOrGroupWithOperator = async (
   }
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
+    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+      escapeESReservedCharacters(searchCriteria1.toLowerCase()),
+      true
+    )}*${getEncodedFqn(
+      escapeESReservedCharacters(searchCriteria2.toLowerCase()),
+      true
+    )}*`
   );
   await page.getByTestId('apply-btn').click();
 
