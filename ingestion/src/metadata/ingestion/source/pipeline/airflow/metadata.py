@@ -558,7 +558,7 @@ class AirflowSource(PipelineServiceSource):
                 state=pipeline_state,
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
-                startDate=pipeline_details.start_date.isoformat()
+                startDate=datetime_to_ts(pipeline_details.start_date)
                 if pipeline_details.start_date
                 else None,
                 tasks=self.get_tasks_from_dag(

@@ -181,7 +181,7 @@ class AirflowLineageRunner:
             sourceUrl=f"{clean_uri(self.host_port)}/tree?dag_id={self.dag.dag_id}",
             concurrency=self.dag.max_active_tasks,
             pipelineLocation=self.dag.fileloc,
-            startDate=self.dag.start_date.isoformat() if self.dag.start_date else None,
+            startDate=datetime_to_ts(self.dag.start_date) if self.dag.start_date else None,
             tasks=self.get_om_tasks(),
             service=pipeline_service.fullyQualifiedName,
         )
