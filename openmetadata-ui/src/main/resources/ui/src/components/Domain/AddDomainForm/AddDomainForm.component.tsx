@@ -207,6 +207,9 @@ const AddDomainForm = ({
             },
           },
         },
+        placeholder: t('label.select-entity', {
+          entity: t('label.domain-type'),
+        }),
       };
 
       fields.push(domainTypeField);
