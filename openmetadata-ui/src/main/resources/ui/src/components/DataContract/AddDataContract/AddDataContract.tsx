@@ -19,6 +19,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
 import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
+import { ReactComponent as TermsIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
@@ -168,7 +169,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <ContractIcon className="contract-tab-icon" />
+            <TermsIcon className="contract-tab-icon" />
             <span>{t('label.terms-of-service')}</span>
           </div>
         ),

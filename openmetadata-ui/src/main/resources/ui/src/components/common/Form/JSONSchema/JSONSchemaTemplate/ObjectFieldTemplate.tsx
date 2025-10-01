@@ -71,7 +71,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
 
     const fieldElement = (
       <Fragment>
-        <Space className="w-full justify-between header-title-wrapper">
+        <Space className="w-full justify-between header-title-wrapper m-y-sm">
           <label
             className={classNames('control-label', {
               'font-medium text-base-color text-md':
@@ -119,7 +119,7 @@ export const ObjectFieldTemplate: FunctionComponent<ObjectFieldTemplateProps> =
         {!isEmpty(advancedProperties) && (
           <Collapse
             destroyInactivePanel
-            className="advanced-properties-collapse"
+            className="advanced-properties-collapse m-y-sm"
             expandIconPosition="end">
             <Panel header={`${title} ${t('label.advanced-config')}`} key="1">
               {advancedProperties.map((element, index) => (

@@ -15,7 +15,6 @@ from typing import List, Optional, Set
 from metadata.data_quality.validations import utils
 from metadata.data_quality.validations.models import Column, TableDiffRuntimeParameters
 from metadata.data_quality.validations.runtime_param_setter.base_diff_params_setter import (
-    BaseTableParameter,
     ServiceSpecPatch,
 )
 from metadata.data_quality.validations.runtime_param_setter.param_setter import (
@@ -49,32 +48,40 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         }
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
-        service_spec_patch = ServiceSpecPatch(
-            ServiceType.Database, self.service_connection_config.type.value.lower()
-        )
-        cls = service_spec_patch.get_data_diff_class()()
-
         service1: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, self.table_entity.service.id, nullable=False
-        )
-
-        service1_url = BaseTableParameter._get_service_connection_config(
-            self.service_connection_config
         )
 
         table2_fqn = self.get_parameter(test_case, "table2")
         if table2_fqn is None:
             raise ValueError("table2 not set")
+
         table2: Table = self.ometa_client.get_by_name(
             Table, fqn=table2_fqn, nullable=False
         )
         service2: DatabaseService = self.ometa_client.get_by_id(
             DatabaseService, table2.service.id, nullable=False
         )
+
+        service_spec_patch_table_1 = ServiceSpecPatch(
+            ServiceType.Database, service1.connection.config.type.value.lower()
+        )
+        data_diff_class_1 = service_spec_patch_table_1.get_data_diff_class()()
+        service_spec_patch_table_2 = ServiceSpecPatch(
+            ServiceType.Database, service2.connection.config.type.value.lower()
+        )
+        data_diff_class_2 = service_spec_patch_table_2.get_data_diff_class()()
+
+        service1_url = data_diff_class_1._get_service_connection_config(
+            service1.connection.config
+        )
         service2_url = (
             self.get_parameter(test_case, "service2Url") or service1_url
             if table2.service == self.table_entity.service
-            else None
+            else data_diff_class_2._get_service_connection_config(
+                service2.connection.config
+            )
+            or None
         )
 
         key_columns = self.get_key_columns(test_case)
@@ -93,7 +100,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
 
         return TableDiffRuntimeParameters(
             table_profile_config=self.table_entity.tableProfilerConfig,
-            table1=cls.get(
+            table1=data_diff_class_1.get(
                 service1,
                 self.table_entity,
                 key_columns,
@@ -101,7 +108,7 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
                 case_sensitive_columns,
                 service1_url,
             ),
-            table2=cls.get(
+            table2=data_diff_class_2.get(
                 service2,
                 table2,
                 key_columns,
