@@ -173,6 +173,8 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.OM;
+import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -5214,6 +5216,211 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     deleteEntity(table.getId(), false, true, ADMIN_AUTH_HEADERS);
     schemaTest.deleteEntity(schema.getId(), false, true, ADMIN_AUTH_HEADERS);
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_sdkTableWithColumns(TestInfo test) throws Exception {
+    // Skip if SDK client is not initialized
+    if (sdkClient == null) {
+      return;
+    }
+
+    // Initialize the SDK once
+    OM.init(sdkClient);
+    Tables.setDefaultClient(sdkClient);
+
+    // Create a table with columns
+    String tableName = getEntityName(test) + "_sdk_columns";
+    CreateTable createRequest = createRequest(tableName, "Table with columns test", "", null);
+
+    // Add columns with descriptions
+    List<Column> columns = new ArrayList<>();
+    Column col1 =
+        new Column()
+            .withName("id")
+            .withDataType(ColumnDataType.BIGINT)
+            .withDescription("Primary key column");
+    Column col2 =
+        new Column()
+            .withName("email")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withDescription("Email address");
+    Column col3 =
+        new Column()
+            .withName("created_at")
+            .withDataType(ColumnDataType.TIMESTAMP)
+            .withDescription("Creation timestamp");
+    columns.add(col1);
+    columns.add(col2);
+    columns.add(col3);
+    createRequest
+        .withColumns(columns)
+        .withTableConstraints(null); // Clear constraints since we're using different columns
+
+    // Create table with fluent API
+    Table createdTable = Tables.create(createRequest);
+    assertNotNull(createdTable);
+    assertEquals(3, createdTable.getColumns().size());
+
+    // First update: Change column descriptions
+    createdTable.getColumns().get(0).setDescription("Updated primary key description");
+    createdTable.getColumns().get(1).setDescription("Updated email description");
+    createdTable.getColumns().get(2).setDescription(null); // Remove description
+
+    // Add a new column
+    Column newCol =
+        new Column()
+            .withName("status")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(50)
+            .withDescription("Status column");
+    createdTable.getColumns().add(newCol);
+
+    // Update the table using the clean API
+    var fluentTable = Tables.find(createdTable.getId().toString()).fetch();
+    fluentTable.withColumns(createdTable.getColumns());
+    Table updatedTable = fluentTable.save().get();
+    assertNotNull(updatedTable);
+    assertEquals(4, updatedTable.getColumns().size());
+    assertEquals(
+        "Updated primary key description", updatedTable.getColumns().get(0).getDescription());
+    assertEquals("Updated email description", updatedTable.getColumns().get(1).getDescription());
+    assertNull(updatedTable.getColumns().get(2).getDescription());
+    assertEquals("Status column", updatedTable.getColumns().get(3).getDescription());
+
+    // Second update: Add column-level tags
+    // Fetch with tags field to ensure we get current tags
+    Table tableWithTags = Tables.find(updatedTable.getId().toString()).includeTags().fetch().get();
+
+    // Add PII tag to email column
+    List<TagLabel> emailTags = new ArrayList<>();
+    emailTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Email")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    tableWithTags.getColumns().get(1).setTags(emailTags);
+
+    // Add tag to status column
+    List<TagLabel> statusTags = new ArrayList<>();
+    statusTags.add(
+        new TagLabel()
+            .withTagFQN("PersonalData.Personal")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    tableWithTags.getColumns().get(3).setTags(statusTags);
+
+    // Update with column tags
+    var fluentTable2 = Tables.find(tableWithTags.getId().toString()).fetch();
+    fluentTable2.get().setColumns(tableWithTags.getColumns());
+    Table taggedTable = fluentTable2.save().get();
+    assertNotNull(taggedTable);
+    assertEquals(1, taggedTable.getColumns().get(1).getTags().size());
+    assertEquals("PII.Email", taggedTable.getColumns().get(1).getTags().get(0).getTagFQN());
+    assertEquals(1, taggedTable.getColumns().get(3).getTags().size());
+    assertEquals(
+        "PersonalData.Personal", taggedTable.getColumns().get(3).getTags().get(0).getTagFQN());
+
+    // Third update: Modify tags - remove one, add another
+    taggedTable.getColumns().get(1).getTags().clear();
+    List<TagLabel> newEmailTags = new ArrayList<>();
+    newEmailTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    taggedTable.getColumns().get(1).setTags(newEmailTags);
+
+    // Final update
+    var fluentTable3 = Tables.find(taggedTable.getId().toString()).fetch();
+    fluentTable3.get().setColumns(taggedTable.getColumns());
+    Table finalTable = fluentTable3.save().get();
+    assertEquals(1, finalTable.getColumns().get(1).getTags().size());
+    assertEquals("PII.Sensitive", finalTable.getColumns().get(1).getTags().get(0).getTagFQN());
+
+    // Clean up
+    deleteEntity(createdTable.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_sdkTableColumnTags(TestInfo test) throws Exception {
+    // Skip if SDK client is not initialized
+    if (sdkClient == null) {
+      return;
+    }
+
+    OM.init(sdkClient);
+    Tables.setDefaultClient(sdkClient);
+
+    // Create a table with columns
+    String tableName = getEntityName(test) + "_sdk_column_tags";
+    CreateTable createRequest = createRequest(tableName, "Table with column tags test", "", null);
+
+    // Add columns
+    List<Column> columns = new ArrayList<>();
+    Column col1 =
+        new Column().withName("email").withDataType(ColumnDataType.VARCHAR).withDataLength(255);
+    Column col2 =
+        new Column().withName("ssn").withDataType(ColumnDataType.VARCHAR).withDataLength(11);
+    columns.add(col1);
+    columns.add(col2);
+    createRequest
+        .withColumns(columns)
+        .withTableConstraints(null); // Clear constraints since we're using different columns
+
+    // Create table with fluent API
+    Table createdTable = Tables.create(createRequest);
+    assertNotNull(createdTable);
+
+    // Fetch with tags field to get column tags
+    Table tableWithTags = Tables.find(createdTable.getId().toString()).includeTags().fetch().get();
+
+    // Add tags to columns
+    List<TagLabel> emailTags = new ArrayList<>();
+    emailTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Email")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    tableWithTags.getColumns().get(0).setTags(emailTags);
+
+    List<TagLabel> ssnTags = new ArrayList<>();
+    ssnTags.add(
+        new TagLabel()
+            .withTagFQN("PII.Sensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    ssnTags.add(
+        new TagLabel()
+            .withTagFQN("PersonalData.SpecialCategory")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withState(TagLabel.State.CONFIRMED));
+    tableWithTags.getColumns().get(1).setTags(ssnTags);
+
+    // Update table with column tags
+    var fluentTable4 = Tables.find(tableWithTags.getId().toString()).fetch();
+    fluentTable4.get().setColumns(tableWithTags.getColumns());
+    Table updatedTable = fluentTable4.save().get();
+    assertNotNull(updatedTable);
+    assertEquals(1, updatedTable.getColumns().get(0).getTags().size());
+    assertEquals("PII.Email", updatedTable.getColumns().get(0).getTags().get(0).getTagFQN());
+    assertEquals(2, updatedTable.getColumns().get(1).getTags().size());
+
+    // Remove a tag from SSN column
+    updatedTable.getColumns().get(1).getTags().remove(0);
+
+    // Update again
+    var fluentTable5 = Tables.find(updatedTable.getId().toString()).fetch();
+    fluentTable5.get().setColumns(updatedTable.getColumns());
+    Table finalTable = fluentTable5.save().get();
+    assertEquals(1, finalTable.getColumns().get(1).getTags().size());
+    assertEquals(
+        "PersonalData.SpecialCategory",
+        finalTable.getColumns().get(1).getTags().get(0).getTagFQN());
+
+    // Clean up
+    deleteEntity(createdTable.getId(), false, true, ADMIN_AUTH_HEADERS);
   }
 
   @Test
