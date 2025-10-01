@@ -5029,7 +5029,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                     .withValue(4)
                     .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR))
             .withAvailabilityTime("09:00 UTC")
-            .withTimezone("UTC")
+            .withTimezone(
+                org.openmetadata.schema.api.data.ContractSLA.Timezone.GMT_00_00_EUROPE_LONDON)
             .withRetention(
                 new org.openmetadata.schema.api.data.Retention()
                     .withPeriod(90)
@@ -5069,7 +5070,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR,
         created.getSla().getMaxLatency().getUnit());
     assertEquals("09:00 UTC", created.getSla().getAvailabilityTime());
-    assertEquals("UTC", created.getSla().getTimezone());
+    assertEquals(
+        org.openmetadata.schema.api.data.ContractSLA.Timezone.GMT_00_00_EUROPE_LONDON,
+        created.getSla().getTimezone());
     assertEquals("updated_at", created.getSla().getColumnName());
     assertEquals(Integer.valueOf(90), created.getSla().getRetention().getPeriod());
     assertEquals(
@@ -5114,7 +5117,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                     .withValue(1)
                     .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR))
             .withAvailabilityTime("06:00")
-            .withTimezone("EST")
+            .withTimezone(
+                org.openmetadata.schema.api.data.ContractSLA.Timezone.GMT_05_00_AMERICA_NEW_YORK)
             .withColumnName("last_modified");
 
     create.withTermsOfUse(updatedTermsOfUse).withSecurity(updatedSecurity).withSla(updatedSla);
@@ -5131,7 +5135,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         org.openmetadata.schema.api.data.RefreshFrequency.Unit.HOUR,
         updated.getSla().getRefreshFrequency().getUnit());
     assertEquals("06:00", updated.getSla().getAvailabilityTime());
-    assertEquals("EST", updated.getSla().getTimezone());
+    assertEquals(
+        org.openmetadata.schema.api.data.ContractSLA.Timezone.GMT_05_00_AMERICA_NEW_YORK,
+        updated.getSla().getTimezone());
     assertEquals("last_modified", updated.getSla().getColumnName());
     assertNull(updated.getSla().getRetention()); // Verify retention was removed
 
@@ -5187,7 +5193,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                     .withValue(30)
                     .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.MINUTE))
             .withAvailabilityTime("23:59")
-            .withTimezone("PST")
+            .withTimezone(
+                org.openmetadata.schema.api.data.ContractSLA.Timezone.GMT_08_00_AMERICA_LOS_ANGELES)
             .withRetention(
                 new org.openmetadata.schema.api.data.Retention()
                     .withPeriod(7)
@@ -5206,7 +5213,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         complex.getSla().getRefreshFrequency().getUnit());
     assertEquals(Integer.valueOf(30), complex.getSla().getMaxLatency().getValue());
     assertEquals("23:59", complex.getSla().getAvailabilityTime());
-    assertEquals("PST", complex.getSla().getTimezone());
+    assertEquals(
+        org.openmetadata.schema.api.data.ContractSLA.Timezone.GMT_08_00_AMERICA_LOS_ANGELES,
+        complex.getSla().getTimezone());
     assertEquals("created_timestamp", complex.getSla().getColumnName());
     assertEquals(Integer.valueOf(7), complex.getSla().getRetention().getPeriod());
     assertEquals(
