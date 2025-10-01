@@ -25,7 +25,7 @@ import {
 import { FormProps } from 'antd/lib/form/Form';
 import classNames from 'classnames';
 import { isEmpty, isNull } from 'lodash';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/ic-cross.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
@@ -35,11 +35,16 @@ import { ReactComponent as PlusIcon } from '../../../assets/svg/x-colored.svg';
 import { VALIDATION_MESSAGES } from '../../../constants/constants';
 import {
   ContractSecurity,
-  DataConsumers,
   DataContract,
+  Policy,
 } from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
+import { filterSelectOptions } from '../../../utils/CommonUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
+import { getColumnOptionsFromTableColumn } from '../../../utils/TableUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import './contract-security-form-tab.less';
 
 export const ContractSecurityFormTab: React.FC<{
@@ -52,6 +57,7 @@ export const ContractSecurityFormTab: React.FC<{
 }> = ({ onChange, onNext, onPrev, nextLabel, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const { data: tableData } = useGenericContext();
   const addFunctionRef = useRef<
     | ((
         defaultValue?: ContractSecurity,
@@ -61,44 +67,53 @@ export const ContractSecurityFormTab: React.FC<{
   >(null);
   const [editingKey, setEditingKey] = useState<number | null>(null);
 
-  const consumerFormData: DataConsumers[] = Form.useWatch('consumers', form);
+  const policiesFormData: Policy[] = Form.useWatch('policies', form);
   const dataClassificationFormItem: string = Form.useWatch(
     'dataClassification',
     form
   );
 
-  const handleAddConsumers = () => {
+  const columnOptions = useMemo(() => {
+    const { columns } = tableData as Table;
+    if (isEmpty(columns)) {
+      return [];
+    }
+
+    return getColumnOptionsFromTableColumn(columns, true);
+  }, [tableData]);
+
+  const handleAddPolicy = () => {
     addFunctionRef.current?.({
       accessPolicy: '',
       identities: [],
       rowFilters: [
         {
-          columnName: '',
+          columnName: undefined,
           values: [],
         },
       ],
     });
 
-    setEditingKey(consumerFormData.length ?? 0);
+    setEditingKey(policiesFormData.length ?? 0);
   };
 
-  const handleDeleteConsumer = useCallback(
+  const handleDeletePolicy = useCallback(
     (key: number) => {
       const filteredValue =
-        consumerFormData
+        policiesFormData
           ?.filter((_item, idx) => idx !== key)
           ?.filter(Boolean) ?? [];
       form.setFieldsValue({
-        consumers: filteredValue,
+        policies: filteredValue,
       });
       onChange({
         security: {
           dataClassification: dataClassificationFormItem,
-          consumers: filteredValue,
+          policies: filteredValue,
         },
       });
     },
-    [consumerFormData]
+    [policiesFormData]
   );
 
   const handleFormChange: FormProps['onValuesChange'] = (_, values) => {
@@ -113,13 +128,13 @@ export const ContractSecurityFormTab: React.FC<{
     } else {
       form.setFieldsValue({
         dataClassification: '',
-        consumers: [
+        policies: [
           {
             accessPolicy: '',
             identities: [],
             rowFilters: [
               {
-                columnName: '',
+                columnName: undefined,
                 values: [],
               },
             ],
@@ -167,7 +182,7 @@ export const ContractSecurityFormTab: React.FC<{
             <div className="d-flex justify-between items-center">
               <div className="consumer-title-container">
                 <Typography.Text className="consumer-title">
-                  {t('label.consumer-plural')}
+                  {t('label.policy-plural')}
                 </Typography.Text>
                 <Typography.Paragraph className="consumer-description">
                   {t('message.contract-security-consume-description')}
@@ -175,26 +190,26 @@ export const ContractSecurityFormTab: React.FC<{
               </div>
 
               <Button
-                className="add-consumer-button"
-                data-testid="add-consumer-button"
+                className="add-policy-button"
+                data-testid="add-policy-button"
                 disabled={!isNull(editingKey) || !addFunctionRef.current}
                 icon={<Icon className="anticon" component={PlusIcon} />}
                 type="link"
-                onClick={handleAddConsumers}>
-                {t('label.add-entity', { entity: t('label.consumer') })}
+                onClick={handleAddPolicy}>
+                {t('label.add-entity', { entity: t('label.policy') })}
               </Button>
             </div>
 
-            <Form.List name="consumers">
-              {(consumerFields, { add: addConsumer }) => {
+            <Form.List name="policies">
+              {(policyFields, { add: addPolicy }) => {
                 // Store the add function so it can be used outside
                 if (!addFunctionRef.current) {
-                  addFunctionRef.current = addConsumer;
+                  addFunctionRef.current = addPolicy;
                 }
 
                 return (
                   <>
-                    {consumerFields.map((consumerField, consumerIndex) => {
+                    {policyFields.map((policyField, policyIndex) => {
                       return (
                         <ExpandableCard
                           cardProps={{
@@ -202,17 +217,17 @@ export const ContractSecurityFormTab: React.FC<{
                               'contract-consumer-security-card expandable-card',
                               {
                                 'expanded-active-card':
-                                  editingKey === consumerField.name,
+                                  editingKey === policyField.name,
                               }
                             ),
                             title: (
                               <div className="w-full d-flex justify-between items-center">
-                                {editingKey === consumerField.key ? null : (
+                                {editingKey === policyField.key ? null : (
                                   <div className="security-form-item-title-container">
                                     <div className="d-flex items-center gap-6">
                                       <div className="d-flex flex-column">
                                         <Typography.Text className="consumer-form-item-title">
-                                          {consumerFormData?.[consumerField.key]
+                                          {policiesFormData?.[policyField.key]
                                             ?.accessPolicy ||
                                             t('label.untitled')}
                                         </Typography.Text>
@@ -222,23 +237,21 @@ export const ContractSecurityFormTab: React.FC<{
                                       <EditIconButton
                                         newLook
                                         className="edit-expand-button"
-                                        data-testid={`edit-consumer-${consumerField.key}`}
+                                        data-testid={`edit-policy-${policyField.key}`}
                                         size="middle"
                                         onClick={() =>
-                                          setEditingKey(consumerField.key)
+                                          setEditingKey(policyField.key)
                                         }
                                       />
 
                                       <Button
                                         danger
                                         className="delete-expand-button"
-                                        data-testid={`delete-consumer-${consumerField.key}`}
+                                        data-testid={`delete-policy-${policyField.key}`}
                                         icon={<DeleteIcon />}
                                         size="middle"
                                         onClick={() => {
-                                          handleDeleteConsumer(
-                                            consumerField.key
-                                          );
+                                          handleDeletePolicy(policyField.key);
                                         }}
                                       />
                                     </div>
@@ -247,14 +260,14 @@ export const ContractSecurityFormTab: React.FC<{
                               </div>
                             ),
                           }}
-                          dataTestId={`contract-consumer-card-${consumerField.key}`}
-                          defaultExpanded={editingKey === consumerField.name}
-                          key={consumerField.name}>
-                          {editingKey === consumerField.name ? (
+                          dataTestId={`contract-policy-card-${policyField.key}`}
+                          defaultExpanded={editingKey === policyField.name}
+                          key={policyField.name}>
+                          {editingKey === policyField.name ? (
                             <>
                               <Row
                                 className="security-form-item-content"
-                                key={consumerField.key}>
+                                key={policyField.key}>
                                 <Col span={24}>
                                   <Row
                                     className="contract-consumer-security-card-row"
@@ -263,11 +276,11 @@ export const ContractSecurityFormTab: React.FC<{
                                       <Form.Item
                                         label={t('label.access-policy')}
                                         name={[
-                                          consumerField.name,
+                                          policyField.name,
                                           'accessPolicy',
                                         ]}>
                                         <Input
-                                          data-testid={`access-policy-input-${consumerIndex}`}
+                                          data-testid={`access-policy-input-${policyIndex}`}
                                           placeholder={t(
                                             'label.please-enter-entity-name',
                                             {
@@ -281,13 +294,10 @@ export const ContractSecurityFormTab: React.FC<{
                                     <Col span={24}>
                                       <Form.Item
                                         label={t('label.identities')}
-                                        name={[
-                                          consumerField.name,
-                                          'identities',
-                                        ]}>
+                                        name={[policyField.name, 'identities']}>
                                         <Select
-                                          data-testid={`identities-input-${consumerIndex}`}
-                                          id={`identities-input-${consumerIndex}`}
+                                          data-testid={`identities-input-${policyIndex}`}
+                                          id={`identities-input-${policyIndex}`}
                                           mode="tags"
                                           placeholder={t(
                                             'label.please-enter-value',
@@ -303,7 +313,7 @@ export const ContractSecurityFormTab: React.FC<{
                                   <Divider />
 
                                   <Form.List
-                                    name={[consumerField.name, 'rowFilters']}>
+                                    name={[policyField.name, 'rowFilters']}>
                                     {(
                                       rowFilterFields,
                                       {
@@ -320,7 +330,7 @@ export const ContractSecurityFormTab: React.FC<{
 
                                             <Button
                                               className="add-row-filter-button"
-                                              data-testid={`add-row-filter-button-${consumerIndex}`}
+                                              data-testid={`add-row-filter-button-${policyIndex}`}
                                               icon={
                                                 <Icon component={PlusIcon} />
                                               }
@@ -352,8 +362,20 @@ export const ContractSecurityFormTab: React.FC<{
                                                           rowFilterField.name,
                                                           'columnName',
                                                         ]}>
-                                                        <Input
-                                                          data-testid={`columnName-input-${consumerIndex}-${rowFilterIndex}`}
+                                                        <Select
+                                                          allowClear
+                                                          showSearch
+                                                          data-testid={`columnName-input-${policyIndex}-${rowFilterIndex}`}
+                                                          filterOption={
+                                                            filterSelectOptions
+                                                          }
+                                                          getPopupContainer={
+                                                            getPopupContainer
+                                                          }
+                                                          id={`columnName-input-${policyIndex}-${rowFilterIndex}`}
+                                                          options={
+                                                            columnOptions
+                                                          }
                                                           placeholder={t(
                                                             'label.please-enter-entity-name',
                                                             {
@@ -377,8 +399,8 @@ export const ContractSecurityFormTab: React.FC<{
                                                           'values',
                                                         ]}>
                                                         <Select
-                                                          data-testid={`values-${consumerIndex}-${rowFilterIndex}`}
-                                                          id={`values-${consumerIndex}-${rowFilterIndex}`}
+                                                          data-testid={`values-${policyIndex}-${rowFilterIndex}`}
+                                                          id={`values-${policyIndex}-${rowFilterIndex}`}
                                                           mode="tags"
                                                           placeholder={t(
                                                             'label.please-enter-value',
@@ -419,7 +441,7 @@ export const ContractSecurityFormTab: React.FC<{
 
                                           <div className="contract-consumer-security-card-form-actions-items">
                                             <Button
-                                              data-testid="cancel-consumer-button"
+                                              data-testid="cancel-policy-button"
                                               onClick={() =>
                                                 setEditingKey(null)
                                               }>
@@ -427,7 +449,7 @@ export const ContractSecurityFormTab: React.FC<{
                                             </Button>
                                             <Button
                                               className="m-l-md"
-                                              data-testid="save-consumer-button"
+                                              data-testid="save-policy-button"
                                               type="primary"
                                               onClick={() =>
                                                 setEditingKey(null)
@@ -443,8 +465,7 @@ export const ContractSecurityFormTab: React.FC<{
                               </Row>
                             </>
                           ) : (
-                            <Form.List
-                              name={[consumerField.name, 'rowFilters']}>
+                            <Form.List name={[policyField.name, 'rowFilters']}>
                               {(rowFilterFields) => {
                                 return (
                                   <div className="contract-consumer-security-card-rule-container">
@@ -464,7 +485,7 @@ export const ContractSecurityFormTab: React.FC<{
                                                 ]}>
                                                 <Input
                                                   disabled
-                                                  data-testid={`columnName-input-${consumerIndex}-${rowFilterIndex}`}
+                                                  data-testid={`columnName-input-${policyIndex}-${rowFilterIndex}`}
                                                   placeholder={t(
                                                     'label.please-enter-entity-name',
                                                     {
@@ -484,8 +505,8 @@ export const ContractSecurityFormTab: React.FC<{
                                                 ]}>
                                                 <Select
                                                   disabled
-                                                  data-testid={`values-${consumerIndex}-${rowFilterIndex}`}
-                                                  id={`values-${consumerIndex}-${rowFilterIndex}`}
+                                                  data-testid={`values-${policyIndex}-${rowFilterIndex}`}
+                                                  id={`values-${policyIndex}-${rowFilterIndex}`}
                                                   mode="tags"
                                                   placeholder={t(
                                                     'label.please-enter-value',
