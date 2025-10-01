@@ -23,6 +23,18 @@ import SamlIcon from '../assets/svg/ic-saml.svg';
 import { AuthProvider } from '../generated/settings/settings';
 import { isDev } from './EnvironmentUtils';
 
+/**
+ * Validates if a string is a valid URL
+ * @param urlString - The URL string to validate
+ * @returns True if the URL is valid, false otherwise
+ */
+export const isValidUrl = (urlString: string): boolean => {
+  // Regular expression to validate HTTP/HTTPS URLs with hostname
+  const urlRegex = /^https?:\/\/[^\s/$.?#].[^\s]*$/i;
+
+  return urlRegex.test(urlString.trim());
+};
+
 export interface ProviderOption {
   key: AuthProvider;
   label: string;

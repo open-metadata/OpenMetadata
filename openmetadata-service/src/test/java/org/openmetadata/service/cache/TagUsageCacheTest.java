@@ -249,7 +249,8 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         testTagFQNHash,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
-        State.CONFIRMED.ordinal());
+        State.CONFIRMED.ordinal(),
+        "Applied for testing purposes");
 
     // Verify tag usage counter was updated
     long tagUsage = RelationshipCache.getTagUsage(testTagFQN);
@@ -274,7 +275,8 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         testTagFQNHash,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
-        State.CONFIRMED.ordinal());
+        State.CONFIRMED.ordinal(),
+        "Applied for testing purposes");
 
     // First call should be a cache miss
     List<TagLabel> firstResult = tagUsageDAO.getTags(testEntityFQNHash);
@@ -312,7 +314,8 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         testTagFQNHash,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
-        State.CONFIRMED.ordinal());
+        State.CONFIRMED.ordinal(),
+        "Applied for testing purposes");
 
     // First batch call should be a cache miss
     List<CollectionDAO.TagUsageDAO.TagLabelWithFQNHash> firstBatchResult =
@@ -378,7 +381,8 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
         testTagFQNHash,
         testEntityFQNHash,
         LabelType.MANUAL.ordinal(),
-        State.CONFIRMED.ordinal());
+        State.CONFIRMED.ordinal(),
+        "Applied for testing purposes");
 
     // Verify tag usage counter
     long initialUsage = RelationshipCache.getTagUsage(testTagFQN);
@@ -458,7 +462,8 @@ public class TagUsageCacheTest extends CachedOpenMetadataApplicationResourceTest
           tagHash,
           testEntityFQNHash,
           LabelType.MANUAL.ordinal(),
-          State.CONFIRMED.ordinal());
+          State.CONFIRMED.ordinal(),
+          "Applied for testing purposes");
 
       // Get tags and verify they exist
       List<TagLabel> tags = tagUsageDAO.getTags(testEntityFQNHash);
