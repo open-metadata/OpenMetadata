@@ -150,6 +150,13 @@ def get_tag_label(
     """
     Returns the tag label if the tag is created
     """
+    # Skip empty or whitespace-only tag names
+    if not tag_name or not str(tag_name).strip():
+        logger.warning(
+            f"Skipping empty or whitespace-only tag name for classification '{classification_name}'"
+        )
+        return None
+        
     try:
         if tag_type == Tag:
             # Build the tag FQN

@@ -14,7 +14,11 @@ Test tag_utils module
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+from metadata.utils.tag_utils import (
+    get_ometa_tag_and_classification,
+    get_tag_label,
+    get_tag_labels,
+)
 
 
 class TestTagUtils(TestCase):
@@ -148,3 +152,33 @@ class TestTagUtils(TestCase):
         self.assertIn("tag1", tag_names)
         self.assertIn("tag2", tag_names)
         self.assertIn("tag3", tag_names)
+
+    def test_get_tag_label_filters_empty_tags(self):
+        """
+        Test that get_tag_label returns None for empty tag names
+        """
+        mock_metadata = MagicMock()
+
+        # Test with empty string
+        result = get_tag_label(
+            metadata=mock_metadata,
+            tag_name="",
+            classification_name="test_class",
+        )
+        self.assertIsNone(result, "get_tag_label should return None for empty tag_name")
+
+        # Test with whitespace
+        result = get_tag_label(
+            metadata=mock_metadata,
+            tag_name="   ",
+            classification_name="test_class",
+        )
+        self.assertIsNone(result, "get_tag_label should return None for whitespace-only tag_name")
+
+        # Test with None should also be handled gracefully
+        result = get_tag_label(
+            metadata=mock_metadata,
+            tag_name=None,
+            classification_name="test_class",
+        )
+        self.assertIsNone(result, "get_tag_label should return None for None tag_name")
