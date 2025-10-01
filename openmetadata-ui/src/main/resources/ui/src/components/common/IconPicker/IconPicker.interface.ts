@@ -38,4 +38,5 @@ export interface MUIIconPickerProps {
   backgroundColor?: string;
   toolTip?: ReactNode;
   defaultIcon?: IconDefinition;
+  customStyles?: Record<string, string | number>;
 }

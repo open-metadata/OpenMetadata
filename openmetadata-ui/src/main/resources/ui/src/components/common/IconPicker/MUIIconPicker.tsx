@@ -44,6 +44,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
   toolTip,
   defaultIcon,
   onChange,
+  customStyles,
 }) => {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -91,6 +92,7 @@ const MUIIconPicker: FC<MUIIconPickerProps> = ({
     searchPlaceholder: t('label.search'),
     onSearchChange: setSearchQuery,
     initialSearchQuery: '',
+    customStyles,
   });
 
   const filteredIcons = searchQuery
