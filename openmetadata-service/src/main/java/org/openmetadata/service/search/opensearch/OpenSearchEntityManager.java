@@ -19,16 +19,21 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
 import os.org.opensearch.client.json.JsonData;
@@ -868,6 +873,57 @@ public class OpenSearchEntityManager implements EntityManagementClient {
 
     } catch (Exception e) {
       LOG.error("Error while updating glossary term FQN: {}", e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public void reindexEntities(List<EntityReference> entities) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot reindex entities.");
+      return;
+    }
+
+    if (entities == null || entities.isEmpty()) {
+      LOG.debug("No entities to reindex.");
+      return;
+    }
+    List<BulkOperation> operations = new ArrayList<>();
+
+    for (EntityReference entityRef : entities) {
+      EntityInterface entity = Entity.getEntity(entityRef, "*", Include.ALL);
+      IndexMapping indexMapping = Entity.getSearchRepository().getIndexMapping(entityRef.getType());
+      String indexName = indexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+
+      String doc =
+          JsonUtils.pojoToJson(
+              Objects.requireNonNull(Entity.buildSearchIndex(entityRef.getType(), entity))
+                  .buildSearchIndexDoc());
+
+      operations.add(
+          BulkOperation.of(
+              b ->
+                  b.update(
+                      u ->
+                          u.index(indexName)
+                              .id(entity.getId().toString())
+                              .docAsUpsert(true)
+                              .document(toJsonData(doc)))));
+    }
+
+    BulkResponse response = client.bulk(b -> b.operations(operations).refresh(Refresh.True));
+
+    if (response.errors()) {
+      LOG.error(
+          "Bulk reindex encountered errors. Total: {}, Failed: {}",
+          entities.size(),
+          response.items().stream().filter(item -> item.error() != null).count());
+
+      response.items().stream()
+          .filter(item -> item.error() != null)
+          .forEach(
+              item -> LOG.error("Reindex failed for ID {}: {}", item.id(), item.error().reason()));
+    } else {
+      LOG.info("Successfully reindexed {} entities in OpenSearch", entities.size());
     }
   }
 

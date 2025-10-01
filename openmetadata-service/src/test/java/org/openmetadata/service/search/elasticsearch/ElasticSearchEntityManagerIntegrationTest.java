@@ -1325,6 +1325,24 @@ class ElasticSearchEntityManagerIntegrationTest extends OpenMetadataApplicationT
     assertEquals(2, tableEntitiesLeft.hits().total().value());
   }
 
+  @Test
+  void testReindexEntities_EmptyList() {
+    List<org.openmetadata.schema.type.EntityReference> emptyList = new ArrayList<>();
+
+    assertDoesNotThrow(
+        () -> {
+          entityManager.reindexEntities(emptyList);
+        });
+  }
+
+  @Test
+  void testReindexEntities_NullList() {
+    assertDoesNotThrow(
+        () -> {
+          entityManager.reindexEntities(null);
+        });
+  }
+
   private void createTestIndex(String indexName) {
     try {
       CreateIndexRequest request =

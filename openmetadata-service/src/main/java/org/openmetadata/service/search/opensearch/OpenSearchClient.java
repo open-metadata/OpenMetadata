@@ -25,7 +25,6 @@ import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipD
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
-import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import jakarta.json.JsonObject;
@@ -1770,13 +1769,17 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
+  public void reindexEntities(List<EntityReference> entities) throws IOException {
+    entityManager.reindexEntities(entities);
+  }
+
+  @Override
   public void reindexAcrossIndices(String matchingKey, EntityReference sourceRef) {
     if (isClientAvailable) {
       getAsyncExecutor()
           .submit(
               () -> {
                 try {
-                  // Initialize the 'from' parameter to 0
                   int from = 0;
                   boolean hasMoreResults = true;
 
@@ -1787,10 +1790,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
                             ReindexingUtil.escapeDoubleQuotes(sourceRef.getFullyQualifiedName()),
                             from);
 
-                    // Async Re-index the entities which matched
-                    processEntitiesForReindex(entities);
+                    reindexEntities(entities);
 
-                    // Update from
                     from += entities.size();
                     hasMoreResults = !entities.isEmpty();
                   }
@@ -1798,24 +1799,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
                   LOG.error("Reindexing Across Entities Failed", ex);
                 }
               });
-    }
-  }
-
-  private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
-    if (!references.isEmpty()) {
-      // Process entities for reindex
-      BulkRequest bulkRequests = new BulkRequest();
-      // Build Bulk request
-      for (EntityReference entityRef : references) {
-        // Reindex entity
-        UpdateRequest request =
-            getUpdateRequest(entityRef.getType(), Entity.getEntity(entityRef, "*", Include.ALL));
-        bulkRequests.add(request);
-      }
-
-      if (isClientAvailable) {
-        client.bulk(bulkRequests, RequestOptions.DEFAULT);
-      }
     }
   }
 

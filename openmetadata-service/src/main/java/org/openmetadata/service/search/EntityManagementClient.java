@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.type.EntityReference;
 
 /**
  * Interface for entity management operations in search.
@@ -265,4 +266,13 @@ public interface EntityManagementClient {
    */
   void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
+
+  /**
+   * Reindexes multiple entities across indices.
+   * This method takes a list of entity references, fetches the full entity data,
+   * rebuilds the search index documents, and performs a bulk update.
+   *
+   * @param entities list of entity references to reindex
+   */
+  void reindexEntities(List<EntityReference> entities) throws IOException;
 }
