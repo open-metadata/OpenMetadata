@@ -1156,6 +1156,44 @@ class DbtUnitTest(TestCase):
         # Should have 3 tags: 1 glossary + 1 tier + 1 classification
         self.assertEqual(len(dbt_meta_tags), 3)
 
+    def test_dbt_classification_tags_edge_cases(self):
+        """Test edge cases for classification tags processing"""
+        
+        # Test with empty tags list
+        manifest_meta = {
+            "openmetadata": {
+                "tags": []
+            }
+        }
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+        self.assertEqual(dbt_meta_tags, [])
+        
+        # Test with invalid tag format (no dot separator)
+        # These should be silently skipped
+        manifest_meta = {
+            "openmetadata": {
+                "tags": ["InvalidTag"]  # Missing classification part
+            }
+        }
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+        # Should return empty list as invalid tags are skipped
+        self.assertEqual(dbt_meta_tags, [])
+        
+        # Test with None tags
+        manifest_meta = {
+            "openmetadata": {
+                "tags": None
+            }
+        }
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+        self.assertEqual(dbt_meta_tags, [])
+
     def test_parse_exposure_node_exposure_absent(self):
         _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_V8)
 
