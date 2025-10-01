@@ -130,6 +130,10 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     .getByTestId('page-layout-v1')
     .getByPlaceholder('Search');
 
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   await Promise.all([
     searchBox.fill(domain.name),
     page.waitForResponse('/api/v1/search/query?q=*&index=domain_search_index*'),
@@ -217,6 +221,10 @@ export const selectDataProduct = async (
     .getByTestId('page-layout-v1')
     .getByPlaceholder('Search');
 
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
   await Promise.all([
     searchBox.fill(dataProduct.name),
     page.waitForResponse(
@@ -229,7 +237,7 @@ export const selectDataProduct = async (
   });
 
   await Promise.all([
-    page.locator('td').filter({ hasText: dataProduct.displayName }).click(),
+    page.getByTestId(dataProduct.name).click({ timeout: 15000 }),
     page.waitForResponse('/api/v1/dataProducts/name/*'),
   ]);
 
