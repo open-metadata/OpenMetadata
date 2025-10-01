@@ -253,16 +253,16 @@ MOCK_SCHEMA_RESPONSE_WITH_DESCRIPTIONS = {
                     "departureAirport": {
                         "title": "Departureairport",
                         "description": "Departure airport information",
-                        "$ref": "#/components/schemas/AirportInformation"
+                        "$ref": "#/components/schemas/AirportInformation",
                     },
                     "arrivalAirport": {
-                        "title": "Arrivalairport", 
+                        "title": "Arrivalairport",
                         "description": "Arrival airport information",
-                        "$ref": "#/components/schemas/AirportInformation"
-                    }
+                        "$ref": "#/components/schemas/AirportInformation",
+                    },
                 },
                 "title": "FlightAirportInformation",
-                "description": "Airport information for a flight, including departure and arrival airport details."
+                "description": "Airport information for a flight, including departure and arrival airport details.",
             },
             "AirportInformation": {
                 "type": "object",
@@ -270,17 +270,17 @@ MOCK_SCHEMA_RESPONSE_WITH_DESCRIPTIONS = {
                     "gate": {
                         "type": "string",
                         "title": "Gate",
-                        "description": "Flight gate"
+                        "description": "Flight gate",
                     },
                     "parking": {
                         "type": "string",
                         "title": "Parking",
-                        "description": "Flight parking"
-                    }
+                        "description": "Flight parking",
+                    },
                 },
                 "title": "AirportInformation",
-                "description": "Represents airport information for a flight."
-            }
+                "description": "Represents airport information for a flight.",
+            },
         }
     }
 }
@@ -484,31 +484,41 @@ class RESTTest(TestCase):
         """Test processing schema fields extracts descriptions from OpenAPI schemas"""
         self.rest_source.json_response = MOCK_SCHEMA_RESPONSE_WITH_DESCRIPTIONS
 
-        result = self.rest_source.process_schema_fields("#/components/schemas/FlightAirportInformation")
+        result = self.rest_source.process_schema_fields(
+            "#/components/schemas/FlightAirportInformation"
+        )
 
         assert result is not None
         assert len(result) == 2
 
         # Check departure airport field has description
-        departure_field = next(field for field in result if field.name.root == "departureAirport")
+        departure_field = next(
+            field for field in result if field.name.root == "departureAirport"
+        )
         assert departure_field.description is not None
         assert departure_field.description.root == "Departure airport information"
         assert departure_field.dataType == DataTypeTopic.UNKNOWN
         assert departure_field.children is not None
         assert len(departure_field.children) == 2
 
-        # Check arrival airport field has description  
-        arrival_field = next(field for field in result if field.name.root == "arrivalAirport")
+        # Check arrival airport field has description
+        arrival_field = next(
+            field for field in result if field.name.root == "arrivalAirport"
+        )
         assert arrival_field.description is not None
         assert arrival_field.description.root == "Arrival airport information"
 
         # Check nested fields in AirportInformation have descriptions
-        gate_field = next(child for child in departure_field.children if child.name.root == "gate")
+        gate_field = next(
+            child for child in departure_field.children if child.name.root == "gate"
+        )
         assert gate_field.description is not None
         assert gate_field.description.root == "Flight gate"
         assert gate_field.dataType == DataTypeTopic.STRING
 
-        parking_field = next(child for child in departure_field.children if child.name.root == "parking")
-        assert parking_field.description is not None  
+        parking_field = next(
+            child for child in departure_field.children if child.name.root == "parking"
+        )
+        assert parking_field.description is not None
         assert parking_field.description.root == "Flight parking"
         assert parking_field.dataType == DataTypeTopic.STRING

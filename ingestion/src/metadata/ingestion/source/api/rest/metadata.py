@@ -343,10 +343,17 @@ class RestSource(ApiServiceSource):
                                 )
                     # Extract description if available
                     description = val.get("description")
-                    description_obj = Markdown(root=description) if description is not None else None
-                    
+                    description_obj = (
+                        Markdown(root=description) if description is not None else None
+                    )
+
                     fetched_fields.append(
-                        FieldModel(name=key, dataType=parsed_dtype, children=children, description=description_obj)
+                        FieldModel(
+                            name=key,
+                            dataType=parsed_dtype,
+                            children=children,
+                            description=description_obj,
+                        )
                     )
                 else:
                     # If type of field is not defined then check for sub-schema
@@ -362,10 +369,12 @@ class RestSource(ApiServiceSource):
                             logger.debug(
                                 f"Skipping object fields inside schema: {val.get('$ref')} to avoid infinite recursion"
                             )
-                    # Extract description if available  
+                    # Extract description if available
                     description = val.get("description")
-                    description_obj = Markdown(root=description) if description is not None else None
-                    
+                    description_obj = (
+                        Markdown(root=description) if description is not None else None
+                    )
+
                     fetched_fields.append(
                         FieldModel(
                             name=key,
