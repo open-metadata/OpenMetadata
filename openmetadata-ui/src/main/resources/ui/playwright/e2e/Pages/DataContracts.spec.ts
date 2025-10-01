@@ -33,6 +33,7 @@ import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
+import { resetTokenFromBotPage } from '../../utils/bot';
 import {
   clickOutside,
   redirectToHomePage,
@@ -115,10 +116,10 @@ test.describe('Data Contracts', () => {
       ],
     });
 
-    // if (!process.env.PLAYWRIGHT_IS_OSS) {
-    //   // Todo: Remove this patch once the issue is fixed #19140
-    //   await resetTokenFromBotPage(page, 'testsuite-bot');
-    // }
+    if (!process.env.PLAYWRIGHT_IS_OSS) {
+      // Todo: Remove this patch once the issue is fixed #19140
+      await resetTokenFromBotPage(page, 'testsuite-bot');
+    }
 
     await afterAction();
   });
