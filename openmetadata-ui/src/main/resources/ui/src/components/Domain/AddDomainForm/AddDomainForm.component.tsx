@@ -83,6 +83,9 @@ const AddDomainForm = ({
         type === DomainFormType.DATA_PRODUCT
           ? DEFAULT_DATA_PRODUCT_ICON
           : DEFAULT_DOMAIN_ICON,
+      customStyles: {
+        searchBoxWidth: 366,
+      },
     },
     formItemLayout: FormItemLayout.HORIZONTAL,
     formItemProps: {

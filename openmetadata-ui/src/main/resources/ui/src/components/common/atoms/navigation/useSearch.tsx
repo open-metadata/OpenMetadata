@@ -21,6 +21,7 @@ interface SearchConfig {
   searchPlaceholder: string;
   onSearchChange: (query: string) => void;
   initialSearchQuery?: string;
+  customStyles?: Record<string, string | number>;
 }
 
 export const useSearch = (config: SearchConfig) => {
@@ -73,7 +74,7 @@ export const useSearch = (config: SearchConfig) => {
           },
         }}
         sx={{
-          width: 354,
+          width: config.customStyles?.searchBoxWidth ?? 354,
           '& .MuiOutlinedInput-root': {
             width: '100%',
             backgroundColor: theme.palette.allShades?.blueGray?.[40],
