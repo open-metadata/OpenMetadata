@@ -41,6 +41,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -143,7 +144,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName(TEST_BUCKET)
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix("test-logs")
             .withAwsConfig(awsCreds);
 
@@ -262,7 +263,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName(TEST_BUCKET)
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withAwsConfig(awsCreds)
             .withPrefix("limited-test")
             .withMaxConcurrentStreams(2); // Very low limit
@@ -499,7 +500,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName("non-existent-bucket")
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix("test-logs");
 
     S3LogStorage badStorage = new S3LogStorage();
