@@ -25,7 +25,11 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { generateFormFields, getField } from '../../../utils/formUtils';
+import {
+  generateFormFields,
+  getField,
+  getPopupContainer,
+} from '../../../utils/formUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -204,7 +208,7 @@ const AddGlossary = ({
       hasPermission: true,
       popoverProps: {
         placement: 'topLeft',
-        getPopupContainer: () => document.body,
+        getPopupContainer: getPopupContainer,
       },
       children: (
         <Button
@@ -231,7 +235,10 @@ const AddGlossary = ({
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
-      popoverProps: { placement: 'topLeft' },
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-reviewers"
@@ -263,7 +270,7 @@ const AddGlossary = ({
         : undefined,
       popoverProps: {
         placement: 'topLeft',
-        getPopupContainer: () => document.body,
+        getPopupContainer: getPopupContainer,
       },
       children: (
         <Button
