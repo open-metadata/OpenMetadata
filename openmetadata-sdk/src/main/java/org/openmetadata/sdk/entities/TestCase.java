@@ -32,8 +32,9 @@ public class TestCase {
 
   // Static methods for CRUD operations
   public static org.openmetadata.schema.tests.TestCase create(
-      org.openmetadata.schema.tests.TestCase testCase) throws OpenMetadataException {
-    return getClient().testCases().create(testCase);
+      org.openmetadata.schema.api.tests.CreateTestCase createTestCase)
+      throws OpenMetadataException {
+    return getClient().testCases().create(createTestCase);
   }
 
   public static org.openmetadata.schema.tests.TestCase retrieve(String id)
