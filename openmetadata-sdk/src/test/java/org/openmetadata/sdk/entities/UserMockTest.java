@@ -47,7 +47,7 @@ public class UserMockTest {
     expectedUser.setDisplayName("John Doe");
     expectedUser.setFullyQualifiedName("john.doe");
 
-    when(mockUserService.create(any(User.class))).thenReturn(expectedUser);
+    when(mockUserService.create(any(CreateUser.class))).thenReturn(expectedUser);
 
     // Act
     User result = org.openmetadata.sdk.entities.User.create(createRequest);
@@ -57,7 +57,7 @@ public class UserMockTest {
     assertEquals("john.doe", result.getName());
     assertEquals("john.doe@example.com", result.getEmail());
     assertEquals("John Doe", result.getDisplayName());
-    verify(mockUserService).create(any(User.class));
+    verify(mockUserService).create(any(CreateUser.class));
   }
 
   @Test
