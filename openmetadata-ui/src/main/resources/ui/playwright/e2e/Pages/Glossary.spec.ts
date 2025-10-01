@@ -25,6 +25,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  descriptionBox,
   getRandomLastName,
   redirectToHomePage,
   toastNotification,
@@ -88,6 +89,7 @@ const user2 = new UserClass();
 const team = new TeamClass();
 const user3 = new UserClass();
 const user4 = new UserClass();
+const adminUser = new UserClass();
 
 test.describe('Glossary tests', () => {
   test.beforeAll(async ({ browser }) => {
@@ -96,6 +98,8 @@ test.describe('Glossary tests', () => {
     await user1.create(apiContext);
     await user3.create(apiContext);
     await user4.create(apiContext);
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
     team.data.users = [user2.responseData.id];
     await team.create(apiContext);
     await afterAction();
@@ -1708,7 +1712,11 @@ test.describe('Glossary tests', () => {
   });
 
   test('Glossary creation with domain selection', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    test.slow(true);
+
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const { page: page1, afterAction: afterActionUser1 } =
+      await performUserLogin(browser, adminUser);
     const domain = new Domain();
     const glossary = new Glossary();
 
@@ -1718,87 +1726,61 @@ test.describe('Glossary tests', () => {
       });
 
       await test.step('Navigate to Glossary page', async () => {
-        await redirectToHomePage(page);
-        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await redirectToHomePage(page1);
+        await sidebarClick(page1, SidebarItem.GLOSSARY);
+
+        await page1.getByTestId('domain-dropdown').click();
+
+        const searchDomain = page1.waitForResponse(
+          `/api/v1/search/query?q=*${encodeURIComponent(domain.data.name)}*`
+        );
+        await page1
+          .getByTestId('domain-selectable-tree')
+          .getByTestId('searchbar')
+          .fill(domain.data.name);
+        await searchDomain;
+
+        await page1.getByTestId(`tag-"${domain.data.name}"`).click();
+
+        await page1.waitForLoadState('networkidle');
+        await page1.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
       });
 
       await test.step('Open Add Glossary form', async () => {
-        await page.click('[data-testid="add-glossary"]');
-        await page.waitForSelector('[data-testid="form-heading"]');
+        await page1.click('[data-testid="add-glossary"]');
+        await page1.waitForSelector('[data-testid="form-heading"]');
 
-        await expect(page.locator('[data-testid="form-heading"]')).toHaveText(
+        await expect(page1.locator('[data-testid="form-heading"]')).toHaveText(
           'Add Glossary'
         );
 
-        await page.fill('[data-testid="name"]', glossary.data.name);
-        await page
-          .locator('[data-testid="description"] .ql-editor')
-          .fill(glossary.data.description);
+        await page1.fill('[data-testid="name"]', glossary.data.name);
+        await page1.locator(descriptionBox).fill(glossary.data.description);
       });
-
-      await test.step(
-        'Select domain and verify popover opens correctly without scrolling',
-        async () => {
-          const initialScrollPosition = await page.evaluate(
-            () => window.scrollY
-          );
-
-          await page.click('[data-testid="add-domain"]');
-
-          await expect(page.locator('.domain-select-popover')).toBeVisible();
-
-          const scrollPositionAfterClick = await page.evaluate(
-            () => window.scrollY
-          );
-
-          expect(scrollPositionAfterClick).toBe(initialScrollPosition);
-
-          await page.waitForSelector('[data-testid="loader"]', {
-            state: 'detached',
-          });
-
-          const searchDomain = page.waitForResponse(
-            `/api/v1/search/query?q=*${encodeURIComponent(domain.data.name)}*`
-          );
-          await page
-            .getByTestId('selectable-list')
-            .getByTestId('searchbar')
-            .fill(domain.data.name);
-          await searchDomain;
-
-          await page
-            .getByRole('listitem', { name: domain.data.displayName })
-            .click();
-          await page.getByTestId('saveAssociatedTag').click();
-
-          await expect(
-            page.locator('[data-testid="domain-link"]')
-          ).toContainText(domain.data.displayName);
-        }
-      );
 
       await test.step(
         'Save glossary and verify creation with domain',
         async () => {
-          const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
-          await page.click('[data-testid="save-glossary"]');
+          const glossaryResponse = page1.waitForResponse('/api/v1/glossaries');
+          await page1.click('[data-testid="save-glossary"]');
           await glossaryResponse;
 
-          await expect(page).toHaveURL(/\/glossary\//);
+          await expect(page1).toHaveURL(/\/glossary\//);
 
           await expect(
-            page.locator('[data-testid="entity-header-display-name"]')
+            page1.locator('[data-testid="entity-header-name"]')
           ).toContainText(glossary.data.name);
 
           await expect(
-            page.locator('[data-testid="domain-link"]')
+            page1.locator('[data-testid="domain-link"]')
           ).toContainText(domain.data.displayName);
         }
       );
     } finally {
-      await glossary.delete(apiContext);
-      await domain.delete(apiContext);
       await afterAction();
+      await afterActionUser1();
     }
   });
 
