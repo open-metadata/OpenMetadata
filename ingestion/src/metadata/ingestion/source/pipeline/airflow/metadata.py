@@ -507,9 +507,9 @@ class AirflowSource(PipelineServiceSource):
                     f"{clean_uri(host_port)}/taskinstance/list/"
                     f"?flt1_dag_id_equals={dag.dag_id}&_flt_3_task_id={task.task_id}"
                 ),
-                downstreamTasks=list(task.downstream_task_ids)
-                if task.downstream_task_ids
-                else [],
+                downstreamTasks=(
+                    list(task.downstream_task_ids) if task.downstream_task_ids else []
+                ),
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
                 taskType=task.task_type,
@@ -551,16 +551,20 @@ class AirflowSource(PipelineServiceSource):
 
             pipeline_request = CreatePipelineRequest(
                 name=EntityName(pipeline_details.dag_id),
-                description=Markdown(pipeline_details.description)
-                if pipeline_details.description
-                else None,
+                description=(
+                    Markdown(pipeline_details.description)
+                    if pipeline_details.description
+                    else None
+                ),
                 sourceUrl=SourceUrl(source_url),
                 state=pipeline_state,
                 concurrency=pipeline_details.max_active_runs,
                 pipelineLocation=pipeline_details.fileloc,
-                startDate=datetime_to_ts(pipeline_details.start_date)
-                if pipeline_details.start_date
-                else None,
+                startDate=(
+                    datetime_to_ts(pipeline_details.start_date)
+                    if pipeline_details.start_date
+                    else None
+                ),
                 tasks=self.get_tasks_from_dag(
                     pipeline_details, self.service_connection.hostPort
                 ),

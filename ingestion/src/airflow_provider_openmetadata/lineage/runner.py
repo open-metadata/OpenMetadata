@@ -150,9 +150,9 @@ class AirflowLineageRunner:
                 taskType=task.task_type,
                 startDate=task.start_date.isoformat() if task.start_date else None,
                 endDate=task.end_date.isoformat() if task.end_date else None,
-                downstreamTasks=list(task.downstream_task_ids)
-                if task.downstream_task_ids
-                else None,
+                downstreamTasks=(
+                    list(task.downstream_task_ids) if task.downstream_task_ids else None
+                ),
             )
             for task in self.dag.tasks or []
         ]
@@ -181,7 +181,9 @@ class AirflowLineageRunner:
             sourceUrl=f"{clean_uri(self.host_port)}/tree?dag_id={self.dag.dag_id}",
             concurrency=self.dag.max_active_tasks,
             pipelineLocation=self.dag.fileloc,
-            startDate=datetime_to_ts(self.dag.start_date) if self.dag.start_date else None,
+            startDate=(
+                datetime_to_ts(self.dag.start_date) if self.dag.start_date else None
+            ),
             tasks=self.get_om_tasks(),
             service=pipeline_service.fullyQualifiedName,
         )
