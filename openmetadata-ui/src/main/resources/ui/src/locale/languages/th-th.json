@@ -2596,6 +2596,7 @@
     "user-mentioned-in-comment": "{{user}} ได้กล่าวถึงคุณในความคิดเห็น",
     "user-verified-successfully": "ผู้ใช้ได้รับการตรวจสอบแล้วสำเร็จ",
     "valid-url-endpoint": "จุดสิ้นสุดต้องเป็น URL ที่ถูกต้อง",
+    "valid-urls-required": "กรุณาใส่ URL ที่ถูกต้อง (เช่น https://example.com)",
     "validation-error-assets": "โปรดตรวจสอบสินทรัพย์ทั้งหมดที่กำลังถูกเพิ่ม",
     "value-must-be-greater-than": "{{field}} ต้องมากกว่า {{minimum}}",
     "value-should-equal-to-value": "ค่าต้องเท่ากับ {{value}}",

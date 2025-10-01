@@ -2596,6 +2596,7 @@
     "user-mentioned-in-comment": "{{user}} mencionoute nun comentario.",
     "user-verified-successfully": "Usuario verificado correctamente",
     "valid-url-endpoint": "Os endpoints deben ser unha URL válida",
+    "valid-urls-required": "Por favor, introduza URLs válidas (ex., https://exemplo.com)",
     "validation-error-assets": "Examina todos os teus activos que están sendo engadidos",
     "value-must-be-greater-than": "{{field}} debe ser maior que {{minimum}}",
     "value-should-equal-to-value": "O valor debe ser igual a {{value}}.",

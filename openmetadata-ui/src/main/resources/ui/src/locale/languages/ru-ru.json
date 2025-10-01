@@ -2596,6 +2596,7 @@
     "user-mentioned-in-comment": "{{user}} упомянул вас в комментарии.",
     "user-verified-successfully": "Пользователь успешно проверен",
     "valid-url-endpoint": "Конечные точки должны быть действительным URL",
+    "valid-urls-required": "Пожалуйста, введите действительные URL (например, https://example.com)",
     "validation-error-assets": "Пожалуйста, проверьте все ваши активы, которые добавляются.",
     "value-must-be-greater-than": "{{field}} должно быть больше чем {{minimum}}",
     "value-should-equal-to-value": "Значение должно быть равно {{value}}.",

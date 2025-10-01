@@ -4,7 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.openmetadata.schema.api.classification.CreateTag;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
 /**
@@ -27,23 +26,7 @@ public class Tag {
 
   // Static CRUD methods
   public static org.openmetadata.schema.entity.classification.Tag create(CreateTag request) {
-    // Convert CreateTag to Tag
-    org.openmetadata.schema.entity.classification.Tag entity =
-        new org.openmetadata.schema.entity.classification.Tag();
-    entity.setName(request.getName());
-    if (request.getDisplayName() != null) {
-      entity.setDisplayName(request.getDisplayName());
-    }
-    if (request.getDescription() != null) {
-      entity.setDescription(request.getDescription());
-    }
-    if (request.getClassification() != null) {
-      entity.setClassification(
-          new EntityReference()
-              .withFullyQualifiedName(request.getClassification())
-              .withType("classification"));
-    }
-    return getClient().tags().create(entity);
+    return getClient().tags().create(request);
   }
 
   public static org.openmetadata.schema.entity.classification.Tag retrieve(String id) {

@@ -2596,6 +2596,7 @@
     "user-mentioned-in-comment": "{{user}} 在留言中提到了您。",
     "user-verified-successfully": "使用者驗證成功",
     "valid-url-endpoint": "端點應為有效的 URL",
+    "valid-urls-required": "請輸入有效的 URL（例如：https://example.com）",
     "validation-error-assets": "請檢查您正在新增的所有資產",
     "value-must-be-greater-than": "{{field}} 必須大於 {{minimum}}",
     "value-should-equal-to-value": "該值應等於 {{value}}。",

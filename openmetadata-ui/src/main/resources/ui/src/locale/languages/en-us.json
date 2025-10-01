@@ -2596,6 +2596,7 @@
     "user-mentioned-in-comment": "{{user}} mentioned you in a comment.",
     "user-verified-successfully": "User Verified Successfully",
     "valid-url-endpoint": "Endpoints should be valid URL",
+    "valid-urls-required": "Please enter valid URLs (e.g., https://example.com)",
     "validation-error-assets": "Please examine all your assets that are being added",
     "value-must-be-greater-than": "{{field}} must be greater than {{minimum}}",
     "value-should-equal-to-value": "The value should be equal to {{value}}.",
