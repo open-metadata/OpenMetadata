@@ -67,6 +67,7 @@ import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
+import ContractSecurityCard from '../ContractSecurity/ContractSecurityCard.component';
 import ContractSemantics from '../ContractSemantics/ContractSemantics.component';
 import ContractSLA from '../ContractSLACard/ContractSLA.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
@@ -483,6 +484,23 @@ const ContractDetail: React.FC<{
                 contractStatus={constraintStatus['schema']}
                 schemaDetail={schemaDetail}
               />
+            </Col>
+          )}
+
+          {/* Security Component */}
+          {!isEmpty(contract.security) && (
+            <Col
+              className="contract-card-items"
+              data-testid="security-card"
+              span={24}>
+              <div className="contract-card-header-container">
+                <Typography.Text className="contract-card-header">
+                  {t('label.security')}
+                </Typography.Text>
+                <Divider className="contract-dash-separator" />
+              </div>
+
+              <ContractSecurityCard security={contract.security} />
             </Col>
           )}
 

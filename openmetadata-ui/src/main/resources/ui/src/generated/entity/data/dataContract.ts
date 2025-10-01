@@ -751,6 +751,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -817,20 +821,20 @@ export interface Style {
  */
 export interface ContractSecurity {
     /**
-     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
-     */
-    consumers?: DataConsumers[];
-    /**
      * Expected data classification (e.g. Confidential, PII, etc.)
      */
     dataClassification?: string;
+    /**
+     * Intended consumers of the data (e.g. internal teams, external partners, etc.)
+     */
+    policies?: Policy[];
     [property: string]: any;
 }
 
 /**
  * Intended consumers of the data (e.g. internal teams, external partners, etc.)
  */
-export interface DataConsumers {
+export interface Policy {
     /**
      * Reference to an access policy ID or name that should govern this data
      */

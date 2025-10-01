@@ -79,7 +79,7 @@
         }
       }
     },
-    "dataConsumers": {
+    "policy": {
       "type": "object",
       "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
       "properties": {
@@ -117,12 +117,12 @@
           "title": "Data Classification",
           "description": "Expected data classification (e.g. Confidential, PII, etc.)"
         },
-        "consumers": {
+        "policies": {
           "type": "array",
           "title": "Data Consumers",
           "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
           "items": {
-              "$ref": "#/definitions/dataConsumers"
+              "$ref": "#/definitions/policy"
           }
         }
       }
