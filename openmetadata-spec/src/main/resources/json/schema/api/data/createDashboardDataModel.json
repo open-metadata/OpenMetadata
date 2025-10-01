@@ -63,6 +63,10 @@
       },
       "default": null
     },
+    "sourceUrl": {
+      "description": "Data Model URL suffix from its service.",
+      "$ref": "../../type/basic.json#/definitions/sourceUrl"
+    },
     "project": {
       "description": "Name of the project / workspace / collection in which the dataModel is contained",
       "type": "string"
