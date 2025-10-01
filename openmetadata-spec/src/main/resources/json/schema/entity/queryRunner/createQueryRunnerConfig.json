@@ -1,0 +1,268 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/queryRunner/createQueryRunnerConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create Query Runner Configuration",
+  "description": "Schema for creating a new Query Runner Configuration for database services.",
+  "type": "object",
+  "javaType": "io.collate.service.schema.entity.queryRunner.CreateQueryRunnerConfig",
+  "definitions": {
+    "authType": {
+      "description": "Authentication type for query runner",
+      "type": "string",
+      "enum": ["CollateSSO", "ExternalOAuth", "Basic"],
+      "default": "CollateSSO"
+    },
+    "bigQueryAuthType": {
+      "description": "Authentication type for BigQuery query runner",
+      "type": "string",
+      "enum": ["CollateSSO", "Basic"],
+      "default": "CollateSSO"
+    },
+    "bigQueryAuthConfig": {
+      "description": "BigQuery specific authentication configuration",
+      "type": "object",
+      "properties": {
+        "authType": {
+          "$ref": "#/definitions/bigQueryAuthType"
+        },
+        "projectId": {
+          "description": "GCP Project ID for BigQuery",
+          "type": "string"
+        },
+        "datasetId": {
+          "description": "Default dataset ID for queries",
+          "type": "string"
+        },
+        "oauthClientId": {
+          "description": "OAuth 2.0 Client ID (required for ExternalOAuth)",
+          "type": "string"
+        },
+        "oauthClientSecret": {
+          "description": "OAuth 2.0 Client Secret (required for ExternalOAuth)",
+          "type": "string",
+          "format": "password"
+        },
+        "oauthRedirectUri": {
+          "description": "OAuth Redirect URI (required for ExternalOAuth)",
+          "type": "string"
+        },
+        "oauthScope": {
+          "description": "OAuth Scope for BigQuery",
+          "type": "string",
+          "default": "https://www.googleapis.com/auth/bigquery"
+        },
+        "credentials": {
+          "description": "Service account credentials JSON",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "default": "service_account"
+            },
+            "project_id": {
+              "type": "string"
+            },
+            "private_key_id": {
+              "type": "string"
+            },
+            "private_key": {
+              "type": "string",
+              "format": "password"
+            },
+            "client_email": {
+              "type": "string"
+            },
+            "client_id": {
+              "type": "string"
+            },
+            "auth_uri": {
+              "type": "string"
+            },
+            "token_uri": {
+              "type": "string"
+            },
+            "auth_provider_x509_cert_url": {
+              "type": "string"
+            },
+            "client_x509_cert_url": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "required": ["authType", "projectId"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "authType": { "const": "Basic" }
+            }
+          },
+          "then": {
+            "required": ["credentials"]
+          }
+        }
+      ]
+    },
+    "snowflakeAuthConfig": {
+      "description": "Snowflake specific authentication configuration",
+      "type": "object",
+      "properties": {
+        "authType": {
+          "$ref": "#/definitions/authType"
+        },
+        "warehouse": {
+          "description": "Snowflake warehouse name",
+          "type": "string"
+        },
+        "database": {
+          "description": "Snowflake database name",
+          "type": "string"
+        },
+        "schema": {
+          "description": "Snowflake schema name",
+          "type": "string"
+        },
+        "role": {
+          "description": "Snowflake role name",
+          "type": "string"
+        },
+        "username": {
+          "description": "Username (required for Basic auth)",
+          "type": "string"
+        },
+        "password": {
+          "description": "Password (required for Basic auth)",
+          "type": "string",
+          "format": "password"
+        },
+        "accountUrl": {
+          "description": "Snowflake account URL without https:// (required for ExternalOAuth, e.g., mycompany.snowflakecomputing.com)",
+          "type": "string",
+          "format": "uri"
+        },
+        "clientId": {
+          "description": "OAuth Client ID (required for ExternalOAuth)",
+          "type": "string"
+        },
+        "clientSecret": {
+          "description": "OAuth Client Secret (required for ExternalOAuth)",
+          "type": "string",
+          "format": "password"
+        },
+        "redirectUri": {
+          "description": "OAuth Redirect URI (required for ExternalOAuth)",
+          "type": "string",
+          "format": "uri"
+        }
+      },
+      "required": ["authType"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "authType": { "const": "Basic" }
+            }
+          },
+          "then": {
+            "required": ["username", "password"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "authType": { "const": "ExternalOAuth" }
+            }
+          },
+          "then": {
+            "required": ["accountUrl", "clientId", "clientSecret", "redirectUri"]
+          }
+        }
+      ]
+    }
+  },
+  "properties": {
+    "name": {
+      "description": "Name that identifies this Query Runner Configuration.",
+      "$ref": "../../type/basic.json#/definitions/entityName"
+    },
+    "displayName": {
+      "description": "Display Name that identifies this Query Runner Configuration.",
+      "type": "string"
+    },
+    "description": {
+      "description": "Description of the Query Runner Configuration.",
+      "type": "string"
+    },
+    "serviceType": {
+      "description": "Database service type (BigQuery or Snowflake).",
+      "type": "string",
+      "enum": ["BigQuery", "Snowflake"]
+    },
+    "authConfig": {
+      "description": "Authentication configuration for query runner. Structure varies by service type.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/bigQueryAuthConfig"
+        },
+        {
+          "$ref": "#/definitions/snowflakeAuthConfig"
+        }
+      ]
+    },
+    "querySettings": {
+      "description": "Query execution settings",
+      "type": "object",
+      "properties": {
+        "maxResultSize": {
+          "description": "Maximum result size in count of rows",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 100
+        }
+      }
+    },
+    "enabled": {
+      "description": "Whether this query runner config is enabled.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "required": ["name", "serviceType", "authConfig"],
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "serviceType": {
+            "const": "BigQuery"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "authConfig": {
+            "$ref": "#/definitions/bigQueryAuthConfig"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "serviceType": {
+            "const": "Snowflake"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "authConfig": {
+            "$ref": "#/definitions/snowflakeAuthConfig"
+          }
+        }
+      }
+    }
+  ]
+}
