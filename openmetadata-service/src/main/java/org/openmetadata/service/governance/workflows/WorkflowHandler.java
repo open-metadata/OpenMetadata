@@ -461,10 +461,39 @@ public class WorkflowHandler {
 
   private Task getTaskFromCustomTaskId(UUID customTaskId) {
     TaskService taskService = processEngine.getTaskService();
-    return taskService
-        .createTaskQuery()
-        .processVariableValueEquals("customTaskId", customTaskId.toString())
-        .singleResult();
+    List<Task> tasks =
+        taskService
+            .createTaskQuery()
+            .processVariableValueEquals("customTaskId", customTaskId.toString())
+            .list();
+
+    if (tasks.isEmpty()) {
+      return null;
+    }
+
+    if (tasks.size() == 1) {
+      return tasks.get(0);
+    }
+
+    // Multiple tasks found with same customTaskId - this shouldn't happen but provide fallback
+    LOG.warn(
+        "[WorkflowTask] Found {} tasks with customTaskId '{}'. This indicates duplicate workflow instances. Returning most recent active task.",
+        tasks.size(),
+        customTaskId);
+
+    // Sort by create time descending and return the most recent active task
+    return tasks.stream()
+        .filter(task -> !task.isSuspended())
+        .sorted(
+            (t1, t2) -> {
+              // Sort by creation time in descending order (most recent first)
+              if (t2.getCreateTime() != null && t1.getCreateTime() != null) {
+                return t2.getCreateTime().compareTo(t1.getCreateTime());
+              }
+              return 0;
+            })
+        .findFirst()
+        .orElse(tasks.get(0)); // Fallback to first task if all are suspended
   }
 
   public boolean validateWorkflowDefinition(String workflowDefinition) {
@@ -1218,9 +1247,29 @@ public class WorkflowHandler {
               TransactionIsolationLevel.READ_COMMITTED,
               handle -> {
                 try {
+                  // Terminate both trigger and main workflow instances
                   getInstance().terminateWorkflow(mainWorkflowDefinitionName);
 
+                  // Now terminate the main workflow instances that contain the user tasks
                   for (WorkflowInstance instance : conflictingInstances) {
+                    ProcessInstance mainInstance =
+                        runningProcessInstances.stream()
+                            .filter(
+                                pi ->
+                                    pi.getBusinessKey() != null
+                                        && pi.getBusinessKey().equals(instance.getId().toString()))
+                            .findFirst()
+                            .orElse(null);
+
+                    if (mainInstance != null) {
+                      LOG.info(
+                          "Terminating main workflow instance {} for conflicting instance {}",
+                          mainInstance.getId(),
+                          instance.getId());
+                      runtimeService.deleteProcessInstance(
+                          mainInstance.getId(), "Terminated due to conflicting workflow instance");
+                    }
+
                     workflowInstanceStateRepository.markInstanceStatesAsFailed(
                         instance.getId(), "Terminated due to conflicting workflow instance");
                     workflowInstanceRepository.markInstanceAsFailed(
