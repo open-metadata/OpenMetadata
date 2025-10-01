@@ -5029,10 +5029,12 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                     .withValue(4)
                     .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR))
             .withAvailabilityTime("09:00 UTC")
+            .withTimezone("UTC")
             .withRetention(
                 new org.openmetadata.schema.api.data.Retention()
                     .withPeriod(90)
-                    .withUnit(org.openmetadata.schema.api.data.Retention.Unit.DAY));
+                    .withUnit(org.openmetadata.schema.api.data.Retention.Unit.DAY))
+            .withColumnName("updated_at");
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table)
@@ -5067,6 +5069,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR,
         created.getSla().getMaxLatency().getUnit());
     assertEquals("09:00 UTC", created.getSla().getAvailabilityTime());
+    assertEquals("UTC", created.getSla().getTimezone());
+    assertEquals("updated_at", created.getSla().getColumnName());
     assertEquals(Integer.valueOf(90), created.getSla().getRetention().getPeriod());
     assertEquals(
         org.openmetadata.schema.api.data.Retention.Unit.DAY,
@@ -5109,7 +5113,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                 new org.openmetadata.schema.api.data.MaxLatency()
                     .withValue(1)
                     .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.HOUR))
-            .withAvailabilityTime("06:00 UTC");
+            .withAvailabilityTime("06:00")
+            .withTimezone("EST")
+            .withColumnName("last_modified");
 
     create.withTermsOfUse(updatedTermsOfUse).withSecurity(updatedSecurity).withSla(updatedSla);
 
@@ -5124,7 +5130,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(
         org.openmetadata.schema.api.data.RefreshFrequency.Unit.HOUR,
         updated.getSla().getRefreshFrequency().getUnit());
-    assertEquals("06:00 UTC", updated.getSla().getAvailabilityTime());
+    assertEquals("06:00", updated.getSla().getAvailabilityTime());
+    assertEquals("EST", updated.getSla().getTimezone());
+    assertEquals("last_modified", updated.getSla().getColumnName());
     assertNull(updated.getSla().getRetention()); // Verify retention was removed
 
     // Test 4: Patch individual properties
@@ -5178,11 +5186,13 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                 new org.openmetadata.schema.api.data.MaxLatency()
                     .withValue(30)
                     .withUnit(org.openmetadata.schema.api.data.MaxLatency.Unit.MINUTE))
-            .withAvailabilityTime("23:59 UTC")
+            .withAvailabilityTime("23:59")
+            .withTimezone("PST")
             .withRetention(
                 new org.openmetadata.schema.api.data.Retention()
                     .withPeriod(7)
-                    .withUnit(org.openmetadata.schema.api.data.Retention.Unit.YEAR));
+                    .withUnit(org.openmetadata.schema.api.data.Retention.Unit.YEAR))
+            .withColumnName("created_timestamp");
 
     Table complexTable = createUniqueTable(test.getDisplayName() + "_complex");
     CreateDataContract complexCreate =
@@ -5195,7 +5205,9 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         org.openmetadata.schema.api.data.RefreshFrequency.Unit.MONTH,
         complex.getSla().getRefreshFrequency().getUnit());
     assertEquals(Integer.valueOf(30), complex.getSla().getMaxLatency().getValue());
-    assertEquals("23:59 UTC", complex.getSla().getAvailabilityTime());
+    assertEquals("23:59", complex.getSla().getAvailabilityTime());
+    assertEquals("PST", complex.getSla().getTimezone());
+    assertEquals("created_timestamp", complex.getSla().getColumnName());
     assertEquals(Integer.valueOf(7), complex.getSla().getRetention().getPeriod());
     assertEquals(
         org.openmetadata.schema.api.data.Retention.Unit.YEAR,

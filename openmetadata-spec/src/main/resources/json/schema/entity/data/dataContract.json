@@ -156,6 +156,13 @@
           "type": "string",
           "description": "Time of day by which data is expected to be available (e.g. \"09:00 UTC\")"
         },
+        "timezone": {
+          "type": "string",
+          "title": "Timezone",
+          "format": "timezone",
+          "description": "Timezone for the availability time. UTC by default.",
+          "default": "UTC"
+        },
         "retention": {
           "type": "object",
           "title": "Data Retention Period",
@@ -165,6 +172,11 @@
           },
           "description": "How long the data is retained (if relevant)",
           "required": ["period", "unit"]
+        },
+        "columnName": {
+          "type": "string",
+          "title": "Column Name",
+          "description": "Column that represents the refresh time of the data (if applicable)"
         }
       }
     }
