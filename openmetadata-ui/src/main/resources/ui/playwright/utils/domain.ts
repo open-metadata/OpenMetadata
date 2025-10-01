@@ -139,6 +139,17 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     page.waitForResponse('/api/v1/search/query?q=*&index=domain_search_index*'),
   ]);
 
+  // Wait for loader to appear and disappear after search
+  // This ensures search debounce completed and results are stable
+  await page
+    .waitForSelector('[data-testid="loader"]', {
+      state: 'attached',
+      timeout: 2000,
+    })
+    .catch(() => {
+      // Loader might not appear if search is very fast
+    });
+
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
   });
@@ -231,6 +242,17 @@ export const selectDataProduct = async (
       '/api/v1/search/query?q=*&index=data_product_search_index*'
     ),
   ]);
+
+  // Wait for loader to appear and disappear after search
+  // This ensures search debounce completed and results are stable
+  await page
+    .waitForSelector('[data-testid="loader"]', {
+      state: 'attached',
+      timeout: 2000,
+    })
+    .catch(() => {
+      // Loader might not appear if search is very fast
+    });
 
   await page.waitForSelector('[data-testid="loader"]', {
     state: 'detached',
