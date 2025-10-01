@@ -2132,6 +2132,9 @@ public interface CollectionDAO {
     @SqlQuery("SELECT json FROM thread_entity WHERE taskId = :id")
     String findByTaskId(@Bind("id") int id);
 
+    @SqlQuery("SELECT json FROM thread_entity WHERE createdBy = :createdBy")
+    List<String> listThreadsByCreatedBy(@Bind("createdBy") String createdBy);
+
     @SqlQuery("SELECT json FROM thread_entity <condition> ORDER BY createdAt DESC LIMIT :limit")
     List<String> list(@Bind("limit") int limit, @Define("condition") String condition);
 
