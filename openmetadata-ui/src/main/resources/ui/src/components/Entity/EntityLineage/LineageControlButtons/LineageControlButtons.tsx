@@ -173,7 +173,7 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
 
         <Button
           className="lineage-button"
-          data-testid={isFullscreen ? 'full-screen' : 'exit-full-screen'}
+          data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
           icon={
             <span className="anticon">
               {isFullscreen ? (

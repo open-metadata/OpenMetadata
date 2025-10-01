@@ -110,7 +110,7 @@ describe('LineageControlButtons', () => {
 
       expect(screen.getByTestId('edit-lineage')).toBeInTheDocument();
       expect(screen.getByTestId('lineage-export')).toBeInTheDocument();
-      expect(screen.getByTestId('exit-full-screen')).toBeInTheDocument();
+      expect(screen.getByTestId('full-screen')).toBeInTheDocument();
       expect(screen.getByTestId('zoom-in')).toBeInTheDocument();
       expect(screen.getByTestId('zoom-out')).toBeInTheDocument();
       expect(screen.getByTestId('fit-screen')).toBeInTheDocument();
@@ -439,7 +439,7 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      fireEvent.click(screen.getByTestId('exit-full-screen'));
+      fireEvent.click(screen.getByTestId('full-screen'));
 
       expect(mockNavigate).toHaveBeenCalledWith({
         search: 'fullscreen=true',
@@ -461,9 +461,9 @@ describe('LineageControlButtons', () => {
         </MemoryRouter>
       );
 
-      expect(screen.getByTestId('full-screen')).toBeInTheDocument();
+      expect(screen.getByTestId('exit-full-screen')).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('full-screen'));
+      fireEvent.click(screen.getByTestId('exit-full-screen'));
 
       expect(mockNavigate).toHaveBeenCalledWith({ search: '' });
     });
