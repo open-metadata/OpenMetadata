@@ -440,9 +440,8 @@ class JSONLogicSearchClassBase {
         label: t('label.updated-on'),
         type: 'date',
         mainWidgetProps: this.mainWidgetProps,
+        defaultOperator: 'between',
         operators: [
-          'equal',
-          'not_equal',
           ...RANGE_FIELD_OPERATORS,
           'less',
           'less_or_equal',
