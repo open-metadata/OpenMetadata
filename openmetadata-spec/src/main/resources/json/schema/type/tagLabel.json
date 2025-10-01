@@ -53,6 +53,10 @@
     "href": {
       "description": "Link to the tag resource.",
       "$ref": "basic.json#/definitions/href"
+    },
+    "reason": {
+      "type": "string",
+      "description": "An explanation of why this tag was proposed, specially for autoclassification tags"
     }
   },
   "required": ["tagFQN", "source", "labelType", "state"],
