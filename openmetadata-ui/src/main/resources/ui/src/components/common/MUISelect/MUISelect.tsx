@@ -18,6 +18,8 @@ import {
   MenuItem,
   Select,
   SelectProps,
+  Typography,
+  useTheme,
 } from '@mui/material';
 import { FC, memo, ReactNode } from 'react';
 
@@ -47,11 +49,13 @@ const MUISelect: FC<MUISelectProps> = ({
   ...props
 }) => {
   const labelId = id ? `${id}-label` : 'mui-select-label';
+  const theme = useTheme();
 
   return (
     <FormControl fullWidth error={error} required={required} size={size}>
       {label && <InputLabel id={labelId}>{label}</InputLabel>}
       <Select
+        displayEmpty
         MenuProps={{
           // Set z-index higher than drawer (drawer is now at 1000)
           style: { zIndex: 1100 },
@@ -66,14 +70,20 @@ const MUISelect: FC<MUISelectProps> = ({
         }}
         label={label}
         labelId={labelId}
+        renderValue={(selected) => {
+          if (!selected) {
+            return (
+              <Typography sx={{ color: theme.palette.grey[500] }}>
+                {placeholder}
+              </Typography>
+            );
+          }
+
+          return selected as string | number | '';
+        }}
         value={value || ''}
         onChange={onChange}
         {...props}>
-        {placeholder && (
-          <MenuItem disabled value="">
-            <em>{placeholder}</em>
-          </MenuItem>
-        )}
         {options.map((option) => (
           <MenuItem
             disabled={option.disabled}
