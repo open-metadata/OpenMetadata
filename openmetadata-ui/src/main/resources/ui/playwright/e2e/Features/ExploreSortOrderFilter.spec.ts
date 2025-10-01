@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '@playwright/test';
+import { expect, test } from '@playwright/test';
 import { DATA_ASSETS_SORT } from '../../constant/explore';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -36,6 +36,7 @@ const creationConfig: EntityDataClassCreationConfig = {
   apiEndpoint: true,
   database: true,
   databaseSchema: true,
+  metric: true,
 };
 
 test.describe('Explore Sort Order Filter', () => {
@@ -66,20 +67,41 @@ test.describe('Explore Sort Order Filter', () => {
 
       await page.waitForLoadState('networkidle');
 
-      await page.getByRole('button', { name: 'Data Assets' }).click();
-
+      await page.getByTestId('search-dropdown-Data Assets').click();
       await page.waitForSelector(
-        'data-testid="drop-down-menu" data-testid="loader"',
+        '[data-testid="drop-down-menu"] [data-testid="loader"]',
         {
           state: 'detached',
         }
       );
 
-      await page.getByTestId(`${filter}-checkbox`).check();
+      const dataAssetDropdownRequest = page.waitForResponse(
+        '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+      );
+      await page
+        .getByTestId('drop-down-menu')
+        .getByTestId('search-input')
+        .fill(filter.toLowerCase());
+      await dataAssetDropdownRequest;
+      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
+      await page.waitForSelector(
+        `[data-testid="${filter.toLowerCase()}-checkbox"]`,
+        {
+          state: 'visible',
+        }
+      );
+
+      await page.getByTestId(`${filter.toLowerCase()}-checkbox`).check();
       await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
       await verifyEntitiesAreSorted(page);
+
+      const clearFilters = page.getByTestId('clear-filters');
+
+      expect(clearFilters).toBeVisible();
+
+      await clearFilters.click();
 
       await afterAction();
     });

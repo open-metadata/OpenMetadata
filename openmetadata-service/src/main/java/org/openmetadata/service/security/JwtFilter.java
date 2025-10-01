@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.auth.LogoutRequest;
@@ -91,6 +91,8 @@ public class JwtFilter implements ContainerRequestFilter {
           "v1/system/config/authorizer",
           "v1/system/config/customUiThemePreference",
           "v1/system/config/auth",
+          "v1/system/config/rdf",
+          "v1/system/health",
           "v1/users/signup",
           "v1/system/version",
           "v1/users/registrationConfirmation",
@@ -140,6 +142,7 @@ public class JwtFilter implements ContainerRequestFilter {
     this.jwtPrincipalClaims = jwtPrincipalClaims;
     this.principalDomain = principalDomain;
     this.enforcePrincipalDomain = enforcePrincipalDomain;
+    this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
   @SneakyThrows

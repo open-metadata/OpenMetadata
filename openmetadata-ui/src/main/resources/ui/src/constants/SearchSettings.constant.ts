@@ -37,6 +37,10 @@ export const ENTITY_PATH_TO_SEARCH_INDEX: Record<string, SearchIndex> = {
   domain: SearchIndex.DOMAIN,
   searchIndex: SearchIndex.SEARCH_INDEX,
   storedProcedure: SearchIndex.STORED_PROCEDURE,
+  directory: SearchIndex.DIRECTORY_SEARCH_INDEX,
+  file: SearchIndex.FILE_SEARCH_INDEX,
+  spreadsheet: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+  worksheet: SearchIndex.WORKSHEET_SEARCH_INDEX,
 };
 
 export const globalSettings: Property[] = [

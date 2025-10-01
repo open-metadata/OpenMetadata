@@ -48,6 +48,7 @@ import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -76,7 +77,6 @@ import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 import org.openmetadata.service.util.RestUtil.PutResponse;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -97,7 +97,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     this.authorizer = authorizer;
     this.limits = limits;
     addViewOperation(
-        "owners,followers,votes,tags,extension,domains,dataProducts,experts", VIEW_BASIC);
+        "owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers", VIEW_BASIC);
     Entity.registerResourcePermissions(entityType, getEntitySpecificOperations());
     Entity.registerResourceFieldViewMapping(entityType, fieldsToViewOperations);
   }
@@ -518,7 +518,10 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, deleteResponse.entity());
           } catch (Exception e) {
             WebsocketNotificationHandler.sendDeleteOperationFailedNotification(
-                jobId, securityContext, entity, e.getMessage());
+                jobId,
+                securityContext,
+                entity,
+                e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
 
@@ -584,7 +587,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           } catch (Exception e) {
             LOG.error("Encountered Exception while exporting.", e);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
@@ -635,7 +638,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, result);
           } catch (Exception e) {
             WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     BulkAssetsOperationResponse response =
@@ -685,7 +688,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
                 jobId, securityContext, result);
           } catch (Exception e) {
             WebsocketNotificationHandler.bulkAssetsOperationFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
     BulkAssetsOperationResponse response =
@@ -715,7 +718,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
           } catch (Exception e) {
             LOG.error("Encountered Exception while importing.", e);
             WebsocketNotificationHandler.sendCsvImportFailedNotification(
-                jobId, securityContext, e.getMessage());
+                jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
         });
 
@@ -796,7 +799,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     for (String field : fields) {
       if (allowedFields.contains(field)) {
         fieldsToViewOperations.put(field, operation);
-      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts"
+      } else if (!"owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers"
           .contains(field)) {
         // Some common fields for all the entities might be missing. Ignore it.
         throw new IllegalArgumentException(CatalogExceptionMessage.invalidField(field));

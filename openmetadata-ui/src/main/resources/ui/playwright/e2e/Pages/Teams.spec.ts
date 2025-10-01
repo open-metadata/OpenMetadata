@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
-import { EDIT_USER_FOR_TEAM_RULES } from '../../constant/permission';
+import {
+  EDIT_USER_FOR_TEAM_RULES,
+  OWNER_TEAM_RULES,
+} from '../../constant/permission';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { DataProduct } from '../../support/domain/DataProduct';
+import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { TeamClass } from '../../support/team/TeamClass';
@@ -34,10 +39,14 @@ import {
 import { addMultiOwner } from '../../utils/entity';
 import { settingClick } from '../../utils/sidebar';
 import {
+  addEmailTeam,
   addTeamOwnerToEntity,
   addUserInTeam,
+  addUserTeam,
   checkTeamTabCount,
   createTeam,
+  executionOnOwnerGroupTeam,
+  executionOnOwnerTeam,
   hardDeleteTeam,
   searchTeam,
   softDeleteTeam,
@@ -47,13 +56,19 @@ import {
 const id = uuid();
 const dataConsumerUser = new UserClass();
 const editOnlyUser = new UserClass(); // this user will have only editUser permission in team
+const ownerUser = new UserClass();
+
 let team = new TeamClass();
-const team2 = new TeamClass();
+let team2 = new TeamClass();
+let team3 = new TeamClass();
+let team4 = new TeamClass();
 const policy = new PolicyClass();
 const role = new RolesClass();
 const user = new UserClass();
 const user2 = new UserClass();
 const userName = user.data.email.split('@')[0];
+const domain = new Domain();
+const dataProduct = new DataProduct([domain]);
 
 let teamDetails: {
   name?: string;
@@ -72,6 +87,7 @@ let teamDetails: {
 const test = base.extend<{
   editOnlyUserPage: Page;
   dataConsumerPage: Page;
+  ownerUserPage: Page;
 }>({
   editOnlyUserPage: async ({ browser }, use) => {
     const page = await browser.newPage();
@@ -82,6 +98,12 @@ const test = base.extend<{
   dataConsumerPage: async ({ browser }, use) => {
     const page = await browser.newPage();
     await dataConsumerUser.login(page);
+    await use(page);
+    await page.close();
+  },
+  ownerUserPage: async ({ browser }, use) => {
+    const page = await browser.newPage();
+    await ownerUser.login(page);
     await use(page);
     await page.close();
   },
@@ -146,64 +168,11 @@ test.describe('Teams Page', () => {
     });
 
     await test.step('Update email of created team', async () => {
-      // Edit email
-      await page.locator('[data-testid="edit-email"]').click();
-      await page
-        .locator('[data-testid="email-input"]')
-        .fill(teamDetails.updatedEmail);
-
-      const saveEditEmailResponse = page.waitForResponse('/api/v1/teams/*');
-      await page.locator('[data-testid="save-edit-email"]').click();
-      await saveEditEmailResponse;
-
-      // Reload the page
-      await page.reload();
-
-      // Check for updated email
-
-      await expect(page.locator('[data-testid="email-value"]')).toContainText(
-        teamDetails.updatedEmail
-      );
+      await addEmailTeam(page, teamDetails.updatedEmail);
     });
 
     await test.step('Add user to created team', async () => {
-      // Navigate to users tab and add new user
-      await page.locator('[data-testid="users"]').click();
-
-      const fetchUsersResponse = page.waitForResponse(
-        '/api/v1/users?limit=25&isBot=false'
-      );
-      await page.locator('[data-testid="add-new-user"]').click();
-      await fetchUsersResponse;
-
-      // Search and select the user
-      await page
-        .locator('[data-testid="selectable-list"] [data-testid="searchbar"]')
-        .fill(user.getUserName());
-
-      await page
-        .locator(
-          `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
-        )
-        .click();
-
-      await expect(
-        page.locator(
-          `[data-testid="selectable-list"] [title="${user.getUserName()}"]`
-        )
-      ).toHaveClass(/active/);
-
-      const updateTeamResponse = page.waitForResponse('/api/v1/users*');
-
-      // Update the team with the new user
-      await page.locator('[data-testid="selectable-list-update-btn"]').click();
-      await updateTeamResponse;
-
-      // Verify the user is added to the team
-
-      await expect(
-        page.locator(`[data-testid="${userName.toLowerCase()}"]`)
-      ).toBeVisible();
+      await addUserTeam(page, user, userName);
     });
 
     await test.step('Remove added user from created team', async () => {
@@ -391,12 +360,20 @@ test.describe('Teams Page', () => {
       .getByTestId('manage-button')
       .click();
 
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).toBeVisible();
+
     await expect(page.locator('button[role="switch"]')).toHaveAttribute(
       'aria-checked',
       'true'
     );
 
     await clickOutside(page);
+
+    await expect(
+      page.getByTestId('manage-dropdown-list-container')
+    ).not.toBeVisible();
 
     await hardDeleteTeam(page);
   });
@@ -821,7 +798,7 @@ test.describe('Teams Page with Data Consumer User', () => {
       dataConsumerPage.getByTestId('edit-team-name')
     ).not.toBeVisible();
     await expect(dataConsumerPage.getByTestId('add-domain')).not.toBeVisible();
-    await expect(dataConsumerPage.getByTestId('edit-owner')).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('edit-owner')).toBeVisible();
     await expect(dataConsumerPage.getByTestId('edit-email')).not.toBeVisible();
     await expect(
       dataConsumerPage.getByTestId('edit-team-subscription')
@@ -894,5 +871,147 @@ test.describe('Teams Page with Data Consumer User', () => {
     await dataConsumerPage.getByTestId('policies').click();
 
     await expect(dataConsumerPage.getByTestId('add-policy')).not.toBeVisible();
+  });
+});
+
+test.describe('Teams Page action as Owner of Team', () => {
+  test.slow(true);
+
+  let teamNoOwner = new TeamClass();
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await ownerUser.create(apiContext);
+    await user.create(apiContext);
+    await policy.create(apiContext, OWNER_TEAM_RULES);
+    await role.create(apiContext, [policy.responseData.name]);
+
+    const ownerDataEntityReference = {
+      displayName: ownerUser.responseData.displayName,
+      fullyQualifiedName: ownerUser.responseData.fullyQualifiedName,
+      id: ownerUser.responseData.id,
+      name: ownerUser.responseData.name,
+      type: 'user',
+    };
+
+    const teamID = uuid();
+    const team2ID = uuid();
+    const team3ID = uuid();
+    const team4ID = uuid();
+    const teamNoOwnerId = uuid();
+
+    team = new TeamClass({
+      name: `PW%-data-owner-team-${teamID}`,
+      displayName: `PW Data Owner Team ${teamID}`,
+      description: 'playwright data consumer team description',
+      teamType: 'BusinessUnit',
+      users: [user.responseData.id, ownerDataEntityReference.id],
+      owners: [ownerDataEntityReference],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    team2 = new TeamClass({
+      name: `PW%-data-owner-team-${team2ID}`,
+      displayName: `PW Data Owner Team ${team2ID}`,
+      description: 'playwright data consumer team description',
+      teamType: 'Department',
+      users: [user.responseData.id, ownerDataEntityReference.id],
+      owners: [ownerDataEntityReference],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    team3 = new TeamClass({
+      name: `PW%-data-owner-team-${team3ID}`,
+      displayName: `PW Data Owner Team ${team3ID}`,
+      description: 'playwright data consumer team description',
+      teamType: 'Division',
+      users: [user.responseData.id, ownerDataEntityReference.id],
+      owners: [ownerDataEntityReference],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    team4 = new TeamClass({
+      name: `PW%-data-owner-team-${team4ID}`,
+      displayName: `PW Data Owner Team ${team4ID}`,
+      description: 'playwright data consumer team description',
+      teamType: 'Group',
+      owners: [ownerDataEntityReference],
+      defaultRoles: role.responseData.id ? [role.responseData.id] : [],
+    });
+    teamNoOwner = new TeamClass({
+      name: `PW%-data-owner-team-${teamNoOwnerId}`,
+      displayName: `PW Data Owner Team ${teamNoOwnerId}`,
+      description: 'playwright data consumer team description',
+      teamType: 'BusinessUnit',
+    });
+
+    await team.create(apiContext);
+    await team2.create(apiContext);
+    await team3.create(apiContext);
+    await team4.create(apiContext);
+    await teamNoOwner.create(apiContext);
+    await domain.create(apiContext);
+    await dataProduct.create(apiContext);
+    await afterAction();
+  });
+
+  test.beforeEach('Visit Home Page', async ({ ownerUserPage }) => {
+    await redirectToHomePage(ownerUserPage);
+  });
+
+  test('User as not owner should not have edit/create permission on Team', async ({
+    ownerUserPage,
+  }) => {
+    const teamListResponse = ownerUserPage.waitForResponse(
+      '/api/v1/teams?parentTeam=**'
+    );
+    await teamNoOwner.visitTeamPage(ownerUserPage);
+    await teamListResponse;
+
+    await ownerUserPage.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(ownerUserPage.getByTestId('edit-owner')).toBeVisible();
+
+    await expect(ownerUserPage.getByTestId('manage-button')).not.toBeVisible();
+
+    await expect(ownerUserPage.getByTestId('add-domain')).not.toBeVisible();
+
+    await expect(ownerUserPage.getByTestId('edit-email')).not.toBeVisible();
+
+    await expect(
+      ownerUserPage.getByTestId('add-placeholder-button')
+    ).toBeDisabled();
+  });
+
+  test(`Add New Team in BusinessUnit Team`, async ({ ownerUserPage }) => {
+    await executionOnOwnerTeam(ownerUserPage, team, {
+      domain: domain,
+      email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
+    });
+  });
+
+  test(`Add New Team in Department Team`, async ({ ownerUserPage }) => {
+    await executionOnOwnerTeam(ownerUserPage, team2, {
+      domain: domain,
+      email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
+    });
+  });
+
+  test(`Add New Team in Division Team`, async ({ ownerUserPage }) => {
+    await executionOnOwnerTeam(ownerUserPage, team3, {
+      domain: domain,
+      email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
+    });
+  });
+
+  test(`Add New User in Group Team`, async ({ ownerUserPage }) => {
+    await executionOnOwnerGroupTeam(ownerUserPage, team4, {
+      domain: domain,
+      email: teamDetails.updatedEmail,
+      user,
+      userName,
+    });
   });
 });

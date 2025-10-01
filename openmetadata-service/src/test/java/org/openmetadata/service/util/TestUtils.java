@@ -50,13 +50,7 @@ import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.eclipse.jetty.http.HttpStatus;
@@ -97,6 +91,7 @@ import org.openmetadata.schema.type.SearchConnection;
 import org.openmetadata.schema.type.StorageConnection;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.TagSource;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
@@ -1038,5 +1033,36 @@ public final class TestUtils {
     form.param("contentType", contentType);
     form.param("size", String.valueOf(size));
     return form;
+  }
+
+  public static <T, L extends ResultList<T>> List<T> getAllPages(
+      WebTarget target,
+      Class<L> clazz,
+      String startQueryParam,
+      String limitQueryParam,
+      Integer pageSize,
+      Map<String, String> headers)
+      throws HttpResponseException {
+    List<T> results = new ArrayList<>();
+    String after = null;
+
+    do {
+      WebTarget pageTarget = target.queryParam(limitQueryParam, pageSize);
+      if (after != null) {
+        pageTarget = pageTarget.queryParam(startQueryParam, after);
+      }
+
+      L resultList = get(pageTarget, clazz, headers);
+
+      if (resultList == null || resultList.getData() == null) {
+        break;
+      }
+
+      results.addAll(resultList.getData());
+      after = resultList.getPaging() != null ? resultList.getPaging().getAfter() : null;
+
+    } while (after != null);
+
+    return results;
   }
 }

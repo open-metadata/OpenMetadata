@@ -14,6 +14,22 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { NavigationBlocker } from './NavigationBlocker';
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'message.unsaved-changes': 'Unsaved changes',
+        'message.unsaved-changes-description':
+          'Do you want to save or discard changes?',
+        'message.unsaved-changes-discard': 'Discard',
+        'message.unsaved-changes-save': 'Save changes',
+      };
+
+      return translations[key] || key;
+    },
+  }),
+}));
+
 describe('NavigationBlocker component', () => {
   beforeEach(() => {
     // Reset any mocked functions
@@ -51,19 +67,12 @@ describe('NavigationBlocker component', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
 
-  it('should show correct modal content when blocking is enabled', () => {
+  it('should show custom modal content when props are provided', () => {
     const customTitle = 'Custom Title';
     const customMessage = 'Custom message';
-    const customConfirmText = 'Custom Confirm';
-    const customCancelText = 'Custom Cancel';
 
     render(
-      <NavigationBlocker
-        enabled
-        cancelText={customCancelText}
-        confirmText={customConfirmText}
-        message={customMessage}
-        title={customTitle}>
+      <NavigationBlocker enabled message={customMessage} title={customTitle}>
         <div>
           <a data-testid="test-link" href="/new-page">
             Navigate Away
@@ -76,47 +85,18 @@ describe('NavigationBlocker component', () => {
     const link = screen.getByTestId('test-link');
     fireEvent.click(link);
 
-    // Check if modal appears with custom content
     expect(screen.getByRole('dialog')).toBeInTheDocument();
-    expect(screen.getByText(customTitle)).toBeInTheDocument();
-    expect(screen.getByText(customMessage)).toBeInTheDocument();
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: customConfirmText })
+      screen.getByText('Do you want to save or discard changes?')
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: customCancelText })
+      screen.getByRole('button', { name: 'Save changes' })
     ).toBeInTheDocument();
   });
 
-  it('should call onCancel when cancel button is clicked', async () => {
-    const onCancel = jest.fn();
-
-    render(
-      <NavigationBlocker enabled onCancel={onCancel}>
-        <div>
-          <a data-testid="test-link" href="/new-page">
-            Navigate Away
-          </a>
-        </div>
-      </NavigationBlocker>
-    );
-
-    // Click link to show modal
-    const link = screen.getByTestId('test-link');
-    fireEvent.click(link);
-
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-
-    // Click cancel button
-    const cancelButton = screen.getByRole('button', { name: 'Stay' });
-    await act(async () => {
-      await fireEvent.click(cancelButton);
-    });
-
-    expect(onCancel).toHaveBeenCalledTimes(1);
-  });
-
-  it('should call onConfirm when confirm button is clicked', async () => {
+  it('should call onConfirm when save button is clicked', async () => {
     const onConfirm = jest.fn();
 
     render(
@@ -133,17 +113,43 @@ describe('NavigationBlocker component', () => {
     const link = screen.getByTestId('test-link');
     fireEvent.click(link);
 
-    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByRole('dialog')).toBeInTheDocument();
 
-    const confirmButton = await screen.findByRole('button', {
-      name: 'Leave',
-    });
-    // Click confirm button
+    // Click save button (which calls onConfirm)
+    const saveButton = screen.getByRole('button', { name: 'Save changes' });
     await act(async () => {
-      await fireEvent.click(confirmButton);
+      await fireEvent.click(saveButton);
     });
 
     expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('should call onCancel when modal is closed', async () => {
+    const onCancel = jest.fn();
+
+    render(
+      <NavigationBlocker enabled onCancel={onCancel}>
+        <div>
+          <a data-testid="test-link" href="/new-page">
+            Navigate Away
+          </a>
+        </div>
+      </NavigationBlocker>
+    );
+
+    // Click link to show modal
+    const link = screen.getByTestId('test-link');
+    fireEvent.click(link);
+
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+
+    // Close modal by clicking the X button
+    const closeButton = screen.getByLabelText('Close');
+    await act(async () => {
+      await fireEvent.click(closeButton);
+    });
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
   });
 
   it('should not intercept navigation when blocking is disabled', () => {
@@ -181,13 +187,13 @@ describe('NavigationBlocker component', () => {
 
     // Check default content
     expect(screen.getByRole('dialog')).toBeInTheDocument();
+    expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
     expect(
-      screen.getByText('Are you sure you want to leave?')
+      screen.getByText('Do you want to save or discard changes?')
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Discard' })).toBeInTheDocument();
     expect(
-      screen.getByText('You have unsaved changes which will be discarded.')
+      screen.getByRole('button', { name: 'Save changes' })
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Leave' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Stay' })).toBeInTheDocument();
   });
 });

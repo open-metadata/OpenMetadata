@@ -77,13 +77,19 @@ export enum ChartType {
     Area = "Area",
     Bar = "Bar",
     BoxPlot = "BoxPlot",
+    Gauge = "Gauge",
+    Graph = "Graph",
+    Heatmap = "Heatmap",
     Histogram = "Histogram",
     Line = "Line",
+    Map = "Map",
     Other = "Other",
     Pie = "Pie",
+    SANKey = "SanKey",
     Scatter = "Scatter",
     Table = "Table",
     Text = "Text",
+    Timeline = "Timeline",
 }
 
 /**
@@ -216,6 +222,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

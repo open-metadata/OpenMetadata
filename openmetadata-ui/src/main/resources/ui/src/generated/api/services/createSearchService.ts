@@ -55,7 +55,7 @@ export interface CreateSearchService {
  * search Connection.
  */
 export interface SearchConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -66,7 +66,7 @@ export interface SearchConnection {
  * Custom Search Service connection to build a source that is not supported by OpenMetadata
  * yet.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Choose Auth Config Type.
      */
@@ -102,6 +102,7 @@ export interface ConfigClass {
      * Source Python Class Name to instantiated by the ingestion workflow
      */
     sourcePythonClass?: string;
+    [property: string]: any;
 }
 
 /**
@@ -351,6 +352,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

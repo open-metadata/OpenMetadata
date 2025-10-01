@@ -57,7 +57,6 @@ base.afterAll('Cleanup', async ({ browser }) => {
 test.describe('Customize Landing Page Flow', () => {
   test('Check all default widget present', async ({ adminPage }) => {
     await redirectToHomePage(adminPage);
-    await adminPage.getByTestId('welcome-screen-close-btn').click();
     await checkAllDefaultWidgets(adminPage);
   });
 
@@ -239,8 +238,7 @@ test.describe('Customize Landing Page Flow', () => {
         const resetResponse = adminPage.waitForResponse('/api/v1/docStore/*');
 
         await adminPage
-          .locator('[data-testid="reset-layout-modal"] .ant-modal-footer')
-          .locator('text=Yes')
+          .getByRole('button', { name: 'Reset', exact: true })
           .click();
 
         await resetResponse;

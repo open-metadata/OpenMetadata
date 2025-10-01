@@ -15,6 +15,8 @@ package org.openmetadata.service.resources.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -37,6 +39,7 @@ import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.clients.pipeline.PipelineServiceAPIClientConfig;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWKSKey;
 import org.openmetadata.service.security.jwt.JWKSResponse;
 import org.openmetadata.service.util.TestUtils;
@@ -63,14 +66,68 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("auth");
     AuthenticationConfiguration auth =
         TestUtils.get(target, AuthenticationConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthenticationConfiguration().getProvider(), auth.getProvider());
-    assertEquals(config.getAuthenticationConfiguration().getProviderName(), auth.getProviderName());
-    assertEquals(config.getAuthenticationConfiguration().getAuthority(), auth.getAuthority());
-    assertEquals(config.getAuthenticationConfiguration().getCallbackUrl(), auth.getCallbackUrl());
+
+    // Verify required fields are present
     assertEquals(
-        config.getAuthenticationConfiguration().getJwtPrincipalClaims(),
+        SecurityConfigurationManager.getCurrentAuthConfig().getProvider(), auth.getProvider());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getProviderName(),
+        auth.getProviderName());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getClientType(), auth.getClientType());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getEnableSelfSignup(),
+        auth.getEnableSelfSignup());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getProviderName(),
+        auth.getProviderName());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getAuthority(), auth.getAuthority());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getCallbackUrl(),
+        auth.getCallbackUrl());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getJwtPrincipalClaims(),
         auth.getJwtPrincipalClaims());
-    assertEquals(config.getAuthenticationConfiguration().getClientId(), auth.getClientId());
+    assertEquals(
+        SecurityConfigurationManager.getInstance()
+            .getCurrentAuthConfig()
+            .getJwtPrincipalClaimsMapping(),
+        auth.getJwtPrincipalClaimsMapping());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getClientId(), auth.getClientId());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getAuthority(), auth.getAuthority());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getCallbackUrl(),
+        auth.getCallbackUrl());
+
+    // For SAML, verify samlConfiguration is present but only contains authorityUrl
+    if (auth.getProvider().name().equals("SAML")
+        && SecurityConfigurationManager.getCurrentAuthConfig().getSamlConfiguration() != null) {
+      assertNotNull(auth.getSamlConfiguration());
+      assertNotNull(auth.getSamlConfiguration().getIdp());
+      assertEquals(
+          SecurityConfigurationManager.getInstance()
+              .getCurrentAuthConfig()
+              .getSamlConfiguration()
+              .getIdp()
+              .getAuthorityUrl(),
+          auth.getSamlConfiguration().getIdp().getAuthorityUrl());
+    }
+
+    // Verify sensitive/unused fields are excluded
+    assertNull(auth.getLdapConfiguration());
+    assertNull(auth.getOidcConfiguration());
+    assertTrue(auth.getPublicKeyUrls().isEmpty());
+    assertEquals(
+        SecurityConfigurationManager.getCurrentAuthConfig().getResponseType(),
+        auth.getResponseType());
+    assertEquals(
+        SecurityConfigurationManager.getInstance()
+            .getCurrentAuthConfig()
+            .getTokenValidationAlgorithm(),
+        auth.getTokenValidationAlgorithm());
   }
 
   @Test
@@ -78,20 +135,24 @@ class ConfigResourceTest extends OpenMetadataApplicationTest {
     WebTarget target = getConfigResource("authorizer");
     AuthorizerConfiguration auth =
         TestUtils.get(target, AuthorizerConfiguration.class, TEST_AUTH_HEADERS);
-    assertEquals(config.getAuthorizerConfiguration().getClassName(), auth.getClassName());
+
+    // Verify only required field is present
     assertEquals(
         config.getAuthorizerConfiguration().getPrincipalDomain(), auth.getPrincipalDomain());
+
+    // Verify sensitive/unused fields are excluded
+    assertNull(auth.getClassName());
+    assertTrue(auth.getAdminPrincipals().isEmpty());
+    assertNull(auth.getContainerRequestFilter());
+    assertNull(auth.getEnableSecureSocketConnection());
+    assertNull(auth.getEnforcePrincipalDomain());
+    assertTrue(auth.getAllowedDomains().isEmpty());
+    assertTrue(auth.getAllowedEmailRegistrationDomains().isEmpty());
+    assertNull(auth.getBotPrincipals());
+    assertTrue(auth.getTestPrincipals().isEmpty());
     assertEquals(
-        config.getAuthorizerConfiguration().getAdminPrincipals(), auth.getAdminPrincipals());
-    assertEquals(
-        config.getAuthorizerConfiguration().getContainerRequestFilter(),
-        auth.getContainerRequestFilter());
-    assertEquals(
-        config.getAuthorizerConfiguration().getEnableSecureSocketConnection(),
-        auth.getEnableSecureSocketConnection());
-    assertEquals(
-        config.getAuthorizerConfiguration().getEnforcePrincipalDomain(),
-        auth.getEnforcePrincipalDomain());
+        config.getAuthorizerConfiguration().getUseRolesFromProvider(),
+        auth.getUseRolesFromProvider());
   }
 
   @Test

@@ -74,6 +74,8 @@ import { Dashboard } from '../generated/entity/data/dashboard';
 import { DashboardDataModel } from '../generated/entity/data/dashboardDataModel';
 import { Database } from '../generated/entity/data/database';
 import { DatabaseSchema } from '../generated/entity/data/databaseSchema';
+import { Directory } from '../generated/entity/data/directory';
+import { File } from '../generated/entity/data/file';
 import { GlossaryTerm } from '../generated/entity/data/glossaryTerm';
 import { Metric } from '../generated/entity/data/metric';
 import { Mlmodel } from '../generated/entity/data/mlmodel';
@@ -83,6 +85,7 @@ import {
   SearchIndex as SearchIndexEntity,
   SearchIndexField,
 } from '../generated/entity/data/searchIndex';
+import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import {
   StoredProcedure,
   StoredProcedureCodeObject,
@@ -95,6 +98,7 @@ import {
   TableType,
 } from '../generated/entity/data/table';
 import { Topic } from '../generated/entity/data/topic';
+import { Worksheet } from '../generated/entity/data/worksheet';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Team } from '../generated/entity/teams/team';
 import {
@@ -1180,6 +1184,146 @@ const getMetricOverview = (metric: Metric) => {
   return overview;
 };
 
+const getDirectoryOverview = (directoryDetails: Directory) => {
+  const {
+    numberOfSubDirectories,
+    numberOfFiles,
+    serviceType,
+    owners,
+    domains,
+  } = directoryDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.directory-plural'),
+      value: numberOfSubDirectories ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.file-plural'),
+      value: numberOfFiles ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
+const getFileOverview = (fileDetails: File) => {
+  const { fileExtension, fileType, fileVersion, serviceType, owners, domains } =
+    fileDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.file-extension'),
+      value: fileExtension ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.file-type'),
+      value: fileType ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.file-version'),
+      value: fileVersion ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
+const getSpreadsheetOverview = (spreadsheetDetails: Spreadsheet) => {
+  const { fileVersion, serviceType, owners, domains } = spreadsheetDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.file-version'),
+      value: fileVersion ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
+const getWorksheetOverview = (worksheetDetails: Worksheet) => {
+  const { columnCount, rowCount, serviceType, owners, domains } =
+    worksheetDetails;
+
+  const visible = [
+    DRAWER_NAVIGATION_OPTIONS.lineage,
+    DRAWER_NAVIGATION_OPTIONS.explore,
+  ];
+
+  const overview: BasicEntityOverviewInfo[] = [
+    ...getCommonOverview({ owners, domains }),
+    {
+      name: i18next.t('label.column-plural'),
+      value: columnCount ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.row-plural'),
+      value: rowCount ?? NO_DATA,
+      isLink: false,
+      visible,
+    },
+    {
+      name: i18next.t('label.service-type'),
+      value: serviceType,
+      isLink: false,
+      visible,
+    },
+  ];
+
+  return overview;
+};
+
 export const getEntityOverview = (
   type: string,
   entityDetail: DataAssetSummaryPanelProps['dataAsset'],
@@ -1257,6 +1401,26 @@ export const getEntityOverview = (
     case ExplorePageTabs.METRIC:
     case EntityType.METRIC: {
       return getMetricOverview(entityDetail as Metric);
+    }
+
+    case ExplorePageTabs.DIRECTORIES:
+    case EntityType.DIRECTORY: {
+      return getDirectoryOverview(entityDetail as Directory);
+    }
+
+    case ExplorePageTabs.FILES:
+    case EntityType.FILE: {
+      return getFileOverview(entityDetail as File);
+    }
+
+    case ExplorePageTabs.SPREADSHEETS:
+    case EntityType.SPREADSHEET: {
+      return getSpreadsheetOverview(entityDetail as Spreadsheet);
+    }
+
+    case ExplorePageTabs.WORKSHEETS:
+    case EntityType.WORKSHEET: {
+      return getWorksheetOverview(entityDetail as Worksheet);
     }
 
     case ExplorePageTabs.DATABASE_SERVICE:
@@ -1526,6 +1690,10 @@ export const getEntityLinkFromType = (
     case EntityType.SEARCH_INDEX:
     case EntityType.API_COLLECTION:
     case EntityType.API_ENDPOINT:
+    case EntityType.DIRECTORY:
+    case EntityType.FILE:
+    case EntityType.SPREADSHEET:
+    case EntityType.WORKSHEET:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
     case EntityType.METRIC:
       return getEntityDetailsPath(entityType, fullyQualifiedName);
@@ -1581,6 +1749,11 @@ export const getEntityLinkFromType = (
       return getServiceDetailsPath(
         fullyQualifiedName,
         ServiceCategory.API_SERVICES
+      );
+    case EntityType.DRIVE_SERVICE:
+      return getServiceDetailsPath(
+        fullyQualifiedName,
+        ServiceCategory.DRIVE_SERVICES
       );
     case EntityType.BOT:
       return getBotsPath(fullyQualifiedName);
@@ -1765,12 +1938,15 @@ export const getBreadcrumbForEntitiesWithServiceOnly = (
   ];
 };
 
-export const getBreadcrumbForContainer = (data: {
-  entity: Container;
+export function getBreadcrumbForEntityWithParent<
+  T extends Container | Directory | File
+>(data: {
+  entity: T;
+  entityType: EntityType;
   includeCurrent?: boolean;
   parents?: Container[] | EntityReference[];
-}) => {
-  const { entity, includeCurrent = false, parents = [] } = data;
+}) {
+  const { entity, entityType, includeCurrent = false, parents = [] } = data;
   const { service } = entity;
 
   return [
@@ -1790,7 +1966,7 @@ export const getBreadcrumbForContainer = (data: {
           name: getEntityName(parent),
           url: getEntityLinkFromType(
             parent?.fullyQualifiedName ?? '',
-            EntityType.CONTAINER
+            entityType
           ),
         }))
       : []),
@@ -1806,7 +1982,7 @@ export const getBreadcrumbForContainer = (data: {
         ]
       : []),
   ];
-};
+}
 
 export const getBreadcrumbForTestCase = (entity: TestCase): TitleLink[] => [
   {
@@ -2121,13 +2297,69 @@ export const getEntityBreadcrumbs = (
         },
       ];
 
+    case EntityType.DRIVE_SERVICE:
+      return [
+        {
+          name: startCase(ServiceCategory.DRIVE_SERVICES),
+          url: getSettingPath(
+            GlobalSettingsMenuCategory.SERVICES,
+            getServiceRouteFromServiceType(ServiceCategory.DRIVE_SERVICES)
+          ),
+        },
+      ];
+
     case EntityType.CONTAINER: {
       const data = entity as Container;
 
-      return getBreadcrumbForContainer({
+      return getBreadcrumbForEntityWithParent({
         entity: data,
+        entityType: EntityType.CONTAINER,
         includeCurrent: true,
         parents: isUndefined(data.parent) ? [] : [data.parent],
+      });
+    }
+
+    case EntityType.DIRECTORY: {
+      const data = entity as Directory;
+
+      return getBreadcrumbForEntityWithParent({
+        entity: data,
+        entityType: EntityType.DIRECTORY,
+        includeCurrent,
+        parents: isUndefined(data.parent) ? [] : [data.parent],
+      });
+    }
+
+    case EntityType.FILE: {
+      const data = entity as File;
+
+      return getBreadcrumbForEntityWithParent({
+        entity: data,
+        entityType: EntityType.DIRECTORY, // Since parent will be directory
+        includeCurrent,
+        parents: isUndefined(data.directory) ? [] : [data.directory],
+      });
+    }
+
+    case EntityType.SPREADSHEET: {
+      const data = entity as Spreadsheet;
+
+      return getBreadcrumbForEntityWithParent({
+        entity: data,
+        entityType: EntityType.DIRECTORY, // Since parent will be directory
+        includeCurrent,
+        parents: isUndefined(data.directory) ? [] : [data.directory],
+      });
+    }
+
+    case EntityType.WORKSHEET: {
+      const data = entity as Worksheet;
+
+      return getBreadcrumbForEntityWithParent({
+        entity: data,
+        entityType: EntityType.SPREADSHEET, // Since parent will be spreadsheet
+        includeCurrent,
+        parents: isUndefined(data.spreadsheet) ? [] : [data.spreadsheet],
       });
     }
 
@@ -2432,6 +2664,9 @@ export const getEntityNameLabel = (entityName?: string) => {
     metadataService: t('label.entity-service', {
       entity: t('label.metadata'),
     }),
+    driveService: t('label.entity-service', {
+      entity: t('label.drive'),
+    }),
     glossary: t('label.glossary'),
     glossaryTerm: t('label.glossary-term'),
     tag: t('label.tag'),
@@ -2452,6 +2687,11 @@ export const getEntityNameLabel = (entityName?: string) => {
     apiCollection: t('label.api-collection'),
     apiEndpoint: t('label.api-endpoint'),
     metric: t('label.metric'),
+    page: t('label.knowledge-page'),
+    directory: t('label.directory'),
+    file: t('label.file'),
+    spreadsheet: t('label.spreadsheet'),
+    worksheet: t('label.worksheet'),
   };
 
   return (
@@ -2474,6 +2714,10 @@ export const getPluralizeEntityName = (entityType?: string) => {
     [EntityType.API_COLLECTION]: t('label.api-collection-plural'),
     [EntityType.API_ENDPOINT]: t('label.api-endpoint-plural'),
     [EntityType.METRIC]: t('label.metric-plural'),
+    [EntityType.DIRECTORY]: t('label.directory-plural'),
+    [EntityType.FILE]: t('label.file-plural'),
+    [EntityType.SPREADSHEET]: t('label.spreadsheet-plural'),
+    [EntityType.WORKSHEET]: t('label.worksheet-plural'),
   };
 
   return (
@@ -2588,6 +2832,9 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.DASHBOARD_SERVICE]: t('label.dashboard-service'),
   [EntityType.STORAGE_SERVICE]: t('label.storage-service'),
   [EntityType.SEARCH_SERVICE]: t('label.search-service'),
+  [EntityType.DRIVE_SERVICE]: t('label.entity-service', {
+    entity: t('label.drive'),
+  }),
   [EntityType.METRIC]: t('label.metric'),
   [EntityType.CONTAINER]: t('label.container'),
   [EntityType.DASHBOARD_DATA_MODEL]: t('label.dashboard-data-model'),
@@ -2655,4 +2902,9 @@ export const EntityTypeName: Record<EntityType, string> = {
   [EntityType.SERVICE]: t('label.service'),
   [EntityType.DATA_CONTRACT]: t('label.data-contract'),
   [EntityType.SECURITY_SERVICE]: t('label.security-service'),
+  [EntityType.INGESTION_RUNNER]: t('label.ingestion-runner'),
+  [EntityType.DIRECTORY]: t('label.directory'),
+  [EntityType.FILE]: t('label.file'),
+  [EntityType.SPREADSHEET]: t('label.spreadsheet'),
+  [EntityType.WORKSHEET]: t('label.worksheet'),
 };

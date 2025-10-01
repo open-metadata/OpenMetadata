@@ -84,6 +84,7 @@ import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -115,6 +116,7 @@ public abstract class OpenMetadataApplicationTest {
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
   private static GenericContainer<?> REDIS_CONTAINER;
+  private static GenericContainer<?> RDF_CONTAINER;
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
@@ -232,6 +234,9 @@ public abstract class OpenMetadataApplicationTest {
     // Redis cache configuration (if enabled by system properties)
     setupRedisIfEnabled();
 
+    // RDF configuration (if enabled by system properties)
+    setupRdfIfEnabled();
+
     ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
     APP = getApp(configOverridesArray);
     // Run System Migrations
@@ -277,7 +282,7 @@ public abstract class OpenMetadataApplicationTest {
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
     workflow.loadMigrations();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(false);
     WorkflowHandler.initialize(config);
     SettingsCache.initialize(config);
     ApplicationHandler.initialize(config);
@@ -362,6 +367,16 @@ public abstract class OpenMetadataApplicationTest {
         LOG.info("Redis container stopped successfully");
       } catch (Exception e) {
         LOG.error("Error stopping Redis container", e);
+      }
+    }
+
+    // Stop RDF container if it was started
+    if (RDF_CONTAINER != null) {
+      try {
+        RDF_CONTAINER.stop();
+        LOG.info("RDF container stopped successfully");
+      } catch (Exception e) {
+        LOG.error("Error stopping RDF container", e);
       }
     }
 
@@ -486,6 +501,55 @@ public abstract class OpenMetadataApplicationTest {
           "Redis cache not enabled for tests (enableCache={}, cacheType={})",
           enableCache,
           cacheType);
+    }
+  }
+
+  private static void setupRdfIfEnabled() {
+    String enableRdf = System.getProperty("enableRdf");
+    String rdfContainerImage = System.getProperty("rdfContainerImage");
+    if ("true".equals(enableRdf)) {
+      LOG.info("RDF is enabled for tests. Starting Fuseki container...");
+      if (CommonUtil.nullOrEmpty(rdfContainerImage)) {
+        rdfContainerImage = "stain/jena-fuseki:latest";
+      }
+
+      try {
+        RDF_CONTAINER =
+            new GenericContainer<>(DockerImageName.parse(rdfContainerImage))
+                .withExposedPorts(3030)
+                .withEnv("ADMIN_PASSWORD", "test-admin")
+                .withEnv("FUSEKI_DATASET_1", "openmetadata")
+                .waitingFor(
+                    Wait.forHttp("/$/ping")
+                        .forPort(3030)
+                        .forStatusCode(200)
+                        .withStartupTimeout(Duration.ofMinutes(2)));
+
+        RDF_CONTAINER.start();
+        String rdfHost = RDF_CONTAINER.getHost();
+        Integer rdfPort = RDF_CONTAINER.getMappedPort(3030);
+
+        LOG.info("Fuseki container started at {}:{}", rdfHost, rdfPort);
+
+        // Add RDF configuration overrides
+        configOverrides.add(ConfigOverride.config("rdf.enabled", "true"));
+        configOverrides.add(ConfigOverride.config("rdf.storageType", "FUSEKI"));
+        configOverrides.add(
+            ConfigOverride.config(
+                "rdf.remoteEndpoint",
+                String.format("http://%s:%d/openmetadata", rdfHost, rdfPort)));
+        configOverrides.add(ConfigOverride.config("rdf.username", "admin"));
+        configOverrides.add(ConfigOverride.config("rdf.password", "test-admin"));
+        configOverrides.add(ConfigOverride.config("rdf.baseUri", "https://open-metadata.org/"));
+
+        LOG.info("RDF configuration overrides added");
+      } catch (Exception e) {
+        LOG.warn("Failed to start RDF container, disabling RDF for tests", e);
+        // If container fails to start, disable RDF but continue tests
+        configOverrides.add(ConfigOverride.config("rdf.enabled", "false"));
+      }
+    } else {
+      LOG.info("RDF not enabled for tests (enableRdf={})", enableRdf);
     }
   }
 

@@ -55,7 +55,7 @@ export interface CreateDatabaseService {
  * Database Connection.
  */
 export interface DatabaseConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -151,8 +151,10 @@ export interface DatabaseConnection {
  * SSAS Metadata Database Connection Config
  *
  * Epic FHIR Connection Config
+ *
+ * ServiceNow Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Billing Project ID
      */
@@ -230,8 +232,14 @@ export interface ConfigClass {
      * Host and port of the Azure Synapse service.
      *
      * Host and port of the Cockrooach service.
+     *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -411,6 +419,8 @@ export interface ConfigClass {
      * Password to connect to Exasol.
      *
      * Password
+     *
+     * Password to connect to ServiceNow.
      */
     password?: string;
     /**
@@ -502,6 +512,9 @@ export interface ConfigClass {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      */
     username?: string;
     /**
@@ -599,21 +612,24 @@ export interface ConfigClass {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
+     * SSL Configuration details.
      */
-    authMechanism?: AuthMechanismEnum;
+    sslConfig?: Config;
     /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
     /**
+     * Authentication mode to connect to Impala.
+     */
+    authMechanism?: AuthMechanismEnum;
+    /**
      * Choose Auth Config Type.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
-     * SSL Configuration details.
-     */
-    sslConfig?: Config;
     /**
      * Use slow logs to extract lineage.
      */
@@ -715,6 +731,10 @@ export interface ConfigClass {
      * Snowflake Passphrase Key used with Private Key
      */
     snowflakePrivatekeyPassphrase?: string;
+    /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
     /**
      * Snowflake warehouse.
      */
@@ -853,6 +873,17 @@ export interface ConfigClass {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
+    [property: string]: any;
 }
 
 /**
@@ -1996,6 +2027,7 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
@@ -2118,6 +2150,7 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
@@ -2156,6 +2189,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

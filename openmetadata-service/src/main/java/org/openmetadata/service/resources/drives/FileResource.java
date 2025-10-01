@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.FileRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -61,7 +62,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/drives/files")
 @Tag(name = "Files", description = "A `File` is a document or resource stored in a Drive Service.")
@@ -135,6 +135,12 @@ public class FileResource extends EntityResource<File, FileRepository> {
       @Parameter(description = "Filter files by file type", schema = @Schema(type = "string"))
           @QueryParam("fileType")
           String fileTypeParam,
+      @Parameter(
+              description = "List files at the root level (without parent) when `true`",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("root")
+          @DefaultValue("false")
+          boolean root,
       @Parameter(description = "Limit the number files returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -161,7 +167,8 @@ public class FileResource extends EntityResource<File, FileRepository> {
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
             .addQueryParam("directory", directoryParam)
-            .addQueryParam("fileType", fileTypeParam);
+            .addQueryParam("fileType", fileTypeParam)
+            .addQueryParam("root", String.valueOf(root));
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -288,6 +295,35 @@ public class FileResource extends EntityResource<File, FileRepository> {
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchFile",
+      summary = "Update a file by name.",
+      description = "Update an existing file using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the file", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT

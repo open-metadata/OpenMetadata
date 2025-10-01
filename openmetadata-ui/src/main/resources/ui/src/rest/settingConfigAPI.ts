@@ -79,3 +79,12 @@ export const restoreSettingsConfig = async (settingType: SettingType) => {
 
   return response;
 };
+
+export const getSystemConfig = async () => {
+  const response = await axiosClient.get<{
+    basePath: string;
+    rdfEnabled: boolean;
+  }>(`system/config/rdf`);
+
+  return response.data;
+};

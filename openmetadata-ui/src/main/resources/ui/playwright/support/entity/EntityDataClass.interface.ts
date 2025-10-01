@@ -15,6 +15,7 @@ export interface EntityDataClassCreationConfig {
   entityDetails?: boolean;
   table?: boolean;
   topic?: boolean;
+  chart?: boolean;
   dashboard?: boolean;
   mlModel?: boolean;
   pipeline?: boolean;
@@ -34,4 +35,10 @@ export interface EntityDataClassCreationConfig {
   pipelineService?: boolean;
   searchIndexService?: boolean;
   storageService?: boolean;
+  metric?: boolean;
+  driveService?: boolean;
+  directory?: boolean;
+  file?: boolean;
+  spreadsheet?: boolean;
+  worksheet?: boolean;
 }

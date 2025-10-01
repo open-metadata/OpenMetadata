@@ -30,16 +30,20 @@ import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
 import dashboardDetailsClassBase from '../DashboardDetailsClassBase';
 import databaseClassBase from '../Database/DatabaseClassBase';
 import databaseSchemaClassBase from '../DatabaseSchemaClassBase';
+import directoryClassBase from '../DirectoryClassBase';
 import domainClassBase from '../Domain/DomainClassBase';
 import { getEntityName } from '../EntityUtils';
+import fileClassBase from '../FileClassBase';
 import i18n from '../i18next/LocalUtil';
 import metricDetailsClassBase from '../MetricEntityUtils/MetricDetailsClassBase';
 import mlModelClassBase from '../MlModel/MlModelClassBase';
 import pipelineClassBase from '../PipelineClassBase';
 import searchIndexClassBase from '../SearchIndexDetailsClassBase';
+import spreadsheetClassBase from '../SpreadsheetClassBase';
 import storedProcedureClassBase from '../StoredProcedureClassBase';
 import tableClassBase from '../TableClassBase';
 import topicClassBase from '../TopicClassBase';
+import worksheetClassBase from '../WorksheetClassBase';
 
 export const getGlossaryTermDefaultTabs = () => {
   return [
@@ -158,6 +162,14 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
       return mlModelClassBase.getMlModelDetailPageTabsIds();
     case PageType.Chart:
       return chartDetailsClassBase.getChartDetailPageTabsIds();
+    case PageType.Directory:
+      return directoryClassBase.getDirectoryDetailPageTabsIds();
+    case PageType.File:
+      return fileClassBase.getFileDetailPageTabsIds();
+    case PageType.Spreadsheet:
+      return spreadsheetClassBase.getSpreadsheetDetailPageTabsIds();
+    case PageType.Worksheet:
+      return worksheetClassBase.getWorksheetDetailPageTabsIds();
     default:
       return [
         {
@@ -210,6 +222,14 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return mlModelClassBase.getDefaultLayout(tab);
     case PageType.Chart:
       return chartDetailsClassBase.getDefaultLayout(tab);
+    case PageType.Directory:
+      return directoryClassBase.getDefaultLayout(tab);
+    case PageType.File:
+      return fileClassBase.getDefaultLayout(tab);
+    case PageType.Spreadsheet:
+      return spreadsheetClassBase.getDefaultLayout(tab);
+    case PageType.Worksheet:
+      return worksheetClassBase.getDefaultLayout(tab);
     default:
       return [];
   }
@@ -279,6 +299,14 @@ export const getCustomizableWidgetByPage = (
       return storedProcedureClassBase.getCommonWidgetList();
     case PageType.Chart:
       return chartDetailsClassBase.getCommonWidgetList();
+    case PageType.Directory:
+      return directoryClassBase.getCommonWidgetList();
+    case PageType.File:
+      return fileClassBase.getCommonWidgetList();
+    case PageType.Spreadsheet:
+      return spreadsheetClassBase.getCommonWidgetList();
+    case PageType.Worksheet:
+      return worksheetClassBase.getCommonWidgetList();
     case PageType.LandingPage:
     default:
       return [];
@@ -319,6 +347,14 @@ export const getDummyDataByPage = (pageType: PageType) => {
       return mlModelClassBase.getDummyData();
     case PageType.Chart:
       return chartDetailsClassBase.getDummyData();
+    case PageType.Directory:
+      return directoryClassBase.getDummyData();
+    case PageType.File:
+      return fileClassBase.getDummyData();
+    case PageType.Spreadsheet:
+      return spreadsheetClassBase.getDummyData();
+    case PageType.Worksheet:
+      return worksheetClassBase.getDummyData();
     case PageType.LandingPage:
     default:
       return {} as EntityUnion;
@@ -366,6 +402,14 @@ export const getWidgetsFromKey = (
       return customizeGlossaryTermPageClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Chart:
       return chartDetailsClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Directory:
+      return directoryClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.File:
+      return fileClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Spreadsheet:
+      return spreadsheetClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Worksheet:
+      return worksheetClassBase.getWidgetsFromKey(widgetConfig);
     default:
       return null;
   }
@@ -410,6 +454,14 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
       return customizeGlossaryTermPageClassBase.getWidgetHeight(widgetName);
     case PageType.Chart:
       return chartDetailsClassBase.getWidgetHeight(widgetName);
+    case PageType.Directory:
+      return directoryClassBase.getWidgetHeight(widgetName);
+    case PageType.File:
+      return fileClassBase.getWidgetHeight(widgetName);
+    case PageType.Spreadsheet:
+      return spreadsheetClassBase.getWidgetHeight(widgetName);
+    case PageType.Worksheet:
+      return worksheetClassBase.getWidgetHeight(widgetName);
     default:
       return 0;
   }
@@ -524,9 +576,10 @@ export const getDetailsTabWithNewLabel = (
     NonNullable<TabsProps['items']>[number] & { isHidden?: boolean }
   >,
   customizedTabs?: Tab[],
-  defaultTabId: EntityTabs = EntityTabs.OVERVIEW
+  defaultTabId: EntityTabs = EntityTabs.OVERVIEW,
+  isVersionView = false
 ) => {
-  if (!customizedTabs) {
+  if (!customizedTabs || isVersionView) {
     return defaultTabs.filter((data) => !data.isHidden);
   }
   const overviewTab = defaultTabs?.find((t) => t.key === defaultTabId);
@@ -571,9 +624,10 @@ export const asyncNoop = async () => {
 export const getLayoutFromCustomizedPage = (
   pageType: PageType,
   tab: EntityTabs,
-  customizedPage?: Page | null
+  customizedPage?: Page | null,
+  isVersionView = false
 ) => {
-  if (!customizedPage) {
+  if (!customizedPage || isVersionView) {
     return getDefaultWidgetForTab(pageType, tab);
   }
 
@@ -663,6 +717,22 @@ export const checkIfExpandViewSupported = (
         (!activeTab && firstTab.key === EntityTabs.FEATURES) ||
         activeTab === EntityTabs.FEATURES
       );
+    case PageType.Directory:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.CHILDREN) ||
+        activeTab === EntityTabs.CHILDREN
+      );
+    case PageType.File:
+    case PageType.Worksheet:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.OVERVIEW) ||
+        activeTab === EntityTabs.OVERVIEW
+      );
+    case PageType.Spreadsheet:
+      return (
+        (!activeTab && firstTab.key === EntityTabs.WORKSHEETS) ||
+        activeTab === EntityTabs.WORKSHEETS
+      );
     default:
       return false;
   }
@@ -689,3 +759,7 @@ export const updateWidgetHeightRecursively = (
 
     return acc;
   }, [] as WidgetConfig[]);
+
+export const getTabDisplayName = (item: Tab) => {
+  return item.displayName ?? getTabLabelFromId(item.name as EntityTabs);
+};

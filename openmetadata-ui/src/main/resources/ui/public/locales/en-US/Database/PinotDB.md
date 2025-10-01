@@ -4,7 +4,7 @@ In this section, we provide guides and references to use the PinotDB connector.
 
 ## Requirements
 
-You can find further information on the PinotDB connector in the [docs](https://docs.open-metadata.org/connectors/database/pinotdb).
+You can find further information on the PinotDB connector in the <a href="https://docs.open-metadata.org/connectors/database/pinotdb" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -37,7 +37,7 @@ $$
 $$section
 ### Pinot Controller Host $(id="pinotControllerHost")
 
-Pinot Controller Host and Port of the data source. Unlike broker host, prefix http:// or https:// must be added to contoller host. For example, you can set it to `http://localhost:9000`
+Pinot Controller Host and Port of the data source. Unlike broker host, prefix http:// or https:// must be added to controller host. For example, you can set it to `http://localhost:9000`
 $$
 
 $$section
