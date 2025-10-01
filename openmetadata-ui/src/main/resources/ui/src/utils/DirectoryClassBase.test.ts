@@ -26,10 +26,8 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Directory } from '../generated/entity/data/directory';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import directoryClassBase, {
-  DirectoryClassBase,
-  DirectoryDetailPageTabProps,
-} from './DirectoryClassBase';
+import directoryClassBase, { DirectoryClassBase } from './DirectoryClassBase';
+import { DirectoryDetailPageTabProps } from './DirectoryDetailsUtils';
 
 // Mock dependencies
 jest.mock('../constants/CustomizeWidgets.constants', () => ({
