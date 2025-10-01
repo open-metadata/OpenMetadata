@@ -1967,6 +1967,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-security-consume-description": "डेटाचे अपेक्षित ग्राहक",
+    "contract-sla-column-name-description": "Column that represents the refresh time of the data",
     "contract-status-description": "विद्यमान तपासण्यांसाठी एकूण स्थिती प्रदान करते",
     "contract-validation-trigger-successfully": "करार सत्यापन सफलतापूर्वक चालविले.",
     "copied-to-clipboard": "क्लिपबोर्डवर कॉपी केले",
