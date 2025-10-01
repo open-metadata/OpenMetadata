@@ -1113,6 +1113,49 @@ class DbtUnitTest(TestCase):
 
         self.assertEqual(dbt_meta_tags, expected_tags)
 
+    @patch("metadata.utils.tag_utils.get_tag_label")
+    def test_dbt_combined_meta_tags(self, get_tag_label):
+        """Test processing combined glossary, tier, and classification tags"""
+        get_tag_label.side_effect = [
+            # Glossary term
+            TagLabel(
+                tagFQN="Test_Glossary.term_one",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Glossary.value,
+            ),
+            # Tier tag
+            TagLabel(
+                tagFQN="Tier.Tier1",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+            # Classification tags
+            TagLabel(
+                tagFQN="PII.Sensitive",
+                labelType=LabelType.Automated.value,
+                state=State.Suggested.value,
+                source=TagSource.Classification.value,
+            ),
+        ]
+
+        # Create mock manifest meta with all types of tags
+        manifest_meta = {
+            "openmetadata": {
+                "glossary": ["Test_Glossary.term_one"],
+                "tier": "Tier.Tier1",
+                "tags": ["PII.Sensitive"]
+            }
+        }
+
+        dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
+            manifest_meta=manifest_meta
+        )
+
+        # Should have 3 tags: 1 glossary + 1 tier + 1 classification
+        self.assertEqual(len(dbt_meta_tags), 3)
+
     def test_parse_exposure_node_exposure_absent(self):
         _, dbt_objects = self.get_dbt_object_files(MOCK_SAMPLE_MANIFEST_V8)
 
