@@ -19,6 +19,7 @@ import {
   Row,
   Select,
   TimePicker,
+  Tooltip,
   Typography,
 } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
@@ -27,7 +28,6 @@ import moment from 'moment';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
-import { TIMEZONES_LIST } from '../../../constants/constants';
 import {
   MAX_LATENCY_UNITS,
   REFRESH_FREQUENCY_UNITS,
@@ -37,6 +37,7 @@ import {
 import {
   ContractSLA,
   DataContract,
+  Timezone,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { filterSelectOptions } from '../../../utils/CommonUtils';
@@ -69,6 +70,7 @@ export const ContractSLAFormTab: React.FC<{
     RETENTION_UNIT_OPTIONS,
     MAX_LATENCY_OPTIONS,
     REFRESH_FREQUENCY_UNIT_OPTIONS,
+    TIMEZONE_OPTIONS,
   } = useMemo(() => {
     return {
       REFRESH_FREQUENCY_UNIT_OPTIONS: generateSelectOptionsFromString(
@@ -76,6 +78,10 @@ export const ContractSLAFormTab: React.FC<{
       ),
       RETENTION_UNIT_OPTIONS: generateSelectOptionsFromString(RETENTION_UNITS),
       MAX_LATENCY_OPTIONS: generateSelectOptionsFromString(MAX_LATENCY_UNITS),
+      TIMEZONE_OPTIONS: Object.values(Timezone).map((tz) => ({
+        label: tz,
+        value: tz,
+      })),
     };
   }, []);
 
@@ -285,17 +291,28 @@ export const ContractSLAFormTab: React.FC<{
                     </Form.Item>
                   </Col>
                   <Col span={12}>
-                    <Form.Item label={t('label.timezone')} name="timezone">
+                    <Form.Item
+                      label={t('label.timezone')}
+                      name="timezone"
+                      tooltip={t(
+                        'message.contract-sla-timezone-availability-default'
+                      )}>
                       <Select
                         allowClear
                         showSearch
                         data-testid="timezone-select"
-                        options={TIMEZONES_LIST}
                         placeholder={t('label.select-entity', {
                           entity: t('label.timezone'),
                         })}
-                        popupClassName="timezone-select"
-                      />
+                        popupClassName="timezone-select">
+                        {TIMEZONE_OPTIONS.map((item) => (
+                          <Select.Option
+                            data-testid={`timezone-item-${item.label}`}
+                            key={item.value}>
+                            <Tooltip title={item.label}>{item.label}</Tooltip>
+                          </Select.Option>
+                        ))}
+                      </Select>
                     </Form.Item>
                   </Col>
                 </Row>
