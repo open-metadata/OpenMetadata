@@ -27,6 +27,7 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import software.amazon.awssdk.core.ResponseBytes;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.core.sync.ResponseTransformer;
@@ -53,7 +54,7 @@ public class S3LogStorageTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName(testBucket)
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix(testPrefix)
             .withEnableServerSideEncryption(true)
             .withStorageClass(LogStorageConfiguration.StorageClass.STANDARD_IA)

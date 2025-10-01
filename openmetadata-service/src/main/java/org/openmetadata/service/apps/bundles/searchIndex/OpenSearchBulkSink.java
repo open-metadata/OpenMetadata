@@ -1,6 +1,8 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
+import org.openmetadata.service.search.RecreateIndexHandler;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import os.org.opensearch.action.bulk.BackoffPolicy;
@@ -199,7 +202,10 @@ public class OpenSearchBulkSink implements BulkSink {
       LOG.debug("No index mapping found for entityType '{}'. Skipping indexing.", entityType);
       return;
     }
-    String indexName = indexMapping.getIndexName(searchRepository.getClusterAlias());
+    String indexName =
+        (String)
+            contextData.getOrDefault(
+                TARGET_INDEX_KEY, indexMapping.getIndexName(searchRepository.getClusterAlias()));
 
     try {
       // Check if these are time series entities
@@ -211,7 +217,14 @@ public class OpenSearchBulkSink implements BulkSink {
       } else {
         List<EntityInterface> entityInterfaces = (List<EntityInterface>) entities;
         for (EntityInterface entity : entityInterfaces) {
-          addEntity(entity, indexName, recreateIndex, embeddingsEnabled);
+          addEntity(
+              entity,
+              indexName,
+              recreateIndex,
+              (contextData.containsKey(RECREATE_CONTEXT)
+                  ? (RecreateIndexHandler.ReindexContext) contextData.get(RECREATE_CONTEXT)
+                  : null),
+              embeddingsEnabled);
         }
       }
     } catch (Exception e) {
@@ -231,7 +244,11 @@ public class OpenSearchBulkSink implements BulkSink {
   }
 
   private void addEntity(
-      EntityInterface entity, String indexName, boolean recreateIndex, boolean embeddingsEnabled) {
+      EntityInterface entity,
+      String indexName,
+      boolean recreateIndex,
+      RecreateIndexHandler.ReindexContext reindexContext,
+      boolean embeddingsEnabled) {
     // Build the search index document using the proper transformation
     String entityType = Entity.getEntityTypeFromObject(entity);
     Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc();
@@ -252,7 +269,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
     // If embeddings are enabled, also index to vector_search_index
     if (embeddingsEnabled) {
-      addEntityToVectorIndex(bulkProcessor, entity, recreateIndex);
+      addEntityToVectorIndex(bulkProcessor, entity, recreateIndex, reindexContext);
     }
   }
 
@@ -349,5 +366,8 @@ public class OpenSearchBulkSink implements BulkSink {
    * This method will only be called when embeddings are enabled for the entity type.
    */
   protected void addEntityToVectorIndex(
-      BulkProcessor bulkProcessor, EntityInterface entity, boolean recreateIndex) {}
+      BulkProcessor bulkProcessor,
+      EntityInterface entity,
+      boolean recreateIndex,
+      RecreateIndexHandler.ReindexContext reindexContext) {}
 }

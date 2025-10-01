@@ -99,6 +99,10 @@ export const PAGE_HEADERS = {
     header: i18n.t('label.security'),
     subHeader: i18n.t('message.page-sub-header-for-security'),
   },
+  DRIVE_SERVICES: {
+    header: i18n.t('label.drive'),
+    subHeader: i18n.t('message.page-sub-header-for-drive'),
+  },
   ACTIVITY_FEED: {
     header: i18n.t('label.activity-feed'),
     subHeader: i18n.t('message.page-sub-header-for-activity-feed'),
@@ -273,5 +277,29 @@ export const PAGE_HEADERS = {
   PLATFORM_LINEAGE: {
     header: i18n.t('label.lineage'),
     subHeader: i18n.t('message.page-sub-header-for-platform-lineage'),
+  },
+  DIRECTORY_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.directory-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.directory-plural'),
+    }),
+  },
+  FILE_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.file-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.file-plural'),
+    }),
+  },
+  SPREADSHEET_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.spreadsheet-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.spreadsheet-plural'),
+    }),
+  },
+  WORKSHEET_CUSTOM_ATTRIBUTES: {
+    header: i18n.t('label.worksheet-plural'),
+    subHeader: i18n.t('message.define-custom-property-for-entity', {
+      entity: i18n.t('label.worksheet-plural'),
+    }),
   },
 };

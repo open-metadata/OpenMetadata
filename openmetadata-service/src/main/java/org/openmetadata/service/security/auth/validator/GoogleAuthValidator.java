@@ -14,7 +14,8 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.security.client.OidcClientConfig;
-import org.openmetadata.schema.system.ValidationResult;
+import org.openmetadata.schema.system.FieldError;
+import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
 @Slf4j
@@ -30,7 +31,7 @@ public class GoogleAuthValidator {
   private static final String GOOGLE_TOKEN_INFO_URL = "https://oauth2.googleapis.com/tokeninfo";
   private final OidcDiscoveryValidator discoveryValidator = new OidcDiscoveryValidator();
 
-  public ValidationResult validateGoogleConfiguration(
+  public FieldError validateGoogleConfiguration(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
 
@@ -40,48 +41,39 @@ public class GoogleAuthValidator {
       };
     } catch (Exception e) {
       LOG.error("Google OAuth validation failed", e);
-      return new ValidationResult()
-          .withComponent("google")
-          .withStatus("failed")
-          .withMessage("Google OAuth validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Google OAuth validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateGooglePublicClient(AuthenticationConfiguration authConfig) {
+  private FieldError validateGooglePublicClient(AuthenticationConfiguration authConfig) {
     try {
       if (!nullOrEmpty(authConfig.getAuthority())
           && !GOOGLE_ACCOUNTS_BASE.equals(authConfig.getAuthority())) {
-        return new ValidationResult()
-            .withComponent("google-authority")
-            .withStatus("failed")
-            .withMessage(
-                "Google authority must be exactly: "
-                    + GOOGLE_ACCOUNTS_BASE
-                    + " but got: "
-                    + authConfig.getAuthority());
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_AUTHORITY,
+            "Google authority must be exactly: "
+                + GOOGLE_ACCOUNTS_BASE
+                + " but got: "
+                + authConfig.getAuthority());
       }
 
-      ValidationResult publicKeyCheck = validatePublicKeyUrls(authConfig.getPublicKeyUrls());
-      if (!"success".equals(publicKeyCheck.getStatus())) return publicKeyCheck;
+      FieldError publicKeyCheck = validatePublicKeyUrls(authConfig.getPublicKeyUrls());
+      if (publicKeyCheck != null) return publicKeyCheck;
 
-      ValidationResult clientIdCheck = validateClientId(authConfig.getClientId());
-      if (!"success".equals(clientIdCheck.getStatus())) return clientIdCheck;
+      FieldError clientIdCheck = validateClientId(authConfig.getClientId());
+      if (clientIdCheck != null) return clientIdCheck;
 
-      return new ValidationResult()
-          .withComponent("google-public")
-          .withStatus("success")
-          .withMessage(
-              "Google public client validated successfully. Client ID format and configuration values are valid.");
+      // Return null for success (no error)
+      return null;
     } catch (Exception e) {
       LOG.error("Google public client validation failed", e);
-      return new ValidationResult()
-          .withComponent("google-public")
-          .withStatus("failed")
-          .withMessage("Google public client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Google public client validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validateGoogleConfidentialClient(
+  private FieldError validateGoogleConfidentialClient(
       AuthenticationConfiguration authConfig, OidcClientConfig oidcConfig) {
     try {
       String discoveryUri = oidcConfig.getDiscoveryUri();
@@ -92,33 +84,49 @@ public class GoogleAuthValidator {
       if (!nullOrEmpty(oidcConfig.getDiscoveryUri())) {
         String expectedDiscoveryUri = GOOGLE_ACCOUNTS_BASE + OPENID_CONFIG_PATH;
         if (!expectedDiscoveryUri.equals(oidcConfig.getDiscoveryUri())) {
-          return new ValidationResult()
-              .withComponent("google-discovery-uri")
-              .withStatus("failed")
-              .withMessage(
-                  "Google discovery URI must be exactly: "
-                      + expectedDiscoveryUri
-                      + " but got: "
-                      + oidcConfig.getDiscoveryUri());
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI,
+              "Google discovery URI must be exactly: "
+                  + expectedDiscoveryUri
+                  + " but got: "
+                  + oidcConfig.getDiscoveryUri());
         }
       }
 
       // Validate against OIDC discovery document
-      ValidationResult discoveryCheck =
+      FieldError discoveryCheck =
           discoveryValidator.validateAgainstDiscovery(discoveryUri, authConfig, oidcConfig);
-      if (!"success".equals(discoveryCheck.getStatus())) {
+      if (discoveryCheck != null) {
         return discoveryCheck;
       }
 
-      ValidationResult publicKeyCheck = validatePublicKeyUrls(authConfig.getPublicKeyUrls());
-      if (!"success".equals(publicKeyCheck.getStatus())) return publicKeyCheck;
+      FieldError publicKeyCheck = validatePublicKeyUrls(authConfig.getPublicKeyUrls());
+      if (publicKeyCheck != null) return publicKeyCheck;
 
       // Get prompt from the main auth config's oidcConfiguration
       String prompt = oidcConfig.getPrompt();
       String scope = oidcConfig.getScope();
       String accessType = "online";
 
-      ValidationResult credentialsCheck =
+      // Validate prompt parameter for Google
+      if (!nullOrEmpty(prompt)) {
+        // Google only supports: consent, select_account, or empty
+        // Google does NOT support 'none' (even though it's in OpenID Connect spec)
+        if ("none".equalsIgnoreCase(prompt)) {
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_PROMPT,
+              "Google OAuth does not support prompt='none'. Valid values are: 'consent', 'select_account', or leave it empty.");
+        }
+        if (!"consent".equalsIgnoreCase(prompt) && !"select_account".equalsIgnoreCase(prompt)) {
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_PROMPT,
+              "Invalid prompt value for Google OAuth: '"
+                  + prompt
+                  + "'. Valid values are: 'consent', 'select_account', or leave it empty.");
+        }
+      }
+
+      FieldError credentialsCheck =
           validateGoogleCredentials(
               oidcConfig.getId(),
               oidcConfig.getSecret(),
@@ -126,53 +134,42 @@ public class GoogleAuthValidator {
               accessType,
               prompt,
               scope);
-      if (!"success".equals(credentialsCheck.getStatus())) return credentialsCheck;
-
-      return new ValidationResult()
-          .withComponent("google-confidential")
-          .withStatus("success")
-          .withMessage(
-              "Google confidential client validated successfully. Configuration validated against discovery document, and credentials are valid.");
+      if (credentialsCheck != null) return credentialsCheck;
+      return null;
     } catch (Exception e) {
       LOG.error("Google confidential client validation failed", e);
-      return new ValidationResult()
-          .withComponent("google-confidential")
-          .withStatus("failed")
-          .withMessage("Google confidential client validation failed: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          "", "Google confidential client validation failed: " + e.getMessage());
     }
   }
 
-  private ValidationResult validatePublicKeyUrls(List<String> publicKeyUrls) {
+  private FieldError validatePublicKeyUrls(List<String> publicKeyUrls) {
     if (publicKeyUrls != null && !publicKeyUrls.isEmpty()) {
       boolean hasCorrectUrl = publicKeyUrls.stream().anyMatch(EXPECTED_JWKS_URL::equals);
       if (!hasCorrectUrl) {
-        return new ValidationResult()
-            .withComponent("google-public-key-urls")
-            .withStatus("failed")
-            .withMessage("Google public key URLs must contain: " + EXPECTED_JWKS_URL);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.AUTH_PUBLIC_KEY_URLS,
+            "PublicKeyUrl validation failed");
       }
     }
-    return new ValidationResult().withStatus("success");
+    return null;
   }
 
   // Reusable helper
-  private ValidationResult validateClientId(String clientId) {
+  private FieldError validateClientId(String clientId) {
     if (nullOrEmpty(clientId) || !clientId.endsWith(CLIENT_ID_SUFFIX)) {
-      return new ValidationResult()
-          .withComponent("google-client-id")
-          .withStatus("failed")
-          .withMessage(
-              "Invalid Google client ID format. Expected format: {project-id}" + CLIENT_ID_SUFFIX);
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.AUTH_CLIENT_ID, "Invalid client Id");
     }
-    return new ValidationResult().withStatus("success");
+    return null;
   }
 
-  private ValidationResult validateGoogleCredentials(
-      String clientId, String clientSecret, String redirectUri) {
-    return validateGoogleCredentials(clientId, clientSecret, redirectUri, null, null, null);
-  }
+  //  private FieldError validateGoogleCredentials(
+  //      String clientId, String clientSecret, String redirectUri) {
+  //    return validateGoogleCredentials(clientId, clientSecret, redirectUri, null, null, null);
+  //  }
 
-  private ValidationResult validateGoogleCredentials(
+  private FieldError validateGoogleCredentials(
       String clientId,
       String clientSecret,
       String redirectUri,
@@ -180,10 +177,9 @@ public class GoogleAuthValidator {
       String prompt,
       String scope) {
     if (nullOrEmpty(clientId) || nullOrEmpty(clientSecret)) {
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage("Client ID and Client Secret are required for confidential clients");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+          "Client ID and Client Secret are required for confidential clients");
     }
 
     //    String actualRedirectUri = nullOrEmpty(redirectUri) ? DEFAULT_REDIRECT_URI : redirectUri;
@@ -192,39 +188,24 @@ public class GoogleAuthValidator {
     //    // Use provided scope or default to standard OpenID Connect scopes
     //    String actualScope = nullOrEmpty(scope) ? "openid email profile" : scope;
 
-    // Google deprecated 'approval_prompt' in favor of 'prompt' parameter
-    // Valid values: none, consent, select_account, or not set
-    //    String actualPrompt = prompt; // Don't default to "consent" as it's invalid for
-    // approval_prompt
-
-    if ("none".equalsIgnoreCase(prompt)) {
-      LOG.warn("Prompt is set to 'none' which may cause interaction_required errors during login");
-    }
-
     try {
       String authUrl =
           generateAuthorizationUrl(clientId, clientSecret, redirectUri, accessType, prompt, scope);
       if (authUrl == null || authUrl.isEmpty()) {
-        return new ValidationResult()
-            .withComponent("google-credentials")
-            .withStatus("failed")
-            .withMessage("Failed to generate Google OAuth authorization URL");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            "Client ID and Client Secret are required for confidential clients");
       }
 
       return validateAuthorizationUrl(authUrl, clientId, clientSecret);
     } catch (IllegalArgumentException e) {
       LOG.error("Invalid Google OAuth credentials: {}", e.getMessage());
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage(
-              "Invalid Google OAuth credentials. Please verify your Client ID and Client Secret are correct.");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Invalid credentials");
     } catch (Exception e) {
       LOG.error("Error validating Google credentials", e);
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage("Failed to validate Google credentials: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID, "Exception occured while validation");
     }
   }
 
@@ -261,18 +242,23 @@ public class GoogleAuthValidator {
         new GoogleAuthorizationCodeFlow.Builder(httpTransport, JSON_FACTORY, clientSecrets, scopes)
             .setAccessType(accessType);
 
-    // Google deprecated 'approval_prompt' and now uses URL parameter 'prompt'
-    // The GoogleAuthorizationCodeFlow still uses setApprovalPrompt but it maps to 'prompt' in the
-    // URL
-    // Valid values for modern Google OAuth: none, consent, select_account
-    if (!nullOrEmpty(prompt)) {
-      flowBuilder.setApprovalPrompt(prompt);
-    }
+    // Don't use setApprovalPrompt as it sets the deprecated 'approval_prompt' parameter
+    // We'll add the modern 'prompt' parameter directly to the URL
     GoogleAuthorizationCodeFlow flow = flowBuilder.build();
-    return flow.newAuthorizationUrl().setRedirectUri(redirectUri).build();
+
+    // Build the authorization URL
+    com.google.api.client.auth.oauth2.AuthorizationCodeRequestUrl authorizationUrl =
+        flow.newAuthorizationUrl().setRedirectUri(redirectUri);
+
+    // Add the modern 'prompt' parameter if specified
+    if (!nullOrEmpty(prompt)) {
+      authorizationUrl.set("prompt", prompt);
+    }
+
+    return authorizationUrl.build();
   }
 
-  private ValidationResult validateAuthorizationUrl(
+  private FieldError validateAuthorizationUrl(
       String authUrl, String clientId, String clientSecret) {
     LOG.debug("Generated Google OAuth authorization URL for validation: {}", authUrl);
 
@@ -287,54 +273,44 @@ public class GoogleAuthValidator {
       if (statusCode == 302 || statusCode == 303) {
         if (locationHeader == null) {
           LOG.warn("Redirect response without Location header");
-          return new ValidationResult()
-              .withComponent("google-credentials")
-              .withStatus("failed")
-              .withMessage(
-                  "Unable to validate Google OAuth credentials. No redirect location provided.");
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+              "Unable to validate Google OAuth credentials. No Location header in redirect.");
         }
         return analyzeRedirectLocation(locationHeader, clientId, clientSecret);
       } else {
         LOG.warn("Unexpected status code from Google OAuth: {}", statusCode);
-        return new ValidationResult()
-            .withComponent("google-credentials")
-            .withStatus("failed")
-            .withMessage(
-                "Unable to validate Google OAuth credentials. Unexpected response status: "
-                    + statusCode);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            "Unable to validate Google OAuth credentials. Exception occured.");
       }
     } catch (Exception httpEx) {
       LOG.error("HTTP request to Google OAuth failed", httpEx);
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage("Failed to connect to Google OAuth service: " + httpEx.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+          "Unable to validate Google OAuth credentials.");
     }
   }
 
-  private ValidationResult analyzeRedirectLocation(
+  private FieldError analyzeRedirectLocation(
       String locationHeader, String clientId, String clientSecret) {
     LocationAnalysis analysis = analyzeLocationHeader(locationHeader);
 
     // Check for specific error types in the location header - prioritize prompt errors
-    if (locationHeader.contains("approval_prompt") || locationHeader.contains("prompt")) {
+    if (locationHeader.contains("Invalid parameter value for prompt")
+        || locationHeader.contains("Invalid parameter value for approval_prompt")) {
       LOG.error("Invalid prompt parameter detected in redirect: {}", locationHeader);
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage(
-              "Invalid prompt parameter. Google OAuth only accepts: 'none', 'consent', 'select_account', or leave it empty. Current value appears to be invalid.");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_PROMPT,
+          "Invalid prompt parameter. Google OAuth only accepts: 'none', 'consent', 'select_account', or leave it empty. Current value appears to be invalid.");
     }
 
     if (analysis.hasInvalidRequest) {
-      // Check if it's actually an invalid_request due to bad parameters
       if (locationHeader.contains("invalid_request")) {
         LOG.error("Invalid request parameters detected in redirect: {}", locationHeader);
-        return new ValidationResult()
-            .withComponent("google-credentials")
-            .withStatus("failed")
-            .withMessage(
-                "Invalid request parameters. Please check your OAuth configuration (client ID, redirect URI, prompt value, etc.).");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+            "Invalid request parameters. Please check your OAuth configuration (client ID, redirect URI, prompt value, etc.).");
       }
     }
 
@@ -351,48 +327,49 @@ public class GoogleAuthValidator {
 
     if (analysis.hasServerError) {
       LOG.error("Google server error during validation");
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage("Google server error. Please try again later.");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+          "Unable to validate Google OAuth credentials.");
     }
 
     // Check for redirect URI mismatch - this should be a failure
     if (analysis.hasRedirectUriMismatch) {
+
       LOG.error("Redirect URI mismatch detected: {}", locationHeader);
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage(
-              "Redirect URI mismatch. Please verify the redirect URI is correctly configured in Google Cloud Console.");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CALLBACK_URL,
+          "Redirect URI mismatch. Please verify the redirect URI is correctly configured in Google Cloud Console.");
     }
 
     if (analysis.hasInvalidRequest && !analysis.hasInvalidClient) {
       // Check if the invalid_request is due to prompt parameter
-      if (locationHeader.contains("Invalid parameter value for approval_prompt")
-          || locationHeader.contains("invalid_request")
-          || locationHeader.contains("prompt")
-          || locationHeader.contains("approval_prompt")) {
-        LOG.error("Invalid request parameters detected: {}", locationHeader);
-
-        // More specific error messages based on the error type
-        if (locationHeader.contains("approval_prompt") || locationHeader.contains("prompt")) {
-          return new ValidationResult()
-              .withComponent("google-credentials")
-              .withStatus("failed")
-              .withMessage(
-                  "Invalid prompt parameter. Google OAuth only accepts: 'none', 'consent', 'select_account', or leave it empty.");
-        } else {
-          return new ValidationResult()
-              .withComponent("google-credentials")
-              .withStatus("failed")
-              .withMessage(
-                  "Invalid request parameters. Please check your OAuth configuration (client ID, redirect URI, prompt value, etc.).");
-        }
+      if (locationHeader.contains("Invalid parameter value for prompt")
+          || locationHeader.contains("Invalid parameter value for approval_prompt")) {
+        LOG.error("Invalid prompt parameter value detected: {}", locationHeader);
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_PROMPT, "Invalid prompt");
       }
       LOG.debug(
           "Valid client detected with invalid_request error (likely due to validation context)");
       return validateClientSecret(clientId, clientSecret);
+    }
+
+    // Check for interaction_required error (used by other OIDC providers with prompt=none)
+    // Note: Google doesn't support prompt=none, so immediate_failed is an actual error for Google
+    if (locationHeader.contains("error=interaction_required")
+        || locationHeader.contains("error=login_required")
+        || locationHeader.contains("error=consent_required")) {
+      LOG.debug(
+          "Interaction/login/consent required error detected, may be valid for other providers");
+      return validateClientSecret(clientId, clientSecret);
+    }
+
+    // immediate_failed indicates invalid prompt parameter for Google
+    if (locationHeader.contains("error=immediate_failed")) {
+      LOG.error("Google returned immediate_failed error - likely invalid prompt parameter");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_PROMPT,
+          "Invalid prompt parameter. Google does not support 'none'. Use 'consent', 'select_account', or leave it empty.");
     }
 
     if (analysis.hasAccountsGoogle && analysis.hasSignInFlow) {
@@ -406,10 +383,9 @@ public class GoogleAuthValidator {
     }
 
     LOG.warn("Unexpected redirect location: {}", locationHeader);
-    return new ValidationResult()
-        .withComponent("google-credentials")
-        .withStatus("failed")
-        .withMessage("Unable to validate Google OAuth credentials. Unexpected redirect.");
+    return ValidationErrorBuilder.createFieldError(
+        ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+        "Unable to validate google client credentials");
   }
 
   private static class LocationAnalysis {
@@ -462,14 +438,13 @@ public class GoogleAuthValidator {
             || locationHeader.contains("/signin/v2/identifier"));
   }
 
-  private ValidationResult createInvalidClientIdResult() {
-    return new ValidationResult()
-        .withComponent("google-credentials")
-        .withStatus("failed")
-        .withMessage("Invalid Google OAuth credentials. Client ID not recognized by Google.");
+  private FieldError createInvalidClientIdResult() {
+    return ValidationErrorBuilder.createFieldError(
+        ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_ID,
+        "Invalid Google OAuth credentials. Client ID not recognized by Google.");
   }
 
-  private ValidationResult validateClientSecret(String clientId, String clientSecret) {
+  private FieldError validateClientSecret(String clientId, String clientSecret) {
     try {
       LOG.debug("Validating client secret using token endpoint");
 
@@ -495,50 +470,30 @@ public class GoogleAuthValidator {
         if (responseBody.contains("invalid_grant")) {
           // This is expected - the code is invalid but the client credentials are valid
           LOG.debug("Client secret validated successfully (invalid_grant response as expected)");
-          return new ValidationResult()
-              .withComponent("google-credentials")
-              .withStatus("success")
-              .withMessage(
-                  "Google OAuth credentials validated successfully. Both Client ID and Client Secret are valid.");
-        } else if (responseBody.contains("invalid_client")) {
+          return null;
+        } else if (responseBody.contains("invalid_client")
+            || responseBody.contains("unauthorized_client")) {
           // Invalid client secret
           LOG.error("Invalid client secret detected");
-          return new ValidationResult()
-              .withComponent("google-credentials")
-              .withStatus("failed")
-              .withMessage(
-                  "Invalid Google OAuth Client Secret. The Client ID is valid but the Client Secret is incorrect.");
-        } else if (responseBody.contains("unauthorized_client")) {
-          LOG.error("Unauthorized client detected");
-          return new ValidationResult()
-              .withComponent("google-credentials")
-              .withStatus("failed")
-              .withMessage(
-                  "Unauthorized Google OAuth client. Please verify your client configuration.");
+          return ValidationErrorBuilder.createFieldError(
+              ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Invalid Google client secret");
         }
       } else if (statusCode == 401) {
         LOG.error("Authentication failed at token endpoint");
-        return new ValidationResult()
-            .withComponent("google-credentials")
-            .withStatus("failed")
-            .withMessage(
-                "Invalid Google OAuth Client Secret. Authentication failed at token endpoint.");
+        return ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+            "Invalid Google OAuth client secret.");
       }
 
-      // Unexpected response
       LOG.warn("Unexpected response from token endpoint: {}", statusCode);
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage(
-              "Unable to validate Client Secret. Unexpected response from Google token endpoint.");
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET,
+          "Unable to validate client secret.");
 
     } catch (Exception e) {
       LOG.error("Error validating client secret", e);
-      return new ValidationResult()
-          .withComponent("google-credentials")
-          .withStatus("failed")
-          .withMessage("Failed to validate Client Secret: " + e.getMessage());
+      return ValidationErrorBuilder.createFieldError(
+          ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, "Error validating client secret");
     }
   }
 }
