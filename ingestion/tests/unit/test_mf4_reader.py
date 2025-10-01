@@ -58,7 +58,7 @@ class TestMF4DataFrameReader(TestCase):
         }
 
         # Create mock MDF object with header
-        with patch("metadata.readers.dataframe.mf4.MDF") as mock_mdf_class:
+        with patch("asammdf.MDF") as mock_mdf_class:
             mock_mdf = MagicMock()
             mock_header = MagicMock()
             mock_header._common_properties = expected_common_props
@@ -78,7 +78,7 @@ class TestMF4DataFrameReader(TestCase):
         """
         mock_mf4_bytes = b"mock_mf4_content"
 
-        with patch("metadata.readers.dataframe.mf4.MDF") as mock_mdf_class:
+        with patch("asammdf.MDF") as mock_mdf_class:
             mock_mdf = MagicMock()
             mock_header = MagicMock()
             # No _common_properties attribute
