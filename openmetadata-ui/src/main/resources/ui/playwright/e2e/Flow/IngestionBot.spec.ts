@@ -153,7 +153,6 @@ test.describe('Ingestion Bot ', () => {
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-      await selectDomain(page, domain1.data);
       await addServicesToDomain(page, domain1.data, [
         domainAsset1[0].get().service,
       ]);
@@ -164,7 +163,6 @@ test.describe('Ingestion Bot ', () => {
       await page.waitForSelector('[data-testid="loader"]', {
         state: 'detached',
       });
-      await selectDomain(page, domain2.data);
       await addServicesToDomain(page, domain2.data, [
         domainAsset2[0].get().service,
       ]);
