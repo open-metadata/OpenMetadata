@@ -178,9 +178,7 @@
     },
     "supportsQueryRunner": {
       "title": "Supports Query Runner",
-      "description": "Snowflake supports Query Runner for programmatic query execution",
-      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner",
-      "default": true
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner"
     },
     "creditCost": {
       "title": "Cost of Credit",

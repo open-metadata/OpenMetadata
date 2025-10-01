@@ -140,9 +140,7 @@
     },
     "supportsQueryRunner": {
       "title": "Supports Query Runner",
-      "description": "BigQuery supports Query Runner for programmatic query execution",
-      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner",
-      "default": true
+      "$ref": "../connectionBasicType.json#/definitions/supportsQueryRunner"
     },
     "costPerTB": {
       "title": "Cost Per TiB",
