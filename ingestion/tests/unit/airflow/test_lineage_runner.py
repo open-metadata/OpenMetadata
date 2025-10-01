@@ -24,7 +24,6 @@ except ImportError:
 
 from airflow_provider_openmetadata.lineage.runner import AirflowLineageRunner
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
-from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.utils.helpers import datetime_to_ts
 
