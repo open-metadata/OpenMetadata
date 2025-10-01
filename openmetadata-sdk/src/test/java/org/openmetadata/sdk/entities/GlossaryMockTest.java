@@ -53,7 +53,7 @@ public class GlossaryMockTest {
     expectedGlossary.setDisplayName("Business Glossary");
     expectedGlossary.setFullyQualifiedName("business-glossary");
 
-    when(mockGlossaryService.create(any(Glossary.class))).thenReturn(expectedGlossary);
+    when(mockGlossaryService.create(any(CreateGlossary.class))).thenReturn(expectedGlossary);
 
     // Act
     Glossary result = org.openmetadata.sdk.entities.Glossary.create(createRequest);
@@ -62,7 +62,7 @@ public class GlossaryMockTest {
     assertNotNull(result);
     assertEquals("business-glossary", result.getName());
     assertEquals("Business Glossary", result.getDisplayName());
-    verify(mockGlossaryService).create(any(Glossary.class));
+    verify(mockGlossaryService).create(any(CreateGlossary.class));
   }
 
   @Test
@@ -82,7 +82,7 @@ public class GlossaryMockTest {
     expectedTerm.setFullyQualifiedName("business-glossary.customer-lifetime-value");
     expectedTerm.setSynonyms(List.of("CLV", "LTV"));
 
-    when(mockGlossaryTermService.create(any(GlossaryTerm.class))).thenReturn(expectedTerm);
+    when(mockGlossaryTermService.create(any(CreateGlossaryTerm.class))).thenReturn(expectedTerm);
 
     // Act
     GlossaryTerm result = org.openmetadata.sdk.entities.GlossaryTerm.create(createRequest);
@@ -93,7 +93,7 @@ public class GlossaryMockTest {
     assertEquals("Customer Lifetime Value", result.getDisplayName());
     assertNotNull(result.getSynonyms());
     assertEquals(2, result.getSynonyms().size());
-    verify(mockGlossaryTermService).create(any(GlossaryTerm.class));
+    verify(mockGlossaryTermService).create(any(CreateGlossaryTerm.class));
   }
 
   @Test
