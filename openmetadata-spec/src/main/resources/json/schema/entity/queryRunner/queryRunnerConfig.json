@@ -12,12 +12,18 @@
       "enum": ["CollateSSO", "ExternalOAuth", "Basic"],
       "default": "CollateSSO"
     },
+    "bigQueryAuthType": {
+      "description": "Authentication type for BigQuery query runner",
+      "type": "string",
+      "enum": ["CollateSSO", "Basic"],
+      "default": "CollateSSO"
+    },
     "bigQueryAuthConfig": {
       "description": "BigQuery specific authentication configuration",
       "type": "object",
       "properties": {
         "authType": {
-          "$ref": "#/definitions/authType"
+          "$ref": "#/definitions/bigQueryAuthType"
         },
         "projectId": {
           "description": "GCP Project ID for BigQuery",
@@ -89,16 +95,6 @@
         {
           "if": {
             "properties": {
-              "authType": { "const": "ExternalOAuth" }
-            }
-          },
-          "then": {
-            "required": ["oauthClientId", "oauthClientSecret", "oauthRedirectUri"]
-          }
-        },
-        {
-          "if": {
-            "properties": {
               "authType": { "const": "Basic" }
             }
           },
@@ -125,8 +121,7 @@
         },
         "schema": {
           "description": "Snowflake schema name",
-          "type": "string",
-          "default": "PUBLIC"
+          "type": "string"
         },
         "role": {
           "description": "Snowflake role name",
@@ -142,7 +137,7 @@
           "format": "password"
         },
         "accountUrl": {
-          "description": "Snowflake account URL (required for ExternalOAuth, e.g., https://mycompany.snowflakecomputing.com)",
+          "description": "Snowflake account URL without https:// (required for ExternalOAuth, e.g., mycompany.snowflakecomputing.com)",
           "type": "string",
           "format": "uri"
         },
@@ -194,13 +189,11 @@
     },
     "name": {
       "description": "Name that identifies this Query Runner Configuration.",
-      "type": "string",
-      "minLength": 1,
-      "maxLength": 256
+      "$ref": "../../type/basic.json#/definitions/entityName"
     },
     "fullyQualifiedName": {
-      "description": "FullyQualifiedName of the Query Runner Configuration.",
-      "type": "string"
+      "description": "FullyQualifiedName same as `name`.",
+      "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
     "displayName": {
       "description": "Display Name that identifies this Query Runner Configuration.",
@@ -230,31 +223,12 @@
       "description": "Query execution settings",
       "type": "object",
       "properties": {
-        "timeout": {
-          "description": "Query timeout in seconds",
-          "type": "integer",
-          "minimum": 1,
-          "maximum": 3600,
-          "default": 300
-        },
         "maxResultSize": {
-          "description": "Maximum result size in MB",
+          "description": "Maximum result size in count of rows",
           "type": "integer",
           "minimum": 1,
           "maximum": 1000,
           "default": 100
-        },
-        "enableCache": {
-          "description": "Enable query result caching",
-          "type": "boolean",
-          "default": true
-        },
-        "cacheTTL": {
-          "description": "Cache time-to-live in seconds",
-          "type": "integer",
-          "minimum": 60,
-          "maximum": 86400,
-          "default": 3600
         }
       }
     },
@@ -263,14 +237,9 @@
       "type": "boolean",
       "default": true
     },
-    "version": {
-      "description": "Metadata version of the entity.",
-      "type": "number"
-    },
     "updatedAt": {
       "description": "Last update time corresponding to the new version of the entity in Unix epoch time milliseconds.",
-      "type": "integer",
-      "format": "int64"
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "updatedBy": {
       "description": "User who made the update.",
@@ -282,7 +251,7 @@
       "default": false
     }
   },
-  "required": ["id", "name", "serviceType", "authConfig"],
+  "required": ["id", "name", "serviceType", "authConfig", "enabled"],
   "additionalProperties": false,
   "allOf": [
     {
