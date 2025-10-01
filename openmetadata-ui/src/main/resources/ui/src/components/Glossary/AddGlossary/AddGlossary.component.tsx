@@ -202,6 +202,10 @@ const AddGlossary = ({
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: () => document.body,
+      },
       children: (
         <Button
           data-testid="add-owner"
@@ -254,7 +258,13 @@ const AddGlossary = ({
     label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
-      selectedDomain: activeDomainEntityRef,
+      selectedDomain: activeDomainEntityRef
+        ? [activeDomainEntityRef]
+        : undefined,
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: () => document.body,
+      },
       children: (
         <Button
           data-testid="add-domain"
@@ -269,7 +279,7 @@ const AddGlossary = ({
     formItemProps: {
       valuePropName: 'selectedDomain',
       trigger: 'onUpdate',
-      initialValue: activeDomainEntityRef,
+      initialValue: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
     },
   };
 

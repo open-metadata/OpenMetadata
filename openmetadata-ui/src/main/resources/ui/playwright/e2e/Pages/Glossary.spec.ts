@@ -13,6 +13,7 @@
 import test, { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
+import { Domain } from '../../support/domain/Domain';
 import { DashboardClass } from '../../support/entity/DashboardClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
@@ -1703,6 +1704,101 @@ test.describe('Glossary tests', () => {
       await glossaryTerm.delete(apiContext);
       await afterAction();
       await reviewerAfterAction();
+    }
+  });
+
+  test('Glossary creation with domain selection', async ({ browser }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser);
+    const domain = new Domain();
+    const glossary = new Glossary();
+
+    try {
+      await test.step('Create domain', async () => {
+        await domain.create(apiContext);
+      });
+
+      await test.step('Navigate to Glossary page', async () => {
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+      });
+
+      await test.step('Open Add Glossary form', async () => {
+        await page.click('[data-testid="add-glossary"]');
+        await page.waitForSelector('[data-testid="form-heading"]');
+
+        await expect(page.locator('[data-testid="form-heading"]')).toHaveText(
+          'Add Glossary'
+        );
+
+        await page.fill('[data-testid="name"]', glossary.data.name);
+        await page
+          .locator('[data-testid="description"] .ql-editor')
+          .fill(glossary.data.description);
+      });
+
+      await test.step(
+        'Select domain and verify popover opens correctly without scrolling',
+        async () => {
+          const initialScrollPosition = await page.evaluate(
+            () => window.scrollY
+          );
+
+          await page.click('[data-testid="add-domain"]');
+
+          await expect(page.locator('.domain-select-popover')).toBeVisible();
+
+          const scrollPositionAfterClick = await page.evaluate(
+            () => window.scrollY
+          );
+
+          expect(scrollPositionAfterClick).toBe(initialScrollPosition);
+
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
+
+          const searchDomain = page.waitForResponse(
+            `/api/v1/search/query?q=*${encodeURIComponent(domain.data.name)}*`
+          );
+          await page
+            .getByTestId('selectable-list')
+            .getByTestId('searchbar')
+            .fill(domain.data.name);
+          await searchDomain;
+
+          await page
+            .getByRole('listitem', { name: domain.data.displayName })
+            .click();
+          await page.getByTestId('saveAssociatedTag').click();
+
+          await expect(
+            page.locator('[data-testid="domain-link"]')
+          ).toContainText(domain.data.displayName);
+        }
+      );
+
+      await test.step(
+        'Save glossary and verify creation with domain',
+        async () => {
+          const glossaryResponse = page.waitForResponse('/api/v1/glossaries');
+          await page.click('[data-testid="save-glossary"]');
+          await glossaryResponse;
+
+          await expect(page).toHaveURL(/\/glossary\//);
+
+          await expect(
+            page.locator('[data-testid="entity-header-display-name"]')
+          ).toContainText(glossary.data.name);
+
+          await expect(
+            page.locator('[data-testid="domain-link"]')
+          ).toContainText(domain.data.displayName);
+        }
+      );
+    } finally {
+      await glossary.delete(apiContext);
+      await domain.delete(apiContext);
+      await afterAction();
     }
   });
 
