@@ -19,6 +19,7 @@ ConfigSource Reader Factory: Helps us choose the reader from
 from enum import Enum
 from typing import Any, Optional
 
+from metadata.readers.dataframe.avro import AvroDataFrameReader
 from metadata.readers.dataframe.base import DataFrameReader
 from metadata.readers.dataframe.dsv import (
     CSVDataFrameReader,
@@ -26,27 +27,12 @@ from metadata.readers.dataframe.dsv import (
     get_dsv_reader_by_separator,
 )
 from metadata.readers.dataframe.json import JSONDataFrameReader
+from metadata.readers.dataframe.mf4 import MF4DataFrameReader
 from metadata.readers.dataframe.parquet import ParquetDataFrameReader
 from metadata.readers.models import ConfigSource
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
-
-try:
-    from metadata.readers.dataframe.avro import AvroDataFrameReader
-
-    AVRO_AVAILABLE = True
-except ImportError:
-    AVRO_AVAILABLE = False
-    logger.debug("AvroDataFrameReader is not available. Install avro dependencies.")
-
-try:
-    from metadata.readers.dataframe.mf4 import MF4DataFrameReader
-
-    MF4_AVAILABLE = True
-except ImportError:
-    MF4_AVAILABLE = False
-    logger.debug("MF4DataFrameReader is not available. Install asammdf dependencies.")
 
 
 class SupportedTypes(Enum):
@@ -72,6 +58,7 @@ DF_READER_MAP = {
     SupportedTypes.CSV.value: CSVDataFrameReader,
     SupportedTypes.CSVGZ.value: CSVDataFrameReader,
     SupportedTypes.TSV.value: TSVDataFrameReader,
+    SupportedTypes.AVRO.value: AvroDataFrameReader,
     SupportedTypes.PARQUET.value: ParquetDataFrameReader,
     SupportedTypes.PARQUET_PQ.value: ParquetDataFrameReader,
     SupportedTypes.PARQUET_PQT.value: ParquetDataFrameReader,
@@ -83,13 +70,8 @@ DF_READER_MAP = {
     SupportedTypes.JSONL.value: JSONDataFrameReader,
     SupportedTypes.JSONLGZ.value: JSONDataFrameReader,
     SupportedTypes.JSONLZIP.value: JSONDataFrameReader,
+    SupportedTypes.MF4.value: MF4DataFrameReader,
 }
-
-if AVRO_AVAILABLE:
-    DF_READER_MAP[SupportedTypes.AVRO.value] = AvroDataFrameReader
-
-if MF4_AVAILABLE:
-    DF_READER_MAP[SupportedTypes.MF4.value] = MF4DataFrameReader
 
 
 def get_df_reader(
