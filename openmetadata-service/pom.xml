@@ -1130,9 +1130,8 @@
               <artifactId>maven-surefire-plugin</artifactId>
               <version>${maven-surefire.version}</version>
               <configuration>
-                <reuseForks>false</reuseForks>
-                <parallel>classes</parallel>
-                <forkCount>1C</forkCount>
+                <reuseForks>true</reuseForks>
+                <forkCount>1</forkCount>
                 <argLine>-Xmx1G</argLine>
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
@@ -1170,9 +1169,8 @@
               <artifactId>maven-surefire-plugin</artifactId>
               <version>${maven-surefire.version}</version>
               <configuration>
-                <reuseForks>false</reuseForks>
-                <parallel>classes</parallel>
-                <forkCount>1C</forkCount>
+                <reuseForks>true</reuseForks>
+                <forkCount>1</forkCount>
                 <argLine>-Xmx1G</argLine>
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.MySQLContainer</jdbcContainerClassName>
@@ -1216,9 +1214,8 @@
               <artifactId>maven-surefire-plugin</artifactId>
               <version>${maven-surefire.version}</version>
               <configuration>
-                <reuseForks>false</reuseForks>
-                <parallel>classes</parallel>
-                <forkCount>1C</forkCount>
+                <reuseForks>true</reuseForks>
+                <forkCount>1</forkCount>
                 <argLine>-Xmx2G</argLine>
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>
@@ -1258,9 +1255,8 @@
               <artifactId>maven-surefire-plugin</artifactId>
               <version>${maven-surefire.version}</version>
               <configuration>
-                <reuseForks>false</reuseForks>
-                <parallel>classes</parallel>
-                <forkCount>1C</forkCount>
+                <reuseForks>true</reuseForks>
+                <forkCount>1</forkCount>
                 <argLine>-Xmx2G</argLine>
                 <systemPropertyVariables>
                   <jdbcContainerClassName>org.testcontainers.containers.PostgreSQLContainer</jdbcContainerClassName>

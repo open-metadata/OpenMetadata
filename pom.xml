@@ -39,6 +39,7 @@
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
     <module>openmetadata-clients</module>
+    <module>openmetadata-integration-tests</module>
   </modules>
   <packaging>pom</packaging>
 

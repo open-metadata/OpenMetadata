@@ -21,6 +21,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
 /**
@@ -33,7 +34,9 @@ import org.testcontainers.utility.DockerImageName;
 public abstract class CachedOpenMetadataApplicationResourceTest
     extends OpenMetadataApplicationTest {
 
-  private static GenericContainer<?> REDIS_CONTAINER;
+  // Reuse parent's REDIS_CONTAINER; do not shadow it
+  private static final Object REDIS_LOCK = new Object();
+  private static volatile boolean REDIS_SHUTDOWN_HOOK_ADDED = false;
 
   // Redis configuration constants
   public static final String REDIS_IMAGE = "redis:7-alpine";
@@ -48,10 +51,20 @@ public abstract class CachedOpenMetadataApplicationResourceTest
   @BeforeAll
   @Override
   public void createApplication() throws Exception {
-    LOG.info("Starting Redis container for cache testing");
-    startRedisContainer();
-    addRedisConfigurationOverrides();
-    super.createApplication();
+    String enableCache = System.getProperty("enableCache");
+    String cacheType = System.getProperty("cacheType");
+
+    boolean baseWillStartRedis = "true".equals(enableCache) && "redis".equals(cacheType);
+    if (baseWillStartRedis) {
+      LOG.info(
+          "Redis will be started by base test via system properties (enableCache=true, cacheType=redis). Skipping local Redis container.");
+      super.createApplication();
+    } else {
+      LOG.info("Ensuring local Redis test container is running");
+      startRedisContainer();
+      addRedisConfigurationOverrides();
+      super.createApplication();
+    }
 
     // After the application is created and cache is initialized,
     // replace the CollectionDAO with the cached version
@@ -81,33 +94,58 @@ public abstract class CachedOpenMetadataApplicationResourceTest
    * Start Redis container using Testcontainers
    */
   private void startRedisContainer() {
-    REDIS_CONTAINER =
-        new GenericContainer<>(DockerImageName.parse(REDIS_IMAGE))
-            .withExposedPorts(REDIS_PORT)
-            .withCommand("redis-server", "--requirepass", REDIS_PASSWORD)
-            .withReuse(false)
-            .withStartupTimeout(Duration.ofMinutes(2));
+    synchronized (REDIS_LOCK) {
+      if (REDIS_CONTAINER != null) {
+        try {
+          // If already running, nothing to do
+          Integer port = REDIS_CONTAINER.getFirstMappedPort();
+          LOG.info("Redis container already running at {}:{}", REDIS_CONTAINER.getHost(), port);
+          return;
+        } catch (IllegalStateException ignored) {
+          // Not started yet, will start below
+        }
+      }
 
-    REDIS_CONTAINER.start();
+      GenericContainer<?> container =
+          new GenericContainer<>(DockerImageName.parse(REDIS_IMAGE))
+              .withExposedPorts(REDIS_PORT)
+              .withCommand("redis-server", "--requirepass", REDIS_PASSWORD)
+              .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(2)))
+              .withReuse(false)
+              .withStartupTimeout(Duration.ofMinutes(2));
 
-    LOG.info(
-        "Redis container started at {}:{}",
-        REDIS_CONTAINER.getHost(),
-        REDIS_CONTAINER.getFirstMappedPort());
+      container.start();
+      REDIS_CONTAINER = container;
+
+      LOG.info(
+          "Redis container started at {}:{}",
+          REDIS_CONTAINER.getHost(),
+          REDIS_CONTAINER.getFirstMappedPort());
+
+      if (!REDIS_SHUTDOWN_HOOK_ADDED) {
+        Runtime.getRuntime()
+            .addShutdownHook(
+                new Thread(
+                    () -> {
+                      try {
+                        if (REDIS_CONTAINER != null) {
+                          REDIS_CONTAINER.stop();
+                          LOG.info("Redis container stopped successfully (shutdown hook)");
+                        }
+                      } catch (Exception e) {
+                        LOG.warn("Error stopping Redis container in shutdown hook", e);
+                      }
+                    }));
+        REDIS_SHUTDOWN_HOOK_ADDED = true;
+      }
+    }
   }
 
   /**
    * Stop Redis container and cleanup
    */
   private void stopRedisContainer() {
-    if (REDIS_CONTAINER != null) {
-      try {
-        REDIS_CONTAINER.stop();
-        LOG.info("Redis container stopped successfully");
-      } catch (Exception e) {
-        LOG.error("Error stopping Redis container", e);
-      }
-    }
+    // No-op: use JVM shutdown hook to keep Redis shared across test classes in this JVM
   }
 
   /**

@@ -56,6 +56,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.jetbrains.annotations.NotNull;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
@@ -81,8 +82,10 @@ import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
+import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
@@ -115,8 +118,10 @@ public abstract class OpenMetadataApplicationTest {
 
   public static Jdbi jdbi;
   private static ElasticsearchContainer ELASTIC_SEARCH_CONTAINER;
-  private static GenericContainer<?> REDIS_CONTAINER;
-  private static GenericContainer<?> RDF_CONTAINER;
+  protected static GenericContainer<?> REDIS_CONTAINER;
+  protected static GenericContainer<?> RDF_CONTAINER;
+  private static JdbcDatabaseContainer<?> SQL_CONTAINER;
+  private static final Object INIT_LOCK = new Object();
 
   protected static final Set<ConfigOverride> configOverrides = new HashSet<>();
 
@@ -138,6 +143,13 @@ public abstract class OpenMetadataApplicationTest {
 
   @BeforeAll
   public void createApplication() throws Exception {
+    synchronized (INIT_LOCK) {
+      if (APP != null) {
+        if (client == null) {
+          createClient();
+        }
+        return;
+      }
     String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
     String jdbcContainerImage = System.getProperty("jdbcContainerImage");
     String elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
@@ -160,12 +172,22 @@ public abstract class OpenMetadataApplicationTest {
             Class.forName(jdbcContainerClassName)
                 .getConstructor(String.class)
                 .newInstance(jdbcContainerImage);
+    // Tune DB container behavior per engine
+    if (sqlContainer instanceof MySQLContainer) {
+      // Mitigate AIO failures on some CI kernels and speed up startup
+      ((MySQLContainer<?>) sqlContainer)
+          .withCommand(
+              "--innodb_use_native_aio=0",
+              "--default-authentication-plugin=mysql_native_password",
+              "--skip-log-bin");
+    }
     sqlContainer.withReuse(false);
     sqlContainer.withStartupTimeoutSeconds(240);
     sqlContainer.withConnectTimeoutSeconds(240);
     sqlContainer.withPassword("password");
     sqlContainer.withUsername("username");
     sqlContainer.start();
+    SQL_CONTAINER = sqlContainer;
 
     // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
     DataSourceFactory dataSourceFactory = new DataSourceFactory();
@@ -186,9 +208,10 @@ public abstract class OpenMetadataApplicationTest {
     try {
       extensionMigrationScripsLocation =
           ResourceHelpers.resourceFilePath("extension/sql/migrations/");
-      configOverrides.add(
-          ConfigOverride.config(
-              "migrationConfiguration.extensionPath", extensionMigrationScripsLocation));
+      // Set directly on config
+      if (config.getMigrationConfiguration() != null) {
+        config.getMigrationConfiguration().setExtensionPath(extensionMigrationScripsLocation);
+      }
     } catch (Exception ex) {
       LOG.info("Extension migrations not found");
     }
@@ -219,26 +242,34 @@ public abstract class OpenMetadataApplicationTest {
     String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
     HOST = parts[0];
     PORT = parts[1];
-    overrideElasticSearchConfig();
-    overrideDatabaseConfig(sqlContainer);
+    // Apply ES and DB directly to config (avoid Dropwizard ConfigOverride varargs bugs)
+    config.setElasticSearchConfiguration(getEsConfig());
+    applyDatabaseConfig(config, sqlContainer);
 
     // Init IndexMapping class
     IndexMappingLoader.init(getEsConfig());
 
-    // Migration overrides
-    configOverrides.add(
-        ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
-    configOverrides.add(
-        ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
+    // Migration paths directly on config
+    if (config.getMigrationConfiguration() != null) {
+      config.getMigrationConfiguration().setFlywayPath(flyWayMigrationScriptsLocation);
+      config.getMigrationConfiguration().setNativePath(nativeMigrationScriptsLocation);
+    }
 
-    // Redis cache configuration (if enabled by system properties)
+    // Redis cache configuration (start container if enabled via system properties)
     setupRedisIfEnabled();
 
     // RDF configuration (if enabled by system properties)
     setupRdfIfEnabled();
 
-    ConfigOverride[] configOverridesArray = configOverrides.toArray(new ConfigOverride[0]);
-    APP = getApp(configOverridesArray);
+    // If a Redis container is present (either started here via sysprops or by a subclass),
+    // write cache settings into the config directly now
+    applyRedisConfigIfPresent(config);
+
+    // If an RDF container is present, write settings directly into config
+    applyRdfConfigIfPresent(config);
+
+    // Build app extension from an already materialized configuration object
+    APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, config);
     // Run System Migrations
     jdbi =
         Jdbi.create(
@@ -255,8 +286,72 @@ public abstract class OpenMetadataApplicationTest {
         extensionMigrationScripsLocation,
         false);
     createIndices();
-    APP.before();
-    createClient();
+      try {
+        APP.before();
+        createClient();
+        // Ensure seed data is loaded so tests relying on system users/bots work
+        try {
+          CollectionRegistry.getInstance().loadSeedData(jdbi, config, null, null, null, true);
+        } catch (Exception se) {
+          LOG.warn("Seed data load failed: {}", se.getMessage());
+        }
+      } catch (Exception e) {
+        // Reset APP so other classes can retry initialization
+        LOG.error("Application startup failed. Resetting APP state for retry.", e);
+        try {
+          if (APP != null) {
+            APP.after();
+          }
+        } catch (Exception ignore) {
+        }
+        APP = null;
+        // Re-throw to fail the current test class early
+        throw e;
+      }
+
+      // Global shutdown hook to stop resources once per JVM
+      Runtime.getRuntime()
+          .addShutdownHook(
+              new Thread(
+                  () -> {
+                    try {
+                      if (APP != null) {
+                        APP.after();
+                        APP.getEnvironment().getApplicationContext().getServer().stop();
+                      }
+                    } catch (Exception e) {
+                      LOG.warn("Error while stopping Dropwizard app", e);
+                    }
+                    try {
+                      if (ELASTIC_SEARCH_CONTAINER != null) {
+                        ELASTIC_SEARCH_CONTAINER.stop();
+                      }
+                    } catch (Exception e) {
+                      LOG.warn("Error while stopping Elasticsearch container", e);
+                    }
+                    try {
+                      if (REDIS_CONTAINER != null) {
+                        REDIS_CONTAINER.stop();
+                      }
+                    } catch (Exception e) {
+                      LOG.warn("Error while stopping Redis container", e);
+                    }
+                    try {
+                      if (RDF_CONTAINER != null) {
+                        RDF_CONTAINER.stop();
+                      }
+                    } catch (Exception e) {
+                      LOG.warn("Error while stopping RDF container", e);
+                    }
+                    try {
+                      if (client != null) {
+                        client.close();
+                      }
+                    } catch (Exception e) {
+                      LOG.warn("Error while closing HTTP client", e);
+                    }
+                  }));
+    }
   }
 
   public void validateAndRunSystemDataMigrations(
@@ -331,9 +426,9 @@ public abstract class OpenMetadataApplicationTest {
 
   @NotNull
   protected DropwizardAppExtension<OpenMetadataApplicationConfig> getApp(
-      ConfigOverride[] configOverridesArray) {
-    return new DropwizardAppExtension<>(
-        OpenMetadataApplication.class, CONFIG_PATH, configOverridesArray);
+      ConfigOverride[] ignored) {
+    // Unused with direct-config path but kept for compatibility if overridden elsewhere
+    return new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH);
   }
 
   private static void createClient() {
@@ -352,37 +447,7 @@ public abstract class OpenMetadataApplicationTest {
 
   @AfterAll
   public void stopApplication() throws Exception {
-    // If BeforeAll causes and exception AfterAll still gets called before that exception is thrown.
-    // If a NullPointerException is thrown during the cleanup of above it will eat the initial error
-    if (APP != null) {
-      APP.after();
-      APP.getEnvironment().getApplicationContext().getServer().stop();
-    }
-    ELASTIC_SEARCH_CONTAINER.stop();
-
-    // Stop Redis container if it was started
-    if (REDIS_CONTAINER != null) {
-      try {
-        REDIS_CONTAINER.stop();
-        LOG.info("Redis container stopped successfully");
-      } catch (Exception e) {
-        LOG.error("Error stopping Redis container", e);
-      }
-    }
-
-    // Stop RDF container if it was started
-    if (RDF_CONTAINER != null) {
-      try {
-        RDF_CONTAINER.stop();
-        LOG.info("RDF container stopped successfully");
-      } catch (Exception e) {
-        LOG.error("Error stopping RDF container", e);
-      }
-    }
-
-    if (client != null) {
-      client.close();
-    }
+    // Intentionally no-op: global shutdown hook handles teardown after all tests in JVM.
   }
 
   private void createIndices() {
@@ -469,6 +534,7 @@ public abstract class OpenMetadataApplicationTest {
           new GenericContainer<>(DockerImageName.parse(redisContainerImage))
               .withExposedPorts(6379)
               .withCommand("redis-server", "--requirepass", "test-password")
+              .waitingFor(Wait.forListeningPort().withStartupTimeout(Duration.ofMinutes(2)))
               .withReuse(false)
               .withStartupTimeout(Duration.ofMinutes(2));
 
@@ -479,23 +545,7 @@ public abstract class OpenMetadataApplicationTest {
 
       LOG.info("Redis container started at {}:{}", redisHost, redisPort);
 
-      // Add Redis configuration overrides
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.enabled", "true"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.provider", "REDIS_STANDALONE"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.host", redisHost));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.port", redisPort.toString()));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.authType", "PASSWORD"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.password", "test-password"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.useSsl", "false"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.database", "0"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.ttlSeconds", "3600"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.connectionTimeoutSecs", "5"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.socketTimeoutSecs", "60"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.maxRetries", "3"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupEnabled", "true"));
-      configOverrides.add(ConfigOverride.config("cacheConfiguration.warmupThreads", "2"));
-
-      LOG.info("Redis configuration overrides added");
+      LOG.info("Redis test container started via system properties");
     } else {
       LOG.info(
           "Redis cache not enabled for tests (enableCache={}, cacheType={})",
@@ -531,22 +581,13 @@ public abstract class OpenMetadataApplicationTest {
 
         LOG.info("Fuseki container started at {}:{}", rdfHost, rdfPort);
 
-        // Add RDF configuration overrides
-        configOverrides.add(ConfigOverride.config("rdf.enabled", "true"));
-        configOverrides.add(ConfigOverride.config("rdf.storageType", "FUSEKI"));
-        configOverrides.add(
-            ConfigOverride.config(
-                "rdf.remoteEndpoint",
-                String.format("http://%s:%d/openmetadata", rdfHost, rdfPort)));
-        configOverrides.add(ConfigOverride.config("rdf.username", "admin"));
-        configOverrides.add(ConfigOverride.config("rdf.password", "test-admin"));
-        configOverrides.add(ConfigOverride.config("rdf.baseUri", "https://open-metadata.org/"));
-
-        LOG.info("RDF configuration overrides added");
+        LOG.info("RDF container started for tests");
       } catch (Exception e) {
         LOG.warn("Failed to start RDF container, disabling RDF for tests", e);
         // If container fails to start, disable RDF but continue tests
-        configOverrides.add(ConfigOverride.config("rdf.enabled", "false"));
+        if (APP != null && APP.getConfiguration() != null) {
+          APP.getConfiguration().getRdfConfiguration().setEnabled(false);
+        }
       }
     } else {
       LOG.info("RDF not enabled for tests (enableRdf={})", enableRdf);
@@ -554,12 +595,66 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   private static void overrideDatabaseConfig(JdbcDatabaseContainer<?> sqlContainer) {
-    // Database overrides
+    // Deprecated in favor of applyDatabaseConfig
     configOverrides.add(
         ConfigOverride.config("database.driverClass", sqlContainer.getDriverClassName()));
     configOverrides.add(ConfigOverride.config("database.url", sqlContainer.getJdbcUrl()));
     configOverrides.add(ConfigOverride.config("database.user", sqlContainer.getUsername()));
     configOverrides.add(ConfigOverride.config("database.password", sqlContainer.getPassword()));
+  }
+
+  private static void applyDatabaseConfig(
+      OpenMetadataApplicationConfig config, JdbcDatabaseContainer<?> sqlContainer) {
+    DataSourceFactory ds = config.getDataSourceFactory();
+    if (ds == null) {
+      ds = new DataSourceFactory();
+      config.setDataSourceFactory(ds);
+    }
+    ds.setDriverClass(sqlContainer.getDriverClassName());
+    ds.setUrl(sqlContainer.getJdbcUrl());
+    ds.setUser(sqlContainer.getUsername());
+    ds.setPassword(sqlContainer.getPassword());
+  }
+
+  private static void applyRedisConfigIfPresent(OpenMetadataApplicationConfig config) {
+    if (REDIS_CONTAINER != null) {
+      CacheConfiguration cc = new CacheConfiguration();
+      cc.setEnabled(true);
+      cc.setProvider(CacheConfiguration.CacheProvider.REDIS_STANDALONE);
+      cc.setHost(REDIS_CONTAINER.getHost());
+      cc.setPort(REDIS_CONTAINER.getFirstMappedPort());
+      cc.setAuthType(CacheConfiguration.AuthType.PASSWORD);
+      cc.setPassword("test-password");
+      cc.setUseSsl(false);
+      cc.setDatabase(0);
+      cc.setTtlSeconds(3600);
+      cc.setConnectionTimeoutSecs(5);
+      cc.setSocketTimeoutSecs(60);
+      cc.setMaxRetries(3);
+      cc.setWarmupEnabled(true);
+      cc.setWarmupThreads(2);
+      config.setCacheConfiguration(cc);
+      LOG.info("Applied Redis cache settings to config: {}:{}", cc.getHost(), cc.getPort());
+    }
+  }
+
+  private static void applyRdfConfigIfPresent(OpenMetadataApplicationConfig config) {
+    if (RDF_CONTAINER != null) {
+      String rdfHost = RDF_CONTAINER.getHost();
+      Integer rdfPort = RDF_CONTAINER.getMappedPort(3030);
+      config.getRdfConfiguration().setEnabled(true);
+      config
+          .getRdfConfiguration()
+          .setStorageType(org.openmetadata.schema.api.configuration.rdf.RdfConfiguration.StorageType.FUSEKI);
+      config
+          .getRdfConfiguration()
+          .setRemoteEndpoint(java.net.URI.create(
+              String.format("http://%s:%d/openmetadata", rdfHost, rdfPort)));
+      config.getRdfConfiguration().setUsername("admin");
+      config.getRdfConfiguration().setPassword("test-admin");
+      config.getRdfConfiguration().setBaseUri(java.net.URI.create("https://open-metadata.org/"));
+      LOG.info("Applied RDF settings to config: {}:{}", rdfHost, rdfPort);
+    }
   }
 
   private static ElasticSearchConfiguration getEsConfig() {
