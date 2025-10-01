@@ -25,25 +25,7 @@ public class Topic extends org.openmetadata.schema.entity.data.Topic {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.Topic create(CreateTopic request) {
-    // Convert CreateTopic to Topic entity
-    org.openmetadata.schema.entity.data.Topic topic =
-        new org.openmetadata.schema.entity.data.Topic();
-    topic.setName(request.getName());
-    topic.setDisplayName(request.getDisplayName());
-    topic.setDescription(request.getDescription());
-    topic.setOwners(request.getOwners());
-    topic.setMessageSchema(request.getMessageSchema());
-    topic.setPartitions(request.getPartitions());
-    topic.setCleanupPolicies(request.getCleanupPolicies());
-    topic.setReplicationFactor(request.getReplicationFactor());
-    topic.setRetentionTime(request.getRetentionTime());
-    topic.setRetentionSize(request.getRetentionSize());
-    topic.setExtension(request.getExtension());
-    topic.setSourceHash(request.getSourceHash());
-    topic.setLifeCycle(request.getLifeCycle());
-    topic.setSourceUrl(request.getSourceUrl());
-
-    return (org.openmetadata.schema.entity.data.Topic) getClient().topics().create(topic);
+    return getClient().topics().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Topic retrieve(String id) {
