@@ -118,8 +118,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         if (
             self.config.ingestionPipelineFQN
             and self.config.pipelineRunId
-            and self.ingestion_pipeline
-            and self.ingestion_pipeline.enableStreamableLogs
+            and self.config.enableStreamableLogs
         ):
             setup_streamable_logging_for_workflow(
                 metadata=self.metadata,
@@ -259,6 +258,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         finally:
             ingestion_status = self.build_ingestion_status()
             self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+            self.print_status()
             self.stop()
 
     @property
@@ -271,7 +271,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self.config.pipelineRunId:
                 self._run_id = str(self.config.pipelineRunId.root)
             else:
-                self._run_id = str(uuid.uuid4())
+                self._run_id = str(uuid.uuid4())  # pylint: disable=no-member
 
         return self._run_id
 
@@ -317,6 +317,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                         ),
                         sourceConfig=self.config.source.sourceConfig,
                         airflowConfig=AirflowConfig(),
+                        enableStreamableLogs=self.config.enableStreamableLogs,
                     )
                 )
 

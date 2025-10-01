@@ -26,10 +26,8 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Worksheet } from '../generated/entity/data/worksheet';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import worksheetClassBase, {
-  WorksheetClassBase,
-  WorksheetDetailPageTabProps,
-} from './WorksheetClassBase';
+import worksheetClassBase, { WorksheetClassBase } from './WorksheetClassBase';
+import { WorksheetDetailPageTabProps } from './WorksheetDetailsUtils';
 
 // Mock dependencies
 jest.mock('../constants/CustomizeWidgets.constants', () => ({
