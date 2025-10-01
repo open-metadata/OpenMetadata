@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
@@ -809,6 +810,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
         Entity.getSearchRepository().getIndexMapping(GLOSSARY_TERM).getIndexName(clusterAlias);
     String domainIndex =
         Entity.getSearchRepository().getIndexMapping(DOMAIN).getIndexName(clusterAlias);
+    String tagIndex = Entity.getSearchRepository().getIndexMapping(TAG).getIndexName(clusterAlias);
 
     BoolQueryBuilder baseQuery =
         QueryBuilders.boolQuery()
@@ -826,6 +828,14 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       baseQuery
           .should(QueryBuilders.matchPhraseQuery("parent.fullyQualifiedName", request.getQuery()))
           .should(QueryBuilders.matchPhraseQuery("parent.displayName", request.getQuery()));
+    } else if (indexName.equalsIgnoreCase(tagIndex)) {
+      baseQuery
+          .should(
+              QueryBuilders.matchPhraseQuery(
+                  "classification.fullyQualifiedName", request.getQuery()))
+          .should(QueryBuilders.matchPhraseQuery("classification.displayName", request.getQuery()))
+          .must(QueryBuilders.matchQuery("entityStatus", "Approved"))
+          .must(QueryBuilders.matchQuery("entityStatus", "Unprocessed"));
     }
 
     baseQuery.minimumShouldMatch(1);
