@@ -1948,6 +1948,7 @@
     "closed-this-task": "این وظیفه را بست.",
     "collaborate-with-other-user": "برای همکاری با کاربران دیگر.",
     "collate-ai-widget-description": "نمای کلی داده‌های تولید شده توسط Collate AI برای سرویس. <0>بیشتر بدانید.</0>",
+    "column-name-sla-description": "<0>{{label}}</0>: زمان به‌روزرسانی داده‌ها را مطابق با <0>{{data}}</0> نشان می‌دهد",
     "completeness-sla-description": "<0>{{label}}</0>: در دسترس بودن داده‌ها برنامه‌ریزی شده است برای <0>{{data}}</0> هر روز",
     "compute-row-count-helper-text": "تعداد ردیف‌های موفق و ناموفق برای مورد آزمایش را محاسبه کنید.",
     "confidence-percentage-message": "سطح اطمینان مدل NLP را برای استفاده در تعیین اینکه آیا یک ستون شامل داده‌های PII است یا خیر، تنظیم کنید.",

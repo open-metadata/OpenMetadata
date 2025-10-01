@@ -1948,6 +1948,7 @@
     "closed-this-task": "fermer cette tâche",
     "collaborate-with-other-user": "pour collaborer avec d'autres utilisateurs.",
     "collate-ai-widget-description": "Aperçu des données générées par Collate AI pour le service. <0>en savoir plus.</0>",
+    "column-name-sla-description": "<0>{{label}}</0>: Représente le temps de rafraîchissement des données correspondant à <0>{{data}}</0>",
     "completeness-sla-description": "<0>{{label}}</0> : la disponibilité des données est planifiée pour <0>{{data}}</0> chaque jour",
     "compute-row-count-helper-text": "Calculer le nombre de lignes ayant passé ou échoué le cas de test.",
     "confidence-percentage-message": "Entrez le niveau de confiance à utiliser pour le modèle NLP lorsque celui-ci détermine si un champ contient des données PII.",

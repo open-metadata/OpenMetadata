@@ -1948,6 +1948,7 @@
     "closed-this-task": "关闭了此任务",
     "collaborate-with-other-user": "与其他用户协作",
     "collate-ai-widget-description": "服务中由 Collate AI 生成的数据概览。<0>了解更多。</0>",
+    "column-name-sla-description": "<0>{{label}}</0>: 表示与<0>{{data}}</0>对应的数据刷新时间",
     "completeness-sla-description": "<0>{{label}}</0>：数据可用性安排为每天 <0>{{data}}</0>",
     "compute-row-count-helper-text": "计算测试用例通过和未通过的行数",
     "confidence-percentage-message": "设置 NLP 模型在推断列是否包含 PII 数据时, 使用的置信度",

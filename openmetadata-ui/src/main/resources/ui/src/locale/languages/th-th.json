@@ -1948,6 +1948,7 @@
     "closed-this-task": "ปิดงานนี้แล้ว",
     "collaborate-with-other-user": "เพื่อร่วมมือกับผู้ใช้คนอื่น",
     "collate-ai-widget-description": "ภาพรวมของข้อมูลที่สร้างโดย Collate AI สำหรับบริการ <0>เรียนรู้เพิ่มเติม</0>",
+    "column-name-sla-description": "<0>{{label}}</0>: แสดงเวลาการรีเฟรชข้อมูลที่สอดคล้องกับ <0>{{data}}</0>",
     "completeness-sla-description": "<0>{{label}}</0>: ความพร้อมใช้งานของข้อมูลถูกกำหนดไว้ที่ <0>{{data}}</0> ทุกวัน",
     "compute-row-count-helper-text": "คำนวณจำนวนแถวที่ผ่านและล้มเหลวสำหรับกรณีทดสอบ",
     "confidence-percentage-message": "ตั้งค่าระดับความมั่นใจสำหรับโมเดล NLP ที่จะใช้ในการอนุมานว่าคอลัมน์มีข้อมูล PII หรือไม่",

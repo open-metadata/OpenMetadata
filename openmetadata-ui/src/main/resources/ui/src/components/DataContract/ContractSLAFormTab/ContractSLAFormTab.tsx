@@ -139,6 +139,8 @@ export const ContractSLAFormTab: React.FC<{
         refresh_frequency_unit: initialValues.sla?.refreshFrequency?.unit,
         retention_period: initialValues.sla?.retention?.period,
         retention_unit: initialValues.sla?.retention?.unit,
+        timezone: initialValues.sla?.timezone,
+        columnName: initialValues.sla?.columnName,
         availabilityTime: initialValues.sla?.availabilityTime
           ? moment(
               initialValues.sla?.availabilityTime,

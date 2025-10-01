@@ -1948,6 +1948,7 @@
     "closed-this-task": "fechou esta tarefa",
     "collaborate-with-other-user": "para colaborar com outros usuários.",
     "collate-ai-widget-description": "Visão geral dos dados gerados pela IA Collate para o serviço. <0>saiba mais.</0>",
+    "column-name-sla-description": "<0>{{label}}</0>: Representa o tempo de atualização de dados correspondente a <0>{{data}}</0>",
     "completeness-sla-description": "<0>{{label}}</0>: Data availability is scheduled for <0>{{data}}</0> each day",
     "compute-row-count-helper-text": "Calcule a contagem de linhas aprovadas e reprovadas para o caso de teste.",
     "confidence-percentage-message": "Defina o nível de confiança para o modelo de PNL usar ao inferir se uma coluna contém dados de PII ou não.",

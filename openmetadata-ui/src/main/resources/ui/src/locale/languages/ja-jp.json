@@ -1948,6 +1948,7 @@
     "closed-this-task": "このタスクはクローズされました",
     "collaborate-with-other-user": "他のユーザーとコラボレーションできます。",
     "collate-ai-widget-description": "Collate AI によって生成されたデータの概要。<0>詳細を見る。</0>",
+    "column-name-sla-description": "<0>{{label}}</0>: <0>{{data}}</0>に対応するデータ更新時刻を表します",
     "completeness-sla-description": "<0>{{label}}</0>: Data availability is scheduled for <0>{{data}}</0> each day",
     "compute-row-count-helper-text": "テストケースの合格および不合格の行数を計算します。",
     "confidence-percentage-message": "列が PII データを含むかどうかを NLP モデルが推測する際の信頼度を設定してください。",
