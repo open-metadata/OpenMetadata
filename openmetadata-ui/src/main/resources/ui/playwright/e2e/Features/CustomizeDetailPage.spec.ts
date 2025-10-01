@@ -32,7 +32,7 @@ import {
   checkDefaultStateForNavigationTree,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
-import { getElementWithPagination } from '../../utils/roles';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
 const persona = new PersonaClass();
@@ -346,12 +346,15 @@ test.describe('Persona customization', () => {
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
         async () => {
+          const personaListResponse =
+            adminPage.waitForResponse(`/api/v1/personas?*`);
           await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-          await adminPage.waitForLoadState('networkidle');
+          await personaListResponse;
+
           // Need to find persona card and click as the list might get paginated
-          await getElementWithPagination(
+          await navigateToPersonaWithPagination(
             adminPage,
-            adminPage.locator(`persona-details-card-${persona.data.name}`),
+            persona.data.name,
             true,
             3
           );
@@ -453,12 +456,15 @@ test.describe('Persona customization', () => {
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
         async () => {
+          const personaListResponse =
+            adminPage.waitForResponse(`/api/v1/personas?*`);
           await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-          await adminPage.waitForLoadState('networkidle');
+          await personaListResponse;
+
           // Need to find persona card and click as the list might get paginated
-          await getElementWithPagination(
+          await navigateToPersonaWithPagination(
             adminPage,
-            adminPage.locator(`persona-details-card-${persona.data.name}`),
+            persona.data.name,
             true,
             3
           );
@@ -552,12 +558,15 @@ test.describe('Persona customization', () => {
     test.slow();
 
     await test.step('apply customization', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
       await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-      await adminPage.waitForLoadState('networkidle');
+      await personaListResponse;
+
       // Need to find persona card and click as the list might get paginated
-      await getElementWithPagination(
+      await navigateToPersonaWithPagination(
         adminPage,
-        adminPage.locator(`persona-details-card-${persona.data.name}`),
+        persona.data.name,
         true,
         3
       );
@@ -622,12 +631,15 @@ test.describe('Persona customization', () => {
     userPage,
   }) => {
     await test.step('apply tab label customization for Table', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
       await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-      await adminPage.waitForLoadState('networkidle');
+      await personaListResponse;
+
       // Need to find persona card and click as the list might get paginated
-      await getElementWithPagination(
+      await navigateToPersonaWithPagination(
         adminPage,
-        adminPage.locator(`persona-details-card-${persona.data.name}`),
+        persona.data.name,
         true,
         3
       );
