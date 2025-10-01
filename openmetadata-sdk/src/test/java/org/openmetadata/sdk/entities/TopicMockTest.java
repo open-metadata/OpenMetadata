@@ -47,7 +47,7 @@ public class TopicMockTest {
     expectedTopic.setPartitions(10);
     expectedTopic.setReplicationFactor(3);
 
-    when(mockTopicService.create(any(Topic.class))).thenReturn(expectedTopic);
+    when(mockTopicService.create(any(CreateTopic.class))).thenReturn(expectedTopic);
 
     // Act
     Topic result = org.openmetadata.sdk.entities.Topic.create(createRequest);
@@ -57,7 +57,7 @@ public class TopicMockTest {
     assertEquals("user_events", result.getName());
     assertEquals(10, result.getPartitions());
     assertEquals(3, result.getReplicationFactor());
-    verify(mockTopicService).create(any(Topic.class));
+    verify(mockTopicService).create(any(CreateTopic.class));
   }
 
   @Test

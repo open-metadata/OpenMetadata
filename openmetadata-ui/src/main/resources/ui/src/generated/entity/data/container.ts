@@ -825,6 +825,7 @@ export enum FileFormat {
     CSV = "csv",
     Gz = "gz",
     JSON = "json",
+    Mf4 = "MF4",
     Parquet = "parquet",
     Tsv = "tsv",
     Zip = "zip",
