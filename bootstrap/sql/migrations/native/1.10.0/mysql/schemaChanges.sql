@@ -83,6 +83,10 @@ CREATE TABLE IF NOT EXISTS recognizer_feedback_entity (
     INDEX idx_feedback_created (createdAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+ALTER TABLE tag_usage
+ADD COLUMN reason TEXT;
+
+
 -- Increase Flowable ACTIVITY_ID_ column size to support longer user-defined workflow node names
 ALTER TABLE ACT_RU_EVENT_SUBSCR MODIFY ACTIVITY_ID_ varchar(255);
 
