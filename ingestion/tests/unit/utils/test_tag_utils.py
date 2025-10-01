@@ -143,10 +143,10 @@ class TestTagUtils(TestCase):
         )
 
         successful_results = [r.right for r in results if r.right]
-        
+
         # Should have exactly 3 successful results
         self.assertEqual(len(successful_results), 3)
-        
+
         # Verify all valid tags are present
         tag_names = [r.tag_request.name.root for r in successful_results]
         self.assertIn("tag1", tag_names)
@@ -173,7 +173,9 @@ class TestTagUtils(TestCase):
             tag_name="   ",
             classification_name="test_class",
         )
-        self.assertIsNone(result, "get_tag_label should return None for whitespace-only tag_name")
+        self.assertIsNone(
+            result, "get_tag_label should return None for whitespace-only tag_name"
+        )
 
         # Test with None should also be handled gracefully
         result = get_tag_label(

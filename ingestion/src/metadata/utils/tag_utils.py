@@ -91,7 +91,7 @@ def get_ometa_tag_and_classification(
                 f"Skipping empty or whitespace-only tag for classification '{classification_name}'"
             )
             continue
-            
+
         specific_tag_description = tag_description
         try:
             if system_tags:
@@ -156,7 +156,7 @@ def get_tag_label(
             f"Skipping empty or whitespace-only tag name for classification '{classification_name}'"
         )
         return None
-        
+
     try:
         if tag_type == Tag:
             # Build the tag FQN
@@ -210,7 +210,7 @@ def get_tag_labels(
                     f"Skipping empty or whitespace-only tag for classification '{classification_name}'"
                 )
                 continue
-                
+
             try:
                 tag_label = get_tag_label(
                     metadata,
