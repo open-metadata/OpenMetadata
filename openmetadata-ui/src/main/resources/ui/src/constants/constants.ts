@@ -449,3 +449,15 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const TIMEZONES_LIST = [
+  { label: 'UTC', value: 'UTC' },
+  { label: 'PST', value: 'PST' },
+  { label: 'MST', value: 'MST' },
+  { label: 'CST', value: 'CST' },
+  { label: 'EST', value: 'EST' },
+  { label: 'IST', value: 'IST' },
+  { label: 'CET', value: 'CET' },
+  { label: 'JST', value: 'JST' },
+  { label: 'AEST', value: 'AEST' },
+];

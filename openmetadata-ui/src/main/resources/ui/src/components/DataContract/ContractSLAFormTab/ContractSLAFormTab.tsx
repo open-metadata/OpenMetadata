@@ -22,10 +22,12 @@ import {
   Typography,
 } from 'antd';
 import { FormProps } from 'antd/lib/form/Form';
+import { isEmpty } from 'lodash';
 import moment from 'moment';
 import { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as LeftOutlined } from '../../../assets/svg/left-arrow.svg';
+import { TIMEZONES_LIST } from '../../../constants/constants';
 import {
   MAX_LATENCY_UNITS,
   REFRESH_FREQUENCY_UNITS,
@@ -36,7 +38,12 @@ import {
   ContractSLA,
   DataContract,
 } from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
+import { filterSelectOptions } from '../../../utils/CommonUtils';
 import { generateSelectOptionsFromString } from '../../../utils/DataContract/DataContractUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
+import { getColumnOptionsFromTableColumn } from '../../../utils/TableUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import './contract-sla-form-tab.less';
 
 export const ContractSLAFormTab: React.FC<{
@@ -47,6 +54,16 @@ export const ContractSLAFormTab: React.FC<{
 }> = ({ onChange, onPrev, prevLabel, initialValues }) => {
   const { t } = useTranslation();
   const [form] = Form.useForm();
+  const { data: tableData } = useGenericContext();
+
+  const columnOptions = useMemo(() => {
+    const { columns } = tableData as Table;
+    if (isEmpty(columns)) {
+      return [];
+    }
+
+    return getColumnOptionsFromTableColumn(columns, true);
+  }, [tableData]);
 
   const {
     RETENTION_UNIT_OPTIONS,
@@ -69,6 +86,14 @@ export const ContractSLAFormTab: React.FC<{
       slaData.availabilityTime = values.availabilityTime.format(
         SLA_AVAILABILITY_TIME_FORMAT
       );
+    }
+
+    if (values.timezone) {
+      slaData.timezone = values.timezone;
+    }
+
+    if (values.columnName) {
+      slaData.columnName = values.columnName;
     }
 
     if (values.max_latency_unit && values.max_latency_value >= 0) {
@@ -161,6 +186,9 @@ export const ContractSLAFormTab: React.FC<{
                       <InputNumber
                         className="w-full"
                         data-testid="refresh-frequency-interval-input"
+                        placeholder={t('label.enter-entity', {
+                          entity: t('label.interval'),
+                        })}
                       />
                     </Form.Item>
                   </Col>
@@ -173,6 +201,9 @@ export const ContractSLAFormTab: React.FC<{
                         allowClear
                         data-testid="refresh-frequency-unit-select"
                         options={REFRESH_FREQUENCY_UNIT_OPTIONS}
+                        placeholder={t('label.select-entity', {
+                          entity: t('label.unit'),
+                        })}
                         popupClassName="refresh-frequency-unit-select"
                       />
                     </Form.Item>
@@ -205,6 +236,9 @@ export const ContractSLAFormTab: React.FC<{
                       <InputNumber
                         className="w-full"
                         data-testid="max-latency-value-input"
+                        placeholder={t('label.enter-entity', {
+                          entity: t('label.value'),
+                        })}
                       />
                     </Form.Item>
                   </Col>
@@ -217,6 +251,9 @@ export const ContractSLAFormTab: React.FC<{
                         allowClear
                         data-testid="max-latency-unit-select"
                         options={MAX_LATENCY_OPTIONS}
+                        placeholder={t('label.select-entity', {
+                          entity: t('label.unit'),
+                        })}
                         popupClassName="max-latency-unit-select"
                       />
                     </Form.Item>
@@ -233,16 +270,35 @@ export const ContractSLAFormTab: React.FC<{
                   {t('message.availability-time-contract-description')}
                 </Typography.Text>
                 <Typography.Text className="text-grey-muted text-xs m-b-xs" />
-                <Form.Item label={t('label.time')} name="availabilityTime">
-                  <TimePicker
-                    className="availability-time-picker w-full"
-                    data-testid="availability"
-                    format={`${SLA_AVAILABILITY_TIME_FORMAT} [UTC]`}
-                    placeholder="09:00 UTC"
-                    showNow={false}
-                    suffixIcon={null}
-                  />
-                </Form.Item>
+
+                <Row gutter={24}>
+                  <Col span={12}>
+                    <Form.Item label={t('label.time')} name="availabilityTime">
+                      <TimePicker
+                        className="availability-time-picker w-full"
+                        data-testid="availability"
+                        format={`${SLA_AVAILABILITY_TIME_FORMAT}`}
+                        placeholder="09:00"
+                        showNow={false}
+                        suffixIcon={null}
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item label={t('label.timezone')} name="timezone">
+                      <Select
+                        allowClear
+                        showSearch
+                        data-testid="timezone-select"
+                        options={TIMEZONES_LIST}
+                        placeholder={t('label.select-entity', {
+                          entity: t('label.timezone'),
+                        })}
+                        popupClassName="timezone-select"
+                      />
+                    </Form.Item>
+                  </Col>
+                </Row>
               </div>
             </Col>
             <Col span={12}>
@@ -270,6 +326,9 @@ export const ContractSLAFormTab: React.FC<{
                       <InputNumber
                         className="w-full"
                         data-testid="retention-period-input"
+                        placeholder={t('label.enter-entity', {
+                          entity: t('label.period'),
+                        })}
                       />
                     </Form.Item>
                   </Col>
@@ -282,11 +341,40 @@ export const ContractSLAFormTab: React.FC<{
                         allowClear
                         data-testid="retention-unit-select"
                         options={RETENTION_UNIT_OPTIONS}
+                        placeholder={t('label.select-entity', {
+                          entity: t('label.unit'),
+                        })}
                         popupClassName="retention-unit-select"
                       />
                     </Form.Item>
                   </Col>
                 </Row>
+              </div>
+            </Col>
+
+            <Col span={12}>
+              <div className="sla-form-card-container">
+                <Typography.Text className="sla-form-card-title">
+                  {t('label.column')}
+                </Typography.Text>
+                <Typography.Text className="sla-form-card-description">
+                  {t('message.contract-sla-column-name-description')}
+                </Typography.Text>
+
+                <Form.Item label={t('label.column-name')} name="columnName">
+                  <Select
+                    allowClear
+                    showSearch
+                    data-testid="columnName-select"
+                    filterOption={filterSelectOptions}
+                    getPopupContainer={getPopupContainer}
+                    id="columnName-select"
+                    options={columnOptions}
+                    placeholder={t('label.please-enter-entity-name', {
+                      entity: t('label.column'),
+                    })}
+                  />
+                </Form.Item>
               </div>
             </Col>
           </Row>

@@ -1967,6 +1967,7 @@
     "contract-detail-plural-description": "指定資料資產期望的合約。",
     "contract-execution-history-description": "檢視所有合約隨時間的執行結果。",
     "contract-security-consume-description": "資料的預期消費者",
+    "contract-sla-column-name-description": "Column that represents the refresh time of the data",
     "contract-status-description": "提供現有檢查的整體狀態。",
     "contract-validation-trigger-successfully": "合約驗證觸發成功。",
     "copied-to-clipboard": "已複製到剪貼簿",

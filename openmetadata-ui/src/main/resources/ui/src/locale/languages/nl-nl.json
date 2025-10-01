@@ -1967,6 +1967,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-security-consume-description": "Beoogde consumenten van de gegevens",
+    "contract-sla-column-name-description": "Column that represents the refresh time of the data",
     "contract-status-description": "Biedt de algehele status voor bestaande controles",
     "contract-validation-trigger-successfully": "Contractvalidatie succesvol geactiveerd.",
     "copied-to-clipboard": "Gekopieerd naar het klembord",

@@ -1967,6 +1967,7 @@
     "contract-detail-plural-description": "データアセットに対する期待値を定めた契約。",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-security-consume-description": "データの想定される消費者",
+    "contract-sla-column-name-description": "Column that represents the refresh time of the data",
     "contract-status-description": "Provides the over all status for existing checks",
     "contract-validation-trigger-successfully": "契約の検証が正常にトリガーされました。",
     "copied-to-clipboard": "クリップボードにコピーしました",

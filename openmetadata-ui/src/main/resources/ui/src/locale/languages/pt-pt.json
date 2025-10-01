@@ -1967,6 +1967,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-security-consume-description": "Consumidores pretendidos dos dados",
+    "contract-sla-column-name-description": "Column that represents the refresh time of the data",
     "contract-status-description": "Fornece o status geral para as verificações existentes",
     "contract-validation-trigger-successfully": "Validação de contrato acionada com sucesso.",
     "copied-to-clipboard": "Copiado para a área de transferência",

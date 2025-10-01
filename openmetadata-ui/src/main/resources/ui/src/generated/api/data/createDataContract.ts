@@ -743,6 +743,10 @@ export interface ContractSLA {
      */
     availabilityTime?: string;
     /**
+     * Column that represents the refresh time of the data (if applicable)
+     */
+    columnName?: string;
+    /**
      * Maximum acceptable latency between data generation and availability (e.g. 4 hours)
      */
     maxLatency?: MaximumLatency;
@@ -754,6 +758,10 @@ export interface ContractSLA {
      * How long the data is retained (if relevant)
      */
     retention?: DataRetentionPeriod;
+    /**
+     * Timezone for the availability time. UTC by default.
+     */
+    timezone?: string;
     [property: string]: any;
 }
 

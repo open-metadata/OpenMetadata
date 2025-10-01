@@ -1967,6 +1967,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-security-consume-description": "Verinin hedeflenen tüketicileri",
+    "contract-sla-column-name-description": "Column that represents the refresh time of the data",
     "contract-status-description": "Mevcut kontroller için genel durumu sağlar",
     "contract-validation-trigger-successfully": "Sözleşme doğrulama başarıyla tetiklendi.",
     "copied-to-clipboard": "Panoya kopyalandı",

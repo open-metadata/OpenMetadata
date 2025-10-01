@@ -1967,6 +1967,7 @@
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
     "contract-security-consume-description": "ผู้บริโภคที่ตั้งใจไว้ของข้อมูล",
+    "contract-sla-column-name-description": "Column that represents the refresh time of the data",
     "contract-status-description": "ให้สถานะโดยรวมสำหรับการตรวจสอบที่มีอยู่",
     "contract-validation-trigger-successfully": "การตรวจสอบสัญญาทำงานสำเร็จ",
     "copied-to-clipboard": "คัดลอกไปที่คลิปบอร์ด",
