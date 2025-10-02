@@ -63,7 +63,7 @@ import {
 } from '../../../constants/Glossary.contant';
 import { TABLE_CONSTANTS } from '../../../constants/Teams.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import { ResolveTask } from '../../../generated/api/feed/resolveTask';
 import {
   EntityReference,
@@ -83,6 +83,7 @@ import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
+  getGlossaryTerms,
   GlossaryTermWithChildren,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
@@ -95,8 +96,8 @@ import {
 } from '../../../utils/EntityUtils';
 import Fqn from '../../../utils/Fqn';
 import {
+  buildTree,
   findExpandableKeysForArray,
-  getAllExpandableKeys,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
   StatusClass,
@@ -176,7 +177,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   >(undefined);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [searchPaging, setSearchPaging] = useState<{
+    offset: number;
+    total?: number;
+    hasMore: boolean;
+  }>({ offset: 0, total: undefined, hasMore: true });
   const [isExpandingAll, setIsExpandingAll] = useState(false);
+  const [toggleExpandBtn, setToggleExpandBtn] = useState(false);
 
   const { ref: infiniteScrollRef, inView } = useInView({
     threshold: 0.1,
@@ -184,15 +191,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     trackVisibility: true,
     delay: 100,
   });
+  // handle search
+  const handleSearch = useCallback(async (value: string) => {
+    setSearchTerm(value);
+  }, []);
 
-  const debouncedSetSearchTerm = useMemo(
-    () => debounce((value: string) => setSearchTerm(value), 300),
-    []
-  );
+  const debouncedSetSearchTerm = useCallback(debounce(handleSearch, 500), [
+    handleSearch,
+  ]);
 
   const fetchChildTerms = async (parentFQN: string) => {
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
-
     try {
       const { data } = await getGlossaryTermChildrenLazy(parentFQN, 1000); // Get all children
 
@@ -239,7 +248,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const fetchAllTerms = async (loadMore = false) => {
     if (!loadMore) {
       setIsTableLoading(true);
-      handlePagingChange((prev) => ({ ...prev, after: undefined }));
+      if (searchTerm) {
+        setSearchPaging({ offset: 0, total: undefined, hasMore: true });
+      } else {
+        handlePagingChange((prev) => ({ ...prev, after: undefined }));
+      }
     } else {
       setIsLoadingMore(true);
     }
@@ -250,7 +263,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
       // Use search API if search term is present
       if (searchTerm) {
-        const offset = loadMore && paging.after ? parseInt(paging.after) : 0;
+        const currentOffset = loadMore ? searchPaging.offset : 0;
         const response = await searchGlossaryTermsPaginated(
           searchTerm,
           undefined,
@@ -258,11 +271,23 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           undefined,
           undefined,
           PAGE_SIZE_LARGE,
-          offset,
+          currentOffset,
           'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount'
         );
         data = response.data;
         pagingResponse = response.paging;
+
+        // Update search pagination state
+        const newOffset = currentOffset + PAGE_SIZE_LARGE;
+        const hasMore =
+          data.length === PAGE_SIZE_LARGE &&
+          (pagingResponse?.total === undefined ||
+            newOffset < pagingResponse?.total);
+        setSearchPaging({
+          offset: newOffset,
+          total: pagingResponse?.total,
+          hasMore,
+        });
       } else {
         // Use regular listing API when no search term
         const response = await getFirstLevelGlossaryTermsPaginated(
@@ -272,6 +297,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         );
         data = response.data;
         pagingResponse = response.paging;
+
+        // Update regular paging state for next page
+        handlePagingChange((prev) => ({
+          ...prev,
+          after: pagingResponse?.after,
+          total: pagingResponse?.total || prev.total,
+        }));
       }
 
       if (!data || !Array.isArray(data)) {
@@ -291,13 +323,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         // Start with all terms collapsed
         setExpandedRowKeys([]);
       }
-
-      // Update paging state for next page
-      handlePagingChange((prev) => ({
-        ...prev,
-        after: pagingResponse?.after,
-        total: pagingResponse?.total || prev.total,
-      }));
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -306,6 +331,32 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
   };
 
+  const fetchExpadedTree = async () => {
+    setIsTableLoading(true);
+    setIsExpandingAll(true);
+    const key = isGlossary ? 'glossary' : 'parent';
+    const { data } = await getGlossaryTerms({
+      [key]: activeGlossary?.id || '',
+      limit: API_RES_MAX_SIZE,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.PARENT,
+        TabSpecificField.CHILDREN,
+      ],
+    });
+    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
+    const keys = data.reduce((prev, curr) => {
+      if (curr.children?.length) {
+        prev.push(curr.fullyQualifiedName ?? '');
+      }
+
+      return prev;
+    }, [] as string[]);
+
+    setExpandedRowKeys(keys);
+    setIsTableLoading(false);
+    setIsExpandingAll(false);
+  };
   const fetchAllTasks = useCallback(async () => {
     if (!activeGlossary?.fullyQualifiedName) {
       return;
@@ -355,14 +406,26 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   useEffect(() => {
     const currentFQN = activeGlossary?.fullyQualifiedName;
 
-    if (currentFQN && !isLoadingMore && currentFQN !== previousGlossaryFQN) {
+    if (
+      currentFQN &&
+      !isLoadingMore &&
+      currentFQN !== previousGlossaryFQN &&
+      !toggleExpandBtn &&
+      !searchTerm // Don't fetch if there's an active search
+    ) {
       // Clear existing terms when switching glossaries
       setGlossaryChildTerms([]);
       handlePagingChange((prev) => ({ ...prev, after: undefined }));
       setPreviousGlossaryFQN(currentFQN);
       fetchAllTerms();
     }
-  }, [activeGlossary?.fullyQualifiedName, isLoadingMore, previousGlossaryFQN]);
+  }, [
+    activeGlossary?.fullyQualifiedName,
+    isLoadingMore,
+    previousGlossaryFQN,
+    toggleExpandBtn,
+    searchTerm,
+  ]);
 
   // Clear terms when component unmounts
   useEffect(() => {
@@ -400,21 +463,45 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, []);
 
   useEffect(() => {
+    // For search mode, check searchPaging.hasMore; for regular mode, check paging.after
+    const canLoadMore = searchTerm
+      ? searchPaging.hasMore
+      : paging.after !== undefined;
+
     if (
       inView &&
-      paging.after !== undefined &&
+      canLoadMore &&
       !isLoadingMore &&
-      !isTableLoading
+      !isTableLoading &&
+      !toggleExpandBtn
     ) {
       fetchAllTerms(true);
     }
-  }, [inView, paging.after, isLoadingMore, isTableLoading]);
+  }, [
+    inView,
+    paging.after,
+    searchPaging.hasMore,
+    isLoadingMore,
+    isTableLoading,
+    toggleExpandBtn,
+  ]);
 
   // Monitor for DOM changes to detect when the table becomes scrollable
   useEffect(() => {
     const observer = new MutationObserver(() => {
       const scrollContainer = findScrollContainer();
-      if (scrollContainer && paging.after !== undefined && !isLoadingMore) {
+      // Check if we can load more based on search vs regular mode
+      const canLoadMore = searchTerm
+        ? searchPaging.hasMore
+        : paging.after !== undefined;
+
+      if (
+        scrollContainer &&
+        canLoadMore &&
+        !isLoadingMore &&
+        !toggleExpandBtn &&
+        !isTableLoading // Added check to prevent multiple fetches
+      ) {
         const { scrollHeight, clientHeight } = scrollContainer;
         // If content doesn't fill the viewport, load more
         if (scrollHeight <= clientHeight + 10) {
@@ -435,17 +522,30 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     }
 
     return () => observer.disconnect();
-  }, [paging.after, isLoadingMore, findScrollContainer]);
+  }, [
+    paging.after,
+    searchPaging.hasMore,
+    isLoadingMore,
+    findScrollContainer,
+    toggleExpandBtn,
+    isTableLoading,
+  ]);
 
   // Additional scroll handler for parent container
   useEffect(() => {
     const handleScroll = (event: Event) => {
       const scrollContainer = event.target as HTMLElement;
+      // Check if we can load more based on search vs regular mode
+      const canLoadMore = searchTerm
+        ? searchPaging.hasMore
+        : paging.after !== undefined;
+
       if (
         scrollContainer &&
-        paging.after !== undefined &&
+        canLoadMore &&
         !isLoadingMore &&
-        !isTableLoading
+        !isTableLoading &&
+        !toggleExpandBtn
       ) {
         const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
         // Load more when user is 200px from the bottom
@@ -471,6 +571,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     return undefined;
   }, [
     paging.after,
+    searchPaging.hasMore,
+    searchTerm,
     isLoadingMore,
     isTableLoading,
     findScrollContainer,
@@ -826,157 +928,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const toggleExpandAll = useCallback(async () => {
-    if (isExpandingAll) {
-      return; // Prevent multiple simultaneous expand operations
-    }
-
+    setToggleExpandBtn((prev) => !prev);
     if (expandedRowKeys.length === expandableKeys.length) {
       // Collapse all - immediate UI update
       setExpandedRowKeys([]);
+      fetchAllTerms();
     } else {
-      setIsExpandingAll(true);
-
-      try {
-        // Recursive function to load all children at all levels
-        const loadAllChildrenRecursively = async (
-          terms: ModifiedGlossary[],
-          depth = 0,
-          maxDepth = 10
-        ): Promise<ModifiedGlossary[]> => {
-          if (depth >= maxDepth) {
-            return terms; // Prevent infinite recursion
-          }
-
-          const BATCH_SIZE = 5;
-          const termsToLoad = terms.filter(
-            (term) =>
-              term.childrenCount &&
-              term.childrenCount > 0 &&
-              (!term.children || term.children.length === 0)
-          );
-
-          if (termsToLoad.length === 0) {
-            // If no terms need loading at this level, check children
-            const updatedTerms = await Promise.all(
-              terms.map(async (term) => {
-                if (term.children && term.children.length > 0) {
-                  const updatedChildren = await loadAllChildrenRecursively(
-                    term.children as ModifiedGlossary[],
-                    depth + 1,
-                    maxDepth
-                  );
-
-                  return {
-                    ...term,
-                    children: updatedChildren as ModifiedGlossaryTerm[],
-                  };
-                }
-
-                return term;
-              })
-            );
-
-            return updatedTerms;
-          }
-
-          // Load data for terms at this level
-          const batches: typeof termsToLoad[] = [];
-          for (let i = 0; i < termsToLoad.length; i += BATCH_SIZE) {
-            batches.push(termsToLoad.slice(i, i + BATCH_SIZE));
-          }
-
-          const childDataMap: Record<string, GlossaryTermWithChildren[]> = {};
-
-          for (const batch of batches) {
-            await Promise.all(
-              batch.map(async (term) => {
-                if (term.fullyQualifiedName) {
-                  setLoadingChildren((prev) => ({
-                    ...prev,
-                    [term.fullyQualifiedName as string]: true,
-                  }));
-                  try {
-                    const { data } = await getGlossaryTermChildrenLazy(
-                      term.fullyQualifiedName,
-                      1000 // Get all children at once
-                    );
-                    childDataMap[term.fullyQualifiedName] = data;
-                  } catch (error) {
-                    showErrorToast(error as AxiosError);
-                  } finally {
-                    setLoadingChildren((prev) => ({
-                      ...prev,
-                      [term.fullyQualifiedName as string]: false,
-                    }));
-                  }
-                }
-              })
-            );
-            // Small delay between batches to keep UI responsive
-            await new Promise((resolve) => setTimeout(resolve, 50));
-          }
-
-          // Update terms with loaded children
-          const termsWithChildren = terms.map((term) => {
-            const termFQN = term.fullyQualifiedName;
-            if (termFQN && childDataMap[termFQN]) {
-              return {
-                ...term,
-                children: childDataMap[termFQN] as ModifiedGlossaryTerm[],
-              };
-            }
-
-            return term;
-          });
-
-          // Recursively load children for the newly loaded terms
-          const fullyLoadedTerms = await Promise.all(
-            termsWithChildren.map(async (term) => {
-              if (term.children && term.children.length > 0) {
-                const updatedChildren = await loadAllChildrenRecursively(
-                  term.children as ModifiedGlossary[],
-                  depth + 1,
-                  maxDepth
-                );
-
-                return {
-                  ...term,
-                  children: updatedChildren as ModifiedGlossaryTerm[],
-                };
-              }
-
-              return term;
-            })
-          );
-
-          return fullyLoadedTerms;
-        };
-
-        // Load all children recursively starting from current terms
-        const currentTerms = glossaryChildTerms;
-        if (!Array.isArray(currentTerms)) {
-          setIsExpandingAll(false);
-
-          return;
-        }
-
-        const fullyExpandedTerms = await loadAllChildrenRecursively(
-          currentTerms
-        );
-
-        // Update the glossary child terms with fully expanded tree
-        setGlossaryChildTerms(fullyExpandedTerms);
-
-        // Get all expandable keys from the fully loaded tree
-        const allExpandableKeys = getAllExpandableKeys(fullyExpandedTerms);
-
-        // Set all keys as expanded
-        setExpandedRowKeys(allExpandableKeys);
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setIsExpandingAll(false);
-      }
+      fetchExpadedTree();
     }
   }, [
     glossaryTerms,
@@ -986,10 +944,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     setLoadingChildren,
     expandedRowKeys,
     expandableKeys,
-    setIsExpandingAll,
     setExpandedRowKeys,
     showErrorToast,
-    isExpandingAll,
   ]);
 
   const isAllExpanded = useMemo(() => {
@@ -1140,7 +1096,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     isStatusDropdownVisible,
     statusDropdownMenu,
     searchInput,
-    handleSearchChange,
     toggleExpandAll,
   ]);
 
@@ -1315,10 +1270,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   // Trigger new fetch when search term changes
   useEffect(() => {
-    if (activeGlossary) {
+    if (
+      activeGlossary &&
+      previousGlossaryFQN === activeGlossary?.fullyQualifiedName
+    ) {
+      // Only fetch if we're on the same glossary (not switching glossaries)
+      // Reset search pagination when search term changes
+      if (searchTerm) {
+        setSearchPaging({ offset: 0, total: undefined, hasMore: true });
+      }
       fetchAllTerms();
     }
-  }, [searchTerm, activeGlossary]);
+  }, [searchTerm]);
 
   // Check if this is due to search returning no results
   const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
@@ -1382,7 +1345,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 onHeaderRow={onTableHeader}
                 onRow={onTableRow}
               />
-              {paging.after !== undefined && (
+              {/* Show infinite scroll trigger if there are more results */}
+              {((!searchTerm && paging.after !== undefined) ||
+                (searchTerm && searchPaging.hasMore)) && (
                 <div
                   className="m-t-md m-b-md text-center p-y-lg"
                   ref={infiniteScrollRef}

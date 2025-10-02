@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { Domain } from '../../support/domain/Domain';
-import { AdminClass } from '../../support/user/AdminClass';
 import { performAdminLogin } from '../../utils/admin';
-import { getApiContext, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import {
   addAssetsToDomain,
   addServicesToDomain,
@@ -31,21 +30,16 @@ const test = base.extend<{
   ingestionBotPage: Page;
 }>({
   page: async ({ browser }, use) => {
-    const adminUser = new AdminClass();
-    const adminPage = await browser.newPage();
-    await adminUser.login(adminPage);
-    await use(adminPage);
-    await adminPage.close();
+    const { afterAction, page } = await performAdminLogin(browser);
+
+    await use(page);
+    await afterAction();
   },
   ingestionBotPage: async ({ browser }, use) => {
-    const admin = new AdminClass();
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
     const page = await browser.newPage();
-
-    // login with admin user
-    await admin.login(page);
-    await page.waitForURL('**/my-data');
-
-    const { apiContext } = await getApiContext(page);
+    await page.goto('/');
 
     const bot = await apiContext
       .get('/api/v1/bots/name/ingestion-bot')
@@ -55,10 +49,15 @@ const test = base.extend<{
       .then((response) => response.json());
 
     await setToken(page, tokenData.config.JWTToken);
+    await redirectToHomePage(page);
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('loader', { state: 'hidden' });
 
-    // await afterAction();
+    await expect(page.getByTestId('nav-user-name')).toHaveText('ingestion-bot');
+
     await use(page);
     await page.close();
+    await afterAction();
   },
 });
 
@@ -79,16 +78,6 @@ test.describe('Ingestion Bot ', () => {
     await afterAction();
   });
 
-  test.afterAll('Cleanup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await Promise.all([
-      domain1.delete(apiContext),
-      domain2.delete(apiContext),
-      domain3.delete(apiContext),
-    ]);
-    await afterAction();
-  });
-
   test.beforeEach('Visit entity details page', async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -106,7 +95,6 @@ test.describe('Ingestion Bot ', () => {
 
     await test.step('Assign assets to domains', async () => {
       // Add assets to domain 1
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
@@ -116,7 +104,6 @@ test.describe('Ingestion Bot ', () => {
       await addAssetsToDomain(page, domain1, domainAsset1);
 
       // Add assets to domain 2
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {
@@ -129,8 +116,6 @@ test.describe('Ingestion Bot ', () => {
     await test.step(
       'Ingestion bot should access domain assigned assets',
       async () => {
-        await redirectToHomePage(ingestionBotPage);
-
         // Check if entity page is accessible & it has domain
         for (const asset of domainAsset1) {
           await redirectToHomePage(ingestionBotPage);
@@ -174,7 +159,6 @@ test.describe('Ingestion Bot ', () => {
       ]);
 
       // Add assets to domain 2
-      await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.DOMAIN);
       await page.waitForLoadState('networkidle');
       await page.waitForSelector('[data-testid="loader"]', {

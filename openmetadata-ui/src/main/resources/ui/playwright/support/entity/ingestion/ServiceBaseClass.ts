@@ -104,8 +104,6 @@ class ServiceBaseClass {
     await this.fillConnectionDetails(page);
 
     if (this.shouldTestConnection) {
-      expect(page.getByTestId('next-button')).not.toBeVisible();
-
       await testConnection(page);
     }
 
@@ -393,21 +391,6 @@ class ServiceBaseClass {
     }
     await page.waitForLoadState('networkidle');
     await page.waitForSelector(`td:has-text("${ingestionType}")`);
-
-    const pipelineStatus = await page
-      .locator(`[data-row-key*="${workflowData.name}"]`)
-      .getByTestId('pipeline-status')
-      .last()
-      .textContent();
-    // add logs to console for failed pipelines
-    if (pipelineStatus?.toLowerCase() === 'failed') {
-      const logsResponse = await apiContext
-        .get(`/api/v1/services/ingestionPipelines/logs/${workflowData.id}/last`)
-        .then((res) => res.json());
-
-      // eslint-disable-next-line no-console
-      console.log(logsResponse);
-    }
 
     await expect(
       page

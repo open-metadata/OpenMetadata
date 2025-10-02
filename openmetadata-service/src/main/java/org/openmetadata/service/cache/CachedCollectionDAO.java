@@ -285,6 +285,11 @@ public class CachedCollectionDAO implements CollectionDAO {
   }
 
   @Override
+  public NotificationTemplateDAO notificationTemplateDAO() {
+    return delegate.notificationTemplateDAO();
+  }
+
+  @Override
   public IngestionPipelineDAO ingestionPipelineDAO() {
     return delegate.ingestionPipelineDAO();
   }
@@ -472,6 +477,11 @@ public class CachedCollectionDAO implements CollectionDAO {
   @Override
   public DeletionLockDAO deletionLockDAO() {
     return delegate.deletionLockDAO();
+  }
+
+  @Override
+  public RecognizerFeedbackDAO recognizerFeedbackDAO() {
+    return delegate.recognizerFeedbackDAO();
   }
 
   @Override

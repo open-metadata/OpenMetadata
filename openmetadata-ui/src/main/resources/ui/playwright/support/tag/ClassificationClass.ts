@@ -43,11 +43,13 @@ export class ClassificationClass {
   }
 
   async visitPage(page: Page) {
+    const getClassification = page.waitForResponse('/api/v1/classifications**');
+    const getTags = page.waitForResponse('/api/v1/tags**');
     await sidebarClick(page, SidebarItem.TAGS);
-
-    const getTags = page.waitForResponse('/api/v1/tags*');
-    await page.waitForSelector('[data-testid="side-panel-classification"]');
+    await getClassification;
     await getTags;
+    await page.waitForSelector('[data-testid="side-panel-classification"]');
+
     await page
       .locator(`[data-testid="side-panel-classification"]`)
       .filter({ hasText: this.data.displayName })

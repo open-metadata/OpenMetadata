@@ -47,7 +47,9 @@ jest.mock('../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1', () => {
         <button
           data-testid="mock-query-change"
           onClick={() => {
-            onChange?.('test rule', { type: 'group' } as JsonTree);
+            onChange?.('{"and":[{"==":[{"var":"name"},"10"]}]}', {
+              type: 'group',
+            } as JsonTree);
             getQueryActions?.({ addRule: jest.fn() } as unknown as Actions);
           }}>
           Change Query
@@ -367,7 +369,9 @@ describe('ContractSemanticFormTab', () => {
         fireEvent.click(changeButton);
       });
 
-      expect(screen.getByText('Value: test rule')).toBeInTheDocument();
+      expect(
+        screen.getByText('Value: {"and":[{"==":[{"var":"name"},"10"]}]}')
+      ).toBeInTheDocument();
     });
 
     it('should enable add rule button when query actions are available', async () => {
