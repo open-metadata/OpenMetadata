@@ -13,8 +13,8 @@
 
 import { Autocomplete, Box, Chip, TextField, useTheme } from '@mui/material';
 import { XClose } from '@untitledui/icons';
-import { debounce, uniqBy } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { debounce } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
@@ -71,11 +71,11 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const [options, setOptions] = useState<OptionType[]>([]);
+  const [userOptions, setUserOptions] = useState<OptionType[]>([]);
+  const [teamOptions, setTeamOptions] = useState<OptionType[]>([]);
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [open, setOpen] = useState(false);
-  const searchRef = useRef<AbortController>();
 
   const selectedOptions = useMemo(() => {
     return value.map((entity) => ({
@@ -86,9 +86,11 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     }));
   }, [value]);
 
-  const fetchUsers = async (searchText: string, signal?: AbortSignal) => {
+  const fetchUsers = async (searchText: string) => {
     if (teamOnly) {
-      return [];
+      setUserOptions([]);
+
+      return;
     }
 
     const res = await searchData(
@@ -101,23 +103,26 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       SearchIndex.USER,
       false,
       false,
-      true,
-      signal
+      true
     );
 
     const users = formatUsersResponse(res.data.hits.hits);
 
-    return users.map((user) => ({
-      label: getEntityName(user),
-      value: user.id,
-      entity: user,
-      isTeam: false,
-    }));
+    setUserOptions(
+      users.map((user) => ({
+        label: getEntityName(user),
+        value: user.id,
+        entity: user,
+        isTeam: false,
+      }))
+    );
   };
 
-  const fetchTeams = async (searchText: string, signal?: AbortSignal) => {
+  const fetchTeams = async (searchText: string) => {
     if (userOnly) {
-      return [];
+      setTeamOptions([]);
+
+      return;
     }
 
     const res = await searchData(
@@ -130,41 +135,30 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       SearchIndex.TEAM,
       false,
       false,
-      true,
-      signal
+      true
     );
 
     const teams = formatTeamsResponse(res.data.hits.hits);
 
-    return teams.map((team) => ({
-      label: getEntityName(team),
-      value: team.id,
-      entity: team,
-      isTeam: true,
-    }));
+    setTeamOptions(
+      teams.map((team) => ({
+        label: getEntityName(team),
+        value: team.id,
+        entity: team,
+        isTeam: true,
+      }))
+    );
   };
 
   const handleSearch = useCallback(
     debounce(async (searchText: string) => {
-      if (searchRef.current) {
-        searchRef.current.abort();
-      }
-
-      searchRef.current = new AbortController();
       setLoading(true);
 
       try {
-        const [userOptions, teamOptions] = await Promise.all([
-          fetchUsers(searchText, searchRef.current?.signal),
-          fetchTeams(searchText, searchRef.current?.signal),
-        ]);
-
-        const allOptions = [...userOptions, ...teamOptions];
-        setOptions(uniqBy(allOptions, 'value'));
+        await Promise.all([fetchUsers(searchText), fetchTeams(searchText)]);
       } catch (error) {
-        if (error.name !== 'AbortError') {
-          setOptions([]);
-        }
+        setUserOptions([]);
+        setTeamOptions([]);
       } finally {
         setLoading(false);
       }
@@ -176,36 +170,51 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     if (inputValue) {
       handleSearch(inputValue);
     } else {
-      setOptions([]);
+      setUserOptions([]);
+      setTeamOptions([]);
     }
   }, [inputValue]);
 
   // Fetch initial options when dropdown opens
   useEffect(() => {
-    if (open && options.length === 0 && !inputValue) {
+    if (
+      open &&
+      userOptions.length === 0 &&
+      teamOptions.length === 0 &&
+      !inputValue
+    ) {
       handleSearch('');
     }
   }, [open]);
 
   const handleChange = (
     _event: any,
-    newValue: OptionType | OptionType[] | null
+    newValue: string | OptionType | (string | OptionType)[] | null
   ) => {
     if (!onChange) {
       return;
     }
 
+    // Filter out string values from freeSolo
+    if (typeof newValue === 'string') {
+      return;
+    }
+
     if (Array.isArray(newValue)) {
       // Multiple selection mode - handle team/user exclusivity
-      let finalSelection = [...newValue];
+      // Filter out any string values
+      const optionValues = newValue.filter(
+        (v): v is OptionType => typeof v !== 'string'
+      );
+      let finalSelection = [...optionValues];
 
       // Check if a new team was just added (comparing with previous selection)
-      const newTeams = newValue.filter((opt) => opt.isTeam);
+      const newTeams = optionValues.filter((opt) => opt.isTeam);
       const oldTeams = selectedOptions.filter((opt) => opt.isTeam);
       const teamWasAdded = newTeams.length > oldTeams.length;
 
       // Check if a new user was just added
-      const newUsers = newValue.filter((opt) => !opt.isTeam);
+      const newUsers = optionValues.filter((opt) => !opt.isTeam);
       const oldUsers = selectedOptions.filter((opt) => !opt.isTeam);
       const userWasAdded = newUsers.length > oldUsers.length;
 
@@ -347,19 +356,33 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     return t('label.select-users-or-team');
   };
 
+  const allOptions = useMemo(
+    () => [...userOptions, ...teamOptions],
+    [userOptions, teamOptions]
+  );
+
   return (
     <Autocomplete
       disableCloseOnSelect
       freeSolo
+      // Force listbox to remount when options change to fix async search not updating dropdown
+      // Using 'as any' because key is not in MUI's ListboxProps type definition
+      ListboxProps={
+        {
+          key: `listbox-${allOptions.length}`,
+        } as any
+      }
       autoFocus={autoFocus}
       filterOptions={filterOptions}
-      getOptionLabel={(option) => option.label}
+      getOptionLabel={(option) =>
+        typeof option === 'string' ? option : option.label
+      }
       inputValue={inputValue}
       isOptionEqualToValue={isOptionEqualToValue}
       loading={loading}
       multiple={isMultiple}
-      open={open && (options.length > 0 || loading || !inputValue)}
-      options={options}
+      open={open && (allOptions.length > 0 || loading || !inputValue)}
+      options={allOptions}
       renderInput={(params) => (
         <TextField
           {...params}
