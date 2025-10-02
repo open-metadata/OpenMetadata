@@ -80,7 +80,7 @@ export const usePaginationControls = (config: PaginationControlsConfig) => {
         <Button
           color="secondary"
           data-testid="next"
-          disabled={config.currentPage === config.totalPages}
+          disabled={config.currentPage >= config.totalPages}
           endIcon={
             <ArrowRight
               style={{ color: theme.palette.allShades?.gray?.[400] }}
