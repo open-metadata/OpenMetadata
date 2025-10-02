@@ -121,7 +121,7 @@ class AirbyteSource(PipelineServiceSource):
             f"/connections/{pipeline_details.connection.get('connectionId')}"
         )
         pipeline_request = CreatePipelineRequest(
-            name=EntityName(pipeline_details.connection.get("connectionId")),
+            name=EntityName(pipeline_details.connection.get("name")),
             displayName=pipeline_details.connection.get("name"),
             sourceUrl=SourceUrl(connection_url),
             tasks=self.get_connections_jobs(
