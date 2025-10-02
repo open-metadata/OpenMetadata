@@ -1053,7 +1053,11 @@ export interface ConfigObject {
      *
      * Apache Ranger Admin URL.
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -4613,6 +4617,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -4791,6 +4799,10 @@ export interface TestConnectionResult {
      * Detailed error log in case of failure
      */
     errorLog?: string;
+    /**
+     * The actual query that was executed (may be transpiled or modified from the original)
+     */
+    executedQuery?: string;
 }
 
 export interface ReverseIngestionOperationResult {

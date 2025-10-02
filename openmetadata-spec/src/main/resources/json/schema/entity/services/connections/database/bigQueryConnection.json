@@ -53,6 +53,12 @@
       "description": "GCP Credentials",
       "$ref": "../../../../security/credentials/gcpCredentials.json"
     },
+    "includePolicyTags": {
+      "title": "Include Policy Tags",
+      "description": "Option to include policy tags as part of column description.",
+      "type": "boolean",
+      "default": true
+    },
     "taxonomyProjectID": {
       "title": "Taxonomy Project IDs",
       "description": "Project IDs used to fetch policy tags",
