@@ -43,6 +43,7 @@ import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateMlModel;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
@@ -64,6 +65,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.events.EventSubscription;
@@ -80,6 +82,8 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.MetricType;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskStatus;
@@ -99,6 +103,7 @@ import org.openmetadata.service.resources.feeds.FeedResourceTest;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
+import org.openmetadata.service.resources.metrics.MetricResourceTest;
 import org.openmetadata.service.resources.mlmodels.MlModelResourceTest;
 import org.openmetadata.service.resources.services.APIServiceResourceTest;
 import org.openmetadata.service.resources.services.DashboardServiceResourceTest;
@@ -124,6 +129,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
   private static TagResourceTest tagTest;
   private static GlossaryResourceTest glossaryTest;
   private static GlossaryTermResourceTest glossaryTermTest;
+  private static MetricResourceTest metricTest;
   private static MlModelResourceTest mlModelTest;
   private static MlModelServiceResourceTest mlModelServiceTest;
   private static APICollectionResourceTest apiCollectionTest;
@@ -150,6 +156,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     tagTest = new TagResourceTest();
     glossaryTest = new GlossaryResourceTest();
     glossaryTermTest = new GlossaryTermResourceTest();
+    metricTest = new MetricResourceTest();
     mlModelTest = new MlModelResourceTest();
     mlModelServiceTest = new MlModelServiceResourceTest();
     apiCollectionTest = new APICollectionResourceTest();
@@ -4382,11 +4389,11 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
         {
           "name": "UnifiedApprovalWorkflow",
           "displayName": "Unified Approval Workflow",
-          "description": "Custom approval workflow for dataContracts, tags, dataProducts, and testCases",
+          "description": "Custom approval workflow for dataContracts, tags, dataProducts, metrics, and testCases",
           "trigger": {
             "type": "eventBasedEntity",
             "config": {
-              "entityTypes": ["dataContract", "tag", "dataProduct", "testCase"],
+              "entityTypes": ["dataContract", "tag", "dataProduct", "metric", "testCase"],
               "events": ["Created", "Updated"],
               "exclude": ["reviewers"],
               "filter": {}
@@ -4552,7 +4559,18 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             ADMIN_AUTH_HEADERS);
     LOG.debug("Created data product: {} with initial description", dataProduct.getName());
 
-    // Step 5.5: Create testCase with reviewers
+    // Step 5.5: Create metric with reviewers
+    CreateMetric createMetric =
+        new CreateMetric()
+            .withName("test_metric_" + test.getDisplayName().replaceAll("[^a-zA-Z0-9_]", ""))
+            .withDescription("Initial metric description")
+            .withMetricType(MetricType.COUNT)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.SIZE)
+            .withReviewers(List.of(reviewerRef));
+    Metric metric = metricTest.createEntity(createMetric, ADMIN_AUTH_HEADERS);
+    LOG.debug("Created metric: {} with initial description", metric.getName());
+
+    // Step 5.6: Create testCase with reviewers
     // First initialize test definitions (required for TestCaseResourceTest)
     new TestDefinitionResourceTest().setupTestDefinitions();
 
@@ -4644,6 +4662,13 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             .getLinkString();
     waitAndResolveTask.accept(dataProductEntityLink, "DataProduct");
 
+    // Resolve Metric approval task
+    String metricEntityLink =
+        new MessageParser.EntityLink(
+                org.openmetadata.service.Entity.METRIC, metric.getFullyQualifiedName())
+            .getLinkString();
+    waitAndResolveTask.accept(metricEntityLink, "Metric");
+
     // Resolve TestCase approval task
     String testCaseEntityLink =
         new MessageParser.EntityLink(
@@ -4655,7 +4680,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     // The verifyEntityDescriptionsUpdated method already uses await() with proper polling (120s
     // timeout)
     verifyEntityDescriptionsUpdated(
-        dataContract.getId(), tag.getId(), dataProduct.getId(), testCase.getId());
+        dataContract.getId(), tag.getId(), dataProduct.getId(), metric.getId(), testCase.getId());
 
     // Step 8: Update entities with different descriptions to trigger workflows again
     LOG.debug("Updating entities with new descriptions to trigger workflows again");
@@ -4689,6 +4714,12 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
             JsonUtils.readTree(dataProductPatch),
             org.openmetadata.schema.entity.domains.DataProduct.class,
             ADMIN_AUTH_HEADERS);
+
+    // Update metric description
+    String metricPatch =
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Manually changed metric description\"}]";
+    metric =
+        metricTest.patchEntity(metric.getId(), JsonUtils.readTree(metricPatch), ADMIN_AUTH_HEADERS);
 
     // Update testCase description
     String testCasePatch =
@@ -4745,6 +4776,19 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
       LOG.debug("Resolved new data product approval task");
     }
 
+    // Resolve new Metric approval task
+    ThreadList metricThreads =
+        feedResourceTest.listTasks(
+            metricEntityLink, null, null, null, 100, authHeaders(reviewerUser.getName()));
+    if (!metricThreads.getData().isEmpty()) {
+      Thread newMetricTask = metricThreads.getData().getFirst();
+      LOG.debug("Found new approval task for metric: {}", newMetricTask.getId());
+      ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+      feedResourceTest.resolveTask(
+          newMetricTask.getTask().getId(), resolveTask, authHeaders(reviewerUser.getName()));
+      LOG.debug("Resolved new metric approval task");
+    }
+
     // Resolve new TestCase approval task
     ThreadList testCaseThreads =
         feedResourceTest.listTasks(
@@ -4763,13 +4807,13 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
 
     // Step 10: Verify descriptions were updated back by workflows
     verifyEntityDescriptionsUpdated(
-        dataContract.getId(), tag.getId(), dataProduct.getId(), testCase.getId());
+        dataContract.getId(), tag.getId(), dataProduct.getId(), metric.getId(), testCase.getId());
 
     LOG.info("test_CustomApprovalWorkflowForNewEntities completed successfully");
   }
 
   private void verifyEntityDescriptionsUpdated(
-      UUID dataContractId, UUID tagId, UUID dataProductId, UUID testCaseId) {
+      UUID dataContractId, UUID tagId, UUID dataProductId, UUID metricId, UUID testCaseId) {
     // Verify DataContract description update
     LOG.info("Verifying DataContract description update...");
     await()
@@ -4834,6 +4878,25 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
               }
             });
     LOG.info("✓ DataProduct description successfully updated to 'Updated by Workflow'");
+
+    // Verify Metric description update
+    LOG.info("Verifying Metric description update...");
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .pollDelay(Duration.ofMillis(500))
+        .until(
+            () -> {
+              try {
+                Metric updatedMetric = metricTest.getEntity(metricId, "", ADMIN_AUTH_HEADERS);
+                LOG.debug("Metric description: {}", updatedMetric.getDescription());
+                return "Updated by Workflow".equals(updatedMetric.getDescription());
+              } catch (Exception e) {
+                LOG.warn("Error checking Metric description: {}", e.getMessage());
+                return false;
+              }
+            });
+    LOG.info("✓ Metric description successfully updated to 'Updated by Workflow'");
 
     // Verify TestCase description update
     LOG.info("Verifying TestCase description update...");
