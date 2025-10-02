@@ -466,10 +466,10 @@ test.describe('Domains', () => {
       // Check that the followed domain is shown in the following widget
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toBeVisible({ timeout: 15000 });
+      ).toBeVisible();
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toContainText(subDomain.data.displayName, { timeout: 15000 });
+      ).toContainText(subDomain.data.displayName);
 
       const subDomainRes = page.waitForResponse('/api/v1/domains/name/*');
       await page
@@ -486,10 +486,10 @@ test.describe('Domains', () => {
       // Check that the domain is not shown in the following widget
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toBeVisible({ timeout: 15000 });
+      ).toBeVisible();
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).not.toContainText(subDomain.data.displayName, { timeout: 15000 });
+      ).not.toContainText(subDomain.data.displayName);
 
       await sidebarClick(page, SidebarItem.DOMAIN);
 

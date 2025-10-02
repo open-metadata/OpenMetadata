@@ -46,6 +46,22 @@ const waitForAssetModalInitialLoad = async (page: Page) => {
   });
 };
 
+const waitForSearchDebounce = async (page: Page) => {
+  // Wait for loader to appear and disappear after search
+  // This ensures search debounce completed and results are stable
+  await page
+    .waitForSelector('[data-testid="loader"]', {
+      state: 'attached',
+    })
+    .catch(() => {
+      // Loader might not appear if search is very fast
+    });
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+};
+
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -139,23 +155,10 @@ export const selectDomain = async (page: Page, domain: Domain['data']) => {
     page.waitForResponse('/api/v1/search/query?q=*&index=domain_search_index*'),
   ]);
 
-  // Wait for loader to appear and disappear after search
-  // This ensures search debounce completed and results are stable
-  await page
-    .waitForSelector('[data-testid="loader"]', {
-      state: 'attached',
-      timeout: 2000,
-    })
-    .catch(() => {
-      // Loader might not appear if search is very fast
-    });
-
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForSearchDebounce(page);
 
   await Promise.all([
-    page.getByTestId(domain.name).click({ timeout: 15000 }),
+    page.getByTestId(domain.name).click(),
     page.waitForResponse('/api/v1/domains/name/*'),
   ]);
 
@@ -243,23 +246,10 @@ export const selectDataProduct = async (
     ),
   ]);
 
-  // Wait for loader to appear and disappear after search
-  // This ensures search debounce completed and results are stable
-  await page
-    .waitForSelector('[data-testid="loader"]', {
-      state: 'attached',
-      timeout: 2000,
-    })
-    .catch(() => {
-      // Loader might not appear if search is very fast
-    });
-
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+  await waitForSearchDebounce(page);
 
   await Promise.all([
-    page.getByTestId(dataProduct.name).click({ timeout: 15000 }),
+    page.getByTestId(dataProduct.name).click(),
     page.waitForResponse('/api/v1/dataProducts/name/*'),
   ]);
 
@@ -280,7 +270,7 @@ const goToAssetsTab = async (
   await checkDomainDisplayName(page, domain.displayName);
 
   await Promise.all([
-    page.getByTestId('assets').click({ timeout: 15000 }),
+    page.getByTestId('assets').click(),
     page.waitForResponse('/api/v1/search/query?q=&index=all*'),
   ]);
 
@@ -325,22 +315,20 @@ export const checkDomainDisplayName = async (
   displayName: string
 ) => {
   await expect(page.getByTestId('entity-header-display-name')).toHaveText(
-    displayName,
-    { timeout: 15000 }
+    displayName
   );
 };
 
 export const checkAssetsCount = async (page: Page, count: number) => {
   await expect(page.getByTestId('assets').getByTestId('count')).toContainText(
-    count.toString(),
-    { timeout: 15000 }
+    count.toString()
   );
 };
 
 export const checkDataProductCount = async (page: Page, count: number) => {
   await expect(
     page.getByTestId('data_products').getByTestId('count')
-  ).toContainText(count.toString(), { timeout: 15000 });
+  ).toContainText(count.toString());
 };
 
 export const verifyDomain = async (
@@ -459,9 +447,7 @@ export const addAssetsToDomain = async (
       .fill(visibleName);
     await searchRes;
 
-    await page
-      .locator(`[data-testid="table-data-card_${fqn}"] input`)
-      .check({ timeout: 15000 });
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
 
     await expect(
       page.locator(
@@ -520,9 +506,7 @@ export const addServicesToDomain = async (
       .fill(name);
     await searchRes;
 
-    await page
-      .locator(`[data-testid="table-data-card_${fqn}"] input`)
-      .check({ timeout: 15000 });
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -539,7 +523,7 @@ export const addAssetsToDataProduct = async (
   dataProductFqn: string,
   assets: EntityClass[]
 ) => {
-  await page.getByTestId('assets').click({ timeout: 15000 });
+  await page.getByTestId('assets').click();
   await checkAssetsCount(page, 0);
 
   await expect(page.getByTestId('no-data-placeholder')).toContainText(
@@ -560,9 +544,7 @@ export const addAssetsToDataProduct = async (
     await page.getByTestId('searchbar').fill(name);
     await searchRes;
 
-    await page
-      .locator(`[data-testid="table-data-card_${fqn}"] input`)
-      .check({ timeout: 15000 });
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
   const assetsAddRes = page.waitForResponse(
@@ -601,12 +583,10 @@ export const removeAssetsFromDataProduct = async (
   dataProduct: DataProduct['data'],
   assets: EntityClass[]
 ) => {
-  await page.getByTestId('assets').click({ timeout: 15000 });
+  await page.getByTestId('assets').click();
   for (const asset of assets) {
     const fqn = get(asset, 'entityResponseData.fullyQualifiedName');
-    await page
-      .locator(`[data-testid="table-data-card_${fqn}"] input`)
-      .check({ timeout: 15000 });
+    await page.locator(`[data-testid="table-data-card_${fqn}"] input`).check();
   }
 
   const assetsRemoveRes = page.waitForResponse(

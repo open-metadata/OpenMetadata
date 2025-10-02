@@ -79,9 +79,9 @@ test.describe('SubDomain Pagination', () => {
     await test.step('Verify subdomain count in tab label', async () => {
       const subDomainsTab = page.getByTestId('subdomains');
 
-      await expect(subDomainsTab).toBeVisible({ timeout: 15000 });
+      await expect(subDomainsTab).toBeVisible();
 
-      await expect(subDomainsTab).toContainText('60', { timeout: 15000 });
+      await expect(subDomainsTab).toContainText('60');
     });
 
     await test.step(
