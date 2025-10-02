@@ -15,7 +15,7 @@ import { Col, Divider, Typography } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle-2.svg';
+import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { Transi18next } from '../../../utils/CommonUtils';
@@ -51,7 +51,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.availabilityTime) {
       slaList.push({
         key: DATA_CONTRACT_SLA.TIME_AVAILABILITY,
         label: (
@@ -67,7 +67,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.maxLatency) {
       slaList.push({
         key: DATA_CONTRACT_SLA.MAX_LATENCY,
         label: (
@@ -85,7 +85,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.retention) {
       slaList.push({
         key: DATA_CONTRACT_SLA.RETENTION,
         label: (
@@ -125,7 +125,7 @@ const ContractSLA: React.FC<{
       <div className="sla-item-container">
         {renderSLAData.map((item) => (
           <div className="sla-item" key={item.key}>
-            <Icon className="sla-icon" component={CheckIcon} />
+            <Icon className="sla-icon" component={DefaultIcon} />
             <span className="sla-description">{item.label}</span>
           </div>
         ))}

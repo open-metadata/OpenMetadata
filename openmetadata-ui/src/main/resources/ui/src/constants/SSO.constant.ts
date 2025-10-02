@@ -67,7 +67,9 @@ export const COMMON_UI_FIELDS = {
   },
   oidcScope: {
     'ui:title': 'OIDC Request Scopes',
-    'ui:placeholder': 'e.g. openid email profile',
+    'ui:placeholder':
+      'Enter scope (e.g. openid, email, profile) and press ENTER',
+    'ui:field': 'ArrayField',
   },
   oidcDiscoveryUri: {
     'ui:title': 'OIDC Discovery URI',

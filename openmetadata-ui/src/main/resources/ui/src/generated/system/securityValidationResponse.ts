@@ -15,30 +15,31 @@
  */
 export interface SecurityValidationResponse {
     /**
-     * Overall validation message
+     * List of field errors (only present when status is 'failed')
      */
-    message: string;
+    errors?: FieldError[];
     /**
-     * Individual validation results
+     * Overall validation status (success/failed)
      */
-    results: ValidationResult[];
-    /**
-     * Overall validation status
-     */
-    status: string;
+    status: Status;
 }
 
-export interface ValidationResult {
+export interface FieldError {
     /**
-     * Component being validated (e.g., oidc, ldap, saml)
+     * Concise error message for display under form field
      */
-    component: string;
+    error: string;
     /**
-     * Validation message or error details
+     * Field path that has the error (e.g.,
+     * 'authenticationConfiguration.oidcConfiguration.clientId')
      */
-    message: string;
-    /**
-     * Status of the validation (success/failed)
-     */
-    status: string;
+    field: string;
+}
+
+/**
+ * Overall validation status (success/failed)
+ */
+export enum Status {
+    Failed = "failed",
+    Success = "success",
 }

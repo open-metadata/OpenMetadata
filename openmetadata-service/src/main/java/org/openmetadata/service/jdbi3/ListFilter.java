@@ -176,9 +176,18 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getDatabaseSchemaCondition(String tableName) {
     String databaseSchema = queryParams.get("databaseSchema");
-    return databaseSchema == null
-        ? ""
-        : getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
+    if (databaseSchema == null) {
+      return "";
+    }
+
+    if (!nullOrEmpty(tableName)
+        && (tableName.equals("table_entity") || tableName.equals("stored_procedure_entity"))) {
+      String databaseSchemaHash = FullyQualifiedName.buildHash(databaseSchema);
+      queryParams.put("databaseSchemaHashExact", databaseSchemaHash);
+      return String.format("%s.databaseSchemaHash = :databaseSchemaHashExact", tableName);
+    }
+
+    return getFqnPrefixCondition(tableName, databaseSchema, "databaseSchema");
   }
 
   public String getServiceCondition(String tableName) {

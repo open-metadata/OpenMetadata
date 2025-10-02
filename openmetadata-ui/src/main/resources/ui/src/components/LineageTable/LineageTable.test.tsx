@@ -14,7 +14,6 @@
 import { IconButton, Menu, ToggleButtonGroup } from '@mui/material';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ExportTypes } from '../../constants/Export.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
 import { LineageContextType } from '../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../enums/entity.enum';
@@ -26,6 +25,7 @@ import {
   getLineagePagingData,
 } from '../../rest/lineageAPI';
 import { useRequiredParams } from '../../utils/useRequiredParams';
+import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import { LineageConfig } from '../Entity/EntityLineage/EntityLineage.interface';
 import LineageTable from './LineageTable';
 import { EImpactLevel } from './LineageTable.interface';
@@ -65,6 +65,9 @@ jest.mock('lodash', () => {
   module.debounce = jest.fn((fn) => fn);
 
   return module;
+});
+jest.mock('../Entity/EntityLineage/CustomControls.component', () => {
+  return jest.fn().mockReturnValue(<div>CustomControls</div>);
 });
 
 const mockUseLineageProvider = useLineageProvider as jest.MockedFunction<
@@ -152,7 +155,16 @@ const defaultMockState = {
   toggleFilterSelection: jest.fn(),
 } as unknown as ReturnType<typeof useLineageTableState>;
 
-// Remove the custom renderWithRouter function since our test utils handle this
+const mockEntity = {
+  id: 'entity1',
+  fullyQualifiedName: 'test.table',
+  name: 'table',
+  entityType: EntityType.TABLE,
+  description: 'Test table entity',
+  owner: null,
+  tags: [],
+  domain: null,
+};
 
 describe('LineageTable', () => {
   beforeEach(() => {
@@ -161,7 +173,11 @@ describe('LineageTable', () => {
     mockUseLineageProvider.mockReturnValue({
       selectedQuickFilters: [],
       setSelectedQuickFilters: jest.fn(),
-      lineageConfig: {} as LineageConfig,
+      lineageConfig: {
+        downstreamDepth: 2,
+        upstreamDepth: 2,
+      } as LineageConfig,
+      updateEntityData: jest.fn(),
       onExportClick: jest.fn(),
       onLineageConfigUpdate: jest.fn(),
     } as unknown as LineageContextType);
@@ -209,38 +225,28 @@ describe('LineageTable', () => {
     // Mock location object
     Object.defineProperty(window, 'location', {
       value: {
-        search: '?dir=downstream&depth=1',
+        search: '?dir=Downstream&depth=1',
         pathname: '/test',
       },
       writable: true,
     });
   });
 
-  it('should render the component', () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
+  it('should render the CustomControls component', () => {
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    // expect(screen.getByRole('searchbox')).toBeInTheDocument();
-    expect(screen.getByText('label.lineage')).toBeInTheDocument();
-    expect(screen.getByText('label.impact-analysis')).toBeInTheDocument();
-  });
-
-  it('should display search bar with correct placeholder', () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
-
-    const searchInput = screen.getByPlaceholderText('label.search-for-type');
-
-    expect(searchInput).toHaveAttribute('placeholder', 'label.search-for-type');
+    expect(screen.getByText('CustomControls')).toBeInTheDocument();
   });
 
   it('should render toggle buttons for upstream and downstream', () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     expect(screen.getByText('label.upstream')).toBeInTheDocument();
     expect(screen.getByText('label.downstream')).toBeInTheDocument();
   });
 
   it('should display impact level dropdown', () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     const impactButton = screen.getByRole('button', {
       name: /label.impact-on-area/,
@@ -249,38 +255,8 @@ describe('LineageTable', () => {
     expect(impactButton).toBeInTheDocument();
   });
 
-  it('should handle search input changes', async () => {
-    const setSearchValue = jest.fn();
-    mockUseLineageTableState.mockReturnValue({
-      ...defaultMockState,
-      setSearchValue,
-    });
-
-    render(<LineageTable />, { wrapper: MemoryRouter });
-
-    const searchInput = screen.getByPlaceholderText('label.search-for-type');
-    fireEvent.change(searchInput, { target: { value: 'test search' } });
-
-    expect(setSearchValue).toHaveBeenCalledWith('test search');
-  });
-
-  it('should toggle filter selection when filter button is clicked', async () => {
-    const toggleFilterSelection = jest.fn();
-    mockUseLineageTableState.mockReturnValue({
-      ...defaultMockState,
-      toggleFilterSelection,
-    });
-
-    render(<LineageTable />, { wrapper: MemoryRouter });
-
-    const filterButton = screen.getByTitle('label.filter-plural');
-    fireEvent.click(filterButton);
-
-    expect(toggleFilterSelection).toHaveBeenCalled();
-  });
-
   it('should open impact level menu when clicked', async () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     fireEvent.click(
       screen.getByRole('button', {
@@ -288,7 +264,7 @@ describe('LineageTable', () => {
       })
     );
 
-    expect(screen.getByText('label.table-level')).toBeInTheDocument();
+    expect(screen.getByText('label.asset-level')).toBeInTheDocument();
     expect(screen.getByText('label.column-level')).toBeInTheDocument();
   });
 
@@ -299,7 +275,7 @@ describe('LineageTable', () => {
       setImpactLevel,
     });
 
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     const impactButton = screen.getByRole('button', {
       name: /label.impact-on-area/,
@@ -318,45 +294,9 @@ describe('LineageTable', () => {
       filterSelectionActive: true,
     });
 
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     expect(screen.getByText(/label.node-depth/)).toBeInTheDocument();
-  });
-
-  it('should call export function when export button is clicked', async () => {
-    const onExportClick = jest.fn();
-    mockUseLineageProvider.mockReturnValue({
-      selectedQuickFilters: [],
-      setSelectedQuickFilters: jest.fn(),
-      lineageConfig: {},
-      onExportClick,
-      onLineageConfigUpdate: jest.fn(),
-    } as unknown as LineageContextType);
-
-    render(<LineageTable />, { wrapper: MemoryRouter });
-
-    const exportButton = screen.getByRole('button', { name: 'Export as CSV' });
-    fireEvent.click(exportButton);
-
-    expect(onExportClick).toHaveBeenCalledWith(
-      [ExportTypes.CSV],
-      expect.any(Function)
-    );
-  });
-
-  it('should open lineage config dialog when settings button is clicked', async () => {
-    const setDialogVisible = jest.fn();
-    mockUseLineageTableState.mockReturnValue({
-      ...defaultMockState,
-      setDialogVisible,
-    });
-
-    render(<LineageTable />, { wrapper: MemoryRouter });
-
-    const settingsButton = screen.getByRole('button', { name: 'setting' });
-    fireEvent.click(settingsButton);
-
-    expect(setDialogVisible).toHaveBeenCalledWith(true);
   });
 
   it('should render table with correct data source for table level', () => {
@@ -365,7 +305,7 @@ describe('LineageTable', () => {
       impactLevel: EImpactLevel.TableLevel,
     });
 
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     expect(screen.getByText('table1')).toBeInTheDocument();
     expect(screen.getByText('table2')).toBeInTheDocument();
@@ -387,14 +327,14 @@ describe('LineageTable', () => {
       downstreamColumnLineageNodes: columnLineageNodes,
     } as unknown as ReturnType<typeof useLineageTableState>);
 
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    expect(screen.getByText('Source Table')).toBeInTheDocument();
-    expect(screen.getByText('Impacted Table')).toBeInTheDocument();
+    expect(screen.getByText('label.source')).toBeInTheDocument();
+    expect(screen.getByText('label.impacted')).toBeInTheDocument();
   });
 
   it('should fetch nodes on component mount', async () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     await waitFor(() => {
       expect(mockGetLineageByEntityCount).toHaveBeenCalledWith({
@@ -409,7 +349,7 @@ describe('LineageTable', () => {
   });
 
   it('should fetch paging data on component mount', async () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     await waitFor(() => {
       expect(mockGetLineagePagingData).toHaveBeenCalledWith({
@@ -425,7 +365,7 @@ describe('LineageTable', () => {
       loading: true,
     });
 
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     const table = document.querySelector('.ant-spin-container');
 
@@ -443,7 +383,7 @@ describe('LineageTable', () => {
 
     mockGetLineageByEntityCount.mockRejectedValue(new Error('API Error'));
 
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     await waitFor(() => {
       expect(setFilterNodes).toHaveBeenCalledWith([]);
@@ -462,7 +402,7 @@ describe('LineageTable', () => {
       handlePagingChange: jest.fn(),
     } as unknown as ReturnType<typeof usePaging>);
 
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     const upstreamButton = screen.getByRole('button', {
       name: /label.upstream/,
@@ -473,36 +413,18 @@ describe('LineageTable', () => {
   });
 
   it('should display correct counts for upstream and downstream', () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     expect(screen.getByText('label.upstream')).toHaveTextContent('2'); // upstream count
     expect(screen.getByText('label.downstream')).toHaveTextContent('5'); // downstream count
   });
 
   it('should render table with pagination props', () => {
-    render(<LineageTable />, { wrapper: MemoryRouter });
+    render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
     const table = document.querySelector('.ant-table');
 
     expect(table).toBeInTheDocument();
-  });
-
-  it('should handle node depth selection', async () => {
-    mockUseLineageTableState.mockReturnValue({
-      ...defaultMockState,
-      filterSelectionActive: true,
-    });
-
-    render(<LineageTable />, { wrapper: MemoryRouter });
-
-    const nodeDepthButton = screen.getByRole('button', {
-      name: /label.node-depth/,
-    });
-    fireEvent.click(nodeDepthButton);
-
-    const depthOption = await screen.findByRole('menuitem', { name: '1' });
-
-    expect(depthOption).toBeInTheDocument();
   });
 
   describe('LineageTable Hooks Integration', () => {
@@ -514,9 +436,14 @@ describe('LineageTable', () => {
       };
       mockUseLineageTableState.mockReturnValue(mockState);
 
-      render(<LineageTable />, { wrapper: MemoryRouter });
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-      expect(screen.getByDisplayValue('test search')).toBeInTheDocument();
+      expect(CustomControlsComponent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchValue: 'test search',
+        }),
+        {}
+      );
     });
 
     it('should integrate with usePaging correctly', () => {
@@ -530,7 +457,7 @@ describe('LineageTable', () => {
       } as unknown as ReturnType<typeof usePaging>;
       mockUsePaging.mockReturnValue(mockPaging);
 
-      render(<LineageTable />, { wrapper: MemoryRouter });
+      render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
       expect(mockUsePaging).toHaveBeenCalledWith(50);
     });

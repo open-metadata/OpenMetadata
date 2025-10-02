@@ -83,7 +83,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   }, [content, readMore]);
 
   const maxHeight = useMemo(() => {
-    return isContentLoaded && readMore ? 'none' : '4em';
+    return isContentLoaded && readMore ? 'none' : '5em';
   }, [isContentLoaded, readMore]);
 
   if (isDescriptionContentEmpty(markdown)) {

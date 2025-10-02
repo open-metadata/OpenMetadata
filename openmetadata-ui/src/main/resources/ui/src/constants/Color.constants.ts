@@ -30,6 +30,7 @@ export const GRAY_1 = '#A1A1AA';
 export const LIGHT_GRAY = '#F1F4F9';
 export const INDIGO_1 = '#3538CD';
 export const PRIMARY_COLOR = DEFAULT_THEME.primaryColor;
+export const BLUE_1 = '#175cd3';
 export const BLUE_2 = '#3ca2f4';
 export const BLUE_500 = '#2E90FA';
 export const BLUE_800 = '#1849A9';
