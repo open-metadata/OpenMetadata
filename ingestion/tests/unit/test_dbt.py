@@ -1897,7 +1897,7 @@ class DbtUnitTest(TestCase):
         result = self.dbt_source_obj.get_dbt_domain(manifest_node)
 
         self.assertIsNone(result)
-=======
+
     def test_dbt_source_project_name(self):
         """
         Test that the DBT source project name is correctly set in the data model

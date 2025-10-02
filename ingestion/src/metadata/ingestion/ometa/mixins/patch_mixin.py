@@ -645,18 +645,14 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         entity: Type[T],
         source: T,
         domains: EntityReferenceList = None,
-        force: bool = False,
     ) -> Optional[T]:
         """
-        Given an Entity type and ID, JSON PATCH the owner. If not owner Entity type and
-        not owner ID are provided, the owner is removed.
+        Given an Entity type and ID, JSON PATCH the domain.
 
         Args
             entity (T): Entity Type of the entity to be patched
-            entity_id: ID of the entity to be patched
-            owner: Entity Reference of the owner. If None, the owner will be removed
-            force: if True, we will patch any existing owner. Otherwise, we will maintain
-                the existing data.
+            source: Source entity object
+            domains: Entity Reference List of the domains. If None, the domain will be removed
         Returns
             Updated Entity
         """
@@ -667,8 +663,12 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         if not instance:
             return None
 
-        if instance.domains and instance.domains.root and not force:
-            return None
+        # Check if domains are already the same, skip if identical
+        if instance.domains and instance.domains.root and domains and domains.root:
+            existing_domain_ids = {str(d.id) for d in instance.domains.root}
+            new_domain_ids = {str(d.id) for d in domains.root}
+            if existing_domain_ids == new_domain_ids:
+                return None
 
         destination = deepcopy(instance)
         destination.domains = domains

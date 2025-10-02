@@ -30,7 +30,6 @@ from metadata.generated.schema.entity.data.table import (
     ModelType,
     Table,
 )
-from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -86,19 +85,18 @@ from metadata.ingestion.source.database.dbt.dbt_service import (
 )
 from metadata.ingestion.source.database.dbt.dbt_utils import (
     check_ephemeral_node,
-    convert_value_for_custom_property,
     create_test_case_parameter_definitions,
     create_test_case_parameter_values,
-    extract_meta_fields_from_node,
     find_domain_by_name,
     format_domain_reference,
+    format_validation_error_message,
     generate_entity_link,
     get_corrected_name,
     get_data_model_path,
     get_dbt_compiled_query,
     get_dbt_model_name,
     get_dbt_raw_query,
-    validate_custom_property_match,
+    validate_custom_property_value,
 )
 from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
@@ -133,8 +131,10 @@ class DbtSource(DbtServiceSource):
             if self.source_config.dbtClassificationName
             else "dbtTags"
         )
-        self.custom_properties_cache = {}
-        self._load_custom_properties_definitions()
+        self.omd_custom_properties = {}
+        self.extracted_custom_properties = {}
+        self.extracted_domains = {}
+        self._load_omd_custom_properties()
 
     @classmethod
     def create(
@@ -153,7 +153,7 @@ class DbtSource(DbtServiceSource):
         By default for DBT nothing is required to be prepared
         """
 
-    def _load_custom_properties_definitions(self):
+    def _load_omd_custom_properties(self):
         """
         Loads custom properties definitions for tables
         """
@@ -164,10 +164,10 @@ class DbtSource(DbtServiceSource):
 
             if response and "customProperties" in response:
                 for prop in response["customProperties"]:
-                    self.custom_properties_cache[prop["name"]] = prop
+                    self.omd_custom_properties[prop["name"]] = prop
 
-            logger.info(
-                f"Loaded {len(self.custom_properties_cache)} custom properties for tables"
+            logger.debug(
+                f"Loaded {len(self.omd_custom_properties)} custom properties for tables"
             )
         except Exception as exc:
             logger.warning(f"Error loading custom properties: {exc}")
@@ -374,30 +374,41 @@ class DbtSource(DbtServiceSource):
         logger.debug(f"Processing DBT domain for: {table_fqn}")
 
         try:
-            domain_ref = self.context.get().table_domains.get(table_fqn)
+            domain_name = self.extracted_domains.get(table_fqn)
 
-            if not domain_ref:
+            if not domain_name:
                 logger.debug(f"No domain found for table {table_fqn}")
                 return
 
-            # Get the domain entity from the reference
-            domain_entity = self.metadata.get_by_id(
-                entity=Domain, entity_id=domain_ref.id
-            )
+            domain_entity = find_domain_by_name(self.metadata, domain_name)
 
             if not domain_entity:
-                logger.warning(f"Domain with ID {domain_ref.id} not found")
+                logger.warning(
+                    f"Domain '{domain_name}' not found in OpenMetadata for table {table_fqn}"
+                )
                 return
+
+            domain_ref_data = format_domain_reference(domain_entity)
+            if not domain_ref_data:
+                logger.warning(f"Failed to format domain reference for '{domain_name}'")
+                return
+
+            domain_ref = EntityReference(**domain_ref_data)
+
+            # Create an EntityReferenceList with the domain reference
+            domain_list = EntityReferenceList(root=[domain_ref])
 
             # Use the existing patch_domain method
             updated_entity = self.metadata.patch_domain(
-                entity=table_entity, domain=domain_entity
+                entity=Table, source=table_entity, domains=domain_list
             )
 
             if updated_entity:
                 logger.info(f"Successfully updated domain for table {table_fqn}")
             else:
-                logger.warning(f"Failed to update domain for table {table_fqn}")
+                logger.debug(
+                    f"Domain already set for table {table_fqn}, skipping update"
+                )
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning(f"Failed to update dbt domain for {table_fqn}: {exc}")
@@ -416,9 +427,7 @@ class DbtSource(DbtServiceSource):
         logger.debug(f"Processing DBT custom properties for: {table_fqn}")
 
         try:
-            custom_properties = self.context.get().table_custom_properties.get(
-                table_fqn
-            )
+            custom_properties = self.extracted_custom_properties.get(table_fqn, {})
 
             if not custom_properties:
                 logger.debug(f"No custom_properties found for table {table_fqn}")
@@ -466,43 +475,112 @@ class DbtSource(DbtServiceSource):
         self, table_entity: Table, custom_properties: Dict[str, Any]
     ) -> Optional[Dict[str, Any]]:
         """
-        Validates and converts custom properties to the correct format
+        Validates and converts custom properties with comprehensive type checking.
+
+        This method performs three-layer validation:
+        1. Property existence check - Is the property defined in OpenMetadata?
+        2. Type compatibility check - Does the value type match the expected type?
+        3. Format validation - Does the value meet format requirements?
+
+        Args:
+            table_entity: The table entity being processed
+            custom_properties: Dictionary of custom property names to values from DBT
+
+        Returns:
+            Dictionary of validated and converted custom properties, or None if no valid properties
         """
         valid_custom_properties = {}
+        validation_errors = []
+        table_fqn = table_entity.fullyQualifiedName.root
+
+        logger.debug(
+            f"Validating {len(custom_properties)} custom properties for table {table_fqn}"
+        )
 
         for field_name, field_value in custom_properties.items():
-            if field_name not in self.custom_properties_cache:
-                logger.warning(
-                    f"CustomProperty '{field_name}' not found in OpenMetadata "
-                    f"for table {table_entity.fullyQualifiedName.root}. "
-                    f"Please create it before the next run."
+            # Step 1: Check if property exists in OpenMetadata
+            if field_name not in self.omd_custom_properties:
+                error_msg = (
+                    f"Custom property '{field_name}' not found in OpenMetadata. "
+                    f"Please create it in the OpenMetadata UI before ingesting."
                 )
+                logger.warning(f"Table {table_fqn}: {error_msg}")
+                validation_errors.append(f"{field_name}: Property not defined")
                 continue
 
-            custom_property = self.custom_properties_cache[field_name]
+            custom_property = self.omd_custom_properties[field_name]
             property_type = custom_property["propertyType"]["name"]
 
-            if not validate_custom_property_match(property_type, field_value):
-                logger.warning(
-                    f"Type mismatch for customProperty '{field_name}': "
-                    f"expected {property_type}, got {type(field_value).__name__}"
-                )
-                continue
-
-            converted_value = convert_value_for_custom_property(
-                self.metadata, property_type, field_value
+            # Extract property configuration (format, enum values, etc.)
+            property_config = custom_property.get("customPropertyConfig", {}).get(
+                "config"
             )
 
-            if converted_value is None and property_type in [
-                "entityReference",
-                "entityReferenceList",
-            ]:
-                logger.warning(
-                    f"Could not convert value '{field_value}' for entityReference property '{field_name}' - skipping"
+            # Step 2: Validate and convert value (single pass)
+            # This validates type compatibility, format constraints, and converts to backend format
+            # For enum types, validation also filters out invalid values
+            # For entity references, fetches and converts entities from OpenMetadata
+            is_valid, error_detail, converted_value = validate_custom_property_value(
+                property_name=field_name,
+                property_type=property_type,
+                property_config=property_config,
+                value=field_value,
+                metadata=self.metadata,
+            )
+
+            if not is_valid:
+                # Format detailed error message
+                error_msg = format_validation_error_message(
+                    field_name=field_name,
+                    property_type=property_type,
+                    value=field_value,
+                    error_detail=error_detail,
                 )
+                logger.warning(f"Table {table_fqn}: {error_msg}")
+                validation_errors.append(f"{field_name}: {error_detail}")
                 continue
 
+            # Check if conversion failed (converted_value is None)
+            if converted_value is None:
+                error_msg = (
+                    f"Failed to convert custom property '{field_name}' "
+                    f"(type: {property_type}, value: {field_value})"
+                )
+                logger.warning(f"Table {table_fqn}: {error_msg}")
+                validation_errors.append(f"{field_name}: Conversion failed")
+                continue
+
+            # Log if enum values were filtered
+            if property_type == "enum" and converted_value != field_value:
+                logger.debug(
+                    f"Table {table_fqn}: Filtered enum property '{field_name}' "
+                    f"from {field_value} to {converted_value}"
+                )
+
+            # Successfully validated and converted
             valid_custom_properties[field_name] = converted_value
+            logger.debug(
+                f"✓ Validated custom property '{field_name}' for table {table_fqn}: "
+                f"{field_value} → {converted_value} (type: {property_type})"
+            )
+
+        # Log validation summary
+        if validation_errors:
+            logger.warning(
+                f"Custom property validation errors for table {table_fqn}:\n"
+                + "\n".join(f"  • {err}" for err in validation_errors)
+            )
+
+        if valid_custom_properties:
+            logger.debug(
+                f"Successfully validated {len(valid_custom_properties)}/{len(custom_properties)} "
+                f"custom properties for table {table_fqn}"
+            )
+        else:
+            logger.warning(
+                f"No valid custom properties found for table {table_fqn} "
+                f"(attempted: {len(custom_properties)})"
+            )
 
         return valid_custom_properties if valid_custom_properties else None
 
@@ -806,14 +884,6 @@ class DbtSource(DbtServiceSource):
                             or []
                         )
 
-                    if manifest_node.meta:
-                        dbt_table_tags_list.extend(
-                            self.process_dbt_meta(manifest_node.meta) or []
-                        )
-
-                    dbt_compiled_query = get_dbt_compiled_query(manifest_node)
-                    dbt_raw_query = get_dbt_raw_query(manifest_node)
-
                     table_fqn = fqn.build(
                         self.metadata,
                         entity_type=Table,
@@ -823,19 +893,18 @@ class DbtSource(DbtServiceSource):
                         table_name=model_name,
                     )
 
+                    if manifest_node.meta:
+                        dbt_table_tags_list.extend(
+                            self.process_dbt_meta(manifest_node.meta, table_fqn) or []
+                        )
+
+                    dbt_compiled_query = get_dbt_compiled_query(manifest_node)
+                    dbt_raw_query = get_dbt_raw_query(manifest_node)
+
                     if table_entity := self._get_table_entity(table_fqn=table_fqn):
                         logger.debug(
                             f"Using Table Entity for datamodel: {table_entity}"
                         )
-
-                        custom_properties = extract_meta_fields_from_node(manifest_node)
-                        if custom_properties:
-                            self.context.get().table_custom_properties[
-                                table_fqn
-                            ] = custom_properties
-                            logger.debug(
-                                f"Stored {len(custom_properties)} custom properties for {table_fqn}"
-                            )
 
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
@@ -1201,7 +1270,7 @@ class DbtSource(DbtServiceSource):
                     f"Failed to parse the node {upstream_node} to capture lineage: {exc}"
                 )
 
-    def process_dbt_meta(self, manifest_meta):
+    def process_dbt_meta(self, manifest_meta, table_fqn):
         """
         Method to process DBT meta for Tags and GlossaryTerms
         """
@@ -1230,6 +1299,18 @@ class DbtSource(DbtServiceSource):
                     )
                     or []
                 )
+
+            if (
+                dbt_meta_info.openmetadata
+                and dbt_meta_info.openmetadata.customProperties
+            ):
+                # Store custom properties mapped to table FQN
+                self.extracted_custom_properties[
+                    table_fqn
+                ] = dbt_meta_info.openmetadata.customProperties
+
+            if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.domain:
+                self.extracted_domains[table_fqn] = dbt_meta_info.openmetadata.domain
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
