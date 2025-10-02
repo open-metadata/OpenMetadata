@@ -354,26 +354,6 @@ public class RBACConditionEvaluator {
               ? domainQueries.get(0)
               : queryBuilderFactory.boolQuery().should(domainQueries);
 
-      //      if (LOG.isDebugEnabled()) {
-      //        LOG.debug(
-      //            "hasDomain query for user {}: domainFQNs={}",
-      //            user.getName(),
-      //
-      // user.getDomains().stream().map(EntityReference::getFullyQualifiedName).toList());
-      //
-      //        if (domainQuery
-      //            instanceof
-      // org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder
-      //            eqb) {
-      //          LOG.debug("hasDomain ES query: {}", eqb.build());
-      //        } else if (domainQuery
-      //            instanceof
-      // org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder
-      //            osqb) {
-      //          LOG.debug("hasDomain OpenSearch query: {}", osqb.build());
-      //        }
-      //      }
-
       collector.addMust(domainQuery);
     }
   }
