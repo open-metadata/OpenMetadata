@@ -86,7 +86,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     }));
   }, [value]);
 
-  const fetchUsers = async (searchText: string) => {
+  const fetchUsers = async (searchText: string, signal?: AbortSignal) => {
     if (teamOnly) {
       return [];
     }
@@ -98,7 +98,11 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       'isBot:false',
       '',
       '',
-      SearchIndex.USER
+      SearchIndex.USER,
+      false,
+      false,
+      true,
+      signal
     );
 
     const users = formatUsersResponse(res.data.hits.hits);
@@ -111,7 +115,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     }));
   };
 
-  const fetchTeams = async (searchText: string) => {
+  const fetchTeams = async (searchText: string, signal?: AbortSignal) => {
     if (userOnly) {
       return [];
     }
@@ -123,7 +127,11 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       '',
       '',
       '',
-      SearchIndex.TEAM
+      SearchIndex.TEAM,
+      false,
+      false,
+      true,
+      signal
     );
 
     const teams = formatTeamsResponse(res.data.hits.hits);
@@ -147,8 +155,8 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
 
       try {
         const [userOptions, teamOptions] = await Promise.all([
-          fetchUsers(searchText),
-          fetchTeams(searchText),
+          fetchUsers(searchText, searchRef.current?.signal),
+          fetchTeams(searchText, searchRef.current?.signal),
         ]);
 
         const allOptions = [...userOptions, ...teamOptions];
@@ -342,6 +350,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
   return (
     <Autocomplete
       disableCloseOnSelect
+      freeSolo
       autoFocus={autoFocus}
       filterOptions={filterOptions}
       getOptionLabel={(option) => option.label}
@@ -349,7 +358,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       isOptionEqualToValue={isOptionEqualToValue}
       loading={loading}
       multiple={isMultiple}
-      open={open}
+      open={open && (options.length > 0 || loading || !inputValue)}
       options={options}
       renderInput={(params) => (
         <TextField
