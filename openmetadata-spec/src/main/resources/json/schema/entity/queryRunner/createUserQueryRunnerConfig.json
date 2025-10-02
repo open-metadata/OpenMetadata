@@ -1,0 +1,134 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/queryRunner/createUserQueryRunnerConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Create User Query Runner Configuration",
+  "description": "Schema for creating/updating user-specific Query Runner Configuration.",
+  "type": "object",
+  "javaType": "io.collate.service.schema.entity.queryRunner.CreateUserQueryRunnerConfig",
+  "definitions": {
+    "bigQueryCollateSSO": {
+      "description": "BigQuery user config for CollateSSO",
+      "type": "object",
+      "properties": {
+        "preferredDataset": {
+          "description": "User's preferred dataset",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "bigQueryBasic": {
+      "description": "BigQuery user config for Basic auth",
+      "type": "object",
+      "properties": {
+        "preferredDataset": {
+          "description": "User's preferred dataset",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "snowflakeCollateSSO": {
+      "description": "Snowflake user config for CollateSSO",
+      "type": "object",
+      "properties": {
+        "role": {
+          "description": "User's Snowflake role",
+          "type": "string"
+        },
+        "database": {
+          "description": "User's preferred database",
+          "type": "string"
+        },
+        "schema": {
+          "description": "User's preferred schema",
+          "type": "string"
+        },
+        "warehouse": {
+          "description": "User's preferred warehouse",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "snowflakeBasic": {
+      "description": "Snowflake user config for Basic auth",
+      "type": "object",
+      "properties": {
+        "username": {
+          "description": "User's Snowflake username",
+          "type": "string"
+        },
+        "password": {
+          "description": "Password for Basic auth",
+          "type": "string",
+          "format": "password"
+        },
+        "role": {
+          "description": "User's Snowflake role",
+          "type": "string"
+        },
+        "database": {
+          "description": "User's preferred database",
+          "type": "string"
+        },
+        "schema": {
+          "description": "User's preferred schema",
+          "type": "string"
+        },
+        "warehouse": {
+          "description": "User's preferred warehouse",
+          "type": "string"
+        }
+      },
+      "required": ["username", "password"],
+      "additionalProperties": false
+    },
+    "snowflakeExternalOAuth": {
+      "description": "Snowflake user config for ExternalOAuth",
+      "type": "object",
+      "properties": {
+        "role": {
+          "description": "User's Snowflake role",
+          "type": "string"
+        },
+        "database": {
+          "description": "User's preferred database",
+          "type": "string"
+        },
+        "schema": {
+          "description": "User's preferred schema",
+          "type": "string"
+        },
+        "warehouse": {
+          "description": "User's preferred warehouse",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "queryRunnerConfigId": {
+      "description": "ID of the admin-defined QueryRunner configuration.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "displayName": {
+      "description": "User-friendly name for this configuration.",
+      "type": "string"
+    },
+    "userAuthConfig": {
+      "description": "User-specific authentication configuration.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/bigQueryUserAuthConfig"
+        },
+        {
+          "$ref": "#/definitions/snowflakeUserAuthConfig"
+        }
+      ]
+    }
+  },
+  "required": ["queryRunnerConfigId", "userAuthConfig"],
+  "additionalProperties": false
+}

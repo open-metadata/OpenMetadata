@@ -1,0 +1,204 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/queryRunner/userQueryRunnerConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "User Query Runner Configuration",
+  "description": "User-specific Query Runner Configuration that extends admin-defined service configuration.",
+  "type": "object",
+  "javaType": "io.collate.service.schema.entity.queryRunner.UserQueryRunnerConfig",
+  "definitions": {
+    "connectionStatus": {
+      "description": "Status of user's connection to the query runner",
+      "type": "string",
+      "enum": ["connected", "disconnected", "error", "pending"],
+      "default": "disconnected"
+    },
+    "bigQueryCollateSSO": {
+      "description": "BigQuery user config for CollateSSO (minimal user input required)",
+      "type": "object",
+      "properties": {
+        "preferredDataset": {
+          "description": "User's preferred dataset (overrides admin default if allowed)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "bigQueryBasic": {
+      "description": "BigQuery user config for Basic auth (user provides credentials)",
+      "type": "object",
+      "properties": {
+        "preferredDataset": {
+          "description": "User's preferred dataset",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "snowflakeCollateSSO": {
+      "description": "Snowflake user config for CollateSSO (minimal user input required)",
+      "type": "object",
+      "properties": {
+        "role": {
+          "description": "User's Snowflake role (overrides admin default if allowed)",
+          "type": "string"
+        },
+        "database": {
+          "description": "User's preferred database (overrides admin default if allowed)",
+          "type": "string"
+        },
+        "schema": {
+          "description": "User's preferred schema (overrides admin default if allowed)",
+          "type": "string"
+        },
+        "warehouse": {
+          "description": "User's preferred warehouse (overrides admin default if allowed)",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "snowflakeBasic": {
+      "description": "Snowflake user config for Basic auth (user provides credentials)",
+      "type": "object",
+      "properties": {
+        "username": {
+          "description": "User's Snowflake username",
+          "type": "string"
+        },
+        "role": {
+          "description": "User's Snowflake role",
+          "type": "string"
+        },
+        "database": {
+          "description": "User's preferred database",
+          "type": "string"
+        },
+        "schema": {
+          "description": "User's preferred schema",
+          "type": "string"
+        },
+        "warehouse": {
+          "description": "User's preferred warehouse",
+          "type": "string"
+        }
+      },
+      "required": ["username"],
+      "additionalProperties": false
+    },
+    "snowflakeExternalOAuth": {
+      "description": "Snowflake user config for ExternalOAuth (OAuth handled by admin, user sets preferences)",
+      "type": "object",
+      "properties": {
+        "role": {
+          "description": "User's Snowflake role",
+          "type": "string"
+        },
+        "database": {
+          "description": "User's preferred database",
+          "type": "string"
+        },
+        "schema": {
+          "description": "User's preferred schema",
+          "type": "string"
+        },
+        "warehouse": {
+          "description": "User's preferred warehouse",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false
+    },
+    "encryptedCredentials": {
+      "description": "Encrypted user credentials and tokens",
+      "type": "object",
+      "properties": {
+        "accessToken": {
+          "description": "Encrypted OAuth access token",
+          "type": "string",
+          "format": "password"
+        },
+        "refreshToken": {
+          "description": "Encrypted OAuth refresh token",
+          "type": "string",
+          "format": "password"
+        },
+        "password": {
+          "description": "Encrypted password for Basic auth",
+          "type": "string",
+          "format": "password"
+        },
+        "tokenExpiresAt": {
+          "description": "Token expiration timestamp",
+          "$ref": "../../type/basic.json#/definitions/timestamp"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this User Query Runner Configuration.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "userId": {
+      "description": "ID of the user this configuration belongs to.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "queryRunnerConfigId": {
+      "description": "ID of the admin-defined QueryRunner configuration this extends.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "displayName": {
+      "description": "User-friendly name for this configuration.",
+      "type": "string"
+    },
+    "connectionStatus": {
+      "$ref": "#/definitions/connectionStatus"
+    },
+    "userAuthConfig": {
+      "description": "User-specific authentication configuration. Structure depends on service type and auth type configured by admin.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/bigQueryCollateSSO"
+        },
+        {
+          "$ref": "#/definitions/bigQueryBasic"
+        },
+        {
+          "$ref": "#/definitions/snowflakeCollateSSO"
+        },
+        {
+          "$ref": "#/definitions/snowflakeBasic"
+        },
+        {
+          "$ref": "#/definitions/snowflakeExternalOAuth"
+        }
+      ]
+    },
+    "encryptedCredentials": {
+      "$ref": "#/definitions/encryptedCredentials"
+    },
+    "lastConnectionAt": {
+      "description": "Timestamp of last successful connection.",
+      "type": "integer"
+    },
+    "connectionError": {
+      "description": "Last connection error message (if any).",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Creation timestamp in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "description": "Last update timestamp in Unix epoch time milliseconds.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    },
+    "updatedBy": {
+      "description": "User who made the update.",
+      "type": "string"
+    }
+  },
+  "required": ["id", "userId", "queryRunnerConfigId", "connectionStatus"],
+  "additionalProperties": false
+}
