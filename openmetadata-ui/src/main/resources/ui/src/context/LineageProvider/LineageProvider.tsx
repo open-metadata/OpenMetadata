@@ -48,6 +48,7 @@ import {
   useKeyPress,
   useNodesState,
 } from 'reactflow';
+import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import EdgeInfoDrawer from '../../components/Entity/EntityInfoDrawer/EdgeInfoDrawer.component';
@@ -69,7 +70,7 @@ import {
 } from '../../components/Lineage/Lineage.interface';
 import LineageNodeRemoveButton from '../../components/Lineage/LineageNodeRemoveButton';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { ROUTES } from '../../constants/constants';
+import { FULLSCREEN_QUERY_PARAM_KEY, ROUTES } from '../../constants/constants';
 import {
   ExportTypes,
   LINEAGE_EXPORT_SELECTOR,
@@ -131,6 +132,7 @@ import {
   removeUnconnectedNodes,
 } from '../../utils/EntityLineageUtils';
 import {
+  getEntityBreadcrumbs,
   getEntityReferenceFromEntity,
   updateNodeType,
 } from '../../utils/EntityUtils';
@@ -213,9 +215,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   const [selectedQuickFilters, setSelectedQuickFilters] = useState<
     ExploreQuickFilterField[]
   >([]);
-  const [entityType, setEntityType] = useState('');
+  const [entityType, setEntityType] = useState<EntityType>();
   const queryParams = new URLSearchParams(location.search);
-  const isFullScreen = queryParams.get('fullscreen') === 'true';
+  const isFullScreen = queryParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
   const deletePressed = useKeyPress('Delete');
   const backspacePressed = useKeyPress('Backspace');
   const { showModal } = useEntityExportModalProvider();
@@ -244,10 +246,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
   }, []);
 
   const lineageLayer = useMemo(() => {
-    const param = location.search;
-    const searchData = QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
+    const searchData = QueryString.parse(location.search, {
+      ignoreQueryPrefix: true,
+    });
 
     return searchData.layers as LineageLayer[] | undefined;
   }, [location.search]);
@@ -480,11 +481,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
       }
 
       if (isPlatformLineage) {
-        const searchData = QueryString.parse(
-          location.search.startsWith('?')
-            ? location.search.substring(1)
-            : location.search
-        );
+        const searchData = QueryString.parse(location.search, {
+          ignoreQueryPrefix: true,
+        });
         navigate({
           search: QueryString.stringify({
             ...searchData,
@@ -556,7 +555,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
         });
 
         const currentNodes: Record<string, NodeData> = {};
-        entityLineage.nodes?.forEach((node) => {
+        for (const node of entityLineage.nodes ?? []) {
           currentNodes[node.fullyQualifiedName ?? ''] = {
             entity: node,
             paging: (node as LineageEntityReference).paging ?? {
@@ -564,7 +563,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               entityUpstreamCount: 0,
             },
           };
-        });
+        }
         const concatenatedLineageData = {
           nodes: {
             ...currentNodes,
@@ -608,7 +607,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
         // remove the nodes and edges from the lineageData
         const visibleNodes: Record<string, NodeData> = {};
-        uniqueNodes.forEach((node: EntityReference) => {
+        for (const node of uniqueNodes) {
           visibleNodes[node.fullyQualifiedName ?? ''] = {
             entity: node,
             paging: (node as LineageEntityReference).paging ?? {
@@ -616,7 +615,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
               entityUpstreamCount: 0,
             },
           };
-        });
+        }
 
         const currentNode = updatedEntityLineage.nodes.find(
           (n) => n.fullyQualifiedName === node.fullyQualifiedName
@@ -1460,7 +1459,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
 
       // remove the nodes and edges from the lineageData
       const visibleNodes: Record<string, NodeData> = {};
-      updatedNodes.forEach((node) => {
+      for (const node of updatedNodes) {
         visibleNodes[node.fullyQualifiedName ?? ''] = {
           entity: node,
           paging: (node as LineageEntityReference).paging ?? {
@@ -1468,7 +1467,7 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
             entityUpstreamCount: 0,
           },
         };
-      });
+      }
 
       updateLineageData(
         {
@@ -1825,6 +1824,21 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
     }
   }, [dataQualityLineage, edges, dqHighlightedEdges]);
 
+  const breadcrumbs = useMemo(
+    () =>
+      entity
+        ? [
+            ...getEntityBreadcrumbs(entity, entityType, isFullScreen),
+            {
+              name: t('label.lineage'),
+              url: '',
+              activeTitle: true,
+            },
+          ]
+        : [],
+    [entity, isFullScreen, entityType]
+  );
+
   return (
     <LineageContext.Provider value={activityFeedContextValues}>
       <div
@@ -1833,6 +1847,9 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           'sidebar-collapsed': isFullScreen && preferences?.isSidebarCollapsed,
           'sidebar-expanded': isFullScreen && !preferences?.isSidebarCollapsed,
         })}>
+        {isFullScreen && breadcrumbs.length > 0 && (
+          <TitleBreadcrumb className="p-b-sm" titleLinks={breadcrumbs} />
+        )}
         {children}
         <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 

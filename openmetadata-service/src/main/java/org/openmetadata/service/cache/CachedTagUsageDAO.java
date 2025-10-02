@@ -41,9 +41,10 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       String tagFQNHash,
       String targetFQNHash,
       int labelType,
-      int state) {
+      int state,
+      String reason) {
     try {
-      delegate.applyTag(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state);
+      delegate.applyTag(source, tagFQN, tagFQNHash, targetFQNHash, labelType, state, reason);
       if (RelationshipCache.isAvailable()) {
         invalidateTagCaches(targetFQNHash);
         RelationshipCache.bumpTag(tagFQN, 1);
@@ -437,10 +438,11 @@ public class CachedTagUsageDAO implements CollectionDAO.TagUsageDAO {
       List<String> tagFQNHashes,
       List<String> targetFQNHashes,
       List<Integer> labelTypes,
-      List<Integer> states) {
+      List<Integer> states,
+      List<String> reasons) {
     // This is an internal method that delegates directly to the database
     delegate.applyTagsBatchInternal(
-        sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states);
+        sources, tagFQNs, tagFQNHashes, targetFQNHashes, labelTypes, states, reasons);
   }
 
   @Override
