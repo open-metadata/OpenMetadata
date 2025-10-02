@@ -52,6 +52,7 @@ const waitForSearchDebounce = async (page: Page) => {
   await page
     .waitForSelector('[data-testid="loader"]', {
       state: 'attached',
+      timeout: 999,
     })
     .catch(() => {
       // Loader might not appear if search is very fast
