@@ -344,11 +344,13 @@ public class RBACConditionEvaluator {
               queryBuilderFactory.prefixQuery(
                   "domains.fullyQualifiedName", domain.getFullyQualifiedName()));
         } else {
-          // Fallback to domain ID if FQN is not available
+          // Fallback to exact domain ID match if FQN is not available
           domainQueries.add(queryBuilderFactory.termQuery("domains.id", domain.getId().toString()));
         }
       }
 
+      // Use 'should' (OR) to match entities in any of the user's domains
+      // Optimization: skip bool wrapper for single domain
       OMQueryBuilder domainQuery =
           domainQueries.size() == 1
               ? domainQueries.get(0)

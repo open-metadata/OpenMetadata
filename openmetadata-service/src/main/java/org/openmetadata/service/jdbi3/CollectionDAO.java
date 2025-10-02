@@ -3059,16 +3059,16 @@ public interface CollectionDAO {
                 + "JOIN UNNEST(:prefixArray::text[]) AS p(prefix) "
                 + "  ON de.fqnHash LIKE p.prefix",
         connectionType = POSTGRES)
-    List<String> listByFqnHashPrefixesBulk(
+    List<String> getSubdomainsByFqnHashPatterns(
         @Bind("jsonPrefixes") String jsonPrefixes, @Bind("prefixArray") List<String> prefixArray);
 
-    default List<String> listByFqnHashPrefixes(List<String> fqnHashPrefixes) {
+    default List<String> getSubdomainsByFqnHashPatterns(List<String> fqnHashPrefixes) {
       if (fqnHashPrefixes.isEmpty()) {
         return new ArrayList<>();
       }
 
       String jsonPrefixes = org.openmetadata.schema.utils.JsonUtils.pojoToJson(fqnHashPrefixes);
-      return listByFqnHashPrefixesBulk(jsonPrefixes, fqnHashPrefixes);
+      return getSubdomainsByFqnHashPatterns(jsonPrefixes, fqnHashPrefixes);
     }
   }
 

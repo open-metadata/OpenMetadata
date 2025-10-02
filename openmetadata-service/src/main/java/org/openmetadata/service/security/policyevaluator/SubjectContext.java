@@ -179,6 +179,7 @@ public record SubjectContext(User user) {
     return roles.stream().distinct().collect(Collectors.toList());
   }
 
+  // Get user's domains including all subdomains in the hierarchy.
   public List<EntityReference> getUserDomains() {
     List<EntityReference> userDomains = listOrEmpty(user.getDomains());
     if (userDomains.isEmpty()) {
@@ -187,13 +188,14 @@ public record SubjectContext(User user) {
 
     List<EntityReference> allDomains = new ArrayList<>(userDomains);
     try {
+      // Build fqnHash patterns to match all subdomains: "parentHash.%"
       List<String> fqnHashPrefixes =
           userDomains.stream()
               .map(d -> FullyQualifiedName.buildHash(d.getFullyQualifiedName()) + ".%")
               .collect(Collectors.toList());
 
       List<String> subdomainJsonList =
-          Entity.getCollectionDAO().domainDAO().listByFqnHashPrefixes(fqnHashPrefixes);
+          Entity.getCollectionDAO().domainDAO().getSubdomainsByFqnHashPatterns(fqnHashPrefixes);
 
       for (String json : subdomainJsonList) {
         try {
