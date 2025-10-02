@@ -13,7 +13,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_H
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
-import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
@@ -120,8 +119,8 @@ import javax.net.ssl.SSLContext;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang.WordUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -134,8 +133,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
-import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -156,7 +156,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.Paging;
-import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
@@ -230,7 +229,9 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
           "field_suggest");
 
   public static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
-      Stream.concat(FIELDS_TO_REMOVE.stream(), Stream.of("schemaDefinition", "customMetrics"))
+      Stream.concat(
+              FIELDS_TO_REMOVE.stream(),
+              Stream.of("schemaDefinition", "customMetrics", "embedding"))
           .toList();
 
   // Add this field to the class
@@ -326,6 +327,129 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
               "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
           e);
     }
+  }
+
+  @Override
+  public void createIndex(String indexName, String indexMappingContent) {
+    if (!isClientAvailable) {
+      LOG.error(
+          "Failed to create Elastic Search index as client is not property configured, Please check your OpenMetadata configuration");
+      return;
+    }
+    try {
+      CreateIndexRequest request = new CreateIndexRequest(indexName);
+      request.source(indexMappingContent, XContentType.JSON);
+      client.indices().create(request, RequestOptions.DEFAULT);
+      LOG.debug("Created staged index {}", indexName);
+    } catch (Exception e) {
+      LOG.error(String.format("Failed to create staged index %s due to", indexName), e);
+    }
+  }
+
+  @Override
+  public void deleteIndex(String indexName) {
+    if (!isClientAvailable) {
+      return;
+    }
+    try {
+      DeleteIndexRequest request = new DeleteIndexRequest(indexName);
+      client.indices().delete(request, RequestOptions.DEFAULT);
+      LOG.debug("Deleted index {}", indexName);
+    } catch (Exception e) {
+      LOG.error(String.format("Failed to delete index %s due to", indexName), e);
+    }
+  }
+
+  @Override
+  public Set<String> getAliases(String indexName) {
+    Set<String> aliases = new HashSet<>();
+    if (!isClientAvailable) {
+      return aliases;
+    }
+    try {
+      Request request = new Request("GET", String.format("/%s/_alias", indexName));
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode root = JsonUtils.readTree(responseBody);
+      JsonNode indexNode = root.get(indexName);
+      if (indexNode != null && indexNode.has("aliases")) {
+        JsonNode aliasesNode = indexNode.get("aliases");
+        aliasesNode.fieldNames().forEachRemaining(aliases::add);
+      }
+    } catch (Exception e) {
+      LOG.warn(String.format("Failed to retrieve aliases for index %s", indexName), e);
+    }
+    return aliases;
+  }
+
+  @Override
+  public void addAliases(String indexName, Set<String> aliases) {
+    if (!isClientAvailable || nullOrEmpty(aliases)) {
+      return;
+    }
+    try {
+      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+      for (String alias : aliases) {
+        aliasesRequest.addAliasAction(
+            IndicesAliasesRequest.AliasActions.add().index(indexName).alias(alias));
+      }
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+      LOG.debug("Added aliases {} to index {}", aliases, indexName);
+    } catch (Exception e) {
+      LOG.error(String.format("Failed to add aliases %s to index %s", aliases, indexName), e);
+    }
+  }
+
+  @Override
+  public void removeAliases(String indexName, Set<String> aliases) {
+    if (!isClientAvailable || nullOrEmpty(aliases)) {
+      return;
+    }
+    try {
+      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
+      for (String alias : aliases) {
+        aliasesRequest.addAliasAction(
+            IndicesAliasesRequest.AliasActions.remove().index(indexName).alias(alias));
+      }
+      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
+      LOG.debug("Removed aliases {} from index {}", aliases, indexName);
+    } catch (Exception e) {
+      if (e instanceof ResponseException responseException
+          && responseException.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.debug(
+            "Aliases {} not present on index {} while attempting removal (ignored).",
+            aliases,
+            indexName);
+        return;
+      }
+      LOG.error(String.format("Failed to remove aliases %s from index %s", aliases, indexName), e);
+    }
+  }
+
+  @Override
+  public Set<String> getIndicesByAlias(String aliasName) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable || aliasName == null || aliasName.isBlank()) {
+      return indices;
+    }
+    try {
+      Request request = new Request("GET", String.format("/_alias/%s", aliasName));
+      es.org.elasticsearch.client.Response response =
+          client.getLowLevelClient().performRequest(request);
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode root = JsonUtils.readTree(responseBody);
+      root.fieldNames().forEachRemaining(indices::add);
+    } catch (ResponseException ex) {
+      if (ex.getResponse() != null && ex.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.debug("Alias '{}' not found while resolving indices.", aliasName);
+      } else {
+        LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), ex);
+      }
+    } catch (Exception e) {
+      LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), e);
+    }
+    return indices;
   }
 
   @Override
@@ -451,6 +575,13 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
         fieldSortBuilder.unmappedType("integer");
       }
       searchSourceBuilder.sort(fieldSortBuilder);
+
+      // Add tiebreaker sort for stable pagination when sorting by score
+      // This ensures consistent ordering when multiple documents have identical scores
+      if (request.getSortFieldParam().equalsIgnoreCase("_score")) {
+        searchSourceBuilder.sort(
+            SortBuilders.fieldSort("name.keyword").order(SortOrder.ASC).unmappedType("keyword"));
+      }
     }
 
     buildHierarchyQuery(request, searchSourceBuilder, client);
@@ -836,40 +967,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    int upstreamDepth = lineageRequest.getUpstreamDepth();
-    int downstreamDepth = lineageRequest.getDownstreamDepth();
-    SearchLineageResult result =
-        lineageGraphBuilder.getDownstreamLineage(
-            lineageRequest
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
-                .withDirection(LineageDirection.DOWNSTREAM)
-                .withDirectionValue(
-                    getLineageDirection(
-                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    SearchLineageResult upstreamLineage =
-        lineageGraphBuilder.getUpstreamLineage(
-            lineageRequest
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
-                .withDirection(LineageDirection.UPSTREAM)
-                .withDirectionValue(
-                    getLineageDirection(
-                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-
-    // Here we are merging everything from downstream paging into upstream paging
-    for (var nodeFromDownstream : result.getNodes().entrySet()) {
-      if (upstreamLineage.getNodes().containsKey(nodeFromDownstream.getKey())) {
-        NodeInformation existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
-        LayerPaging existingPaging = existingNode.getPaging();
-        existingPaging.setEntityDownstreamCount(
-            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
-      }
-    }
-    // since paging from downstream is merged into upstream, we can just put the upstream result
-    result.getNodes().putAll(upstreamLineage.getNodes());
-    result.getUpstreamEdges().putAll(upstreamLineage.getUpstreamEdges());
-    return result;
+    return lineageGraphBuilder.searchLineage(lineageRequest);
   }
 
   @Override
@@ -905,6 +1003,40 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
+  @Override
+  public Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
+      throws IOException {
+    LOG.info("Executing direct OpenSearch query: {}", request.getQueryFilter());
+    try {
+      XContentParser parser = createXContentParser(request.getQueryFilter());
+      SearchSourceBuilder searchSourceBuilder = SearchSourceBuilder.fromXContent(parser);
+      searchSourceBuilder.from(request.getFrom());
+      searchSourceBuilder.size(request.getSize());
+
+      // Apply RBAC constraints
+      buildSearchRBACQuery(subjectContext, searchSourceBuilder);
+
+      // Add aggregations if needed
+      ElasticSearchSourceBuilderFactory sourceBuilderFactory = getSearchBuilderFactory();
+      sourceBuilderFactory.addAggregationsToNLQQuery(searchSourceBuilder, request.getIndex());
+
+      es.org.elasticsearch.action.search.SearchRequest esRequest =
+          new es.org.elasticsearch.action.search.SearchRequest(request.getIndex());
+      esRequest.source(searchSourceBuilder);
+
+      es.org.elasticsearch.action.search.SearchResponse response =
+          client.search(esRequest, RequestOptions.DEFAULT);
+
+      LOG.debug("Direct query search completed successfully");
+      return Response.status(Response.Status.OK).entity(response.toString()).build();
+    } catch (Exception e) {
+      LOG.error("Error executing direct query search: {}", e.getMessage(), e);
+      return Response.status(Response.Status.INTERNAL_SERVER_ERROR)
+          .entity(String.format("Failed to execute direct query search: %s", e.getMessage()))
+          .build();
+    }
+  }
+
   private Response fallbackToBasicSearch(SearchRequest request, SubjectContext subjectContext) {
     try {
       LOG.debug("Falling back to basic query_string search for NLQ: {}", request.getQuery());
@@ -933,25 +1065,26 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    int upstreamDepth = lineageRequest.getUpstreamDepth();
-    int downstreamDepth = lineageRequest.getDownstreamDepth();
-    if (lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
-      return lineageGraphBuilder.getUpstreamLineage(
-          lineageRequest
-              .withUpstreamDepth(upstreamDepth + 1)
-              .withDownstreamDepth(downstreamDepth + 1)
-              .withDirectionValue(
-                  getLineageDirection(
-                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    } else {
-      return lineageGraphBuilder.getDownstreamLineage(
-          lineageRequest
-              .withUpstreamDepth(upstreamDepth + 1)
-              .withDownstreamDepth(downstreamDepth + 1)
-              .withDirectionValue(
-                  getLineageDirection(
-                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    }
+    return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
+    return lineageGraphBuilder.getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+  }
+
+  @Override
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
   @Override

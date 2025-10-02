@@ -384,6 +384,12 @@ test('Classification Page', async ({ page }) => {
       await page.reload();
       await databaseSchemasPage;
 
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await expect(
         page.locator('[data-testid="tags-container"]')
       ).toContainText(tag);
@@ -441,6 +447,11 @@ test('Classification Page', async ({ page }) => {
     // Verify term count is now 0 after deleting the tag
     await page.reload();
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.waitForSelector('[data-testid="side-panel-classification"]', {
       state: 'visible',
     });

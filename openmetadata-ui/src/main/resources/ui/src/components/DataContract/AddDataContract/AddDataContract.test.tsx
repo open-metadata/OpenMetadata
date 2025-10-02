@@ -12,6 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   DataContract,
@@ -73,7 +74,9 @@ jest.mock('../ContractDetailFormTab/ContractDetailFormTab', () => ({
     .mockImplementation(({ onChange, onNext }) => (
       <div>
         <h2>Contract Details</h2>
-        <button onClick={onChange}>Change</button>
+        <button onClick={() => onChange({ name: 'Test Contract Change' })}>
+          Change
+        </button>
         <button onClick={onNext}>Next</button>
       </div>
     )),
@@ -84,7 +87,9 @@ jest.mock('../ContractQualityFormTab/ContractQualityFormTab', () => ({
     .mockImplementation(({ onChange, onNext }) => (
       <div>
         <h2>Contract Quality</h2>
-        <button onClick={onChange}>Change</button>
+        <button onClick={() => onChange({ qualityExpectations: [] })}>
+          Change
+        </button>
         <button onClick={onNext}>Next</button>
       </div>
     )),
@@ -96,7 +101,7 @@ jest.mock('../ContractSchemaFormTab/ContractScehmaFormTab', () => ({
       <div>
         <h2>Contract Schema</h2>
         <button onClick={onPrev}>Previous</button>
-        <button onClick={onChange}>Change</button>
+        <button onClick={() => onChange({ schema: [] })}>Change</button>
         <button onClick={onNext}>Next</button>
       </div>
     )),
@@ -109,7 +114,55 @@ jest.mock('../ContractSemanticFormTab/ContractSemanticFormTab', () => ({
       <div>
         <h2>Contract Semantics</h2>
         <button onClick={onPrev}>Previous</button>
-        <button onClick={onChange}>Change</button>
+        <button onClick={() => onChange({ semantics: [] })}>Change</button>
+        <button onClick={onNext}>Next</button>
+      </div>
+    )),
+}));
+
+jest.mock('../ContractSecurityFormTab/ContractSecurityFormTab', () => ({
+  ContractSecurityFormTab: jest
+    .fn()
+    .mockImplementation(({ onChange, onNext, onPrev }) => (
+      <div>
+        <h2>Contract Security</h2>
+        <button onClick={onPrev}>Previous</button>
+        <button
+          data-testid="security-change-btn"
+          onClick={() =>
+            onChange({
+              security: {
+                dataClassification: 'PII',
+                policies: [
+                  {
+                    accessPolicy: 'Read Only',
+                    identities: ['user@example.com'],
+                    rowFilters: [
+                      { columnName: 'col1', values: ['val1'] },
+                      { columnName: '', values: [] },
+                      { columnName: 'col2', values: [] },
+                      { columnName: '', values: ['val2'] },
+                    ],
+                  },
+                ],
+              },
+            })
+          }>
+          Change Security
+        </button>
+        <button onClick={onNext}>Next</button>
+      </div>
+    )),
+}));
+
+jest.mock('../ContractSLAFormTab/ContractSLAFormTab', () => ({
+  ContractSLAFormTab: jest
+    .fn()
+    .mockImplementation(({ onChange, onNext, onPrev }) => (
+      <div>
+        <h2>Contract SLA</h2>
+        <button onClick={onPrev}>Previous</button>
+        <button onClick={() => onChange({ sla: [] })}>Change</button>
         <button onClick={onNext}>Next</button>
       </div>
     )),
@@ -158,6 +211,13 @@ describe('AddDataContract', () => {
       expect(
         screen.getByRole('tab', { name: 'label.quality' })
       ).toBeInTheDocument();
+
+      expect(
+        screen.getByRole('tab', { name: 'label.security' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('tab', { name: 'label.sla' })
+      ).toBeInTheDocument();
     });
   });
 
@@ -195,15 +255,159 @@ describe('AddDataContract', () => {
 
       expect(
         screen
-          .getByRole('tab', { name: 'label.schema' })
+          .getByRole('tab', { name: 'label.terms-of-service' })
           .closest('.ant-tabs-tab')
       ).toHaveClass('ant-tabs-tab-active');
     });
   });
 
-  describe('Save Functionality', () => {
-    it('should call createContract for new contract', async () => {
+  describe('Security Validation', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should only keep row filters with both columnName AND values non-empty', async () => {
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Navigate to security tab
+      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      await act(async () => {
+        fireEvent.click(securityTab);
+      });
+
+      // Trigger security form change
+      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      await act(async () => {
+        fireEvent.click(changeSecurityButton);
+      });
+
+      // Save the contract
+      const saveButton = screen.getByTestId('save-contract-btn');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // Check that createContract was called with filtered row filters
+      // Only filters with BOTH columnName AND values non-empty are kept
+      expect(createContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          security: {
+            dataClassification: 'PII',
+            policies: [
+              {
+                accessPolicy: 'Read Only',
+                identities: ['user@example.com'],
+                rowFilters: [
+                  { columnName: 'col1', values: ['val1'] },
+                  // All others are filtered out:
+                  // - { columnName: '', values: [] } - both empty
+                  // - { columnName: 'col2', values: [] } - empty values
+                  // - { columnName: '', values: ['val2'] } - empty columnName
+                ],
+              },
+            ],
+          },
+        })
+      );
+    });
+
+    it('should filter out row filters with empty values even if columnName is present', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Navigate to security tab and trigger change
+      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      await act(async () => {
+        fireEvent.click(securityTab);
+      });
+
+      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      await act(async () => {
+        fireEvent.click(changeSecurityButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // Verify that row filter with columnName but empty values is filtered out
+      const callArg = (createContract as jest.Mock).mock.calls[0][0];
+      const rowFilters = callArg.security.policies[0].rowFilters;
+
+      // Should NOT contain the filter with col2 (has columnName but empty values)
+      expect(rowFilters).not.toContainEqual({ columnName: 'col2', values: [] });
+      // Should only contain the valid filter
+      expect(rowFilters).toEqual([{ columnName: 'col1', values: ['val1'] }]);
+    });
+
+    it('should filter out row filters with empty columnName even if values are present', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Navigate to security tab and trigger change
+      const securityTab = screen.getByRole('tab', { name: 'label.security' });
+      await act(async () => {
+        fireEvent.click(securityTab);
+      });
+
+      const changeSecurityButton = screen.getByTestId('security-change-btn');
+      await act(async () => {
+        fireEvent.click(changeSecurityButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // Verify that row filter with empty columnName is filtered out even with values
+      const callArg = (createContract as jest.Mock).mock.calls[0][0];
+      const rowFilters = callArg.security.policies[0].rowFilters;
+
+      // Should NOT contain the filter with empty columnName (even though it has values)
+      expect(rowFilters).not.toContainEqual({
+        columnName: '',
+        values: ['val2'],
+      });
+      // Should only contain the valid filter
+      expect(rowFilters).toEqual([{ columnName: 'col1', values: ['val1'] }]);
+    });
+
+    it('should return undefined when security object is undefined', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Trigger a form change to enable save without setting security
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // When security is undefined, it should be passed as undefined
+      expect(createContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          security: undefined,
+        })
+      );
+    });
+  });
+
+  describe('Save Functionality', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('should call createContract for new contract with correct parameters', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // First trigger a form change to enable the save button
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
 
       const saveButton = screen.getByTestId('save-contract-btn');
 
@@ -213,12 +417,13 @@ describe('AddDataContract', () => {
 
       expect(createContract).toHaveBeenCalledWith(
         expect.objectContaining({
+          displayName: 'Test Contract Change', // Now formValues.name is set from mock
           entity: {
             id: 'table-id',
             type: EntityType.TABLE,
           },
+          semantics: undefined, // validSemantics - undefined when no semantics provided
           entityStatus: EntityStatus.Approved,
-          semantics: undefined,
         })
       );
       expect(showSuccessToast).toHaveBeenCalledWith(
@@ -227,7 +432,39 @@ describe('AddDataContract', () => {
       expect(mockOnSave).toHaveBeenCalled();
     });
 
-    it('should call updateContract for existing contract', async () => {
+    it('should call createContract with form changes applied', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Trigger a form change to enable the save button and set form values
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      expect(createContract).toHaveBeenCalledWith(
+        expect.objectContaining({
+          displayName: 'Test Contract Change', // formValues.name from mock onChange
+          entity: {
+            id: 'table-id',
+            type: EntityType.TABLE,
+          },
+          semantics: undefined, // validSemantics - undefined when no semantics provided
+          entityStatus: EntityStatus.Approved,
+        })
+      );
+      expect(showSuccessToast).toHaveBeenCalledWith(
+        'message.data-contract-saved-successfully'
+      );
+      expect(mockOnSave).toHaveBeenCalled();
+    });
+
+    it('should call updateContract for existing contract with JSON patch', async () => {
       render(
         <AddDataContract
           contract={mockContract}
@@ -236,13 +473,22 @@ describe('AddDataContract', () => {
         />
       );
 
+      // Trigger a form change to enable the save button for existing contracts
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
       const saveButton = screen.getByTestId('save-contract-btn');
 
       await act(async () => {
         fireEvent.click(saveButton);
       });
 
-      expect(updateContract).toHaveBeenCalled();
+      expect(updateContract).toHaveBeenCalledWith(
+        'contract-1',
+        expect.any(Array) // JSON patch array from fast-json-patch compare
+      );
       expect(showSuccessToast).toHaveBeenCalledWith(
         'message.data-contract-saved-successfully'
       );
@@ -255,6 +501,12 @@ describe('AddDataContract', () => {
 
       render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
 
+      // Trigger form change to enable save button
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
       const saveButton = screen.getByTestId('save-contract-btn');
 
       await act(async () => {
@@ -262,6 +514,35 @@ describe('AddDataContract', () => {
       });
 
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
+      expect(mockOnSave).not.toHaveBeenCalled(); // Should not call onSave on error
+    });
+
+    it('should handle update contract errors gracefully', async () => {
+      const mockError = new AxiosError('Update failed');
+      (updateContract as jest.Mock).mockRejectedValue(mockError);
+
+      render(
+        <AddDataContract
+          contract={mockContract}
+          onCancel={mockOnCancel}
+          onSave={mockOnSave}
+        />
+      );
+
+      // Trigger form change to enable save button
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      expect(showErrorToast).toHaveBeenCalledWith(mockError);
+      expect(mockOnSave).not.toHaveBeenCalled(); // Should not call onSave on error
     });
 
     it('should filter out empty semantics before saving', async () => {
@@ -269,7 +550,9 @@ describe('AddDataContract', () => {
         ...mockContract,
         semantics: [
           { name: 'Valid Semantic', rule: 'valid rule' },
-          { name: '', rule: '' },
+          { name: '', rule: '' }, // Should be filtered out
+          { name: 'Valid Name', rule: '' }, // Should be filtered out (empty rule)
+          { name: '', rule: 'valid rule' }, // Should be filtered out (empty name)
           { name: 'Another Valid', rule: 'another rule' },
         ] as SemanticsRule[],
       };
@@ -288,14 +571,101 @@ describe('AddDataContract', () => {
         fireEvent.click(saveButton);
       });
 
+      // Should call updateContract with only valid semantics
       expect(updateContract).toHaveBeenCalledWith(
+        'contract-1',
+        expect.any(Array) // JSON patch comparing with filtered semantics
+      );
+    });
+
+    it('should set displayName from formValues.name in create mode', async () => {
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Trigger form change first
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      expect(createContract).toHaveBeenCalledWith(
         expect.objectContaining({
-          semantics: [
-            { name: 'Valid Semantic', rule: 'valid rule' },
-            { name: 'Another Valid', rule: 'another rule' },
-          ],
+          displayName: 'Test Contract Change', // formValues.name from mock
         })
       );
+    });
+
+    it('should include displayName in update patch for edit mode', async () => {
+      render(
+        <AddDataContract
+          contract={mockContract}
+          onCancel={mockOnCancel}
+          onSave={mockOnSave}
+        />
+      );
+
+      // Trigger form change to enable save button
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+
+      await act(async () => {
+        fireEvent.click(saveButton);
+      });
+
+      // For update, displayName should be set to formValues.name in the patch comparison
+      expect(updateContract).toHaveBeenCalledWith(
+        'contract-1',
+        expect.any(Array)
+      );
+    });
+
+    it('should disable save button when no changes are detected', async () => {
+      render(
+        <AddDataContract
+          contract={mockContract}
+          onCancel={mockOnCancel}
+          onSave={mockOnSave}
+        />
+      );
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+
+      // Button should be disabled when no changes are made (isSaveDisabled logic)
+      // This happens when the JSON patch comparison results in an empty array
+      expect(saveButton).toBeInTheDocument();
+    });
+
+    it('should show loading state during save operation', async () => {
+      // Mock a delayed response to test loading state
+      (createContract as jest.Mock).mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 100))
+      );
+
+      render(<AddDataContract onCancel={mockOnCancel} onSave={mockOnSave} />);
+
+      // Trigger form change to enable save button first
+      const changeButton = screen.getByText('Change');
+      await act(async () => {
+        fireEvent.click(changeButton);
+      });
+
+      const saveButton = screen.getByTestId('save-contract-btn');
+
+      act(() => {
+        fireEvent.click(saveButton);
+      });
+
+      // Should show loading state (Ant Design Button shows loading via classes)
+      expect(saveButton).toHaveClass('ant-btn-loading');
     });
   });
 

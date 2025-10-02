@@ -71,6 +71,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -104,6 +105,7 @@ import org.openmetadata.service.search.SearchRepositoryFactory;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
@@ -146,7 +148,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -430,7 +432,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
@@ -496,7 +498,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getInstance()
+                .getCurrentAuthConfig()
+                .getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -585,7 +589,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       CollectionRegistry.initialize();
 
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
       if (!authProvider.equals(AuthProvider.BASIC)) {
@@ -1399,14 +1403,112 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Dropping all indexes from search engine...");
       parseConfig();
+
+      // Drop regular search repository indexes
       for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
         LOG.info("Dropping index for entity type: {}", entityType);
         searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
       }
+
+      // Drop data streams and data quality indexes created by DataInsightsApp
+      dropDataInsightsIndexes();
+
       LOG.info("All indexes dropped successfully.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop indexes due to ", e);
+      return 1;
+    }
+  }
+
+  private void dropDataInsightsIndexes() {
+    try {
+      LOG.info("Dropping Data Insights data streams and indexes...");
+
+      // Create a DataInsightsApp instance to access its cleanup methods
+      DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
+
+      // Drop data assets data streams
+      LOG.info("Dropping data assets data streams...");
+      dataInsightsApp.deleteDataAssetsDataStream();
+
+      // Drop data quality indexes
+      LOG.info("Dropping data quality indexes...");
+      dataInsightsApp.deleteDataQualityDataIndex();
+
+      LOG.info("Data Insights indexes and data streams dropped successfully.");
+    } catch (Exception e) {
+      LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
+      LOG.debug("Data Insights index cleanup error details: ", e);
+    }
+  }
+
+  @Command(
+      name = "remove-security-config",
+      description =
+          "Remove security configuration (authentication and authorization) from the database. "
+              + "WARNING: This will delete all authentication and authorization settings!")
+  public Integer removeSecurityConfig(
+      @Option(
+              names = {"--force"},
+              description = "Force removal without confirmation prompt.",
+              defaultValue = "false")
+          boolean force) {
+    try {
+      if (!force) {
+        LOG.warn(
+            "WARNING: This will remove all authentication and authorization configuration from the database!");
+        LOG.warn("This includes authenticationConfiguration and authorizerConfiguration settings.");
+        LOG.info("Use --force to skip this confirmation.");
+
+        Scanner scanner = new Scanner(System.in);
+        LOG.info("Enter 'DELETE' to confirm removal of security configuration: ");
+        String input = scanner.next();
+        if (!input.equals("DELETE")) {
+          LOG.info("Operation cancelled.");
+          return 0;
+        }
+      }
+
+      LOG.info("Removing security configuration from database...");
+      parseConfig();
+
+      SystemRepository systemRepository = Entity.getSystemRepository();
+
+      // Remove authentication configuration
+      try {
+        Settings authenticationSettings =
+            systemRepository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+        if (authenticationSettings != null) {
+          systemRepository.deleteSettings(SettingsType.AUTHENTICATION_CONFIGURATION);
+          LOG.info("Removed authenticationConfiguration from database.");
+        } else {
+          LOG.info("No authenticationConfiguration found in database.");
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to remove authenticationConfiguration: {}", e.getMessage());
+      }
+
+      // Remove authorizer configuration
+      try {
+        Settings authorizerSettings =
+            systemRepository.getConfigWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
+        if (authorizerSettings != null) {
+          systemRepository.deleteSettings(SettingsType.AUTHORIZER_CONFIGURATION);
+          LOG.info("Removed authorizerConfiguration from database.");
+        } else {
+          LOG.info("No authorizerConfiguration found in database.");
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to remove authorizerConfiguration: {}", e.getMessage());
+      }
+
+      LOG.info("Security configuration removal completed.");
+      LOG.info(
+          "Note: You will need to restart the OpenMetadata service for changes to take effect.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to remove security configuration due to ", e);
       return 1;
     }
   }

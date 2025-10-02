@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
-import { FC } from 'react';
+import { ComponentType, FC } from 'react';
 import { AppType } from '../../../../generated/entity/applications/app';
 import { getScheduleOptionsFromSchedules } from '../../../../utils/SchedularUtils';
+import ApplicationConfiguration, {
+  ApplicationConfigurationProps,
+} from '../ApplicationConfiguration/ApplicationConfiguration';
 import { AppPlugin } from '../plugins/AppPlugin';
 
 class ApplicationsClassBase {
@@ -83,6 +86,14 @@ class ApplicationsClassBase {
     return pipelineSchedules
       ? getScheduleOptionsFromSchedules(pipelineSchedules)
       : undefined;
+  }
+
+  /**
+   * Returns the ApplicationConfiguration component to use.
+   * Base implementation returns the standard component.
+   */
+  public getApplicationConfigurationComponent(): ComponentType<ApplicationConfigurationProps> {
+    return ApplicationConfiguration;
   }
 }
 

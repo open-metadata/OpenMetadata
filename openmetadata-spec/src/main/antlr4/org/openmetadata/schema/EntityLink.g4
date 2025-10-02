@@ -45,6 +45,8 @@ ENTITY_TYPE
     | 'mlmodelService'
     | 'storageService'
     | 'searchService'
+    | 'securityService'
+    | 'driveService'
     | 'webhook'
     | 'mlmodel'
     | 'team'
@@ -54,7 +56,10 @@ ENTITY_TYPE
     | 'policy'
     | 'testSuite'
     | 'testCase'
+    | 'testDefinition'
+    | 'testConnectionDefinition'
     | 'dataInsightChart'
+    | 'dataInsightCustomChart'
     | 'kpi'
     | 'alert'
     | 'container'
@@ -64,6 +69,7 @@ ENTITY_TYPE
     | 'chart'
     | 'domain'
     | 'dataProduct'
+    | 'dataContract'
     | 'sampleData'
     | 'storedProcedure'
     | 'searchIndex'
@@ -81,6 +87,10 @@ ENTITY_TYPE
     | 'apiCollection'
     | 'apiEndpoint'
     | 'apiService'
+    | 'workflowDefinition'
+    | 'spreadsheet'
+    | 'worksheet'
+    | 'webAnalyticEvent'
     ;
 
 ENTITY_FIELD

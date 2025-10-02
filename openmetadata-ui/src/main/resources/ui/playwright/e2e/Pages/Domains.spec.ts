@@ -1,4 +1,16 @@
 /*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+/*
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -61,6 +73,7 @@ import {
   setupAssetsForDomain,
   setupDomainHasDomainTest,
   setupDomainOwnershipTest,
+  setupNoDomainRule,
   verifyDataProductAssetsAfterDelete,
   verifyDomain,
 } from '../../utils/domain';
@@ -161,9 +174,8 @@ test.describe('Domains', () => {
     });
 
     await test.step('Add assets to domain', async () => {
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.DOMAIN);
-      await addAssetsToDomain(page, domain, assets);
+      await page.getByTestId('assets').click();
+      await addAssetsToDomain(page, domain, assets, false);
     });
 
     await test.step('Delete domain using delete modal', async () => {
@@ -991,7 +1003,9 @@ test.describe('Domains Rbac', () => {
         );
 
         const assetData = userPage.waitForResponse(
-          `/api/v1/${asset.endpoint}/name/${fqn}*`
+          `/api/v1/permissions/${
+            ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]
+          }/name/${fqn}*`
         );
         await userPage.goto(
           `/${ENTITY_PATH[asset.endpoint as keyof typeof ENTITY_PATH]}/${fqn}`
@@ -1001,7 +1015,7 @@ test.describe('Domains Rbac', () => {
         await expect(
           userPage.getByTestId('permission-error-placeholder')
         ).toHaveText(
-          "You don't have necessary permissions. Please check with the admin to get the  permission."
+          /You don't have necessary permissions\. Please check with the admin to get the .* permission\./
         );
       }
 
@@ -1206,6 +1220,92 @@ test.describe('Domain Access with hasDomain() Rule', () => {
       // Verify table details are visible
       await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
     });
+
+    await userAfterAction();
+  });
+});
+
+test.describe('Domain Access with noDomain() Rule', () => {
+  test.slow(true);
+
+  let testResources: {
+    testUser: UserClass;
+    mainDomain: Domain;
+    domainTable: TableClass;
+    noDomainTable: TableClass;
+    domainPolicy: PolicyClass;
+    domainRole: RolesClass;
+    domainTeam: TeamClass;
+    cleanup: (cleanupContext: APIRequestContext) => Promise<void>;
+  };
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    testResources = await setupNoDomainRule(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await testResources.cleanup(apiContext);
+    await afterAction();
+  });
+
+  test('User with noDomain() rule cannot access tables without domain', async ({
+    browser,
+  }) => {
+    const { page: userPage, afterAction: userAfterAction } =
+      await performUserLogin(browser, testResources.testUser);
+
+    await test.step(
+      'Verify user can access domain-assigned table',
+      async () => {
+        const domainTableFqn =
+          testResources.domainTable.entityResponseData.fullyQualifiedName;
+        await userPage.goto(`/table/${encodeURIComponent(domainTableFqn)}`);
+        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify no permission error
+        await expect(
+          userPage.getByTestId('permission-error-placeholder')
+        ).not.toBeVisible();
+
+        // Verify table details are visible
+        await expect(userPage.getByTestId('entity-header-title')).toBeVisible();
+      }
+    );
+
+    await test.step(
+      'Verify user gets permission error for table without domain',
+      async () => {
+        const noDomainTableFqn =
+          testResources.noDomainTable.entityResponseData.fullyQualifiedName;
+        await userPage.goto(`/table/${encodeURIComponent(noDomainTableFqn)}`);
+        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Verify permission error is shown
+        await expect(
+          userPage.getByTestId('permission-error-placeholder')
+        ).toBeVisible();
+
+        await expect(
+          userPage.getByTestId('permission-error-placeholder')
+        ).toContainText(
+          "You don't have necessary permissions. Please check with the admin to get the View Table Details permission."
+        );
+
+        // Verify table details are not visible
+        await expect(
+          userPage.getByTestId('entity-header-title')
+        ).not.toBeVisible();
+      }
+    );
 
     await userAfterAction();
   });

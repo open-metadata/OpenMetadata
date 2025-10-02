@@ -34,6 +34,10 @@ export interface Workflow {
 export interface OpenMetadataWorkflowConfig {
     bulkSink?: BulkSink;
     /**
+     * Enable streaming logs to a remote log storage via the OpenMetadata Server
+     */
+    enableStreamableLogs?: boolean;
+    /**
      * Fully qualified name of ingestion pipeline, used to identify the current ingestion
      * pipeline
      */
@@ -580,7 +584,27 @@ export interface ConfigObject {
      */
     projectFilterPattern?: FilterPattern;
     /**
-     * Password to connect to Metabase.
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
+     *
+     * API key of the redash instance to access.
+     *
+     * The personal access token you can generate in the Lightdash app under the user settings
+     *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
+     * API key to authenticate with the SAP ERP APIs.
+     *
+     * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
+     */
+    apiKey?: string;
+    /**
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -646,8 +670,7 @@ export interface ConfigObject {
      */
     password?: string;
     /**
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *
@@ -792,23 +815,6 @@ export interface ConfigObject {
      * Web Portal Virtual Directory Name.
      */
     webPortalVirtualDirectory?: string;
-    /**
-     * API key of the redash instance to access.
-     *
-     * The personal access token you can generate in the Lightdash app under the user settings
-     *
-     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
-     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
-     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
-     * Admin role for full metadata extraction.
-     *
-     * API key to authenticate with the SAP ERP APIs.
-     *
-     * Fivetran API Secret.
-     *
-     * API Key for Snowplow Console API
-     */
-    apiKey?: string;
     /**
      * Version of the Redash instance
      */
@@ -1016,7 +1022,11 @@ export interface ConfigObject {
     /**
      * Regex to only include/exclude databases that matches the pattern.
      */
-    databaseFilterPattern?:   FilterPattern;
+    databaseFilterPattern?: FilterPattern;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -1860,11 +1870,19 @@ export interface ConfigObject {
      */
     delegatedEmail?: string;
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
      * Specific shared drive ID to connect to
      *
      * SharePoint drive ID. If not provided, default document library will be used
      */
     driveId?: string;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
     /**
      * Extract metadata only for Google Sheets files
      */
@@ -1873,6 +1891,14 @@ export interface ConfigObject {
      * Include shared/team drives in metadata extraction
      */
     includeTeamDrives?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
     /**
      * SharePoint site URL
      */
@@ -1928,6 +1954,14 @@ export interface UsernamePasswordAuthentication {
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
  *
  * Regex to only fetch databases that matches the pattern.
  *
@@ -5285,6 +5319,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source?: TagSource;
@@ -5398,6 +5436,10 @@ export interface TierElement {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

@@ -23,6 +23,10 @@ export interface Metric {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Custom unit of measurement when unitOfMeasurement is OTHER.
+     */
+    customUnitOfMeasurement?: string;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -95,6 +99,10 @@ export interface Metric {
      */
     relatedMetrics?: EntityReference[];
     /**
+     * Reviewers of this Metric.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Tags for this chart.
      */
     tags?: TagLabel[];
@@ -164,6 +172,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -357,6 +369,7 @@ export enum EntityStatus {
     Draft = "Draft",
     InReview = "In Review",
     Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -429,6 +442,7 @@ export enum UnitOfMeasurement {
     Count = "COUNT",
     Dollars = "DOLLARS",
     Events = "EVENTS",
+    Other = "OTHER",
     Percentage = "PERCENTAGE",
     Requests = "REQUESTS",
     Size = "SIZE",

@@ -10,6 +10,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+RED='\033[0;31m'
+
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit
 
 helpFunction()
@@ -116,6 +118,13 @@ until curl -s -f "http://localhost:9200/_cat/indices/openmetadata_team_search_in
 done
 
 until curl -s -f --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/dags/sample_data"; do
+  IMPORT_ERRORS="$(curl -s --header 'Authorization: Basic YWRtaW46YWRtaW4=' "http://localhost:8080/api/v1/importErrors")"
+  echo $IMPORT_ERRORS | grep "/airflow_sample_data.py" > /dev/null;
+  if [[ "$?" == "0" ]]; then
+    echo -e "${RED}Airflow found an error importing \`sample_data\` DAG"
+    printf '%s' "$IMPORT_ERRORS" | jq '.["import_errors"] | .[] | select(.filename | endswith("airflow_sample_data.py"))'
+    exit 1
+  fi
   echo 'Checking if Sample Data DAG is reachable...\n'
   sleep 5
 done

@@ -242,9 +242,8 @@
 }
 
 .lineage-root {
-  border-radius: @border-rad-sm;
-  border: 1px solid @grey-15;
   position: relative;
+  height: 100%;
 
   .entity-panel-container {
     right: 80px;
@@ -278,7 +277,6 @@
   top: @om-navbar-height;
   left: @sidebar-width;
   width: calc(100% - @sidebar-width);
-  height: calc(100vh - @om-navbar-height);
 
   &.sidebar-collapsed {
     left: calc(72px + @padding-md);
@@ -292,11 +290,11 @@
 
   .lineage-card {
     .ant-card-body {
-      height: calc(
-        100vh - @om-navbar-height - 120px;
-      ); // 120px for card header and breadcrumb
+      // Navbar - breadcrumb
+      height: calc(100vh - @om-navbar-height - 140px);
+      // 120px for card header and breadcrumb + bottom padding 20px
+      overflow-y: auto;
     }
-    overflow-y: scroll;
   }
 
   .entity-panel-container {

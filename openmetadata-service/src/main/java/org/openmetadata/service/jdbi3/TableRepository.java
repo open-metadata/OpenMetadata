@@ -66,6 +66,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -81,6 +82,7 @@ import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
 import org.openmetadata.schema.type.DailyCount;
 import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.EntityProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
@@ -706,32 +708,54 @@ public class TableRepository extends EntityRepository<Table> {
     // Validate the request content
     Table table = find(tableId, NON_DELETED);
     validateProfilerTimestamps(createTableProfile);
+    TableProfile tableProfile = createTableProfile.getTableProfile();
+    EntityProfile entityProfile;
+    entityProfile =
+        new EntityProfile()
+            .withProfileData(tableProfile)
+            .withId(UUID.randomUUID())
+            .withProfileType(CreateEntityProfile.ProfileTypeEnum.TABLE)
+            .withTimestamp(tableProfile.getTimestamp())
+            .withEntityReference(table.getEntityReference());
     daoCollection
         .profilerDataTimeSeriesDao()
         .insert(
             table.getFullyQualifiedName(),
             TABLE_PROFILE_EXTENSION,
             "tableProfile",
-            JsonUtils.pojoToJson(createTableProfile.getTableProfile()));
+            JsonUtils.pojoToJson(entityProfile));
 
     for (ColumnProfile columnProfile : createTableProfile.getColumnProfile()) {
-      // Validate all the columns
       Column column = getColumnNameForProfiler(table.getColumns(), columnProfile, null);
       if (column == null) {
         throw new IllegalArgumentException("Invalid column name " + columnProfile.getName());
       }
+      entityProfile =
+          new EntityProfile()
+              .withProfileData(columnProfile)
+              .withId(UUID.randomUUID())
+              .withProfileType(CreateEntityProfile.ProfileTypeEnum.COLUMN)
+              .withTimestamp(columnProfile.getTimestamp())
+              .withEntityReference(table.getEntityReference());
       daoCollection
           .profilerDataTimeSeriesDao()
           .insert(
               column.getFullyQualifiedName(),
               TABLE_COLUMN_PROFILE_EXTENSION,
               "columnProfile",
-              JsonUtils.pojoToJson(columnProfile));
+              JsonUtils.pojoToJson(entityProfile));
     }
 
     List<SystemProfile> systemProfiles = createTableProfile.getSystemProfile();
     if (systemProfiles != null && !systemProfiles.isEmpty()) {
       for (SystemProfile systemProfile : createTableProfile.getSystemProfile()) {
+        entityProfile =
+            new EntityProfile()
+                .withProfileData(systemProfile)
+                .withId(UUID.randomUUID())
+                .withProfileType(CreateEntityProfile.ProfileTypeEnum.SYSTEM)
+                .withTimestamp(systemProfile.getTimestamp())
+                .withEntityReference(table.getEntityReference());
         // system metrics timestamp is the one of the operation. We'll need to
         // update the entry if it already exists in the database
         String storedSystemProfile =
@@ -748,7 +772,7 @@ public class TableRepository extends EntityRepository<Table> {
                 table.getFullyQualifiedName(),
                 SYSTEM_PROFILE_EXTENSION,
                 "systemProfile",
-                JsonUtils.pojoToJson(systemProfile),
+                JsonUtils.pojoToJson(entityProfile),
                 systemProfile.getTimestamp(),
                 systemProfile.getOperation().value(),
                 storedSystemProfile != null);
@@ -795,14 +819,24 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<TableProfile> getTableProfiles(String fqn, Long startTs, Long endTs) {
+    List<EntityProfile> entityProfiles;
     List<TableProfile> tableProfiles;
-    tableProfiles =
+    entityProfiles =
         JsonUtils.readObjects(
             daoCollection
                 .profilerDataTimeSeriesDao()
                 .listBetweenTimestampsByOrder(
                     fqn, TABLE_PROFILE_EXTENSION, startTs, endTs, EntityTimeSeriesDAO.OrderBy.DESC),
-            TableProfile.class);
+            EntityProfile.class);
+    tableProfiles =
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (TableProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     return new ResultList<>(
         tableProfiles, startTs.toString(), endTs.toString(), tableProfiles.size());
   }
@@ -813,8 +847,9 @@ public class TableRepository extends EntityRepository<Table> {
       Long endTs,
       Authorizer authorizer,
       SecurityContext securityContext) {
+    List<EntityProfile> entityProfiles;
     List<ColumnProfile> columnProfiles;
-    columnProfiles =
+    entityProfiles =
         JsonUtils.readObjects(
             daoCollection
                 .profilerDataTimeSeriesDao()
@@ -824,7 +859,16 @@ public class TableRepository extends EntityRepository<Table> {
                     startTs,
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
-            ColumnProfile.class);
+            EntityProfile.class);
+    columnProfiles =
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (ColumnProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     ResultList<ColumnProfile> columnProfileResultList =
         new ResultList<>(
             columnProfiles, startTs.toString(), endTs.toString(), columnProfiles.size());
@@ -838,8 +882,9 @@ public class TableRepository extends EntityRepository<Table> {
   }
 
   public ResultList<SystemProfile> getSystemProfiles(String fqn, Long startTs, Long endTs) {
+    List<EntityProfile> entityProfiles;
     List<SystemProfile> systemProfiles;
-    systemProfiles =
+    entityProfiles =
         JsonUtils.readObjects(
             daoCollection
                 .profilerDataTimeSeriesDao()
@@ -849,20 +894,36 @@ public class TableRepository extends EntityRepository<Table> {
                     startTs,
                     endTs,
                     EntityTimeSeriesDAO.OrderBy.DESC),
-            SystemProfile.class);
+            EntityProfile.class);
+
+    systemProfiles =
+        entityProfiles != null
+            ? entityProfiles.stream()
+                .map(
+                    ep ->
+                        (SystemProfile)
+                            EntityProfileRepository.deserializeProfileData(ep).getProfileData())
+                .toList()
+            : Collections.emptyList();
     return new ResultList<>(
         systemProfiles, startTs.toString(), endTs.toString(), systemProfiles.size());
   }
 
   private void setColumnProfile(List<Column> columnList) {
     for (Column column : listOrEmpty(columnList)) {
-      ColumnProfile columnProfile =
+      ColumnProfile columnProfile = null;
+      EntityProfile entityProfile =
           JsonUtils.readValue(
               daoCollection
                   .profilerDataTimeSeriesDao()
                   .getLatestExtension(
                       column.getFullyQualifiedName(), TABLE_COLUMN_PROFILE_EXTENSION),
-              ColumnProfile.class);
+              EntityProfile.class);
+      if (entityProfile != null) {
+        columnProfile =
+            (ColumnProfile)
+                EntityProfileRepository.deserializeProfileData(entityProfile).getProfileData();
+      }
       column.setProfile(columnProfile);
       if (column.getChildren() != null) {
         setColumnProfile(column.getChildren());
@@ -877,13 +938,21 @@ public class TableRepository extends EntityRepository<Table> {
       SecurityContext securityContext) {
     Table table = findByName(fqn, ALL);
 
-    TableProfile tableProfile =
+    EntityProfile entityProfile =
         JsonUtils.readValue(
             daoCollection
                 .profilerDataTimeSeriesDao()
                 .getLatestExtension(table.getFullyQualifiedName(), TABLE_PROFILE_EXTENSION),
-            TableProfile.class);
-    table.setProfile(tableProfile);
+            EntityProfile.class);
+
+    if (entityProfile == null) {
+      table.setProfile(null);
+    } else {
+      TableProfile tableProfile =
+          (TableProfile)
+              EntityProfileRepository.deserializeProfileData(entityProfile).getProfileData();
+      table.setProfile(tableProfile);
+    }
 
     if (includeColumnProfile) {
       setColumnProfile(table.getColumns());
@@ -1553,7 +1622,7 @@ public class TableRepository extends EntityRepository<Table> {
         if (!nullOrEmpty(constraint.getReferredColumns())) {
           for (String column : constraint.getReferredColumns()) {
             String toParent = FullyQualifiedName.getParentFQN(column);
-            String columnName = FullyQualifiedName.getColumnName(column);
+            String columnName = getColumnName(column);
             try {
               Table toTable = findByName(toParent, ALL);
               validateColumn(toTable, columnName);
@@ -1643,8 +1712,7 @@ public class TableRepository extends EntityRepository<Table> {
 
     @Override
     protected void handleColumnLineageUpdates(
-        List<String> deletedColumns,
-        java.util.HashMap<String, String> originalUpdatedColumnFqnMap) {
+        List<String> deletedColumns, HashMap<String, String> originalUpdatedColumnFqnMap) {
       boolean hasRenames = !originalUpdatedColumnFqnMap.isEmpty();
       boolean hasDeletes = !deletedColumns.isEmpty();
 
@@ -1654,8 +1722,8 @@ public class TableRepository extends EntityRepository<Table> {
         if (lineageRepository != null) {
           lineageRepository.updateColumnLineage(
               updated.getId(),
-              hasRenames ? originalUpdatedColumnFqnMap : java.util.Collections.emptyMap(),
-              hasDeletes ? deletedColumns : java.util.Collections.emptyList(),
+              hasRenames ? originalUpdatedColumnFqnMap : Collections.emptyMap(),
+              hasDeletes ? deletedColumns : Collections.emptyList(),
               updated.getSchemaDefinition(),
               updated.getUpdatedBy());
         }
@@ -1783,7 +1851,7 @@ public class TableRepository extends EntityRepository<Table> {
         }
       } else { // Dry run don't create the entity
         repository.setFullyQualifiedName(entity);
-        repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.NON_DELETED);
+        repository.findByNameOrNull(entity.getFullyQualifiedName(), NON_DELETED);
         // Track the dryRun created entities, as they may be referred by other entities being
         // created
         // during import
