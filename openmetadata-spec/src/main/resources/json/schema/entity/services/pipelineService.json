@@ -36,7 +36,8 @@
         "Stitch",
         "DataFactory",
         "Wherescape",
-        "SSIS"
+        "SSIS",
+        "Snowplow"
       ],
       "javaEnums": [
         {
@@ -98,6 +99,9 @@
         },
         {
           "name": "SSIS"
+        },
+        {
+          "name": "Snowplow"
         }
       ]
     },
@@ -171,6 +175,9 @@
             },
             {
               "$ref": "./connections/pipeline/stitchConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/snowplowConnection.json"
             }
           ]
         }

@@ -1,13 +1,13 @@
 # SingleStore
 
-In this section, we provide guides and references to use the SingleStore connector. You can view the full documentation for SingleStore [here](https://docs.open-metadata.org/connectors/database/singlestore).
+In this section, we provide guides and references to use the SingleStore connector. You can view the full documentation for SingleStore <a href="https://docs.open-metadata.org/connectors/database/singlestore" target="_blank">here</a>.
 
 ## Requirements
 To extract metadata the user used in the connection needs to have access to the `INFORMATION_SCHEMA`. By default, a user can see only the rows in the `INFORMATION_SCHEMA` that correspond to objects for which the user has the proper access privileges.
 
 ```SQL
 -- Create user.
--- More details https://docs.singlestore.com/managed-service/en/reference/sql-reference/security-management-commands/create-user.html
+-- More details <a href="https://docs.singlestore.com/managed-service/en/reference/sql-reference/security-management-commands/create-user.html" target="_blank">https://docs.singlestore.com/managed-service/en/reference/sql-reference/security-management-commands/create-user.html</a>
 CREATE USER <username>[@<hostName>] IDENTIFIED BY '<password>';
 
 -- Grant select on a database
@@ -21,9 +21,9 @@ GRANT SELECT ON world.hello TO '<username>';
 ```
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found [here](https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow) and data quality tests [here](https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality).
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
 
-You can find further information on the SingleStore connector in the [docs](https://docs.open-metadata.org/connectors/database/singlestore).
+You can find further information on the SingleStore connector in the <a href="https://docs.open-metadata.org/connectors/database/singlestore" target="_blank">docs</a>.
 
 ## Connection Details
 $$section

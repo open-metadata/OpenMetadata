@@ -82,9 +82,9 @@ import org.openmetadata.service.util.RestUtil;
 public class DataContractRepository extends EntityRepository<DataContract> {
 
   private static final String DATA_CONTRACT_UPDATE_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension";
   private static final String DATA_CONTRACT_PATCH_FIELDS =
-      "entity,owners,reviewers,status,schema,qualityExpectations,contractUpdates,semantics,latestResult";
+      "entity,owners,reviewers,entityStatus,schema,qualityExpectations,contractUpdates,semantics,termsOfUse,security,sla,latestResult,extension";
 
   public static final String RESULT_EXTENSION = "dataContract.dataContractResult";
   public static final String RESULT_SCHEMA = "dataContractResult";
@@ -131,8 +131,13 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   @Override
   public void prepare(DataContract dataContract, boolean update) {
     EntityReference entityRef = dataContract.getEntity();
+
+    validateEntitySpecificConstraints(dataContract, entityRef);
+
     if (!update) {
       validateEntityReference(entityRef);
+      dataContract.setCreatedAt(dataContract.getUpdatedAt());
+      dataContract.setCreatedBy(dataContract.getUpdatedBy());
     }
 
     // Validate schema fields and throw exception if there are failures
@@ -169,8 +174,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   @Override
-  protected void postDelete(DataContract dataContract) {
-    super.postDelete(dataContract);
+  protected void postDelete(DataContract dataContract, boolean hardDelete) {
+    super.postDelete(dataContract, hardDelete);
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       deleteTestSuite(dataContract);
     }
@@ -219,6 +224,12 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       case Entity.TOPIC:
         failedFields = validateFieldsAgainstTopic(dataContract, entityRef);
         break;
+      case Entity.API_ENDPOINT:
+        failedFields = validateFieldsAgainstApiEndpoint(dataContract, entityRef);
+        break;
+      case Entity.DASHBOARD_DATA_MODEL:
+        failedFields = validateFieldsAgainstDashboardDataModel(dataContract, entityRef);
+        break;
       default:
         break;
     }
@@ -236,52 +247,98 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private List<String> validateFieldsAgainstTable(
       DataContract dataContract, EntityReference tableRef) {
-    List<String> failedFields = new ArrayList<>();
     org.openmetadata.schema.entity.data.Table table =
         Entity.getEntity(Entity.TABLE, tableRef.getId(), "columns", Include.NON_DELETED);
 
     if (table.getColumns() == null || table.getColumns().isEmpty()) {
-      // If table has no columns, all contract fields fail validation
-      return dataContract.getSchema().stream()
-          .map(org.openmetadata.schema.type.Column::getName)
-          .collect(Collectors.toList());
+      return getAllContractFieldNames(dataContract);
     }
 
     Set<String> tableColumnNames =
         table.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
 
-    for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
-      if (!tableColumnNames.contains(column.getName())) {
-        failedFields.add(column.getName());
-      }
-    }
-
-    return failedFields;
+    return validateContractFieldsAgainstNames(dataContract, tableColumnNames);
   }
 
   private List<String> validateFieldsAgainstTopic(
       DataContract dataContract, EntityReference topicRef) {
-    List<String> failedFields = new ArrayList<>();
     Topic topic =
         Entity.getEntity(Entity.TOPIC, topicRef.getId(), "messageSchema", Include.NON_DELETED);
 
     if (topic.getMessageSchema() == null
         || topic.getMessageSchema().getSchemaFields() == null
         || topic.getMessageSchema().getSchemaFields().isEmpty()) {
-      // If topic has no schema, all contract fields fail validation
-      return dataContract.getSchema().stream()
-          .map(org.openmetadata.schema.type.Column::getName)
-          .collect(Collectors.toList());
+      return getAllContractFieldNames(dataContract);
     }
 
     Set<String> topicFieldNames = extractFieldNames(topic.getMessageSchema().getSchemaFields());
 
+    return validateContractFieldsAgainstNames(dataContract, topicFieldNames);
+  }
+
+  private List<String> validateFieldsAgainstApiEndpoint(
+      DataContract dataContract, EntityReference apiEndpointRef) {
+    org.openmetadata.schema.entity.data.APIEndpoint apiEndpoint =
+        Entity.getEntity(
+            Entity.API_ENDPOINT,
+            apiEndpointRef.getId(),
+            "requestSchema,responseSchema",
+            Include.NON_DELETED);
+
+    Set<String> apiFieldNames = new HashSet<>();
+
+    if (apiEndpoint.getRequestSchema() != null
+        && apiEndpoint.getRequestSchema().getSchemaFields() != null
+        && !apiEndpoint.getRequestSchema().getSchemaFields().isEmpty()) {
+      apiFieldNames.addAll(extractFieldNames(apiEndpoint.getRequestSchema().getSchemaFields()));
+    }
+
+    if (apiEndpoint.getResponseSchema() != null
+        && apiEndpoint.getResponseSchema().getSchemaFields() != null
+        && !apiEndpoint.getResponseSchema().getSchemaFields().isEmpty()) {
+      apiFieldNames.addAll(extractFieldNames(apiEndpoint.getResponseSchema().getSchemaFields()));
+    }
+
+    if (apiFieldNames.isEmpty()) {
+      return getAllContractFieldNames(dataContract);
+    }
+
+    return validateContractFieldsAgainstNames(dataContract, apiFieldNames);
+  }
+
+  private List<String> validateFieldsAgainstDashboardDataModel(
+      DataContract dataContract, EntityReference dashboardDataModelRef) {
+    org.openmetadata.schema.entity.data.DashboardDataModel dashboardDataModel =
+        Entity.getEntity(
+            Entity.DASHBOARD_DATA_MODEL,
+            dashboardDataModelRef.getId(),
+            "columns",
+            Include.NON_DELETED);
+
+    if (dashboardDataModel.getColumns() == null || dashboardDataModel.getColumns().isEmpty()) {
+      return getAllContractFieldNames(dataContract);
+    }
+
+    Set<String> dataModelColumnNames =
+        dashboardDataModel.getColumns().stream().map(Column::getName).collect(Collectors.toSet());
+
+    return validateContractFieldsAgainstNames(dataContract, dataModelColumnNames);
+  }
+
+  private List<String> getAllContractFieldNames(DataContract dataContract) {
+    return dataContract.getSchema().stream()
+        .map(org.openmetadata.schema.type.Column::getName)
+        .collect(Collectors.toList());
+  }
+
+  private List<String> validateContractFieldsAgainstNames(
+      DataContract dataContract, Set<String> entityFieldNames) {
+    List<String> failedFields = new ArrayList<>();
     for (org.openmetadata.schema.type.Column column : dataContract.getSchema()) {
-      if (!topicFieldNames.contains(column.getName())) {
+      if (!entityFieldNames.contains(column.getName())) {
         failedFields.add(column.getName());
       }
     }
-
     return failedFields;
   }
 
@@ -298,6 +355,100 @@ public class DataContractRepository extends EntityRepository<DataContract> {
       }
     }
     return fieldNames;
+  }
+
+  /**
+   * Validates entity-specific constraints for data contracts based on entity type.
+   *
+   * Supported entities: table, storedProcedure, database, databaseSchema, dashboard,
+   * dashboardDataModel, pipeline, topic, searchIndex, apiCollection, apiEndpoint, api,
+   * mlmodel, container, directory, file, spreadsheet, worksheet
+   *
+   * Validation support by entity type:
+   * - All entities: Support semantics validation
+   * - Schema validation: table, topic, apiEndpoint, dashboardDataModel
+   * - Quality expectations (DQ): table only
+   */
+  private void validateEntitySpecificConstraints(
+      DataContract dataContract, EntityReference entityRef) {
+    String entityType = entityRef.getType();
+    List<String> violations = new ArrayList<>();
+
+    // First, check if the entity type is supported for data contracts
+    if (!isSupportedEntityType(entityType)) {
+      violations.add(
+          String.format("Entity type '%s' is not supported for data contracts", entityType));
+    } else {
+      // Validate schema constraints
+      if (!nullOrEmpty(dataContract.getSchema()) && !supportsSchemaValidation(entityType)) {
+        violations.add(
+            String.format(
+                "Schema validation is not supported for %s entities. Only table, topic, "
+                    + "apiEndpoint, and dashboardDataModel entities support schema validation",
+                entityType));
+      }
+
+      // Validate quality expectations constraints
+      if (!nullOrEmpty(dataContract.getQualityExpectations())
+          && !supportsQualityValidation(entityType)) {
+        violations.add(
+            String.format(
+                "Quality expectations are not supported for %s entities. Only table entities "
+                    + "support quality expectations",
+                entityType));
+      }
+    }
+
+    if (!violations.isEmpty()) {
+      throw BadRequestException.of(
+          String.format(
+              "Data contract validation failed for %s entity: %s",
+              entityType, String.join("; ", violations)));
+    }
+  }
+
+  /**
+   * Checks if the given entity type is supported for data contracts.
+   */
+  private boolean isSupportedEntityType(String entityType) {
+    return Set.of(
+            Entity.TABLE,
+            Entity.STORED_PROCEDURE,
+            Entity.DATABASE,
+            Entity.DATABASE_SCHEMA,
+            Entity.DASHBOARD,
+            Entity.CHART,
+            Entity.DASHBOARD_DATA_MODEL,
+            Entity.PIPELINE,
+            Entity.TOPIC,
+            Entity.SEARCH_INDEX,
+            Entity.API_COLLECTION,
+            Entity.API_ENDPOINT,
+            Entity.API,
+            Entity.MLMODEL,
+            Entity.CONTAINER,
+            Entity.DIRECTORY,
+            Entity.FILE,
+            Entity.SPREADSHEET,
+            Entity.WORKSHEET)
+        .contains(entityType);
+  }
+
+  /**
+   * Checks if the given entity type supports schema validation.
+   * Only table, topic, apiEndpoint, and dashboardDataModel support schema validation.
+   */
+  private boolean supportsSchemaValidation(String entityType) {
+    return Set.of(Entity.TABLE, Entity.TOPIC, Entity.API_ENDPOINT, Entity.DASHBOARD_DATA_MODEL)
+        .contains(entityType);
+  }
+
+  /**
+   * Checks if the given entity type supports quality expectations (DQ validation).
+   * Only table entities support quality expectations.
+   */
+  private boolean supportsQualityValidation(String entityType) {
+    return Entity.TABLE.equals(entityType);
   }
 
   public static String getTestSuiteName(DataContract dataContract) {
@@ -390,6 +541,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
     TestSuite testSuite = getOrCreateTestSuite(dataContract);
     testSuiteRepository.deleteLogicalTestSuite(ADMIN_USER_NAME, testSuite, true);
+    testSuiteRepository.deleteFromSearch(testSuite, true);
   }
 
   private TestSuite getOrCreateTestSuite(DataContract dataContract) {
@@ -475,7 +627,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  public DataContractResult validateContract(DataContract dataContract) {
+  public RestUtil.PutResponse<DataContractResult> validateContract(DataContract dataContract) {
     // Check if there's a running validation and abort it before starting a new one
     abortRunningValidation(dataContract);
 
@@ -520,8 +672,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
 
     // Add the result to the data contract and update the time series
-    addContractResult(dataContract, result);
-    return result;
+    return addContractResult(dataContract, result);
   }
 
   public void deployAndTriggerDQValidation(DataContract dataContract) {
@@ -773,11 +924,17 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       recordChange("latestResult", original.getLatestResult(), updated.getLatestResult());
-      recordChange("status", original.getStatus(), updated.getStatus());
+      recordChange("status", original.getEntityStatus(), updated.getEntityStatus());
       recordChange("testSuite", original.getTestSuite(), updated.getTestSuite());
+      recordChange("termsOfUse", original.getTermsOfUse(), updated.getTermsOfUse());
+      recordChange("security", original.getSecurity(), updated.getSecurity());
+      recordChange("sla", original.getSla(), updated.getSla());
       updateSchema(original, updated);
       updateQualityExpectations(original, updated);
       updateSemantics(original, updated);
+      // Preserve immutable creation fields
+      updated.setCreatedAt(original.getCreatedAt());
+      updated.setCreatedBy(original.getCreatedBy());
     }
 
     private void updateSchema(DataContract original, DataContract updated) {
@@ -878,7 +1035,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         dataContract.getId(),
         dataContract.getEntity().getType(),
         Entity.DATA_CONTRACT,
-        Relationship.HAS);
+        Relationship.CONTAINS);
 
     storeOwners(dataContract, dataContract.getOwners());
     storeReviewers(dataContract, dataContract.getReviewers());
@@ -890,8 +1047,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         .withId(original.getId())
         .withName(original.getName())
         .withFullyQualifiedName(original.getFullyQualifiedName())
-        .withUpdatedAt(original.getUpdatedAt())
-        .withUpdatedBy(original.getUpdatedBy());
+        .withCreatedAt(original.getCreatedAt())
+        .withCreatedBy(original.getCreatedBy());
   }
 
   private void validateEntityReference(EntityReference entity) {

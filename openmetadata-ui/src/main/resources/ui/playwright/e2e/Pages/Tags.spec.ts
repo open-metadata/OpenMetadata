@@ -369,9 +369,12 @@ test('Classification Page', async ({ page }) => {
           response.url().includes('/api/v1/feed/tasks/') &&
           response.url().includes('/resolve')
       );
-      await page.click(
+
+      const acceptButton = page.locator(
         '.ant-btn-compact-first-item:has-text("Accept Suggestion")'
       );
+      await acceptButton.waitFor({ state: 'visible' });
+      await acceptButton.click();
       await acceptSuggestion;
       await page.click('[data-testid="table"]');
 
@@ -380,6 +383,12 @@ test('Classification Page', async ({ page }) => {
       );
       await page.reload();
       await databaseSchemasPage;
+
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await expect(
         page.locator('[data-testid="tags-container"]')
@@ -438,6 +447,11 @@ test('Classification Page', async ({ page }) => {
     // Verify term count is now 0 after deleting the tag
     await page.reload();
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.waitForSelector('[data-testid="side-panel-classification"]', {
       state: 'visible',
     });

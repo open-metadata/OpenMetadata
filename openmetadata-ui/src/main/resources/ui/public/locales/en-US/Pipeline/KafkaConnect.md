@@ -3,11 +3,11 @@ In this section, we provide guides and references to use the KafkaConnect connec
 
 ## Requirements
 
-OpenMetadata is integrated with kafkaconnect up to version [3.6.1](https://docs.kafkaconnect.io/getting-started) and will continue to work for future kafkaconnect versions.
+OpenMetadata is integrated with kafkaconnect up to version <a href="https://docs.kafkaconnect.io/getting-started" target="_blank">3.6.1</a> and will continue to work for future kafkaconnect versions.
 
-The ingestion framework uses [kafkaconnect python client](https://libraries.io/pypi/kafka-connect-py) to connect to the kafkaconnect instance and perform the API calls.
+The ingestion framework uses <a href="https://libraries.io/pypi/kafka-connect-py" target="_blank">kafkaconnect python client</a> to connect to the kafkaconnect instance and perform the API calls.
 
-You can find further information on the kafkaconnect connector in the [docs](https://docs.open-metadata.org/connectors/pipeline/kafkaconnect).
+You can find further information on the kafkaconnect connector in the <a href="https://docs.open-metadata.org/connectors/pipeline/kafkaconnect" target="_blank">docs</a>.
 
 ## Connection Details
 $$section

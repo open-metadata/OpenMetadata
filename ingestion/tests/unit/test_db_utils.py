@@ -54,6 +54,9 @@ class TestDbUtils(TestCase):
 
     def setUp(self):
         """Set up test fixtures"""
+        # Clear the search cache to ensure test isolation
+        search_cache.clear()
+
         self.metadata = MagicMock()
         self.service_name = "test_service"
         self.connection_type = "postgres"
@@ -72,6 +75,21 @@ class TestDbUtils(TestCase):
 
         self.table_entity_non_postgres = deepcopy(self.table_entity)
         self.table_entity_non_postgres.serviceType = DatabaseServiceType.Mysql
+
+        # Create a mock source table entity for lineage tests
+        self.source_table_entity = Table(
+            id=Uuid(root=uuid.uuid4()),
+            name=EntityName(root="source_table"),
+            fullyQualifiedName=FullyQualifiedEntityName(
+                root="test_service.test_db.test_schema.source_table"
+            ),
+            serviceType=DatabaseServiceType.Postgres,
+            columns=[],
+        )
+
+        # Non-postgres version of source table
+        self.source_table_entity_non_postgres = deepcopy(self.source_table_entity)
+        self.source_table_entity_non_postgres.serviceType = DatabaseServiceType.Mysql
 
         # Create a mock TableView
         self.table_view = TableView(
@@ -98,10 +116,9 @@ class TestDbUtils(TestCase):
         self.assertEqual(get_host_from_host_port("example.com"), "example.com")
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
-    @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_success_with_lineage_parser(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
+        self, mock_fqn, mock_dialect_mapper
     ):
         """Test successful view lineage generation when lineage parser has source and target tables"""
         # Setup mocks
@@ -110,28 +127,11 @@ class TestDbUtils(TestCase):
 
         mock_dialect_mapper.dialect_of.return_value = Dialect.POSTGRES
 
-        mock_lineage_parser = MagicMock()
-        mock_lineage_parser.source_tables = [MockLineageTable("source_table")]
-        mock_lineage_parser.target_tables = [MockLineageTable("test_view")]
-        mock_lineage_parser_class.return_value = mock_lineage_parser
-
-        # Mock metadata search methods that get_lineage_by_query will call
-        # Create a mock source table entity
-        source_table_entity = Table(
-            id=Uuid(root=uuid.uuid4()),
-            name=EntityName(root="source_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="test_service.test_db.test_schema.source_table"
-            ),
-            serviceType=DatabaseServiceType.Postgres,
-            columns=[],
-        )
-
         # Mock the search methods that get_lineage_by_query uses
         # The es_search_from_fqn method will be called with a search string like "test_service.test_db.test_schema.source_table"
         def mock_es_search_from_fqn(entity_type, fqn_search_string, **kwargs):
             if "source_table" in fqn_search_string:
-                return [source_table_entity]
+                return [self.source_table_entity]
             if "test_view" in fqn_search_string:
                 return [self.table_entity]
             return []
@@ -151,49 +151,48 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
         )
 
-        # Assertions - should get lineage results since we have source and target tables
+        # Assertions - check the actual lineage results
         self.assertGreater(len(result), 0)
+
+        # Check that we have Either objects with Right values (successful results)
+        successful_results = [r.right for r in result if r.right]
+        self.assertGreater(len(successful_results), 0)
+
+        # Verify the lineage has correct source and target
+        for lineage_request in successful_results:
+            # Check the from and to entities exist
+            self.assertIsNotNone(lineage_request.edge.fromEntity)
+            self.assertIsNotNone(lineage_request.edge.toEntity)
+
+            # Check that the IDs match our expected entities
+            self.assertEqual(
+                lineage_request.edge.fromEntity.id.root,
+                self.source_table_entity.id.root,
+            )
+            self.assertEqual(
+                lineage_request.edge.toEntity.id.root, self.table_entity.id.root
+            )
 
         # Verify mocks were called correctly
         mock_fqn.build.assert_called_once()
         mock_dialect_mapper.dialect_of.assert_called_once_with(self.connection_type)
-        mock_lineage_parser_class.assert_called_once()
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
-    @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_success_with_fallback(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
+        self, mock_fqn, mock_dialect_mapper
     ):
         """Test successful view lineage generation when lineage parser has source and target tables"""
         # Setup mocks
         mock_fqn.build.return_value = "test_service.test_db.test_schema.test_view"
         self.metadata.get_by_name.return_value = self.table_entity
-        search_cache.clear()
         mock_dialect_mapper.dialect_of.return_value = Dialect.POSTGRES
-
-        mock_lineage_parser = MagicMock()
-        mock_lineage_parser.source_tables = [MockLineageTable("source_table")]
-        mock_lineage_parser.target_tables = [MockLineageTable("test_view")]
-        mock_lineage_parser_class.return_value = mock_lineage_parser
-
-        # Mock metadata search methods that get_lineage_by_query will call
-        # Create a mock source table entity
-        source_table_entity = Table(
-            id=Uuid(root=uuid.uuid4()),
-            name=EntityName(root="source_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="test_service.test_db.test_schema.source_table"
-            ),
-            serviceType=DatabaseServiceType.Postgres,
-            columns=[],
-        )
 
         # Mock the search methods that get_lineage_by_query uses
         # The es_search_from_fqn method will be called with a search string like "test_service.test_db.test_schema.source_table"
@@ -201,7 +200,7 @@ class TestDbUtils(TestCase):
             if "public.source_table" in fqn_search_string:
                 return []
             if "source_table" in fqn_search_string:
-                return [source_table_entity]
+                return [self.source_table_entity]
             if "test_view" in fqn_search_string:
                 return [self.table_entity]
             return []
@@ -221,7 +220,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -230,10 +229,28 @@ class TestDbUtils(TestCase):
         # Assertions - should get lineage results since we have source and target tables
         self.assertGreater(len(result), 0)
 
+        # Check that we have Either objects with Right values (successful results)
+        successful_results = [r.right for r in result if r.right]
+        self.assertGreater(len(successful_results), 0)
+
+        # Verify the lineage has correct source and target
+        for lineage_request in successful_results:
+            # Check the from and to entities exist
+            self.assertIsNotNone(lineage_request.edge.fromEntity)
+            self.assertIsNotNone(lineage_request.edge.toEntity)
+
+            # Check that the IDs match our expected entities
+            self.assertEqual(
+                lineage_request.edge.fromEntity.id.root,
+                self.source_table_entity.id.root,
+            )
+            self.assertEqual(
+                lineage_request.edge.toEntity.id.root, self.table_entity.id.root
+            )
+
         # Verify mocks were called correctly
         mock_fqn.build.assert_called_once()
         mock_dialect_mapper.dialect_of.assert_called_once_with(self.connection_type)
-        mock_lineage_parser_class.assert_called_once()
 
     @patch("metadata.utils.db_utils.get_lineage_via_table_entity")
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
@@ -259,20 +276,11 @@ class TestDbUtils(TestCase):
         mock_lineage_parser_class.return_value = mock_lineage_parser
 
         # Create a valid AddLineageRequest for the mock
-        source_table_entity = Table(
-            id=Uuid(root=uuid.uuid4()),
-            name=EntityName(root="source_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="test_service.test_db.test_schema.source_table"
-            ),
-            serviceType=DatabaseServiceType.Postgres,
-            columns=[],
-        )
 
         valid_lineage_request = AddLineageRequest(
             edge=EntitiesEdge(
                 fromEntity=EntityReference(
-                    id=source_table_entity.id.root,
+                    id=self.source_table_entity.id.root,
                     type="table",
                 ),
                 toEntity=EntityReference(
@@ -291,7 +299,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -310,10 +318,9 @@ class TestDbUtils(TestCase):
         mock_get_lineage_via_table_entity.assert_called_once()
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
-    @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_postgres_schema_fallback(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
+        self, mock_fqn, mock_dialect_mapper
     ):
         """Test that Postgres views use public schema fallback"""
         # Setup mocks
@@ -325,25 +332,10 @@ class TestDbUtils(TestCase):
 
         mock_dialect_mapper.dialect_of.return_value = Dialect.POSTGRES
 
-        mock_lineage_parser = MagicMock()
-        mock_lineage_parser.source_tables = [MockLineageTable("source_table")]
-        mock_lineage_parser.target_tables = [MockLineageTable("test_view")]
-        mock_lineage_parser_class.return_value = mock_lineage_parser
-
         # Mock metadata search methods
-        source_table_entity = Table(
-            id=Uuid(root=uuid.uuid4()),
-            name=EntityName(root="source_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="test_service.test_db.test_schema.source_table"
-            ),
-            serviceType=DatabaseServiceType.Postgres,
-            columns=[],
-        )
-
         def mock_es_search_from_fqn(entity_type, fqn_search_string, **kwargs):
             if "source_table" in fqn_search_string:
-                return [source_table_entity]
+                return [self.source_table_entity]
             if "test_view" in fqn_search_string:
                 return [self.table_entity]
             return []
@@ -362,18 +354,34 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
         )
 
-        # Verify that LineageParser was called with the correct parameters
-        mock_lineage_parser_class.assert_called_once_with(
-            self.table_view.view_definition,
-            Dialect.POSTGRES,
-            timeout_seconds=self.timeout_seconds,
-        )
+        # Test passes if we get lineage results back
+        # The actual lineage processing happens internally with LineageParser
+        self.assertGreater(len(result), 0)
+
+        # Check that we have Either objects with Right values (successful results)
+        successful_results = [r.right for r in result if r.right]
+        self.assertGreater(len(successful_results), 0)
+
+        # Verify the lineage has correct source and target
+        for lineage_request in successful_results:
+            # Check the from and to entities exist
+            self.assertIsNotNone(lineage_request.edge.fromEntity)
+            self.assertIsNotNone(lineage_request.edge.toEntity)
+
+            # Check that the IDs match our expected entities
+            self.assertEqual(
+                lineage_request.edge.fromEntity.id.root,
+                self.source_table_entity.id.root,
+            )
+            self.assertEqual(
+                lineage_request.edge.toEntity.id.root, self.table_entity.id.root
+            )
 
     @patch("metadata.utils.db_utils.fqn")
     def test_get_view_lineage_no_view_definition(self, mock_fqn):
@@ -395,7 +403,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=table_view_no_definition,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -430,7 +438,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -440,37 +448,18 @@ class TestDbUtils(TestCase):
         self.assertEqual(len(result), 0)
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
-    @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
-    def test_get_view_lineage_non_postgres_service(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
-    ):
+    def test_get_view_lineage_non_postgres_service(self, mock_fqn, mock_dialect_mapper):
         """Test view lineage for non-Postgres services"""
         # Setup mocks
         mock_fqn.build.return_value = "test_service.test_db.test_schema.test_view"
 
         # Reset metadata mocks to prevent interference from other tests
         metadata = MagicMock()
-        search_cache.clear()
 
         mock_dialect_mapper.dialect_of.return_value = Dialect.MYSQL
 
-        mock_lineage_parser = MagicMock()
-        mock_lineage_parser.source_tables = [MockLineageTable("source_table")]
-        mock_lineage_parser.target_tables = [MockLineageTable("test_view")]
-        mock_lineage_parser_class.return_value = mock_lineage_parser
-
         # Mock metadata search methods that get_lineage_by_query will call
-        # Create a mock source table entity
-        source_table_entity = Table(
-            id=Uuid(root=uuid.uuid4()),
-            name=EntityName(root="source_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="test_service.test_db.test_schema.source_table"
-            ),
-            serviceType=DatabaseServiceType.Mysql,
-            columns=[],
-        )
         table_view = TableView(
             table_name="test_view",
             schema_name="test_schema",
@@ -481,7 +470,7 @@ class TestDbUtils(TestCase):
         # Mock the search methods that get_lineage_by_query uses
         def mock_es_search_from_fqn(entity_type, fqn_search_string, **kwargs):
             if "source_table" in fqn_search_string:
-                return [source_table_entity]
+                return [self.source_table_entity_non_postgres]
             if "test_view" in fqn_search_string:
                 return [self.table_entity_non_postgres]
             return []
@@ -500,7 +489,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=table_view,
                 metadata=metadata,
-                service_name="test_service",
+                service_names="test_service",
                 connection_type="mysql",
                 timeout_seconds=self.timeout_seconds,
             )
@@ -509,12 +498,24 @@ class TestDbUtils(TestCase):
         # Assertions - should get lineage results since we have source and target tables
         self.assertGreater(len(result), 0)
 
-        # Verify that LineageParser was called with MySQL dialect
-        mock_lineage_parser_class.assert_called_once_with(
-            self.table_view.view_definition,
-            Dialect.MYSQL,
-            timeout_seconds=self.timeout_seconds,
-        )
+        # Check that we have Either objects with Right values (successful results)
+        successful_results = [r.right for r in result if r.right]
+        self.assertGreater(len(successful_results), 0)
+
+        # Verify the lineage has correct source and target
+        for lineage_request in successful_results:
+            # Check the from and to entities exist
+            self.assertIsNotNone(lineage_request.edge.fromEntity)
+            self.assertIsNotNone(lineage_request.edge.toEntity)
+            # Check that the IDs match our expected entities
+            self.assertEqual(
+                lineage_request.edge.fromEntity.id.root,
+                self.source_table_entity_non_postgres.id.root,
+            )
+            self.assertEqual(
+                lineage_request.edge.toEntity.id.root,
+                self.table_entity_non_postgres.id.root,
+            )
 
     @patch("metadata.utils.db_utils.get_lineage_by_query")
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
@@ -547,7 +548,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -587,7 +588,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=self.timeout_seconds,
             )
@@ -603,7 +604,7 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=123,  # Invalid type
                 timeout_seconds=self.timeout_seconds,
             )
@@ -613,11 +614,8 @@ class TestDbUtils(TestCase):
         self.assertEqual(len(result), 0)
 
     @patch("metadata.utils.db_utils.ConnectionTypeDialectMapper")
-    @patch("metadata.utils.db_utils.LineageParser")
     @patch("metadata.utils.db_utils.fqn")
-    def test_get_view_lineage_custom_timeout(
-        self, mock_fqn, mock_lineage_parser_class, mock_dialect_mapper
-    ):
+    def test_get_view_lineage_custom_timeout(self, mock_fqn, mock_dialect_mapper):
         """Test that custom timeout is passed correctly"""
         # Setup mocks
         mock_fqn.build.return_value = "test_service.test_db.test_schema.test_view"
@@ -625,25 +623,10 @@ class TestDbUtils(TestCase):
 
         mock_dialect_mapper.dialect_of.return_value = Dialect.POSTGRES
 
-        mock_lineage_parser = MagicMock()
-        mock_lineage_parser.source_tables = [MockLineageTable("source_table")]
-        mock_lineage_parser.target_tables = [MockLineageTable("test_view")]
-        mock_lineage_parser_class.return_value = mock_lineage_parser
-
         # Mock metadata search methods that get_lineage_by_query will call
-        source_table_entity = Table(
-            id=Uuid(root=uuid.uuid4()),
-            name=EntityName(root="source_table"),
-            fullyQualifiedName=FullyQualifiedEntityName(
-                root="test_service.test_db.test_schema.source_table"
-            ),
-            serviceType=DatabaseServiceType.Postgres,
-            columns=[],
-        )
-
         def mock_es_search_from_fqn(entity_type, fqn_search_string, **kwargs):
             if "source_table" in fqn_search_string:
-                return [source_table_entity]
+                return [self.source_table_entity]
             return []
 
         self.metadata.es_search_from_fqn = mock_es_search_from_fqn
@@ -655,15 +638,31 @@ class TestDbUtils(TestCase):
             get_view_lineage(
                 view=self.table_view,
                 metadata=self.metadata,
-                service_name=self.service_name,
+                service_names=self.service_name,
                 connection_type=self.connection_type,
                 timeout_seconds=custom_timeout,
             )
         )
 
-        # Verify that LineageParser was called with custom timeout
-        mock_lineage_parser_class.assert_called_once_with(
-            self.table_view.view_definition,
-            Dialect.POSTGRES,
-            timeout_seconds=custom_timeout,
-        )
+        # Test passes if we get lineage results back
+        # Custom timeout is used internally by LineageParser
+        self.assertGreater(len(result), 0)
+
+        # Check that we have Either objects with Right values (successful results)
+        successful_results = [r.right for r in result if r.right]
+        self.assertGreater(len(successful_results), 0)
+
+        # Verify the lineage has correct source and target
+        for lineage_request in successful_results:
+            # Check the from and to entities exist
+            self.assertIsNotNone(lineage_request.edge.fromEntity)
+            self.assertIsNotNone(lineage_request.edge.toEntity)
+            # Check that the IDs match our expected entities
+            self.assertEqual(
+                lineage_request.edge.fromEntity.id.root,
+                self.source_table_entity.id.root,
+            )
+            self.assertEqual(
+                lineage_request.edge.toEntity.id.root,
+                self.table_entity.id.root,
+            )

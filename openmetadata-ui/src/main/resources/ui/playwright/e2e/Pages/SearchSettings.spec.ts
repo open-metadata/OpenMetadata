@@ -163,17 +163,34 @@ test.describe('Search Preview test', () => {
       new RegExp(mockEntitySearchSettings.url + '$')
     );
 
-    const searchInput = page.getByTestId('searchbar');
-    await searchInput.fill(table1.entity.name);
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const descriptionField = page.getByTestId(
       `field-configuration-panel-description`
     );
     await descriptionField.click();
     await setSliderValue(page, 'field-weight-slider', 68);
-    await descriptionField.click();
+
+    const previewResponse = page.waitForResponse('/api/v1/search/preview');
+    await page.getByTestId('highlight-field-switch').click();
+    await previewResponse;
+
+    await expect(page.getByTestId('highlight-field-switch')).toHaveAttribute(
+      'aria-checked',
+      'false'
+    );
+
+    const searchInput = page.getByTestId('searchbar');
+    await searchInput.fill(table1.entity.name);
+    await previewResponse;
 
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const searchResultsContainer = page.locator('.search-results-container');
 

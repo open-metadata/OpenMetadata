@@ -54,6 +54,7 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SpreadsheetRepository;
@@ -61,7 +62,6 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.ResultList;
 
 @Path("/v1/drives/spreadsheets")
 @Tag(
@@ -138,6 +138,12 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
           @QueryParam("directory")
           String directoryParam,
       @Parameter(
+              description = "List spreadsheets at the root level (without parent) when `true`",
+              schema = @Schema(type = "boolean"))
+          @QueryParam("root")
+          @DefaultValue("false")
+          boolean root,
+      @Parameter(
               description = "Limit the number spreadsheets returned. (1 to 1000000, default = 10)")
           @DefaultValue("10")
           @QueryParam("limit")
@@ -163,7 +169,8 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
     ListFilter filter =
         new ListFilter(include)
             .addQueryParam("service", serviceParam)
-            .addQueryParam("directory", directoryParam);
+            .addQueryParam("directory", directoryParam)
+            .addQueryParam("root", String.valueOf(root));
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -297,6 +304,35 @@ public class SpreadsheetResource extends EntityResource<Spreadsheet, Spreadsheet
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchSpreadsheet",
+      summary = "Update a spreadsheet by name.",
+      description = "Update an existing spreadsheet using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the spreadsheet", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT

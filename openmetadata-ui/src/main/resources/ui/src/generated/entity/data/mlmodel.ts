@@ -50,6 +50,10 @@ export interface Mlmodel {
      */
     domains?: EntityReference[];
     /**
+     * Status of the MlModel.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -192,6 +196,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -379,6 +387,21 @@ export interface EntityReference {
      * `dashboardService`...
      */
     type: string;
+}
+
+/**
+ * Status of the MlModel.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**

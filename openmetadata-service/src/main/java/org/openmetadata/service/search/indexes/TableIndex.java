@@ -14,7 +14,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ParseTags;
 import org.openmetadata.service.search.models.FlattenColumn;
 
-public record TableIndex(Table table) implements ColumnIndex {
+public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
   private static final Set<String> excludeFields =
       Set.of(
           "sampleData",
@@ -81,6 +81,7 @@ public record TableIndex(Table table) implements ColumnIndex {
             .map(ChangeDescription::getChangeSummary)
             .map(ChangeSummaryMap::getAdditionalProperties)
             .orElse(null));
+
     return doc;
   }
 

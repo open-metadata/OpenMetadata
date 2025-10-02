@@ -60,9 +60,11 @@ export interface TestServiceConnection {
  * search Connection.
  *
  * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface TestServiceConnectionConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -161,6 +163,8 @@ export interface TestServiceConnectionConnection {
  *
  * Epic FHIR Connection Config
  *
+ * ServiceNow Connection Config
+ *
  * Looker Connection Config
  *
  * Metabase Connection Config
@@ -195,6 +199,8 @@ export interface TestServiceConnectionConnection {
  * Sigma Connection Config
  *
  * ThoughtSpot Connection Config
+ *
+ * Grafana Connection Config
  *
  * Kafka Connection Config
  *
@@ -244,6 +250,8 @@ export interface TestServiceConnectionConnection {
  *
  * Stitch Connection
  *
+ * Snowplow Pipeline Connection Config
+ *
  * MlFlow Connection Config
  *
  * Sklearn Connection Config
@@ -284,8 +292,14 @@ export interface TestServiceConnectionConnection {
  * yet.
  *
  * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -357,6 +371,8 @@ export interface ConfigClass {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -420,6 +436,8 @@ export interface ConfigClass {
      *
      * Host and port of the Cockrooach service.
      *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
+     *
      * URL to the Looker instance.
      *
      * Host and Port of the Metabase instance.
@@ -448,6 +466,8 @@ export interface ConfigClass {
      *
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
+     * URL to the Grafana instance.
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -473,7 +493,11 @@ export interface ConfigClass {
      *
      * Apache Ranger Admin URL.
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -647,7 +671,9 @@ export interface ConfigClass {
      *
      * Password
      *
-     * Password to connect to Metabase.
+     * Password to connect to ServiceNow.
+     *
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -750,8 +776,10 @@ export interface ConfigClass {
      *
      * Username
      *
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
+     *
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *
@@ -863,13 +891,22 @@ export interface ConfigClass {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
+     * SSL Configuration details.
+     *
+     * SSL Configuration for OpenMetadata Server
      */
-    authMechanism?: AuthMechanismEnum;
+    sslConfig?: SSLConfigObject;
     /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
+    /**
+     * Authentication mode to connect to Impala.
+     */
+    authMechanism?: AuthMechanismEnum;
     /**
      * Choose Auth Config Type.
      *
@@ -880,12 +917,6 @@ export interface ConfigClass {
      * Authentication type to connect to Apache Ranger.
      */
     authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
-     * SSL Configuration details.
-     *
-     * SSL Configuration for OpenMetadata Server
-     */
-    sslConfig?: SSLConfigObject;
     /**
      * Use slow logs to extract lineage.
      */
@@ -921,6 +952,8 @@ export interface ConfigClass {
     verify?: string;
     /**
      * Salesforce Organization ID is the unique identifier for your Salesforce identity
+     *
+     * Snowplow BDP Organization ID
      */
     organizationId?: string;
     /**
@@ -988,6 +1021,10 @@ export interface ConfigClass {
      */
     snowflakePrivatekeyPassphrase?: string;
     /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
+    /**
      * Snowflake warehouse.
      */
     warehouse?: string;
@@ -1027,6 +1064,8 @@ export interface ConfigClass {
      * client_id for PowerBI.
      *
      * client_id for Sigma.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -1115,11 +1154,21 @@ export interface ConfigClass {
     /**
      * API key to authenticate with the SAP ERP APIs.
      *
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
+     *
      * API key of the redash instance to access.
      *
      * The personal access token you can generate in the Lightdash app under the user settings
      *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     *
      * Fivetran API Secret.
+     *
+     * API Key for Snowplow Console API
      */
     apiKey?: string;
     /**
@@ -1131,6 +1180,8 @@ export interface ConfigClass {
      */
     paginationLimit?: number;
     /**
+     * Boolean marking if we need to verify the SSL certs for Grafana. Default to True.
+     *
      * Boolean marking if we need to verify the SSL certs for KafkaConnect REST API. True by
      * default.
      *
@@ -1145,12 +1196,16 @@ export interface ConfigClass {
      * clientSecret for PowerBI.
      *
      * clientSecret for Sigma.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
      * Azure Directory (tenant) ID for service principal authentication.
      *
      * Tenant ID for PowerBI.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -1169,6 +1224,16 @@ export interface ConfigClass {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
     /**
      * Regex exclude or include charts that matches the pattern.
      */
@@ -1241,6 +1306,8 @@ export interface ConfigClass {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -1323,6 +1390,10 @@ export interface ConfigClass {
      * only.
      */
     orgId?: string;
+    /**
+     * Page size for pagination in API requests. Default is 100.
+     */
+    pageSize?: number;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -1508,6 +1579,22 @@ export interface ConfigClass {
      * The azure subscription identifier.
      */
     subscription_id?: string;
+    /**
+     * Cloud provider where Snowplow is deployed
+     */
+    cloudProvider?: CloudProvider;
+    /**
+     * Path to pipeline configuration files for Community deployment
+     */
+    configPath?: string;
+    /**
+     * Snowplow Console URL for BDP deployment
+     */
+    consoleUrl?: string;
+    /**
+     * Snowplow deployment type (BDP for managed or Community for self-hosted)
+     */
+    deployment?: SnowplowDeployment;
     /**
      * Regex to only fetch MlModels with names matching the pattern.
      */
@@ -1711,6 +1798,45 @@ export interface ConfigClass {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
+    [property: string]: any;
 }
 
 /**
@@ -1761,6 +1887,14 @@ export interface UsernamePasswordAuthentication {
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -2369,6 +2503,15 @@ export interface ConsumerConfigSSLClass {
 }
 
 /**
+ * Cloud provider where Snowplow is deployed
+ */
+export enum CloudProvider {
+    Aws = "AWS",
+    Azure = "Azure",
+    Gcp = "GCP",
+}
+
+/**
  * Available sources to fetch the metadata.
  *
  * Deltalake Metastore configuration.
@@ -2491,6 +2634,8 @@ export interface ConfigSourceConnection {
  * GCP Credentials
  *
  * GCP credentials configs.
+ *
+ * GCP Credentials for Google Drive API
  *
  * AWS credentials configs.
  */
@@ -3035,6 +3180,8 @@ export enum InitialConsumerOffsets {
  *
  * GCP credentials configs.
  *
+ * GCP Credentials for Google Drive API
+ *
  * Azure Cloud Credentials
  *
  * Available sources to fetch metadata.
@@ -3159,6 +3306,16 @@ export enum MssqlScheme {
  */
 export enum MssqlType {
     Mssql = "Mssql",
+}
+
+/**
+ * Snowplow deployment type (BDP for managed or Community for self-hosted)
+ *
+ * Snowplow deployment type
+ */
+export enum SnowplowDeployment {
+    Bdp = "BDP",
+    Community = "Community",
 }
 
 /**
@@ -3597,6 +3754,7 @@ export enum ConfigScheme {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -3804,6 +3962,8 @@ export enum TransactionMode {
  *
  * ThoughtSpot service type
  *
+ * Grafana service type
+ *
  * Kafka service type
  *
  * Redpanda service type
@@ -3839,6 +3999,12 @@ export enum TransactionMode {
  * Custom search service type
  *
  * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
 export enum ConfigType {
     Adls = "ADLS",
@@ -3858,6 +4024,7 @@ export enum ConfigType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -3885,6 +4052,8 @@ export enum ConfigType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
+    Grafana = "Grafana",
     Greenplum = "Greenplum",
     Hive = "Hive",
     Iceberg = "Iceberg",
@@ -3929,10 +4098,13 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
     Snowflake = "Snowflake",
+    Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
     Ssas = "SSAS",

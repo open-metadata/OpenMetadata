@@ -12,9 +12,9 @@
 """
 Helpers module for db sources
 """
-
+import time
 import traceback
-from typing import Iterable
+from typing import Iterable, List, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.table import Table
@@ -32,6 +32,7 @@ from metadata.ingestion.lineage.sql_lineage import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
+from metadata.utils.execution_time_tracker import calculate_execution_time_generator
 from metadata.utils.logger import utils_logger
 
 logger = utils_logger()
@@ -47,16 +48,21 @@ def get_host_from_host_port(uri: str) -> str:
     return uri.split(":")[0]
 
 
+#  pylint: disable=too-many-locals
+@calculate_execution_time_generator()
 def get_view_lineage(
     view: TableView,
     metadata: OpenMetadata,
-    service_name: str,
+    service_names: Union[str, List[str]],
     connection_type: str,
     timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
 ) -> Iterable[Either[AddLineageRequest]]:
     """
     Method to generate view lineage
+    Now supports cross-database lineage by accepting a list of service names.
     """
+    if isinstance(service_names, str):
+        service_names = [service_names]
     table_name = view.table_name
     schema_name = view.schema_name
     db_name = view.db_name
@@ -65,7 +71,7 @@ def get_view_lineage(
     table_fqn = fqn.build(
         metadata,
         entity_type=Table,
-        service_name=service_name,
+        service_name=service_names[0],  # Use first service for table entity lookup
         database_name=db_name,
         schema_name=schema_name,
         table_name=table_name,
@@ -82,6 +88,8 @@ def get_view_lineage(
     try:
         connection_type = str(connection_type)
         dialect = ConnectionTypeDialectMapper.dialect_of(connection_type)
+        start_time = time.time()
+        logger.debug(f"Processing view lineage for: {table_fqn}")
         lineage_parser = LineageParser(
             view_definition, dialect, timeout_seconds=timeout_seconds
         )
@@ -91,16 +99,21 @@ def get_view_lineage(
             schema_name = PUBLIC_SCHEMA
             schema_fallback = True
 
+        end_time = time.time()
+        logger.debug(
+            f"Time taken to parse view lineage for: {table_fqn} is {end_time - start_time} seconds"
+        )
         if lineage_parser.source_tables and lineage_parser.target_tables:
             yield from get_lineage_by_query(
                 metadata,
                 query=view_definition,
-                service_name=service_name,
+                service_names=service_names,
                 database_name=db_name,
                 schema_name=schema_name,
                 dialect=dialect,
                 timeout_seconds=timeout_seconds,
                 lineage_source=LineageSource.ViewLineage,
+                lineage_parser=lineage_parser,
                 schema_fallback=schema_fallback,
             ) or []
 
@@ -108,13 +121,14 @@ def get_view_lineage(
             yield from get_lineage_via_table_entity(
                 metadata,
                 table_entity=table_entity,
-                service_name=service_name,
+                service_names=service_names,
                 database_name=db_name,
                 schema_name=schema_name,
                 query=view_definition,
                 dialect=dialect,
                 timeout_seconds=timeout_seconds,
                 lineage_source=LineageSource.ViewLineage,
+                lineage_parser=lineage_parser,
                 schema_fallback=schema_fallback,
             ) or []
     except Exception as exc:

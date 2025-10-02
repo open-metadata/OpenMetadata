@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.dropwizard.configuration.ConfigurationException;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
@@ -22,6 +23,7 @@ import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -51,6 +53,10 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
+import org.openmetadata.schema.api.security.ResponseType;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateMessagingService;
@@ -63,14 +69,17 @@ import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.profiler.MetricType;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.ValidationResponse;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.util.EntitiesCount;
 import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -95,6 +104,8 @@ import org.openmetadata.service.resources.storages.ContainerResourceTest;
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -123,6 +134,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(4)
   void entitiesCount(TestInfo test) throws HttpResponseException {
     // Get count before adding entities
     EntitiesCount beforeCount = getEntitiesCount();
@@ -219,6 +231,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(5)
   void testSystemConfigsUpdate() throws HttpResponseException {
     // Test Custom Logo Update and theme preference
     UiThemePreference updateConfigReq =
@@ -247,6 +260,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(6)
   void servicesCount(TestInfo test) throws HttpResponseException {
     // Get count before adding services
     ServicesCount beforeCount = getServicesCount();
@@ -293,6 +307,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(7)
   void botUserCountCheck(TestInfo test) throws HttpResponseException {
     int beforeUserCount = getEntitiesCount().getUserCount();
 
@@ -317,6 +332,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(8)
   void validate_test() throws HttpResponseException {
     ValidationResponse response = getValidation();
 
@@ -325,6 +341,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(1)
   void testDefaultSettingsInitialization() throws HttpResponseException {
     SettingsCache.initialize(config);
     Settings uiThemeSettings = getSystemConfig(SettingsType.CUSTOM_UI_THEME_PREFERENCE);
@@ -372,6 +389,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(10)
   void testLoginConfigurationSettings() throws HttpResponseException {
     // Retrieve the default login configuration settings
     Settings loginSettings = getSystemConfig(SettingsType.LOGIN_CONFIGURATION);
@@ -446,6 +464,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(11)
   void testResetSearchSettingsToDefault() throws HttpResponseException {
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
     SearchSettings searchConfig =
@@ -519,6 +538,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(12)
   void testGlobalSettingsModification() throws HttpResponseException {
     // Step 1: Retrieve current settings
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
@@ -563,6 +583,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(13)
   void testCannotDeleteAssetType() throws HttpResponseException {
     // Retrieve current settings
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
@@ -592,6 +613,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(14)
   void testCanAddNewAssetType() throws HttpResponseException {
     // Retrieve current settings
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
@@ -630,6 +652,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(15)
   void testAssetCertificationSettings() throws HttpResponseException {
     // Retrieve the default asset certification settings
     Settings certificationSettings = getSystemConfig(SettingsType.ASSET_CERTIFICATION_SETTINGS);
@@ -663,6 +686,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(16)
   void testLineageSettings() throws HttpResponseException {
     // Retrieve the default lineage settings
     Settings lineageSettings = getSystemConfig(SettingsType.LINEAGE_SETTINGS);
@@ -693,6 +717,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(16)
   void testWorkflowSettings() throws HttpResponseException {
     // Retrieve the default workflow settings
     Settings setting = getSystemConfig(SettingsType.WORKFLOW_SETTINGS);
@@ -735,6 +760,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(17)
   void globalProfilerConfig() throws HttpResponseException {
     ProfilerConfiguration profilerConfiguration = new ProfilerConfiguration();
     MetricConfigurationDefinition intMetricConfigDefinition =
@@ -780,6 +806,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(18)
   void testSearchSettingsValidation() throws HttpResponseException {
     // Retrieve current settings
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
@@ -849,6 +876,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(19)
   void testCacheInvalidation() throws HttpResponseException {
     // First, get the initial settings
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
@@ -877,6 +905,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(20)
   void testTermBoostsAndFieldValueBoostsOverride() throws HttpResponseException {
     // Retrieve current settings
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
@@ -926,6 +955,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(21)
   void testDuplicateSearchFieldConfiguration() throws HttpResponseException {
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
     SearchSettings searchConfig =
@@ -956,6 +986,7 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  @Order(22)
   void testAllowedFieldsCannotBeOverwritten() throws HttpResponseException {
     // Step 1: Retrieve the current search settings
     Settings searchSettings = getSystemConfig(SettingsType.SEARCH_SETTINGS);
@@ -1016,6 +1047,132 @@ class SystemResourceTest extends OpenMetadataApplicationTest {
     assertFalse(
         retrievedEntityTypes.contains("test"),
         "The test entity type should not be added to allowedFields");
+  }
+
+  @Test
+  @Order(999) // Run security config test last
+  void testUpdateSecurityConfig() throws HttpResponseException {
+    // Create a SecurityConfiguration object
+    SecurityConfiguration securityConfig =
+        new SecurityConfiguration()
+            .withAuthenticationConfiguration(
+                new AuthenticationConfiguration()
+                    .withClientType(ClientType.PUBLIC)
+                    .withProvider(AuthProvider.BASIC)
+                    .withResponseType(ResponseType.ID_TOKEN)
+                    .withProviderName("OpenMetadata")
+                    .withPublicKeyUrls(
+                        Arrays.asList("http://localhost:8585/api/v1/system/config/jwks"))
+                    .withTokenValidationAlgorithm(
+                        AuthenticationConfiguration.TokenValidationAlgorithm.RS_256)
+                    .withAuthority("http://localhost:8585")
+                    .withClientId("open-metadata")
+                    .withCallbackUrl("http://localhost:8585/callback")
+                    .withJwtPrincipalClaims(Arrays.asList("email", "preferred_username", "sub"))
+                    .withJwtPrincipalClaimsMapping(new ArrayList<>())
+                    .withEnableSelfSignup(true))
+            .withAuthorizerConfiguration(
+                new AuthorizerConfiguration()
+                    .withClassName("org.openmetadata.service.security.DefaultAuthorizer")
+                    .withContainerRequestFilter("org.openmetadata.service.security.JwtFilter")
+                    .withAdminPrincipals(Set.of("admin"))
+                    .withAllowedEmailRegistrationDomains(Set.of("all"))
+                    .withPrincipalDomain("open-metadata.org")
+                    .withAllowedDomains(new HashSet<>())
+                    .withEnforcePrincipalDomain(false)
+                    .withEnableSecureSocketConnection(false)
+                    .withUseRolesFromProvider(false));
+
+    // Update config through API
+    WebTarget target = getResource("system/security/config");
+    TestUtils.put(target, securityConfig, Response.Status.OK, ADMIN_AUTH_HEADERS);
+
+    // Verify the update
+    SecurityConfiguration currentConfig =
+        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+    assertNotNull(currentConfig);
+    assertEquals(
+        securityConfig.getAuthenticationConfiguration().getProvider(),
+        currentConfig.getAuthenticationConfiguration().getProvider());
+    assertEquals(
+        securityConfig.getAuthorizerConfiguration().getClassName(),
+        currentConfig.getAuthorizerConfiguration().getClassName());
+  }
+
+  void testGetEntityRulesSettingByType() throws HttpResponseException {
+    // Test table entity type - should include only enabled rules applicable to tables
+    List<SemanticsRule> tableRules = getEntityRules("table");
+
+    assertFalse(tableRules.isEmpty(), "Table rules should not be empty");
+
+    // Should contain general enabled rules
+    assertTrue(
+        tableRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")),
+        "Should contain general ownership rule");
+
+    assertTrue(
+        tableRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Domains are not allowed")),
+        "Should contain domains rule");
+
+    // Should NOT contain disabled rules (even if they are table-specific)
+    assertFalse(
+        tableRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Data Products are not allowed")),
+        "Should not contain disabled data products rule");
+
+    assertFalse(
+        tableRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Tables can only have a single Glossary Term")),
+        "Should not contain disabled table-specific glossary term rule");
+
+    // Test dashboard entity type - should only get general enabled rules
+    List<SemanticsRule> dashboardRules = getEntityRules("dashboard");
+
+    assertFalse(dashboardRules.isEmpty(), "Dashboard rules should not be empty");
+
+    // Should contain general enabled rules
+    assertTrue(
+        dashboardRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")),
+        "Dashboard should get ownership rule");
+
+    assertTrue(
+        dashboardRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Domains are not allowed")),
+        "Dashboard should get domains rule");
+
+    // Test team entity type - should get rules but exclude those that ignore team
+    List<SemanticsRule> teamRules = getEntityRules("team");
+
+    assertFalse(teamRules.isEmpty(), "Team rules should not be empty");
+
+    // Should contain general ownership rule
+    assertTrue(
+        teamRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Users or Single Team Ownership")),
+        "Team should get ownership rule");
+
+    // Should NOT contain domains rule since team is in ignoredEntities
+    assertFalse(
+        teamRules.stream()
+            .anyMatch(rule -> rule.getName().equals("Multiple Domains are not allowed")),
+        "Team should not get domains rule as it's in ignored entities");
+  }
+
+  private static List<SemanticsRule> getEntityRules(String entityType)
+      throws HttpResponseException {
+    ObjectMapper objectMapper = Jackson.newObjectMapper();
+    WebTarget target = getResource("system/settings/entityRulesSettings/" + entityType);
+    Response response = SecurityUtil.addHeaders(target, ADMIN_AUTH_HEADERS).get();
+    String responseString = response.readEntity(String.class);
+    try {
+      return objectMapper.readValue(responseString, new TypeReference<List<SemanticsRule>>() {});
+    } catch (Exception e) {
+      throw new HttpResponseException(
+          500, "Failed to parse " + entityType + " response: " + e.getMessage());
+    }
   }
 
   private static ValidationResponse getValidation() throws HttpResponseException {

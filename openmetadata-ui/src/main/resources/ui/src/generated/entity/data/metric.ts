@@ -23,6 +23,10 @@ export interface Metric {
      */
     changeDescription?: ChangeDescription;
     /**
+     * Custom unit of measurement when unitOfMeasurement is OTHER.
+     */
+    customUnitOfMeasurement?: string;
+    /**
      * List of data products this entity is part of.
      */
     dataProducts?: EntityReference[];
@@ -42,6 +46,10 @@ export interface Metric {
      * Domains the Glossary belongs to.
      */
     domains?: EntityReference[];
+    /**
+     * Status of the Metric.
+     */
+    entityStatus?: EntityStatus;
     /**
      * Entity extension data with custom attributes added to the entity.
      */
@@ -90,6 +98,10 @@ export interface Metric {
      * Related Metrics.
      */
     relatedMetrics?: EntityReference[];
+    /**
+     * Reviewers of this Metric.
+     */
+    reviewers?: EntityReference[];
     /**
      * Tags for this chart.
      */
@@ -160,6 +172,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -342,6 +358,21 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the Metric.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * Metric's granularity.
  *
  * This schema defines the type of Metric's granularity.
@@ -411,6 +442,7 @@ export enum UnitOfMeasurement {
     Count = "COUNT",
     Dollars = "DOLLARS",
     Events = "EVENTS",
+    Other = "OTHER",
     Percentage = "PERCENTAGE",
     Requests = "REQUESTS",
     Size = "SIZE",

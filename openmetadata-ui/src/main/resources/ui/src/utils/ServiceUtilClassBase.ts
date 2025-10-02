@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import {
-  ObjectFieldTemplatePropertyType,
-  RJSFSchema,
-  UiSchema,
-} from '@rjsf/utils';
-import { cloneDeep, get, toLower } from 'lodash';
+import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
+import { get, isEmpty, toLower } from 'lodash';
 import { ServiceTypes } from 'Models';
-import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
+import GlossaryIcon from '../assets/svg/book.svg';
+import DataProductIcon from '../assets/svg/ic-data-product.svg';
+import DatabaseIcon from '../assets/svg/ic-database.svg';
+import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
+import MetricIcon from '../assets/svg/metric.svg';
+import TagIcon from '../assets/svg/tag-grey.svg';
 import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
 import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
 import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
@@ -37,8 +38,8 @@ import {
   CASSANDRA,
   CLICKHOUSE,
   COCKROACH,
-  COMMON_UI_SCHEMA,
   COUCHBASE,
+  CUSTOM_DRIVE_DEFAULT,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
@@ -59,6 +60,8 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GOOGLE_DRIVE,
+  GRAFANA,
   GREENPLUM,
   HIVE,
   IBMDB2,
@@ -121,6 +124,7 @@ import {
   ApiServiceTypeSmallCaseType,
   DashboardServiceTypeSmallCaseType,
   DatabaseServiceTypeSmallCaseType,
+  DriveServiceTypeSmallCaseType,
   MessagingServiceTypeSmallCaseType,
   MetadataServiceTypeSmallCaseType,
   MlModelServiceTypeSmallCaseType,
@@ -129,7 +133,8 @@ import {
   SecurityServiceTypeSmallCaseType,
   StorageServiceTypeSmallCaseType,
 } from '../enums/service.enum';
-import { ConfigClass } from '../generated/entity/automations/testServiceConnection';
+import { DriveServiceType } from '../generated/api/services/createDriveService';
+import { ConfigObject } from '../generated/entity/automations/testServiceConnection';
 import { WorkflowType } from '../generated/entity/automations/workflow';
 import { StorageServiceType } from '../generated/entity/data/container';
 import { DashboardServiceType } from '../generated/entity/data/dashboard';
@@ -144,10 +149,10 @@ import { Type as SecurityServiceType } from '../generated/entity/services/securi
 import { ServiceType } from '../generated/entity/services/serviceType';
 import { SearchSourceAlias } from '../interface/search.interface';
 import { ConfigData, ServicesType } from '../interface/service.interface';
-import profilerPipeline from '../jsons/ingestionSchemas/databaseServiceProfilerPipeline.json';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getDriveConfig } from './DriveServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
 import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
@@ -177,6 +182,9 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
+    PipelineServiceType.Snowplow,
+    DriveServiceType.GoogleDrive,
+    DriveServiceType.SharePoint,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -229,6 +237,11 @@ class ServiceUtilClassBase {
     SecurityServiceTypeSmallCaseType
   >(SecurityServiceType);
 
+  DriveServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    DriveServiceTypeSmallCaseType
+  >(DriveServiceType);
+
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
   }
@@ -257,7 +270,7 @@ class ServiceUtilClassBase {
       name: getTestConnectionName(connectionType),
       workflowType: WorkflowType.TestConnection,
       request: {
-        connection: { config: configData as ConfigClass },
+        connection: { config: configData as ConfigObject },
         serviceType,
         connectionType,
         serviceName,
@@ -323,13 +336,64 @@ class ServiceUtilClassBase {
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
       ).sort(customServiceComparator),
+      driveServices: this.filterUnsupportedServiceType(
+        Object.values(DriveServiceType) as string[]
+      ).sort(customServiceComparator),
       securityServices: this.filterUnsupportedServiceType(
         Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
     };
   }
 
-  public getServiceLogo(type: string) {
+  public getEntityTypeFromServiceType(serviceType: string): EntityType {
+    const serviceTypes = this.getSupportedServiceFromList();
+
+    // Check which service category the serviceType belongs to
+    if (serviceTypes.databaseServices.includes(serviceType)) {
+      return EntityType.TABLE;
+    }
+
+    if (serviceTypes.messagingServices.includes(serviceType)) {
+      return EntityType.TOPIC;
+    }
+
+    if (serviceTypes.dashboardServices.includes(serviceType)) {
+      return EntityType.DASHBOARD;
+    }
+
+    if (serviceTypes.pipelineServices.includes(serviceType)) {
+      return EntityType.PIPELINE;
+    }
+
+    if (serviceTypes.mlmodelServices.includes(serviceType)) {
+      return EntityType.MLMODEL;
+    }
+
+    if (serviceTypes.storageServices.includes(serviceType)) {
+      return EntityType.CONTAINER;
+    }
+
+    if (serviceTypes.searchServices.includes(serviceType)) {
+      return EntityType.SEARCH_INDEX;
+    }
+
+    if (serviceTypes.apiServices.includes(serviceType)) {
+      return EntityType.API_ENDPOINT;
+    }
+
+    if (serviceTypes.securityServices.includes(serviceType)) {
+      return EntityType.TABLE; // Security services typically work with tables
+    }
+
+    if (serviceTypes.driveServices.includes(serviceType)) {
+      return EntityType.DIRECTORY;
+    }
+
+    // Default fallback
+    return EntityType.TABLE;
+  }
+
+  public getServiceLogo(type: string): string {
     const serviceTypes = this.getSupportedServiceFromList();
     switch (toLower(type)) {
       case this.DatabaseServiceTypeSmallCase.CustomDatabase:
@@ -610,6 +674,15 @@ class ServiceUtilClassBase {
       case this.DashboardServiceTypeSmallCase.MicroStrategy:
         return MICROSTRATEGY;
 
+      case this.DashboardServiceTypeSmallCase.Grafana:
+        return GRAFANA;
+
+      case this.DriveServiceTypeSmallCase.CustomDrive:
+        return CUSTOM_DRIVE_DEFAULT;
+
+      case this.DriveServiceTypeSmallCase.GoogleDrive:
+        return GOOGLE_DRIVE;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -628,6 +701,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_SEARCH_DEFAULT;
         } else if (serviceTypes.securityServices.includes(type)) {
           logo = DEFAULT_SERVICE;
+        } else if (serviceTypes.driveServices.includes(type)) {
+          logo = CUSTOM_DRIVE_DEFAULT;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -639,13 +714,28 @@ class ServiceUtilClassBase {
 
   public getServiceTypeLogo(
     searchSource: SearchSuggestions[number] | SearchSourceAlias
-  ) {
+  ): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
-    // metric entity does not have service so we need to handle it separately
-    if (entityType === EntityType.METRIC) {
-      return MetricIcon;
+    // Handle entities that don't have serviceType by using entity-specific icons
+    if (isEmpty(type)) {
+      switch (entityType) {
+        case EntityType.TAG:
+          return TagIcon;
+        case EntityType.GLOSSARY_TERM:
+          return GlossaryIcon;
+        case EntityType.DATABASE:
+          return DatabaseIcon;
+        case EntityType.DATABASE_SCHEMA:
+          return DatabaseSchemaIcon;
+        case EntityType.METRIC:
+          return MetricIcon;
+        case EntityType.DATA_PRODUCT:
+          return DataProductIcon;
+        default:
+          return this.getServiceLogo('');
+      }
     }
 
     return this.getServiceLogo(type);
@@ -745,6 +835,9 @@ class ServiceUtilClassBase {
   public getSecurityServiceConfig(type: SecurityServiceType) {
     return getSecurityConfig(type);
   }
+  public getDriveServiceConfig(type: DriveServiceType) {
+    return getDriveConfig(type);
+  }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
     const widgets: Record<string, React.ComponentType<any>> = {
@@ -813,17 +906,6 @@ class ServiceUtilClassBase {
         value.toLowerCase(),
       ])
     ) as unknown as U;
-  }
-
-  public getProfilerConfig() {
-    const uiSchema = { ...COMMON_UI_SCHEMA };
-
-    const config = cloneDeep({ schema: profilerPipeline, uiSchema }) as {
-      schema: RJSFSchema;
-      uiSchema: UiSchema;
-    };
-
-    return config;
   }
 }
 

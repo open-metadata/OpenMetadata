@@ -113,6 +113,7 @@ const AddIngestion = ({
         data?.displayName ?? getIngestionName(serviceData.name, pipelineType),
       enableDebugLog: data?.loggerLevel === LogLevels.Debug,
       raiseOnError: data?.raiseOnError ?? true,
+      rootProcessingEngine: data?.processingEngine,
     })
   );
 
@@ -173,6 +174,7 @@ const AddIngestion = ({
       enableDebugLog,
       displayName,
       raiseOnError,
+      rootProcessingEngine,
       ...rest
     } = workflowData ?? {};
     const ingestionName = trim(name);
@@ -208,6 +210,7 @@ const AddIngestion = ({
         // clean the data to remove empty fields
         config: { ...cleanWorkFlowData(rest) },
       },
+      processingEngine: rootProcessingEngine,
     };
 
     if (onAddIngestionSave) {
@@ -246,6 +249,7 @@ const AddIngestion = ({
         loggerLevel: workflowData?.enableDebugLog
           ? LogLevels.Debug
           : LogLevels.Info,
+        processingEngine: workflowData?.rootProcessingEngine,
         sourceConfig: {
           config: {
             // clean the data to remove empty fields
@@ -255,6 +259,7 @@ const AddIngestion = ({
                 'enableDebugLog',
                 'displayName',
                 'raiseOnError',
+                'rootProcessingEngine',
               ]) ?? {}
             ),
           },

@@ -35,13 +35,12 @@ export interface DomainDetailPageTabProps {
   domain: Domain;
   isVersionsView: boolean;
   domainPermission: OperationPermission;
-  subDomains: Domain[];
+  subDomainsCount: number;
   dataProductsCount: number;
   assetCount: number;
   activeTab: EntityTabs;
   onAddDataProduct: () => void;
   onAddSubDomain: (subDomain: CreateDomain) => Promise<void>;
-  isSubDomainsLoading: boolean;
   queryFilter?: string | Record<string, unknown>;
   assetTabRef: React.RefObject<AssetsTabRef>;
   dataProductsTabRef: React.RefObject<DataProductsTabRef>;

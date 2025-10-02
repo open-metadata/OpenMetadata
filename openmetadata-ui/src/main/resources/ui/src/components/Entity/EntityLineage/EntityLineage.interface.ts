@@ -12,7 +12,7 @@
  */
 
 import { LoadingState } from 'Models';
-import { HTMLAttributes, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { Edge as FlowEdge, Node } from 'reactflow';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { EntityReference } from '../../../generated/entity/type';
@@ -58,8 +58,6 @@ export interface CustomEdgeData {
 
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
-
-export type ControlProps = HTMLAttributes<HTMLDivElement>;
 
 export interface LineageConfig {
   upstreamDepth: number;

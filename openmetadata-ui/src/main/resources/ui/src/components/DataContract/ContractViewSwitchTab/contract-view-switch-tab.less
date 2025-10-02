@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
-@import (reference) url('../../../styles/variables.less');
+@import (reference) '../../../styles/variables.less';
 
 .contract-mode-radio-group {
   border-radius: @size-xs;
   border: 1px solid @grey-300;
   padding: 4px;
+  height: 40px;
   overflow: hidden;
 
   .ant-radio-button-wrapper,
   .ant-radio-button-wrapper-checked {
+    height: auto;
     border: none;
 
     &::before {

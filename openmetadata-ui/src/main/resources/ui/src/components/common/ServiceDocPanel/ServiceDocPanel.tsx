@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { first, last } from 'lodash';
-import { FC, useCallback, useEffect, useState } from 'react';
+import { first, last, noop } from 'lodash';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ENDS_WITH_NUMBER_REGEX,
@@ -22,16 +22,18 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { fetchMarkdownFile } from '../../../rest/miscAPI';
 import { SupportedLocales } from '../../../utils/i18next/LocalUtil.interface';
 import { getActiveFieldNameForAppDocs } from '../../../utils/ServiceUtils';
+import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import RichTextEditorPreviewer from '../RichTextEditor/RichTextEditorPreviewer';
 import './service-doc-panel.less';
-
 interface ServiceDocPanelProp {
   serviceName: string;
   serviceType: string;
   activeField?: string;
   isWorkflow?: boolean;
   workflowType?: PipelineType;
+  selectedEntity?: SearchedDataProps['data'][number]['_source'];
 }
 
 const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
@@ -40,12 +42,14 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   activeField,
   isWorkflow,
   workflowType,
+  selectedEntity,
 }) => {
   const { i18n } = useTranslation();
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const [markdownContent, setMarkdownContent] = useState<string>('');
+  const [isMarkdownReady, setIsMarkdownReady] = useState<boolean>(false);
 
   const getActiveFieldName = useCallback(
     (activeFieldValue?: ServiceDocPanelProp['activeField']) => {
@@ -116,6 +120,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       setMarkdownContent('');
     } finally {
       setIsLoading(false);
+      setIsMarkdownReady(true);
     }
   };
 
@@ -124,22 +129,60 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   }, [serviceName, serviceType]);
 
   useEffect(() => {
+    if (!isMarkdownReady) {
+      return;
+    }
+
     const fieldName =
       serviceType === 'Applications'
         ? getActiveFieldNameForAppDocs(activeField)
         : getActiveFieldName(activeField);
+
     if (fieldName) {
-      const element = document.querySelector(`[data-id="${fieldName}"]`);
-      if (element) {
-        element.scrollIntoView({
-          block: 'center',
-          behavior: 'smooth',
-          inline: 'center',
+      // Use requestAnimationFrame to ensure DOM is ready
+      requestAnimationFrame(() => {
+        // Remove all previous highlights first
+        const previousHighlighted = document.querySelectorAll(
+          '[data-highlighted="true"]'
+        );
+        previousHighlighted.forEach((el) => {
+          el.removeAttribute('data-highlighted');
         });
-        element.setAttribute('data-highlighted', 'true');
-      }
+
+        const element = document.querySelector(`[data-id="${fieldName}"]`);
+        if (element) {
+          element.scrollIntoView({
+            block: fieldName === 'selected-entity' ? 'start' : 'center',
+            behavior: 'smooth',
+            inline: 'center',
+          });
+          element.setAttribute('data-highlighted', 'true');
+        }
+      });
     }
-  }, [activeField, getActiveFieldName, serviceType]);
+  }, [activeField, serviceType, isMarkdownReady]);
+
+  const docsPanel = useMemo(() => {
+    return (
+      <>
+        <div className="entity-summary-in-docs" data-id="selected-entity">
+          {selectedEntity && (
+            <EntitySummaryPanel
+              entityDetails={{
+                details: selectedEntity,
+              }}
+              handleClosePanel={noop}
+            />
+          )}
+        </div>
+
+        <RichTextEditorPreviewer
+          enableSeeMoreVariant={false}
+          markdown={markdownContent}
+        />
+      </>
+    );
+  }, [markdownContent, serviceName, selectedEntity]);
 
   if (isLoading) {
     return <Loader />;
@@ -147,12 +190,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
 
   return (
     <Row data-testid="service-requirements">
-      <Col span={24}>
-        <RichTextEditorPreviewer
-          enableSeeMoreVariant={false}
-          markdown={markdownContent}
-        />
-      </Col>
+      <Col span={24}>{docsPanel}</Col>
     </Row>
   );
 };

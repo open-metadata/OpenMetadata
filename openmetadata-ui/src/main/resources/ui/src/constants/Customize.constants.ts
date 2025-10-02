@@ -26,6 +26,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.PROFILER]: 'label.data-observability',
   [EntityTabs.INCIDENTS]: 'label.incident-plural',
   [EntityTabs.LINEAGE]: 'label.lineage',
+  [EntityTabs.KNOWLEDGE_GRAPH]: 'label.knowledge-graph',
   [EntityTabs.VIEW_DEFINITION]: 'label.view-definition',
   [EntityTabs.DBT]: 'label.dbt-lowercase',
   [EntityTabs.CHILDREN]: 'label.children',
@@ -57,6 +58,8 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.INSIGHTS]: 'label.insight-plural',
   [EntityTabs.SCHEMAS]: 'label.schema-plural',
   [EntityTabs.CONTRACT]: 'label.contract',
+  [EntityTabs.DIRECTORIES]: 'label.directory-plural',
+  [EntityTabs.WORKSHEETS]: 'label.worksheet-plural',
 } as const;
 
 export type CustomizeEntityType =
@@ -77,7 +80,11 @@ export type CustomizeEntityType =
   | EntityType.GLOSSARY_TERM
   | EntityType.CONTAINER
   | EntityType.METRIC
-  | EntityType.CHART;
+  | EntityType.CHART
+  | EntityType.DIRECTORY
+  | EntityType.FILE
+  | EntityType.SPREADSHEET
+  | EntityType.WORKSHEET;
 
 export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.TABLE]: PageType.Table,
@@ -98,4 +105,8 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.CONTAINER]: PageType.Container,
   [EntityType.METRIC]: PageType.Metric,
   [EntityType.CHART]: PageType.Chart,
+  [EntityType.DIRECTORY]: PageType.Directory,
+  [EntityType.FILE]: PageType.File,
+  [EntityType.SPREADSHEET]: PageType.Spreadsheet,
+  [EntityType.WORKSHEET]: PageType.Worksheet,
 };

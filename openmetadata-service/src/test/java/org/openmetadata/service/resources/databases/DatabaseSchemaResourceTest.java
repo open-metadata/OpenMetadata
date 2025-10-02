@@ -14,7 +14,7 @@
 package org.openmetadata.service.resources.databases;
 
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
-import static org.apache.commons.lang.StringEscapeUtils.escapeCsv;
+import static org.apache.commons.lang3.StringEscapeUtils.escapeCsv;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -75,6 +75,7 @@ import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -83,7 +84,6 @@ import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.tags.TagResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)

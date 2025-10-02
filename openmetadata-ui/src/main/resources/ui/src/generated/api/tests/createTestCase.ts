@@ -37,6 +37,10 @@ export interface CreateTestCase {
     owners?:          EntityReference[];
     parameterValues?: TestCaseParameterValue[];
     /**
+     * Reviewers of this test
+     */
+    reviewers?: EntityReference[];
+    /**
      * Tags for this test case. This is an inherited field from the parent entity and is not set
      * directly on the test case.
      */
@@ -151,6 +155,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

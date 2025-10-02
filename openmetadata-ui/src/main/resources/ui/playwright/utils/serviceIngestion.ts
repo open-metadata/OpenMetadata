@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { expect, Page } from '@playwright/test';
+import { APIResponse, expect, Page } from '@playwright/test';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../constant/delete';
 import { GlobalSettingOptions } from '../constant/settings';
 import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
@@ -118,7 +118,7 @@ export const deleteService = async (
   // Closing the toast notification
   await toastNotification(
     page,
-    /deleted successfully!/,
+    `"${serviceName}" deleted successfully!`,
     BIG_ENTITY_DELETE_TIMEOUT
   ); // Wait for up to 5 minutes for the toast notification to appear
 
@@ -175,17 +175,21 @@ export const checkServiceFieldSectionHighlighting = async (
   await page.waitForSelector(`[data-id="${field}"][data-highlighted="true"]`);
 };
 
-export const makeRetryRequest = async (data: {
-  url: string;
+type RetryRequestData = {
   page: Page;
   retries?: number;
-}) => {
-  const { url, page, retries = 3 } = data;
+} & (
+  | { url: string; fn?: never }
+  | { fn: () => Promise<APIResponse>; url?: never }
+);
+
+export const makeRetryRequest = async (data: RetryRequestData) => {
+  const { url, page, retries = 3, fn } = data;
   const { apiContext } = await getApiContext(page);
 
   for (let i = 0; i < retries; i++) {
     try {
-      const response = await apiContext.get(url);
+      const response = await (fn ? fn() : apiContext.get(url));
 
       return response.json();
     } catch (error) {
