@@ -95,6 +95,14 @@ jest.mock('../ContractYaml/ContractYaml.component', () => {
   };
 });
 
+jest.mock('../ContractSLACard/ContractSLA.component', () =>
+  jest
+    .fn()
+    .mockImplementation(({ contract }: any) => (
+      <div data-testid="contract-sla">SLA for {contract?.name}</div>
+    ))
+);
+
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
   return jest.fn().mockImplementation(() => {
     return <div>RichTextEditorPreviewerNew</div>;
