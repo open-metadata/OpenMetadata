@@ -43,9 +43,9 @@ def test_pipeline_startdate_uses_timestamp():
         dag_id="test_dag",
         start_date=test_start_date,
         description="Test DAG for date serialization",
-        max_active_tasks=1,
-        fileloc="/path/to/dag.py",
     )
+    # Set attributes that are used by the runner
+    dag.fileloc = "/path/to/dag.py"
 
     # Add a task to the DAG
     task = BashOperator(
@@ -106,9 +106,9 @@ def test_pipeline_without_startdate():
     dag = DAG(
         dag_id="test_dag_no_date",
         description="Test DAG without start date",
-        max_active_tasks=1,
-        fileloc="/path/to/dag.py",
     )
+    # Set attributes that are used by the runner
+    dag.fileloc = "/path/to/dag.py"
 
     # Create mock metadata client and service
     mock_metadata = Mock()
@@ -148,9 +148,9 @@ def test_task_startdate_format():
     dag = DAG(
         dag_id="test_dag",
         start_date=test_start_date,
-        max_active_tasks=1,
-        fileloc="/path/to/dag.py",
     )
+    # Set attributes that are used by the runner
+    dag.fileloc = "/path/to/dag.py"
 
     task = BashOperator(
         task_id="test_task",
