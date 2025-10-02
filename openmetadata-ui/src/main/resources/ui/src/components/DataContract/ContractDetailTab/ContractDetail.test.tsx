@@ -63,6 +63,16 @@ jest.mock('../ContractQualityCard/ContractQualityCard.component', () => {
   return jest.fn().mockImplementation(() => <p>ContractQualityCard</p>);
 });
 
+jest.mock('../ContractSecurity/ContractSecurityCard.component', () => {
+  return function MockContractSecurityCard({ security }: any) {
+    return (
+      <div data-testid="contract-security-card">
+        ContractSecurityCard - {security?.dataClassification}
+      </div>
+    );
+  };
+});
+
 jest.mock('../ContractViewSwitchTab/ContractViewSwitchTab.component', () => {
   return function MockContractViewSwitchTab({ handleModeChange }: any) {
     return (
@@ -124,6 +134,7 @@ jest.mock('react-i18next', () => ({
         'label.execution-summary': 'Execution Summary',
         'label.last-execution': 'Last Execution',
         'message.no-test-case-found': 'No test cases found',
+        'label.security': 'Security',
       };
 
       return translations[key] || key;
@@ -226,7 +237,7 @@ describe('ContractDetail', () => {
     });
 
     it('should display contract actions', () => {
-      const { getByTestId, debug } = render(
+      const { getByTestId } = render(
         <ContractDetail
           contract={mockContract}
           onDelete={mockOnDelete}
@@ -234,7 +245,48 @@ describe('ContractDetail', () => {
         />,
         { wrapper: MemoryRouter }
       );
-      debug();
+
+      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+    });
+
+    it('should not display contract created by or created at if data is not present', () => {
+      const { getByTestId, queryByTestId } = render(
+        <ContractDetail
+          contract={mockContract}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(
+        queryByTestId('contract-created-by-label')
+      ).not.toBeInTheDocument();
+
+      expect(
+        queryByTestId('contract-created-at-label')
+      ).not.toBeInTheDocument();
+
+      expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
+    });
+
+    it('should display contract created by or created at if data is present', () => {
+      const { getByTestId, queryByTestId } = render(
+        <ContractDetail
+          contract={{
+            ...mockContract,
+            createdBy: 'admin',
+            createdAt: 1758556706799,
+          }}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(queryByTestId('contract-created-by-label')).toBeInTheDocument();
+
+      expect(queryByTestId('contract-created-at-label')).toBeInTheDocument();
 
       expect(getByTestId('manage-contract-actions')).toBeInTheDocument();
     });
@@ -448,6 +500,83 @@ describe('ContractDetail', () => {
 
       // Semantic rules would be displayed
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
+    });
+  });
+
+  describe('Contract Security', () => {
+    it('should display security section when contract has security data', () => {
+      const contractWithSecurity: DataContract = {
+        ...mockContract,
+        security: {
+          dataClassification: 'PII,Sensitive',
+          policies: [
+            {
+              accessPolicy: 'Read Only',
+              identities: ['user1@example.com'],
+              rowFilters: [],
+            },
+          ],
+        },
+      };
+
+      render(
+        <ContractDetail
+          contract={contractWithSecurity}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      // Check that the security card is rendered
+      expect(screen.getByTestId('security-card')).toBeInTheDocument();
+      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
+
+      // Check the content
+      expect(
+        screen.getByText('ContractSecurityCard - PII,Sensitive')
+      ).toBeInTheDocument();
+    });
+
+    it('should not display security section when contract has no security data', () => {
+      render(
+        <ContractDetail
+          contract={mockContract}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      expect(screen.queryByTestId('security-card')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('contract-security-card')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render security card even with empty dataClassification and policies', () => {
+      const contractWithEmptySecurity: DataContract = {
+        ...mockContract,
+        security: {
+          dataClassification: '',
+          policies: [],
+        },
+      };
+
+      render(
+        <ContractDetail
+          contract={contractWithEmptySecurity}
+          onDelete={mockOnDelete}
+          onEdit={mockOnEdit}
+        />,
+        { wrapper: MemoryRouter }
+      );
+
+      // isEmpty returns false for objects with properties, even if values are empty
+      // So the security section will be displayed
+      expect(screen.getByTestId('security-card')).toBeInTheDocument();
+      expect(screen.getByTestId('contract-security-card')).toBeInTheDocument();
+      expect(screen.getByText('ContractSecurityCard -')).toBeInTheDocument();
     });
   });
 

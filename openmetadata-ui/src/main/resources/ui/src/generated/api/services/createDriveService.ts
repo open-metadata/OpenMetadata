@@ -75,11 +75,19 @@ export interface Connection {
      */
     delegatedEmail?: string;
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
      * Specific shared drive ID to connect to
      *
      * SharePoint drive ID. If not provided, default document library will be used
      */
     driveId?: string;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
     /**
      * Extract metadata only for Google Sheets files
      */
@@ -87,12 +95,20 @@ export interface Connection {
     /**
      * Include shared/team drives in metadata extraction
      */
-    includeTeamDrives?:          boolean;
+    includeTeamDrives?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?:   FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */
     type?: DriveServiceType;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
     /**
      * Application (client) ID from Azure Active Directory
      */
@@ -236,6 +252,28 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 /**
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
  * Service Type
  *
  * Google Drive service type
@@ -338,6 +376,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
