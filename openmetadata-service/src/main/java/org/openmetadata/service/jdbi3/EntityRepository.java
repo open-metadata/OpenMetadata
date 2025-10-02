@@ -4244,6 +4244,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
       validateDataProducts(updatedDataProducts);
 
+      if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
+        // Revert change to non-empty DataProduct if it is being updated by a bot
+        // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
+        // updated with a PATCH request
+        updated.setDataProducts(original.getDataProducts());
+        return;
+      }
+
       if (nullOrEmpty(updated.getDomains()) && !nullOrEmpty(updatedDataProducts)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
@@ -4396,6 +4404,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
           "Updating certification - Original: {}, Updated: {}",
           origCertification,
           updatedCertification);
+
+      if (operation.isPut() && !nullOrEmpty(original.getCertification()) && updatedByBot()) {
+        // Revert change to non-empty certification if it is being updated by a bot
+        // This is to prevent bots from overwriting the certification. Certification need to be
+        // updated with a PATCH request
+        updated.setCertification(original.getCertification());
+        return;
+      }
 
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");
