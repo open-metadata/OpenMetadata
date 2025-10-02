@@ -30,4 +30,5 @@ export enum SupportedLocales {
   Thai = 'th-TH',
   मराठी = 'mr-IN',
   Türkçe = 'tr-TR',
+  العربية = 'ar-SA',
 }
