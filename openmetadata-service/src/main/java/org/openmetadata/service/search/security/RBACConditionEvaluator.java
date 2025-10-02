@@ -3,6 +3,7 @@ package org.openmetadata.service.search.security;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.*;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -22,6 +23,7 @@ import org.springframework.expression.spel.standard.SpelExpression;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 
+@Slf4j
 public class RBACConditionEvaluator {
 
   private final QueryBuilderFactory queryBuilderFactory;
@@ -103,6 +105,10 @@ public class RBACConditionEvaluator {
               .mustNot(Collections.singletonList(finalDenyQuery));
     } else {
       finalQuery = queryBuilderFactory.matchAllQuery();
+    }
+
+    if (LOG.isDebugEnabled()) {
+      LOG.debug("Final RBAC query for user {}: {}", user.getName(), finalQuery);
     }
 
     return finalQuery;
@@ -327,13 +333,48 @@ public class RBACConditionEvaluator {
     User user = (User) spelContext.lookupVariable("user");
     if (user == null || nullOrEmpty(user.getDomains())) {
       OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
-      collector.addMustNot(existsQuery); // Wrap existsQuery in a List
+      collector.addMustNot(existsQuery);
     } else {
+      List<OMQueryBuilder> domainQueries = new ArrayList<>();
+
       for (EntityReference domain : user.getDomains()) {
-        String domainId = domain.getId().toString();
-        OMQueryBuilder domainQuery = queryBuilderFactory.termQuery("domains.id", domainId);
-        collector.addMust(domainQuery);
+        if (domain.getFullyQualifiedName() != null) {
+          // Prefix query on domain FQN matches both the domain itself and all its subdomains
+          domainQueries.add(
+              queryBuilderFactory.prefixQuery(
+                  "domains.fullyQualifiedName", domain.getFullyQualifiedName()));
+        } else {
+          // Fallback to domain ID if FQN is not available
+          domainQueries.add(queryBuilderFactory.termQuery("domains.id", domain.getId().toString()));
+        }
       }
+
+      OMQueryBuilder domainQuery =
+          domainQueries.size() == 1
+              ? domainQueries.get(0)
+              : queryBuilderFactory.boolQuery().should(domainQueries);
+
+      //      if (LOG.isDebugEnabled()) {
+      //        LOG.debug(
+      //            "hasDomain query for user {}: domainFQNs={}",
+      //            user.getName(),
+      //
+      // user.getDomains().stream().map(EntityReference::getFullyQualifiedName).toList());
+      //
+      //        if (domainQuery
+      //            instanceof
+      // org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder
+      //            eqb) {
+      //          LOG.debug("hasDomain ES query: {}", eqb.build());
+      //        } else if (domainQuery
+      //            instanceof
+      // org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder
+      //            osqb) {
+      //          LOG.debug("hasDomain OpenSearch query: {}", osqb.build());
+      //        }
+      //      }
+
+      collector.addMust(domainQuery);
     }
   }
 
