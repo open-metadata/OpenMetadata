@@ -5003,8 +5003,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     String termsOfUse =
         "# Terms of Use\n\nThis data is for internal use only.\n\n## Usage Guidelines\n- Do not share externally\n- Must comply with GDPR";
 
-    org.openmetadata.schema.api.data.DataConsumers consumer1 =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    org.openmetadata.schema.api.data.Policy policy1 =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("internal-only-policy")
             .withIdentities(List.of("engineering-team", "data-team"))
             .withRowFilters(
@@ -5016,7 +5016,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     org.openmetadata.schema.api.data.ContractSecurity security =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Confidential")
-            .withConsumers(List.of(consumer1));
+            .withPolicies(List.of(policy1));
 
     org.openmetadata.schema.api.data.ContractSLA sla =
         new org.openmetadata.schema.api.data.ContractSLA()
@@ -5046,17 +5046,17 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(termsOfUse, created.getTermsOfUse());
     assertNotNull(created.getSecurity());
     assertEquals("Confidential", created.getSecurity().getDataClassification());
-    assertNotNull(created.getSecurity().getConsumers());
-    assertEquals(1, created.getSecurity().getConsumers().size());
+    assertNotNull(created.getSecurity().getPolicies());
+    assertEquals(1, created.getSecurity().getPolicies().size());
     assertEquals(
-        "internal-only-policy", created.getSecurity().getConsumers().get(0).getAccessPolicy());
-    assertEquals(2, created.getSecurity().getConsumers().get(0).getIdentities().size());
+        "internal-only-policy", created.getSecurity().getPolicies().get(0).getAccessPolicy());
+    assertEquals(2, created.getSecurity().getPolicies().get(0).getIdentities().size());
     assertEquals(
-        "engineering-team", created.getSecurity().getConsumers().get(0).getIdentities().get(0));
-    assertEquals(1, created.getSecurity().getConsumers().get(0).getRowFilters().size());
+        "engineering-team", created.getSecurity().getPolicies().get(0).getIdentities().get(0));
+    assertEquals(1, created.getSecurity().getPolicies().get(0).getRowFilters().size());
     assertEquals(
         "region",
-        created.getSecurity().getConsumers().get(0).getRowFilters().get(0).getColumnName());
+        created.getSecurity().getPolicies().get(0).getRowFilters().get(0).getColumnName());
     assertNotNull(created.getSla());
     assertEquals(Integer.valueOf(1), created.getSla().getRefreshFrequency().getInterval());
     assertEquals(
@@ -5077,10 +5077,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     assertEquals(termsOfUse, retrieved.getTermsOfUse());
     assertNotNull(retrieved.getSecurity());
     assertEquals("Confidential", retrieved.getSecurity().getDataClassification());
-    assertNotNull(retrieved.getSecurity().getConsumers());
-    assertEquals(1, retrieved.getSecurity().getConsumers().size());
+    assertNotNull(retrieved.getSecurity().getPolicies());
+    assertEquals(1, retrieved.getSecurity().getPolicies().size());
     assertEquals(
-        "internal-only-policy", retrieved.getSecurity().getConsumers().get(0).getAccessPolicy());
+        "internal-only-policy", retrieved.getSecurity().getPolicies().get(0).getAccessPolicy());
     assertNotNull(retrieved.getSla());
     assertEquals(Integer.valueOf(1), retrieved.getSla().getRefreshFrequency().getInterval());
     assertEquals(
@@ -5089,15 +5089,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Test 3: Update properties using PUT
     String updatedTermsOfUse = "# Updated Terms\n\nNew terms apply from today.";
-    org.openmetadata.schema.api.data.DataConsumers updatedConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    org.openmetadata.schema.api.data.Policy updatedPolicy =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("public-policy")
             .withIdentities(List.of("all-users"));
 
     org.openmetadata.schema.api.data.ContractSecurity updatedSecurity =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Public")
-            .withConsumers(List.of(updatedConsumer));
+            .withPolicies(List.of(updatedPolicy));
 
     org.openmetadata.schema.api.data.ContractSLA updatedSla =
         new org.openmetadata.schema.api.data.ContractSLA()
@@ -5116,10 +5116,10 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract updated = updateDataContract(create);
     assertEquals(updatedTermsOfUse, updated.getTermsOfUse());
     assertEquals("Public", updated.getSecurity().getDataClassification());
-    assertNotNull(updated.getSecurity().getConsumers());
-    assertEquals(1, updated.getSecurity().getConsumers().size());
-    assertEquals("public-policy", updated.getSecurity().getConsumers().get(0).getAccessPolicy());
-    assertEquals("all-users", updated.getSecurity().getConsumers().get(0).getIdentities().get(0));
+    assertNotNull(updated.getSecurity().getPolicies());
+    assertEquals(1, updated.getSecurity().getPolicies().size());
+    assertEquals("public-policy", updated.getSecurity().getPolicies().get(0).getAccessPolicy());
+    assertEquals("all-users", updated.getSecurity().getPolicies().get(0).getIdentities().get(0));
     assertEquals(Integer.valueOf(2), updated.getSla().getRefreshFrequency().getInterval());
     assertEquals(
         org.openmetadata.schema.api.data.RefreshFrequency.Unit.HOUR,
@@ -5136,8 +5136,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract patched = patchDataContract(created.getId(), originalJson, updated);
     assertEquals(patchedTermsOfUse, patched.getTermsOfUse());
     // Verify other properties remain unchanged
-    assertNotNull(patched.getSecurity().getConsumers());
-    assertEquals("public-policy", patched.getSecurity().getConsumers().get(0).getAccessPolicy());
+    assertNotNull(patched.getSecurity().getPolicies());
+    assertEquals("public-policy", patched.getSecurity().getPolicies().get(0).getAccessPolicy());
     assertEquals(Integer.valueOf(2), patched.getSla().getRefreshFrequency().getInterval());
 
     // Test 5: Patch to remove properties (set to null)
@@ -5204,11 +5204,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testContractSecurityWithMultipleConsumers(TestInfo test) throws IOException {
+  void testContractSecurityWithMultiplePolicys(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
-    org.openmetadata.schema.api.data.DataConsumers consumer1 =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    org.openmetadata.schema.api.data.Policy policy1 =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("read-only-policy")
             .withIdentities(List.of("data-analysts", "reporting-team"))
             .withRowFilters(
@@ -5220,8 +5220,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                         .withColumnName("department")
                         .withValues(List.of("Sales", "Marketing"))));
 
-    org.openmetadata.schema.api.data.DataConsumers consumer2 =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    org.openmetadata.schema.api.data.Policy policy2 =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("full-access-policy")
             .withIdentities(List.of("admin-team", "data-engineers"))
             .withRowFilters(
@@ -5230,15 +5230,15 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                         .withColumnName("status")
                         .withValues(List.of("active", "pending", "completed"))));
 
-    org.openmetadata.schema.api.data.DataConsumers consumer3 =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    org.openmetadata.schema.api.data.Policy policy3 =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("restricted-policy")
             .withIdentities(List.of("external-partners"));
 
     org.openmetadata.schema.api.data.ContractSecurity security =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Highly Confidential")
-            .withConsumers(List.of(consumer1, consumer2, consumer3));
+            .withPolicies(List.of(policy1, policy2, policy3));
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
@@ -5246,40 +5246,40 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract created = createDataContract(create);
     assertNotNull(created.getSecurity());
     assertEquals("Highly Confidential", created.getSecurity().getDataClassification());
-    assertEquals(3, created.getSecurity().getConsumers().size());
+    assertEquals(3, created.getSecurity().getPolicies().size());
 
-    // Verify first consumer
-    var firstConsumer = created.getSecurity().getConsumers().get(0);
-    assertEquals("read-only-policy", firstConsumer.getAccessPolicy());
-    assertEquals(2, firstConsumer.getIdentities().size());
-    assertTrue(firstConsumer.getIdentities().contains("data-analysts"));
-    assertTrue(firstConsumer.getIdentities().contains("reporting-team"));
-    assertEquals(2, firstConsumer.getRowFilters().size());
+    // Verify first policy
+    var firstPolicy = created.getSecurity().getPolicies().get(0);
+    assertEquals("read-only-policy", firstPolicy.getAccessPolicy());
+    assertEquals(2, firstPolicy.getIdentities().size());
+    assertTrue(firstPolicy.getIdentities().contains("data-analysts"));
+    assertTrue(firstPolicy.getIdentities().contains("reporting-team"));
+    assertEquals(2, firstPolicy.getRowFilters().size());
 
-    // Verify second consumer
-    var secondConsumer = created.getSecurity().getConsumers().get(1);
-    assertEquals("full-access-policy", secondConsumer.getAccessPolicy());
-    assertEquals(2, secondConsumer.getIdentities().size());
-    assertEquals(1, secondConsumer.getRowFilters().size());
-    assertEquals("status", secondConsumer.getRowFilters().get(0).getColumnName());
-    assertEquals(3, secondConsumer.getRowFilters().get(0).getValues().size());
+    // Verify second policy
+    var secondPolicy = created.getSecurity().getPolicies().get(1);
+    assertEquals("full-access-policy", secondPolicy.getAccessPolicy());
+    assertEquals(2, secondPolicy.getIdentities().size());
+    assertEquals(1, secondPolicy.getRowFilters().size());
+    assertEquals("status", secondPolicy.getRowFilters().get(0).getColumnName());
+    assertEquals(3, secondPolicy.getRowFilters().get(0).getValues().size());
 
-    // Verify third consumer (no row filters)
-    var thirdConsumer = created.getSecurity().getConsumers().get(2);
-    assertEquals("restricted-policy", thirdConsumer.getAccessPolicy());
-    assertEquals(1, thirdConsumer.getIdentities().size());
-    assertNull(thirdConsumer.getRowFilters());
+    // Verify third policy (no row filters)
+    var thirdPolicy = created.getSecurity().getPolicies().get(2);
+    assertEquals("restricted-policy", thirdPolicy.getAccessPolicy());
+    assertEquals(1, thirdPolicy.getIdentities().size());
+    assertNull(thirdPolicy.getRowFilters());
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testContractSecurityWithEmptyConsumersList(TestInfo test) throws IOException {
+  void testContractSecurityWithEmptyPolicysList(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
     org.openmetadata.schema.api.data.ContractSecurity security =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Public")
-            .withConsumers(new ArrayList<>());
+            .withPolicies(new ArrayList<>());
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
@@ -5287,35 +5287,34 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract created = createDataContract(create);
     assertNotNull(created.getSecurity());
     assertEquals("Public", created.getSecurity().getDataClassification());
-    assertNotNull(created.getSecurity().getConsumers());
-    assertTrue(created.getSecurity().getConsumers().isEmpty());
+    assertNotNull(created.getSecurity().getPolicies());
+    assertTrue(created.getSecurity().getPolicies().isEmpty());
 
-    // Verify the contract can be retrieved and still has empty consumers
+    // Verify the contract can be retrieved and still has empty policys
     DataContract retrieved = getDataContract(created.getId(), null);
     assertNotNull(retrieved.getSecurity());
     assertEquals("Public", retrieved.getSecurity().getDataClassification());
-    assertTrue(retrieved.getSecurity().getConsumers().isEmpty());
+    assertTrue(retrieved.getSecurity().getPolicies().isEmpty());
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testContractSecurityConsumersWithNoIdentitiesOrFilters(TestInfo test) throws IOException {
+  void testContractSecurityPolicysWithNoIdentitiesOrFilters(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
-    // Consumer with only access policy (no identities, no row filters)
-    org.openmetadata.schema.api.data.DataConsumers minimalConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
-            .withAccessPolicy("minimal-access-policy");
+    // Policy with only access policy (no identities, no row filters)
+    org.openmetadata.schema.api.data.Policy minimalPolicy =
+        new org.openmetadata.schema.api.data.Policy().withAccessPolicy("minimal-access-policy");
 
-    // Consumer with access policy and empty identities list
-    org.openmetadata.schema.api.data.DataConsumers emptyIdentitiesConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    // Policy with access policy and empty identities list
+    org.openmetadata.schema.api.data.Policy emptyIdentitiesPolicy =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("empty-identities-policy")
             .withIdentities(new ArrayList<>());
 
-    // Consumer with access policy and empty row filters list
-    org.openmetadata.schema.api.data.DataConsumers emptyFiltersConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    // Policy with access policy and empty row filters list
+    org.openmetadata.schema.api.data.Policy emptyFiltersPolicy =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("empty-filters-policy")
             .withIdentities(List.of("some-team"))
             .withRowFilters(new ArrayList<>());
@@ -5323,34 +5322,34 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     org.openmetadata.schema.api.data.ContractSecurity security =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Internal")
-            .withConsumers(List.of(minimalConsumer, emptyIdentitiesConsumer, emptyFiltersConsumer));
+            .withPolicies(List.of(minimalPolicy, emptyIdentitiesPolicy, emptyFiltersPolicy));
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
 
     DataContract created = createDataContract(create);
     assertNotNull(created.getSecurity());
-    assertEquals(3, created.getSecurity().getConsumers().size());
+    assertEquals(3, created.getSecurity().getPolicies().size());
 
-    // Verify minimal consumer
-    var consumer1 = created.getSecurity().getConsumers().get(0);
-    assertEquals("minimal-access-policy", consumer1.getAccessPolicy());
-    assertNull(consumer1.getIdentities());
-    assertNull(consumer1.getRowFilters());
+    // Verify minimal policy
+    var policy1 = created.getSecurity().getPolicies().get(0);
+    assertEquals("minimal-access-policy", policy1.getAccessPolicy());
+    assertNull(policy1.getIdentities());
+    assertNull(policy1.getRowFilters());
 
-    // Verify empty identities consumer
-    var consumer2 = created.getSecurity().getConsumers().get(1);
-    assertEquals("empty-identities-policy", consumer2.getAccessPolicy());
-    assertNotNull(consumer2.getIdentities());
-    assertTrue(consumer2.getIdentities().isEmpty());
-    assertNull(consumer2.getRowFilters());
+    // Verify empty identities policy
+    var policy2 = created.getSecurity().getPolicies().get(1);
+    assertEquals("empty-identities-policy", policy2.getAccessPolicy());
+    assertNotNull(policy2.getIdentities());
+    assertTrue(policy2.getIdentities().isEmpty());
+    assertNull(policy2.getRowFilters());
 
-    // Verify empty filters consumer
-    var consumer3 = created.getSecurity().getConsumers().get(2);
-    assertEquals("empty-filters-policy", consumer3.getAccessPolicy());
-    assertEquals(1, consumer3.getIdentities().size());
-    assertNotNull(consumer3.getRowFilters());
-    assertTrue(consumer3.getRowFilters().isEmpty());
+    // Verify empty filters policy
+    var policy3 = created.getSecurity().getPolicies().get(2);
+    assertEquals("empty-filters-policy", policy3.getAccessPolicy());
+    assertEquals(1, policy3.getIdentities().size());
+    assertNotNull(policy3.getRowFilters());
+    assertTrue(policy3.getRowFilters().isEmpty());
   }
 
   @Test
@@ -5392,8 +5391,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
             .withValues(
                 List.of("200", "201", "204", "301", "302", "400", "401", "403", "404", "500")));
 
-    org.openmetadata.schema.api.data.DataConsumers complexConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    org.openmetadata.schema.api.data.Policy complexPolicy =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("complex-filtering-policy")
             .withIdentities(List.of("analytics-team", "bi-team", "data-science-team"))
             .withRowFilters(complexFilters);
@@ -5401,23 +5400,23 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     org.openmetadata.schema.api.data.ContractSecurity security =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Sensitive")
-            .withConsumers(List.of(complexConsumer));
+            .withPolicies(List.of(complexPolicy));
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
 
     DataContract created = createDataContract(create);
     assertNotNull(created.getSecurity());
-    assertEquals(1, created.getSecurity().getConsumers().size());
+    assertEquals(1, created.getSecurity().getPolicies().size());
 
-    var consumer = created.getSecurity().getConsumers().get(0);
-    assertEquals("complex-filtering-policy", consumer.getAccessPolicy());
-    assertEquals(3, consumer.getIdentities().size());
-    assertEquals(5, consumer.getRowFilters().size());
+    var policy = created.getSecurity().getPolicies().get(0);
+    assertEquals("complex-filtering-policy", policy.getAccessPolicy());
+    assertEquals(3, policy.getIdentities().size());
+    assertEquals(5, policy.getRowFilters().size());
 
     // Verify each filter
     Map<String, List<String>> filterMap = new HashMap<>();
-    for (var filter : consumer.getRowFilters()) {
+    for (var filter : policy.getRowFilters()) {
       filterMap.put(filter.getColumnName(), filter.getValues());
     }
 
@@ -5463,7 +5462,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
   void testContractSecurityWithOnlyDataClassification(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
-    // Security with only data classification, no consumers
+    // Security with only data classification, no policys
     org.openmetadata.schema.api.data.ContractSecurity security =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Restricted");
@@ -5474,22 +5473,22 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract created = createDataContract(create);
     assertNotNull(created.getSecurity());
     assertEquals("Restricted", created.getSecurity().getDataClassification());
-    // Consumers list should be initialized but empty
-    assertNotNull(created.getSecurity().getConsumers());
-    assertTrue(created.getSecurity().getConsumers().isEmpty());
+    // Policys list should be initialized but empty
+    assertNotNull(created.getSecurity().getPolicies());
+    assertTrue(created.getSecurity().getPolicies().isEmpty());
 
-    // Verify we can update to add consumers later
-    org.openmetadata.schema.api.data.DataConsumers newConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    // Verify we can update to add policys later
+    org.openmetadata.schema.api.data.Policy newPolicy =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("new-policy")
             .withIdentities(List.of("new-team"));
 
-    security.withConsumers(List.of(newConsumer));
+    security.withPolicies(List.of(newPolicy));
     create.withSecurity(security);
     DataContract updated = updateDataContract(create);
     assertEquals("Restricted", updated.getSecurity().getDataClassification());
-    assertEquals(1, updated.getSecurity().getConsumers().size());
-    assertEquals("new-policy", updated.getSecurity().getConsumers().get(0).getAccessPolicy());
+    assertEquals(1, updated.getSecurity().getPolicies().size());
+    assertEquals("new-policy", updated.getSecurity().getPolicies().get(0).getAccessPolicy());
   }
 
   @Test
@@ -5498,8 +5497,8 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     Table table = createUniqueTable(test.getDisplayName());
 
     // Create initial contract with security
-    org.openmetadata.schema.api.data.DataConsumers initialConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    org.openmetadata.schema.api.data.Policy initialPolicy =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("initial-policy")
             .withIdentities(List.of("initial-team"))
             .withRowFilters(
@@ -5511,7 +5510,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     org.openmetadata.schema.api.data.ContractSecurity initialSecurity =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Private")
-            .withConsumers(List.of(initialConsumer));
+            .withPolicies(List.of(initialPolicy));
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table).withSecurity(initialSecurity);
@@ -5523,28 +5522,28 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     created.getSecurity().setDataClassification("Public");
     DataContract patched1 = patchDataContract(created.getId(), originalJson, created);
     assertEquals("Public", patched1.getSecurity().getDataClassification());
-    // Verify consumers unchanged
-    assertEquals(1, patched1.getSecurity().getConsumers().size());
-    assertEquals("initial-policy", patched1.getSecurity().getConsumers().get(0).getAccessPolicy());
+    // Verify policys unchanged
+    assertEquals(1, patched1.getSecurity().getPolicies().size());
+    assertEquals("initial-policy", patched1.getSecurity().getPolicies().get(0).getAccessPolicy());
 
-    // Test 2: Patch to add a new consumer
+    // Test 2: Patch to add a new policy
     originalJson = JsonUtils.pojoToJson(patched1);
-    org.openmetadata.schema.api.data.DataConsumers additionalConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    org.openmetadata.schema.api.data.Policy additionalPolicy =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("additional-policy")
             .withIdentities(List.of("additional-team"));
 
-    patched1.getSecurity().getConsumers().add(additionalConsumer);
+    patched1.getSecurity().getPolicies().add(additionalPolicy);
     DataContract patched2 = patchDataContract(created.getId(), originalJson, patched1);
-    assertEquals(2, patched2.getSecurity().getConsumers().size());
+    assertEquals(2, patched2.getSecurity().getPolicies().size());
     assertEquals(
-        "additional-policy", patched2.getSecurity().getConsumers().get(1).getAccessPolicy());
+        "additional-policy", patched2.getSecurity().getPolicies().get(1).getAccessPolicy());
 
-    // Test 3: Patch to modify existing consumer's row filters
+    // Test 3: Patch to modify existing policy's row filters
     originalJson = JsonUtils.pojoToJson(patched2);
     patched2
         .getSecurity()
-        .getConsumers()
+        .getPolicies()
         .get(0)
         .setRowFilters(
             List.of(
@@ -5553,38 +5552,38 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                     .withValues(List.of("new_value1", "new_value2", "new_value3"))));
 
     DataContract patched3 = patchDataContract(created.getId(), originalJson, patched2);
-    var updatedFilters = patched3.getSecurity().getConsumers().get(0).getRowFilters();
+    var updatedFilters = patched3.getSecurity().getPolicies().get(0).getRowFilters();
     assertEquals(1, updatedFilters.size());
     assertEquals("updated_column", updatedFilters.get(0).getColumnName());
     assertEquals(3, updatedFilters.get(0).getValues().size());
 
-    // Test 4: Patch to remove row filters from a consumer
+    // Test 4: Patch to remove row filters from a policy
     originalJson = JsonUtils.pojoToJson(patched3);
-    patched3.getSecurity().getConsumers().get(0).setRowFilters(null);
+    patched3.getSecurity().getPolicies().get(0).setRowFilters(null);
     DataContract patched4 = patchDataContract(created.getId(), originalJson, patched3);
-    assertNull(patched4.getSecurity().getConsumers().get(0).getRowFilters());
+    assertNull(patched4.getSecurity().getPolicies().get(0).getRowFilters());
     // Verify other properties remain
-    assertEquals("initial-policy", patched4.getSecurity().getConsumers().get(0).getAccessPolicy());
-    assertEquals(1, patched4.getSecurity().getConsumers().get(0).getIdentities().size());
+    assertEquals("initial-policy", patched4.getSecurity().getPolicies().get(0).getAccessPolicy());
+    assertEquals(1, patched4.getSecurity().getPolicies().get(0).getIdentities().size());
 
-    // Test 5: Patch to clear all consumers
+    // Test 5: Patch to clear all policys
     originalJson = JsonUtils.pojoToJson(patched4);
-    patched4.getSecurity().setConsumers(new ArrayList<>());
+    patched4.getSecurity().setPolicies(new ArrayList<>());
     DataContract patched5 = patchDataContract(created.getId(), originalJson, patched4);
-    assertTrue(patched5.getSecurity().getConsumers().isEmpty());
+    assertTrue(patched5.getSecurity().getPolicies().isEmpty());
     assertEquals("Public", patched5.getSecurity().getDataClassification());
   }
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void testContractSecurityConsumerDataIntegrityOnUpdates(TestInfo test) throws IOException {
+  void testContractSecurityPolicyDataIntegrityOnUpdates(TestInfo test) throws IOException {
     Table table = createUniqueTable(test.getDisplayName());
 
-    // Create initial contract with multiple consumers
-    List<org.openmetadata.schema.api.data.DataConsumers> initialConsumers = new ArrayList<>();
+    // Create initial contract with multiple policys
+    List<org.openmetadata.schema.api.data.Policy> initialPolicies = new ArrayList<>();
     for (int i = 1; i <= 3; i++) {
-      initialConsumers.add(
-          new org.openmetadata.schema.api.data.DataConsumers()
+      initialPolicies.add(
+          new org.openmetadata.schema.api.data.Policy()
               .withAccessPolicy("policy-" + i)
               .withIdentities(List.of("team-" + i, "group-" + i))
               .withRowFilters(
@@ -5597,49 +5596,49 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     org.openmetadata.schema.api.data.ContractSecurity security =
         new org.openmetadata.schema.api.data.ContractSecurity()
             .withDataClassification("Confidential")
-            .withConsumers(initialConsumers);
+            .withPolicies(initialPolicies);
 
     CreateDataContract create =
         createDataContractRequest(test.getDisplayName(), table).withSecurity(security);
 
     DataContract created = createDataContract(create);
-    assertEquals(3, created.getSecurity().getConsumers().size());
+    assertEquals(3, created.getSecurity().getPolicies().size());
 
-    // Test 1: Update with reordered consumers - should maintain all data
-    List<org.openmetadata.schema.api.data.DataConsumers> reorderedConsumers = new ArrayList<>();
-    reorderedConsumers.add(initialConsumers.get(2));
-    reorderedConsumers.add(initialConsumers.get(0));
-    reorderedConsumers.add(initialConsumers.get(1));
+    // Test 1: Update with reordered policys - should maintain all data
+    List<org.openmetadata.schema.api.data.Policy> reorderedPolicies = new ArrayList<>();
+    reorderedPolicies.add(initialPolicies.get(2));
+    reorderedPolicies.add(initialPolicies.get(0));
+    reorderedPolicies.add(initialPolicies.get(1));
 
-    security.setConsumers(reorderedConsumers);
+    security.setPolicies(reorderedPolicies);
     create.withSecurity(security);
     DataContract updated1 = updateDataContract(create);
 
     // Verify reordering worked and all data is intact
-    assertEquals("policy-3", updated1.getSecurity().getConsumers().get(0).getAccessPolicy());
-    assertEquals("policy-1", updated1.getSecurity().getConsumers().get(1).getAccessPolicy());
-    assertEquals("policy-2", updated1.getSecurity().getConsumers().get(2).getAccessPolicy());
+    assertEquals("policy-3", updated1.getSecurity().getPolicies().get(0).getAccessPolicy());
+    assertEquals("policy-1", updated1.getSecurity().getPolicies().get(1).getAccessPolicy());
+    assertEquals("policy-2", updated1.getSecurity().getPolicies().get(2).getAccessPolicy());
 
-    // Verify detailed data integrity for first consumer (was third)
-    var firstConsumer = updated1.getSecurity().getConsumers().get(0);
-    assertEquals(2, firstConsumer.getIdentities().size());
-    assertTrue(firstConsumer.getIdentities().contains("team-3"));
-    assertEquals("column-3", firstConsumer.getRowFilters().get(0).getColumnName());
+    // Verify detailed data integrity for first policy (was third)
+    var firstPolicy = updated1.getSecurity().getPolicies().get(0);
+    assertEquals(2, firstPolicy.getIdentities().size());
+    assertTrue(firstPolicy.getIdentities().contains("team-3"));
+    assertEquals("column-3", firstPolicy.getRowFilters().get(0).getColumnName());
 
-    // Test 2: Update with partial consumer list - should only keep specified consumers
-    List<org.openmetadata.schema.api.data.DataConsumers> partialConsumers = new ArrayList<>();
-    partialConsumers.add(initialConsumers.get(1)); // Only keep second consumer
+    // Test 2: Update with partial policy list - should only keep specified policys
+    List<org.openmetadata.schema.api.data.Policy> partialPolicies = new ArrayList<>();
+    partialPolicies.add(initialPolicies.get(1)); // Only keep second policy
 
-    security.setConsumers(partialConsumers);
+    security.setPolicies(partialPolicies);
     create.withSecurity(security);
     DataContract updated2 = updateDataContract(create);
 
-    assertEquals(1, updated2.getSecurity().getConsumers().size());
-    assertEquals("policy-2", updated2.getSecurity().getConsumers().get(0).getAccessPolicy());
+    assertEquals(1, updated2.getSecurity().getPolicies().size());
+    assertEquals("policy-2", updated2.getSecurity().getPolicies().get(0).getAccessPolicy());
 
-    // Test 3: Update with modified consumer properties
-    var modifiedConsumer =
-        new org.openmetadata.schema.api.data.DataConsumers()
+    // Test 3: Update with modified policy properties
+    var modifiedPolicy =
+        new org.openmetadata.schema.api.data.Policy()
             .withAccessPolicy("policy-2") // Same policy
             .withIdentities(List.of("team-2", "group-2", "new-group")) // Added identity
             .withRowFilters(
@@ -5648,20 +5647,20 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
                         .withColumnName("column-2")
                         .withValues(List.of("val-2-a", "val-2-b", "val-2-c")))); // Added value
 
-    security.setConsumers(List.of(modifiedConsumer));
+    security.setPolicies(List.of(modifiedPolicy));
     create.withSecurity(security);
     DataContract updated3 = updateDataContract(create);
 
-    assertEquals(1, updated3.getSecurity().getConsumers().size());
-    var updatedConsumer = updated3.getSecurity().getConsumers().get(0);
-    assertEquals(3, updatedConsumer.getIdentities().size());
-    assertTrue(updatedConsumer.getIdentities().contains("new-group"));
-    assertEquals(3, updatedConsumer.getRowFilters().get(0).getValues().size());
-    assertTrue(updatedConsumer.getRowFilters().get(0).getValues().contains("val-2-c"));
+    assertEquals(1, updated3.getSecurity().getPolicies().size());
+    var updatedPolicy = updated3.getSecurity().getPolicies().get(0);
+    assertEquals(3, updatedPolicy.getIdentities().size());
+    assertTrue(updatedPolicy.getIdentities().contains("new-group"));
+    assertEquals(3, updatedPolicy.getRowFilters().get(0).getValues().size());
+    assertTrue(updatedPolicy.getRowFilters().get(0).getValues().contains("val-2-c"));
 
     // Final verification - retrieve and check final state
     DataContract finalState = getDataContract(created.getId(), null);
-    assertEquals(1, finalState.getSecurity().getConsumers().size());
-    assertEquals("policy-2", finalState.getSecurity().getConsumers().get(0).getAccessPolicy());
+    assertEquals(1, finalState.getSecurity().getPolicies().size());
+    assertEquals("policy-2", finalState.getSecurity().getPolicies().get(0).getAccessPolicy());
   }
 }

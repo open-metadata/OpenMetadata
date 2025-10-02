@@ -25,10 +25,8 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { File } from '../generated/entity/data/file';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
-import fileClassBase, {
-  FileClassBase,
-  FileDetailPageTabProps,
-} from './FileClassBase';
+import fileClassBase, { FileClassBase } from './FileClassBase';
+import { FileDetailPageTabProps } from './FileDetailsUtils';
 
 // Mock dependencies
 jest.mock('../constants/CustomizeWidgets.constants', () => ({

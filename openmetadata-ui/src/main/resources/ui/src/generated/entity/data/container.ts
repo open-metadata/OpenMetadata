@@ -205,6 +205,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -825,6 +829,7 @@ export enum FileFormat {
     CSV = "csv",
     Gz = "gz",
     JSON = "json",
+    Mf4 = "MF4",
     Parquet = "parquet",
     Tsv = "tsv",
     Zip = "zip",

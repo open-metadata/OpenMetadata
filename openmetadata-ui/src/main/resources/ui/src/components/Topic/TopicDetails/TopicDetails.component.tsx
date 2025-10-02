@@ -14,7 +14,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -341,12 +341,14 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
         />
       ),
       lineageTab: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={topicDetails as SourceType}
-          entityType={EntityType.TOPIC}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={topicDetails as SourceType}
+            entityType={EntityType.TOPIC}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
       customPropertiesTab: topicDetails && (
         <CustomPropertyTable<EntityType.TOPIC>

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, test } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -22,9 +22,11 @@ import {
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
 
+const test = base;
+
 const adminUser = new UserClass();
 const user1 = new UserClass();
-const seedEntity = new TableClass();
+const entity = new TableClass();
 const extraEntity = new TableClass();
 const testPersona = new PersonaClass();
 
@@ -41,7 +43,7 @@ test.describe('FeedWidget on landing page', () => {
         await adminUser.create(apiContext);
         await adminUser.setAdminRole(apiContext);
         await user1.create(apiContext);
-        await seedEntity.create(apiContext);
+        await entity.create(apiContext);
         await extraEntity.create(apiContext);
         await testPersona.create(apiContext, [adminUser.responseData.id]);
 
@@ -98,7 +100,7 @@ test.describe('FeedWidget on landing page', () => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
       try {
-        await seedEntity.delete(apiContext);
+        await entity.delete(apiContext);
         await extraEntity.delete(apiContext);
         await user1.delete(apiContext);
         await testPersona.delete(apiContext);
@@ -373,5 +375,196 @@ test.describe('FeedWidget on landing page', () => {
 
     // Verify drawer is closed
     await expect(drawer).not.toBeVisible();
+  });
+});
+
+test.describe('Mention notifications in Notification Box', () => {
+  const adminUser = new UserClass();
+  const user1 = new UserClass();
+  const entity = new TableClass();
+
+  const test = base.extend<{
+    adminPage: Page;
+    user1Page: Page;
+  }>({
+    adminPage: async ({ browser }, use) => {
+      const page = await browser.newPage();
+      await adminUser.login(page);
+      await use(page);
+      await page.close();
+    },
+    user1Page: async ({ browser }, use) => {
+      const page = await browser.newPage();
+      await user1.login(page);
+      await use(page);
+      await page.close();
+    },
+  });
+
+  test.beforeAll('Setup entities and users', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await adminUser.create(apiContext);
+      await adminUser.setAdminRole(apiContext);
+      await user1.create(apiContext);
+      await entity.create(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('Mention notification shows correct user details in Notification box', async ({
+    adminPage,
+    user1Page,
+  }) => {
+    await test.step(
+      'Admin user creates a conversation on an entity',
+      async () => {
+        await entity.visitEntityPage(adminPage);
+
+        await adminPage.getByTestId('activity_feed').click();
+        await adminPage.waitForLoadState('networkidle');
+
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await adminPage.getByTestId('comments-input-field').click();
+
+        await adminPage
+          .locator(
+            '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+          )
+          .fill('Initial conversation thread for mention test');
+
+        await expect(
+          adminPage.locator('[data-testid="send-button"]')
+        ).toBeVisible();
+        await expect(
+          adminPage.locator('[data-testid="send-button"]')
+        ).not.toBeDisabled();
+
+        const postConversation = adminPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/feed') &&
+            response.request().method() === 'POST' &&
+            response.url().includes('/posts')
+        );
+        await adminPage.locator('[data-testid="send-button"]').click();
+        await postConversation;
+      }
+    );
+
+    await test.step('User1 mentions admin user in a reply', async () => {
+      await entity.visitEntityPage(user1Page);
+
+      await user1Page.getByTestId('activity_feed').click();
+      await user1Page.waitForLoadState('networkidle');
+
+      await user1Page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await user1Page.getByTestId('comments-input-field').click();
+
+      const editorLocator = user1Page.locator(
+        '[data-testid="editor-wrapper"] [contenteditable="true"].ql-editor'
+      );
+
+      await editorLocator.fill('Hey ');
+
+      const userSuggestionsResponse = user1Page.waitForResponse(
+        `/api/v1/search/query?q=*${adminUser.responseData.name}***`
+      );
+
+      await editorLocator.pressSequentially(`@${adminUser.responseData.name}`);
+      await userSuggestionsResponse;
+
+      await user1Page
+        .locator(`[data-value="@${adminUser.responseData.name}"]`)
+        .first()
+        .click();
+
+      await editorLocator.type(', can you check this?');
+
+      await expect(
+        user1Page.locator('[data-testid="send-button"]')
+      ).toBeVisible();
+      await expect(
+        user1Page.locator('[data-testid="send-button"]')
+      ).not.toBeDisabled();
+
+      const postMentionResponse = user1Page.waitForResponse(
+        '/api/v1/feed/*/posts'
+      );
+      await user1Page.locator('[data-testid="send-button"]').click();
+      await postMentionResponse;
+    });
+
+    await test.step(
+      'Admin user checks notification for correct user and timestamp',
+      async () => {
+        await adminPage.reload();
+        await adminPage.waitForLoadState('networkidle');
+        const notificationBell = adminPage.getByTestId('task-notifications');
+
+        await expect(notificationBell).toBeVisible();
+
+        const feedResponseForNotifications =
+          adminPage.waitForResponse(`api/v1/feed?userId=*`);
+
+        await notificationBell.click();
+        await feedResponseForNotifications;
+        const notificationBox = adminPage.locator('.notification-box');
+
+        await expect(notificationBox).toBeVisible();
+
+        const mentionsTab = adminPage
+          .locator('.notification-box')
+          .getByText('Mentions');
+
+        const mentionsFeedResponse = adminPage.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/feed') &&
+            response.url().includes('filterType=MENTIONS') &&
+            response.url().includes('type=Conversation')
+        );
+
+        await mentionsTab.click();
+        await mentionsFeedResponse;
+
+        const mentionsList = adminPage
+          .getByRole('tabpanel', { name: 'Mentions' })
+          .getByRole('list');
+
+        await expect(mentionsList).toBeVisible();
+
+        const firstNotificationItem = mentionsList
+          .locator('li.ant-list-item.notification-dropdown-list-btn')
+          .first();
+
+        const firstNotificationText = await firstNotificationItem.textContent();
+
+        expect(firstNotificationText?.toLowerCase()).toContain(
+          user1.responseData.name.toLowerCase()
+        );
+        expect(firstNotificationText?.toLowerCase()).not.toContain(
+          adminUser.responseData.name.toLowerCase()
+        );
+
+        const mentionNotificationLink = firstNotificationItem.locator(
+          '[data-testid^="notification-link-"]'
+        );
+
+        const navigationPromise = adminPage.waitForURL(/activity_feed/);
+        await mentionNotificationLink.click();
+        await navigationPromise;
+        await adminPage.waitForLoadState('networkidle');
+
+        expect(adminPage.url()).toContain('activity_feed');
+        expect(adminPage.url()).toContain('/all');
+      }
+    );
   });
 });
