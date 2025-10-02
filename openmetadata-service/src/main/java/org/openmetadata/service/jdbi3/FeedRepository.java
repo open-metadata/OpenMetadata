@@ -1200,6 +1200,61 @@ public class FeedRepository {
     return thread;
   }
 
+  /**
+   * Anonymize all threads and posts created by a deleted user. This is called when a user is
+   * deleted to comply with privacy requirements.
+   */
+  @Transaction
+  public void anonymizeUserFromThreads(String userName) {
+    // Find all threads created by this user
+    List<String> threadJsons = dao.feedDAO().listThreadsByCreatedBy(userName);
+    for (String threadJson : threadJsons) {
+      try {
+        Thread thread = JsonUtils.readValue(threadJson, Thread.class);
+        boolean updated = false;
+
+        // Anonymize thread createdBy field
+        if (userName.equals(thread.getCreatedBy())) {
+          thread.setCreatedBy(DELETED_USER_NAME);
+          updated = true;
+        }
+
+        // Anonymize thread updatedBy field
+        if (userName.equals(thread.getUpdatedBy())) {
+          thread.setUpdatedBy(DELETED_USER_NAME);
+          updated = true;
+        }
+
+        // Anonymize posts within the thread
+        if (thread.getPosts() != null) {
+          for (Post post : thread.getPosts()) {
+            if (userName.equals(post.getFrom())) {
+              post.setFrom(DELETED_USER_NAME);
+              updated = true;
+            }
+          }
+        }
+
+        // Anonymize task fields if applicable
+        if (thread.getTask() != null) {
+          TaskDetails task = thread.getTask();
+          if (userName.equals(task.getClosedBy())) {
+            task.setClosedBy(DELETED_USER_NAME);
+            updated = true;
+          }
+        }
+
+        // Update the thread in database if any changes were made
+        if (updated) {
+          dao.feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
+        }
+      } catch (Exception ex) {
+        LOG.error("Failed to anonymize thread for user {}", userName, ex);
+        // Continue with next thread
+      }
+    }
+  }
+
   /** Return the tasks created by or assigned to the user. */
   private FilteredThreads getTasksOfUser(FeedFilter filter, UUID userId, int limit) {
     String username = Entity.getEntityReferenceById(Entity.USER, userId, ALL).getName();
