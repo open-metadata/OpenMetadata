@@ -364,7 +364,7 @@ class MetabaseUnitTest(TestCase):
         # Test with includeOwners = False
         self.metabase.source_config.includeOwners = False
         self.assertFalse(self.metabase.source_config.includeOwners)
-=======
+
     def test_dataset_query_string_parsing(self):
         """
         Test that dataset_query field can handle both string and dict inputs
