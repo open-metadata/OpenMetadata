@@ -379,7 +379,13 @@ public class UserRepository extends EntityRepository<User> {
   @Override
   public String exportToCsv(String importingTeam, String user, boolean recursive)
       throws IOException {
+    if (importingTeam == null || importingTeam.isEmpty()) {
+      return new UserCsv(null, user).exportCsv();
+    }
     Team team = daoCollection.teamDAO().findEntityByName(importingTeam);
+    if (team == null) {
+      throw new EntityNotFoundException(String.format("Team '%s' not found", importingTeam));
+    }
     return new UserCsv(team, user).exportCsv();
   }
 
@@ -967,10 +973,24 @@ public class UserRepository extends EntityRepository<User> {
 
     public String exportCsv() throws IOException {
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
-      TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
-      final Fields fields = userRepository.getFields("roles,teams");
-      return exportCsv(
-          listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields));
+      final Fields fields = userRepository.getFields("roles,teams,isBot");
+
+      List<User> users;
+      if (team == null) {
+        ListFilter filter = new ListFilter(Include.NON_DELETED);
+        users = userRepository.listAll(fields, filter);
+      } else {
+        TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(TEAM);
+        users =
+            listUsers(teamRepository, userRepository, team.getName(), new ArrayList<>(), fields);
+      }
+
+      users =
+          users.stream()
+              .filter(user -> !Boolean.TRUE.equals(user.getIsBot()))
+              .collect(Collectors.toList());
+
+      return exportCsv(users);
     }
 
     private List<EntityReference> getTeams(CSVPrinter printer, CSVRecord csvRecord, String user)

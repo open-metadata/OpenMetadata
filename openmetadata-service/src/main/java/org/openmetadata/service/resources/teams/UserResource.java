@@ -1522,11 +1522,14 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public Response exportUsersCsvAsync(
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Name of the team to under which the users are imported to",
-              required = true,
+              description =
+                  "Name of the team to under which the users are imported to. If not provided, exports all users.",
               schema = @Schema(type = "string"))
           @QueryParam("team")
           String team) {
+    if (team == null || team.isEmpty()) {
+      authorizer.authorizeAdmin(securityContext);
+    }
     return exportCsvInternalAsync(securityContext, team, false);
   }
 
@@ -1549,12 +1552,15 @@ public class UserResource extends EntityResource<User, UserRepository> {
   public String exportUsersCsv(
       @Context SecurityContext securityContext,
       @Parameter(
-              description = "Name of the team to under which the users are imported to",
-              required = true,
+              description =
+                  "Name of the team to under which the users are imported to. If not provided, exports all users.",
               schema = @Schema(type = "string"))
           @QueryParam("team")
           String team)
       throws IOException {
+    if (team == null || team.isEmpty()) {
+      authorizer.authorizeAdmin(securityContext);
+    }
     return exportCsvInternal(securityContext, team, false);
   }
 
