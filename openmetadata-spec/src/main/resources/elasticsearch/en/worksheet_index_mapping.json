@@ -9,36 +9,25 @@
           "type": "ngram",
           "min_gram": 3,
           "max_gram": 20,
-          "token_chars": [
-            "letter",
-            "digit"
-          ]
+          "token_chars": ["letter", "digit"]
         }
       },
       "normalizer": {
         "lowercase_normalizer": {
           "type": "custom",
           "char_filter": [],
-          "filter": [
-            "lowercase"
-          ]
+          "filter": ["lowercase"]
         }
       },
       "analyzer": {
         "om_analyzer": {
           "tokenizer": "standard",
-          "filter": [
-            "lowercase",
-            "word_delimiter_filter",
-            "om_stemmer"
-          ]
+          "filter": ["lowercase", "word_delimiter_filter", "om_stemmer"]
         },
         "om_ngram": {
           "type": "custom",
           "tokenizer": "n_gram_tokenizer",
-          "filter": [
-            "lowercase"
-          ]
+          "filter": ["lowercase"]
         },
         "om_compound_analyzer": {
           "tokenizer": "standard",
@@ -137,7 +126,8 @@
         "term_vector": "with_positions_offsets"
       },
       "serviceType": {
-        "type": "keyword"
+        "type": "keyword",
+        "normalizer": "lowercase_normalizer"
       },
       "service": {
         "properties": {
@@ -186,6 +176,73 @@
             "type": "text"
           }
         }
+      },
+      "version": {
+        "type": "float"
+      },
+      "dataProducts": {
+        "properties": {
+          "id": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 36
+              }
+            }
+          },
+          "type": {
+            "type": "keyword"
+          },
+          "name": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "displayName": {
+            "type": "keyword",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "ignore_above": 256
+              }
+            }
+          },
+          "fullyQualifiedName": {
+            "type": "keyword"
+          },
+          "description": {
+            "type": "text"
+          },
+          "deleted": {
+            "type": "boolean"
+          },
+          "href": {
+            "type": "text"
+          }
+        }
+      },
+      "updatedAt": {
+        "type": "date",
+        "format": "epoch_second"
+      },
+      "updatedBy": {
+        "type": "text"
+      },
+      "href": {
+        "type": "text"
+      },
+      "sourceUrl": {
+        "type": "text"
+      },
+      "extension": {
+        "type": "object"
       },
       "spreadsheet": {
         "properties": {
@@ -539,6 +596,7 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "text": {
                 "type": "text",
@@ -565,6 +623,18 @@
       },
       "fqnParts": {
         "type": "keyword"
+      },
+      "descriptionSources": {
+        "type": "object"
+      },
+      "tagSources": {
+        "type": "object"
+      },
+      "tierSources": {
+        "type": "object"
+      },
+      "upstreamLineage": {
+        "type": "object"
       },
       "certification": {
         "type": "object",

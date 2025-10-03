@@ -319,11 +319,11 @@ export interface ConfigObject {
     /**
      * Generated Token to connect to OpenAPI Schema.
      *
-     * Generated Token to connect to Databricks.
-     *
      * token to connect to Qlik Cloud.
      *
      * To Connect to Dagster Cloud
+     *
+     * Generated Token to connect to Databricks.
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -826,6 +826,18 @@ export interface ConfigObject {
      */
     secure?: boolean;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     *
+     * Types of methods used to authenticate to the tableau instance
+     *
+     * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -907,16 +919,6 @@ export interface ConfigObject {
      * Authentication mode to connect to Impala.
      */
     authMechanism?: AuthMechanismEnum;
-    /**
-     * Choose Auth Config Type.
-     *
-     * Types of methods used to authenticate to the tableau instance
-     *
-     * Types of methods used to authenticate to the alation instance
-     *
-     * Authentication type to connect to Apache Ranger.
-     */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
     /**
      * Use slow logs to extract lineage.
      */
@@ -1953,6 +1955,16 @@ export enum AuthProvider {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -1985,7 +1997,34 @@ export enum AuthProvider {
  *
  * Configuration for connecting to Ranger Basic Auth.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
      *
@@ -2923,7 +2962,7 @@ export interface ConfigConnection {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -2994,7 +3033,7 @@ export interface ConfigConnection {
  *
  * Azure Database Connection Config
  */
-export interface ConnectionAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -3413,7 +3452,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */

@@ -23,6 +23,9 @@ from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Column, DataType, TableType
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseService,
@@ -45,7 +48,9 @@ mock_databricks_config = {
                 "type": "Databricks",
                 "catalog": "hive_metastore",
                 "databaseSchema": "default",
-                "token": "123sawdtesttoken",
+                "authType": {
+                    "token": "123sawdtesttoken",
+                },
                 "hostPort": "localhost:443",
                 "httpPath": "/sql/1.0/warehouses/abcdedfg",
                 "connectionArguments": {"http_path": "/sql/1.0/warehouses/abcdedfg"},
@@ -397,12 +402,12 @@ class DatabricksConnectionTest(TestCase):
         connection = self.DatabricksConnection(
             scheme=self.DatabricksScheme.databricks_connector,
             hostPort="test-host:443",
-            token="test-token",
+            authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
         )
 
         url = self.get_connection_url(connection)
-        expected_url = "databricks+connector://token:test-token@test-host:443"
+        expected_url = "databricks+connector://test-host:443"
         self.assertEqual(url, expected_url)
 
     @patch(
@@ -413,7 +418,7 @@ class DatabricksConnectionTest(TestCase):
         connection = self.DatabricksConnection(
             scheme=self.DatabricksScheme.databricks_connector,
             hostPort="test-host:443",
-            token="test-token",
+            authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
         )
 
@@ -769,7 +774,7 @@ class DatabricksConnectionTest(TestCase):
         service_connection = DatabricksConnection(
             scheme=DatabricksScheme.databricks_connector,
             hostPort="test-host:443",
-            token="test-token",
+            authType=PersonalAccessToken(token="test-token"),
             httpPath="/sql/1.0/warehouses/test",
             queryHistoryTable="test_table",
         )
