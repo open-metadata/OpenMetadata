@@ -257,6 +257,7 @@
     "serialize-javascript": "6.0.2",
     "dompurify": "3.2.4",
     "on-headers": "1.1.0",
-    "form-data": "3.0.4"
+    "form-data": "3.0.4",
+    "tar-fs": "2.1.4"
   }
 }
