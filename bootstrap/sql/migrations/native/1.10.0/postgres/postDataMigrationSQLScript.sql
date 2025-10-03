@@ -9,4 +9,4 @@ SET json = jsonb_set(
     true
 )
 WHERE serviceType in ('Databricks', 'UnityCatalog')
-    AND json -> 'connection' -> 'config' ? 'token';
+    AND jsonb_exists(json -> 'connection' -> 'config', 'token');
