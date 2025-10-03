@@ -1305,4 +1305,116 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must_not[*].bool.must[?(@.terms._index && @.terms._index[?(@ == 'glossary' || @ == 'glossaryterm')])]",
         "Deny policy should exclude 'glossary' and 'glossaryTerm' in must_not clause");
   }
+
+  @Test
+  void testNoDomain() {
+    setupMockPolicies("noDomain()", "ALLOW");
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    assertTrue(
+        generatedQuery.contains("must_not"), "The query should contain 'must_not' for noDomain().");
+    assertTrue(
+        generatedQuery.contains("domains.id"),
+        "The query should check for absence of 'domains.id'.");
+    assertTrue(
+        generatedQuery.contains("exists"), "The query should use 'exists' query for domain check.");
+  }
+
+  @Test
+  void testHasDomainWithNoDomainDeny() {
+    // Setup ALLOW policy with hasDomain() - allows domain match OR no domain
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    // Setup DENY policy with noDomain() - blocks resources with no domain
+    setupMockPolicies("noDomain()", "DENY");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Engineering");
+    domain.setFullyQualifiedName("Engineering");
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // The ALLOW query should contain domain match OR no domain
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "The query should contain 'domains.fullyQualifiedName' for domain matching.");
+    assertTrue(
+        generatedQuery.contains("Engineering"),
+        "The query should contain 'Engineering' domain prefix.");
+
+    // The final query structure should be: MUST(allow) AND MUST_NOT(deny)
+    // This means: (domain match OR no domain) AND NOT(no domain)
+    // Which simplifies to: domain match only
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[0].bool.should[?(@.prefix['domains.fullyQualifiedName'])]",
+        "Allow query should have domain prefix match in should clause");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[?(@.bool.must_not[?(@.exists.field=='domains.id')])]",
+        "Deny query should block resources with no domain");
+  }
+
+  @Test
+  void testNoDomainWithMultipleDomains() {
+    setupMockPolicies("noDomain() && isOwner()", "ALLOW");
+
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[?(@.exists.field=='domains.id')]",
+        "noDomain should block resources with domains");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must[?(@.term['owners.id'].value=='" + mockUser.getId().toString() + "')]",
+        "isOwner should match owner ID");
+  }
+
+  @Test
+  void testHasDomainAllowsNoDomainResources() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Finance");
+    domain.setFullyQualifiedName("Finance");
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // The query should have a 'should' clause that includes:
+    // 1. Domain prefix match
+    // 2. No domain (must_not exists)
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.prefix['domains.fullyQualifiedName'])]",
+        "Should match domain prefix");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.bool.must_not[?(@.exists.field=='domains.id')])]",
+        "Should also allow resources with no domain");
+  }
 }

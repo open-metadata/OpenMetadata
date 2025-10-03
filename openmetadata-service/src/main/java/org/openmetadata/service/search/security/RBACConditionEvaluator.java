@@ -227,6 +227,7 @@ public class RBACConditionEvaluator {
         hasAnyRole(roles, collector);
       }
       case "hasDomain" -> hasDomain(collector);
+      case "noDomain" -> noDomain(collector);
       case "inAnyTeam" -> {
         List<String> teams = extractMethodArguments(methodRef);
         inAnyTeam(teams, collector);
@@ -332,9 +333,10 @@ public class RBACConditionEvaluator {
   public void hasDomain(ConditionCollector collector) {
     User user = (User) spelContext.lookupVariable("user");
     if (user == null || nullOrEmpty(user.getDomains())) {
-      OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
-      collector.addMustNot(existsQuery);
+      // User has no domains: block resources WITH domains
+      collector.addMustNot(queryBuilderFactory.existsQuery("domains.id"));
     } else {
+      // User has domains: allow domain match OR no domain
       List<OMQueryBuilder> domainQueries = new ArrayList<>();
 
       for (EntityReference domain : user.getDomains()) {
@@ -351,13 +353,22 @@ public class RBACConditionEvaluator {
 
       // Use 'should' (OR) to match entities in any of the user's domains
       // Optimization: skip bool wrapper for single domain
-      OMQueryBuilder domainQuery =
+      domainQueries.add(
+          queryBuilderFactory
+              .boolQuery()
+              .mustNot(Collections.singletonList(queryBuilderFactory.existsQuery("domains.id"))));
+
+      collector.addMust(
           domainQueries.size() == 1
               ? domainQueries.get(0)
-              : queryBuilderFactory.boolQuery().should(domainQueries);
-
-      collector.addMust(domainQuery);
+              : queryBuilderFactory.boolQuery().should(domainQueries));
     }
+  }
+
+  public void noDomain(ConditionCollector collector) {
+    // Match RuleEvaluator.noDomain() - returns true only if entity has no domains
+    OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("domains.id");
+    collector.addMustNot(existsQuery);
   }
 
   public void inAnyTeam(List<String> teamNames, ConditionCollector collector) {
