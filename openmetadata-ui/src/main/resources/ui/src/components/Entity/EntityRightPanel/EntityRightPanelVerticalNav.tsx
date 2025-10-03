@@ -14,10 +14,10 @@ import { Menu } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CustomPropertiesIcon } from '../../../assets/svg/explore-panel-icons/custom-prop.svg';
-import { ReactComponent as DataQualityIcon } from '../../../assets/svg/explore-panel-icons/data-quality.svg';
-import { ReactComponent as LineageIcon } from '../../../assets/svg/explore-panel-icons/lineage.svg';
-import { ReactComponent as OverviewIcon } from '../../../assets/svg/explore-panel-icons/overview.svg';
-import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-panel-icons/schema.svg';
+import { ReactComponent as ExploreIcon } from '../../../assets/svg/explore.svg';
+import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
+import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/ic-platform-lineage.svg';
+import { ReactComponent as SchemaIcon } from '../../../assets/svg/ic-schema.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import './EntityRightPanelVerticalNav.less';
 
@@ -43,7 +43,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       const items = [
         {
           key: EntityRightPanelTab.OVERVIEW,
-          icon: <OverviewIcon height={16} role="img" width={16} />,
+          icon: <ExploreIcon height={16} role="img" width={16} />,
           label: t('label.overview'),
         },
       ];
@@ -82,7 +82,7 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
       ) {
         items.push({
           key: EntityRightPanelTab.LINEAGE,
-          icon: <LineageIcon height={16} role="img" width={16} />,
+          icon: <PlatformLineageIcon height={16} role="img" width={16} />,
           label: t('label.lineage'),
         });
       }
