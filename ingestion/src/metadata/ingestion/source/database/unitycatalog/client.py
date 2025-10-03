@@ -25,14 +25,14 @@ from metadata.generated.schema.entity.services.connections.database.databricks.d
 from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
     PersonalAccessToken,
 )
-from metadata.ingestion.source.database.databricks.client import (
-    API_TIMEOUT,
-    DatabricksClient,
-)
-from metadata.ingestion.source.database.unitycatalog.connection import (
+from metadata.ingestion.source.database.databricks.auth import (
     get_azure_ad_auth,
     get_databricks_oauth_auth,
     get_personal_access_token_auth,
+)
+from metadata.ingestion.source.database.databricks.client import (
+    API_TIMEOUT,
+    DatabricksClient,
 )
 from metadata.ingestion.source.database.unitycatalog.models import (
     LineageColumnStreams,
