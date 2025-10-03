@@ -53,8 +53,12 @@ class AirflowIngestionClass extends ServiceBaseClass {
     await page.locator('#root\\/hostPort').fill(airflowHostPort);
 
     await page
-      .locator('#root\\/connection__oneof_select')
-      .selectOption('BackendConnection');
+      .getByTestId('select-widget-root/connection__oneof_select')
+      .getByRole('combobox')
+      .click({ force: true });
+    await page.click(
+      '.ant-select-dropdown:visible [title="BackendConnection"]'
+    );
   }
 
   async deleteService(page: Page) {

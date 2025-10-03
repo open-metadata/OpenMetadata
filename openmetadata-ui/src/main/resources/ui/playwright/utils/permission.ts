@@ -156,32 +156,21 @@ export const validateViewPermissions = async (
   }
 
   await page.click('[data-testid="sample_data"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(
     page,
     /Sample Data/,
     permission?.viewSampleData
   );
   await page.click('[data-testid="table_queries"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(page, /Queries/, permission?.viewQueries);
 
-  const profilerResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/tables/') &&
-      response.url().includes('/systemProfile?') &&
-      response.url().includes('startTs=') &&
-      response.url().includes('endTs=')
-  );
   await page.click('[data-testid="profiler"]');
-  await profilerResponse;
   await page.waitForLoadState('networkidle');
-  await page
-    .getByTestId('table-profiler-container')
-    .getByTestId('loader')
-    .waitFor({ state: 'detached' });
-  await page.waitForLoadState('domcontentloaded');
-
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await page
     .getByTestId('profiler-tab-left-panel')
     .getByText('Data Quality')
@@ -190,19 +179,22 @@ export const validateViewPermissions = async (
     .getByTestId('profiler-tab-left-panel')
     .getByText('Data Quality')
     .click();
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(
     page,
     /Data Observability/,
     permission?.viewTests
   );
   await page.click('[data-testid="lineage"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
 
   await expect(page.locator('[data-testid="edit-lineage"]')).toBeDisabled();
 
   await page.click('[data-testid="custom_properties"]');
-  await page.waitForLoadState('domcontentloaded');
+  await page.waitForLoadState('networkidle');
+  await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(page, /Custom Properties/);
 };
 
