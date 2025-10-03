@@ -71,6 +71,7 @@ export enum DATA_CONTRACT_SLA {
   MAX_LATENCY = 'max_latency',
   TIME_AVAILABILITY = 'time_availability',
   RETENTION = 'retention',
+  COLUMN_NAME = 'columnName',
 }
 
 export const DATA_CONTRACT_EXECUTION_CHART_COMMON_PROPS: {

@@ -99,6 +99,10 @@ export interface Metric {
      */
     relatedMetrics?: EntityReference[];
     /**
+     * Reviewers of this Metric.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Tags for this chart.
      */
     tags?: TagLabel[];
