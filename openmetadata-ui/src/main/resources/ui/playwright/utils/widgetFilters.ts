@@ -17,11 +17,15 @@ export const verifyActivityFeedFilters = async (
   page: Page,
   widgetKey: string
 ) => {
-  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+  // Wait for the page to load
+  await waitForAllLoadersToDisappear(page);
 
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
   ).toBeVisible();
+
+  // Wait for the widget feed to load
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   const myDataFilter = page.waitForResponse(
     '/api/v1/feed?type=Conversation&filterType=OWNER&*'

@@ -12,6 +12,8 @@
  */
 import { expect, Page, test as base } from '@playwright/test';
 import { SearchIndex } from '../../../src/enums/search.enum';
+import { KPI_DATA } from '../../constant/dataInsight';
+import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -28,7 +30,9 @@ import {
   verifyWidgetFooterViewMore,
   verifyWidgetHeaderNavigation,
 } from '../../utils/customizeLandingPage';
+import { addKpi } from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
+import { sidebarClick } from '../../utils/sidebar';
 import {
   verifyActivityFeedFilters,
   verifyDataFilters,
@@ -37,10 +41,6 @@ import {
   verifyTaskFilters,
   verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
-import { sidebarClick } from '../../utils/sidebar';
-import { SidebarItem } from '../../constant/sidebar';
-import { KPI_DATA } from '../../constant/dataInsight';
-import { addKpi } from '../../utils/dataInsight';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -84,32 +84,12 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   // Since creationConfig has entityDetails: true, these entities are created:
   // domains, glossaries, users, teams, tags, classifications
   // Only domains and glossaries support ownership
-  if (creationConfig.entityDetails || creationConfig.all) {
+  if (creationConfig.entityDetails) {
     entitiesToPatch.push(
       { entity: EntityDataClass.domain1, endpoint: 'domains' },
       { entity: EntityDataClass.domain2, endpoint: 'domains' },
       { entity: EntityDataClass.glossary1, endpoint: 'glossaries' },
       { entity: EntityDataClass.glossary2, endpoint: 'glossaries' }
-    );
-  }
-
-  // Add data assets if 'all' config is used
-  if (creationConfig.all) {
-    entitiesToPatch.push(
-      { entity: EntityDataClass.table1, endpoint: 'tables' },
-      { entity: EntityDataClass.table2, endpoint: 'tables' },
-      { entity: EntityDataClass.topic1, endpoint: 'topics' },
-      { entity: EntityDataClass.topic2, endpoint: 'topics' },
-      { entity: EntityDataClass.dashboard1, endpoint: 'dashboards' },
-      { entity: EntityDataClass.dashboard2, endpoint: 'dashboards' },
-      { entity: EntityDataClass.mlModel1, endpoint: 'mlmodels' },
-      { entity: EntityDataClass.mlModel2, endpoint: 'mlmodels' },
-      { entity: EntityDataClass.pipeline1, endpoint: 'pipelines' },
-      { entity: EntityDataClass.pipeline2, endpoint: 'pipelines' },
-      { entity: EntityDataClass.container1, endpoint: 'containers' },
-      { entity: EntityDataClass.container2, endpoint: 'containers' },
-      { entity: EntityDataClass.searchIndex1, endpoint: 'searchIndexes' },
-      { entity: EntityDataClass.searchIndex2, endpoint: 'searchIndexes' }
     );
   }
 
@@ -334,7 +314,7 @@ test.describe('Widgets', () => {
       await page.getByRole('menuitem', { name: 'KPIs' }).click();
 
       await page.getByTestId('add-kpi-btn').click();
-      await addKpi(page, KPI_DATA[0]);
+      await addKpi(page, KPI_DATA[1]);
     });
 
     await redirectToHomePage(page);
@@ -380,6 +360,10 @@ test.describe('Widgets', () => {
           response.url().includes('/api/v1/kpi/') &&
           response.url().includes('/kpiResult')
       );
+
+      const widget = page.getByTestId(widgetKey);
+
+      await expect(widget).toBeVisible();
 
       await kpiListResponse;
       await kpiResultsResponse;
@@ -571,10 +555,50 @@ test.describe('Widgets', () => {
   test('My Tasks', async ({ page }) => {
     test.slow(true);
 
+    await test.step('Create a task', async () => {
+      const glossary1 = EntityDataClass.glossary1;
+      // Navigate to one of the created glossaries to create a task
+      await glossary1.visitEntityPage(page);
+
+      // Create a description task for the glossary
+      await page.getByTestId('request-description').click();
+
+      // Wait for the task form to load
+      await page.waitForSelector('#title', { state: 'visible' });
+
+      // Fill in the task details
+      const taskTitle = page.locator('#title');
+
+      await expect(taskTitle).toHaveValue(
+        `Update description for glossary ${glossary1.responseData.displayName}`
+      );
+
+      // Set assignee to adminUser
+      await page.getByTestId('select-assignee').click();
+      await page.getByTitle(adminUser.responseData.displayName).click();
+
+      // Type in the rich text editor
+      const editor = page
+        .locator('.ProseMirror[contenteditable="true"]')
+        .first();
+      await editor.click();
+      await editor.fill('Test task description for My Tasks widget test');
+
+      // Submit the task
+      const createTaskResponse = page.waitForResponse('/api/v1/feed');
+      await page.getByTestId('submit-btn').click();
+      await createTaskResponse;
+
+      // Wait for success toast
+      await expect(page.getByText(/Task created successfully/)).toBeVisible();
+    });
+
+    // Navigate back to home to test the widget
+    await redirectToHomePage(page);
+    await waitForAllLoadersToDisappear(page);
+
     const widgetKey = 'KnowledgePanel.MyTask';
     const widget = page.getByTestId(widgetKey);
-
-    await waitForAllLoadersToDisappear(page);
 
     await expect(widget).not.toBeVisible();
 
@@ -601,20 +625,12 @@ test.describe('Widgets', () => {
         await verifyWidgetEntityNavigation(page, {
           widgetKey,
           entitySelector: '[data-testid="task-feed-card"]',
-          urlPattern: '/', // Tasks can navigate to various entity detail pages
-          emptyStateTestId: 'my-task-empty-state',
+          urlPattern: '/glossary', // Tasks can navigate to various entity detail pages
           apiResponseUrl: '/api/v1/feed',
           searchQuery: 'type=Task', // My Tasks uses feed API with type=Task
         });
       }
     );
-
-    await test.step('Test widget footer navigation', async () => {
-      await verifyWidgetFooterViewMore(page, {
-        widgetKey,
-        link: '',
-      });
-    });
 
     await test.step('Remove widget', async () => {
       await redirectToHomePage(page);
