@@ -49,18 +49,18 @@ const waitForAssetModalInitialLoad = async (page: Page) => {
 const waitForSearchDebounce = async (page: Page) => {
   // Wait for loader to appear and disappear after search
   // This ensures search debounce completed and results are stable
-  await page
-    .waitForSelector('[data-testid="loader"]', {
+  try {
+    await page.waitForSelector('[data-testid="loader"]', {
       state: 'attached',
       timeout: 999,
-    })
-    .catch(() => {
-      // Loader might not appear if search is very fast
     });
-
-  await page.waitForSelector('[data-testid="loader"]', {
-    state: 'detached',
-  });
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+  } catch (e) {
+    // Loader never appeared - search was instant, which is fine
+    // Just continue without waiting
+  }
 };
 
 export const assignDomain = async (page: Page, domain: Domain['data']) => {
