@@ -51,6 +51,11 @@
       "$ref": "../../type/entityReferenceList.json",
       "default": null
     },
+    "reviewers": {
+      "description": "Reviewers of this metric",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
     "tags": {
       "description": "Tags for this metric",
       "type": "array",
