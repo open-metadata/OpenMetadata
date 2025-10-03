@@ -1,12 +1,14 @@
-package org.openmetadata.service.template.handlebars;
+package org.openmetadata.service.notifications.template.handlebars;
 
 import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.HandlebarsException;
+import com.github.jknack.handlebars.Template;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.FieldValidation;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
-import org.openmetadata.service.template.NotificationTemplateProcessor;
+import org.openmetadata.service.notifications.template.NotificationTemplateProcessor;
 
 @Slf4j
 public class HandlebarsNotificationTemplateProcessor implements NotificationTemplateProcessor {
@@ -15,6 +17,16 @@ public class HandlebarsNotificationTemplateProcessor implements NotificationTemp
 
   public HandlebarsNotificationTemplateProcessor() {
     this.handlebars = HandlebarsProvider.getInstance();
+  }
+
+  @Override
+  public String process(String templateString, Map<String, Object> context) {
+    try {
+      Template template = handlebars.compileInline(templateString);
+      return template.apply(context);
+    } catch (Exception e) {
+      throw new RuntimeException("Failed to process template: " + e.getMessage(), e);
+    }
   }
 
   @Override
