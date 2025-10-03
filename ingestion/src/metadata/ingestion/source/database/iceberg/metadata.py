@@ -188,7 +188,6 @@ class IcebergSource(DatabaseServiceSource):
                     # Success, exit retry loop
                     return table
                 except (OSError, EndpointConnectionError) as e:
-                    last_exception = e
                     if "Couldn't resolve host name" in str(
                         e
                     ) or "NETWORK_CONNECTION" in str(e):
@@ -220,6 +219,11 @@ class IcebergSource(DatabaseServiceSource):
                 table = self._load_iceberg_table(table_identifier)
                 # extract table name from table identifier, which does not include catalog name
                 table_name = get_table_name_as_str(table_identifier)
+                if not table:
+                    logger.debug(
+                        f"iceberg Table could not be fetched for table name = {table_name}"
+                    )
+                    continue
                 table_fqn = fqn.build(
                     self.metadata,
                     entity_type=Table,
