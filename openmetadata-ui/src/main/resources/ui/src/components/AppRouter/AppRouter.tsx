@@ -100,10 +100,10 @@ const AppRouter = () => {
       <Route element={<AccessNotAllowedPage />} path={ROUTES.UNAUTHORISED} />
       <Route
         element={
-          !isEmpty(currentUser) ? (
-            <Navigate replace to={ROUTES.HOME} />
-          ) : (
+          isEmpty(currentUser) ? (
             <SignUpPage />
+          ) : (
+            <Navigate replace to={ROUTES.HOME} />
           )
         }
         path={ROUTES.SIGNUP}

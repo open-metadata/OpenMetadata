@@ -81,13 +81,17 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should handle large number of glossary terms with pagination', async ({
     page,
   }) => {
-    const initialTerms = await page.locator('tbody .ant-table-row').count();
-
     await page
       .locator('.glossary-terms-scroll-container [data-testid="loader"]')
       .waitFor({ state: 'detached' });
 
+    const initialTerms = await page.locator('tbody .ant-table-row').count();
+
     expect(initialTerms).toBe(50);
+
+    const infiniteScrollRequest = page.waitForResponse(
+      'api/v1/glossaryTerms?directChildrenOf*'
+    );
 
     // Scroll to bottom to trigger infinite scroll
     await page.evaluate(() => {
@@ -100,7 +104,7 @@ test.describe('Large Glossary Performance Tests', () => {
     });
 
     // Wait for more terms to load
-    await page.waitForResponse('api/v1/glossaryTerms?directChildrenOf*');
+    await infiniteScrollRequest;
     await page
       .locator('.glossary-terms-scroll-container [data-testid="loader"]')
       .waitFor({ state: 'detached' });

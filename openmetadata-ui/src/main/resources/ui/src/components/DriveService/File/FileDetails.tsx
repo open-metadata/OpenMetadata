@@ -13,7 +13,14 @@
 import { Col, Row, Tabs } from 'antd';
 import { AxiosError } from 'axios';
 import { EntityTags } from 'Models';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
@@ -58,11 +65,16 @@ import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
-import { EntityLineageTab } from '../../Lineage/EntityLineageTab/EntityLineageTab';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import { FileDetailsProps } from './FileDetails.interface';
+
+const EntityLineageTab = lazy(() =>
+  import('../../Lineage/EntityLineageTab/EntityLineageTab').then((module) => ({
+    default: module.EntityLineageTab,
+  }))
+);
 
 function FileDetails({
   fileDetails,
@@ -290,12 +302,14 @@ function FileDetails({
         />
       ),
       lineageTab: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={fileDetails as SourceType}
-          entityType={EntityType.FILE}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={fileDetails as SourceType}
+            entityType={EntityType.FILE}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
       customPropertiesTab: fileDetails && (
         <CustomPropertyTable<EntityType.FILE>
