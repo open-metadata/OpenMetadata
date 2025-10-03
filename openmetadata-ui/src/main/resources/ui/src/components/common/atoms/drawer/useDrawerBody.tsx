@@ -12,7 +12,7 @@
  */
 
 import { Box, CircularProgress } from '@mui/material';
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useRef } from 'react';
 
 export interface DrawerBodyConfig {
   children?: ReactNode;
@@ -54,6 +54,14 @@ export interface DrawerBodyConfig {
  */
 export const useDrawerBody = (config: DrawerBodyConfig = {}) => {
   const { children, loading, loadingMessage, padding = 6, sx = {} } = config;
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      const parentScrollHeight = ref.current.parentElement?.scrollHeight || 0;
+      ref.current.style.height = parentScrollHeight + 'px';
+    }
+  }, [loading]);
 
   const drawerBody = useMemo(
     () => (
@@ -67,6 +75,7 @@ export const useDrawerBody = (config: DrawerBodyConfig = {}) => {
         }}>
         {loading && (
           <Box
+            ref={ref}
             sx={{
               position: 'absolute',
               top: 0,
