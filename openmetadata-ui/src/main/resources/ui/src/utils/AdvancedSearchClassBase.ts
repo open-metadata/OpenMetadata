@@ -43,6 +43,7 @@ import {
   getCustomPropertyAdvanceSearchEnumOptions,
   renderAdvanceSearchButtons,
 } from './AdvancedSearchUtils';
+import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
@@ -174,9 +175,8 @@ class AdvancedSearchClassBase {
     isCaseInsensitive = false,
     q = '',
   }) => {
-    let pendingResolve:
-      | ((result: { values: any[]; hasMore: boolean }) => void)
-      | null = null;
+    let pendingResolve: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ((result: { values: any[]; hasMore: boolean }) => void) | null = null;
     const debouncedFetch = debounce((search: string) => {
       const sourceFields = isCaseInsensitive
         ? EntitySourceFields?.[entityField as EntityFields]?.join(',')
@@ -887,7 +887,21 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG, SearchIndex.GLOSSARY_TERM],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            q: `{"query":{"bool":{"must":[{"bool":{"must_not":{"term":{"classification.name.keyword":"tier"}}}},{"bool":{"must_not":{"term":{"classification.name.keyword":"certification"}}}}]}}}`,
+            q: buildTermQuery(
+              [
+                {
+                  field: 'classification.name.keyword',
+                  value: 'tier',
+                  negate: true,
+                },
+                {
+                  field: 'classification.name.keyword',
+                  value: 'certification',
+                  negate: true,
+                },
+              ],
+              true
+            ) as string,
           }),
           useAsyncSearch: true,
         },
@@ -901,7 +915,13 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            q: `{"query":{"bool":{"must":{"term":{"classification.name.keyword":"certification"}}}}}`,
+            q: buildTermQuery(
+              {
+                field: 'classification.name.keyword',
+                value: 'certification',
+              },
+              true
+            ) as string,
           }),
           useAsyncSearch: true,
         },
@@ -915,7 +935,13 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: [SearchIndex.TAG],
             entityField: EntityFields.FULLY_QUALIFIED_NAME,
-            q: `{"query":{"bool":{"must":{"term":{"classification.name.keyword":"tier"}}}}}`,
+            q: buildTermQuery(
+              {
+                field: 'classification.name.keyword',
+                value: 'tier',
+              },
+              true
+            ) as string,
           }),
           useAsyncSearch: true,
         },
