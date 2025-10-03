@@ -168,7 +168,8 @@ export const getAggregateFieldOptions = (
   field: string,
   value: string,
   q: string,
-  sourceFields?: string
+  sourceFields?: string,
+  deleted = false
 ) => {
   const withWildCardValue = value
     ? `.*${escapeESReservedCharacters(value)}.*`
@@ -179,6 +180,7 @@ export const getAggregateFieldOptions = (
     value: withWildCardValue,
     q,
     sourceFields,
+    deleted,
   };
 
   return APIClient.get<SearchResponse<ExploreSearchIndex>>(

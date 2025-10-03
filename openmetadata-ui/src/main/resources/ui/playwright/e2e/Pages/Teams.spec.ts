@@ -798,7 +798,7 @@ test.describe('Teams Page with Data Consumer User', () => {
       dataConsumerPage.getByTestId('edit-team-name')
     ).not.toBeVisible();
     await expect(dataConsumerPage.getByTestId('add-domain')).not.toBeVisible();
-    await expect(dataConsumerPage.getByTestId('edit-owner')).not.toBeVisible();
+    await expect(dataConsumerPage.getByTestId('edit-owner')).toBeVisible();
     await expect(dataConsumerPage.getByTestId('edit-email')).not.toBeVisible();
     await expect(
       dataConsumerPage.getByTestId('edit-team-subscription')
@@ -969,11 +969,11 @@ test.describe('Teams Page action as Owner of Team', () => {
       state: 'detached',
     });
 
+    await expect(ownerUserPage.getByTestId('edit-owner')).toBeVisible();
+
     await expect(ownerUserPage.getByTestId('manage-button')).not.toBeVisible();
 
     await expect(ownerUserPage.getByTestId('add-domain')).not.toBeVisible();
-
-    await expect(ownerUserPage.getByTestId('edit-owner')).not.toBeVisible();
 
     await expect(ownerUserPage.getByTestId('edit-email')).not.toBeVisible();
 
@@ -986,6 +986,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 
@@ -993,6 +994,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team2, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 
@@ -1000,6 +1002,7 @@ test.describe('Teams Page action as Owner of Team', () => {
     await executionOnOwnerTeam(ownerUserPage, team3, {
       domain: domain,
       email: teamDetails.updatedEmail,
+      user: user.responseData.displayName,
     });
   });
 

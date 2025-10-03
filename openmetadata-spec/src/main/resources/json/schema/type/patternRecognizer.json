@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/type/patternRecognizer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PatternRecognizer",
+  "description": "Pattern-based recognizer using regular expressions",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PatternRecognizer",
+  "properties": {
+    "type": {
+      "const": "pattern"
+    },
+    "patterns": {
+      "description": "List of patterns",
+      "type": "array",
+      "items": {
+        "$ref": "recognizers/patterns.json"
+      },
+      "default": []
+    },
+    "regexFlags": {
+      "$ref": "recognizers/regexFlags.json"
+    },
+    "context": {
+      "description": "List of context words that can help boost confidence score",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "supportedEntity": {
+      "description": "The entity type this recognizer detects",
+      "$ref": "piiEntity.json"
+    },
+    "supportedLanguage": {
+      "description": "Language supported by this recognizer (ISO 639-1 code)",
+      "type": "string",
+      "default": "en",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    }
+  },
+  "required": ["type", "patterns", "supportedEntity", "supportedLanguage", "regexFlags", "context"],
+  "additionalProperties": false
+}
