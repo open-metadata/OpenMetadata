@@ -15,13 +15,13 @@ import { Autocomplete, Box, TextField } from '@mui/material';
 import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
-    FC,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagSource } from '../../../generated/entity/data/container';
