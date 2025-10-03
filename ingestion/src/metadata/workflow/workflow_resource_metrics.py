@@ -14,6 +14,7 @@ Module to capture resource metrics for workflow execution monitoring
 """
 
 import os
+from typing import Optional
 
 import psutil
 
@@ -21,9 +22,9 @@ import psutil
 class WorkflowResourceMetrics:
     """Captures CPU and memory metrics for a workflow process and all its children."""
 
-    def __init__(self, pid=None):
+    def __init__(self, pid: Optional[int] = None):
         """Initialize metrics for the given process ID (defaults to current process)."""
-        self.pid = pid or os.getpid()
+        self.pid: int = pid or os.getpid()
         self._collect_metrics()
 
     def _collect_metrics(self):
@@ -65,27 +66,27 @@ class WorkflowResourceMetrics:
             )  # Logical cores (with hyperthreading)
 
             # Store computed metrics
-            self.cpu_usage_percent = total_cpu
-            self.memory_used_rss_bytes = total_mem_rss
-            self.memory_used_mb = total_mem_rss / (1024 * 1024)
-            self.memory_total_mb = system_mem.total / (1024 * 1024)
-            self.memory_usage_percent = (total_mem_rss / system_mem.total) * 100
-            self.active_processes = process_count
-            self.active_threads = total_threads
-            self.system_cpu_cores = cpu_cores or 1
-            self.system_cpu_threads = cpu_logical or 1
+            self.cpu_usage_percent: float = total_cpu
+            self.memory_used_rss_bytes: int = total_mem_rss
+            self.memory_used_mb: float = total_mem_rss / (1024 * 1024)
+            self.memory_total_mb: float = system_mem.total / (1024 * 1024)
+            self.memory_usage_percent: float = (total_mem_rss / system_mem.total) * 100
+            self.active_processes: int = process_count
+            self.active_threads: int = total_threads
+            self.system_cpu_cores: int = cpu_cores or 1
+            self.system_cpu_threads: int = cpu_logical or 1
 
         except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
             # Fallback values if process metrics cannot be collected
-            self.cpu_usage_percent = 0.0
-            self.memory_used_rss_bytes = 0
-            self.memory_used_mb = 0.0
-            self.memory_total_mb = 0.0
-            self.memory_usage_percent = 0.0
-            self.active_processes = 0
-            self.active_threads = 0
-            self.system_cpu_cores = 1
-            self.system_cpu_threads = 1
+            self.cpu_usage_percent: float = 0.0
+            self.memory_used_rss_bytes: int = 0
+            self.memory_used_mb: float = 0.0
+            self.memory_total_mb: float = 0.0
+            self.memory_usage_percent: float = 0.0
+            self.active_processes: int = 0
+            self.active_threads: int = 0
+            self.system_cpu_cores: int = 1
+            self.system_cpu_threads: int = 1
 
     def to_dict(self):
         """Return metrics as a dictionary."""
