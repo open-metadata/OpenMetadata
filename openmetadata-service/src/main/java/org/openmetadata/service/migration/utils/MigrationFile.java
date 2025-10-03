@@ -154,6 +154,10 @@ public class MigrationFile implements Comparable<MigrationFile> {
     return postDDLScripts;
   }
 
+  public String getDirPath() {
+    return this.dir.getAbsolutePath();
+  }
+
   private int[] convertToNumber(String version) {
     final String[] split = version.split("\\-")[0].split("\\.");
     int[] numbers = new int[split.length];
