@@ -46,6 +46,7 @@ import org.openmetadata.schema.services.connections.database.UnityCatalogConnect
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
+import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
@@ -78,6 +79,7 @@ public final class ClassConverterFactory {
             Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
             Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
             Map.entry(GCSConnection.class, new GcpConnectionClassConverter()),
+            Map.entry(GoogleDriveConnection.class, new GoogleDriveConnectionClassConverter()),
             Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
             Map.entry(IcebergConnection.class, new IcebergConnectionClassConverter()),
             Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),
