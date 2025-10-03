@@ -12,25 +12,24 @@
  */
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { get, omit, pick } from 'lodash';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column-new.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
 import {
   ColumnLevelLineageNode,
   EdgeDetails,
 } from '../../components/Lineage/Lineage.interface';
-import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
-import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
-
-import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
-import { ReactComponent as TableIcon } from '../../assets/svg/ic-table.svg';
 import {
   EImpactLevel,
   LineageNodeData,
 } from '../../components/LineageTable/LineageTable.interface';
+import { LineageDirection } from '../../generated/api/lineage/lineageDirection';
 import { TableSearchSource } from '../../interface/search.interface';
+import { QueryFieldInterface } from '../../pages/ExplorePage/ExplorePage.interface';
 import i18n from '../i18next/LocalUtil';
 
 export const LINEAGE_IMPACT_OPTIONS = [
   {
-    label: i18n.t('label.table-level'),
+    label: i18n.t('label.asset-level'),
     key: EImpactLevel.TableLevel,
     icon: <TableIcon />,
   },
@@ -63,8 +62,8 @@ export const prepareColumnLevelNodesFromEdges = (
     direction === LineageDirection.Upstream ? 'fromEntity' : 'toEntity';
 
   return edges.reduce((acc: ColumnLevelLineageNode[], node: EdgeDetails) => {
-    if (node.columns?.length ?? 0 > 0) {
-      node.columns?.forEach((col) => {
+    if ((node.columns?.length ?? 0) > 0) {
+      for (const col of node.columns ?? []) {
         const entityData = get(
           nodes[node[entityKey].fullyQualifiedName ?? ''],
           'entity'
@@ -93,7 +92,7 @@ export const prepareColumnLevelNodesFromEdges = (
           nodeDepth,
           ...picked,
         });
-      });
+      }
     }
 
     return acc;
