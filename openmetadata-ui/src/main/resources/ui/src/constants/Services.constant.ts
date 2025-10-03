@@ -466,6 +466,7 @@ export const BETA_SERVICES = [
   DatabaseServiceType.Epic,
   DashboardServiceType.Grafana,
   DatabaseServiceType.ServiceNow,
+  DatabaseServiceType.Timescale,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

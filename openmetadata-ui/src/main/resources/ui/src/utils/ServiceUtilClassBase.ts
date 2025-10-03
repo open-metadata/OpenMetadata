@@ -186,6 +186,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Snowplow,
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
+    DatabaseServiceType.ServiceNow,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
