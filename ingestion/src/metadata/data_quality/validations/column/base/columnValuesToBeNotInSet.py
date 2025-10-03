@@ -16,7 +16,7 @@ Validator for column value to be not in set test case
 import traceback
 from abc import abstractmethod
 from ast import literal_eval
-from typing import Union
+from typing import List, Union
 
 from sqlalchemy import Column
 
@@ -26,6 +26,7 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.entity_link import get_table_fqn
 from metadata.utils.logger import test_suite_logger
@@ -39,11 +40,14 @@ COUNT_FORBIDDEN_VALUES = "countForbiddenValues"
 class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
     """Validator for column value to be not in set test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
 
         Returns:
-            TestCaseResult:
+            TestCaseResult: The test case result for the overall validation
         """
         forbidden_values = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore
@@ -83,6 +87,19 @@ class BaseColumnValuesToBeNotInSetValidator(BaseTestValidator):
             row_count=row_count,
             failed_rows=res,
         )
+
+    def _run_dimensional_validation(self) -> List[DimensionResult]:
+        """Execute dimensional validation for this test
+
+        This method should implement the dimensional logic specific to each test type.
+        It will be called automatically by the template method when dimensionColumns
+        are configured in the test case.
+
+        Returns:
+            List[DimensionResult]: List of dimension-specific test results
+        """
+        # Default implementation returns empty list
+        return []
 
     @abstractmethod
     def _get_column_name(self):
