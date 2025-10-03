@@ -1421,7 +1421,8 @@ public class SystemRepository {
           .withMessage(
               String.format(
                   "Connected to S3 bucket: %s in region %s",
-                  logStorageConfig.getBucketName(), logStorageConfig.getRegion()));
+                  logStorageConfig.getBucketName(),
+                  logStorageConfig.getAwsConfig().getAwsRegion()));
     } catch (Exception e) {
       return new StepValidation()
           .withDescription("S3 Log Storage")

@@ -4656,6 +4656,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -4834,6 +4838,10 @@ export interface TestConnectionResult {
      * Detailed error log in case of failure
      */
     errorLog?: string;
+    /**
+     * The actual query that was executed (may be transpiled or modified from the original)
+     */
+    executedQuery?: string;
 }
 
 export interface ReverseIngestionOperationResult {

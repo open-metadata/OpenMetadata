@@ -1117,11 +1117,12 @@ test.describe('User Profile Persona Interactions', () => {
 
       await persona2OptionTestId.click();
 
+      const personaEditResponse = adminPage.waitForResponse('/api/v1/users/*');
       // Save the changes
       await adminPage
         .locator('[data-testid="user-profile-persona-edit-save"]')
         .click();
-      await adminPage.waitForResponse('/api/v1/users/*');
+      await personaEditResponse;
     });
 
     // Test adding default persona
