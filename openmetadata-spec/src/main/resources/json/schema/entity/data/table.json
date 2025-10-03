@@ -173,7 +173,8 @@
         "MEASURE VISIBLE",
         "MEASURE",
         "KPI",
-        "HEIRARCHY"
+        "HEIRARCHY",
+        "HIERARCHYID"
       ]
     },
     "constraint": {
