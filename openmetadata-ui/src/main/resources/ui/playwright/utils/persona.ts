@@ -112,3 +112,29 @@ export const removePersonaDefault = async (
   await removeDefaultConfirmationModal.getByText('Yes').click();
   await removeDefaultResponse;
 };
+
+export const navigateToPersonaWithPagination = async (
+  page: Page,
+  personaName: string,
+  click = true,
+  maxPages = 15
+) => {
+  for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    const locator = page.getByTestId(`persona-details-card-${personaName}`);
+
+    // Check if element is visible on current page
+    if (await locator.isVisible()) {
+      if (click) {
+        await locator.click();
+      }
+
+      return;
+    }
+
+    const nextBtn = page.locator('[data-testid="next"]');
+    await nextBtn.waitFor({ state: 'visible' });
+
+    await nextBtn.click();
+    await page.waitForLoadState('networkidle');
+  }
+};

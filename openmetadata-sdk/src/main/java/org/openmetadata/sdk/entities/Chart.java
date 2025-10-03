@@ -26,29 +26,7 @@ public class Chart {
 
   // Static CRUD methods
   public static org.openmetadata.schema.entity.data.Chart create(CreateChart request) {
-    // Convert CreateChart to Chart entity
-    org.openmetadata.schema.entity.data.Chart chart =
-        new org.openmetadata.schema.entity.data.Chart();
-    chart.setName(request.getName());
-    if (request.getDisplayName() != null) {
-      chart.setDisplayName(request.getDisplayName());
-    }
-    if (request.getDescription() != null) {
-      chart.setDescription(request.getDescription());
-    }
-    if (request.getOwners() != null) {
-      chart.setOwners(request.getOwners());
-    }
-    if (request.getTags() != null) {
-      chart.setTags(request.getTags());
-    }
-    if (request.getService() != null) {
-      chart.setService(
-          new org.openmetadata.schema.type.EntityReference()
-              .withFullyQualifiedName(request.getService())
-              .withType("dashboardService"));
-    }
-    return getClient().charts().create(chart);
+    return getClient().charts().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.Chart retrieve(String id) {

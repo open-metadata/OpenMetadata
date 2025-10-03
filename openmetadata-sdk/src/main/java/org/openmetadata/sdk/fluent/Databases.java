@@ -3,6 +3,8 @@ package org.openmetadata.sdk.fluent;
 import java.util.*;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.collections.DatabaseCollection;
 
@@ -171,7 +173,7 @@ public final class Databases {
     }
 
     public DatabaseFinder includeAll() {
-      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains"));
+      includes.addAll(Arrays.asList("owners", "tags", "followers", "domains", "dataProducts"));
       return this;
     }
 
@@ -291,6 +293,30 @@ public final class Databases {
 
     public FluentDatabase withDisplayName(String displayName) {
       database.setDisplayName(displayName);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabase withOwners(List<EntityReference> owners) {
+      database.setOwners(owners);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabase withTags(List<TagLabel> tags) {
+      database.setTags(tags);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabase withDomains(List<EntityReference> domain) {
+      database.setDomains(domain);
+      modified = true;
+      return this;
+    }
+
+    public FluentDatabase withDataProducts(List<EntityReference> dataProducts) {
+      database.setDataProducts(dataProducts);
       modified = true;
       return this;
     }

@@ -208,7 +208,9 @@ class OMetaLogsMixin:
         try:
 
             # Initialize log stream with the server
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/init"
+            url = (
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            )
 
             init_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",

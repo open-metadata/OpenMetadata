@@ -25,6 +25,7 @@ const mockHandleClosePanel = jest.fn();
 jest.mock('../../../utils/EntityUtils', () => ({
   getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
   getEntityName: jest.fn().mockImplementation(() => 'displayName'),
+  getEntityOverview: jest.fn().mockImplementation(() => []),
 }));
 jest.mock('../../../utils/StringsUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
