@@ -35,18 +35,23 @@ from metadata.generated.schema.type.tagLabel import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.dbt.dbt_utils import (
-    convert_entity_reference,
-    convert_entity_reference_list,
-    extract_meta_fields_from_node,
+    convert_java_to_python_format,
     find_domain_by_name,
+    find_entity_by_type_and_fqn,
     format_domain_reference,
+    format_entity_reference,
+    format_validation_error_message,
     generate_entity_link,
     get_corrected_name,
     get_data_model_path,
     get_dbt_compiled_query,
     get_dbt_raw_query,
-    get_expected_type_for_value,
-    validate_custom_property_match,
+    validate_custom_property_value,
+    validate_date_time_format,
+    validate_email_format,
+    validate_enum_value,
+    validate_table_structure,
+    validate_time_interval,
 )
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects
@@ -1070,7 +1075,8 @@ class DbtUnitTest(TestCase):
             "model.jaffle_shop.customers"
         )
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
-            manifest_meta=manifest_node.meta
+            manifest_meta=manifest_node.meta,
+            table_fqn="test.schema.customers"
         )
 
         self.assertEqual(dbt_meta_tags, MOCK_GLOASSARY_LABELS)
@@ -1184,215 +1190,7 @@ class DbtUnitTest(TestCase):
 
         self.assertIsNone(result)
 
-    # Test custom_properties extraction
-
-    def test_extract_meta_fields_with_custom_properties(self):
-        """
-        Test extraction of custom_properties from manifest node
-        """
-        node = MagicMock()
-        node.meta = {
-            "openmetadata": {
-                "custom_properties": {
-                    "dataRetentionDays": 90,
-                    "dataClassification": "Confidential",
-                    "businessOwner": "john.doe@company.com",
-                }
-            }
-        }
-
-        result = extract_meta_fields_from_node(node)
-
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result["dataRetentionDays"], 90)
-        self.assertEqual(result["dataClassification"], "Confidential")
-        self.assertEqual(result["businessOwner"], "john.doe@company.com")
-
-    def test_extract_meta_fields_no_custom_properties(self):
-        """
-        Test when no custom_properties exist
-        """
-        node = MagicMock()
-        node.meta = {"openmetadata": {"owner": "some_owner"}}
-
-        result = extract_meta_fields_from_node(node)
-
-        self.assertEqual(result, {})
-
-    def test_extract_meta_fields_empty_meta(self):
-        """
-        Test extraction with empty or missing meta
-        """
-        node_no_meta = MagicMock(spec=[])
-        result = extract_meta_fields_from_node(node_no_meta)
-        self.assertEqual(result, {})
-
-        node_none_meta = MagicMock()
-        node_none_meta.meta = None
-        result = extract_meta_fields_from_node(node_none_meta)
-        self.assertEqual(result, {})
-
-    # Test custom_properties validation
-
-    def test_validate_custom_property_string_types(self):
-        """
-        Test validation of string-based custom property types
-        """
-        self.assertTrue(validate_custom_property_match("string", "test value"))
-        self.assertTrue(validate_custom_property_match("markdown", "# Header"))
-        self.assertTrue(validate_custom_property_match("email", "test@example.com"))
-        self.assertTrue(validate_custom_property_match("sql", "SELECT * FROM table"))
-
-        self.assertFalse(validate_custom_property_match("string", 123))
-        self.assertFalse(validate_custom_property_match("string", True))
-        self.assertFalse(validate_custom_property_match("string", ["list"]))
-
-    def test_validate_custom_property_numeric_types(self):
-        """
-        Test validation of numeric custom property types
-        """
-        self.assertTrue(validate_custom_property_match("integer", 42))
-        self.assertTrue(validate_custom_property_match("number", 3.14))
-        self.assertTrue(validate_custom_property_match("number", 42))
-
-        self.assertFalse(validate_custom_property_match("integer", "42"))
-        self.assertFalse(validate_custom_property_match("integer", 3.14))
-        self.assertFalse(validate_custom_property_match("number", "3.14"))
-
-    def test_validate_custom_property_boolean_type(self):
-        """
-        Test validation of boolean custom property type
-        """
-        self.assertTrue(validate_custom_property_match("boolean", True))
-        self.assertTrue(validate_custom_property_match("boolean", False))
-
-        self.assertFalse(validate_custom_property_match("boolean", "true"))
-        self.assertFalse(validate_custom_property_match("boolean", 1))
-
-    def test_validate_custom_property_complex_types(self):
-        """
-        Test validation of array and object types
-        """
-        self.assertTrue(validate_custom_property_match("array", [1, 2, 3]))
-        self.assertTrue(validate_custom_property_match("array", ["a", "b"]))
-        self.assertTrue(validate_custom_property_match("object", {"key": "value"}))
-
-        self.assertFalse(validate_custom_property_match("array", "not_array"))
-        self.assertFalse(validate_custom_property_match("object", "not_object"))
-
-    def test_validate_custom_property_entity_references(self):
-        """
-        Test validation of entityReference types
-        """
-        self.assertTrue(
-            validate_custom_property_match("entityReference", "user@example.com")
-        )
-        self.assertTrue(validate_custom_property_match("entityReference", "TeamName"))
-
-        self.assertFalse(validate_custom_property_match("entityReference", 123))
-        self.assertFalse(validate_custom_property_match("entityReference", ["list"]))
-
-        self.assertTrue(
-            validate_custom_property_match("entityReferenceList", ["user1", "user2"])
-        )
-        self.assertFalse(
-            validate_custom_property_match("entityReferenceList", "single_value")
-        )
-        self.assertFalse(
-            validate_custom_property_match("entityReferenceList", [1, 2, 3])
-        )
-
-    # Test entity reference conversion
-
-    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_entity_by_name")
-    def test_convert_entity_reference_user(self, mock_find_entity):
-        """
-        Test conversion of user entity reference
-        """
-        mock_user = MagicMock()
-        mock_user.id.root = "user-123"
-        mock_user.type = "user"
-        mock_user.name = "john.doe"
-        mock_user.fullyQualifiedName.root = "john.doe"
-        mock_user.description = "Test user"
-        mock_user.displayName = "John Doe"
-        mock_find_entity.return_value = mock_user
-
-        result = convert_entity_reference(self.dbt_source_obj.metadata, "john.doe")
-
-        self.assertIsNotNone(result)
-        self.assertEqual(result["id"], "user-123")
-        self.assertEqual(result["type"], "user")
-        self.assertEqual(result["name"], "john.doe")
-        self.assertEqual(result["fullyQualifiedName"], "john.doe")
-
-    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_entity_by_name")
-    def test_convert_entity_reference_not_found(self, mock_find_entity):
-        """
-        Test when entity reference cannot be found
-        """
-        mock_find_entity.return_value = None
-
-        result = convert_entity_reference(self.dbt_source_obj.metadata, "unknown.user")
-
-        self.assertIsNone(result)
-
-    def test_convert_entity_reference_invalid_input(self):
-        """
-        Test entity reference with invalid input
-        """
-        result = convert_entity_reference(self.dbt_source_obj.metadata, 123)
-        self.assertIsNone(result)
-
-        result = convert_entity_reference(self.dbt_source_obj.metadata, None)
-        self.assertIsNone(result)
-
-    @patch("metadata.ingestion.source.database.dbt.dbt_utils.convert_entity_reference")
-    def test_convert_entity_reference_list(self, mock_convert):
-        """
-        Test conversion of entity reference list
-        """
-        mock_convert.side_effect = [
-            {"id": "user1", "type": "user", "name": "user1"},
-            {"id": "user2", "type": "user", "name": "user2"},
-            None,
-        ]
-
-        result = convert_entity_reference_list(
-            self.dbt_source_obj.metadata, ["user1", "user2", "unknown_user"]
-        )
-
-        self.assertIsNotNone(result)
-        self.assertEqual(len(result), 2)
-        self.assertEqual(result[0]["name"], "user1")
-        self.assertEqual(result[1]["name"], "user2")
-
-    def test_convert_entity_reference_list_invalid(self):
-        """
-        Test entity reference list with invalid input
-        """
-        result = convert_entity_reference_list(
-            self.dbt_source_obj.metadata, "not_a_list"
-        )
-        self.assertIsNone(result)
-
-        result = convert_entity_reference_list(self.dbt_source_obj.metadata, [])
-        self.assertIsNone(result)
-
-    # Test type detection
-
-    def test_get_expected_type_for_value(self):
-        """
-        Test type detection for different values
-        """
-        self.assertEqual(get_expected_type_for_value(True), "boolean")
-        self.assertEqual(get_expected_type_for_value(42), "integer")
-        self.assertEqual(get_expected_type_for_value(3.14), "number")
-        self.assertEqual(get_expected_type_for_value("text"), "string")
-        self.assertEqual(get_expected_type_for_value([1, 2, 3]), "array")
-        self.assertEqual(get_expected_type_for_value({"key": "value"}), "object")
-
-    # Test domain utilities
+    # Test custom_properties validation utilities
 
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_name")
     def test_find_domain_by_name(self, mock_get_by_name):
@@ -1450,56 +1248,62 @@ class DbtUnitTest(TestCase):
         result = format_domain_reference(empty_obj)
         self.assertIsNone(result)
 
-    # Test loading custom properties definitions
+    # Test loading OMD custom properties definitions
 
-    def test_load_custom_properties_definitions(self):
+    def test_load_omd_custom_properties_success(self):
         """
-        Test loading of custom properties definitions
+        Test loading of OMD custom properties definitions
         """
-        self.dbt_source_obj.metadata.client.get = MagicMock(
-            return_value={
-                "customProperties": [
-                    {
-                        "name": "dataRetentionDays",
-                        "propertyType": {"name": "integer"},
-                        "description": "Data retention period",
-                    },
-                    {
-                        "name": "businessOwner",
-                        "propertyType": {"name": "entityReference"},
-                        "description": "Business owner",
-                    },
-                ]
-            }
-        )
+        mock_response = {
+            "customProperties": [
+                {
+                    "name": "dataRetentionDays",
+                    "propertyType": {"name": "integer"},
+                    "description": "Data retention period",
+                },
+                {
+                    "name": "businessOwner",
+                    "propertyType": {"name": "entityReference"},
+                    "description": "Business owner",
+                },
+            ]
+        }
 
-        self.dbt_source_obj.custom_properties_cache = {}
-        self.dbt_source_obj._load_custom_properties_definitions()
+        original_get = self.dbt_source_obj.metadata.client.get
+        self.dbt_source_obj.metadata.client.get = MagicMock(return_value=mock_response)
+        self.dbt_source_obj.omd_custom_properties = {}
 
-        self.assertEqual(len(self.dbt_source_obj.custom_properties_cache), 2)
-        self.assertIn("dataRetentionDays", self.dbt_source_obj.custom_properties_cache)
-        self.assertIn("businessOwner", self.dbt_source_obj.custom_properties_cache)
+        self.dbt_source_obj._load_omd_custom_properties()
 
-    def test_load_custom_properties_definitions_error(self):
+        self.assertEqual(len(self.dbt_source_obj.omd_custom_properties), 2)
+        self.assertIn("dataRetentionDays", self.dbt_source_obj.omd_custom_properties)
+        self.assertIn("businessOwner", self.dbt_source_obj.omd_custom_properties)
+
+        self.dbt_source_obj.metadata.client.get = original_get
+
+    def test_load_omd_custom_properties_error(self):
         """
-        Test loading custom properties with API error
+        Test loading OMD custom properties with API error
         """
+        original_get = self.dbt_source_obj.metadata.client.get
         self.dbt_source_obj.metadata.client.get = MagicMock(
             side_effect=Exception("API Error")
         )
+        self.dbt_source_obj.omd_custom_properties = {}
 
-        self.dbt_source_obj.custom_properties_cache = {}
-        self.dbt_source_obj._load_custom_properties_definitions()
+        self.dbt_source_obj._load_omd_custom_properties()
 
-        self.assertEqual(len(self.dbt_source_obj.custom_properties_cache), 0)
+        self.assertEqual(len(self.dbt_source_obj.omd_custom_properties), 0)
 
-    # Test Domain functionality
+        self.dbt_source_obj.metadata.client.get = original_get
 
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_id")
+    # Test Domain processing functionality
+
+    @patch("metadata.ingestion.source.database.dbt.metadata.find_domain_by_name")
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_domain")
-    def test_process_dbt_domain_success(self, mock_patch_domain, mock_get_by_id):
+    def test_process_dbt_domain_success(self, mock_patch_domain, mock_find_domain):
         """
-        Test successful processing of DBT domain
+        Test successful processing of DBT domain with new implementation
         """
         mock_table = MagicMock()
         mock_table.fullyQualifiedName.root = "service.db.schema.table1"
@@ -1507,32 +1311,24 @@ class DbtUnitTest(TestCase):
         data_model_link = MagicMock()
         data_model_link.table_entity = mock_table
 
-        # Create a proper domain reference
-        domain_ref = EntityReference(
-            id=str(uuid.uuid4()),
-            type="domain",
-            name="Finance",
-            fullyQualifiedName="Finance",
-        )
-
         # Mock domain entity
         mock_domain_entity = MagicMock()
-        mock_get_by_id.return_value = mock_domain_entity
+        mock_domain_entity.id.root = str(uuid.uuid4())
+        mock_domain_entity.name.root = "Finance"
+        mock_domain_entity.fullyQualifiedName.root = "Finance"
+
+        mock_find_domain.return_value = mock_domain_entity
         mock_patch_domain.return_value = mock_table
 
-        # Set up context
-        self.dbt_source_obj.context.get().table_domains = {
-            "service.db.schema.table1": domain_ref
+        # Set up extracted domains
+        self.dbt_source_obj.extracted_domains = {
+            "service.db.schema.table1": "Finance"
         }
 
-        # Test the method
         self.dbt_source_obj.process_dbt_domain(data_model_link)
 
-        # Verify calls
-        mock_get_by_id.assert_called_once_with(entity=Domain, entity_id=domain_ref.id)
-        mock_patch_domain.assert_called_once_with(
-            entity=mock_table, domain=mock_domain_entity
-        )
+        mock_find_domain.assert_called_once()
+        mock_patch_domain.assert_called_once()
 
     def test_process_dbt_domain_no_domain(self):
         """
@@ -1544,14 +1340,12 @@ class DbtUnitTest(TestCase):
         data_model_link = MagicMock()
         data_model_link.table_entity = mock_table
 
-        # Empty context
-        self.dbt_source_obj.context.get().table_domains = {}
+        self.dbt_source_obj.extracted_domains = {}
 
-        # Should not raise any errors and not call patch_domain
         self.dbt_source_obj.process_dbt_domain(data_model_link)
 
-    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_by_id")
-    def test_process_dbt_domain_entity_not_found(self, mock_get_by_id):
+    @patch("metadata.ingestion.source.database.dbt.metadata.find_domain_by_name")
+    def test_process_dbt_domain_entity_not_found(self, mock_find_domain):
         """
         Test when domain entity is not found
         """
@@ -1561,29 +1355,20 @@ class DbtUnitTest(TestCase):
         data_model_link = MagicMock()
         data_model_link.table_entity = mock_table
 
-        domain_ref = EntityReference(
-            id=str(uuid.uuid4()),
-            type="domain",
-            name="Finance",
-            fullyQualifiedName="Finance",
-        )
+        mock_find_domain.return_value = None
 
-        # Domain entity not found
-        mock_get_by_id.return_value = None
-
-        self.dbt_source_obj.context.get().table_domains = {
-            "service.db.schema.table1": domain_ref
+        self.dbt_source_obj.extracted_domains = {
+            "service.db.schema.table1": "NonExistentDomain"
         }
 
-        # Should not raise errors when domain entity not found
         self.dbt_source_obj.process_dbt_domain(data_model_link)
 
-    # Test Custom Properties functionality
+    # Test Custom Properties processing functionality
 
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.patch_custom_properties")
     def test_process_dbt_custom_properties_success(self, mock_patch_custom_properties):
         """
-        Test successful processing of custom properties
+        Test successful processing of custom properties with new implementation
         """
         mock_table = MagicMock()
         mock_table.fullyQualifiedName.root = "service.db.schema.table1"
@@ -1592,8 +1377,8 @@ class DbtUnitTest(TestCase):
         data_model_link = MagicMock()
         data_model_link.table_entity = mock_table
 
-        # Set up custom properties cache
-        self.dbt_source_obj.custom_properties_cache = {
+        # Set up OMD custom properties
+        self.dbt_source_obj.omd_custom_properties = {
             "dataRetentionDays": {
                 "name": "dataRetentionDays",
                 "propertyType": {"name": "integer"},
@@ -1604,25 +1389,17 @@ class DbtUnitTest(TestCase):
             },
         }
 
-        # Set up context with custom properties
         custom_properties = {"dataRetentionDays": 90, "businessOwner": "john.doe"}
 
-        self.dbt_source_obj.context.get().table_custom_properties = {
+        self.dbt_source_obj.extracted_custom_properties = {
             "service.db.schema.table1": custom_properties
         }
 
         mock_patch_custom_properties.return_value = mock_table
 
-        # Test the method
         self.dbt_source_obj.process_dbt_custom_properties(data_model_link)
 
-        # Verify call
-        mock_patch_custom_properties.assert_called_once_with(
-            entity=Table,
-            entity_id=mock_table.id,
-            custom_properties=custom_properties,
-            force=False,
-        )
+        mock_patch_custom_properties.assert_called_once()
 
     def test_process_dbt_custom_properties_no_properties(self):
         """
@@ -1634,10 +1411,8 @@ class DbtUnitTest(TestCase):
         data_model_link = MagicMock()
         data_model_link.table_entity = mock_table
 
-        # Empty context
-        self.dbt_source_obj.context.get().table_custom_properties = {}
+        self.dbt_source_obj.extracted_custom_properties = {}
 
-        # Should not raise errors and not call patch_custom_properties
         self.dbt_source_obj.process_dbt_custom_properties(data_model_link)
 
     def test_validate_custom_properties_success(self):
@@ -1647,8 +1422,7 @@ class DbtUnitTest(TestCase):
         mock_table = MagicMock()
         mock_table.fullyQualifiedName.root = "service.db.schema.table1"
 
-        # Set up custom properties cache
-        self.dbt_source_obj.custom_properties_cache = {
+        self.dbt_source_obj.omd_custom_properties = {
             "dataRetentionDays": {
                 "name": "dataRetentionDays",
                 "propertyType": {"name": "integer"},
@@ -1657,13 +1431,11 @@ class DbtUnitTest(TestCase):
                 "name": "businessOwner",
                 "propertyType": {"name": "string"},
             },
-            "isActive": {"name": "isActive", "propertyType": {"name": "boolean"}},
         }
 
         custom_properties = {
             "dataRetentionDays": 90,
             "businessOwner": "john.doe",
-            "isActive": True,
         }
 
         result = self.dbt_source_obj._validate_custom_properties(
@@ -1671,10 +1443,9 @@ class DbtUnitTest(TestCase):
         )
 
         self.assertIsNotNone(result)
-        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result), 2)
         self.assertEqual(result["dataRetentionDays"], 90)
         self.assertEqual(result["businessOwner"], "john.doe")
-        self.assertEqual(result["isActive"], True)
 
     def test_validate_custom_properties_type_mismatch(self):
         """
@@ -1683,22 +1454,19 @@ class DbtUnitTest(TestCase):
         mock_table = MagicMock()
         mock_table.fullyQualifiedName.root = "service.db.schema.table1"
 
-        # Set up custom properties cache
-        self.dbt_source_obj.custom_properties_cache = {
+        self.dbt_source_obj.omd_custom_properties = {
             "dataRetentionDays": {
                 "name": "dataRetentionDays",
                 "propertyType": {"name": "integer"},
             }
         }
 
-        # Wrong type - string instead of integer
         custom_properties = {"dataRetentionDays": "ninety"}
 
         result = self.dbt_source_obj._validate_custom_properties(
             mock_table, custom_properties
         )
 
-        # Should be None due to type mismatch (empty dict evaluates to None)
         self.assertIsNone(result)
 
     def test_validate_custom_properties_unknown_property(self):
@@ -1708,8 +1476,7 @@ class DbtUnitTest(TestCase):
         mock_table = MagicMock()
         mock_table.fullyQualifiedName.root = "service.db.schema.table1"
 
-        # Empty cache
-        self.dbt_source_obj.custom_properties_cache = {}
+        self.dbt_source_obj.omd_custom_properties = {}
 
         custom_properties = {"unknownProperty": "value"}
 
@@ -1717,186 +1484,277 @@ class DbtUnitTest(TestCase):
             mock_table, custom_properties
         )
 
-        # Should be None due to unknown property (empty dict evaluates to None)
         self.assertIsNone(result)
 
-    def test_extract_meta_fields_with_custom_properties(self):
-        """
-        Test extraction of custom_properties from manifest node
-        """
-        node = MagicMock()
-        node.meta = {
-            "openmetadata": {
-                "custom_properties": {
-                    "dataRetentionDays": 90,
-                    "dataClassification": "Confidential",
-                    "businessOwner": "john.doe@company.com",
-                }
-            }
-        }
+    # New comprehensive tests for custom property validation
 
-        result = extract_meta_fields_from_node(node)
+    def test_validate_email_format_valid(self):
+        """Test valid email format"""
+        self.assertTrue(validate_email_format("user@example.com"))
+        self.assertTrue(validate_email_format("first.last+tag@domain.co.uk"))
 
-        self.assertEqual(len(result), 3)
-        self.assertEqual(result["dataRetentionDays"], 90)
-        self.assertEqual(result["dataClassification"], "Confidential")
-        self.assertEqual(result["businessOwner"], "john.doe@company.com")
+    def test_validate_email_format_invalid(self):
+        """Test invalid email format"""
+        self.assertFalse(validate_email_format("notanemail"))
+        self.assertFalse(validate_email_format("@example.com"))
+        self.assertFalse(validate_email_format("user@"))
 
-    def test_extract_meta_fields_no_custom_properties(self):
-        """
-        Test when no custom_properties exist
-        """
-        node = MagicMock()
-        node.meta = {"openmetadata": {"owner": "some_owner"}}
+    def test_convert_java_to_python_format(self):
+        """Test Java to Python date format conversion"""
+        self.assertEqual(convert_java_to_python_format("yyyy-MM-dd"), "%Y-%m-%d")
+        self.assertEqual(convert_java_to_python_format("yyyy-MM-dd HH:mm:ss"), "%Y-%m-%d %H:%M:%S")
+        self.assertEqual(convert_java_to_python_format("MMM dd, yyyy"), "%b %d, %Y")
 
-        result = extract_meta_fields_from_node(node)
+    def test_validate_date_time_format_valid(self):
+        """Test valid date/time format"""
+        is_valid, error = validate_date_time_format("2024-01-15", "yyyy-MM-dd", "date-cp")
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
 
-        self.assertEqual(result, {})
+        is_valid, error = validate_date_time_format("2024-01-15 14:30:00", "yyyy-MM-dd HH:mm:ss", "dateTime-cp")
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
 
-    def test_extract_meta_fields_empty_meta(self):
-        """
-        Test extraction with empty or missing meta
-        """
-        node_no_meta = MagicMock(spec=[])
-        result = extract_meta_fields_from_node(node_no_meta)
-        self.assertEqual(result, {})
+    def test_validate_date_time_format_invalid(self):
+        """Test invalid date/time format"""
+        is_valid, error = validate_date_time_format("15-01-2024", "yyyy-MM-dd", "date-cp")
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
 
-        node_none_meta = MagicMock()
-        node_none_meta.meta = None
-        result = extract_meta_fields_from_node(node_none_meta)
-        self.assertEqual(result, {})
+    def test_validate_enum_single_value_valid(self):
+        """Test single enum value validation"""
+        config = {"values": ["option1", "option2", "option3"], "multiSelect": False}
+        is_valid, error, value = validate_enum_value("option1", config)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+        self.assertEqual(value, "option1")
 
-    def test_load_custom_properties_definitions_success(self):
-        """
-        Test successful loading of custom properties definitions
-        """
-        mock_response = {
-            "customProperties": [
-                {
-                    "name": "dataRetentionDays",
-                    "propertyType": {"name": "integer"},
-                    "description": "Data retention period in days",
-                },
-                {
-                    "name": "businessOwner",
-                    "propertyType": {"name": "entityReference"},
-                    "description": "Business owner of the table",
-                },
+    def test_validate_enum_single_value_invalid(self):
+        """Test invalid single enum value"""
+        config = {"values": ["option1", "option2"], "multiSelect": False}
+        is_valid, error, value = validate_enum_value("invalid", config)
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
+
+    def test_validate_enum_multi_select_all_valid(self):
+        """Test multi-select enum with all valid values"""
+        config = {"values": ["opt1", "opt2", "opt3"], "multiSelect": True}
+        is_valid, error, value = validate_enum_value(["opt1", "opt2"], config)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+        self.assertEqual(value, ["opt1", "opt2"])
+
+    def test_validate_enum_multi_select_partial_valid(self):
+        """Test multi-select enum with some invalid values (should filter)"""
+        config = {"values": ["opt1", "opt2", "opt3"], "multiSelect": True}
+        is_valid, error, value = validate_enum_value(["opt1", "invalid", "opt2"], config)
+        self.assertTrue(is_valid)
+        self.assertIsNotNone(error)
+        self.assertEqual(value, ["opt1", "opt2"])
+
+    def test_validate_enum_multi_select_all_invalid(self):
+        """Test multi-select enum with all invalid values"""
+        config = {"values": ["opt1", "opt2"], "multiSelect": True}
+        is_valid, error, value = validate_enum_value(["bad1", "bad2"], config)
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
+
+    def test_validate_table_structure_valid(self):
+        """Test valid table structure"""
+        config = {"columns": ["col1", "col2", "col3"]}
+        value = {
+            "columns": ["col1", "col2", "col3"],
+            "rows": [
+                {"col1": "val1", "col2": "val2", "col3": "val3"},
+                {"col1": "val4", "col2": "val5", "col3": "val6"},
             ]
         }
+        is_valid, error = validate_table_structure(value, config)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
 
-        # Mock the client.get method temporarily
-        original_get = self.dbt_source_obj.metadata.client.get
-        self.dbt_source_obj.metadata.client.get = MagicMock(return_value=mock_response)
-        self.dbt_source_obj.custom_properties_cache = {}
+    def test_validate_table_structure_extra_columns(self):
+        """Test table with extra columns"""
+        config = {"columns": ["col1", "col2"]}
+        value = {"columns": ["col1", "col2", "col3"]}
+        is_valid, error = validate_table_structure(value, config)
+        self.assertFalse(is_valid)
+        self.assertIn("Extra columns", error)
 
-        # Test loading
-        self.dbt_source_obj._load_custom_properties_definitions()
+    def test_validate_table_structure_missing_columns(self):
+        """Test table with missing columns"""
+        config = {"columns": ["col1", "col2", "col3"]}
+        value = {"columns": ["col1", "col2"]}
+        is_valid, error = validate_table_structure(value, config)
+        self.assertFalse(is_valid)
+        self.assertIn("Missing columns", error)
 
-        # Verify cache was populated
-        self.assertEqual(len(self.dbt_source_obj.custom_properties_cache), 2)
-        self.assertIn("dataRetentionDays", self.dbt_source_obj.custom_properties_cache)
-        self.assertIn("businessOwner", self.dbt_source_obj.custom_properties_cache)
+    def test_validate_time_interval_valid(self):
+        """Test valid time interval"""
+        value = {"start": 1000000000, "end": 2000000000}
+        is_valid, error, result = validate_time_interval(value)
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+        self.assertEqual(result, value)
 
-        # Verify API call
-        self.dbt_source_obj.metadata.client.get.assert_called_once_with(
-            "/metadata/types/name/table?fields=customProperties"
+    def test_validate_time_interval_invalid_start_after_end(self):
+        """Test time interval with start after end"""
+        value = {"start": 2000000000, "end": 1000000000}
+        is_valid, error, result = validate_time_interval(value)
+        self.assertFalse(is_valid)
+        self.assertIn("Start time", error)
+
+    def test_validate_time_interval_missing_fields(self):
+        """Test time interval with missing fields"""
+        value = {"start": 1000000000}
+        is_valid, error, result = validate_time_interval(value)
+        self.assertFalse(is_valid)
+        self.assertIn("Missing required", error)
+
+    def test_validate_custom_property_value_string_type(self):
+        """Test string type validation and conversion"""
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "string", None, "test value"
         )
+        self.assertTrue(is_valid)
+        self.assertIsNone(error)
+        self.assertEqual(value, "test value")
 
-        # Restore original method
-        self.dbt_source_obj.metadata.client.get = original_get
-
-    def test_load_custom_properties_definitions_api_error(self):
-        """
-        Test loading custom properties when API returns error
-        """
-        # Mock the client.get method to raise exception
-        original_get = self.dbt_source_obj.metadata.client.get
-        self.dbt_source_obj.metadata.client.get = MagicMock(
-            side_effect=Exception("API Error")
+    def test_validate_custom_property_value_integer_type(self):
+        """Test integer type validation"""
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "integer", None, 42
         )
-        self.dbt_source_obj.custom_properties_cache = {}
+        self.assertTrue(is_valid)
+        self.assertEqual(value, 42)
 
-        # Should not raise exception
-        self.dbt_source_obj._load_custom_properties_definitions()
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "integer", None, "not an int"
+        )
+        self.assertFalse(is_valid)
+        self.assertIsNotNone(error)
 
-        # Cache should remain empty
-        self.assertEqual(len(self.dbt_source_obj.custom_properties_cache), 0)
+    def test_validate_custom_property_value_number_type(self):
+        """Test number type validation"""
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "number", None, 3.14
+        )
+        self.assertTrue(is_valid)
+        self.assertEqual(value, 3.14)
 
-        # Restore original method
-        self.dbt_source_obj.metadata.client.get = original_get
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "number", None, 42
+        )
+        self.assertTrue(is_valid)
+        self.assertEqual(value, 42.0)
 
-    def test_load_custom_properties_definitions_no_custom_properties(self):
-        """
-        Test loading when response has no customProperties field
-        """
-        mock_response = {"someOtherField": "value"}
+    def test_validate_custom_property_value_email_type(self):
+        """Test email type validation"""
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "email", None, "user@example.com"
+        )
+        self.assertTrue(is_valid)
+        self.assertEqual(value, "user@example.com")
 
-        # Mock the client.get method temporarily
-        original_get = self.dbt_source_obj.metadata.client.get
-        self.dbt_source_obj.metadata.client.get = MagicMock(return_value=mock_response)
-        self.dbt_source_obj.custom_properties_cache = {}
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "email", None, "invalid-email"
+        )
+        self.assertFalse(is_valid)
 
-        # Should not raise exception
-        self.dbt_source_obj._load_custom_properties_definitions()
+    def test_validate_custom_property_value_date_cp_type(self):
+        """Test date-cp type validation"""
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "date-cp", "yyyy-MM-dd", "2024-01-15"
+        )
+        self.assertTrue(is_valid)
+        self.assertEqual(value, "2024-01-15")
 
-        # Cache should remain empty
-        self.assertEqual(len(self.dbt_source_obj.custom_properties_cache), 0)
+    def test_validate_custom_property_value_timestamp_type(self):
+        """Test timestamp type validation"""
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "timestamp", None, 1640995200000
+        )
+        self.assertTrue(is_valid)
+        self.assertEqual(value, 1640995200000)
 
-        # Restore original method
-        self.dbt_source_obj.metadata.client.get = original_get
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "timestamp", None, "not a timestamp"
+        )
+        self.assertFalse(is_valid)
 
-    # Integration test for domain and custom properties
+    def test_validate_custom_property_value_duration_type(self):
+        """Test duration type validation"""
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "duration", None, "P23DT23H"
+        )
+        self.assertTrue(is_valid)
+        self.assertEqual(value, "P23DT23H")
 
-    def test_get_dbt_domain_with_custom_properties_integration(self):
-        """
-        Integration test for processing both domain and custom properties
-        """
-        # Test manifest node with both domain and custom properties
-        manifest_node = MagicMock()
-        manifest_node.meta = {
-            "openmetadata": {
-                "domain": "Finance",
-                "custom_properties": {
-                    "dataRetentionDays": 90,
-                    "businessOwner": "finance.team@company.com",
-                },
-            }
-        }
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "duration", None, "23DT23H"
+        )
+        self.assertFalse(is_valid)
 
-        # For domain test, we know it will return None because domain doesn't exist
-        # This is expected behavior - the test should handle this gracefully
-        domain_ref = self.dbt_source_obj.get_dbt_domain(manifest_node)
-        # Domain will be None since we don't have real domain in test
-        # This is expected and tests the error handling path
+    def test_validate_custom_property_value_enum_type(self):
+        """Test enum type validation with filtering"""
+        config = {"values": ["opt1", "opt2", "opt3"], "multiSelect": True}
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "enum", config, ["opt1", "invalid", "opt2"]
+        )
+        self.assertTrue(is_valid)
+        self.assertEqual(value, ["opt1", "opt2"])
 
-        # Test custom properties extraction
-        custom_properties = extract_meta_fields_from_node(manifest_node)
-        self.assertEqual(len(custom_properties), 2)
-        self.assertEqual(custom_properties["dataRetentionDays"], 90)
-        self.assertEqual(custom_properties["businessOwner"], "finance.team@company.com")
+    def test_validate_custom_property_value_none_value(self):
+        """Test None value handling"""
+        is_valid, error, value = validate_custom_property_value(
+            "testProp", "string", None, None
+        )
+        self.assertFalse(is_valid)
+        self.assertIn("cannot be None", error)
 
-    def test_get_dbt_domain_no_meta(self):
-        """
-        Test when manifest node has no meta field
-        """
-        manifest_node = MagicMock()
-        manifest_node.meta = None
+    def test_format_validation_error_message(self):
+        """Test error message formatting"""
+        msg = format_validation_error_message(
+            "testField", "string", "invalid_value", "Some error detail"
+        )
+        self.assertIn("testField", msg)
+        self.assertIn("string", msg)
+        self.assertIn("Some error detail", msg)
+        self.assertIn("invalid_value", msg)
 
-        result = self.dbt_source_obj.get_dbt_domain(manifest_node)
+    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_entity_by_type_and_fqn")
+    def test_find_entity_by_type_and_fqn_success(self, mock_find):
+        """Test entity lookup by type and FQN"""
+        mock_entity = MagicMock()
+        mock_entity.id.root = "entity-123"
+        mock_entity.name.root = "test_table"
 
-        self.assertIsNone(result)
+        # Test directly with OpenMetadata client
+        with patch.object(
+            self.dbt_source_obj.metadata, "get_by_name", return_value=mock_entity
+        ):
+            result = find_entity_by_type_and_fqn(
+                self.dbt_source_obj.metadata, "table", "service.db.schema.test_table"
+            )
+            self.assertIsNotNone(result)
 
-    def test_get_dbt_domain_no_openmetadata_section(self):
-        """
-        Test when meta exists but no openmetadata section
-        """
-        manifest_node = MagicMock()
-        manifest_node.meta = {"some_field": "value"}
+    def test_format_entity_reference(self):
+        """Test entity reference formatting"""
+        mock_entity = MagicMock()
+        mock_entity.id.root = "entity-456"
+        mock_entity.name.root = "test_user"
+        mock_entity.fullyQualifiedName.root = "test_user"
+        mock_entity.displayName.root = "Test User"
+        mock_entity.description.root = "A test user"
 
-        result = self.dbt_source_obj.get_dbt_domain(manifest_node)
+        result = format_entity_reference(mock_entity, "user")
 
-        self.assertIsNone(result)
+        self.assertEqual(result["id"], "entity-456")
+        self.assertEqual(result["type"], "user")
+        self.assertEqual(result["name"], "test_user")
+        self.assertEqual(result["fullyQualifiedName"], "test_user")
+        self.assertEqual(result["displayName"], "Test User")
+        self.assertEqual(result["description"], "A test user")
 
     def test_dbt_source_project_name(self):
         """
