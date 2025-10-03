@@ -39,6 +39,7 @@ import {
   CLICKHOUSE,
   COCKROACH,
   COUCHBASE,
+  CUSTOM_DRIVE_DEFAULT,
   CUSTOM_SEARCH_DEFAULT,
   CUSTOM_STORAGE_DEFAULT,
   DAGSTER,
@@ -59,6 +60,7 @@ import {
   FLINK,
   GCS,
   GLUE,
+  GOOGLE_DRIVE,
   GRAFANA,
   GREENPLUM,
   HEX,
@@ -123,6 +125,7 @@ import {
   ApiServiceTypeSmallCaseType,
   DashboardServiceTypeSmallCaseType,
   DatabaseServiceTypeSmallCaseType,
+  DriveServiceTypeSmallCaseType,
   MessagingServiceTypeSmallCaseType,
   MetadataServiceTypeSmallCaseType,
   MlModelServiceTypeSmallCaseType,
@@ -150,6 +153,7 @@ import { ConfigData, ServicesType } from '../interface/service.interface';
 import { getAPIConfig } from './APIServiceUtils';
 import { getDashboardConfig } from './DashboardServiceUtils';
 import { getDatabaseConfig } from './DatabaseServiceUtils';
+import { getDriveConfig } from './DriveServiceUtils';
 import { getMessagingConfig } from './MessagingServiceUtils';
 import { getMetadataConfig } from './MetadataServiceUtils';
 import { getMlmodelConfig } from './MlmodelServiceUtils';
@@ -179,8 +183,9 @@ class ServiceUtilClassBase {
     PipelineServiceType.Wherescape,
     SecurityServiceType.Ranger,
     DatabaseServiceType.Epic,
-    DriveServiceType.GoogleDrive,
     PipelineServiceType.Snowplow,
+    DriveServiceType.GoogleDrive,
+    DriveServiceType.SharePoint,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -232,6 +237,11 @@ class ServiceUtilClassBase {
     { [k: string]: string },
     SecurityServiceTypeSmallCaseType
   >(SecurityServiceType);
+
+  DriveServiceTypeSmallCase = this.convertEnumToLowerCase<
+    { [k: string]: string },
+    DriveServiceTypeSmallCaseType
+  >(DriveServiceType);
 
   protected updateUnsupportedServices(types: string[]) {
     this.unSupportedServices = types;
@@ -327,6 +337,9 @@ class ServiceUtilClassBase {
       apiServices: this.filterUnsupportedServiceType(
         Object.values(APIServiceType) as string[]
       ).sort(customServiceComparator),
+      driveServices: this.filterUnsupportedServiceType(
+        Object.values(DriveServiceType) as string[]
+      ).sort(customServiceComparator),
       securityServices: this.filterUnsupportedServiceType(
         Object.values(SecurityServiceType) as string[]
       ).sort(customServiceComparator),
@@ -371,6 +384,10 @@ class ServiceUtilClassBase {
 
     if (serviceTypes.securityServices.includes(serviceType)) {
       return EntityType.TABLE; // Security services typically work with tables
+    }
+
+    if (serviceTypes.driveServices.includes(serviceType)) {
+      return EntityType.DIRECTORY;
     }
 
     // Default fallback
@@ -664,6 +681,12 @@ class ServiceUtilClassBase {
       case this.DashboardServiceTypeSmallCase.Grafana:
         return GRAFANA;
 
+      case this.DriveServiceTypeSmallCase.CustomDrive:
+        return CUSTOM_DRIVE_DEFAULT;
+
+      case this.DriveServiceTypeSmallCase.GoogleDrive:
+        return GOOGLE_DRIVE;
+
       default: {
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
@@ -682,6 +705,8 @@ class ServiceUtilClassBase {
           logo = CUSTOM_SEARCH_DEFAULT;
         } else if (serviceTypes.securityServices.includes(type)) {
           logo = DEFAULT_SERVICE;
+        } else if (serviceTypes.driveServices.includes(type)) {
+          logo = CUSTOM_DRIVE_DEFAULT;
         } else {
           logo = DEFAULT_SERVICE;
         }
@@ -813,6 +838,9 @@ class ServiceUtilClassBase {
 
   public getSecurityServiceConfig(type: SecurityServiceType) {
     return getSecurityConfig(type);
+  }
+  public getDriveServiceConfig(type: DriveServiceType) {
+    return getDriveConfig(type);
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {

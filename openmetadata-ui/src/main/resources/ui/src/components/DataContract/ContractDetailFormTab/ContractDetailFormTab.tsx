@@ -37,6 +37,9 @@ export const ContractDetailFormTab: React.FC<{
       name: 'name',
       type: FieldTypes.TEXT,
       required: true,
+      placeholder: t('label.please-enter-entity-name', {
+        entity: t('label.contract'),
+      }),
       props: {
         'data-testid': 'contract-name',
       },
@@ -51,6 +54,9 @@ export const ContractDetailFormTab: React.FC<{
         owner: initialValues?.owners,
         hasPermission: true,
         multiple: { user: true, team: false },
+        placeholder: t('label.please-select-entity', {
+          entity: t('label.owner-plural'),
+        }),
       },
       formItemProps: {
         valuePropName: 'owners',
@@ -102,11 +108,7 @@ export const ContractDetailFormTab: React.FC<{
           </Form>
         </div>
       </Card>
-      <div className="d-flex justify-between m-t-md">
-        <Button className="contract-prev-button" type="default">
-          {t('label.contract-detail-plural')}
-        </Button>
-
+      <div className="d-flex justify-end  m-t-md">
         <Button
           className="contract-next-button"
           htmlType="submit"

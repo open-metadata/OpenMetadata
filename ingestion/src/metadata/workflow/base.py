@@ -53,6 +53,10 @@ from metadata.utils.class_helper import (
 from metadata.utils.execution_time_tracker import ExecutionTimeTracker
 from metadata.utils.helpers import datetime_to_ts
 from metadata.utils.logger import ingestion_logger, set_loggers_level
+from metadata.utils.streamable_logger import (
+    cleanup_streamable_logging,
+    setup_streamable_logging_for_workflow,
+)
 from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
@@ -109,6 +113,21 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         self.metadata = create_ometa_client(
             self.workflow_config.openMetadataServerConfig
         )
+
+        # Setup streamable logging if configured
+        if (
+            self.config.ingestionPipelineFQN
+            and self.config.pipelineRunId
+            and self.config.enableStreamableLogs
+        ):
+            setup_streamable_logging_for_workflow(
+                metadata=self.metadata,
+                pipeline_fqn=self.config.ingestionPipelineFQN,
+                run_id=self.config.pipelineRunId,
+                log_level=self.workflow_config.loggerLevel.value,
+                enable_streaming=True,
+            )
+
         self.set_ingestion_pipeline_status(state=PipelineState.running)
 
         self.post_init()
@@ -128,6 +147,10 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # Stop the timer first. This runs in a separate thread and if not properly closed
         # it can hung the workflow
         self.timer.stop()
+
+        # Cleanup streamable logging if it was configured
+        cleanup_streamable_logging()
+
         self.metadata.close()
 
         for step in self.workflow_steps():
@@ -235,6 +258,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         finally:
             ingestion_status = self.build_ingestion_status()
             self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
+            self.print_status()
             self.stop()
 
     @property
@@ -247,7 +271,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
             if self.config.pipelineRunId:
                 self._run_id = str(self.config.pipelineRunId.root)
             else:
-                self._run_id = str(uuid.uuid4())
+                self._run_id = str(uuid.uuid4())  # pylint: disable=no-member
 
         return self._run_id
 
@@ -293,6 +317,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                         ),
                         sourceConfig=self.config.source.sourceConfig,
                         airflowConfig=AirflowConfig(),
+                        enableStreamableLogs=self.config.enableStreamableLogs,
                     )
                 )
 

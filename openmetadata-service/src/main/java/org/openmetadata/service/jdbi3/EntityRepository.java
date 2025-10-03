@@ -48,7 +48,7 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.FIELD_VOTES;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.Entity.getEntityByName;
+import static org.openmetadata.service.Entity.findEntityByNameOrNull;
 import static org.openmetadata.service.Entity.getEntityFields;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.csvNotSupported;
@@ -585,8 +585,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entity.getEntityStatus() != null) {
       return;
     }
-    // Set default status to APPROVED
-    entity.setEntityStatus(EntityStatus.APPROVED);
+    // Set default status to UNPROCESSED
+    entity.setEntityStatus(EntityStatus.UNPROCESSED);
   }
 
   /**
@@ -1186,11 +1186,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
     entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
-    if (fields.contains(FIELD_ENTITY_STATUS)) {
-      if (entity.getEntityStatus() == null) {
-        entity.setEntityStatus(EntityStatus.APPROVED);
-      }
-    }
 
     setFields(entity, fields);
     return entity;
@@ -1491,6 +1486,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     entity.setIncrementalChangeDescription(change);
     entity.setChangeDescription(change);
+    // Populate followers before postUpdate to ensure propagation to children
+    entity.setFollowers(getFollowers(entity));
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
@@ -1966,6 +1963,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     entity.setChangeDescription(change);
     entity.setIncrementalChangeDescription(change);
+    // Populate followers before postUpdate to ensure propagation to children
+    entity.setFollowers(getFollowers(entity));
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
@@ -2466,7 +2465,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getTagFQN(),
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
-                tagLabel.getState().ordinal());
+                tagLabel.getState().ordinal(),
+                tagLabel.getReason());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -3057,6 +3057,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setDomains(
           !nullOrEmpty(parent.getDomains()) ? parent.getDomains() : Collections.emptyList());
       listOrEmpty(entity.getDomains()).forEach(domain -> domain.setInherited(true));
+    }
+  }
+
+  public final void inheritFollowers(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_FOLLOWERS) && nullOrEmpty(entity.getFollowers()) && parent != null) {
+      entity.setFollowers(
+          Optional.ofNullable(parent.getFollowers())
+              .filter(list -> !list.isEmpty())
+              .orElse(Collections.emptyList()));
+      listOrEmpty(entity.getFollowers()).forEach(follower -> follower.setInherited(true));
     }
   }
 
@@ -3660,10 +3670,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       this.original = original;
       this.updated = updated;
       this.operation = operation;
-      this.updatingUser =
+      User updatingUser =
           updated.getUpdatedBy().equalsIgnoreCase(ADMIN_USER_NAME)
               ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
-              : getEntityByName(USER, updated.getUpdatedBy(), "", NON_DELETED);
+              : findEntityByNameOrNull(USER, updated.getUpdatedBy(), ALL);
+      if (updatingUser == null) {
+        // user not found, create a new user with name
+        // This is to handle the case where the user is not found in the system. maybe deleted
+        updatingUser = new User().withName(updated.getUpdatedBy()).withIsAdmin(false);
+      }
+      this.updatingUser = updatingUser;
       this.changeSource = changeSource;
       this.useOptimisticLocking = useOptimisticLocking;
     }
@@ -3957,7 +3973,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityRepository.this.updateOwners(original, origOwners, updatedOwners);
         updated.setOwners(updatedOwners);
       } else {
-        updated.setOwners(origOwners); // Restore original owner
+        updated.setOwners(original.getOwners()); // Restore original owner
       }
     }
 
@@ -4228,6 +4244,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
       validateDataProducts(updatedDataProducts);
 
+      if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
+        // Revert change to non-empty DataProduct if it is being updated by a bot
+        // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
+        // updated with a PATCH request
+        updated.setDataProducts(original.getDataProducts());
+        return;
+      }
+
       if (nullOrEmpty(updated.getDomains()) && !nullOrEmpty(updatedDataProducts)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
@@ -4380,6 +4404,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
           "Updating certification - Original: {}, Updated: {}",
           origCertification,
           updatedCertification);
+
+      if (operation.isPut() && !nullOrEmpty(original.getCertification()) && updatedByBot()) {
+        // Revert change to non-empty certification if it is being updated by a bot
+        // This is to prevent bots from overwriting the certification. Certification need to be
+        // updated with a PATCH request
+        updated.setCertification(original.getCertification());
+        return;
+      }
 
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");

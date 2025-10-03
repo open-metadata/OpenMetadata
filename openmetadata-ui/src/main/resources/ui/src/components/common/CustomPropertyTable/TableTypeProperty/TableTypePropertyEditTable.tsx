@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo } from 'react';
-import DataGrid from 'react-data-grid';
+import DataGrid, { ColumnOrColumnGroup } from 'react-data-grid';
 import 'react-data-grid/lib/styles.css';
 import { TableTypePropertyEditTableProps } from './TableTypePropertyEditTable.interface';
 
@@ -28,7 +28,12 @@ const TableTypePropertyEditTable = ({
       <div className="om-rdg" ref={setGridContainer}>
         <DataGrid
           className="rdg-light"
-          columns={columns}
+          columns={
+            columns as unknown as ColumnOrColumnGroup<
+              NoInfer<Record<string, string>>,
+              unknown
+            >[]
+          }
           rows={dataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}

@@ -5,6 +5,7 @@ import static org.openmetadata.schema.type.EventType.ENTITY_DELETED;
 import static org.openmetadata.schema.type.EventType.LOGICAL_TEST_CASE_ADDED;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TABLE;
@@ -362,11 +363,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void setInheritedFields(TestCase testCase, Fields fields) {
-    EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
-    Table table = Entity.getEntity(entityLink, "owners,domains,tags,columns", ALL);
-    inheritOwners(testCase, fields, table);
-    inheritDomains(testCase, fields, table);
-    inheritTags(testCase, fields, table);
+    // Inherit from the table/column
+    EntityInterface tableOrColumn =
+        Entity.getEntity(
+            EntityLink.parse(testCase.getEntityLink()),
+            "owners,domains,tags,columns,followers",
+            ALL);
+    if (tableOrColumn != null) {
+      inheritOwners(testCase, fields, tableOrColumn);
+      inheritDomains(testCase, fields, tableOrColumn);
+      if (tableOrColumn instanceof Table) {
+        inheritTags(testCase, fields, (Table) tableOrColumn);
+        inheritFollowers(testCase, fields, (Table) tableOrColumn);
+      }
+    }
+
+    // Inherit reviewers from logical test suites
+    if (fields.contains(FIELD_REVIEWERS)) {
+      List<TestSuite> testSuites = getTestSuites(testCase);
+      for (TestSuite testSuite : testSuites) {
+        inheritReviewers(testCase, fields, testSuite);
+      }
+    }
   }
 
   private void inheritTags(TestCase testCase, Fields fields, Table table) {
@@ -391,11 +409,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   @Override
   public EntityInterface getParentEntity(TestCase entity, String fields) {
     EntityReference testSuite = entity.getTestSuite();
+
     if (testSuite == null) {
+      // Parent is a table (or other entity) via entityLink
       EntityLink entityLink = EntityLink.parse(entity.getEntityLink());
-      return Entity.getEntity(entityLink, fields, ALL);
+      String filteredFields = EntityUtil.getFilteredFields(entityLink.getEntityType(), fields);
+      return Entity.getEntity(entityLink, filteredFields, ALL);
     } else {
-      return Entity.getEntity(testSuite, fields, ALL);
+      // Parent is a test suite
+      String filteredFields = EntityUtil.getFilteredFields(TEST_SUITE, fields);
+      return Entity.getEntity(testSuite, filteredFields, ALL);
     }
   }
 
@@ -497,7 +520,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         .map(
             testSuiteId ->
                 Entity.<TestSuite>getEntity(
-                        TEST_SUITE, testSuiteId.getId(), "owners,domains", Include.ALL, false)
+                        TEST_SUITE,
+                        testSuiteId.getId(),
+                        "owners,domains,reviewers",
+                        Include.ALL,
+                        false)
                     .withInherited(true)
                     .withChangeDescription(null))
         .toList();

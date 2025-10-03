@@ -182,7 +182,21 @@ export interface Connection {
      */
     type?: DashboardServiceType;
     /**
-     * Password to connect to Metabase.
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
+     *
+     * API key of the redash instance to access.
+     *
+     * The personal access token you can generate in the Lightdash app under the user settings
+     *
+     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
+     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
+     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
+     * Admin role for full metadata extraction.
+     */
+    apiKey?: string;
+    /**
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -190,8 +204,7 @@ export interface Connection {
      */
     password?: string;
     /**
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *
@@ -233,17 +246,6 @@ export interface Connection {
      * Web Portal Virtual Directory Name.
      */
     webPortalVirtualDirectory?: string;
-    /**
-     * API key of the redash instance to access.
-     *
-     * The personal access token you can generate in the Lightdash app under the user settings
-     *
-     * Service Account Token to authenticate to the Grafana APIs. Use Service Account Tokens
-     * (format: glsa_xxxx) for authentication. Legacy API Keys are no longer supported by
-     * Grafana as of January 2025. Both self-hosted and Grafana Cloud are supported. Requires
-     * Admin role for full metadata extraction.
-     */
-    apiKey?: string;
     /**
      * Version of the Redash instance
      */
@@ -1334,6 +1336,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

@@ -403,8 +403,19 @@ export const getNameFromFQN = (fqn: string): string => {
   return arr[arr.length - 1];
 };
 
+export const getFirstAlphanumeric = (name: string): string => {
+  /**
+   * \p{L} → matches any kind of letter from any language (Latin, Cyrillic, Chinese, etc.).
+   * \p{N} → matches any kind of numeric digit (Arabic-Indic, Roman numerals, etc.).
+   * u flag → required for Unicode property escapes to work.
+   */
+  const match = name.match(/[\p{L}\p{N}]/u);
+
+  return match ? match[0].toLowerCase() : name.charAt(0).toLowerCase();
+};
+
 export const getRandomColor = (name: string) => {
-  const firstAlphabet = name.charAt(0).toLowerCase();
+  const firstAlphabet = getFirstAlphanumeric(name);
   // Convert the user's name to a numeric value
   let nameValue = 0;
   for (let i = 0; i < name.length; i++) {
@@ -753,6 +764,32 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
                 {
                   term: {
                     serviceType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};
+
+/**
+ * @param entityType key for quick filter (e.g., 'dataproduct', 'table', 'dashboard')
+ * @returns json filter query string for entity type
+ */
+export const getEntityTypeExploreQueryFilter = (entityType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    'entityType.keyword': entityType,
                   },
                 },
               ],

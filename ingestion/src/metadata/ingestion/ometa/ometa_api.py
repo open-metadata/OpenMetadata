@@ -33,6 +33,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.auth_provider import OpenMetadataAuthenticationProvider
 from metadata.ingestion.ometa.client import REST, APIError, ClientConfig
+from metadata.ingestion.ometa.mixins.csv_mixin import CSVMixin
 from metadata.ingestion.ometa.mixins.custom_property_mixin import (
     OMetaCustomPropertyMixin,
 )
@@ -44,6 +45,7 @@ from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.ometa.mixins.ingestion_pipeline_mixin import (
     OMetaIngestionPipelineMixin,
 )
+from metadata.ingestion.ometa.mixins.logs_mixin import OMetaLogsMixin
 from metadata.ingestion.ometa.mixins.mlmodel_mixin import OMetaMlModelMixin
 from metadata.ingestion.ometa.mixins.patch_mixin import OMetaPatchMixin
 from metadata.ingestion.ometa.mixins.pipeline_mixin import OMetaPipelineMixin
@@ -109,6 +111,7 @@ class OpenMetadataSettings(BaseSettings):
 
 
 class OpenMetadata(
+    CSVMixin,
     OMetaPipelineMixin,
     OMetaMlModelMixin,
     OMetaTableMixin,
@@ -123,6 +126,7 @@ class OpenMetadata(
     OMetaTestsMixin,
     DataInsightMixin,
     OMetaIngestionPipelineMixin,
+    OMetaLogsMixin,
     OMetaUserMixin,
     OMetaQueryMixin,
     OMetaRolePolicyMixin,
