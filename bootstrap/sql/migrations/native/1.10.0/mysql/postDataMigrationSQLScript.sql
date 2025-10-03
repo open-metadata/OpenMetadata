@@ -11,4 +11,5 @@ SET
         )
     )
 WHERE
-    serviceType in ('Databricks', 'UnityCatalog');
+    serviceType in ('Databricks', 'UnityCatalog')
+    AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.token');

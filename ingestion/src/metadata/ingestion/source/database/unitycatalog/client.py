@@ -51,7 +51,7 @@ class UnityCatalogClient(DatabricksClient):
     UnityCatalogClient creates a Databricks connection based on DatabricksCredentials.
     """
 
-    def _get_auth_header(self) -> str:
+    def _get_auth_header(self) -> dict[str, str]:
         """
         Method to get auth header
         """

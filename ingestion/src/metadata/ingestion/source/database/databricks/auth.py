@@ -10,7 +10,7 @@
 #  limitations under the License.
 
 """
-Common Databricks authentication utilities
+This module provides authentication utilities for Databricks and Unity Catalog connections.
 """
 from typing import Union
 

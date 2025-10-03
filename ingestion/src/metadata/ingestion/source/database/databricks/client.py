@@ -80,7 +80,7 @@ class DatabricksClient:
         self.engine = engine
         self.client = requests
 
-    def _get_auth_header(self) -> str:
+    def _get_auth_header(self) -> dict[str, str]:
         """
         Method to get auth header
         """
