@@ -1075,8 +1075,7 @@ class DbtUnitTest(TestCase):
             "model.jaffle_shop.customers"
         )
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
-            manifest_meta=manifest_node.meta,
-            table_fqn="test.schema.customers"
+            manifest_meta=manifest_node.meta, table_fqn="test.schema.customers"
         )
 
         self.assertEqual(dbt_meta_tags, MOCK_GLOASSARY_LABELS)
@@ -1321,9 +1320,7 @@ class DbtUnitTest(TestCase):
         mock_patch_domain.return_value = mock_table
 
         # Set up extracted domains
-        self.dbt_source_obj.extracted_domains = {
-            "service.db.schema.table1": "Finance"
-        }
+        self.dbt_source_obj.extracted_domains = {"service.db.schema.table1": "Finance"}
 
         self.dbt_source_obj.process_dbt_domain(data_model_link)
 
@@ -1502,22 +1499,30 @@ class DbtUnitTest(TestCase):
     def test_convert_java_to_python_format(self):
         """Test Java to Python date format conversion"""
         self.assertEqual(convert_java_to_python_format("yyyy-MM-dd"), "%Y-%m-%d")
-        self.assertEqual(convert_java_to_python_format("yyyy-MM-dd HH:mm:ss"), "%Y-%m-%d %H:%M:%S")
+        self.assertEqual(
+            convert_java_to_python_format("yyyy-MM-dd HH:mm:ss"), "%Y-%m-%d %H:%M:%S"
+        )
         self.assertEqual(convert_java_to_python_format("MMM dd, yyyy"), "%b %d, %Y")
 
     def test_validate_date_time_format_valid(self):
         """Test valid date/time format"""
-        is_valid, error = validate_date_time_format("2024-01-15", "yyyy-MM-dd", "date-cp")
+        is_valid, error = validate_date_time_format(
+            "2024-01-15", "yyyy-MM-dd", "date-cp"
+        )
         self.assertTrue(is_valid)
         self.assertIsNone(error)
 
-        is_valid, error = validate_date_time_format("2024-01-15 14:30:00", "yyyy-MM-dd HH:mm:ss", "dateTime-cp")
+        is_valid, error = validate_date_time_format(
+            "2024-01-15 14:30:00", "yyyy-MM-dd HH:mm:ss", "dateTime-cp"
+        )
         self.assertTrue(is_valid)
         self.assertIsNone(error)
 
     def test_validate_date_time_format_invalid(self):
         """Test invalid date/time format"""
-        is_valid, error = validate_date_time_format("15-01-2024", "yyyy-MM-dd", "date-cp")
+        is_valid, error = validate_date_time_format(
+            "15-01-2024", "yyyy-MM-dd", "date-cp"
+        )
         self.assertFalse(is_valid)
         self.assertIsNotNone(error)
 
@@ -1547,7 +1552,9 @@ class DbtUnitTest(TestCase):
     def test_validate_enum_multi_select_partial_valid(self):
         """Test multi-select enum with some invalid values (should filter)"""
         config = {"values": ["opt1", "opt2", "opt3"], "multiSelect": True}
-        is_valid, error, value = validate_enum_value(["opt1", "invalid", "opt2"], config)
+        is_valid, error, value = validate_enum_value(
+            ["opt1", "invalid", "opt2"], config
+        )
         self.assertTrue(is_valid)
         self.assertIsNotNone(error)
         self.assertEqual(value, ["opt1", "opt2"])
@@ -1567,7 +1574,7 @@ class DbtUnitTest(TestCase):
             "rows": [
                 {"col1": "val1", "col2": "val2", "col3": "val3"},
                 {"col1": "val4", "col2": "val5", "col3": "val6"},
-            ]
+            ],
         }
         is_valid, error = validate_table_structure(value, config)
         self.assertTrue(is_valid)
@@ -1722,7 +1729,9 @@ class DbtUnitTest(TestCase):
         self.assertIn("Some error detail", msg)
         self.assertIn("invalid_value", msg)
 
-    @patch("metadata.ingestion.source.database.dbt.dbt_utils.find_entity_by_type_and_fqn")
+    @patch(
+        "metadata.ingestion.source.database.dbt.dbt_utils.find_entity_by_type_and_fqn"
+    )
     def test_find_entity_by_type_and_fqn_success(self, mock_find):
         """Test entity lookup by type and FQN"""
         mock_entity = MagicMock()
