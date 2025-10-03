@@ -112,6 +112,7 @@ import {
   SYNAPSE,
   TABLEAU,
   TERADATA,
+  TIMESCALE,
   TOPIC_DEFAULT,
   TRINO,
   UNITYCATALOG,
@@ -682,6 +683,9 @@ class ServiceUtilClassBase {
 
       case this.DriveServiceTypeSmallCase.GoogleDrive:
         return GOOGLE_DRIVE;
+
+      case this.DatabaseServiceTypeSmallCase.Timescale:
+        return TIMESCALE;
 
       default: {
         let logo;
