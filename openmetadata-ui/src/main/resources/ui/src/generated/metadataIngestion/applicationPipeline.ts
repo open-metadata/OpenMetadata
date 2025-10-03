@@ -19,9 +19,13 @@ export interface ApplicationPipeline {
      */
     appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
+     * Fully Qualified Name (FQN) of the application
+     */
+    applicationFqn?: string;
+    /**
      * Application private configuration
      */
-    appPrivateConfig?: PrivateConfig;
+    appPrivateConfig?: CollateAIAppPrivateConfig | string;
     /**
      * Source Python Class Name to run the application
      */
@@ -909,11 +913,9 @@ export enum Type {
 }
 
 /**
- * Application private configuration
- *
  * Private Configuration for the CollateAI External Application.
  */
-export interface PrivateConfig {
+export interface CollateAIAppPrivateConfig {
     /**
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
