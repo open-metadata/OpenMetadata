@@ -15,7 +15,7 @@ DBT source methods.
 import traceback
 from copy import deepcopy
 from datetime import datetime
-from typing import Any, Dict, Iterable, List, Optional, Union, Union
+from typing import Any, Dict, Iterable, List, Optional, Union
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
