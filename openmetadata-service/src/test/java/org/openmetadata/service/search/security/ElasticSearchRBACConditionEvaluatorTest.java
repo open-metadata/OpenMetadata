@@ -1417,4 +1417,148 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.should[?(@.bool.must_not[?(@.exists.field=='domains.id')])]",
         "Should also allow resources with no domain");
   }
+
+  @Test
+  void testNoDomainWithUserHavingDomains() {
+    setupMockPolicies("noDomain()", "ALLOW");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Engineering");
+    domain.setFullyQualifiedName("Engineering");
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Should ONLY show no-domain resources, regardless of user's domains
+    assertTrue(
+        generatedQuery.contains("must_not"), "The query should contain 'must_not' for noDomain().");
+    assertTrue(
+        generatedQuery.contains("domains.id"),
+        "The query should check for absence of 'domains.id'.");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[?(@.exists.field=='domains.id')]",
+        "noDomain should block all resources with domains");
+
+    // Verify user's domain doesn't affect noDomain() behavior
+    assertFalse(
+        generatedQuery.contains("Engineering"),
+        "User's domain should not appear in noDomain() query");
+  }
+
+  @Test
+  void testHasDomainBlocksOtherDomains() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Engineering");
+    domain.setFullyQualifiedName("Engineering");
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Should have prefix for "Engineering" but NOT "Finance"
+    assertTrue(
+        generatedQuery.contains("Engineering"),
+        "The query should contain 'Engineering' domain prefix.");
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.prefix['domains.fullyQualifiedName']['value']=='Engineering')]",
+        "Should have prefix query for Engineering domain");
+
+    // Verify Finance domain is not in the query (would be blocked)
+    assertFalse(
+        generatedQuery.contains("Finance"),
+        "The query should NOT contain 'Finance' domain - other domains are blocked.");
+
+    // Verify both domain match and no-domain are allowed
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.bool.must_not[?(@.exists.field=='domains.id')])]",
+        "Should also allow resources with no domain");
+  }
+
+  @Test
+  void testHasDomainAndNoDomainCombinedWithUserDomains() {
+    setupMockPolicies("hasDomain() && noDomain()", "ALLOW");
+
+    EntityReference domain = new EntityReference();
+    domain.setId(UUID.randomUUID());
+    domain.setName("Engineering");
+    domain.setFullyQualifiedName("Engineering");
+    when(mockUser.getDomains()).thenReturn(List.of(domain));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Result: ONLY no-domain resources (both conditions must be true in AND)
+    // hasDomain() for user with Engineering returns: (Engineering OR no-domain)
+    // noDomain() returns: no-domain
+    // Combined with AND: (Engineering OR no-domain) AND (no-domain) = no-domain only
+
+    assertFieldExists(
+        jsonContext,
+        "$.bool.must_not[?(@.exists.field=='domains.id')]",
+        "Must have noDomain condition blocking all resources with domains");
+
+    // Even though user has "Engineering" domain, the AND with noDomain() means
+    // ONLY resources with no domain will be shown
+    assertTrue(
+        generatedQuery.contains("must_not"), "The query should contain 'must_not' for noDomain().");
+    assertTrue(
+        generatedQuery.contains("domains.id"),
+        "The query should check for absence of 'domains.id'.");
+  }
+
+  @Test
+  void testHasDomainWithSubdomainAccess() {
+    setupMockPolicies("hasDomain()", "ALLOW");
+
+    EntityReference parentDomain = new EntityReference();
+    parentDomain.setId(UUID.randomUUID());
+    parentDomain.setName("Engineering");
+    parentDomain.setFullyQualifiedName("Engineering");
+    when(mockUser.getDomains()).thenReturn(List.of(parentDomain));
+
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
+
+    DocumentContext jsonContext = JsonPath.parse(generatedQuery);
+
+    // Verify prefix query allows both "Engineering" and "Engineering.Backend"
+    assertFieldExists(
+        jsonContext,
+        "$.bool.should[?(@.prefix['domains.fullyQualifiedName']['value']=='Engineering')]",
+        "Should have prefix query for Engineering domain");
+
+    assertTrue(
+        generatedQuery.contains("prefix"),
+        "The query should use prefix query for subdomain matching.");
+
+    // The prefix query "Engineering" will match:
+    // - "Engineering" (exact match)
+    // - "Engineering.Backend" (subdomain)
+    // - "Engineering.Backend.API" (nested subdomain)
+    // But NOT:
+    // - "Finance" (different domain)
+    assertTrue(
+        generatedQuery.contains("domains.fullyQualifiedName"),
+        "The query should use fullyQualifiedName for domain and subdomain matching.");
+  }
 }
