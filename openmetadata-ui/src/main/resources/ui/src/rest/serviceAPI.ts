@@ -31,7 +31,7 @@ import {
 } from '../interface/service.interface';
 import { getEncodedFqn } from '../utils/StringsUtils';
 import APIClient from './index';
-import { searchQuery } from './searchAPI';
+import { searchData } from './miscAPI';
 
 interface ServiceRequestParams {
   limit?: number;
@@ -183,26 +183,28 @@ export const searchService = async ({
   searchIndex,
   currentPage = 1,
   limit = PAGE_SIZE,
-  queryFilter,
+  filters,
   deleted = false,
 }: {
   search?: string;
   searchIndex: SearchIndex | SearchIndex[];
   limit?: number;
   currentPage?: number;
-  queryFilter?: Record<string, unknown>;
+  filters?: string;
   deleted?: boolean;
 }) => {
-  const response = await searchQuery({
-    query: search ?? WILD_CARD_CHAR,
-    pageNumber: currentPage,
-    pageSize: limit,
-    queryFilter,
+  const response = await searchData(
+    search ?? WILD_CARD_CHAR,
+    currentPage,
+    limit,
+    filters ?? '',
+    '',
+    '',
     searchIndex,
-    includeDeleted: deleted,
-  });
+    deleted
+  );
 
-  return response;
+  return response.data;
 };
 
 export const restoreService = async (serviceCategory: string, id: string) => {

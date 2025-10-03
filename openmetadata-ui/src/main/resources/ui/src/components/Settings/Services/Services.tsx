@@ -50,7 +50,6 @@ import {
   getAddServicePath,
   getServiceDetailsPath,
 } from '../../../utils/RouterUtils';
-import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
@@ -101,9 +100,11 @@ const Services = ({ serviceName }: ServicesProps) => {
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
 
-  const serviceTypeQueryFilter = useMemo(() => {
+  const filterString = useMemo(() => {
     return serviceTypeFilter?.length
-      ? getTermQuery({ 'serviceType.keyword': serviceTypeFilter }, 'should', 1)
+      ? `(${serviceTypeFilter
+          .map((type) => `serviceType:${type}`)
+          .join(' OR ')})`
       : undefined;
   }, [serviceTypeFilter]);
 
@@ -141,19 +142,19 @@ const Services = ({ serviceName }: ServicesProps) => {
       currentPage,
       after,
       before,
-      queryFilter,
+      filters,
     }: {
       search?: string;
       limit?: number;
       currentPage?: number;
       after?: string;
       before?: string;
-      queryFilter?: Record<string, unknown>;
+      filters?: string;
     }) => {
       setIsLoading(true);
       try {
         let services = [];
-        if (search || queryFilter) {
+        if (search || !isEmpty(filters)) {
           const {
             hits: { hits, total },
           } = await searchService({
@@ -161,7 +162,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             searchIndex,
             limit: pageSize,
             currentPage,
-            queryFilter,
+            filters,
             deleted,
           });
 
@@ -205,23 +206,23 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const handleServicePageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (searchTerm || serviceTypeQueryFilter) {
+      if (searchTerm || filterString) {
         handlePageChange(currentPage);
         getServiceDetails({
           currentPage,
           search: searchTerm,
           limit: pageSize,
-          queryFilter: serviceTypeQueryFilter,
+          filters: filterString,
         });
       } else if (cursorType) {
         handlePageChange(currentPage);
         getServiceDetails({
           [cursorType]: paging[cursorType],
-          queryFilter: serviceTypeQueryFilter,
+          filters: filterString,
         });
       }
     },
-    [getServiceDetails, searchTerm, serviceTypeQueryFilter, paging, pageSize]
+    [getServiceDetails, searchTerm, filterString, paging, pageSize]
   );
 
   const addServicePermission = useMemo(
@@ -270,11 +271,7 @@ const Services = ({ serviceName }: ServicesProps) => {
   }, [serviceName]);
 
   const noDataPlaceholder = useMemo(() => {
-    if (
-      addServicePermission &&
-      isEmpty(searchTerm) &&
-      !serviceTypeQueryFilter
-    ) {
+    if (addServicePermission && isEmpty(searchTerm) && !filterString) {
       return (
         <ErrorPlaceHolder
           className="p-lg border-none"
@@ -301,7 +298,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     servicesDisplayName,
     serviceName,
     searchTerm,
-    serviceTypeQueryFilter,
+    filterString,
     addServicePermission,
     handleAddServiceClick,
   ]);
@@ -466,16 +463,9 @@ const Services = ({ serviceName }: ServicesProps) => {
     getServiceDetails({
       search: searchTerm,
       limit: pageSize,
-      queryFilter: serviceTypeQueryFilter,
+      filters: filterString,
     });
-  }, [
-    searchIndex,
-    pageSize,
-    serviceName,
-    searchTerm,
-    serviceTypeQueryFilter,
-    deleted,
-  ]);
+  }, [searchIndex, pageSize, serviceName, searchTerm, filterString, deleted]);
 
   const handleTableChange: TableProps<ServicesType>['onChange'] = (
     _pagination,
