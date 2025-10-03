@@ -45,6 +45,7 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
         borderRadius: '12px',
         border: `1px solid ${theme.palette.grey[200]}`,
         boxShadow: 'none',
+        height: '100%',
       }}>
       <Stack alignItems="center" direction="row" spacing={3} sx={{ p: 4 }}>
         <Typography

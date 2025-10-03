@@ -13,7 +13,7 @@
 
 import { Grid, Stack, Typography, useTheme } from '@mui/material';
 import { ColumnsType } from 'antd/lib/table';
-import { isEmpty, round } from 'lodash';
+import { isEmpty, isUndefined, round } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -198,7 +198,9 @@ const ColumnProfileTable = () => {
         key: 'valuesCount',
         width: 120,
         render: (profile: ColumnProfile) =>
-          formatNumberWithComma(profile?.valuesCount || 0),
+          profile?.valuesCount
+            ? formatNumberWithComma(profile?.valuesCount)
+            : '--',
         sorter: (col1, col2) =>
           (col1.profile?.valuesCount || 0) - (col2.profile?.valuesCount || 0),
       },
@@ -208,7 +210,14 @@ const ColumnProfileTable = () => {
         key: 'success',
         width: 100,
         render: (_, record) => {
-          const testCounts = testCaseSummary?.[record.fullyQualifiedName ?? ''];
+          const testCounts =
+            testCaseSummary?.[
+              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
+            ];
+
+          if (isUndefined(testCounts?.success) || testCounts?.success === 0) {
+            return '--';
+          }
 
           return (
             <Link
@@ -219,7 +228,7 @@ const ColumnProfileTable = () => {
                 }),
               }}>
               <Typography sx={{ color: theme.palette.success.main }}>
-                {testCounts?.success ?? 0}
+                {testCounts?.success}
               </Typography>
             </Link>
           );
@@ -231,7 +240,14 @@ const ColumnProfileTable = () => {
         key: 'failed',
         width: 100,
         render: (_, record) => {
-          const testCounts = testCaseSummary?.[record.fullyQualifiedName ?? ''];
+          const testCounts =
+            testCaseSummary?.[
+              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
+            ];
+
+          if (isUndefined(testCounts?.failed) || testCounts?.failed === 0) {
+            return '--';
+          }
 
           return (
             <Link
@@ -242,7 +258,7 @@ const ColumnProfileTable = () => {
                 }),
               }}>
               <Typography sx={{ color: theme.palette.error.main }}>
-                {testCounts?.failed ?? 0}
+                {testCounts?.failed}
               </Typography>
             </Link>
           );
@@ -254,7 +270,14 @@ const ColumnProfileTable = () => {
         key: 'aborted',
         width: 100,
         render: (_, record) => {
-          const testCounts = testCaseSummary?.[record.fullyQualifiedName ?? ''];
+          const testCounts =
+            testCaseSummary?.[
+              record.fullyQualifiedName?.toLocaleLowerCase() ?? ''
+            ];
+
+          if (isUndefined(testCounts?.aborted) || testCounts?.aborted === 0) {
+            return '--';
+          }
 
           return (
             <Link
@@ -265,7 +288,7 @@ const ColumnProfileTable = () => {
                 }),
               }}>
               <Typography sx={{ color: theme.palette.warning.main }}>
-                {testCounts?.aborted ?? 0}
+                {testCounts?.aborted}
               </Typography>
             </Link>
           );

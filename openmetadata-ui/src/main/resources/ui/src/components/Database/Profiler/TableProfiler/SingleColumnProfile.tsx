@@ -10,12 +10,27 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Stack } from '@mui/material';
+import {
+  Box,
+  Card,
+  Divider,
+  Grid,
+  Stack,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import { AxiosError } from 'axios';
 import { find, first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Cell, Pie, PieChart, Tooltip } from 'recharts';
+import {
+  GREEN_3,
+  GREY_200,
+  RED_3,
+  YELLOW_2,
+} from '../../../../constants/Color.constants';
 import {
   DEFAULT_RANGE_DATA,
   INITIAL_COLUMN_METRICS_VALUE,
@@ -26,7 +41,10 @@ import {
 } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
-import { Transi18next } from '../../../../utils/CommonUtils';
+import {
+  formatNumberWithComma,
+  Transi18next,
+} from '../../../../utils/CommonUtils';
 import documentationLinksClassBase from '../../../../utils/DocumentationLinksClassBase';
 import {
   calculateColumnProfilerMetrics,
@@ -41,6 +59,7 @@ import ProfilerDetailsCard from '../ProfilerDetailsCard/ProfilerDetailsCard';
 import ProfilerStateWrapper from '../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import ColumnSummary from './ColumnSummary';
 import CustomMetricGraphs from './CustomMetricGraphs/CustomMetricGraphs.component';
+import './single-column-profiler.less';
 import { useTableProfiler } from './TableProfilerProvider';
 
 interface SingleColumnProfileProps {
@@ -58,7 +77,9 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     isProfilerDataLoading,
     customMetric: tableCustomMetric,
     isProfilingEnabled,
+    testCaseSummary,
   } = useTableProfiler();
+  const theme = useTheme();
   const { t } = useTranslation();
   const profilerDocsLink =
     documentationLinksClassBase.getDocsURLS()
@@ -128,6 +149,28 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
     }
   };
 
+  const { columnTestData, activeColumnTests } = useMemo(() => {
+    const activeColumnTests =
+      testCaseSummary?.[activeColumnFqn?.toLocaleLowerCase()];
+
+    return {
+      columnTestData: [
+        {
+          name: 'Success',
+          value: activeColumnTests?.success ?? 0,
+          color: GREEN_3,
+        },
+        { name: 'Failed', value: activeColumnTests?.failed ?? 0, color: RED_3 },
+        {
+          name: 'Aborted',
+          value: activeColumnTests?.aborted ?? 0,
+          color: YELLOW_2,
+        },
+      ],
+      activeColumnTests,
+    };
+  }, [testCaseSummary, activeColumnFqn]);
+
   const { firstDay, currentDay } = useMemo(() => {
     return {
       firstDay: last(columnProfilerData),
@@ -172,7 +215,135 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           <Grid size={7.2}>
             <ColumnSummary column={selectedColumn} />
           </Grid>
-          <Grid size="grow">"DQ widget"</Grid>
+          <Grid size="grow">
+            <Card
+              sx={{
+                borderRadius: '12px',
+                border: `1px solid ${theme.palette.grey[200]}`,
+                boxShadow: 'none',
+                height: '100%',
+              }}>
+              <Box p={4}>
+                <Typography
+                  sx={{
+                    fontSize: theme.typography.pxToRem(16),
+                    fontWeight: theme.typography.fontWeightMedium,
+                    color: theme.palette.grey[900],
+                  }}>
+                  {t('label.data-quality-test-plural')}
+                </Typography>
+              </Box>
+              <Divider />
+              <Grid container spacing={3} sx={{ p: 4 }}>
+                <Grid size={5}>
+                  <PieChart
+                    className="dq-pie-chart-container"
+                    height={160}
+                    width={160}>
+                    <Pie
+                      cx="50%"
+                      cy="50%"
+                      // to show the empty pie chart when there is no data
+                      data={[{ value: 1 }]}
+                      dataKey="value"
+                      endAngle={-270}
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={0}
+                      // to hide tooltip when there is no data
+                      pointerEvents="none"
+                      startAngle={90}>
+                      <Cell fill={GREY_200} />
+                    </Pie>
+                    <Pie
+                      cx="50%"
+                      cy="50%"
+                      // to show the empty pie chart when there is no data
+                      data={[{ value: 1 }]}
+                      dataKey="value"
+                      endAngle={-270}
+                      innerRadius={75}
+                      outerRadius={80}
+                      paddingAngle={0}
+                      // to hide tooltip when there is no data
+                      pointerEvents="none"
+                      startAngle={90}>
+                      <Cell fill={GREY_200} />
+                    </Pie>
+                    <Pie
+                      cx="50%"
+                      cy="50%"
+                      data={columnTestData}
+                      dataKey="value"
+                      endAngle={-270}
+                      innerRadius={50}
+                      outerRadius={70}
+                      paddingAngle={0}
+                      startAngle={90}>
+                      {columnTestData.map((entry, index) => (
+                        <Cell fill={entry.color} key={`cell-${index}`} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <text
+                      className="chart-center-text-header"
+                      dominantBaseline="middle"
+                      textAnchor="middle"
+                      x="50%"
+                      y="42%">
+                      {activeColumnTests?.total ?? 0}
+                    </text>
+                    <text
+                      className="chart-center-text-sub-header"
+                      dominantBaseline="middle"
+                      textAnchor="middle"
+                      x="50%"
+                      y="55%">
+                      {t('label.total-test-plural')}
+                    </text>
+                  </PieChart>
+                </Grid>
+
+                <Grid size="grow">
+                  <Box
+                    sx={{
+                      p: 4,
+                      borderRadius: '8px',
+                      bgcolor: theme.palette.grey[50],
+                      width: '100%',
+                    }}>
+                    {columnTestData.map((item) => (
+                      <Box
+                        alignItems="center"
+                        display="flex"
+                        justifyContent="space-between"
+                        key={item.name}
+                        sx={{ mb: 1 }}>
+                        <Typography
+                          sx={{
+                            color: theme.palette.grey[700],
+                            fontSize: theme.typography.pxToRem(13),
+                            borderLeft: `4px solid ${item.color}`,
+                            pl: 2,
+                            lineHeight: '10px',
+                          }}>
+                          {item.name}
+                        </Typography>
+                        <Typography
+                          sx={{
+                            color: theme.palette.grey[900],
+                            fontWeight: theme.typography.fontWeightMedium,
+                            fontSize: theme.typography.pxToRem(13),
+                          }}>
+                          {formatNumberWithComma(item.value)}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </Grid>
+              </Grid>
+            </Card>
+          </Grid>
         </Grid>
       )}
 

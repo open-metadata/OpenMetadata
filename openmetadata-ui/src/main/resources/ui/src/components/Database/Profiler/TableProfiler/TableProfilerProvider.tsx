@@ -344,6 +344,7 @@ export const TableProfilerProvider = ({
           'testCaseResult.testCaseStatus': string;
         }>
       );
+
       setTestCaseSummary(testCaseResults);
     } catch (error) {
       setTestCaseSummary(undefined);
