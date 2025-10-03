@@ -102,6 +102,7 @@ import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import securitySafe from '../assets/svg/security-safe.svg';
+import hex from '../assets/svg/service-icon-hex.svg';
 import googleDrive from '../assets/svg/service-icon-google-drive.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
@@ -134,6 +135,7 @@ export const MSSQL = mssql;
 export const REDSHIFT = redshift;
 export const BIGQUERY = query;
 export const BIGTABLE = bigtable;
+export const HEX = hex;
 export const HIVE = hive;
 export const IMPALA = impala;
 export const POSTGRES = postgres;
@@ -463,6 +465,7 @@ export const BETA_SERVICES = [
   SecurityServiceType.Ranger,
   DatabaseServiceType.Epic,
   DashboardServiceType.Grafana,
+  DashboardServiceType.Hex,
   DatabaseServiceType.ServiceNow,
 ];
 
