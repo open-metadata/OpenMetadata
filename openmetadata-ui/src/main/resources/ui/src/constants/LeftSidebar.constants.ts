@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Cube01 as DataProductIcon } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
@@ -97,11 +98,26 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     dataTestId: `app-bar-item-${SidebarItem.DATA_INSIGHT}`,
   },
   {
-    key: ROUTES.DOMAIN,
+    key: 'domains-section',
     title: 'label.domain-plural',
-    redirect_url: ROUTES.DOMAIN,
     icon: DomainsIcon,
-    dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+    dataTestId: SidebarItem.DOMAINS_SECTION,
+    children: [
+      {
+        key: ROUTES.DOMAIN,
+        title: 'label.domain',
+        redirect_url: ROUTES.DOMAIN,
+        icon: DomainsIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
+      },
+      {
+        key: ROUTES.DATA_PRODUCT,
+        title: 'label.data-product',
+        redirect_url: ROUTES.DATA_PRODUCT,
+        icon: DataProductIcon,
+        dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,
+      },
+    ],
   },
   {
     key: 'governance',
