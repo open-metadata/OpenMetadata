@@ -579,7 +579,6 @@ class JsonDataFrameColumnParser(GenericDataFrameColumnParser):
             try:
                 column_name = field.get("name", "")
                 column_type = field.get("type", "string")
-                required = field.get("required", False)
 
                 # Get the type string from dict if needed
                 type_str = column_type

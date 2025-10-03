@@ -599,7 +599,6 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
 
     def test_iceberg_metadata_parsing(self):
         """Test parsing of Iceberg/Delta Lake metadata files with nested schema.fields structure"""
-        import json
 
         # Sample Iceberg/Delta Lake metadata structure
         iceberg_metadata = {
