@@ -18,6 +18,7 @@ import {
   visitOwnProfilePage,
 } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { navigateToPersonaWithPagination } from './persona';
 import { settingClick } from './sidebar';
 
 // Entity types mapping from CURATED_ASSETS_LIST
@@ -146,9 +147,10 @@ export const navigateToCustomizeLandingPage = async (
     `/api/v1/docStore/name/persona.${encodeURIComponent(personaName)}`
   );
 
-  // Navigate to the customize landing page
-  await page.getByTestId(`persona-details-card-${personaName}`).click();
+  // Need to find persona card and click as the list might get paginated
+  await navigateToPersonaWithPagination(page, personaName, true, 3);
 
+  // Navigate to the customize landing page
   await page.getByRole('tab', { name: 'Customize UI' }).click();
 
   await page.getByTestId('LandingPage').click();

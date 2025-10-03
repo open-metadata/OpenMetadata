@@ -30,7 +30,7 @@ import {
   verifyWidgetFooterViewMore,
   verifyWidgetHeaderNavigation,
 } from '../../utils/customizeLandingPage';
-import { addKpi } from '../../utils/dataInsight';
+import { addKpi, deleteKpiRequest } from '../../utils/dataInsight';
 import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import {
@@ -137,6 +137,9 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
     await dp.create(apiContext);
     createdDataProducts.push(dp);
   }
+
+  // Delete all existing KPIs before running the test
+  await deleteKpiRequest(apiContext);
 
   await afterAction();
 });
@@ -624,7 +627,8 @@ test.describe('Widgets', () => {
       async () => {
         await verifyWidgetEntityNavigation(page, {
           widgetKey,
-          entitySelector: '[data-testid="task-feed-card"]',
+          entitySelector:
+            '[data-testid="task-feed-card"] [data-testid="redirect-task-button-link"]',
           urlPattern: '/glossary', // Tasks can navigate to various entity detail pages
           apiResponseUrl: '/api/v1/feed',
           searchQuery: 'type=Task', // My Tasks uses feed API with type=Task
