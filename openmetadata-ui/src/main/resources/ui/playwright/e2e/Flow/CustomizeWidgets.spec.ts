@@ -28,7 +28,7 @@ import {
   verifyWidgetFooterViewMore,
   verifyWidgetHeaderNavigation,
 } from '../../utils/customizeLandingPage';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   verifyActivityFeedFilters,
   verifyDataFilters,
@@ -37,6 +37,10 @@ import {
   verifyTaskFilters,
   verifyTotalDataAssetsFilters,
 } from '../../utils/widgetFilters';
+import { sidebarClick } from '../../utils/sidebar';
+import { SidebarItem } from '../../constant/sidebar';
+import { KPI_DATA } from '../../constant/dataInsight';
+import { addKpi } from '../../utils/dataInsight';
 
 const adminUser = new UserClass();
 const persona = new PersonaClass();
@@ -323,10 +327,22 @@ test.describe('Widgets', () => {
   test('KPI', async ({ page }) => {
     test.slow(true);
 
-    const widgetKey = 'KnowledgePanel.KPI';
-    const widget = page.getByTestId(widgetKey);
+    await test.step('Add KPI', async () => {
+      await waitForAllLoadersToDisappear(page);
+
+      await sidebarClick(page, SidebarItem.DATA_INSIGHT);
+      await page.getByRole('menuitem', { name: 'KPIs' }).click();
+
+      await page.getByTestId('add-kpi-btn').click();
+      await addKpi(page, KPI_DATA[0]);
+    });
+
+    await redirectToHomePage(page);
 
     await waitForAllLoadersToDisappear(page);
+
+    const widgetKey = 'KnowledgePanel.KPI';
+    const widget = page.getByTestId(widgetKey);
 
     await expect(widget).toBeVisible();
 
@@ -348,6 +364,58 @@ test.describe('Widgets', () => {
       await redirectToHomePage(page);
     });
 
+    await test.step('Test widget loads KPI data correctly', async () => {
+      await waitForAllLoadersToDisappear(page);
+
+      // Wait for the KPI list API to be called
+      const kpiListResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/kpi') &&
+          response.url().includes('fields=dataInsightChart')
+      );
+
+      // Wait for KPI results API to be called
+      const kpiResultsResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/kpi/') &&
+          response.url().includes('/kpiResult')
+      );
+
+      await kpiListResponse;
+      await kpiResultsResponse;
+
+      // Wait for skeleton loader to disappear
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+      // Check if the KPI widget content is visible
+      const kpiWidgetContent = widget.locator('[data-testid="kpi-widget"]');
+
+      await expect(kpiWidgetContent).toBeVisible();
+
+      // Check if there's either a chart or empty state
+      const hasChart = await widget
+        .locator('.recharts-responsive-container')
+        .isVisible()
+        .catch(() => false);
+
+      const hasEmptyState = await widget
+        .locator('[data-testid="widget-empty-state"]')
+        .isVisible()
+        .catch(() => false);
+
+      expect(hasChart || hasEmptyState).toBeTruthy();
+
+      if (hasChart) {
+        // If chart exists, verify it's rendered properly
+        await expect(
+          widget.locator('.recharts-responsive-container')
+        ).toBeVisible();
+
+        // Verify chart elements are present
+        await expect(widget.locator('.recharts-area')).toBeVisible();
+      }
+    });
+
     await test.step('Test widget customization', async () => {
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
@@ -360,7 +428,8 @@ test.describe('Widgets', () => {
     const widgetKey = 'KnowledgePanel.TotalAssets';
     const widget = page.getByTestId(widgetKey);
 
-    await waitForAllLoadersToDisappear(page);
+    // Wait for the widgets data to appear
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     await expect(widget).toBeVisible();
 
@@ -369,7 +438,7 @@ test.describe('Widgets', () => {
         page,
         widgetKey,
         'Total Data Assets',
-        '/data-insights/data-assets'
+        '/data-insights'
       );
     });
 
@@ -395,10 +464,19 @@ test.describe('Widgets', () => {
   test('Following Assets', async ({ page }) => {
     test.slow(true);
 
+    await testDomain.visitEntityPage(page);
+
+    await followEntity(page, testDomain.endpoint);
+
+    await redirectToHomePage(page);
+    // wait for the page loader to disappear
+    await waitForAllLoadersToDisappear(page);
+
     const widgetKey = 'KnowledgePanel.Following';
     const widget = page.getByTestId(widgetKey);
 
-    await waitForAllLoadersToDisappear(page);
+    // Wait for the widgets data to appear
+    await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
     await expect(widget).toBeVisible();
 
@@ -413,6 +491,17 @@ test.describe('Widgets', () => {
 
     await test.step('Test widget filters', async () => {
       await verifyDataFilters(page, widgetKey);
+    });
+
+    await test.step('Test widget displays followed entities', async () => {
+      // Verify that followed entities appear in the widget
+      await verifyWidgetEntityNavigation(page, {
+        widgetKey,
+        entitySelector: '[data-testid^="Following-"]',
+        urlPattern: '/', // Following can navigate to various entity types
+        apiResponseUrl: '/api/v1/search/query',
+        searchQuery: `index=${SearchIndex.ALL}`,
+      });
     });
 
     await test.step('Test widget footer navigation', async () => {

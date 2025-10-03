@@ -55,6 +55,10 @@ export const verifyActivityFeedFilters = async (
 };
 
 export const verifyDataFilters = async (page: Page, widgetKey: string) => {
+  // Wait for the page to load
+  await waitForAllLoadersToDisappear(page);
+
+  // Wait for the widget data to appear
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   await expect(

@@ -386,10 +386,14 @@ export const verifyWidgetFooterViewMore = async (
     link?: string;
   }
 ) => {
+  // Wait for the page to load
+  await waitForAllLoadersToDisappear(page);
+
   const widget = page.getByTestId(widgetKey);
 
   await expect(widget).toBeVisible();
 
+  // Wait for the data to appear in the widget
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   // Check for widget footer
@@ -472,12 +476,13 @@ export const verifyWidgetEntityNavigation = async (
     // Handle single query string
     return response.url().includes(searchQuery);
   });
+
   await redirectToHomePage(page);
+
+  await response;
 
   // Wait for loaders after navigation
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
-
-  await response;
 
   // Get widget after navigation to home page
   const widget = page.getByTestId(widgetKey);
