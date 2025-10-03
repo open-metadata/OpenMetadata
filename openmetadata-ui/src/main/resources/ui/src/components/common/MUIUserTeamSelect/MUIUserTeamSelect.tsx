@@ -23,12 +23,12 @@ import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { searchData } from '../../../rest/miscAPI';
 import {
-  formatTeamsResponse,
-  formatUsersResponse,
+    formatTeamsResponse,
+    formatUsersResponse
 } from '../../../utils/APIUtils';
 import {
-  getEntityName,
-  getEntityReferenceFromEntity,
+    getEntityName,
+    getEntityReferenceFromEntity
 } from '../../../utils/EntityUtils';
 import { ProfilePicture } from '../atoms/ProfilePicture';
 
@@ -170,8 +170,10 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     if (inputValue) {
       handleSearch(inputValue);
     } else {
+      setLoading(true);
       setUserOptions([]);
       setTeamOptions([]);
+      handleSearch('');
     }
   }, [inputValue]);
 
@@ -381,7 +383,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       isOptionEqualToValue={isOptionEqualToValue}
       loading={loading}
       multiple={isMultiple}
-      open={open && (allOptions.length > 0 || loading || !inputValue)}
+      open={open && (allOptions.length > 0 || loading)}
       options={allOptions}
       renderInput={(params) => (
         <TextField

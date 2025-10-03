@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+from copy import deepcopy
 from functools import partial
 from typing import Optional
 
@@ -38,6 +39,7 @@ from metadata.ingestion.connections.test_connections import (
     test_connection_steps,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.databricks.auth import get_auth_config
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_SQL_STATEMENT_TEST,
@@ -129,8 +131,7 @@ class DatabricksEngineWrapper:
 
 
 def get_connection_url(connection: DatabricksConnection) -> str:
-    url = f"{connection.scheme.value}://token:{connection.token.get_secret_value()}@{connection.hostPort}"
-    return url
+    return f"{connection.scheme.value}://{connection.hostPort}"
 
 
 def get_connection(connection: DatabricksConnection) -> Engine:
@@ -138,16 +139,26 @@ def get_connection(connection: DatabricksConnection) -> Engine:
     Create connection
     """
 
+    if not connection.connectionArguments:
+        connection.connectionArguments = init_empty_connection_arguments()
+
     if connection.httpPath:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.root["http_path"] = connection.httpPath
 
-    return create_generic_db_connection(
+    auth_args = get_auth_config(connection)
+
+    original_connection_arguments = connection.connectionArguments
+    connection.connectionArguments = deepcopy(original_connection_arguments)
+    connection.connectionArguments.root.update(auth_args)
+
+    engine = create_generic_db_connection(
         connection=connection,
         get_connection_url_fn=get_connection_url,
         get_connection_args_fn=get_connection_args_common,
     )
+
+    connection.connectionArguments = original_connection_arguments
+    return engine
 
 
 def test_connection(

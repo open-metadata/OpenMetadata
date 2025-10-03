@@ -12,7 +12,9 @@
  */
 
 import { Box, Card, CardContent } from '@mui/material';
+import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ListingData } from '../shared/types';
 import { useCellRenderer } from './useCellRenderer';
 
@@ -67,47 +69,54 @@ export const useCardView = <T extends { id: string }>({
     renderers: listing.renderers,
     chipSize: 'small',
   });
+  const { t } = useTranslation();
 
   const cardView = useMemo(
-    () => (
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)', // Strict 3 columns
-          gap: 4, // 16px spacing
-          m: 6, // 24px margin
-        }}>
-        {listing.entities.map((entity) => (
-          <Card
-            elevation={0}
-            key={entity.id}
-            sx={{
-              height: '100%',
-              cursor: 'pointer',
-              boxShadow: 'none',
-              '& .MuiCardContent-root': {
-                padding: '20px !important',
-              },
-              '& .entity-avatar': {
-                width: '54px',
-                height: '54px',
-                borderRadius: '8px',
-                '& .MuiAvatar-img': {
-                  width: '28px',
-                  height: '28px',
+    () =>
+      isEmpty(listing.entities) ? (
+        <Box
+          sx={{ textAlign: 'center', margin: '16px 24px', padding: '9px 0' }}>
+          {t('server.no-records-found')}
+        </Box>
+      ) : (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)', // Strict 3 columns
+            gap: 4, // 16px spacing
+            m: 6, // 24px margin
+          }}>
+          {listing.entities.map((entity) => (
+            <Card
+              elevation={0}
+              key={entity.id}
+              sx={{
+                height: '100%',
+                cursor: 'pointer',
+                boxShadow: 'none',
+                '& .MuiCardContent-root': {
+                  padding: '20px !important',
                 },
-                '& svg': {
-                  width: '28px',
-                  height: '28px',
+                '& .entity-avatar': {
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '8px',
+                  '& .MuiAvatar-img': {
+                    width: '28px',
+                    height: '28px',
+                  },
+                  '& svg': {
+                    width: '28px',
+                    height: '28px',
+                  },
                 },
-              },
-            }}
-            onClick={() => listing.actionHandlers?.onEntityClick?.(entity)}>
-            <CardContent>{cardTemplate(entity, renderCell)}</CardContent>
-          </Card>
-        ))}
-      </Box>
-    ),
+              }}
+              onClick={() => listing.actionHandlers?.onEntityClick?.(entity)}>
+              <CardContent>{cardTemplate(entity, renderCell)}</CardContent>
+            </Card>
+          ))}
+        </Box>
+      ),
     [listing.entities, cardTemplate, renderCell, listing.actionHandlers]
   );
 

@@ -15,13 +15,13 @@ import { Box, useAutocomplete, useTheme } from '@mui/material';
 import { useTreeViewApiRef } from '@mui/x-tree-view/hooks';
 import { debounce } from 'lodash';
 import {
-  FC,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    FC,
+    memo,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { TreeNode } from '../atoms/asyncTreeSelect/types';
 import { useAsyncTreeSelect } from '../atoms/asyncTreeSelect/useAsyncTreeSelect';
@@ -30,9 +30,9 @@ import { TreeDropdown } from './atoms/TreeDropdown';
 import { TreeNodeItem } from './atoms/TreeNodeItem';
 import { TreeSearchInput } from './atoms/TreeSearchInput';
 import {
-  useTreeDropdown,
-  useTreeFocusManagement,
-  useTreeKeyboardNavigation,
+    useTreeDropdown,
+    useTreeFocusManagement,
+    useTreeKeyboardNavigation
 } from './hooks';
 import { MUIAsyncTreeSelectProps } from './MUIAsyncTreeSelect.interface';
 
@@ -189,6 +189,40 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
     return visibleNodes;
   }, [treeData, expandedNodes, isNodeVisible]);
 
+  // Utility function to find a node in the tree
+  const findNodeInTree = useCallback(
+    (nodes: TreeNode[], id: string): TreeNode | null => {
+      for (const node of nodes) {
+        if (node.id === id) {
+          return node;
+        }
+        if (node.children) {
+          const found = findNodeInTree(node.children, id);
+          if (found) {
+            return found;
+          }
+        }
+      }
+
+      return null;
+    },
+    []
+  );
+
+  // Utility function to determine if a node should lazy load
+  const shouldNodeLazyLoad = useCallback(
+    (node: TreeNode | null, componentLazyLoad: boolean): boolean => {
+      if (!node) {
+        return componentLazyLoad;
+      }
+
+      return (
+        node.lazyLoad !== false && (node.lazyLoad === true || componentLazyLoad)
+      );
+    },
+    []
+  );
+
   // Handle node selection needs to be defined before keyboard navigation
   const handleNodeClick = useCallback(
     (node: TreeNode) => {
@@ -211,13 +245,45 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
     ]
   );
 
+  // Single source of truth for node expansion with lazy loading
+  const handleNodeExpansion = useCallback(
+    async (nodeId: string) => {
+      if (!disabled) {
+        const wasExpanded = expandedNodes.has(nodeId);
+        toggleNodeExpansion(nodeId);
+        const isExpanding = !wasExpanded;
+
+        if (isExpanding && !loadingNodes.has(nodeId)) {
+          const node = findNodeInTree(treeData, nodeId);
+          if (shouldNodeLazyLoad(node, lazyLoad)) {
+            await loadChildren(nodeId);
+          }
+        }
+
+        maintainFocus();
+      }
+    },
+    [
+      disabled,
+      expandedNodes,
+      toggleNodeExpansion,
+      loadingNodes,
+      findNodeInTree,
+      treeData,
+      shouldNodeLazyLoad,
+      lazyLoad,
+      loadChildren,
+      maintainFocus,
+    ]
+  );
+
   const { handleKeyDown } = useTreeKeyboardNavigation({
     treeApiRef,
     focusedItemId,
     setFocusedItemId,
     getVisibleNodes,
     expandedNodes,
-    toggleNodeExpansion,
+    toggleNodeExpansion: handleNodeExpansion,
     treeData,
     inputRef,
     handleNodeClick,
@@ -331,41 +397,7 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
     }
   }, [focusedItemId, open]);
 
-  // Utility function to find a node in the tree
-  const findNodeInTree = useCallback(
-    (nodes: TreeNode[], id: string): TreeNode | null => {
-      for (const node of nodes) {
-        if (node.id === id) {
-          return node;
-        }
-        if (node.children) {
-          const found = findNodeInTree(node.children, id);
-          if (found) {
-            return found;
-          }
-        }
-      }
-
-      return null;
-    },
-    []
-  );
-
-  // Utility function to determine if a node should lazy load
-  const shouldNodeLazyLoad = useCallback(
-    (node: TreeNode | null, componentLazyLoad: boolean): boolean => {
-      if (!node) {
-        return componentLazyLoad;
-      }
-
-      return (
-        node.lazyLoad !== false && (node.lazyLoad === true || componentLazyLoad)
-      );
-    },
-    []
-  );
-
-  // Handle node expansion
+  // Handle node expansion from TreeView component (mouse clicks)
   const handleNodeToggle = useCallback(
     async (_event: React.SyntheticEvent | null, newExpandedItems: string[]) => {
       if (!disabled) {
@@ -375,32 +407,11 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
           newExpandedItems.find((id) => !expandedNodes.has(id));
 
         if (toggledNodeId) {
-          toggleNodeExpansion(toggledNodeId);
-
-          const isExpanding = newExpandedSet.has(toggledNodeId);
-          if (isExpanding && !loadingNodes.has(toggledNodeId)) {
-            const toggledNode = findNodeInTree(treeData, toggledNodeId);
-            if (shouldNodeLazyLoad(toggledNode, lazyLoad)) {
-              await loadChildren(toggledNodeId);
-            }
-          }
-
-          maintainFocus();
+          await handleNodeExpansion(toggledNodeId);
         }
       }
     },
-    [
-      disabled,
-      toggleNodeExpansion,
-      lazyLoad,
-      loadingNodes,
-      loadChildren,
-      expandedNodes,
-      treeData,
-      maintainFocus,
-      findNodeInTree,
-      shouldNodeLazyLoad,
-    ]
+    [disabled, expandedNodes, handleNodeExpansion]
   );
 
   // Render tree nodes recursively

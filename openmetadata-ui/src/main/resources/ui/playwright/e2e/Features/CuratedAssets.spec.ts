@@ -280,7 +280,8 @@ test.describe('Curated Assets Widget', () => {
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=all')
+        response.url().includes('index=all') &&
+        response.url().includes('true')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -623,7 +624,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator3.locator('.rule--value .ant-select'),
-      'Tier.Tier5'
+      'tier.tier5',
+      true
     );
 
     // Wait for save button to be enabled
@@ -632,7 +634,8 @@ test.describe('Curated Assets Widget', () => {
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=all')
+        response.url().includes('index=all') &&
+        response.url().includes('tier.tier5')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
