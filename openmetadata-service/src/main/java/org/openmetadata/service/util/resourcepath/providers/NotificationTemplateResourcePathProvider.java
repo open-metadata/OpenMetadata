@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2021 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.header-icon {
-  width: 20px;
-  height: 20px;
+
+package org.openmetadata.service.util.resourcepath.providers;
+
+import org.openmetadata.service.util.resourcepath.ResourcePathProvider;
+
+/**
+ * Marker interface for notification template resource path providers.
+ * This provides type safety and organization while inheriting all functionality
+ * from the base ResourcePathProvider interface.
+ */
+public interface NotificationTemplateResourcePathProvider extends ResourcePathProvider {
+  // Marker interface - no additional methods required
 }

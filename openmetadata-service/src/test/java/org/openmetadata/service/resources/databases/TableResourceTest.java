@@ -77,17 +77,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -5532,5 +5522,70 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
     dataProductTest.deleteEntity(dataProduct.getId(), false, true, ADMIN_AUTH_HEADERS);
     domainTest.deleteEntity(domain.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_columnWithMultipleTags_withClassificationReason(TestInfo test) throws IOException {
+    // Patch a table:
+    // 1. PII.Sensitive - from classification with reason "Classified with score 1.0"
+    // 2. Personal.Name - manual tag with no reason (null)
+    Column column = getColumn(C1, ColumnDataType.STRING, null);
+
+    CreateTable request = createRequest(test).withColumns(List.of(column));
+    Table table = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    TagLabel personalTagLabel = PERSONAL_DATA_TAG_LABEL;
+    TagLabel sensitiveTagLabel =
+        PII_SENSITIVE_TAG_LABEL.withReason("Classified with score 1.0"); // Classification reason
+
+    // Create a column with sensitive tag
+    Column columnWithAutoClassification = column.withTags(List.of(sensitiveTagLabel));
+
+    String originalTable = JsonUtils.pojoToJson(table);
+
+    table = table.withColumns(List.of(columnWithAutoClassification));
+
+    Table patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedTable.getColumns());
+    assertEquals(1, patchedTable.getColumns().size());
+    Column patchedColumn = patchedTable.getColumns().getFirst();
+    List<TagLabel> tags = patchedColumn.getTags();
+    assertNotNull(tags);
+    assertEquals(1, tags.size());
+
+    TagLabel piiTag = tags.getFirst();
+    assertNotNull(piiTag);
+    assertEquals("Sensitive", piiTag.getName());
+    assertEquals("PII.Sensitive", piiTag.getTagFQN());
+    assertEquals("Classified with score 1.0", piiTag.getReason());
+
+    // Now add personal tag manually
+    Column columnWithBothTags = column.withTags(List.of(sensitiveTagLabel, personalTagLabel));
+
+    originalTable = JsonUtils.pojoToJson(patchedTable);
+
+    table = patchedTable.withColumns(List.of(columnWithBothTags));
+
+    patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedTable.getColumns());
+    assertEquals(1, patchedTable.getColumns().size());
+    patchedColumn = patchedTable.getColumns().getFirst();
+    tags = patchedColumn.getTags();
+    assertNotNull(tags);
+    assertEquals(2, tags.size());
+
+    piiTag = tags.getFirst();
+    assertNotNull(piiTag);
+    assertEquals("Sensitive", piiTag.getName());
+    assertEquals("PII.Sensitive", piiTag.getTagFQN());
+    assertEquals("Classified with score 1.0", piiTag.getReason());
+
+    TagLabel personalTag = tags.getLast();
+    assertNotNull(personalTag);
+    assertEquals("Personal", personalTag.getName());
+    assertEquals("PersonalData.Personal", personalTag.getTagFQN());
+    assertNull(personalTag.getReason());
   }
 }

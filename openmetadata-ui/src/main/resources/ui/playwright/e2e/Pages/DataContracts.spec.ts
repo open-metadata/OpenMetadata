@@ -68,6 +68,7 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Data Contracts', () => {
   const table = new TableClass();
+  const table2 = new TableClass();
   const testClassification = new ClassificationClass();
   const testTag = new TagClass({
     classification: testClassification.data.name,
@@ -81,6 +82,7 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await table.create(apiContext);
+    await table2.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
     await testGlossary.create(apiContext);
@@ -687,7 +689,7 @@ test.describe('Data Contracts', () => {
     await test.step(
       'Create Data Contract in Table and validate it fails',
       async () => {
-        await table.visitEntityPage(page);
+        await table2.visitEntityPage(page);
 
         // Open contract section and start adding contract
         await page.click('[data-testid="contract"]');
@@ -826,7 +828,7 @@ test.describe('Data Contracts', () => {
       'Verify Contract tab and status badge are visible if persona is set',
       async () => {
         await redirectToHomePage(page);
-        await table.visitEntityPage(page);
+        await table2.visitEntityPage(page);
         await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -893,7 +895,7 @@ test.describe('Data Contracts', () => {
         // when viewing the table page with the customized persona.
 
         await redirectToHomePage(page);
-        await table.visitEntityPage(page);
+        await table2.visitEntityPage(page);
         await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -1997,6 +1999,12 @@ test.describe('Data Contracts', () => {
         page.getByText('Retention: Data should be retained for 30 week')
       ).toBeVisible();
 
+      await expect(
+        page.getByText(
+          `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
+        )
+      ).toBeVisible();
+
       await page.getByTestId('manage-contract-actions').click();
 
       await page.waitForSelector('.contract-action-dropdown', {
@@ -2014,7 +2022,9 @@ test.describe('Data Contracts', () => {
       await saveSecurityAndSLADetails(
         page,
         DATA_CONTRACT_SECURITY_DETAILS_2,
-        table
+        table,
+        false,
+        true
       );
     });
 
@@ -2074,6 +2084,12 @@ test.describe('Data Contracts', () => {
           page.getByText('Retention: Data should be retained for 70 year')
         ).toBeVisible();
 
+        await expect(
+          page.getByText(
+            `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
+          )
+        ).toBeVisible();
+
         await page.getByTestId('manage-contract-actions').click();
 
         await page.waitForSelector('.contract-action-dropdown', {
@@ -2086,7 +2102,8 @@ test.describe('Data Contracts', () => {
             ...DATA_CONTRACT_SECURITY_DETAILS_2,
             ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
           },
-          table
+          table,
+          true
         );
       }
     );
