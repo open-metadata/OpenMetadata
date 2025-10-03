@@ -207,8 +207,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         performLdapBind(userDn, reqPassword, dummy);
         return; // Success
       } catch (CustomExceptionMessage e) {
-        // Only retry on connection errors, NOT on invalid credentials
-        // Check if the message contains our connection error indicator
         if (e.getMessage().contains("Unable to connect to authentication server")
             && attempt < maxRetries) {
           int delayMs = baseDelayMs * attempt;
@@ -225,13 +223,11 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             throw e;
           }
         } else {
-          // Don't retry for authentication failures or last attempt
           throw e;
         }
       }
     }
 
-    // Should not reach here
     throw new CustomExceptionMessage(
         SERVICE_UNAVAILABLE,
         "LDAP_CONNECTION_ERROR",
@@ -316,8 +312,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       try {
         return performLdapUserSearch(email);
       } catch (CustomExceptionMessage e) {
-        // Only retry on connection errors, not authentication/user errors
-        // Check if the message contains our connection error indicator
         if (e.getMessage().contains("Unable to connect to authentication server")
             && attempt < maxRetries) {
           int delayMs = baseDelayMs * attempt; // Exponential backoff: 500ms, 1000ms, 1500ms
@@ -334,13 +328,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             throw e;
           }
         } else {
-          // Don't retry for non-connection errors or if this was the last attempt
           throw e;
         }
       }
     }
-
-    // Should not reach here, but for safety
     throw new CustomExceptionMessage(
         SERVICE_UNAVAILABLE,
         "LDAP_CONNECTION_ERROR",
@@ -381,7 +372,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             INTERNAL_SERVER_ERROR, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
       }
     } catch (LDAPException ex) {
-      // Properly categorize LDAP errors
       ResultCode resultCode = ex.getResultCode();
       String errorMessage = ex.getMessage();
 
@@ -399,8 +389,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
             "LDAP_CONNECTION_ERROR",
             "Unable to connect to authentication server. Please try again later.");
       }
-
-      // For other LDAP errors, provide the actual error
       LOG.error("LDAP error during user lookup: {}", errorMessage);
       throw new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR, "LDAP_ERROR", "Authentication server error: " + errorMessage);

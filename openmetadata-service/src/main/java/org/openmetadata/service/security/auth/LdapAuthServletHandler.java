@@ -114,11 +114,8 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
       writeJsonResponse(resp, JsonUtils.pojoToJson(responseToClient));
 
     } catch (CustomExceptionMessage e) {
-      // Handle custom exceptions with proper status codes
       LOG.error("LDAP login error: {}", e.getMessage(), e);
       int statusCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
-
-      // Map our custom status codes to HTTP status codes
       if (e.getResponse().getStatus() == SERVICE_UNAVAILABLE.getStatusCode()) {
         statusCode = HttpServletResponse.SC_SERVICE_UNAVAILABLE;
       } else if (e.getResponse().getStatus() == UNAUTHORIZED.getStatusCode()) {
@@ -244,7 +241,6 @@ public class LdapAuthServletHandler implements AuthServeletHandler {
   private void sendError(HttpServletResponse resp, int status, String message) {
     try {
       resp.setStatus(status);
-      // Send error in the format frontend expects: { message: "..." }
       writeJsonResponse(resp, String.format("{\"message\":\"%s\"}", message));
     } catch (IOException e) {
       LOG.error("Error writing error response", e);
