@@ -152,7 +152,11 @@ const EditTestCaseModalV1: FC<EditTestCaseModalProps> = ({
       return (
         <div
           onClick={() => handleActiveField(`root/${selectedDefinition.name}`)}>
-          <ParameterForm definition={selectedDefinition} table={table} />
+          <ParameterForm
+            definition={selectedDefinition}
+            table={table}
+            testCase={testCase}
+          />
         </div>
       );
     }
