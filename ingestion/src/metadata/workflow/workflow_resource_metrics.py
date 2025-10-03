@@ -78,15 +78,15 @@ class WorkflowResourceMetrics:
 
         except (psutil.NoSuchProcess, psutil.AccessDenied, Exception):
             # Fallback values if process metrics cannot be collected
-            self.cpu_usage_percent: float = 0.0
-            self.memory_used_rss_bytes: int = 0
-            self.memory_used_mb: float = 0.0
-            self.memory_total_mb: float = 0.0
-            self.memory_usage_percent: float = 0.0
-            self.active_processes: int = 0
-            self.active_threads: int = 0
-            self.system_cpu_cores: int = 1
-            self.system_cpu_threads: int = 1
+            self.cpu_usage_percent = 0.0
+            self.memory_used_rss_bytes = 0
+            self.memory_used_mb = 0.0
+            self.memory_total_mb = 0.0
+            self.memory_usage_percent = 0.0
+            self.active_processes = 0
+            self.active_threads = 0
+            self.system_cpu_cores = 1
+            self.system_cpu_threads = 1
 
     def to_dict(self):
         """Return metrics as a dictionary."""
