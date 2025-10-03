@@ -1,0 +1,70 @@
+{
+  "$id": "https://open-metadata.org/schema/type/pipelineMetrics.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Pipeline Metrics",
+  "description": "Aggregated metrics about pipelines",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PipelineMetrics",
+  "properties": {
+    "totalPipelines": {
+      "type": "integer",
+      "default": 0,
+      "description": "Total count of all pipelines"
+    },
+    "serviceCount": {
+      "type": "integer",
+      "default": 0,
+      "description": "Count of unique pipeline services"
+    },
+    "activePipelines": {
+      "type": "integer",
+      "default": 0,
+      "description": "Count of active pipelines"
+    },
+    "inactivePipelines": {
+      "type": "integer",
+      "default": 0,
+      "description": "Count of inactive pipelines"
+    },
+    "failedPipelines": {
+      "type": "integer",
+      "default": 0,
+      "description": "Count of pipelines with failed last run status"
+    },
+    "successfulPipelines": {
+      "type": "integer",
+      "default": 0,
+      "description": "Count of pipelines with successful last run status"
+    },
+    "pipelinesWithoutStatus": {
+      "type": "integer",
+      "default": 0,
+      "description": "Count of pipelines that have never been executed"
+    },
+    "serviceBreakdown": {
+      "type": "array",
+      "default": [],
+      "description": "Breakdown of pipelines by service",
+      "items": {
+        "type": "object",
+        "properties": {
+          "serviceName": {"type": "string"},
+          "serviceType": {"type": ["string", "null"]},
+          "count": {"type": "integer"}
+        }
+      }
+    },
+    "dataAvailable": {
+      "type": "boolean",
+      "default": false,
+      "description": "Indicates if Elasticsearch data is available"
+    },
+    "errorMessage": {
+      "type": ["string", "null"],
+      "default": null,
+      "description": "Error message if metrics retrieval failed"
+    }
+  },
+  "required": ["totalPipelines", "dataAvailable"],
+  "additionalProperties": false
+}
