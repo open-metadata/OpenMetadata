@@ -62,8 +62,14 @@
   .remove-field-icon:hover {
     color: @remove-icon-hover-color;
   }
-}
 
-.filters-label.ant-typography {
-  color: @grey-600;
+  .active {
+    .filters-label.ant-typography {
+      color: @primary-color;
+    }
+  }
+
+  .filters-label.ant-typography {
+    color: @grey-600;
+  }
 }

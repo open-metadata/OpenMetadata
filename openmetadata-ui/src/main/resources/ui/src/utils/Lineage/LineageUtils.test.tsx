@@ -150,7 +150,7 @@ describe('LineageUtils', () => {
         );
 
         expect(tableLevel).toBeDefined();
-        expect(tableLevel?.label).toBe('label.table-level');
+        expect(tableLevel?.label).toBe('label.asset-level');
         expect(tableLevel?.key).toBe(EImpactLevel.TableLevel);
         expect(tableLevel?.icon).toBeDefined();
 
