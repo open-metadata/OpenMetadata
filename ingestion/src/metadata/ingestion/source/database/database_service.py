@@ -70,6 +70,7 @@ from metadata.utils import fqn
 from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_schema
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.owner_utils import get_owner_from_config
 from metadata.utils.tag_utils import get_tag_label
 
 logger = ingestion_logger()
@@ -579,12 +580,171 @@ class DatabaseServiceSource(
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    def get_database_owner_ref(
+        self, database_name: str
+    ) -> Optional[EntityReferenceList]:
+        """
+        Get owner for database entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration)
+
+        Args:
+            database_name: Name of the database
+
+        Returns:
+            EntityReferenceList with owner or None
+        """
+        try:
+            # Priority 1: Use ownerConfig if configured
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="database",
+                    entity_name=database_name,
+                    parent_owner=None,  # Database is top level
+                )
+                if owner_ref:
+                    return owner_ref
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error processing owner for database {database_name}: {exc}"
+            )
+
+        return None
+
+    def get_schema_owner_ref(self, schema_name: str) -> Optional[EntityReferenceList]:
+        """
+        Get owner for schema entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration and inheritance)
+
+        Args:
+            schema_name: Name of the schema
+
+        Returns:
+            EntityReferenceList with owner or None
+        """
+        try:
+            # Get parent (database) owner for inheritance
+            parent_owner = None
+            database_entity = getattr(self.context.get(), "database_entity", None)
+            if database_entity:
+                db_owners = database_entity.owners
+                if db_owners and db_owners.root:
+                    parent_owner = db_owners.root[0].name
+
+            # Build FQN for more precise matching
+            schema_fqn = f"{self.context.get().database}.{schema_name}"
+
+            # Priority 1: Use ownerConfig if configured
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="databaseSchema",
+                    entity_name=schema_fqn,  # Use FQN for matching
+                    parent_owner=parent_owner,
+                )
+                if owner_ref:
+                    return owner_ref
+
+                # Also try simple name if FQN didn't match
+                if schema_fqn != schema_name:
+                    owner_ref = get_owner_from_config(
+                        metadata=self.metadata,
+                        owner_config=self.source_config.ownerConfig,
+                        entity_type="databaseSchema",
+                        entity_name=schema_name,
+                        parent_owner=parent_owner,
+                    )
+                    if owner_ref:
+                        return owner_ref
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error processing owner for schema {schema_name}: {exc}")
+
+        return None
+
     @calculate_execution_time()
     def get_owner_ref(self, table_name: str) -> Optional[EntityReferenceList]:
         """
-        Method to process the table owners
+        Get owner for table entity using ownerConfig.
+
+        Resolution order:
+        1. ownerConfig (with topology-based configuration and inheritance)
+        2. Source system owner (if includeOwners is enabled)
+
+        Args:
+            table_name: Name of the table
+
+        Returns:
+            EntityReferenceList with owner or None
         """
         try:
+            # Get parent (schema) owner for inheritance
+            parent_owner = None
+            database_schema_entity = getattr(
+                self.context.get(), "database_schema_entity", None
+            )
+            if database_schema_entity:
+                schema_owners = database_schema_entity.owners
+                if schema_owners and schema_owners.root:
+                    parent_owner = schema_owners.root[0].name
+
+            # Build FQN for more precise matching
+            table_fqn = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
+
+            # Priority 1: Use ownerConfig if configured
+            if (
+                hasattr(self.source_config, "ownerConfig")
+                and self.source_config.ownerConfig
+            ):
+                logger.debug(
+                    f"Trying ownerConfig for table '{table_name}', FQN: '{table_fqn}'"
+                )
+                logger.debug(f"Owner config: {self.source_config.ownerConfig}")
+                owner_ref = get_owner_from_config(
+                    metadata=self.metadata,
+                    owner_config=self.source_config.ownerConfig,
+                    entity_type="table",
+                    entity_name=table_fqn,  # Use FQN for matching
+                    parent_owner=parent_owner,
+                )
+                if owner_ref:
+                    logger.debug(f"Found owner from FQN match: {owner_ref}")
+                    return owner_ref
+
+                # Also try simple name if FQN didn't match
+                if table_fqn != table_name:
+                    logger.debug(
+                        f"FQN match failed, trying simple name: '{table_name}'"
+                    )
+                    owner_ref = get_owner_from_config(
+                        metadata=self.metadata,
+                        owner_config=self.source_config.ownerConfig,
+                        entity_type="table",
+                        entity_name=table_name,
+                        parent_owner=parent_owner,
+                    )
+                    if owner_ref:
+                        logger.debug(f"Found owner from simple name match: {owner_ref}")
+                        return owner_ref
+
+                logger.debug(f"No owner found for table '{table_name}'")
+
+            # Priority 2: Extract owner from source system (if includeOwners enabled)
             if self.source_config.includeOwners and hasattr(
                 self.inspector, "get_table_owner"
             ):
