@@ -74,6 +74,7 @@ export type SelectTestSuiteType = {
 export interface ParameterFormProps {
   definition: TestDefinition;
   table?: Table;
+  testCase?: TestCase;
 }
 
 export interface EditTestCaseModalProps {

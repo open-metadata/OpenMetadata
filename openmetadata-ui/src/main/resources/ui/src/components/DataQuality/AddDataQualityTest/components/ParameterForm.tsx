@@ -57,8 +57,15 @@ import {
 import '../../../Database/Profiler/TableProfiler/table-profiler.less';
 import CodeEditor from '../../../Database/SchemaEditor/CodeEditor';
 import { ParameterFormProps } from '../AddDataQualityTest.interface';
+import { Column } from '../../../../generated/entity/data/table';
+import { getTableColumnsByFQN } from '../../../../rest/tableAPI';
+import { useForm } from 'antd/es/form/Form';
 
-const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
+const ParameterForm: React.FC<ParameterFormProps> = ({
+  definition,
+  table,
+  testCase,
+}) => {
   const { t } = useTranslation();
 
   const prepareForm = (
@@ -327,6 +334,11 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         Pick<TableSearchSource, 'name' | 'displayName' | 'fullyQualifiedName'>
       >[]
     >([]);
+    const [form] = useForm();
+    const [table2Fqn, setTable2Fqn] = useState<string | undefined>(
+      testCase?.parameterValues?.find((param) => param.name === 'table2')?.value
+    );
+    const [table2Columns, setTable2Columns] = useState<Column[]>([]);
     const tableOptions = useMemo(
       () =>
         tableList.map((hit) => {
@@ -356,10 +368,33 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         setIsOptionsLoading(false);
       }
     };
-
     const debounceFetchTableData = useCallback(debounce(fetchTableData, 1000), [
       fetchTableData,
     ]);
+
+    const updateTable2Columns = useCallback(
+      (columns: Column[]) => {
+        setTable2Columns(columns);
+        form.setFieldValue(['params', 'table2.keyColumns'], []);
+      },
+      [form.setFieldValue, setTable2Columns]
+    );
+
+    useEffect(() => {
+      if (table2Fqn !== undefined) {
+        getTableColumnsByFQN(table2Fqn)
+          .then(({ data }) => {
+            updateTable2Columns(data);
+          })
+          .catch(() => updateTable2Columns([]));
+      } else if (table2Columns.length > 0) {
+        updateTable2Columns([]);
+      }
+    }, [table2Fqn, updateTable2Columns]);
+
+    const handleOnChange = (value: string | undefined) => {
+      setTable2Fqn(value);
+    };
 
     const getFormData = (data: TestCaseParameterDefinition) => {
       switch (data.name) {
@@ -375,6 +410,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
               options={tableOptions}
               placeholder={t('label.table')}
               popupClassName="no-wrap-option"
+              onChange={handleOnChange}
               onSearch={debounceFetchTableData}
             />
           );
@@ -403,6 +439,52 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                 ]);
 
                 const columns = table?.columns.map((column) => ({
+                  label: getEntityName(column),
+                  value: column.name,
+                  // Check if column.name is in the combined Set to determine if it should be disabled
+                  disabled: selectedColumnsSet.has(column.name),
+                }));
+
+                return prepareForm(
+                  data,
+                  <Select
+                    allowClear
+                    showSearch
+                    getPopupContainer={getPopupContainer}
+                    options={columns}
+                    placeholder={t('label.column')}
+                  />
+                );
+              }}
+            </Form.Item>
+          );
+
+        case 'table2.keyColumns':
+          return (
+            <Form.Item
+              noStyle
+              shouldUpdate
+              key={`table2.keyColumns[${table2Columns.join(',')}]`}>
+              {({ getFieldValue }) => {
+                // Convert selectedKeyColumn and selectedUseColumns to Sets for efficient lookup
+                const selectedKeyColumnSet = new Set(
+                  getFieldValue(['params', 'table2.keyColumns'])?.map(
+                    (item: { value: string }) => item?.value
+                  )
+                );
+                const selectedUseColumnsSet = new Set(
+                  getFieldValue(['params', 'useColumns'])?.map(
+                    (item: { value: string }) => item?.value
+                  )
+                );
+
+                // Combine both Sets for a single lookup operation
+                const selectedColumnsSet = new Set([
+                  ...selectedKeyColumnSet,
+                  ...selectedUseColumnsSet,
+                ]);
+
+                const columns = table2Columns.map((column) => ({
                   label: getEntityName(column),
                   value: column.name,
                   // Check if column.name is in the combined Set to determine if it should be disabled

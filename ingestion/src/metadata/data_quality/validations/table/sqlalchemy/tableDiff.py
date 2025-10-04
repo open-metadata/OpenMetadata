@@ -266,7 +266,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         table1 = data_diff.connect_to_table(
             self.runtime_params.table1.serviceUrl,
             self.runtime_params.table1.path,
-            self.runtime_params.keyColumns,
+            self.runtime_params.table1.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
             key_content=self.runtime_params.table1.privateKey.get_secret_value()
@@ -279,7 +279,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         table2 = data_diff.connect_to_table(
             self.runtime_params.table2.serviceUrl,
             self.runtime_params.table2.path,
-            self.runtime_params.keyColumns,
+            self.runtime_params.table2.key_columns,
             extra_columns=self.runtime_params.extraColumns,
             case_sensitive=self.get_case_sensitive(),
             key_content=self.runtime_params.table2.privateKey.get_secret_value()
@@ -345,7 +345,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         table1 = data_diff.connect_to_table(
             self.runtime_params.table1.serviceUrl,
             self.runtime_params.table1.path,
-            self.runtime_params.keyColumns,  # type: ignore
+            self.runtime_params.table1.key_columns,  # type: ignore
+            extra_columns=self.runtime_params.table1.extra_columns,
             case_sensitive=self.get_case_sensitive(),
             where=left_where,
             key_content=self.runtime_params.table1.privateKey.get_secret_value()
@@ -358,7 +359,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         table2 = data_diff.connect_to_table(
             self.runtime_params.table2.serviceUrl,
             self.runtime_params.table2.path,
-            self.runtime_params.keyColumns,  # type: ignore
+            self.runtime_params.table2.key_columns,  # type: ignore
+            extra_columns=self.runtime_params.table2.extra_columns,
             case_sensitive=self.get_case_sensitive(),
             where=right_where,
             key_content=self.runtime_params.table1.privateKey.get_secret_value()
@@ -369,8 +371,6 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             else None,
         )
         data_diff_kwargs = {
-            "key_columns": self.runtime_params.keyColumns,
-            "extra_columns": self.runtime_params.extraColumns,
             "where": self.get_where(),
         }
         logger.debug(
@@ -434,14 +434,27 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         salt = "".join(
             random.choices(string.ascii_letters + string.digits, k=5)
         )  # 1 / ~62^5 should be enough entropy. Use letters and digits to avoid messing with SQL syntax
-        key_columns = (
-            CaseInsensitiveList(self.runtime_params.keyColumns)
-            if not self.get_case_sensitive()
-            else self.runtime_params.keyColumns
+
+        return (
+            build_sample_where_clause(
+                self.runtime_params.table1,
+                self.maybe_case_sensitive(self.runtime_params.table1.key_columns),
+                salt,
+                hex_nounce,
+            ),
+            build_sample_where_clause(
+                self.runtime_params.table2,
+                self.maybe_case_sensitive(self.runtime_params.table2.key_columns),
+                salt,
+                hex_nounce,
+            ),
         )
-        return tuple(
-            build_sample_where_clause(table, key_columns, salt, hex_nounce)
-            for table in [self.runtime_params.table1, self.runtime_params.table2]
+
+    def maybe_case_sensitive(self, iterable: Iterable[str]) -> list[str]:
+        return (
+            CaseInsensitiveList(iterable)
+            if not self.get_case_sensitive()
+            else list(iterable)
         )
 
     def calculate_nounce(self, max_nounce=2**32 - 1) -> int:
@@ -522,8 +535,16 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
     def get_column_diff(self) -> Optional[TestCaseResult]:
         """Get the column diff between the two tables. If there are no differences, return None."""
         removed, added = self.get_changed_added_columns(
-            self.runtime_params.table1.columns,
-            self.runtime_params.table2.columns,
+            [
+                c
+                for c in self.runtime_params.table1.columns
+                if c.name.root not in self.runtime_params.table1.key_columns
+            ],
+            [
+                c
+                for c in self.runtime_params.table2.columns
+                if c.name.root not in self.runtime_params.table2.key_columns
+            ],
             self.get_case_sensitive(),
         )
         changed = self.get_incomparable_columns()
@@ -585,9 +606,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             f"Tables have {sum(map(len, [removed, added, changed]))} different columns:"
         )
         if removed:
-            message += f"\n  Removed columns: {','.join(removed)}\n"
+            message += f"\n  Removed columns: {', '.join(removed)}\n"
         if added:
-            message += f"\n  Added columns: {','.join(added)}\n"
+            message += f"\n  Added columns: {', '.join(added)}\n"
         if changed:
             message += "\n  Changed columns:"
             table1_columns = {
