@@ -27,7 +27,9 @@ export type MetricChartType = {
     dataKey: string;
     stackId?: string;
     color: string;
+    fill?: string;
     latestValue?: string | number;
+    extra?: string;
   }[];
   data: Record<string, string | number | undefined>[];
 };
@@ -42,6 +44,7 @@ export interface ProfilerDetailsCardProps {
   isLoading?: boolean;
   noDataPlaceholderText?: ReactNode;
   children?: ReactNode;
+  chartType?: 'line' | 'area';
 }
 
 export enum TableProfilerTab {
@@ -78,6 +81,7 @@ export interface ProfilerLatestValueProps {
   information: MetricChartType['information'];
   tickFormatter?: string;
   stringValue?: boolean;
+  extra?: ReactNode;
 }
 
 export type TestCaseAction = {
