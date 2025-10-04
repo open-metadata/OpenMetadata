@@ -152,6 +152,17 @@
             }
           },
           "additionalProperties": false
+        },
+        "djl": {
+          "description": "Embedding generation using Deep Java Library (DJL)",
+          "type": "object",
+          "properties": {
+            "embeddingModel": {
+              "description": "DJL model name for embedding generation",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
