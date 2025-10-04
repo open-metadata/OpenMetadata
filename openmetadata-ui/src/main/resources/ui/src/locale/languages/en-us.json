@@ -1694,6 +1694,7 @@
     "test-email": "Test Email",
     "test-email-connection": "Test Email Connection",
     "test-entity": "Test {{entity}}",
+    "test-plural-type": "{{type}} Tests",
     "test-level-lowercase": "test level",
     "test-plural": "Tests",
     "test-suite": "Test Suite",

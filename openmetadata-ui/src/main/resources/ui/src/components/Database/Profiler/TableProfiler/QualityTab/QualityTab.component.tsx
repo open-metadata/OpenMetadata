@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { DownOutlined } from '@ant-design/icons';
+import { Grid } from '@mui/material';
 import {
   Button,
   Col,
@@ -26,7 +27,11 @@ import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as AddItemIcon } from '../../../../../assets/svg/add-item-icon.svg';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
+import { ReactComponent as RedCircleIcon } from '../../../../../assets/svg/red-circle-with-dash.svg';
+import { ReactComponent as SuccessTicketIcon } from '../../../../../assets/svg/success-ticket-with-check.svg';
+import { ReactComponent as YellowCalendarIcon } from '../../../../../assets/svg/yellow-calendar.icon.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
@@ -56,9 +61,9 @@ import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlace
 import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
+import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
-import { SummaryPanel } from '../../../../DataQuality/SummaryPannel/SummaryPanel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import PageHeader from '../../../../PageHeader/PageHeader.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
@@ -114,6 +119,37 @@ export const QualityTab = () => {
   const testSuite = useMemo(() => table?.testSuite, [table]);
   const [ingestionPipelineCount, setIngestionPipelineCount] =
     useState<number>(0);
+
+  const totalTestCaseSummary = useMemo(() => {
+    const tests = testCaseSummary?.total ?? INITIAL_TEST_SUMMARY;
+
+    return [
+      {
+        title: t('label.test-plural-type', { type: t('label.total') }),
+        key: 'total-tests',
+        value: tests.total,
+        icon: AddItemIcon,
+      },
+      {
+        title: t('label.test-plural-type', { type: t('label.successful') }),
+        key: 'successful-tests',
+        value: tests.success,
+        icon: SuccessTicketIcon,
+      },
+      {
+        title: t('label.test-plural-type', { type: t('label.failed') }),
+        key: 'failed-tests',
+        value: tests.failed,
+        icon: RedCircleIcon,
+      },
+      {
+        title: t('label.test-plural-type', { type: t('label.aborted') }),
+        key: 'aborted-tests',
+        value: tests.aborted,
+        icon: YellowCalendarIcon,
+      },
+    ];
+  }, [testCaseSummary]);
 
   const fetchIngestionPipelineCount = async () => {
     try {
@@ -393,9 +429,18 @@ export const QualityTab = () => {
         </Row>
       </Col>
       <Col span={24}>
-        <SummaryPanel
-          testSummary={testCaseSummary?.total ?? INITIAL_TEST_SUMMARY}
-        />
+        <Grid container spacing={5}>
+          {totalTestCaseSummary?.map((summary) => (
+            <Grid key={summary.title} size="grow">
+              <SummaryCardV1
+                icon={summary.icon}
+                isLoading={isTestsLoading}
+                title={summary.title}
+                value={summary.value}
+              />
+            </Grid>
+          ))}
+        </Grid>
       </Col>
       <Col span={24}>
         <Tabs className="tabs-new" items={tabs} onChange={handleTabChange} />
