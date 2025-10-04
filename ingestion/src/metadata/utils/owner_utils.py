@@ -188,7 +188,7 @@ def get_owner_from_config(
 
     Args:
         metadata: OpenMetadata client
-        owner_config: Owner configuration (string for legacy mode, dict for new mode)
+        owner_config: Owner configuration (string for simple mode, dict for hierarchical mode)
         entity_type: Type of entity ("database", "databaseSchema", "table")
         entity_name: Name or FQN of the entity
         parent_owner: Owner inherited from parent entity
@@ -200,7 +200,7 @@ def get_owner_from_config(
         f"get_owner_from_config called: entity_type={entity_type}, entity_name={entity_name}, owner_config type={type(owner_config)}"
     )
 
-    # Handle legacy string mode (old 'owner' field)
+    # Handle simple string mode (single owner for all entities)
     if isinstance(owner_config, str):
         resolver = OwnerResolver(metadata, {"default": owner_config})
         return resolver.resolve_owner(entity_type, entity_name, parent_owner)

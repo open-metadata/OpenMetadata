@@ -235,7 +235,7 @@ class TestGetOwnerFromConfig(unittest.TestCase):
         self.mock_owner_list = EntityReferenceList(root=[mock_owner])
 
     def test_string_config(self):
-        """Test with string configuration (legacy mode)"""
+        """Test with string configuration (simple mode)"""
         self.mock_metadata.get_reference_by_name.return_value = self.mock_owner_list
 
         result = get_owner_from_config(
