@@ -647,8 +647,9 @@ class DatabaseServiceSource(
         try:
             # Get parent (database) owner for inheritance
             parent_owner = None
-            if self.context.get().database_entity:
-                db_owners = self.context.get().database_entity.owners
+            database_entity = getattr(self.context.get(), "database_entity", None)
+            if database_entity:
+                db_owners = database_entity.owners
                 if db_owners and db_owners.root:
                     parent_owner = db_owners.root[0].name
 
@@ -663,7 +664,7 @@ class DatabaseServiceSource(
                 owner_ref = get_owner_from_config(
                     metadata=self.metadata,
                     owner_config=self.source_config.ownerConfig,
-                    entity_type="schema",
+                    entity_type="databaseSchema",
                     entity_name=schema_fqn,  # Use FQN for matching
                     parent_owner=parent_owner,
                 )
@@ -675,7 +676,7 @@ class DatabaseServiceSource(
                     owner_ref = get_owner_from_config(
                         metadata=self.metadata,
                         owner_config=self.source_config.ownerConfig,
-                        entity_type="schema",
+                        entity_type="databaseSchema",
                         entity_name=schema_name,
                         parent_owner=parent_owner,
                     )
@@ -687,7 +688,7 @@ class DatabaseServiceSource(
                 owner_ref = get_owner_from_config(
                     metadata=self.metadata,
                     owner_config=self.source_config.owner,
-                    entity_type="schema",
+                    entity_type="databaseSchema",
                     entity_name=schema_name,
                     parent_owner=parent_owner,
                 )
@@ -718,8 +719,11 @@ class DatabaseServiceSource(
         try:
             # Get parent (schema) owner for inheritance
             parent_owner = None
-            if self.context.get().database_schema_entity:
-                schema_owners = self.context.get().database_schema_entity.owners
+            database_schema_entity = getattr(
+                self.context.get(), "database_schema_entity", None
+            )
+            if database_schema_entity:
+                schema_owners = database_schema_entity.owners
                 if schema_owners and schema_owners.root:
                     parent_owner = schema_owners.root[0].name
 
@@ -731,6 +735,10 @@ class DatabaseServiceSource(
                 hasattr(self.source_config, "ownerConfig")
                 and self.source_config.ownerConfig
             ):
+                logger.debug(
+                    f"Trying ownerConfig for table '{table_name}', FQN: '{table_fqn}'"
+                )
+                logger.debug(f"Owner config: {self.source_config.ownerConfig}")
                 owner_ref = get_owner_from_config(
                     metadata=self.metadata,
                     owner_config=self.source_config.ownerConfig,
@@ -739,10 +747,14 @@ class DatabaseServiceSource(
                     parent_owner=parent_owner,
                 )
                 if owner_ref:
+                    logger.debug(f"Found owner from FQN match: {owner_ref}")
                     return owner_ref
 
                 # Also try simple name if FQN didn't match
                 if table_fqn != table_name:
+                    logger.debug(
+                        f"FQN match failed, trying simple name: '{table_name}'"
+                    )
                     owner_ref = get_owner_from_config(
                         metadata=self.metadata,
                         owner_config=self.source_config.ownerConfig,
@@ -751,7 +763,10 @@ class DatabaseServiceSource(
                         parent_owner=parent_owner,
                     )
                     if owner_ref:
+                        logger.debug(f"Found owner from simple name match: {owner_ref}")
                         return owner_ref
+
+                logger.debug(f"No owner found for table '{table_name}'")
 
             # Priority 2: Fall back to legacy owner field
             if hasattr(self.source_config, "owner") and self.source_config.owner:

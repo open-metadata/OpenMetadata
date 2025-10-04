@@ -70,8 +70,14 @@ class OwnerResolver:
             return None
 
         try:
+            logger.debug(
+                f"Resolving owner for {entity_type} '{entity_name}', parent_owner: {parent_owner}"
+            )
+            logger.debug(f"Full config: {self.config}")
+
             # 1. 尝试从当前层次的配置中获取 owner
             level_config = self.config.get(entity_type)
+            logger.debug(f"Level config for '{entity_type}': {level_config}")
 
             if level_config:
                 # 如果是 dict，尝试精确匹配
@@ -183,21 +189,33 @@ def get_owner_from_config(
     Args:
         metadata: OpenMetadata client
         owner_config: Owner configuration (string for legacy mode, dict for new mode)
-        entity_type: Type of entity ("database", "schema", "table")
+        entity_type: Type of entity ("database", "databaseSchema", "table")
         entity_name: Name or FQN of the entity
         parent_owner: Owner inherited from parent entity
 
     Returns:
         EntityReferenceList with resolved owner, or None
     """
+    logger.debug(
+        f"get_owner_from_config called: entity_type={entity_type}, entity_name={entity_name}, owner_config type={type(owner_config)}"
+    )
+
     # Handle legacy string mode (old 'owner' field)
     if isinstance(owner_config, str):
         resolver = OwnerResolver(metadata, {"default": owner_config})
         return resolver.resolve_owner(entity_type, entity_name, parent_owner)
 
-    # Handle new ownerConfig dict mode
+    # Handle new ownerConfig dict mode or Pydantic model
     if isinstance(owner_config, dict):
         resolver = OwnerResolver(metadata, owner_config)
         return resolver.resolve_owner(entity_type, entity_name, parent_owner)
 
+    # Handle Pydantic model (convert to dict)
+    if hasattr(owner_config, "model_dump"):
+        logger.debug("Converting Pydantic model to dict")
+        config_dict = owner_config.model_dump(exclude_none=True)
+        resolver = OwnerResolver(metadata, config_dict)
+        return resolver.resolve_owner(entity_type, entity_name, parent_owner)
+
+    logger.debug(f"Unsupported owner_config type: {type(owner_config)}")
     return None

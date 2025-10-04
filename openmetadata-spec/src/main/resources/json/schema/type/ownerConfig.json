@@ -35,7 +35,7 @@
         }
       ]
     },
-    "schema": {
+    "databaseSchema": {
       "description": "Owner for schema entities. Can be a single owner or a map of schema FQNs to owners",
       "oneOf": [
         {
@@ -89,7 +89,7 @@
     {
       "default": "data-team",
       "database": "database-admins",
-      "schema": "schema-owners",
+      "databaseSchema": "schema-owners",
       "table": "table-stewards",
       "enableInheritance": true
     },
@@ -99,7 +99,7 @@
         "sales_db": "sales-team",
         "analytics_db": "analytics-team"
       },
-      "schema": {
+      "databaseSchema": {
         "public": "public-team",
         "analytics_db.reporting": "reporting-team"
       },
