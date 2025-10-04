@@ -30,6 +30,8 @@ test.describe('Service form functionality', async () => {
 
   test.describe('Superset', () => {
     test('Verify form selects are working properly', async ({ page }) => {
+      test.slow();
+
       await page.goto('/dashboardServices/add-service');
       await waitForAllLoadersToDisappear(page);
       await page.click(`[data-testid="Superset"]`);

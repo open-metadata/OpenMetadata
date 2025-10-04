@@ -41,11 +41,13 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
+import org.openmetadata.schema.services.connections.database.TimescaleConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
 import org.openmetadata.schema.services.connections.database.iceberg.IcebergFileSystem;
+import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.mlmodel.VertexAIConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.MatillionConnection;
@@ -78,6 +80,7 @@ public final class ClassConverterFactory {
             Map.entry(GCSConfig.class, new GCPConfigClassConverter()),
             Map.entry(GCPCredentials.class, new GcpCredentialsClassConverter()),
             Map.entry(GCSConnection.class, new GcpConnectionClassConverter()),
+            Map.entry(GoogleDriveConnection.class, new GoogleDriveConnectionClassConverter()),
             Map.entry(HiveConnection.class, new HiveConnectionClassConverter()),
             Map.entry(IcebergConnection.class, new IcebergConnectionClassConverter()),
             Map.entry(IcebergFileSystem.class, new IcebergFileSystemClassConverter()),
@@ -110,7 +113,8 @@ public final class ClassConverterFactory {
             Map.entry(UnityCatalogConnection.class, new UnityCatalogConnectionClassConverter()),
             Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
             Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
-            Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()));
+            Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
+            Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter()));
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
