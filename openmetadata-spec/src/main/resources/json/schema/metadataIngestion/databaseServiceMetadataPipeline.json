@@ -96,11 +96,6 @@
       "type": "boolean",
       "default": false
     },
-    "owner": {
-      "title": "Owner",
-      "description": "Set a default owner for the ingested entities. This owner will be applied to all entities that don't have an owner specified in the source. The value should be the name or email of a user or team in OpenMetadata.",
-      "type": "string"
-    },
     "ownerConfig": {
       "title": "Hierarchical Owner Configuration",
       "description": "Advanced configuration for managing owners at multiple hierarchy levels (Service, Database, Schema, Table) with custom mappings and inheritance rules.",

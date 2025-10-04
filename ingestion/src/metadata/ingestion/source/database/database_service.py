@@ -744,7 +744,7 @@ class DatabaseServiceSource(
 
                 logger.debug(f"No owner found for table '{table_name}'")
 
-            # Priority 3: Extract owner from source system (if includeOwners enabled)
+            # Priority 2: Extract owner from source system (if includeOwners enabled)
             if self.source_config.includeOwners and hasattr(
                 self.inspector, "get_table_owner"
             ):
@@ -757,8 +757,7 @@ class DatabaseServiceSource(
                     owner_ref = self.metadata.get_reference_by_name(
                         name=owner_name, is_owner=True
                     )
-                    if owner_ref:
-                        return owner_ref
+                    return owner_ref
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
