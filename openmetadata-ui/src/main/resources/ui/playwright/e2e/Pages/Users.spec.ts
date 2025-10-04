@@ -118,8 +118,8 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await tableEntity2.create(apiContext);
   await policy.create(apiContext, DATA_STEWARD_RULES);
   await role.create(apiContext, [policy.responseData.name]);
-  await persona1.create(apiContext);
-  await persona2.create(apiContext);
+  await persona1.create(apiContext, [adminUser.responseData.id]);
+  await persona2.create(apiContext, [adminUser.responseData.id]);
 
   await afterAction();
 });
@@ -531,32 +531,10 @@ test.describe('User Profile Feed Interactions', () => {
 });
 
 test.describe('User Profile Dropdown Persona Interactions', () => {
-  test.beforeAll(async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
-
+  test.beforeAll('Prerequisites', async ({ adminPage }) => {
     // First, add personas to the user profile for testing
     await visitOwnProfilePage(adminPage);
     await adminPage.waitForSelector('[data-testid="persona-details-card"]');
-
-    // Add personas to user profile
-    await adminPage
-      .locator('[data-testid="edit-user-persona"]')
-      .first()
-      .click();
-    await adminPage.waitForSelector('[data-testid="persona-select-list"]');
-    await adminPage.locator('[data-testid="persona-select-list"]').click();
-    await adminPage.waitForSelector('.ant-select-dropdown', {
-      state: 'visible',
-    });
-
-    // Select both personas
-    await adminPage.getByTestId(`${persona1.data.displayName}-option`).click();
-    await adminPage.getByTestId(`${persona2.data.displayName}-option`).click();
-
-    await adminPage
-      .locator('[data-testid="user-profile-persona-edit-save"]')
-      .click();
-    await adminPage.waitForResponse('/api/v1/users/*');
 
     // Set default persona
     await adminPage

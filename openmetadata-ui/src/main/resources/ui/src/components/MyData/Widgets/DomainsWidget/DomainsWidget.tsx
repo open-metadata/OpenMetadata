@@ -150,6 +150,7 @@ const DomainsWidget = ({
                 'domain-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
+              data-testid={`domain-card-${domain.id || domain.name}`}
               key={domain.id}
               onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (

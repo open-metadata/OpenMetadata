@@ -11,14 +11,21 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { waitForAllLoadersToDisappear } from './entity';
 
 export const verifyActivityFeedFilters = async (
   page: Page,
   widgetKey: string
 ) => {
+  // Wait for the page to load
+  await waitForAllLoadersToDisappear(page);
+
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
   ).toBeVisible();
+
+  // Wait for the widget feed to load
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   const myDataFilter = page.waitForResponse(
     '/api/v1/feed?type=Conversation&filterType=OWNER&*'
@@ -52,6 +59,12 @@ export const verifyActivityFeedFilters = async (
 };
 
 export const verifyDataFilters = async (page: Page, widgetKey: string) => {
+  // Wait for the page to load
+  await waitForAllLoadersToDisappear(page);
+
+  // Wait for the widget data to appear
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
   ).toBeVisible();
@@ -91,6 +104,8 @@ export const verifyTotalDataAssetsFilters = async (
   page: Page,
   widgetKey: string
 ) => {
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
   ).toBeVisible();
@@ -121,7 +136,10 @@ export const verifyDataProductsFilters = async (
   page: Page,
   widgetKey: string
 ) => {
+  await waitForAllLoadersToDisappear(page);
+
   const widget = page.getByTestId(widgetKey);
+
   const sortDropdown = widget.getByTestId('widget-sort-by-dropdown');
 
   await expect(sortDropdown).toBeVisible();
@@ -149,6 +167,8 @@ export const verifyDataProductsFilters = async (
 };
 
 export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
   ).toBeVisible();
@@ -185,6 +205,8 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
 };
 
 export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
+  await waitForAllLoadersToDisappear(page);
+
   await expect(
     page.getByTestId(widgetKey).getByTestId('widget-sort-by-dropdown')
   ).toBeVisible();
@@ -218,4 +240,68 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
     .click();
   await page.getByRole('menuitem', { name: 'All' }).click();
   await allTasksFilter;
+};
+
+export const verifyDataAssetsFilters = async (
+  page: Page,
+  widgetKey: string
+) => {
+  const widget = page.getByTestId(widgetKey);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
+
+  const sortDropdown = widget.getByTestId('widget-sort-by-dropdown');
+
+  await expect(sortDropdown).toBeVisible();
+
+  // Test A to Z sorting
+  const aToZFilter = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('table_search_index')
+  );
+  await sortDropdown.click();
+  await page.getByRole('menuitem', { name: 'A to Z' }).click();
+  await aToZFilter;
+
+  // Wait for UI to update
+  await page.waitForLoadState('networkidle');
+
+  // Test Z to A sorting
+  const zToAFilter = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('table_search_index')
+  );
+  await sortDropdown.click();
+  await page.getByRole('menuitem', { name: 'Z to A' }).click();
+  await zToAFilter;
+
+  // Wait for UI to update
+  await page.waitForLoadState('networkidle');
+
+  // Test High to Low sorting
+  const highToLowFilter = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('table_search_index')
+  );
+  await sortDropdown.click();
+  await page.getByRole('menuitem', { name: 'High to Low' }).click();
+  await highToLowFilter;
+
+  // Wait for UI to update
+  await page.waitForLoadState('networkidle');
+
+  // Test Low to High sorting
+  const lowToHighFilter = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('table_search_index')
+  );
+  await sortDropdown.click();
+  await page.getByRole('menuitem', { name: 'Low to High' }).click();
+  await lowToHighFilter;
+
+  // Wait for UI to update
+  await page.waitForLoadState('networkidle');
 };
