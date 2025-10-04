@@ -1042,6 +1042,8 @@ public class UserRepository extends EntityRepository<User> {
       recordChange("isBot", original.getIsBot(), updated.getIsBot());
       recordChange("isAdmin", original.getIsAdmin(), updated.getIsAdmin());
       recordChange("isEmailVerified", original.getIsEmailVerified(), updated.getIsEmailVerified());
+      recordChange(
+          "allowImpersonation", original.getAllowImpersonation(), updated.getAllowImpersonation());
       updatePersonaPreferences(original, updated);
       updateAuthenticationMechanism(original, updated);
     }

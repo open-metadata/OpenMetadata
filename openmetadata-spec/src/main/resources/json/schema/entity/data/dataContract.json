@@ -44,6 +44,10 @@
           "description": "User who updated the contract.",
           "type": "string"
         },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
         "changeDescription": {
           "description": "Description of changes made to the contract.",
           "$ref": "../../type/basic.json#/definitions/markdown"
@@ -201,6 +205,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "createdAt": {
       "description": "Timestamp in Unix epoch time milliseconds corresponding to when the data contract was created.",
