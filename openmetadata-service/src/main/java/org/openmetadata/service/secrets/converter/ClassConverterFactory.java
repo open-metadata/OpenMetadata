@@ -41,6 +41,7 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
+import org.openmetadata.schema.services.connections.database.TimescaleConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
@@ -112,7 +113,8 @@ public final class ClassConverterFactory {
             Map.entry(UnityCatalogConnection.class, new UnityCatalogConnectionClassConverter()),
             Map.entry(CassandraConnection.class, new CassandraConnectionClassConverter()),
             Map.entry(SSISConnection.class, new SsisConnectionClassConverter()),
-            Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()));
+            Map.entry(WherescapeConnection.class, new WherescapeConnectionClassConverter()),
+            Map.entry(TimescaleConnection.class, new TimescaleConnectionClassConverter()));
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
