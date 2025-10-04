@@ -1,0 +1,110 @@
+{
+  "$id": "https://open-metadata.org/schema/type/ownerConfig.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Owner Configuration",
+  "description": "Configuration for assigning owners to ingested entities following topology hierarchy with inheritance support",
+  "javaType": "org.openmetadata.schema.type.OwnerConfig",
+  "type": "object",
+  "properties": {
+    "default": {
+      "description": "Default owner applied to all entities when no specific owner is configured (user or team name/email)",
+      "type": "string",
+      "examples": ["data-engineering-team", "admin@company.com"]
+    },
+    "service": {
+      "description": "Owner for the service level",
+      "type": "string"
+    },
+    "database": {
+      "description": "Owner for database entities. Can be a single owner or a map of database names to owners",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Single owner for all databases"
+        },
+        {
+          "type": "object",
+          "description": "Map of database names to their owners",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [{
+            "sales_db": "sales-team",
+            "analytics_db": "analytics-team"
+          }]
+        }
+      ]
+    },
+    "schema": {
+      "description": "Owner for schema entities. Can be a single owner or a map of schema FQNs to owners",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Single owner for all schemas"
+        },
+        {
+          "type": "object",
+          "description": "Map of schema names/FQNs to their owners",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [{
+            "public": "public-schema-team",
+            "analytics_db.analytics_schema": "analytics-team"
+          }]
+        }
+      ]
+    },
+    "table": {
+      "description": "Owner for table entities. Can be a single owner or a map of table FQNs to owners",
+      "oneOf": [
+        {
+          "type": "string",
+          "description": "Single owner for all tables"
+        },
+        {
+          "type": "object",
+          "description": "Map of table names/FQNs to their owners",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "examples": [{
+            "customers": "customer-data-team",
+            "sales_db.public.orders": "sales-team"
+          }]
+        }
+      ]
+    },
+    "enableInheritance": {
+      "description": "Enable child entities to inherit owner from parent entities when they don't have a specific owner configured",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "default": "data-platform-team"
+    },
+    {
+      "default": "data-team",
+      "database": "database-admins",
+      "schema": "schema-owners",
+      "table": "table-stewards",
+      "enableInheritance": true
+    },
+    {
+      "default": "data-team",
+      "database": {
+        "sales_db": "sales-team",
+        "analytics_db": "analytics-team"
+      },
+      "schema": {
+        "public": "public-team",
+        "analytics_db.reporting": "reporting-team"
+      },
+      "enableInheritance": true
+    }
+  ]
+}
+
