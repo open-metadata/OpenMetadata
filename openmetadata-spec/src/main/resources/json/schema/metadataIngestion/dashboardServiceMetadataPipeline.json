@@ -61,55 +61,6 @@
       "type": "boolean",
       "default": false
     },
-    "owner": {
-      "title": "Owner",
-      "description": "Set a default owner for the ingested entities. This owner will be applied to all entities that don't have an owner specified in the source. The value should be the name or email of a user or team in OpenMetadata.",
-      "type": "string"
-    },
-    "dashboardOwnerConfig": {
-      "title": "Dashboard Owner Configuration",
-      "description": "Advanced configuration for managing owners at dashboard and chart levels with custom mappings.",
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "description": "Enable hierarchical owner management for dashboards",
-          "type": "boolean",
-          "default": true
-        },
-        "dashboardOwner": {
-          "description": "Default owner for all dashboards",
-          "type": "string"
-        },
-        "chartOwner": {
-          "description": "Default owner for all charts",
-          "type": "string"
-        },
-        "inheritFromDashboard": {
-          "description": "When true, charts inherit owner from their parent dashboard if they don't have one",
-          "type": "boolean",
-          "default": true
-        },
-        "dashboardOwnerMappings": {
-          "description": "Specific owner mappings for dashboards by name or pattern",
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "dashboardName": {
-                "type": "string"
-              },
-              "owner": {
-                "type": "string"
-              },
-              "isPattern": {
-                "type": "boolean",
-                "default": false
-              }
-            }
-          }
-        }
-      }
-    },
     "markDeletedDashboards": {
       "description": "Optional configuration to soft delete dashboards in OpenMetadata if the source dashboards are deleted. Also, if the dashboard is deleted, all the associated entities like lineage, etc., with that dashboard will be deleted",
       "type": "boolean",
