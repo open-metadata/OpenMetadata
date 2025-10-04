@@ -470,7 +470,6 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         """
         Method to process the dashboard owners
         """
-
         logger.debug(
             f"Processing ownership is not supported for {self.service_connection.type.name}"
         )
