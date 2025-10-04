@@ -113,7 +113,6 @@ export const removePersonaDefault = async (
   await removeDefaultResponse;
 };
 
-
 export const navigateToPersonaWithPagination = async (
   page: Page,
   personaName: string,
