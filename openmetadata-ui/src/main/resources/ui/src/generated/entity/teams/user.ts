@@ -16,6 +16,11 @@
  * more data assets. A user can also follow zero or more data assets.
  */
 export interface User {
+    /**
+     * When true, this bot is allowed to impersonate users (subject to policy checks). Only
+     * applicable for bot users.
+     */
+    allowImpersonation?:      boolean;
     authenticationMechanism?: AuthenticationMechanism;
     /**
      * Change that lead to this version of the entity.
@@ -65,6 +70,10 @@ export interface User {
      * Unique identifier that identifies a user entity instance.
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */

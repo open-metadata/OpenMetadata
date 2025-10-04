@@ -40,8 +40,12 @@ export interface Suggestion {
     /**
      * Unique identifier that identifies an entity instance.
      */
-    id:      string;
-    status?: SuggestionStatus;
+    id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    status?:         SuggestionStatus;
     /**
      * Tags or Glossary Terms.
      */

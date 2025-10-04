@@ -76,6 +76,10 @@ export interface DataContract {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Incremental change description of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -217,6 +221,10 @@ export interface ContractUpdate {
      * Description of changes made to the contract.
      */
     changeDescription?: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Timestamp when the contract was updated.
      */
