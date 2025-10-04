@@ -22,19 +22,19 @@ class OwnerResolver:
 
     Configuration structure:
     {
-        "default": "fallback-owner",  # 用于所有实体的默认 owner
-        "service": "service-owner",   # 可选
+        "default": "fallback-owner",  # Default owner for all entities
+        "service": "service-owner",   # Optional
         "database": "db-owner" | {"db1": "owner1", "db2": "owner2"},
         "schema": "schema-owner" | {"schema1": "owner1"},
         "table": "table-owner" | {"table1": "owner1"},
-        "enableInheritance": true  # 默认 true
+        "enableInheritance": true  # Default true
     }
 
-    Resolution order (优先级从高到低):
-    1. 当前层次的自定义配置（精确匹配 FQN 或名称）
-    2. 当前层次的通用配置（字符串形式）
-    3. 继承的父级 owner（如果 enableInheritance=true）
-    4. default 配置
+    Resolution order (highest to lowest priority):
+    1. Current level custom configuration (exact FQN or name match)
+    2. Current level general configuration (string format)
+    3. Inherited parent owner (if enableInheritance=true)
+    4. Default configuration
     """
 
     def __init__(self, metadata: OpenMetadata, owner_config: Optional[Dict] = None):
@@ -75,14 +75,14 @@ class OwnerResolver:
             )
             logger.debug(f"Full config: {self.config}")
 
-            # 1. 尝试从当前层次的配置中获取 owner
+            # 1. Try to get owner from current level configuration
             level_config = self.config.get(entity_type)
             logger.debug(f"Level config for '{entity_type}': {level_config}")
 
             if level_config:
-                # 如果是 dict，尝试精确匹配
+                # If it's a dict, try exact matching
                 if isinstance(level_config, dict):
-                    # 先尝试完整名称匹配
+                    # First try full name matching
                     if entity_name in level_config:
                         owner_name = level_config[entity_name]
                         owner_ref = self._get_owner_ref(owner_name)
@@ -92,7 +92,7 @@ class OwnerResolver:
                             )
                             return owner_ref
 
-                    # 尝试只用最后一部分名称匹配（例如 "sales_db.public.orders" 匹配 "orders"）
+                    # Try matching with only the last part of the name (e.g., "sales_db.public.orders" matches "orders")
                     simple_name = entity_name.split(".")[-1]
                     if simple_name != entity_name and simple_name in level_config:
                         owner_name = level_config[simple_name]
@@ -103,7 +103,7 @@ class OwnerResolver:
                             )
                             return owner_ref
 
-                # 如果是字符串，直接使用
+                # If it's a string, use it directly
                 elif isinstance(level_config, str):
                     owner_ref = self._get_owner_ref(level_config)
                     if owner_ref:
@@ -112,7 +112,7 @@ class OwnerResolver:
                         )
                         return owner_ref
 
-            # 2. 如果启用了继承，使用父级的 owner
+            # 2. If inheritance is enabled, use parent owner
             if self.enable_inheritance and parent_owner:
                 owner_ref = self._get_owner_ref(parent_owner)
                 if owner_ref:
@@ -121,7 +121,7 @@ class OwnerResolver:
                     )
                     return owner_ref
 
-            # 3. 使用默认 owner
+            # 3. Use default owner
             default_owner = self.config.get("default")
             if default_owner:
                 owner_ref = self._get_owner_ref(default_owner)
