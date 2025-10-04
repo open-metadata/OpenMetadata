@@ -36,6 +36,13 @@ export enum TAG_START_WITH {
 export const queryFilterToRemoveSomeClassification = {
   query: {
     bool: {
+      must: [
+        {
+          terms: {
+            'entityStatus.keyword': ['Approved', 'Unprocessed'],
+          },
+        },
+      ],
       must_not: [
         {
           prefix: {
