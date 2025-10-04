@@ -2055,15 +2055,16 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     assertTrue(
         movedBackChildTerm1.getFullyQualifiedName().startsWith(term1.getFullyQualifiedName()));
 
-    // Test Scenario 6: Try to move a term to its own child (should fail)
+    // Test Scenario 6: Try to move a term to its own child (should fail with circular reference
+    // error)
     EntityReference childTerm1Ref =
         new EntityReference().withId(childTerm1.getId()).withType("glossaryTerm");
-    MoveGlossaryTermMessage failedMoveMessage =
-        receiveMoveEntityMessage(term1.getId(), childTerm1Ref);
-    assertEquals("FAILED", failedMoveMessage.getStatus());
-    assertEquals(term1.getName(), failedMoveMessage.getEntityName());
-    assertNotNull(failedMoveMessage.getError());
-    assertTrue(failedMoveMessage.getError().contains("Can't move Glossary term"));
+
+    // This should fail immediately with a 400 BAD_REQUEST due to circular reference validation
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(term1.getId(), childTerm1Ref),
+        "Expected circular reference validation to fail");
 
     // Verify the failed move didn't change the term
     GlossaryTerm unchangedTerm1 = getEntity(term1.getId(), ADMIN_AUTH_HEADERS);
@@ -2777,5 +2778,235 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     } catch (Exception e) {
       return false;
     }
+  }
+
+  @Test
+  void test_circularReferenceDetection_directMove(TestInfo test) throws IOException {
+    // Create a glossary
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create TermA as a root term under the glossary
+    CreateGlossaryTerm createTermA =
+        createRequest("TermA")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Root term A");
+    GlossaryTerm termA = createEntity(createTermA, ADMIN_AUTH_HEADERS);
+
+    // Create TermB as a child of TermA
+    CreateGlossaryTerm createTermB =
+        createRequest("TermB")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(termA.getFullyQualifiedName())
+            .withDescription("Child term B of TermA");
+    GlossaryTerm termB = createEntity(createTermB, ADMIN_AUTH_HEADERS);
+
+    // Create TermC as a child of TermB (grandchild of TermA)
+    CreateGlossaryTerm createTermC =
+        createRequest("TermC")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(termB.getFullyQualifiedName())
+            .withDescription("Grandchild term C of TermA");
+    GlossaryTerm termC = createEntity(createTermC, ADMIN_AUTH_HEADERS);
+
+    // Test 1: Try to move TermA under TermB using moveAsync API (direct circular reference)
+    // This should fail IMMEDIATELY with BAD_REQUEST before async operation starts
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(termA.getId(), termB.getEntityReference()),
+        "Should not allow TermA to be moved under TermB (direct circular reference)");
+
+    // Test 2: Try to move TermA under TermC (indirect circular reference)
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(termA.getId(), termC.getEntityReference()),
+        "Should not allow TermA to be moved under TermC (indirect circular reference)");
+
+    // Test 3: Try to move TermB under TermC (would create circular: A->B->C, C->B)
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(termB.getId(), termC.getEntityReference()),
+        "Should not allow TermB to be moved under TermC (TermC is already a child of TermB)");
+
+    // Test 4: Verify valid move still works - move TermC to root level
+    MoveGlossaryTermResponse response =
+        moveEntityAsync(termC.getId(), glossary.getEntityReference());
+    assertNotNull(response, "Should successfully move TermC to root level");
+
+    // Clean up
+    deleteEntity(termC.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(termB.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(termA.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_selfReferenceValidation(TestInfo test) throws IOException {
+    // Test that a term cannot be set as its own parent
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm =
+        createRequest("SelfRefTerm").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    // Try to move term to itself using moveAsync API
+    assertThrows(
+        HttpResponseException.class,
+        () -> moveEntityAsync(term.getId(), term.getEntityReference()),
+        "Should not allow term to be its own parent");
+
+    // Clean up
+    deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_orphanedRelationshipsAfterMove(TestInfo test) throws Exception {
+    // Create a glossary
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create TermA as root
+    CreateGlossaryTerm createTermA =
+        createRequest("TermA").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm termA = createEntity(createTermA, ADMIN_AUTH_HEADERS);
+
+    // Create TermB as child of TermA
+    CreateGlossaryTerm createTermB =
+        createRequest("TermB")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(termA.getFullyQualifiedName());
+    GlossaryTerm termB = createEntity(createTermB, ADMIN_AUTH_HEADERS);
+
+    // Move TermB to root level (remove parent relationship) using async move API
+    EntityReference glossaryRef =
+        new EntityReference().withId(glossary.getId()).withType("glossary");
+    MoveGlossaryTermMessage moveMessage = receiveMoveEntityMessage(termB.getId(), glossaryRef);
+    assertEquals("COMPLETED", moveMessage.getStatus());
+    assertNull(moveMessage.getError());
+
+    // Verify TermB has no parent
+    GlossaryTerm movedTermB = getEntity(termB.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(movedTermB.getParent(), "TermB should have no parent after move");
+
+    // Verify we can list terms under the glossary without infinite loops
+    Map<String, String> params = new HashMap<>();
+    params.put("glossary", glossary.getId().toString());
+    params.put("fields", "childrenCount,owners,reviewers");
+    params.put("limit", "50");
+
+    ResultList<GlossaryTerm> terms = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertNotNull(terms, "Should be able to list terms without errors");
+    assertEquals(2, terms.getData().size(), "Should have 2 root-level terms");
+
+    // Clean up
+    deleteEntity(termB.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(termA.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_directChildrenOfWithCircularRef(TestInfo test) throws IOException {
+    // This test reproduces the exact scenario from the bug report
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create Salesforce-Glossary term
+    CreateGlossaryTerm createSalesforce =
+        createRequest("Salesforce-Glossary").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm salesforceTerm = createEntity(createSalesforce, ADMIN_AUTH_HEADERS);
+
+    // Create child terms under Salesforce-Glossary
+    List<GlossaryTerm> childTerms = new ArrayList<>();
+    for (int i = 1; i <= 5; i++) {
+      CreateGlossaryTerm createChild =
+          createRequest("ChildTerm" + i)
+              .withGlossary(glossary.getFullyQualifiedName())
+              .withParent(salesforceTerm.getFullyQualifiedName());
+      childTerms.add(createEntity(createChild, ADMIN_AUTH_HEADERS));
+    }
+
+    // Query for direct children - this should not hang
+    Map<String, String> params = new HashMap<>();
+    params.put("directChildrenOf", salesforceTerm.getFullyQualifiedName());
+    params.put("fields", "childrenCount,owners,reviewers");
+    params.put("limit", "50");
+
+    ResultList<GlossaryTerm> directChildren = listEntities(params, ADMIN_AUTH_HEADERS);
+    assertNotNull(directChildren, "Should be able to get direct children without hanging");
+    assertEquals(5, directChildren.getData().size(), "Should have 5 direct children");
+
+    // Clean up
+    for (GlossaryTerm child : childTerms) {
+      deleteEntity(child.getId(), true, true, ADMIN_AUTH_HEADERS);
+    }
+    deleteEntity(salesforceTerm.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_childrenCountIncludesAllNestedTerms(TestInfo test) throws IOException {
+    // Create a glossary
+    CreateGlossary createGlossary = glossaryTest.createRequest(test);
+    Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+
+    // Create a hierarchy: term1 -> term1.1 -> term1.1.1
+    //                              -> term1.1.2
+    //                     -> term1.2
+    CreateGlossaryTerm createTerm1 =
+        createRequest("term1").withGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term1 = createEntity(createTerm1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm1_1 =
+        createRequest("term1.1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1.getFullyQualifiedName());
+    GlossaryTerm term1_1 = createEntity(createTerm1_1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm1_1_1 =
+        createRequest("term1.1.1")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1_1.getFullyQualifiedName());
+    GlossaryTerm term1_1_1 = createEntity(createTerm1_1_1, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm1_1_2 =
+        createRequest("term1.1.2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1_1.getFullyQualifiedName());
+    GlossaryTerm term1_1_2 = createEntity(createTerm1_1_2, ADMIN_AUTH_HEADERS);
+
+    CreateGlossaryTerm createTerm1_2 =
+        createRequest("term1.2")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withParent(term1.getFullyQualifiedName());
+    GlossaryTerm term1_2 = createEntity(createTerm1_2, ADMIN_AUTH_HEADERS);
+
+    // Fetch term1 with childrenCount field
+    GlossaryTerm fetchedTerm1 = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+
+    // term1 should have 4 nested children total (term1.1, term1.1.1, term1.1.2, term1.2)
+    assertEquals(4, fetchedTerm1.getChildrenCount(), "term1 should have 4 total nested children");
+
+    // Fetch term1.1 with childrenCount field
+    GlossaryTerm fetchedTerm1_1 = getEntity(term1_1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+
+    // term1.1 should have 2 nested children (term1.1.1, term1.1.2)
+    assertEquals(
+        2, fetchedTerm1_1.getChildrenCount(), "term1.1 should have 2 total nested children");
+
+    // Fetch term1.2 with childrenCount field
+    GlossaryTerm fetchedTerm1_2 = getEntity(term1_2.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
+
+    // term1.2 should have 0 nested children
+    assertEquals(0, fetchedTerm1_2.getChildrenCount(), "term1.2 should have 0 nested children");
+
+    // Clean up
+    deleteEntity(term1_1_1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(term1_1_2.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(term1_2.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(term1_1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(term1.getId(), true, true, ADMIN_AUTH_HEADERS);
+    glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
 }
