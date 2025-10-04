@@ -10,30 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DownOutlined } from '@ant-design/icons';
-import { Grid } from '@mui/material';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Form,
-  Row,
-  Select,
-  Space,
-  Tabs,
-  Tooltip,
-} from 'antd';
+import { Grid, Stack } from '@mui/material';
+import { Col, Form, Row, Select, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddItemIcon } from '../../../../../assets/svg/add-item-icon.svg';
-import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { ReactComponent as RedCircleIcon } from '../../../../../assets/svg/red-circle-with-dash.svg';
 import { ReactComponent as SuccessTicketIcon } from '../../../../../assets/svg/success-ticket-with-check.svg';
 import { ReactComponent as YellowCalendarIcon } from '../../../../../assets/svg/yellow-calendar.icon.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
-import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import {
   DEFAULT_SORT_ORDER,
   TEST_CASE_STATUS_OPTION,
@@ -47,7 +34,6 @@ import { TestCaseType } from '../../../../../enums/TestSuite.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import { PipelineType } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCaseStatus } from '../../../../../generated/tests/testCase';
-import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { getIngestionPipelines } from '../../../../../rest/ingestionPipelineAPI';
 import { ListTestCaseParamsBySearch } from '../../../../../rest/testAPI';
@@ -63,9 +49,7 @@ import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
-import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
-import PageHeader from '../../../../PageHeader/PageHeader.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
 import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -77,12 +61,9 @@ export const QualityTab = () => {
     onTestCaseUpdate,
     allTestCases,
     isTestsLoading,
-    isTableDeleted,
     testCasePaging,
     table,
     testCaseSummary,
-    onSettingButtonClick,
-    onTestCaseDrawerOpen,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
 
@@ -95,7 +76,7 @@ export const QualityTab = () => {
     showPagination,
   } = testCasePaging;
 
-  const { editTest, editDataProfile } = useMemo(() => {
+  const { editTest } = useMemo(() => {
     return {
       editTest:
         permissions &&
@@ -221,6 +202,28 @@ export const QualityTab = () => {
       : undefined;
   }, [table]);
 
+  const handleTestCaseStatusChange = (value: TestCaseStatus) => {
+    if (value !== selectedTestCaseStatus) {
+      setSelectedTestCaseStatus(value);
+      fetchAllTests({
+        testCaseType: selectedTestType,
+        testCaseStatus: isEmpty(value) ? undefined : value,
+      });
+    }
+  };
+
+  const handleTestCaseTypeChange = (value: TestCaseType) => {
+    if (value !== selectedTestType) {
+      setSelectedTestType(value);
+      fetchAllTests({
+        testCaseType: value,
+        testCaseStatus: isEmpty(selectedTestCaseStatus)
+          ? undefined
+          : selectedTestCaseStatus,
+      });
+    }
+  };
+
   const tabs = useMemo(
     () => [
       {
@@ -242,6 +245,26 @@ export const QualityTab = () => {
                 searchValue={searchValue}
                 onSearch={handleSearchTestCase}
               />
+            </Col>
+            <Col span={12}>
+              <Form layout="inline">
+                <Space align="center" className="w-full justify-end">
+                  <Form.Item className="m-0 w-40" label={t('label.type')}>
+                    <Select
+                      options={TEST_CASE_TYPE_OPTION}
+                      value={selectedTestType}
+                      onChange={handleTestCaseTypeChange}
+                    />
+                  </Form.Item>
+                  <Form.Item className="m-0 w-40" label={t('label.status')}>
+                    <Select
+                      options={TEST_CASE_STATUS_OPTION}
+                      value={selectedTestCaseStatus}
+                      onChange={handleTestCaseStatusChange}
+                    />
+                  </Form.Item>
+                </Space>
+              </Form>
             </Col>
             <Col span={24}>
               <DataQualityTab
@@ -301,32 +324,6 @@ export const QualityTab = () => {
     ]
   );
 
-  const handleTestCaseStatusChange = (value: TestCaseStatus) => {
-    if (value !== selectedTestCaseStatus) {
-      setSelectedTestCaseStatus(value);
-      fetchAllTests({
-        testCaseType: selectedTestType,
-        testCaseStatus: isEmpty(value) ? undefined : value,
-      });
-    }
-  };
-
-  const handleTestCaseTypeChange = (value: TestCaseType) => {
-    if (value !== selectedTestType) {
-      setSelectedTestType(value);
-      fetchAllTests({
-        testCaseType: value,
-        testCaseStatus: isEmpty(selectedTestCaseStatus)
-          ? undefined
-          : selectedTestCaseStatus,
-      });
-    }
-  };
-
-  const handleAddTestClick = (type: TestLevel) => {
-    onTestCaseDrawerOpen(type);
-  };
-
   const handleTabChange = () => {
     navigate(
       {
@@ -336,22 +333,6 @@ export const QualityTab = () => {
       { state: undefined, replace: true }
     );
   };
-
-  const addButtonContent = useMemo(
-    () => [
-      {
-        label: <TabsLabel id="table" name={t('label.table')} />,
-        key: '1',
-        onClick: () => handleAddTestClick(TestLevel.TABLE),
-      },
-      {
-        label: <TabsLabel id="column" name={t('label.column')} />,
-        key: '2',
-        onClick: () => handleAddTestClick(TestLevel.COLUMN),
-      },
-    ],
-    []
-  );
 
   if (permissions && !permissions?.ViewTests) {
     return (
@@ -365,86 +346,21 @@ export const QualityTab = () => {
   }
 
   return (
-    <Row className="quality-tab-container" gutter={[0, 16]}>
-      <Col span={24}>
-        <Row>
-          <Col span={10}>
-            <PageHeader data={PAGE_HEADERS.DATA_QUALITY} />
-          </Col>
-          <Col span={14}>
-            <Form layout="inline">
-              <Space align="center" className="w-full justify-end">
-                <Form.Item className="m-0 w-40" label={t('label.type')}>
-                  <Select
-                    options={TEST_CASE_TYPE_OPTION}
-                    value={selectedTestType}
-                    onChange={handleTestCaseTypeChange}
-                  />
-                </Form.Item>
-                <Form.Item className="m-0 w-40" label={t('label.status')}>
-                  <Select
-                    options={TEST_CASE_STATUS_OPTION}
-                    value={selectedTestCaseStatus}
-                    onChange={handleTestCaseStatusChange}
-                  />
-                </Form.Item>
+    <Stack className="quality-tab-container" spacing="30px">
+      <Grid container spacing={5}>
+        {totalTestCaseSummary?.map((summary) => (
+          <Grid key={summary.title} size="grow">
+            <SummaryCardV1
+              icon={summary.icon}
+              isLoading={isTestsLoading}
+              title={summary.title}
+              value={summary.value}
+            />
+          </Grid>
+        ))}
+      </Grid>
 
-                {editTest && !isTableDeleted && (
-                  <Form.Item noStyle>
-                    <LimitWrapper resource="dataQuality">
-                      <Dropdown
-                        menu={{
-                          items: addButtonContent,
-                        }}
-                        placement="bottomRight"
-                        trigger={['click']}>
-                        <Button
-                          data-testid="profiler-add-table-test-btn"
-                          type="primary">
-                          <Space>
-                            {t('label.add-entity', { entity: t('label.test') })}
-                            <DownOutlined />
-                          </Space>
-                        </Button>
-                      </Dropdown>
-                    </LimitWrapper>
-                  </Form.Item>
-                )}
-
-                {editDataProfile && (
-                  <Tooltip
-                    placement="topRight"
-                    title={t('label.setting-plural')}>
-                    <Button
-                      className="flex-center"
-                      data-testid="profiler-setting-btn"
-                      onClick={onSettingButtonClick}>
-                      <SettingIcon />
-                    </Button>
-                  </Tooltip>
-                )}
-              </Space>
-            </Form>
-          </Col>
-        </Row>
-      </Col>
-      <Col span={24}>
-        <Grid container spacing={5}>
-          {totalTestCaseSummary?.map((summary) => (
-            <Grid key={summary.title} size="grow">
-              <SummaryCardV1
-                icon={summary.icon}
-                isLoading={isTestsLoading}
-                title={summary.title}
-                value={summary.value}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      </Col>
-      <Col span={24}>
-        <Tabs className="tabs-new" items={tabs} onChange={handleTabChange} />
-      </Col>
-    </Row>
+      <Tabs className="tabs-new" items={tabs} onChange={handleTabChange} />
+    </Stack>
   );
 };
