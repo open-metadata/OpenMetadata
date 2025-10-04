@@ -661,9 +661,7 @@ class IcebergUnitTest(TestCase):
 
         with (
             patch.object(HiveCatalog, "list_tables", return_value=MOCK_TABLE_LIST),
-            patch.object(
-                HiveCatalog, "load_table", side_effect=raise_no_such_iceberg_table
-            ),
+            patch.object(self.iceberg, "_load_iceberg_table", return_value=None),
         ):
             self.assertEqual(len(list(self.iceberg.get_tables_name_and_type())), 0)
 
