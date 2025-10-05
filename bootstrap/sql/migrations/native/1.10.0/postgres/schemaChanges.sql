@@ -102,3 +102,59 @@ CREATE INDEX IF NOT EXISTS idx_feedback_created ON recognizer_feedback_entity(cr
 
 ALTER TABLE tag_usage
 ADD COLUMN reason TEXT;
+
+-- Create credentials_entity table for centralized credential management
+CREATE TABLE IF NOT EXISTS credentials_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json ->> 'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json ->> 'deleted')::boolean) STORED,
+    credentialType VARCHAR(50) GENERATED ALWAYS AS (json ->> 'credentialType') STORED NOT NULL,
+    serviceTypes JSONB GENERATED ALWAYS AS (json -> 'serviceTypes') STORED,
+    isOAuth BOOLEAN GENERATED ALWAYS AS ((json ->> 'isOAuth')::boolean) STORED,
+    requiresUserAuthentication BOOLEAN GENERATED ALWAYS AS ((json ->> 'requiresUserAuthentication')::boolean) STORED,
+
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+
+CREATE INDEX IF NOT EXISTS idx_credentials_name ON credentials_entity(name);
+CREATE INDEX IF NOT EXISTS idx_credentials_type ON credentials_entity(credentialType);
+CREATE INDEX IF NOT EXISTS idx_credentials_oauth ON credentials_entity(isOAuth);
+CREATE INDEX IF NOT EXISTS idx_credentials_user_auth ON credentials_entity(requiresUserAuthentication);
+CREATE INDEX IF NOT EXISTS idx_credentials_updated ON credentials_entity(updatedAt);
+CREATE INDEX IF NOT EXISTS idx_credentials_deleted ON credentials_entity(deleted);
+
+-- Create oauth_token_entity table for per-user OAuth token management
+CREATE TABLE IF NOT EXISTS oauth_token_entity (
+    id VARCHAR(36) NOT NULL,
+    userId VARCHAR(36) NOT NULL,
+    credentialsId VARCHAR(36) NOT NULL,
+    accessToken TEXT NOT NULL,
+    refreshToken TEXT,
+    tokenType VARCHAR(50) DEFAULT 'Bearer',
+    expiresAt BIGINT,
+    scopes JSONB,
+    status VARCHAR(20) DEFAULT 'Active',
+    lastRefreshedAt BIGINT,
+    refreshFailureCount INTEGER DEFAULT 0,
+    refreshFailureReason TEXT,
+    createdAt BIGINT NOT NULL,
+    updatedAt BIGINT NOT NULL,
+    version DOUBLE PRECISION DEFAULT 1.0,
+    deleted BOOLEAN DEFAULT FALSE,
+
+    PRIMARY KEY (id),
+    UNIQUE (userId, credentialsId),
+    FOREIGN KEY (userId) REFERENCES user_entity(id) ON DELETE CASCADE,
+    FOREIGN KEY (credentialsId) REFERENCES credentials_entity(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_token_user ON oauth_token_entity(userId);
+CREATE INDEX IF NOT EXISTS idx_token_credentials ON oauth_token_entity(credentialsId);
+CREATE INDEX IF NOT EXISTS idx_token_expiry ON oauth_token_entity(expiresAt);
+CREATE INDEX IF NOT EXISTS idx_token_status ON oauth_token_entity(status);
+CREATE INDEX IF NOT EXISTS idx_token_created ON oauth_token_entity(createdAt);

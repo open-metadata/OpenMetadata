@@ -83,6 +83,7 @@ import org.openmetadata.schema.dataInsight.kpi.Kpi;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.entities.docStore.Document;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.Credentials;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
@@ -402,6 +403,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   WorkflowDAO workflowDAO();
+
+  @CreateSqlObject
+  CredentialsDAO credentialsDAO();
 
   @CreateSqlObject
   DataModelDAO dashboardDataModelDAO();
@@ -7229,6 +7233,23 @@ public interface CollectionDAO {
         @Define("table") String table,
         @BindMap Map<String, ?> params,
         @Define("sqlCondition") String sqlCondition);
+  }
+
+  interface CredentialsDAO extends EntityDAO<Credentials> {
+    @Override
+    default String getTableName() {
+      return "credentials_entity";
+    }
+
+    @Override
+    default Class<Credentials> getEntityClass() {
+      return Credentials.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
   }
 
   interface DataModelDAO extends EntityDAO<DashboardDataModel> {
