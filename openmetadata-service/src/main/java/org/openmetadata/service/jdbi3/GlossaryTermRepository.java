@@ -1232,6 +1232,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
+        checkDuplicateTerms(updated);
         // Glossary term name changed - update the FQNs of the children terms to reflect this
         setFullyQualifiedName(updated);
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
