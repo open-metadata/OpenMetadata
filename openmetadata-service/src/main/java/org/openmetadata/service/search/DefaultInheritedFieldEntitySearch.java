@@ -52,13 +52,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   }
 
   @Override
-  public InheritedFieldResult getEntitiesForField(InheritedFieldQuery query) {
-    return getEntitiesForFieldWithFallback(
-        query, () -> new InheritedFieldResult(Collections.emptyList(), 0, Collections.emptyMap()));
-  }
-
-  @Override
-  public InheritedFieldResult getEntitiesForFieldWithFallback(
+  public InheritedFieldResult getEntitiesForField(
       InheritedFieldQuery query, Supplier<InheritedFieldResult> fallback) {
     try {
       if (isSearchUnavailable()) {
@@ -67,7 +61,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
 
       String queryFilter = getQueryFilter(query);
 
-      long totalCount = fetchTotalCount(queryFilter);
+      Integer totalCount = fetchTotalCount(queryFilter);
 
       if (totalCount == 0) {
         return new InheritedFieldResult(Collections.emptyList(), 0, Collections.emptyMap());
@@ -79,7 +73,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       }
 
       int entitiesToFetch =
-          query.getSize() > 0 ? Math.min(query.getSize(), (int) totalCount) : (int) totalCount;
+          query.getSize() > 0 ? Math.min(query.getSize(), totalCount) : totalCount;
 
       List<EntityReference> allEntities = new ArrayList<>();
       int currentFrom = query.getFrom();
@@ -113,7 +107,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     }
   }
 
-  private long fetchTotalCount(String queryFilter) throws Exception {
+  private Integer fetchTotalCount(String queryFilter) throws Exception {
     SearchRequest countRequest = buildSearchRequest(0, 0, queryFilter, false);
 
     Response response = searchRepository.search(countRequest, null);
@@ -124,12 +118,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   }
 
   @Override
-  public long getCountForField(InheritedFieldQuery query) {
-    return getCountForFieldWithFallback(query, () -> 0L);
-  }
-
-  @Override
-  public long getCountForFieldWithFallback(InheritedFieldQuery query, Supplier<Long> fallback) {
+  public Integer getCountForField(InheritedFieldQuery query, Supplier<Integer> fallback) {
     try {
       if (isSearchUnavailable()) {
         return fallback.get();
@@ -202,12 +191,12 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     return mapper.readValue(modifiedDocument.toString(), EntityReference.class);
   }
 
-  private long extractTotalCountFromSearchResponse(JsonNode searchResponse) {
+  private Integer extractTotalCountFromSearchResponse(JsonNode searchResponse) {
     JsonNode total = searchResponse.path(HITS_KEY).path(TOTAL_KEY);
     if (total.has(VALUE_KEY)) {
-      return total.get(VALUE_KEY).asLong();
+      return total.get(VALUE_KEY).asInt();
     }
-    return total.asLong(0);
+    return total.asInt(0);
   }
 
   private Map<String, Long> groupEntitiesByType(List<EntityReference> entities) {

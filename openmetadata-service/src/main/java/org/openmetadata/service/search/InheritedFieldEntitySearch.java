@@ -20,14 +20,10 @@ import org.openmetadata.schema.type.EntityReference;
 
 public interface InheritedFieldEntitySearch {
 
-  InheritedFieldResult getEntitiesForField(InheritedFieldQuery query);
-
-  InheritedFieldResult getEntitiesForFieldWithFallback(
+  InheritedFieldResult getEntitiesForField(
       InheritedFieldQuery query, Supplier<InheritedFieldResult> fallback);
 
-  long getCountForField(InheritedFieldQuery query);
-
-  long getCountForFieldWithFallback(InheritedFieldQuery query, Supplier<Long> fallback);
+  Integer getCountForField(InheritedFieldQuery query, Supplier<Integer> fallback);
 
   enum QueryFilterType {
     DOMAIN_ASSETS,
@@ -182,11 +178,11 @@ public interface InheritedFieldEntitySearch {
 
   class InheritedFieldResult {
     private final List<EntityReference> entities;
-    private final long total;
+    private final Integer total;
     private final Map<String, Long> countsByType;
 
     public InheritedFieldResult(
-        List<EntityReference> entities, long total, Map<String, Long> countsByType) {
+        List<EntityReference> entities, Integer total, Map<String, Long> countsByType) {
       this.entities = entities;
       this.total = total;
       this.countsByType = countsByType;
@@ -196,7 +192,7 @@ public interface InheritedFieldEntitySearch {
       return entities;
     }
 
-    public long getTotal() {
+    public Integer getTotal() {
       return total;
     }
 
