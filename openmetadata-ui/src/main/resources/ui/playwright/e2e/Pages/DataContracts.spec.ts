@@ -1999,6 +1999,12 @@ test.describe('Data Contracts', () => {
         page.getByText('Retention: Data should be retained for 30 week')
       ).toBeVisible();
 
+      await expect(
+        page.getByText(
+          `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
+        )
+      ).toBeVisible();
+
       await page.getByTestId('manage-contract-actions').click();
 
       await page.waitForSelector('.contract-action-dropdown', {
@@ -2016,7 +2022,9 @@ test.describe('Data Contracts', () => {
       await saveSecurityAndSLADetails(
         page,
         DATA_CONTRACT_SECURITY_DETAILS_2,
-        table
+        table,
+        false,
+        true
       );
     });
 
@@ -2076,6 +2084,12 @@ test.describe('Data Contracts', () => {
           page.getByText('Retention: Data should be retained for 70 year')
         ).toBeVisible();
 
+        await expect(
+          page.getByText(
+            `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
+          )
+        ).toBeVisible();
+
         await page.getByTestId('manage-contract-actions').click();
 
         await page.waitForSelector('.contract-action-dropdown', {
@@ -2088,7 +2102,8 @@ test.describe('Data Contracts', () => {
             ...DATA_CONTRACT_SECURITY_DETAILS_2,
             ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
           },
-          table
+          table,
+          true
         );
       }
     );

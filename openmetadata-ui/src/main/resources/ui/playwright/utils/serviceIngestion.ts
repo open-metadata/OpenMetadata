@@ -118,7 +118,7 @@ export const deleteService = async (
   // Closing the toast notification
   await toastNotification(
     page,
-    /deleted successfully!/,
+    `"${serviceName}" deleted successfully!`,
     BIG_ENTITY_DELETE_TIMEOUT
   ); // Wait for up to 5 minutes for the toast notification to appear
 

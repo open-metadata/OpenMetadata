@@ -21,12 +21,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -66,6 +64,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -512,23 +511,13 @@ const DataProductsDetailsPage = ({
             entityType={EntityType.DATA_PRODUCT}
             handleFollowingClick={handleFollowingClick}
             icon={
-              dataProduct.style?.iconURL ? (
-                <img
-                  className="align-middle"
-                  data-testid="icon"
-                  height={36}
-                  src={dataProduct.style.iconURL}
-                  width={32}
-                />
-              ) : (
-                <DataProductIcon
-                  className="align-middle"
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="folder"
-                  width={32}
-                />
-              )
+              <EntityAvatar
+                entity={{
+                  ...dataProduct,
+                  entityType: 'dataProduct',
+                }}
+                size={36}
+              />
             }
             isFollowing={isFollowing}
             isFollowingLoading={isFollowingLoading}
