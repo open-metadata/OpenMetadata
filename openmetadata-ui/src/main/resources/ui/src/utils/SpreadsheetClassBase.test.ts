@@ -28,8 +28,8 @@ import { Spreadsheet } from '../generated/entity/data/spreadsheet';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import spreadsheetClassBase, {
   SpreadsheetClassBase,
-  SpreadsheetDetailPageTabProps,
 } from './SpreadsheetClassBase';
+import { SpreadsheetDetailPageTabProps } from './SpreadsheetDetailsUtils';
 
 // Mock dependencies
 jest.mock('../constants/CustomizeWidgets.constants', () => ({

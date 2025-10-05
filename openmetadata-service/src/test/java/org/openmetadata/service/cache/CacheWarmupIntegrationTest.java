@@ -202,7 +202,8 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
           tagHash,
           table.getFullyQualifiedName(),
           LabelType.MANUAL.ordinal(),
-          State.CONFIRMED.ordinal());
+          State.CONFIRMED.ordinal(),
+          "Applied for testing purposes");
 
       LOG.debug("Applied tag {} to table {}", tagFQN, table.getName());
     }
@@ -423,7 +424,8 @@ class CacheWarmupIntegrationTest extends CachedOpenMetadataApplicationResourceTe
           tagHash,
           table.getFullyQualifiedName(),
           LabelType.MANUAL.ordinal(),
-          State.CONFIRMED.ordinal());
+          State.CONFIRMED.ordinal(),
+          "Applied for testing purposes");
 
       long currentUsage = RelationshipCache.getTagUsage(testTagFQN);
     }

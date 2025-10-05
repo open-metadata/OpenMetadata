@@ -47,6 +47,7 @@ export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
+export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
@@ -210,6 +211,9 @@ export const ROUTES = {
   DOMAIN_VERSION: `/domain/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
 
   ADD_DOMAIN: '/domain/add',
+
+  DATA_PRODUCT: '/dataProduct',
+  ADD_DATA_PRODUCT: '/dataProduct/add',
 
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/glossary/add',
@@ -449,3 +453,5 @@ export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const FULLSCREEN_QUERY_PARAM_KEY = 'fullscreen';

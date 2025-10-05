@@ -116,7 +116,6 @@ test('Domain allow operations', async ({ testUserPage, browser }) => {
     'edit-description',
     'add-tag',
     'edit-icon-right-panel',
-    'add-domain',
   ];
 
   const manageButtonElements = ['delete-button', 'rename-button'];
@@ -186,10 +185,8 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
   // Test that domain operation elements are visible
   const directElements = [
     'edit-description',
-
     'add-tag',
     'edit-icon-right-panel',
-    'add-domain',
   ];
 
   const manageButtonElements = ['delete-button', 'rename-button'];
