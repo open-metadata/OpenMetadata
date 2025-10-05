@@ -1362,11 +1362,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     private void invalidateTerm(UUID termId) {
       // The name of the glossary term changed or parent change. Invalidate that tag and all the
       // children from the cache
+      invalidateTerm(termId, new HashSet<>());
+    }
+
+    private void invalidateTerm(UUID termId, Set<UUID> visited) {
+      if (visited.contains(termId)) {
+        return;
+      }
+      visited.add(termId);
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
-        invalidateTerm(tagRecord.getId());
+        invalidateTerm(tagRecord.getId(), visited);
       }
     }
   }
