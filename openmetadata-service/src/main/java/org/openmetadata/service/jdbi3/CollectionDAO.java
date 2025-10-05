@@ -157,6 +157,8 @@ import org.openmetadata.schema.util.ServicesCount;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.audit.AuditLogRecord;
+import org.openmetadata.service.audit.AuditLogRecordMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.TagUsageDAO.TagLabelMapper;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.FeedRepository.FilterType;
@@ -432,6 +434,9 @@ public interface CollectionDAO {
 
   @CreateSqlObject
   RecognizerFeedbackDAO recognizerFeedbackDAO();
+
+  @CreateSqlObject
+  AuditLogDAO auditLogDAO();
 
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
@@ -7644,5 +7649,51 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM recognizer_feedback_entity WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+  }
+
+  @RegisterRowMapper(AuditLogRecordMapper.class)
+  interface AuditLogDAO {
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, :entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt) "
+                + "ON CONFLICT (change_event_id) DO NOTHING",
+        connectionType = POSTGRES)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "INSERT IGNORE INTO audit_log_event(change_event_id, event_ts, event_type, user_name, "
+                + "entity_type, entity_id, entity_fqn, entity_fqn_hash, event_json, created_at) "
+                + "VALUES (:changeEventId, :eventTs, :eventType, :userName, :entityType, :entityId, :entityFQN, :entityFQNHash, :eventJson, :createdAt)",
+        connectionType = MYSQL)
+    void insert(@BindBean AuditLogRecord record);
+
+    @SqlQuery(
+        "SELECT id, change_event_id, event_ts, event_type, user_name, entity_type, entity_id, entity_fqn, "
+            + "entity_fqn_hash, event_json, created_at FROM audit_log_event <condition> <orderClause> LIMIT :limit")
+    List<AuditLogRecord> list(
+        @Define("condition") String condition,
+        @Define("orderClause") String orderClause,
+        @Bind("userName") String userName,
+        @Bind("entityType") String entityType,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHASH") String entityFqnHash,
+        @Bind("eventType") String eventType,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @Bind("afterEventTs") Long afterEventTs,
+        @Bind("afterId") Long afterId,
+        @Bind("limit") int limit);
+
+    @SqlQuery("SELECT COUNT(id) FROM audit_log_event <condition>")
+    int count(
+        @Define("condition") String condition,
+        @Bind("userName") String userName,
+        @Bind("entityType") String entityType,
+        @Bind("entityFQN") String entityFQN,
+        @Bind("entityFQNHASH") String entityFqnHash,
+        @Bind("eventType") String eventType,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
   }
 }

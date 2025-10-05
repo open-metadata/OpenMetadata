@@ -160,6 +160,11 @@ public class CachedCollectionDAO implements CollectionDAO {
   }
 
   @Override
+  public AuditLogDAO auditLogDAO() {
+    return delegate.auditLogDAO();
+  }
+
+  @Override
   public QueryCostTimeSeriesDAO queryCostRecordTimeSeriesDAO() {
     return delegate.queryCostRecordTimeSeriesDAO();
   }

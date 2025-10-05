@@ -89,6 +89,7 @@ export enum ResourceEntity {
   FILE = 'file',
   SPREADSHEET = 'spreadsheet',
   WORKSHEET = 'worksheet',
+  AUDIT_LOG = 'auditLog',
 }
 
 export interface PermissionContextType {
