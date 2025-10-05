@@ -209,7 +209,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void prepare(GlossaryTerm entity, boolean update) {
-    List<EntityReference> parentReviewers = null;
     // Validate parent term
     GlossaryTerm parentTerm =
         entity.getParent() != null
@@ -217,7 +216,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 entity.getParent().withType(GLOSSARY_TERM), "owners,reviewers", Include.NON_DELETED)
             : null;
     if (parentTerm != null) {
-      parentReviewers = parentTerm.getReviewers();
       entity.setParent(parentTerm.getEntityReference());
     }
     // Validate glossary
@@ -770,11 +768,14 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
     while (currentParentId != null) {
       if (visitedTerms.contains(currentParentId)) {
+        // Fqn is changed, so we need the old fqn for proper error message
+        GlossaryTerm originalTerm =
+            Entity.getEntity(GLOSSARY_TERM, term.getId(), "fullyQualifiedName", Include.ALL);
         throw new IllegalArgumentException(
             String.format(
                 "Circular reference detected: Cannot set parent relationship as it would create a cycle. "
                     + "Term '%s' (or one of its descendants) already exists in the parent chain.",
-                term.getFullyQualifiedName()));
+                originalTerm.getFullyQualifiedName()));
       }
 
       visitedTerms.add(currentParentId);
@@ -1487,10 +1488,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     GlossaryTerm tempTerm = JsonUtils.deepCopy(term, GlossaryTerm.class);
 
     EntityReference parent = moveRequest.getParent();
-    if (parent.getType().equalsIgnoreCase("glossary")) {
+    if (parent.getType().equals(GLOSSARY)) {
       // Moving to root of glossary - no circular reference possible
       tempTerm.setParent(null);
-    } else if (parent.getType().equalsIgnoreCase("glossaryTerm")) {
+    } else if (parent.getType().equals(GLOSSARY_TERM)) {
       // Moving under another glossary term - validate no circular reference
       GlossaryTerm parentTerm =
           Entity.getEntity(

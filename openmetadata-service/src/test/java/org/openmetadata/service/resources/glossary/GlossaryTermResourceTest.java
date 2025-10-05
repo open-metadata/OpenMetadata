@@ -1416,6 +1416,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     GlossaryTerm term12 = createTerm(glossary1, term1, "term12");
     GlossaryTerm term111 = createTerm(glossary1, term11, "term111");
     term1.setChildren(List.of(term11.getEntityReference(), term12.getEntityReference()));
+    term11.setChildren(List.of(term111.getEntityReference()));
 
     // List children glossary terms with  term1 as the parent and getting immediate children only
     Map<String, String> queryParams = new HashMap<>();
@@ -1429,20 +1430,23 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
       assertTrue(
           responseChild.getFullyQualifiedName().startsWith(responseChild.getFullyQualifiedName()));
       if (responseChild.getChildren() == null) {
-        assertNull(responseChild.getChildrenCount());
+        assertEquals(0, responseChild.getChildrenCount());
       } else {
         assertEquals(responseChild.getChildren().size(), responseChild.getChildrenCount());
       }
     }
 
     GlossaryTerm response = getEntity(term1.getId(), "childrenCount", ADMIN_AUTH_HEADERS);
-    assertEquals(term1.getChildren().size(), response.getChildrenCount());
+    assertEquals(
+        term1.getChildren().size() + term11.getChildren().size(), response.getChildrenCount());
 
     queryParams = new HashMap<>();
     queryParams.put("directChildrenOf", glossary1.getFullyQualifiedName());
     queryParams.put("fields", "childrenCount");
     children = listEntities(queryParams, ADMIN_AUTH_HEADERS).getData();
-    assertEquals(term1.getChildren().size(), children.get(0).getChildrenCount());
+    assertEquals(
+        term1.getChildren().size() + term11.getChildren().size(),
+        children.get(0).getChildrenCount());
   }
 
   @Test
@@ -2781,7 +2785,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
   }
 
   @Test
-  void test_circularReferenceDetection_directMove(TestInfo test) throws IOException {
+  void test_circularReferenceDetection_directMove(TestInfo test) throws Exception {
     // Create a glossary
     CreateGlossary createGlossary = glossaryTest.createRequest(test);
     Glossary glossary = glossaryTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
@@ -2829,9 +2833,17 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
         "Should not allow TermB to be moved under TermC (TermC is already a child of TermB)");
 
     // Test 4: Verify valid move still works - move TermC to root level
-    MoveGlossaryTermResponse response =
-        moveEntityAsync(termC.getId(), glossary.getEntityReference());
-    assertNotNull(response, "Should successfully move TermC to root level");
+    MoveGlossaryTermMessage moveMessage =
+        receiveMoveEntityMessage(termC.getId(), glossary.getEntityReference());
+    assertEquals(
+        "COMPLETED", moveMessage.getStatus(), "Should successfully move TermC to root level");
+    assertNull(moveMessage.getError(), "Move operation should complete without error");
+
+    // Verify TermC has been moved to root level (no parent)
+    GlossaryTerm movedTermC = getEntity(termC.getId(), ADMIN_AUTH_HEADERS);
+    assertNull(movedTermC.getParent(), "TermC should have no parent after move to root level");
+    assertEquals(
+        glossary.getId(), movedTermC.getGlossary().getId(), "TermC should belong to the glossary");
 
     // Clean up
     deleteEntity(termC.getId(), true, true, ADMIN_AUTH_HEADERS);
