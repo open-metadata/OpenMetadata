@@ -30,7 +30,7 @@ import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.
 import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
-import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
