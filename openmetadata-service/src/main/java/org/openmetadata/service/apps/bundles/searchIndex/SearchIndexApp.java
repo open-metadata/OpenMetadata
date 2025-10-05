@@ -103,10 +103,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
   private static final String RECREATE_INDEX = "recreateIndex";
   private static final String ENTITY_TYPE_KEY = "entityType";
 
-  // Fields excluded during reindexing for each entityType
-  private static final Map<String, Set<String>> REINDEX_EXCLUDED_FIELDS =
-      Map.of(Entity.DOMAIN, Set.of(Entity.FIELD_ASSETS));
-
   // String constants to avoid duplication
   private static final String APP_SCHEDULE_RUN = "AppScheduleRun";
   private static final String CONSUMER_THREADS = "Consumer threads";
@@ -1383,17 +1379,17 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private List<String> getSearchIndexFields(String entityType) {
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of(); // Empty list for time series
+      return List.of();
     }
 
-    Set<String> excludedFields = REINDEX_EXCLUDED_FIELDS.get(entityType);
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    Set<String> searchDerivedFields = repository.getSearchDerivedFields();
 
-    if (excludedFields != null && !excludedFields.isEmpty()) {
-      // Return all allowed fields minus excluded ones
-      EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    // Excludes search-derived fields during reindexing to avoid circular dependencies.
+    if (!searchDerivedFields.isEmpty()) {
       Fields fieldsWithExclusions =
           EntityUtil.Fields.createWithExcludedFields(
-              repository.getAllowedFieldsCopy(), excludedFields);
+              repository.getAllowedFieldsCopy(), searchDerivedFields);
       return new ArrayList<>(fieldsWithExclusions.getFieldList());
     }
 

@@ -26,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -73,6 +74,11 @@ public class DomainRepository extends EntityRepository<Domain> {
     fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
     fieldFetchers.put("parent", this::fetchAndSetParents);
     fieldFetchers.put("experts", this::fetchAndSetExperts);
+  }
+
+  @Override
+  public Set<String> getSearchDerivedFields() {
+    return Set.of(FIELD_ASSETS);
   }
 
   @Override
