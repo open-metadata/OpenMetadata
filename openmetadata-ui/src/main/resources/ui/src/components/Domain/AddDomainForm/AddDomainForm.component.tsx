@@ -20,25 +20,25 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import {
-    CreateDomain,
-    DomainType
+  CreateDomain,
+  DomainType,
 } from '../../../generated/api/domains/createDomain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/entity/type';
 import {
-    FieldProp,
-    FieldTypes,
-    FormItemLayout
+  FieldProp,
+  FieldTypes,
+  FormItemLayout,
 } from '../../../interface/FormUtils.interface';
 import {
-    domainTypeTooltipDataRender,
-    iconTooltipDataRender
+  domainTypeTooltipDataRender,
+  iconTooltipDataRender,
 } from '../../../utils/DomainUtils';
 import { generateFormFields, getField } from '../../../utils/formUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
-    DEFAULT_DATA_PRODUCT_ICON,
-    DEFAULT_DOMAIN_ICON
+  DEFAULT_DATA_PRODUCT_ICON,
+  DEFAULT_DOMAIN_ICON,
 } from '../../common/IconPicker';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
