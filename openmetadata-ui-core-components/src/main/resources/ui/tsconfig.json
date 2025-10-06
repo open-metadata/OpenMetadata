@@ -7,7 +7,7 @@
     "allowJs": false,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node16", // Recommended value
+    "moduleResolution": "node16",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": false,
