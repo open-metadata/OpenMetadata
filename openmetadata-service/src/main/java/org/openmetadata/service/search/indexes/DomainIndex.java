@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.service.Entity;
@@ -8,6 +9,7 @@ import org.openmetadata.service.search.ParseTags;
 
 @Slf4j
 public record DomainIndex(Domain domain) implements SearchIndex {
+  private static final Set<String> excludeFields = Set.of("assets", "assetsCount");
 
   @Override
   public Object getEntity() {
@@ -23,6 +25,11 @@ public record DomainIndex(Domain domain) implements SearchIndex {
     doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("upstreamLineage", SearchIndex.getLineageData(domain.getEntityReference()));
     return doc;
+  }
+
+  @Override
+  public Set<String> getExcludedFields() {
+    return excludeFields;
   }
 
   public static Map<String, Float> getFields() {
