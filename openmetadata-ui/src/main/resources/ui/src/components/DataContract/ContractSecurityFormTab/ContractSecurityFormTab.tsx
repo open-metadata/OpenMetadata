@@ -125,6 +125,10 @@ export const ContractSecurityFormTab: React.FC<{
   useEffect(() => {
     if (!isEmpty(initialValues?.security)) {
       form.setFieldsValue(initialValues?.security);
+
+      if (!isEmpty(initialValues?.security?.policies)) {
+        setEditingKey(0);
+      }
     } else {
       form.setFieldsValue({
         dataClassification: '',
@@ -141,8 +145,9 @@ export const ContractSecurityFormTab: React.FC<{
           },
         ],
       });
+
+      setEditingKey(0);
     }
-    setEditingKey(0);
   }, [initialValues?.security]);
 
   return (
