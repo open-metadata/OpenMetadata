@@ -2,12 +2,12 @@
   "compilerOptions": {
     "target": "ES5",
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "esnext",
+    "module": "nodenext",
     "skipLibCheck": true,
     "allowJs": false,
     "strict": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "bundler",
+    "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": false,
@@ -28,13 +28,16 @@
     "types": ["node"],
     "typeRoots": ["./node_modules/@types"]
   },
-  "include": ["src/**/*"],
+  "include": [
+    "src/**/*",
+    "vite.config.ts"
+  ],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "**/*.stories.ts",
+    "**/*.stories.ts", 
     "**/*.stories.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx"
