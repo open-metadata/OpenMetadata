@@ -299,6 +299,7 @@ export const ContractSecurityFormTab: React.FC<{
                                           data-testid={`identities-input-${policyIndex}`}
                                           id={`identities-input-${policyIndex}`}
                                           mode="tags"
+                                          open={false}
                                           placeholder={t(
                                             'label.please-enter-value',
                                             {
@@ -402,6 +403,7 @@ export const ContractSecurityFormTab: React.FC<{
                                                           data-testid={`values-${policyIndex}-${rowFilterIndex}`}
                                                           id={`values-${policyIndex}-${rowFilterIndex}`}
                                                           mode="tags"
+                                                          open={false}
                                                           placeholder={t(
                                                             'label.please-enter-value',
                                                             {
@@ -508,6 +510,7 @@ export const ContractSecurityFormTab: React.FC<{
                                                   data-testid={`values-${policyIndex}-${rowFilterIndex}`}
                                                   id={`values-${policyIndex}-${rowFilterIndex}`}
                                                   mode="tags"
+                                                  open={false}
                                                   placeholder={t(
                                                     'label.please-enter-value',
                                                     {
