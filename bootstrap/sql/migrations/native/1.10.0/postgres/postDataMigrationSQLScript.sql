@@ -41,11 +41,11 @@ WHERE json IS NOT NULL
 -- Update apps_data_store table - remove .png extension from appScreenshots only
 UPDATE apps_data_store 
 SET json = jsonb_set(
-    json,
+    json::jsonb,
     '{appScreenshots}',
     REPLACE((json -> 'appScreenshots')::text, '.png"', '"')::jsonb
 )
 WHERE json IS NOT NULL
   AND json -> 'appScreenshots' IS NOT NULL
-  AND jsonb_array_length(json -> 'appScreenshots') > 0
+  AND json_array_length((json -> 'appScreenshots')::json) > 0
   AND (json -> 'appScreenshots')::text LIKE '%.png%';
