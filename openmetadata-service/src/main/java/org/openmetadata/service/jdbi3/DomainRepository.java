@@ -23,6 +23,7 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,10 @@ import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DomainResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -52,6 +57,9 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
+  private static final String FIELD_ASSETS_COUNT = "assetsCount";
+
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public DomainRepository() {
     super(
@@ -62,11 +70,22 @@ public class DomainRepository extends EntityRepository<Domain> {
         UPDATE_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+
+    // Initialize inherited field search
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
+  }
+
+  @Override
+  public Set<String> getSearchDerivedFields() {
+    return Set.of(FIELD_ASSETS, FIELD_ASSETS_COUNT);
   }
 
   @Override
   public void setFields(Domain entity, Fields fields) {
     entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+    entity.withAssetsCount(fields.contains(FIELD_ASSETS_COUNT) ? getAssets(entity).size() : 0);
     entity.withParent(getParent(entity));
   }
 
@@ -111,7 +130,22 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   private List<EntityReference> getAssets(Domain entity) {
-    return findTo(entity.getId(), DOMAIN, Relationship.HAS, null);
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for domain assets. Returning empty list for consistency.");
+      return new ArrayList<>();
+    }
+
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain(entity.getFullyQualifiedName());
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback triggered for domain {}. Returning empty list for consistency.",
+                  entity.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+    return result.entities();
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
