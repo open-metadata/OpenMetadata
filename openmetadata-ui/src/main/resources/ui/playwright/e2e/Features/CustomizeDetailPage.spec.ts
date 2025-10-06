@@ -32,6 +32,7 @@ import {
   checkDefaultStateForNavigationTree,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
@@ -148,9 +149,7 @@ test.describe('Persona customize UI tab', async () => {
     // Navigate to persona page
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
     await adminPage.waitForLoadState('networkidle');
-    await adminPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
+    await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
     await adminPage.getByText(persona.responseData.displayName).click();
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
   });
@@ -355,8 +354,7 @@ test.describe('Persona customization', () => {
           await navigateToPersonaWithPagination(
             adminPage,
             persona.data.name,
-            true,
-            3
+            true
           );
 
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
@@ -465,8 +463,7 @@ test.describe('Persona customization', () => {
           await navigateToPersonaWithPagination(
             adminPage,
             persona.data.name,
-            true,
-            3
+            true
           );
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
           await adminPage.waitForLoadState('networkidle');
@@ -564,12 +561,7 @@ test.describe('Persona customization', () => {
       await personaListResponse;
 
       // Need to find persona card and click as the list might get paginated
-      await navigateToPersonaWithPagination(
-        adminPage,
-        persona.data.name,
-        true,
-        3
-      );
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.waitForLoadState('networkidle');
       await adminPage.getByText('Governance').click();
@@ -637,12 +629,7 @@ test.describe('Persona customization', () => {
       await personaListResponse;
 
       // Need to find persona card and click as the list might get paginated
-      await navigateToPersonaWithPagination(
-        adminPage,
-        persona.data.name,
-        true,
-        3
-      );
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.waitForLoadState('networkidle');
       await adminPage.getByText('Data Assets').click();
