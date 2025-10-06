@@ -58,6 +58,7 @@ from metadata.utils.streamable_logger import (
     setup_streamable_logging_for_workflow,
 )
 from metadata.workflow.workflow_output_handler import WorkflowOutputHandler
+from metadata.workflow.workflow_resource_metrics import WorkflowResourceMetrics
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 logger = ingestion_logger()
@@ -361,6 +362,20 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     f" updated {len(step.status.updated_records)} records,"
                     f" filtered {len(step.status.filtered)} records,"
                     f" found {len(step.status.failures)} errors"
+                )
+
+            # Only calculate resource metrics when debug is enabled
+            # for no unnecessary computations
+            if self._is_debug_enabled():
+                metrics = WorkflowResourceMetrics()
+                logger.debug(
+                    f"Workflow Resources - "
+                    f"CPU: {metrics.cpu_usage_percent:.2f}% "
+                    f"({metrics.system_cpu_cores}c/{metrics.system_cpu_threads}t) | "
+                    f"Memory: {metrics.memory_used_mb:.2f}MB/"
+                    f"{metrics.memory_total_mb:.2f}MB "
+                    f"({metrics.memory_usage_percent:.2f}%) | "
+                    f"Processes: {metrics.active_processes}"
                 )
 
         except Exception as exc:

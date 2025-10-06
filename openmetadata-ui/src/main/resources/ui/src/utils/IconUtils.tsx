@@ -104,6 +104,25 @@ export const ICON_MAP: Record<
   Calendar: Calendar,
 };
 
+/**
+ * Creates an icon component with custom stroke width
+ * @param IconComponent - The icon component from @untitledui/icons
+ * @param strokeWidth - Custom stroke width (default icons use 2)
+ * @returns Wrapped icon component with custom stroke width
+ */
+export const createIconWithStroke = (
+  IconComponent: ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  strokeWidth: number
+) => {
+  return (props: { size?: number; style?: React.CSSProperties }) => (
+    <IconComponent {...props} strokeWidth={strokeWidth} />
+  );
+};
+
 interface RenderIconOptions {
   size?: number;
   className?: string;
