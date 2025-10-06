@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CheckCircleOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Col, Modal, Row, Tabs, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
@@ -20,7 +19,8 @@ import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/close-circle-outlined.svg';
+import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
+import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
 import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -278,11 +278,7 @@ export const PersonaDetailsPage = () => {
                 ? t('message.remove-default-persona-description')
                 : t('message.set-default-persona-menu-description')
             }
-            icon={
-              (isDefault
-                ? CloseCircleOutlined
-                : CheckCircleOutlined) as SvgComponent
-            }
+            icon={isDefault ? CloseCircleOutlined : CheckCircleOutlined}
             id={isDefault ? 'remove-default-button' : 'set-as-default-button'}
             name={
               isDefault ? t('label.remove-default') : t('label.set-as-default')
@@ -292,7 +288,7 @@ export const PersonaDetailsPage = () => {
         onClick: handleDefaultActionClick,
       },
     ] as ItemType[];
-  }, [personaDetails?.default, handleDefaultActionClick, t]);
+  }, [personaDetails?.default, handleDefaultActionClick]);
 
   if (isLoading) {
     return <Loader />;
