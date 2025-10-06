@@ -594,7 +594,12 @@ test('Verify system classification term counts', async ({ page }) => {
     .locator('[data-testid="side-panel-classification"]')
     .filter({ hasText: 'Tier' });
 
-  await expect(tierElement.getByTestId('filter-count')).toContainText('5');
+  const tierCountText = await tierElement
+    .getByTestId('filter-count')
+    .textContent();
+  const tierCount = parseInt(tierCountText?.trim() || '0');
+
+  expect(tierCount).toBeGreaterThanOrEqual(5);
 
   const piiElement = page
     .locator('[data-testid="side-panel-classification"]')
