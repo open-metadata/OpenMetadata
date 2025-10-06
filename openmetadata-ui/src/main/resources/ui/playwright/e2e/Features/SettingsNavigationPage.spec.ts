@@ -18,6 +18,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -46,9 +47,7 @@ const navigateToPersonaNavigation = async (page: Page) => {
   await page.waitForLoadState('networkidle');
   await getPersonas;
 
-  await page
-    .getByTestId(`persona-details-card-${persona.responseData.name}`)
-    .click();
+  await navigateToPersonaWithPagination(page, persona.data.name, true, 3);
 
   await page.getByTestId('navigation').click();
   await page.waitForLoadState('networkidle');
