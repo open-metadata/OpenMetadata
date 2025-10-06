@@ -14,23 +14,38 @@ WHERE serviceType in ('Databricks', 'UnityCatalog')
 -- Migration to remove .png extension from appScreenshots in apps tables
 -- Part of fixing appScreenshots extension handling change
 
--- Update apps_marketplace table - remove .png extension from appScreenshots
+-- Update apps_marketplace table - remove .png extension from appScreenshots only
 UPDATE apps_marketplace 
-SET json = REPLACE(json::text, '.png"', '"')::jsonb
-WHERE json -> 'appScreenshots' IS NOT NULL
+SET json = jsonb_set(
+    json,
+    '{appScreenshots}',
+    REPLACE((json -> 'appScreenshots')::text, '.png"', '"')::jsonb
+)
+WHERE json IS NOT NULL
+  AND json -> 'appScreenshots' IS NOT NULL
   AND jsonb_array_length(json -> 'appScreenshots') > 0
-  AND json::text LIKE '%.png"%';
+  AND (json -> 'appScreenshots')::text LIKE '%.png%';
 
--- Update installed_apps table - remove .png extension from appScreenshots  
+-- Update installed_apps table - remove .png extension from appScreenshots only
 UPDATE installed_apps 
-SET json = REPLACE(json::text, '.png"', '"')::jsonb
-WHERE json -> 'appScreenshots' IS NOT NULL
+SET json = jsonb_set(
+    json,
+    '{appScreenshots}',
+    REPLACE((json -> 'appScreenshots')::text, '.png"', '"')::jsonb
+)
+WHERE json IS NOT NULL
+  AND json -> 'appScreenshots' IS NOT NULL
   AND jsonb_array_length(json -> 'appScreenshots') > 0
-  AND json::text LIKE '%.png"%';
+  AND (json -> 'appScreenshots')::text LIKE '%.png%';
 
--- Update apps_data_store table - remove .png extension from appScreenshots
+-- Update apps_data_store table - remove .png extension from appScreenshots only
 UPDATE apps_data_store 
-SET json = REPLACE(json::text, '.png"', '"')::jsonb
-WHERE json -> 'appScreenshots' IS NOT NULL
+SET json = jsonb_set(
+    json,
+    '{appScreenshots}',
+    REPLACE((json -> 'appScreenshots')::text, '.png"', '"')::jsonb
+)
+WHERE json IS NOT NULL
+  AND json -> 'appScreenshots' IS NOT NULL
   AND jsonb_array_length(json -> 'appScreenshots') > 0
-  AND json::text LIKE '%.png"%';
+  AND (json -> 'appScreenshots')::text LIKE '%.png%';
