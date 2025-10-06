@@ -86,7 +86,7 @@ MOCK_CONNECTION_URI_PATH = (
 
 EXPECTED_PIPELINE_STATUS = [
     OMetaPipelineStatus(
-        pipeline_fqn="airbyte_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+        pipeline_fqn="airbyte_source.MSSQL <> Postgres",
         pipeline_status=PipelineStatus(
             executionStatus=StatusType.Pending.value,
             taskStatus=[
@@ -102,7 +102,7 @@ EXPECTED_PIPELINE_STATUS = [
         ),
     ),
     OMetaPipelineStatus(
-        pipeline_fqn="airbyte_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+        pipeline_fqn="airbyte_source.MSSQL <> Postgres",
         pipeline_status=PipelineStatus(
             executionStatus=StatusType.Successful.value,
             taskStatus=[
@@ -121,7 +121,7 @@ EXPECTED_PIPELINE_STATUS = [
 
 
 EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
-    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    name="MSSQL <> Postgres",
     displayName="MSSQL <> Postgres",
     sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
@@ -144,8 +144,8 @@ MOCK_PIPELINE_SERVICE = PipelineService(
 
 MOCK_PIPELINE = Pipeline(
     id="2aaa012e-099a-11ed-861d-0242ac120002",
-    name="a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
-    fullyQualifiedName="airbyte_source.a10f6d82-4fc6-4c90-ba04-bb773c8fbb0f",
+    name="MSSQL <> Postgres",
+    fullyQualifiedName="airbyte_source.MSSQL <> Postgres",
     displayName="MSSQL <> Postgres",
     sourceUrl=MOCK_CONNECTION_URI_PATH,
     tasks=[
