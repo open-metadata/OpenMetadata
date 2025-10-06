@@ -1087,9 +1087,7 @@ class DbtUnitTest(TestCase):
 
         # Create mock manifest meta with classification tags
         manifest_meta = {
-            "openmetadata": {
-                "tags": ["PII.Sensitive", "PersonalData.Email"]
-            }
+            "openmetadata": {"tags": ["PII.Sensitive", "PersonalData.Email"]}
         }
 
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
@@ -1145,7 +1143,7 @@ class DbtUnitTest(TestCase):
             "openmetadata": {
                 "glossary": ["Test_Glossary.term_one"],
                 "tier": "Tier.Tier1",
-                "tags": ["PII.Sensitive"]
+                "tags": ["PII.Sensitive"],
             }
         }
 
@@ -1158,37 +1156,27 @@ class DbtUnitTest(TestCase):
 
     def test_dbt_classification_tags_edge_cases(self):
         """Test edge cases for classification tags processing"""
-        
+
         # Test with empty tags list
-        manifest_meta = {
-            "openmetadata": {
-                "tags": []
-            }
-        }
+        manifest_meta = {"openmetadata": {"tags": []}}
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
             manifest_meta=manifest_meta
         )
         self.assertEqual(dbt_meta_tags, [])
-        
+
         # Test with invalid tag format (no dot separator)
         # These should be silently skipped
         manifest_meta = {
-            "openmetadata": {
-                "tags": ["InvalidTag"]  # Missing classification part
-            }
+            "openmetadata": {"tags": ["InvalidTag"]}  # Missing classification part
         }
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
             manifest_meta=manifest_meta
         )
         # Should return empty list as invalid tags are skipped
         self.assertEqual(dbt_meta_tags, [])
-        
+
         # Test with None tags
-        manifest_meta = {
-            "openmetadata": {
-                "tags": None
-            }
-        }
+        manifest_meta = {"openmetadata": {"tags": None}}
         dbt_meta_tags = self.dbt_source_obj.process_dbt_meta(
             manifest_meta=manifest_meta
         )
