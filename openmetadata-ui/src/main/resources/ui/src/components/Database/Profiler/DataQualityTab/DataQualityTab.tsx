@@ -82,6 +82,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   fetchTestCases,
   isEditAllowed,
   tableHeader,
+  removeTableBorder = false,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -512,7 +513,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       <Table
         columns={columns}
         containerClassName={classNames('test-case-table-container', {
-          'custom-card-with-table': !isUndefined(tableHeader),
+          'custom-card-with-table':
+            !isUndefined(tableHeader) || removeTableBorder,
         })}
         {...(pagingData && showPagination
           ? {

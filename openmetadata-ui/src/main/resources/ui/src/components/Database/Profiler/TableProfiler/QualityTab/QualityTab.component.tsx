@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Grid, Stack } from '@mui/material';
-import { Col, Form, Row, Select, Space, Tabs } from 'antd';
+import { Box, Grid, Stack, Tab, Tabs, useTheme } from '@mui/material';
+import { Col, Form, Row, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
+import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -66,6 +67,7 @@ export const QualityTab = () => {
     testCaseSummary,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
+  const theme = useTheme();
 
   const {
     currentPage,
@@ -90,6 +92,26 @@ export const QualityTab = () => {
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { t } = useTranslation();
+
+  const searchData = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData as {
+      activeTab: TableProfilerTab;
+      activeColumnFqn: string;
+      qualityTab: string;
+    };
+  }, [location.search]);
+
+  const { qualityTab = EntityTabs.TEST_CASES } = searchData;
+
+  const isTestCaseTab = useMemo(
+    () => qualityTab === EntityTabs.TEST_CASES,
+    [qualityTab]
+  );
 
   const [selectedTestCaseStatus, setSelectedTestCaseStatus] =
     useState<TestCaseStatus>('' as TestCaseStatus);
@@ -235,69 +257,6 @@ export const QualityTab = () => {
           />
         ),
         key: EntityTabs.TEST_CASES,
-        children: (
-          <Row className="p-t-md">
-            <Col span={12}>
-              <Searchbar
-                placeholder={t('label.search-entity', {
-                  entity: t('label.test-case-lowercase'),
-                })}
-                searchValue={searchValue}
-                onSearch={handleSearchTestCase}
-              />
-            </Col>
-            <Col span={12}>
-              <Form layout="inline">
-                <Space align="center" className="w-full justify-end">
-                  <Form.Item className="m-0 w-40" label={t('label.type')}>
-                    <Select
-                      options={TEST_CASE_TYPE_OPTION}
-                      value={selectedTestType}
-                      onChange={handleTestCaseTypeChange}
-                    />
-                  </Form.Item>
-                  <Form.Item className="m-0 w-40" label={t('label.status')}>
-                    <Select
-                      options={TEST_CASE_STATUS_OPTION}
-                      value={selectedTestCaseStatus}
-                      onChange={handleTestCaseStatusChange}
-                    />
-                  </Form.Item>
-                </Space>
-              </Form>
-            </Col>
-            <Col span={24}>
-              <DataQualityTab
-                afterDeleteAction={async (...params) => {
-                  await fetchAllTests(...params); // Update current count when Create / Delete operation performed
-                  params?.length &&
-                    (await getResourceLimit('dataQuality', true, true));
-                }}
-                breadcrumbData={tableBreadcrumb}
-                fetchTestCases={handleSortTestCase}
-                isEditAllowed={editTest}
-                isLoading={isTestsLoading}
-                showTableColumn={false}
-                testCases={allTestCases}
-                onTestCaseResultUpdate={onTestCaseUpdate}
-                onTestUpdate={onTestCaseUpdate}
-              />
-            </Col>
-            <Col span={24}>
-              {showPagination && (
-                <NextPrevious
-                  isNumberBased
-                  currentPage={currentPage}
-                  isLoading={isTestsLoading}
-                  pageSize={pageSize}
-                  paging={paging}
-                  pagingHandler={handleTestCasePageChange}
-                  onShowSizeChange={handlePageSizeChange}
-                />
-              )}
-            </Col>
-          </Row>
-        ),
       },
       {
         label: (
@@ -308,7 +267,6 @@ export const QualityTab = () => {
           />
         ),
         key: EntityTabs.PIPELINE,
-        children: <TestSuitePipelineTab testSuite={testSuite} />,
       },
     ],
     [
@@ -324,11 +282,11 @@ export const QualityTab = () => {
     ]
   );
 
-  const handleTabChange = () => {
+  const handleTabChange = (_: React.SyntheticEvent, tab: string) => {
     navigate(
       {
         pathname: location.pathname,
-        search: location.search,
+        search: QueryString.stringify({ ...searchData, qualityTab: tab }),
       },
       { state: undefined, replace: true }
     );
@@ -360,7 +318,132 @@ export const QualityTab = () => {
         ))}
       </Grid>
 
-      <Tabs className="tabs-new" items={tabs} onChange={handleTabChange} />
+      <Box
+        sx={{
+          border: `1px solid ${theme.palette.grey['200']}`,
+          borderRadius: '10px',
+        }}>
+        <Box
+          alignItems="center"
+          display="flex"
+          justifyContent="space-between"
+          p={4}>
+          <Box display="flex" gap={5} width="100%">
+            <Tabs
+              sx={{
+                width: 'max-content',
+                minHeight: 'unset',
+                display: 'inline-flex',
+                '.MuiTab-root': {
+                  color: theme.palette.grey['700'],
+                  transition:
+                    'background-color 0.2s ease-in, color 0.2s ease-in',
+                  borderRadius: '6px',
+                },
+                '.Mui-selected, .MuiTab-root:hover': {
+                  backgroundColor: `${theme.palette.grey['50']}`,
+                  color: `${theme.palette.grey['800']}`,
+                },
+                'MuiTabs-root': {
+                  minHeight: 'unset',
+                },
+                '.MuiTabs-indicator': {
+                  display: 'none',
+                },
+                '.MuiTabs-scroller': {
+                  padding: '0px',
+                  height: 'unset',
+                },
+                '.MuiTab-root:not(:first-of-type)': {
+                  marginLeft: '0px',
+                  borderLeft: `1px solid ${theme.palette.grey['200']}`,
+                  borderTopLeftRadius: 0,
+                  borderBottomLeftRadius: 0,
+                },
+              }}
+              value={qualityTab}
+              onChange={handleTabChange}>
+              {tabs.map(({ label, key }) => (
+                <Tab key={key} label={label} value={key} />
+              ))}
+            </Tabs>
+
+            {isTestCaseTab && (
+              <Box width={400}>
+                <Searchbar
+                  removeMargin
+                  placeholder={t('label.search-entity', {
+                    entity: t('label.test-case-lowercase'),
+                  })}
+                  searchValue={searchValue}
+                  onSearch={handleSearchTestCase}
+                />
+              </Box>
+            )}
+          </Box>
+
+          {isTestCaseTab && (
+            <Form layout="inline">
+              <Space align="center" className="w-full justify-end">
+                <Form.Item className="m-0 w-40" label={t('label.type')}>
+                  <Select
+                    options={TEST_CASE_TYPE_OPTION}
+                    value={selectedTestType}
+                    onChange={handleTestCaseTypeChange}
+                  />
+                </Form.Item>
+                <Form.Item className="m-0 w-40" label={t('label.status')}>
+                  <Select
+                    options={TEST_CASE_STATUS_OPTION}
+                    value={selectedTestCaseStatus}
+                    onChange={handleTestCaseStatusChange}
+                  />
+                </Form.Item>
+              </Space>
+            </Form>
+          )}
+        </Box>
+
+        {isTestCaseTab && (
+          <Row>
+            <Col span={24}>
+              <DataQualityTab
+                removeTableBorder
+                afterDeleteAction={async (...params) => {
+                  await fetchAllTests(...params); // Update current count when Create / Delete operation performed
+                  params?.length &&
+                    (await getResourceLimit('dataQuality', true, true));
+                }}
+                breadcrumbData={tableBreadcrumb}
+                fetchTestCases={handleSortTestCase}
+                isEditAllowed={editTest}
+                isLoading={isTestsLoading}
+                showTableColumn={false}
+                testCases={allTestCases}
+                onTestCaseResultUpdate={onTestCaseUpdate}
+                onTestUpdate={onTestCaseUpdate}
+              />
+            </Col>
+            <Col span={24}>
+              {showPagination && (
+                <NextPrevious
+                  isNumberBased
+                  currentPage={currentPage}
+                  isLoading={isTestsLoading}
+                  pageSize={pageSize}
+                  paging={paging}
+                  pagingHandler={handleTestCasePageChange}
+                  onShowSizeChange={handlePageSizeChange}
+                />
+              )}
+            </Col>
+          </Row>
+        )}
+
+        {qualityTab === EntityTabs.PIPELINE && (
+          <TestSuitePipelineTab testSuite={testSuite} />
+        )}
+      </Box>
     </Stack>
   );
 };

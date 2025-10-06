@@ -89,11 +89,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                     'background-color 0.2s ease-in, color 0.2s ease-in',
                   borderRadius: '6px',
                 },
-                '.Mui-selected': {
-                  backgroundColor: `${theme.palette.primary.main} !important`,
-                  color: `${theme.palette.primary.contrastText} !important`,
-                },
-                '.MuiTab-root:hover': {
+                '.Mui-selected, .MuiTab-root:hover': {
                   backgroundColor: `${theme.palette.primary.main} !important`,
                   color: `${theme.palette.primary.contrastText} !important`,
                 },

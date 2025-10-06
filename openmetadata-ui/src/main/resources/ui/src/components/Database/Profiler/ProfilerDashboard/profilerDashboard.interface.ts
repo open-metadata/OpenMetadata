@@ -71,6 +71,7 @@ export interface DataQualityTabProps {
   fetchTestCases?: (params?: ListTestCaseParamsBySearch) => Promise<void>;
   isEditAllowed?: boolean;
   tableHeader?: ReactNode;
+  removeTableBorder?: boolean;
 }
 
 export interface TestSummaryProps {
