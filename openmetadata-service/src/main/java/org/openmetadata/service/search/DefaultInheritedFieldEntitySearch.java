@@ -21,9 +21,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
@@ -64,12 +62,11 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       Integer totalCount = fetchTotalCount(queryFilter);
 
       if (totalCount == 0) {
-        return new InheritedFieldResult(Collections.emptyList(), 0, Collections.emptyMap());
+        return new InheritedFieldResult(Collections.emptyList(), 0);
       }
 
       if (query.getSize() == 0) {
-        return new InheritedFieldResult(
-            Collections.emptyList(), totalCount, Collections.emptyMap());
+        return new InheritedFieldResult(Collections.emptyList(), totalCount);
       }
 
       int entitiesToFetch =
@@ -97,9 +94,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
         currentFrom += batchSize;
       }
 
-      Map<String, Long> entityCountsByType = groupEntitiesByType(allEntities);
-
-      return new InheritedFieldResult(allEntities, totalCount, entityCountsByType);
+      return new InheritedFieldResult(allEntities, totalCount);
 
     } catch (Exception e) {
       LOG.debug("Failed to fetch entities for inherited field, using fallback", e);
@@ -197,17 +192,6 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       return total.get(VALUE_KEY).asInt();
     }
     return total.asInt(0);
-  }
-
-  private Map<String, Long> groupEntitiesByType(List<EntityReference> entities) {
-    Map<String, Long> countsByType = new HashMap<>();
-    for (EntityReference entity : entities) {
-      String type = entity.getType();
-      if (type != null) {
-        countsByType.merge(type, 1L, Long::sum);
-      }
-    }
-    return countsByType;
   }
 
   private boolean isSearchUnavailable() {

@@ -22,7 +22,6 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -88,7 +87,7 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public Set<String> getSearchDerivedFields() {
-    return Set.of(FIELD_ASSETS);
+    return Set.of(FIELD_ASSETS, FIELD_ASSETS_COUNT);
   }
 
   @Override
@@ -187,7 +186,7 @@ public class DomainRepository extends EntityRepository<Domain> {
               LOG.warn(
                   "Search fallback triggered for domain {}. Returning empty list for consistency.",
                   entity.getFullyQualifiedName());
-              return new InheritedFieldResult(new ArrayList<>(), 0, Collections.emptyMap());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
             });
     return result.getEntities();
   }
@@ -411,7 +410,7 @@ public class DomainRepository extends EntityRepository<Domain> {
                 LOG.warn(
                     "Search fallback triggered for domain {}. Returning empty list for consistency.",
                     domain.getFullyQualifiedName());
-                return new InheritedFieldResult(new ArrayList<>(), 0, Collections.emptyMap());
+                return new InheritedFieldResult(new ArrayList<>(), 0);
               });
       assetsMap.put(domain.getId(), result.getEntities());
     }

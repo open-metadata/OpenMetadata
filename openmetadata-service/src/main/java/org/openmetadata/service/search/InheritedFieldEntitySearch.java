@@ -14,7 +14,6 @@
 package org.openmetadata.service.search;
 
 import java.util.List;
-import java.util.Map;
 import java.util.function.Supplier;
 import org.openmetadata.schema.type.EntityReference;
 
@@ -179,13 +178,10 @@ public interface InheritedFieldEntitySearch {
   class InheritedFieldResult {
     private final List<EntityReference> entities;
     private final Integer total;
-    private final Map<String, Long> countsByType;
 
-    public InheritedFieldResult(
-        List<EntityReference> entities, Integer total, Map<String, Long> countsByType) {
+    public InheritedFieldResult(List<EntityReference> entities, Integer total) {
       this.entities = entities;
       this.total = total;
-      this.countsByType = countsByType;
     }
 
     public List<EntityReference> getEntities() {
@@ -194,10 +190,6 @@ public interface InheritedFieldEntitySearch {
 
     public Integer getTotal() {
       return total;
-    }
-
-    public Map<String, Long> getCountsByType() {
-      return countsByType;
     }
   }
 }
