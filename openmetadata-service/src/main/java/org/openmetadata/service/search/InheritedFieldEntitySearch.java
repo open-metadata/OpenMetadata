@@ -175,21 +175,5 @@ public interface InheritedFieldEntitySearch {
     }
   }
 
-  class InheritedFieldResult {
-    private final List<EntityReference> entities;
-    private final Integer total;
-
-    public InheritedFieldResult(List<EntityReference> entities, Integer total) {
-      this.entities = entities;
-      this.total = total;
-    }
-
-    public List<EntityReference> getEntities() {
-      return entities;
-    }
-
-    public Integer getTotal() {
-      return total;
-    }
-  }
+  record InheritedFieldResult(List<EntityReference> entities, Integer total) {}
 }

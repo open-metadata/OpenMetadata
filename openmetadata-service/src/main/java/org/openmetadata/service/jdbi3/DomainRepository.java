@@ -93,6 +93,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void setFields(Domain entity, Fields fields) {
     entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+    entity.withAssetsCount(fields.contains(FIELD_ASSETS_COUNT) ? getAssets(entity).size() : 0);
     entity.withParent(getParent(entity));
   }
 
@@ -188,7 +189,7 @@ public class DomainRepository extends EntityRepository<Domain> {
                   entity.getFullyQualifiedName());
               return new InheritedFieldResult(new ArrayList<>(), 0);
             });
-    return result.getEntities();
+    return result.entities();
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
@@ -412,7 +413,7 @@ public class DomainRepository extends EntityRepository<Domain> {
                     domain.getFullyQualifiedName());
                 return new InheritedFieldResult(new ArrayList<>(), 0);
               });
-      assetsMap.put(domain.getId(), result.getEntities());
+      assetsMap.put(domain.getId(), result.entities());
     }
     return assetsMap;
   }
