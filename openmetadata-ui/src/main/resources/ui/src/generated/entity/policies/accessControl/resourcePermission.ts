@@ -72,6 +72,7 @@ export enum Access {
  */
 export enum Operation {
     All = "All",
+    AuditLogs = "AuditLogs",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
     CreateScim = "CreateScim",
@@ -116,7 +117,6 @@ export enum Operation {
     ViewQueries = "ViewQueries",
     ViewSampleData = "ViewSampleData",
     ViewScim = "ViewScim",
-    AuditLogs = "AuditLogs",
     ViewTestCaseFailedRowsSample = "ViewTestCaseFailedRowsSample",
     ViewTests = "ViewTests",
     ViewUsage = "ViewUsage",
