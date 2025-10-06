@@ -260,6 +260,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -3328,6 +3329,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final Set<String> getAllowedFieldsCopy() {
     return new HashSet<>(allowedFields);
+  }
+
+  /**
+   * Returns entity fields not stored in the database but derived from search operations.
+   *
+   * @return Set of field names to exclude during reindexing. Empty by default.
+   */
+  public Set<String> getSearchDerivedFields() {
+    return Collections.emptySet();
   }
 
   protected String getCustomPropertyFQNPrefix(String entityType) {
