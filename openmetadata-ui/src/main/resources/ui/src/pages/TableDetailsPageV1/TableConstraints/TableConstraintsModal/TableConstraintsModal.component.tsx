@@ -32,7 +32,6 @@ import {
 } from '../../../../generated/entity/data/table';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getBreadcrumbsFromFqn } from '../../../../utils/EntityUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
 import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
 import {
   escapeESReservedCharacters,
@@ -75,29 +74,14 @@ const TableConstraintsModal = ({
     setIsRelatedColumnLoading(true);
     try {
       const encodedValue = getEncodedFqn(escapeESReservedCharacters(value));
-      const serviceFilter = getServiceNameQueryFilter(
-        tableDetails?.service?.name ?? ''
-      );
       const data = await searchQuery({
-        query: value,
+        query:
+          value &&
+          `(columns.name.keyword:*${encodedValue}*) OR (columns.fullyQualifiedName:*${encodedValue}*)`,
         searchIndex: SearchIndex.TABLE,
-        queryFilter: value
-          ? {
-              query: {
-                bool: {
-                  must: [
-                    serviceFilter.query,
-                    getTermQuery({}, 'should', 1, {
-                      wildcardShouldQueries: {
-                        'columns.name.keyword': `*${encodedValue}*`,
-                        'columns.fullyQualifiedName': `*${encodedValue}*`,
-                      },
-                    }).query.bool,
-                  ],
-                },
-              },
-            }
-          : serviceFilter,
+        queryFilter: getServiceNameQueryFilter(
+          tableDetails?.service?.name ?? ''
+        ),
         pageNumber: 1,
         pageSize: PAGE_SIZE,
         includeDeleted: false,
