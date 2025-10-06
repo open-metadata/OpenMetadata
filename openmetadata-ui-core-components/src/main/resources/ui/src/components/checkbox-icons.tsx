@@ -10,41 +10,43 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
+import React from "react";
 
 // Custom Checkbox Icons that adapt to size
 export const CheckboxBlankIcon = () => (
   <div
     className="checkbox-icon"
     style={{
-      width: '100%',
-      height: '100%',
-      backgroundColor: 'white',
-      borderRadius: 4, 
-      border: '1px solid',
-      borderColor: 'currentColor',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-      boxSizing: 'border-box',
+      width: "100%",
+      height: "100%",
+      backgroundColor: "white",
+      borderRadius: 4,
+      border: "1px solid",
+      borderColor: "currentColor",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+      boxSizing: "border-box",
     }}
-  />
+  >
+    Hello
+  </div>
 );
 
 export const CheckboxCheckedIcon = () => (
   <div
     className="checkbox-icon"
     style={{
-      width: '100%',
-      height: '100%',
-      backgroundColor: 'currentColor',
+      width: "100%",
+      height: "100%",
+      backgroundColor: "currentColor",
       borderRadius: 4,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-      boxSizing: 'border-box',
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+      boxSizing: "border-box",
     }}
   >
     <svg
@@ -52,7 +54,7 @@ export const CheckboxCheckedIcon = () => (
       height="75%" // Responsive size
       width="75%"
       viewBox="0 0 14 14"
-      style={{ position: 'absolute' }}
+      style={{ position: "absolute" }}
     >
       <path
         d="M11.6666 3.5L5.24992 9.91667L2.33325 7"
@@ -69,15 +71,15 @@ export const CheckboxIndeterminateIcon = () => (
   <div
     className="checkbox-icon"
     style={{
-      width: '100%',
-      height: '100%',
-      backgroundColor: 'currentColor',
+      width: "100%",
+      height: "100%",
+      backgroundColor: "currentColor",
       borderRadius: 4,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      position: 'relative',
-      boxSizing: 'border-box',
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      position: "relative",
+      boxSizing: "border-box",
     }}
   >
     <svg
@@ -85,7 +87,7 @@ export const CheckboxIndeterminateIcon = () => (
       height="60%"
       width="60%"
       viewBox="0 0 14 14"
-      style={{ position: 'absolute' }}
+      style={{ position: "absolute" }}
     >
       <path
         d="M2.91675 7H11.0834"
