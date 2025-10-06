@@ -41,6 +41,10 @@ export interface DataProduct {
      */
     domains?: EntityReference[];
     /**
+     * Status of the Data Product.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * List of users who are experts for this Data Product.
      */
     experts?: EntityReference[];
@@ -92,6 +96,10 @@ export interface DataProduct {
      * Other data products that consume data from this product
      */
     providesTo?: EntityReference[];
+    /**
+     * User references of the reviewers for this Data Product.
+     */
+    reviewers?: EntityReference[];
     /**
      * Service Level Agreement for this data product
      */
@@ -237,6 +245,21 @@ export interface FieldChange {
      * field type to deserialize it.
      */
     oldValue?: any;
+}
+
+/**
+ * Status of the Data Product.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
 }
 
 /**
@@ -405,6 +428,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

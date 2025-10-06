@@ -66,8 +66,8 @@ export const checkPersonaInProfile = async (
 
   if (expectedPersonaName) {
     // Expect persona to be visible with specific name
-    await expect(page.getByTestId('default-persona-text')).toBeVisible();
-    await expect(page.getByTestId('default-persona-text')).toContainText(
+    await expect(page.getByTestId('default-persona-chip')).toBeVisible();
+    await expect(page.getByTestId('default-persona-chip')).toContainText(
       expectedPersonaName
     );
   } else {
@@ -111,4 +111,30 @@ export const removePersonaDefault = async (
 
   await removeDefaultConfirmationModal.getByText('Yes').click();
   await removeDefaultResponse;
+};
+
+export const navigateToPersonaWithPagination = async (
+  page: Page,
+  personaName: string,
+  click = true,
+  maxPages = 15
+) => {
+  for (let currentPage = 0; currentPage < maxPages; currentPage++) {
+    const locator = page.getByTestId(`persona-details-card-${personaName}`);
+
+    // Check if element is visible on current page
+    if (await locator.isVisible()) {
+      if (click) {
+        await locator.click();
+      }
+
+      return;
+    }
+
+    const nextBtn = page.locator('[data-testid="next"]');
+    await nextBtn.waitFor({ state: 'visible' });
+
+    await nextBtn.click();
+    await page.waitForLoadState('networkidle');
+  }
 };

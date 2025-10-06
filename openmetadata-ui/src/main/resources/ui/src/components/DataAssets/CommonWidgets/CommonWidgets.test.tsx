@@ -60,7 +60,7 @@ jest.mock('../../../utils/CommonWidget/CommonWidgetClassBase', () => ({
 }));
 
 jest.mock('../../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue({}),
+  ownerTableObject: jest.fn().mockReturnValue([{}]),
 }));
 
 const mockGenericContext = {

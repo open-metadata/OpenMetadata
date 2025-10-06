@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { useNavigate } from 'react-router-dom';
 import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { DatabaseServiceType } from '../generated/entity/services/databaseService';
@@ -40,13 +41,18 @@ jest.mock(
   })
 );
 
-const mockNavigate = jest.fn();
-
 jest.mock('react-router-dom', () => ({
-  useNavigate: mockNavigate,
+  useNavigate: jest.fn(),
 }));
 
+const mockNavigate = jest.fn();
+
 describe('ExtraDatabaseServiceDropdownOptions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
+  });
+
   it('should render import button when user has editAll permission', () => {
     const permission = {
       ViewAll: false,

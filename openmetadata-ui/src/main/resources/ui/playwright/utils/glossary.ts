@@ -718,7 +718,9 @@ export const validateGlossaryTerm = async (
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
+    await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
+    await expect(page.locator(statusSelector)).toBeVisible();
     await expect(page.locator(statusSelector)).toContainText(status);
   }
 };
@@ -841,19 +843,6 @@ export const updateNameForGlossaryTerm = async (
   return data;
 };
 
-export const verifyGlossaryTermAssets = async (
-  page: Page,
-  glossary: GlossaryData,
-  glossaryTermData: GlossaryTermData,
-  assetsLength: number
-) => {
-  await page.click('[data-testid="overview"]');
-  await redirectToHomePage(page);
-  await sidebarClick(page, SidebarItem.GLOSSARY);
-  await selectActiveGlossary(page, glossary.displayName);
-  await goToAssetsTab(page, glossaryTermData.displayName, assetsLength);
-};
-
 export const renameGlossaryTerm = async (
   page: Page,
   glossaryTerm: GlossaryTerm,
@@ -872,9 +861,9 @@ export const dragAndDropTerm = async (
   dragElement: string,
   dropTarget: string
 ) => {
-  await page.getByRole('cell', { name: dragElement }).hover();
+  await page.getByRole('cell', { name: dragElement, exact: true }).hover();
   await page.mouse.down();
-  await page.getByRole('cell', { name: dropTarget }).hover();
+  await page.getByRole('cell', { name: dropTarget, exact: true }).hover();
   await page.mouse.up();
 };
 
@@ -1694,4 +1683,14 @@ export const setupGlossaryDenyPermissionTest = async (
     dataConsumerRole,
     cleanup,
   };
+};
+
+export const performExpandAll = async (page: Page) => {
+  const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+  await page.getByTestId('expand-collapse-all-button').click();
+  await termRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };

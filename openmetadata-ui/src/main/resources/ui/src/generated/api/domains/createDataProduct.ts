@@ -50,7 +50,11 @@ export interface CreateDataProduct {
      * Owners of this DataProduct.
      */
     owners?: EntityReference[];
-    style?:  Style;
+    /**
+     * User references of the reviewers for this DataProduct.
+     */
+    reviewers?: EntityReference[];
+    style?:     Style;
     /**
      * Tags for this Data Product.
      */
@@ -156,6 +160,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

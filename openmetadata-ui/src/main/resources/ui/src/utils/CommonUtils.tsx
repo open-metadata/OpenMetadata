@@ -52,7 +52,7 @@ import { SearchSourceAlias } from '../interface/search.interface';
 import { getFeedCount } from '../rest/feedsAPI';
 import { getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
-import { t } from './i18next/LocalUtil';
+import i18n, { t } from './i18next/LocalUtil';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { showErrorToast } from './ToastUtils';
 
@@ -403,8 +403,19 @@ export const getNameFromFQN = (fqn: string): string => {
   return arr[arr.length - 1];
 };
 
+export const getFirstAlphanumeric = (name: string): string => {
+  /**
+   * \p{L} → matches any kind of letter from any language (Latin, Cyrillic, Chinese, etc.).
+   * \p{N} → matches any kind of numeric digit (Arabic-Indic, Roman numerals, etc.).
+   * u flag → required for Unicode property escapes to work.
+   */
+  const match = name.match(/[\p{L}\p{N}]/u);
+
+  return match ? match[0].toLowerCase() : name.charAt(0).toLowerCase();
+};
+
 export const getRandomColor = (name: string) => {
-  const firstAlphabet = name.charAt(0).toLowerCase();
+  const firstAlphabet = getFirstAlphanumeric(name);
   // Convert the user's name to a numeric value
   let nameValue = 0;
   for (let i = 0; i < name.length; i++) {
@@ -529,7 +540,7 @@ export const getFeedCounts = async (
 };
 
 export const formatNumberWithComma = (number: number) => {
-  return new Intl.NumberFormat('en-US').format(number);
+  return new Intl.NumberFormat(i18n.language).format(number);
 };
 
 /**
@@ -753,6 +764,32 @@ export const getServiceTypeExploreQueryFilter = (serviceType: string) => {
                 {
                   term: {
                     serviceType,
+                  },
+                },
+              ],
+            },
+          },
+        ],
+      },
+    },
+  });
+};
+
+/**
+ * @param entityType key for quick filter (e.g., 'dataproduct', 'table', 'dashboard')
+ * @returns json filter query string for entity type
+ */
+export const getEntityTypeExploreQueryFilter = (entityType: string) => {
+  return JSON.stringify({
+    query: {
+      bool: {
+        must: [
+          {
+            bool: {
+              should: [
+                {
+                  term: {
+                    'entityType.keyword': entityType,
                   },
                 },
               ],

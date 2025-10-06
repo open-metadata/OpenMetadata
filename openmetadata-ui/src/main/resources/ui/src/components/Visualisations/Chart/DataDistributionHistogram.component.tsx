@@ -24,6 +24,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { CHART_BLUE_1 } from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { DEFAULT_HISTOGRAM_DATA } from '../../../constants/profiler.constant';
 import { HistogramClass } from '../../../generated/entity/data/table';
@@ -116,7 +117,7 @@ const DataDistributionHistogram = ({
                         tooltipFormatter(value)
                       }
                     />
-                    <Bar dataKey="frequency" fill="#1890FF" />
+                    <Bar dataKey="frequency" fill={CHART_BLUE_1} />
                   </BarChart>
                 </ResponsiveContainer>
               </Col>

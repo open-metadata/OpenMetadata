@@ -35,10 +35,10 @@ server:
   gzip:
     syncFlush: true
 
-  maxThreads: ${SERVER_MAX_THREADS:-50}
-  minThreads: ${SERVER_MIN_THREADS:-10}
+  maxThreads: ${SERVER_MAX_THREADS:-150}
+  minThreads: ${SERVER_MIN_THREADS:-100}
   idleThreadTimeout: ${SERVER_IDLE_THREAD_TIMEOUT:-1 minute}
-  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-true}
+  enableVirtualThreads: ${SERVER_ENABLE_VIRTUAL_THREAD:-false}
   maxQueuedRequests: ${SERVER_REQUEST_QUEUE:-1024}
 
 # Above configuration for running http is fine for dev and testing.
@@ -359,6 +359,22 @@ pipelineServiceClientConfiguration:
   verifySSL: ${PIPELINE_SERVICE_CLIENT_VERIFY_SSL:-"no-ssl"} # Possible values are "no-ssl", "ignore", "validate"
   sslConfig:
     certificatePath: ${PIPELINE_SERVICE_CLIENT_SSL_CERT_PATH:-""} # Local path for the Pipeline Service Client
+  logStorageConfiguration:
+    type: ${PIPELINE_SERVICE_CLIENT_LOG_TYPE:-"default"} # Possible values are "default", "s3"
+    enabled: ${PIPELINE_SERVICE_CLIENT_LOG_ENABLED:-false} # Enable it for pipelines deployed in the server
+    # if type is s3, provide the following configuration
+    bucketName: ${PIPELINE_SERVICE_CLIENT_LOG_BUCKET_NAME:-""}
+    # optional path within the bucket to store the logs
+    prefix: ${PIPELINE_SERVICE_CLIENT_LOG_PREFIX:-""}
+    enableServerSideEncryption: ${PIPELINE_SERVICE_CLIENT_LOG_SSE_ENABLED:-false}
+    sseAlgorithm: ${PIPELINE_SERVICE_CLIENT_LOG_SSE_ALGORITHM:-"AES256"} # Allowed values: "AES256" or "aws:kms"
+    kmsKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_KMS_KEY_ID:-""} # Required only if sseAlgorithm is "aws:kms"
+    awsConfig:
+      awsAccessKeyId: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_ACCESS_KEY_ID:-""}
+      awsSecretAccessKey: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_SECRET_ACCESS_KEY:-""}
+      awsRegion: ${PIPELINE_SERVICE_CLIENT_LOG_REGION:-""}
+      awsSessionToken: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_SESSION_TOKEN:-""}
+      endPointURL: ${PIPELINE_SERVICE_CLIENT_LOG_AWS_ENDPOINT_URL:-""} # port forward localhost:9000 for minio
 
   # Secrets Manager Loader: specify to the Ingestion Framework how to load the SM credentials from its env
   # Supported: noop, airflow, env
