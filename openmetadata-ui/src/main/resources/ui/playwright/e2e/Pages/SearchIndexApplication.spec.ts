@@ -152,7 +152,9 @@ test('Search Index Application', async ({ page }) => {
     await clickOutside(page);
     await page.locator('[for="root/searchIndexMappingLanguage"]').click();
 
-    await page.getByTestId('select-widget').click();
+    await page
+      .getByTestId('select-widget-root/searchIndexMappingLanguage')
+      .click();
 
     await expect(page.getByTestId('select-option-JP')).toBeVisible();
 

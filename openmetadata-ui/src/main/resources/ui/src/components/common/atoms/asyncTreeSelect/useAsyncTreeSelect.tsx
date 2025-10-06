@@ -177,29 +177,12 @@ export const useAsyncTreeSelect = <T = unknown,>(
     []
   );
 
-  // Handle node expansion with lazy loading
+  // Handle node expansion
   const handleNodeExpansion = useCallback(
-    async (nodeId: string) => {
-      const wasExpanded = isNodeExpanded(nodeId);
+    (nodeId: string) => {
       toggleExpansion(nodeId);
-      const isExpanding = !wasExpanded;
-
-      if (isExpanding) {
-        const node = findNodeInTree(treeData, nodeId);
-        if (shouldNodeLazyLoad(node, lazyLoad)) {
-          await loadChildrenData(nodeId);
-        }
-      }
     },
-    [
-      toggleExpansion,
-      lazyLoad,
-      isNodeExpanded,
-      loadChildrenData,
-      treeData,
-      findNodeInTree,
-      shouldNodeLazyLoad,
-    ]
+    [toggleExpansion]
   );
 
   // Expand path to highlighted node when search changes

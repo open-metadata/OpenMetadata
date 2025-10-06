@@ -131,10 +131,11 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-menu-id*="dbt"]');
 
       await page.waitForSelector('#root\\/dbtConfigSource__oneof_select');
-      await page.selectOption(
-        '#root\\/dbtConfigSource__oneof_select',
-        'DBT S3 Config'
-      );
+      await page
+        .getByTestId('select-widget-root/dbtConfigSource__oneof_select')
+        .getByRole('combobox')
+        .click({ force: true });
+      await page.click('.ant-select-dropdown:visible [title="DBT S3 Config"]');
       await page.fill(
         '#root\\/dbtConfigSource\\/dbtSecurityConfig\\/awsAccessKeyId',
         process.env.PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID ?? ''
