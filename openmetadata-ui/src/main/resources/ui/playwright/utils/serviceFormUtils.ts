@@ -30,17 +30,13 @@ export const fillSupersetFormDetails = async ({
   if (connectionType === 'SupersetApiConnection') {
     await page
       .getByTestId('select-widget-root/connection__oneof_select')
-      .getByRole('combobox')
-      .click({ force: true });
+      .click();
     await page.click(
       `.ant-select-dropdown:visible [title="${connectionType}"]`
     );
 
     if (provider) {
-      await page
-        .getByTestId('select-widget-root/connection/provider')
-        .getByRole('combobox')
-        .click({ force: true });
+      await page.getByTestId('select-widget-root/connection/provider').click();
       await page.click(`.ant-select-dropdown:visible [title="${provider}"]`);
     }
   } else if (
@@ -49,8 +45,7 @@ export const fillSupersetFormDetails = async ({
   ) {
     await page
       .getByTestId('select-widget-root/connection__oneof_select')
-      .getByRole('combobox')
-      .click({ force: true });
+      .click();
     await page.click(
       `.ant-select-dropdown:visible [title="${connectionType}"]`
     );
