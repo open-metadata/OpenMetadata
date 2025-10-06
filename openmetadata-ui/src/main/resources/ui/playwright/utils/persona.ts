@@ -134,7 +134,9 @@ export const navigateToPersonaWithPagination = async (
     const nextBtn = page.locator('[data-testid="next"]');
     await nextBtn.waitFor({ state: 'visible' });
 
+    const getPersonas = page.waitForResponse('/api/v1/personas*');
     await nextBtn.click();
+    await getPersonas;
     await page.waitForLoadState('networkidle');
   }
 };
