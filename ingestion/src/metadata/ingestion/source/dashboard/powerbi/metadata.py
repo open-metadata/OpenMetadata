@@ -54,6 +54,8 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -80,6 +82,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
+SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -785,6 +788,143 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
+    def _parse_snowflake_query_source(self, source_expression: str):
+        """
+        Parse snowflake query source
+        source expressions like `Value.NativeQuery(Snowflake.Databases())`
+        """
+        try:
+            logger.debug(
+                f"parsing source expression through query parser: {source_expression[:100]}"
+            )
+
+            # Look for SQL query after [Data],
+            # The pattern needs to handle the concatenated strings with & operators
+            m = re.search(
+                r'\[Data\],\s*"(.+?)"(?:,\s*null|\s*\))',
+                source_expression,
+                re.IGNORECASE | re.DOTALL,
+            )
+
+            if not m:
+                logger.debug("sql query not found in source expression")
+                return None
+
+            # Extract and clean the SQL query
+            sql_query = m.group(1).replace('""', '"')
+
+            # Handle PowerBI parameter concatenation (e.g., "& Database &")
+            # For now, replace parameter references with wildcards for parsing
+            sql_query_cleaned = re.sub(r'"?\s*&\s*\w+\s*&\s*"?\.?', "%.", sql_query)
+
+            logger.debug(f"Extracted SQL query: {sql_query}")
+            logger.debug(f"Cleaned SQL query: {sql_query_cleaned}")
+
+            if not sql_query_cleaned:
+                logger.debug("Empty SQL query after extraction")
+                return None
+
+            # Clean the query for parser
+            # 1. Replace % with a placeholder database name
+            parser_query = sql_query_cleaned.replace("%", "PLACEHOLDER_DB")
+
+            # 2. Remove PowerBI line feed markers #(lf) and clean up the query
+            parser_query = parser_query.replace("#(lf)", "\n")
+
+            # 3. Remove SQL comments that might cause issues (// style comments)
+            parser_query = re.sub(r"//[^\n]*", "", parser_query)
+
+            # 4. Clean up excessive whitespace
+            parser_query = re.sub(r"\s+", " ", parser_query).strip()
+
+            logger.debug(
+                f"Attempting LineageParser with cleaned query: {parser_query[:200]}"
+            )
+
+            try:
+                parser = LineageParser(
+                    parser_query, dialect=Dialect.SNOWFLAKE, timeout_seconds=30
+                )
+            except Exception as parser_exc:
+                logger.debug(f"LineageParser failed with error: {parser_exc}")
+                logger.debug(f"Failed query was: {parser_query[:200]}...")
+                return None
+
+            if parser.source_tables:
+                logger.debug(
+                    f"LineageParser found {len(parser.source_tables)} source table(s)"
+                )
+                for table in parser.source_tables:
+                    logger.debug(
+                        f"source table: {table.raw_name}, schema: {table.schema if hasattr(table, 'schema') else 'N/A'}"
+                    )
+                source_table = parser.source_tables[0]
+
+                # Extract database from schema's parent if it exists
+                database = None
+                schema = None
+
+                if hasattr(source_table, "schema") and source_table.schema:
+                    # Log what we have in the schema object
+                    logger.debug(
+                        f"Schema object type: {type(source_table.schema)}, value: {source_table.schema}"
+                    )
+
+                    # Get schema as string first
+                    schema_str = (
+                        source_table.schema.raw_name
+                        if hasattr(source_table.schema, "raw_name")
+                        else str(source_table.schema)
+                    )
+
+                    # If schema contains dots, it might be database.schema format
+                    if "." in schema_str:
+                        parts = schema_str.split(".")
+                        if len(parts) == 2:
+                            # Format: database.schema
+                            # Check for placeholder (case insensitive)
+                            database = (
+                                parts[0]
+                                if parts[0].upper() != "PLACEHOLDER_DB"
+                                else None
+                            )
+                            schema = parts[1]
+                        else:
+                            # Just use as is
+                            schema = schema_str
+                    else:
+                        schema = schema_str
+                        # Check if schema has a parent (database)
+                        if (
+                            hasattr(source_table.schema, "parent")
+                            and source_table.schema.parent
+                        ):
+                            database = (
+                                source_table.schema.parent.raw_name
+                                if hasattr(source_table.schema.parent, "raw_name")
+                                else str(source_table.schema.parent)
+                            )
+
+                # Filter out placeholder values (case insensitive)
+                if database and database.upper() == "PLACEHOLDER_DB":
+                    database = None
+
+                table = source_table.raw_name
+
+                if table:
+                    logger.debug(f"tables found = {database}.{schema}.{table}")
+                    return {
+                        "database": database,
+                        "schema": schema,
+                        "table": table,
+                    }
+            logger.debug("tables in query not found through parser")
+            return None
+        except Exception as exc:
+            logger.debug(f"Error parsing snowflake query source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
     def _parse_snowflake_source(
         self, source_expression: str, datamodel_entity: DashboardDataModel
     ) -> Optional[dict]:
@@ -792,6 +932,9 @@ class PowerbiSource(DashboardServiceSource):
             if "Snowflake.Databases" not in source_expression:
                 # Not a snowflake valid expression
                 return None
+            if SNOWFLAKE_QUERY_EXPRESSION_KW in source_expression:
+                # snowflake query source identified
+                return self._parse_snowflake_query_source(source_expression)
             db_match = re.search(
                 r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression
             )
