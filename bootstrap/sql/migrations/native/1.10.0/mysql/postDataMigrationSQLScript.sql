@@ -13,3 +13,27 @@ SET
 WHERE
     serviceType in ('Databricks', 'UnityCatalog')
     AND JSON_CONTAINS_PATH(json, 'one', '$.connection.config.token');
+
+-- Migration to remove .png extension from appScreenshots in apps tables
+-- Part of fixing appScreenshots extension handling change
+
+-- Update apps_marketplace table - remove .png extension from appScreenshots
+UPDATE apps_marketplace 
+SET json = REPLACE(json, '.png"', '"')
+WHERE JSON_EXTRACT(json, '$.appScreenshots') IS NOT NULL
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.appScreenshots')) > 0
+  AND json LIKE '%.png"%';
+
+-- Update installed_apps table - remove .png extension from appScreenshots  
+UPDATE installed_apps 
+SET json = REPLACE(json, '.png"', '"')
+WHERE JSON_EXTRACT(json, '$.appScreenshots') IS NOT NULL
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.appScreenshots')) > 0
+  AND json LIKE '%.png"%';
+
+-- Update apps_data_store table - remove .png extension from appScreenshots
+UPDATE apps_data_store 
+SET json = REPLACE(json, '.png"', '"')
+WHERE JSON_EXTRACT(json, '$.appScreenshots') IS NOT NULL
+  AND JSON_LENGTH(JSON_EXTRACT(json, '$.appScreenshots')) > 0
+  AND json LIKE '%.png"%';
