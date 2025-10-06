@@ -80,6 +80,26 @@ public class TagRepository extends EntityRepository<Tag> {
     EntityReference classification =
         Entity.getEntityReference(entity.getClassification(), NON_DELETED);
     entity.setClassification(classification);
+
+    // Validate recognizers
+    if (entity.getRecognizers() != null) {
+      for (org.openmetadata.schema.type.Recognizer recognizer : entity.getRecognizers()) {
+        validateRecognizer(recognizer);
+      }
+    }
+  }
+
+  private void validateRecognizer(org.openmetadata.schema.type.Recognizer recognizer) {
+    if (recognizer.getRecognizerConfig() == null) {
+      throw new IllegalArgumentException("recognizerConfig is required");
+    }
+
+    if (recognizer.getConfidenceThreshold() != null) {
+      double threshold = recognizer.getConfidenceThreshold();
+      if (threshold < 0.0 || threshold > 1.0) {
+        throw new IllegalArgumentException("confidenceThreshold must be between 0.0 and 1.0");
+      }
+    }
   }
 
   @Override
@@ -379,7 +399,8 @@ public class TagRepository extends EntityRepository<Tag> {
     var records =
         daoCollection
             .relationshipDAO()
-            .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), Entity.CLASSIFICATION);
+            .findFromBatch(
+                entityIds, Relationship.CONTAINS.ordinal(), Entity.CLASSIFICATION, NON_DELETED);
 
     if (records.isEmpty()) {
       return Map.of();
@@ -422,7 +443,7 @@ public class TagRepository extends EntityRepository<Tag> {
     var records =
         daoCollection
             .relationshipDAO()
-            .findToBatch(entityIds, Relationship.CONTAINS.ordinal(), TAG);
+            .findFromBatch(entityIds, Relationship.CONTAINS.ordinal(), TAG, NON_DELETED);
 
     if (records.isEmpty()) {
       return Map.of();
@@ -542,6 +563,15 @@ public class TagRepository extends EntityRepository<Tag> {
       recordChange(
           "mutuallyExclusive", original.getMutuallyExclusive(), updated.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());
+      recordChange("recognizers", original.getRecognizers(), updated.getRecognizers(), true);
+      recordChange(
+          "autoClassificationEnabled",
+          original.getAutoClassificationEnabled(),
+          updated.getAutoClassificationEnabled());
+      recordChange(
+          "autoClassificationPriority",
+          original.getAutoClassificationPriority(),
+          updated.getAutoClassificationPriority());
       updateName(original, updated);
       updateParent(original, updated);
     }

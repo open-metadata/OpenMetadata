@@ -36,7 +36,7 @@
     <logback-core.version>1.5.18</logback-core.version>
     <logback-classic.version>1.5.18</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
-    <kubernetes-client.version>21.0.1</kubernetes-client.version>
+    <kubernetes-client.version>24.0.0</kubernetes-client.version>
   </properties>
 
   <dependencyManagement>
@@ -137,6 +137,22 @@
       <artifactId>json-smart</artifactId>
       <version>${json-smart.version}</version>
     </dependency>
+    <!-- Google OAuth Client Library -->
+    <dependency>
+      <groupId>com.google.api-client</groupId>
+      <artifactId>google-api-client</artifactId>
+      <version>2.2.0</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.oauth-client</groupId>
+      <artifactId>google-oauth-client</artifactId>
+      <version>1.34.1</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.http-client</groupId>
+      <artifactId>google-http-client-jackson2</artifactId>
+      <version>1.43.3</version>
+    </dependency>
     <dependency>
       <groupId>org.open-metadata</groupId>
       <artifactId>common</artifactId>
@@ -164,6 +180,12 @@
       <groupId>org.open-metadata</groupId>
       <artifactId>openmetadata-spec</artifactId>
       <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.open-metadata</groupId>
+      <artifactId>openmetadata-sdk</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
     </dependency>
     <dependency>
       <groupId>io.dropwizard</groupId>
@@ -439,6 +461,7 @@
       <scope>test</scope>
     </dependency>
 
+
     <dependency>
       <groupId>org.apache.felix</groupId>
       <artifactId>org.apache.felix.http.wrappers</artifactId>
@@ -519,7 +542,7 @@
     <dependency>
       <groupId>io.minio</groupId>
       <artifactId>minio</artifactId>
-      <version>8.5.7</version>
+      <version>8.5.17</version>
       <scope>test</scope>
     </dependency>
     <dependency>
@@ -942,7 +965,7 @@
     <dependency>
       <groupId>org.flowable</groupId>
       <artifactId>flowable-engine</artifactId>
-      <version>7.0.1</version>
+      <version>7.2.0</version>
     </dependency>
     <dependency>
       <groupId>io.github.jamsesso</groupId>

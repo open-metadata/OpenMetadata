@@ -99,6 +99,10 @@ export interface TestSuite {
      */
     pipelines?: EntityReference[];
     /**
+     * List of reviewers for this entity.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...
      */
     serviceType?: ServiceType;
@@ -367,6 +371,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

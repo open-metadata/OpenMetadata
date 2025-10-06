@@ -22,9 +22,13 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.scim.ScimGroup;
 import org.openmetadata.schema.api.scim.ScimPatchOp;
 import org.openmetadata.schema.api.scim.ScimUser;
+import org.openmetadata.schema.security.scim.ScimConfiguration;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.service.exception.CustomExceptionMessage;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.scim.ScimProvisioningService;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -45,6 +49,17 @@ public class ScimResource {
     this.authorizer = authorizer;
   }
 
+  private void checkScimEnabled() {
+    ScimConfiguration scimConfig =
+        SettingsCache.getSetting(SettingsType.SCIM_CONFIGURATION, ScimConfiguration.class);
+    if (scimConfig == null || !Boolean.TRUE.equals(scimConfig.getEnabled())) {
+      throw new CustomExceptionMessage(
+          Response.Status.FORBIDDEN.getStatusCode(),
+          "SCIM_DISABLED",
+          "SCIM provisioning is not enabled. Please enable SCIM in the application settings.");
+    }
+  }
+
   @GET
   @Path("/")
   @Operation(
@@ -54,6 +69,7 @@ public class ScimResource {
       responses =
           @ApiResponse(responseCode = "200", description = "SCIM Service Provider Configuration"))
   public Response getServiceProviderConfig(@Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
@@ -81,6 +97,7 @@ public class ScimResource {
       description = "Lists SCIM users based on optional filters.",
       responses = @ApiResponse(responseCode = "200", description = "List of SCIM Users"))
   public Response listUsers(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
@@ -100,6 +117,7 @@ public class ScimResource {
       })
   public Response createUser(
       ScimUser user, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.CREATE_SCIM),
@@ -122,6 +140,7 @@ public class ScimResource {
       ScimUser user,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.EDIT_SCIM),
@@ -143,6 +162,7 @@ public class ScimResource {
       @Parameter(description = "SCIM User ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.DELETE_SCIM),
@@ -165,6 +185,7 @@ public class ScimResource {
       ScimPatchOp request,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.EDIT_SCIM),
@@ -186,6 +207,7 @@ public class ScimResource {
       @Parameter(description = "SCIM User ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
@@ -201,6 +223,7 @@ public class ScimResource {
       description = "Lists SCIM groups based on optional filters.",
       responses = @ApiResponse(responseCode = "200", description = "List of SCIM Groups"))
   public Response listGroups(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
@@ -220,6 +243,7 @@ public class ScimResource {
       })
   public Response createGroup(
       ScimGroup group, @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.CREATE_SCIM),
@@ -242,6 +266,7 @@ public class ScimResource {
       ScimGroup group,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.EDIT_SCIM),
@@ -263,6 +288,7 @@ public class ScimResource {
       @Parameter(description = "SCIM Group ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),
@@ -285,6 +311,7 @@ public class ScimResource {
       ScimPatchOp request,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.EDIT_SCIM),
@@ -306,6 +333,7 @@ public class ScimResource {
       @Parameter(description = "SCIM Group ID") @PathParam("id") String id,
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.DELETE_SCIM),
@@ -321,6 +349,7 @@ public class ScimResource {
       description = "Returns supported SCIM schemas.",
       responses = @ApiResponse(responseCode = "200", description = "SCIM schemas"))
   public Response getSchemas(@Context SecurityContext securityContext) {
+    checkScimEnabled();
     authorizer.authorize(
         securityContext,
         new OperationContext(SCIM_RESOURCE_NAME, MetadataOperation.VIEW_SCIM),

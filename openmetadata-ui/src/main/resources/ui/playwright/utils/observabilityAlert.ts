@@ -80,6 +80,10 @@ export const addExternalDestination = async ({
     `[data-testid="destination-category-select-${destinationNumber}"]`
   );
 
+  await page.waitForSelector(`.ant-select-dropdown:visible`, {
+    state: 'visible',
+  });
+
   // Select external tab
   await page.click(`[data-testid="tab-label-external"]:visible`);
 

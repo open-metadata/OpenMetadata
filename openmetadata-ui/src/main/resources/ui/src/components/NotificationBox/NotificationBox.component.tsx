@@ -68,15 +68,38 @@ const NotificationBox = ({
       const entityType = getEntityType(feed.about);
       const entityFQN = getEntityFQN(feed.about);
 
+      // For mention notifications, get the actual user who made the mention from posts
+      let actualUser = mainFeed.from;
+      let actualTimestamp = mainFeed.postTs;
+
+      if (
+        feed.type === ThreadType.Conversation &&
+        feed.posts &&
+        feed.posts.length > 0
+      ) {
+        // Find the most recent post that contains a mention
+        const mentionPost = feed.posts
+          .filter(
+            (post) =>
+              post.message.includes('<#E::user::') && post.postTs !== undefined
+          )
+          .sort((a, b) => (b.postTs ?? 0) - (a.postTs ?? 0))[0];
+
+        if (mentionPost && mentionPost.postTs !== undefined) {
+          actualUser = mentionPost.from;
+          actualTimestamp = mentionPost.postTs;
+        }
+      }
+
       return (
         <NotificationFeedCard
-          createdBy={mainFeed.from}
+          createdBy={actualUser}
           entityFQN={entityFQN as string}
           entityType={entityType as string}
           feedType={feed.type || ThreadType.Conversation}
-          key={`${mainFeed.from} ${mainFeed.id}`}
+          key={`${actualUser} ${mainFeed.id}`}
           task={feed}
-          timestamp={mainFeed.postTs}
+          timestamp={actualTimestamp}
         />
       );
     });

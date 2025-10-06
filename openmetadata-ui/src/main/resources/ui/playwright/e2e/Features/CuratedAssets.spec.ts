@@ -156,7 +156,8 @@ test.describe('Curated Assets Widget', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--field .ant-select'),
-        'Display Name'
+        'Display Name',
+        true
       );
 
       await selectOption(
@@ -260,7 +261,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
 
     await selectOption(
@@ -278,7 +280,8 @@ test.describe('Curated Assets Widget', () => {
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=all')
+        response.url().includes('index=all') &&
+        response.url().includes('true')
     );
 
     await page.locator('[data-testid="saveButton"]').click();
@@ -335,7 +338,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
     await selectOption(
       page,
@@ -352,7 +356,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
     await selectOption(
       page,
@@ -439,7 +444,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Deleted'
+      'Deleted',
+      true
     );
     await selectOption(
       page,
@@ -457,7 +463,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator2.locator('.rule--field .ant-select'),
-      'Display Name'
+      'Display Name',
+      true
     );
     await selectOption(
       page,
@@ -560,7 +567,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator1.locator('.rule--field .ant-select'),
-      'Owners'
+      'Owners',
+      true
     );
     await selectOption(
       page,
@@ -616,7 +624,8 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(
       page,
       ruleLocator3.locator('.rule--value .ant-select'),
-      'Tier.Tier5'
+      'tier.tier5',
+      true
     );
 
     // Wait for save button to be enabled
@@ -625,7 +634,8 @@ test.describe('Curated Assets Widget', () => {
     const queryResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/search/query') &&
-        response.url().includes('index=all')
+        response.url().includes('index=all') &&
+        response.url().includes('tier.tier5')
     );
 
     await page.locator('[data-testid="saveButton"]').click();

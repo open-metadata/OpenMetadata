@@ -130,9 +130,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 displayName=pipeline_details.settings.name,
                 description=Markdown(description) if description else None,
                 tasks=self.get_tasks(pipeline_details),
-                scheduleInterval=str(pipeline_details.settings.schedule.cron)
-                if pipeline_details.settings.schedule
-                else None,
+                scheduleInterval=(
+                    str(pipeline_details.settings.schedule.cron)
+                    if pipeline_details.settings.schedule
+                    else None
+                ),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
             )
             yield Either(right=pipeline_request)
@@ -176,12 +178,14 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         Task(
                             name=str(task.name),
                             taskType=pipeline_details.settings.task_type,
-                            sourceUrl=SourceUrl(run.run_page_url)
-                            if run.run_page_url
-                            else None,
-                            description=Markdown(task.description)
-                            if task.description
-                            else None,
+                            sourceUrl=(
+                                SourceUrl(run.run_page_url)
+                                if run.run_page_url
+                                else None
+                            ),
+                            description=(
+                                Markdown(task.description) if task.description else None
+                            ),
                             downstreamTasks=[
                                 depend_task.name
                                 for depend_task in task.depends_on or []
@@ -313,6 +317,9 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
             table_lineage_list = self.client.get_table_lineage(
                 job_id=pipeline_details.job_id
+            )
+            logger.debug(
+                f"Processing pipeline lineage for job {pipeline_details.job_id}"
             )
             if table_lineage_list:
                 for table_lineage in table_lineage_list:
