@@ -47,7 +47,7 @@ const navigateToPersonaNavigation = async (page: Page) => {
   await page.waitForLoadState('networkidle');
   await getPersonas;
 
-  await navigateToPersonaWithPagination(page, persona.data.name, true, 3);
+  await navigateToPersonaWithPagination(page, persona.data.name, true);
 
   await page.getByTestId('navigation').click();
   await page.waitForLoadState('networkidle');
