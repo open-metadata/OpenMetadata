@@ -170,8 +170,10 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
     if (inputValue) {
       handleSearch(inputValue);
     } else {
+      setLoading(true);
       setUserOptions([]);
       setTeamOptions([]);
+      handleSearch('');
     }
   }, [inputValue]);
 
@@ -381,7 +383,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       isOptionEqualToValue={isOptionEqualToValue}
       loading={loading}
       multiple={isMultiple}
-      open={open && (allOptions.length > 0 || loading || !inputValue)}
+      open={open && (allOptions.length > 0 || loading)}
       options={allOptions}
       renderInput={(params) => (
         <TextField

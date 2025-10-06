@@ -59,15 +59,12 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
   const [options, setOptions] = useState<TagOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [inputValue, setInputValue] = useState('');
+  const [open, setOpen] = useState(false);
   const { t } = useTranslation();
 
   const searchDebounced = useRef(
     debounce(async (searchValue: string) => {
-      if (searchValue) {
-        await fetchOptions(searchValue);
-      } else {
-        setOptions([]);
-      }
+      await fetchOptions(searchValue);
     }, 250)
   ).current;
 
@@ -80,10 +77,22 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
 
   // Handle input changes
   useEffect(() => {
-    if (inputValue.length >= 2) {
+    if (inputValue) {
+      setLoading(true);
       searchDebounced(inputValue);
+    } else {
+      setLoading(true);
+      setOptions([]);
+      searchDebounced('');
     }
   }, [inputValue]);
+
+  // Fetch initial options when dropdown opens
+  useEffect(() => {
+    if (open && options.length === 0 && !inputValue) {
+      searchDebounced('');
+    }
+  }, [open]);
 
   const fetchOptions = async (searchText: string) => {
     setLoading(true);
@@ -113,17 +122,18 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
   );
 
   const handleChange = useCallback(
-    (event: React.SyntheticEvent, newValue: TagOption[], reason: string) => {
-      if (
-        event.type === 'keydown' &&
-        ((event as React.KeyboardEvent).key === 'Backspace' ||
-          (event as React.KeyboardEvent).key === 'Delete') &&
-        reason === 'removeOption'
-      ) {
-        return;
-      }
+    (
+      event: React.SyntheticEvent,
+      newValue: (TagOption | string)[],
+      reason: string
+    ) => {
       if (isArray(newValue)) {
-        const newTags: EntityTags[] = newValue.map((option) => {
+        // Filter out string values from freeSolo
+        const optionValues = newValue.filter(
+          (v): v is TagOption => typeof v !== 'string'
+        );
+
+        const newTags: EntityTags[] = optionValues.map((option) => {
           const existingTag = value.find((tag) => tag.tagFQN === option.value);
           if (existingTag) {
             return existingTag;
@@ -153,17 +163,30 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
     }));
   }, [value]);
 
+  const memoizedOptions = useMemo(() => options, [options]);
+
   // Tag autocomplete
   return (
     <Autocomplete
       disableCloseOnSelect
+      freeSolo
       multiple
+      // Force listbox to remount when options change to fix async search not updating dropdown
+      // Using 'as any' because key is not in MUI's ListboxProps type definition
+      ListboxProps={
+        {
+          key: `listbox-${memoizedOptions.length}`,
+        } as any
+      }
       autoFocus={autoFocus}
-      getOptionLabel={(option: TagOption) => option.label}
+      getOptionLabel={(option: TagOption | string) =>
+        typeof option === 'string' ? option : option.label
+      }
       inputValue={inputValue}
       isOptionEqualToValue={(option, value) => option.value === value.value}
       loading={loading}
-      options={options}
+      open={open && (memoizedOptions.length > 0 || loading)}
+      options={memoizedOptions}
       renderInput={(params) => (
         <TextField
           {...params}
@@ -193,9 +216,9 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
               sx={{ color: option.data?.style?.color || undefined }}>
               {option.label}
             </Box>
-            {option.data?.description && (
+            {(option.data?.displayName || option.data?.name) && (
               <Box color="text.secondary" fontSize="0.875rem">
-                {option.data.description}
+                {option.data?.displayName || option.data?.name}
               </Box>
             )}
           </Box>
@@ -218,7 +241,9 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
       }
       value={selectedOptions}
       onChange={handleChange}
+      onClose={() => setOpen(false)}
       onInputChange={handleInputChange}
+      onOpen={() => setOpen(true)}
     />
   );
 };

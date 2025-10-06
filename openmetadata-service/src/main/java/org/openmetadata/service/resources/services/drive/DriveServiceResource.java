@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.resources.services;
+package org.openmetadata.service.resources.services.drive;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,6 +64,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DriveServiceRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.services.ServiceEntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 
@@ -81,6 +82,7 @@ public class DriveServiceResource
     extends ServiceEntityResource<DriveService, DriveServiceRepository, DriveConnection> {
   public static final String COLLECTION_PATH = "v1/services/driveServices/";
   public static final String FIELDS = "pipelines,owners,tags,domains,followers";
+  private final DriveServiceMapper driveServiceMapper = new DriveServiceMapper();
 
   @Override
   public DriveService addHref(UriInfo uriInfo, DriveService service) {
@@ -660,10 +662,7 @@ public class DriveServiceResource
   }
 
   private DriveService getService(CreateDriveService create, String user) {
-    return repository
-        .copy(new DriveService(), create, user)
-        .withServiceType(create.getServiceType())
-        .withConnection(create.getConnection());
+    return driveServiceMapper.createToEntity(create, user);
   }
 
   @Override
