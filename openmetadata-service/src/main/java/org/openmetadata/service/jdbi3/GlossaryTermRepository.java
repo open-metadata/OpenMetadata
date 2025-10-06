@@ -199,10 +199,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private Integer getChildrenCount(GlossaryTerm term) {
-    return daoCollection
-        .relationshipDAO()
-        .findTo(term.getId(), GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM)
-        .size();
+    // Count all nested terms using FQN prefix matching for efficiency
+    return daoCollection.glossaryTermDAO().countNestedTerms(term.getFullyQualifiedName());
   }
 
   private List<EntityReference> getRelatedTerms(GlossaryTerm entity) {
@@ -211,7 +209,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void prepare(GlossaryTerm entity, boolean update) {
-    List<EntityReference> parentReviewers = null;
     // Validate parent term
     GlossaryTerm parentTerm =
         entity.getParent() != null
@@ -219,17 +216,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 entity.getParent().withType(GLOSSARY_TERM), "owners,reviewers", Include.NON_DELETED)
             : null;
     if (parentTerm != null) {
-      parentReviewers = parentTerm.getReviewers();
       entity.setParent(parentTerm.getEntityReference());
     }
-
     // Validate glossary
     Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
-    parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
-
     validateHierarchy(entity);
-
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
@@ -731,16 +723,46 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private void validateHierarchy(GlossaryTerm term) {
     if (term.getParent() == null) {
-      return; // Parent is the root of the glossary
+      return;
     }
-    // Check for circular references
-    String parentFqn = term.getParent().getFullyQualifiedName();
-    String termFqn = term.getFullyQualifiedName();
-    if (FullyQualifiedName.isParent(parentFqn, termFqn)) {
+
+    if (term.getId().equals(term.getParent().getId())) {
       throw new IllegalArgumentException(
           String.format(
-              "Invalid hierarchy - cannot move term [%s] under its child [%s]",
-              termFqn, parentFqn));
+              "Invalid hierarchy: Term '%s' cannot be its own parent",
+              term.getFullyQualifiedName()));
+    }
+
+    // Check for circular references by traversing the entire parent chain in the database
+    // We track visited terms to detect cycles
+    Set<UUID> visitedTerms = new HashSet<>();
+    visitedTerms.add(term.getId());
+    UUID currentParentId = term.getParent().getId();
+
+    while (currentParentId != null) {
+      if (visitedTerms.contains(currentParentId)) {
+        // Fqn is changed, so we need the old fqn for proper error message
+        GlossaryTerm originalTerm =
+            Entity.getEntity(GLOSSARY_TERM, term.getId(), "fullyQualifiedName", Include.ALL);
+        throw new IllegalArgumentException(
+            String.format(
+                "Circular reference detected: Cannot set parent relationship as it would create a cycle. "
+                    + "Term '%s' (or one of its descendants) already exists in the parent chain.",
+                originalTerm.getFullyQualifiedName()));
+      }
+
+      visitedTerms.add(currentParentId);
+
+      List<EntityRelationshipRecord> parentRelationships =
+          daoCollection
+              .relationshipDAO()
+              .findFrom(
+                  currentParentId, GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM);
+
+      if (parentRelationships.isEmpty()) {
+        break;
+      }
+      currentParentId = parentRelationships.getFirst().getId();
     }
   }
 
@@ -994,22 +1016,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     if (!fields.contains("childrenCount") || entities.isEmpty()) {
       return;
     }
-    List<String> termIds =
-        entities.stream().map(GlossaryTerm::getId).map(UUID::toString).distinct().toList();
 
-    Map<UUID, Integer> termIdCountMap =
-        daoCollection
-            .relationshipDAO()
-            .countFindTo(termIds, GLOSSARY_TERM, Relationship.CONTAINS.ordinal(), GLOSSARY_TERM)
-            .stream()
-            .collect(
-                Collectors.toMap(
-                    CollectionDAO.EntityRelationshipCount::getId,
-                    CollectionDAO.EntityRelationshipCount::getCount));
-
+    // Count all nested terms using FQN prefix matching for efficiency
     for (GlossaryTerm entity : entities) {
-      entity.setChildrenCount(
-          termIdCountMap.getOrDefault(entity.getId(), entity.getChildrenCount()));
+      int count = daoCollection.glossaryTermDAO().countNestedTerms(entity.getFullyQualifiedName());
+      entity.setChildrenCount(count);
     }
   }
 
@@ -1194,6 +1205,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
+        checkDuplicateTerms(updated);
         // Glossary term name changed - update the FQNs of the children terms to reflect this
         setFullyQualifiedName(updated);
         LOG.info("Glossary term name changed from {} to {}", original.getName(), updated.getName());
@@ -1323,11 +1335,19 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     private void invalidateTerm(UUID termId) {
       // The name of the glossary term changed or parent change. Invalidate that tag and all the
       // children from the cache
+      invalidateTerm(termId, new HashSet<>());
+    }
+
+    private void invalidateTerm(UUID termId, Set<UUID> visited) {
+      if (visited.contains(termId)) {
+        return;
+      }
+      visited.add(termId);
       List<EntityRelationshipRecord> tagRecords =
           findToRecords(termId, GLOSSARY_TERM, Relationship.CONTAINS, GLOSSARY_TERM);
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(GLOSSARY_TERM, termId));
       for (EntityRelationshipRecord tagRecord : tagRecords) {
-        invalidateTerm(tagRecord.getId());
+        invalidateTerm(tagRecord.getId(), visited);
       }
     }
   }
@@ -1430,6 +1450,41 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     int knownTotal = offset + terms.size() + (hasMore ? 1 : 0);
 
     return new ResultList<>(terms, before, after, knownTotal);
+  }
+
+  /**
+   * Validate a move operation before executing it. This should be called synchronously
+   * before submitting the actual move to async executor.
+   */
+  public void validateMoveOperation(UUID termId, MoveGlossaryTermRequest moveRequest) {
+    if (moveRequest == null || moveRequest.getParent() == null) {
+      return; // Nothing to validate
+    }
+
+    // Get the term being moved
+    GlossaryTerm term =
+        Entity.getEntity(
+            GLOSSARY_TERM, termId, "id,name,fullyQualifiedName,parent,glossary", Include.ALL);
+
+    // Create a temporary term object with the new parent to validate the hierarchy
+    GlossaryTerm tempTerm = JsonUtils.deepCopy(term, GlossaryTerm.class);
+
+    EntityReference parent = moveRequest.getParent();
+    if (parent.getType().equals(GLOSSARY)) {
+      // Moving to root of glossary - no circular reference possible
+      tempTerm.setParent(null);
+    } else if (parent.getType().equals(GLOSSARY_TERM)) {
+      // Moving under another glossary term - validate no circular reference
+      GlossaryTerm parentTerm =
+          Entity.getEntity(
+              GLOSSARY_TERM, parent.getId(), "id,name,fullyQualifiedName,glossary", Include.ALL);
+      tempTerm.setParent(parentTerm.getEntityReference());
+
+      // This will throw IllegalArgumentException if circular reference detected
+      validateHierarchy(tempTerm);
+    } else {
+      throw new IllegalArgumentException("Invalid parent type: " + parent.getType());
+    }
   }
 
   /**

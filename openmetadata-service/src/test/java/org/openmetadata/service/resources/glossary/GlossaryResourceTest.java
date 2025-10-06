@@ -459,8 +459,9 @@ public class GlossaryResourceTest extends EntityResourceTest<Glossary, CreateGlo
             glossaryTermResourceTest.moveGlossaryTerm(
                 g.getEntityReference(), t11.getEntityReference(), t1),
         Status.BAD_REQUEST,
-        CatalogExceptionMessage.invalidGlossaryTermMove(
-            t1.getFullyQualifiedName(), t11.getFullyQualifiedName()));
+        "Circular reference detected: Cannot set parent relationship as it would create a cycle. Term '"
+            + t1.getFullyQualifiedName()
+            + "' (or one of its descendants) already exists in the parent chain.");
 
     EntityUpdater.setSessionTimeout(10 * 60 * 1000); // Turn consolidation of changes back on
   }

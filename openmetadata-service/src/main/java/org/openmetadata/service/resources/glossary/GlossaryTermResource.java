@@ -822,6 +822,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
 
+    // Validate the move operation synchronously before submitting to async executor
+    // This will throw IllegalArgumentException if circular reference detected
+    repository.validateMoveOperation(id, moveRequest);
+
     String jobId = UUID.randomUUID().toString();
     GlossaryTerm glossaryTerm =
         repository.get(uriInfo, id, repository.getFields("name"), Include.ALL, false);
