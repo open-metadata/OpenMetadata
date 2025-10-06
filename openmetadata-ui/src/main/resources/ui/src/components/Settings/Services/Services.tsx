@@ -103,7 +103,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const serviceTypeQueryFilter = useMemo(() => {
     return serviceTypeFilter?.length
-      ? getTermQuery({ 'serviceType.keyword': serviceTypeFilter }, 'should', 1)
+      ? getTermQuery({ serviceType: serviceTypeFilter }, 'should', 1)
       : undefined;
   }, [serviceTypeFilter]);
 
