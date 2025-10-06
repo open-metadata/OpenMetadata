@@ -302,6 +302,24 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/reports/{dashboard_id}/ReportSection?experience=power-bi"
         )
 
+    def _get_dataset_url(self, workspace_id: str, dataset_id: str) -> str:
+        """
+        Method to build the dataset url
+        """
+        return (
+            f"{clean_uri(self.service_connection.hostPort)}/groups/"
+            f"{workspace_id}/datasets/{dataset_id}?experience=power-bi"
+        )
+
+    def _get_dataflow_url(self, workspace_id: str, dataflow_id: str) -> str:
+        """
+        Method to build the dataset url
+        """
+        return (
+            f"{clean_uri(self.service_connection.hostPort)}/groups/"
+            f"{workspace_id}/dataflows/{dataflow_id}?experience=power-bi"
+        )
+
     def _get_chart_url(
         self, report_id: Optional[str], workspace_id: str, dashboard_id: str
     ) -> str:
@@ -545,9 +563,17 @@ class PowerbiSource(DashboardServiceSource):
                     if isinstance(dataset, Dataset):
                         data_model_type = DataModelType.PowerBIDataModel.value
                         datamodel_columns = self._get_column_info(dataset)
+                        source_url = self._get_dataset_url(
+                            workspace_id=self.context.get().workspace.id,
+                            dataset_id=dataset.id,
+                        )
                     elif isinstance(dataset, Dataflow):
                         data_model_type = DataModelType.PowerBIDataFlow.value
                         datamodel_columns = []
+                        source_url = self._get_dataflow_url(
+                            workspace_id=self.context.get().workspace.id,
+                            dataflow_id=dataset.id,
+                        )
                     else:
                         logger.warning(
                             f"Unknown dataset type: {type(dataset)}, name: {dataset.name}"
@@ -569,6 +595,7 @@ class PowerbiSource(DashboardServiceSource):
                         columns=datamodel_columns,
                         project=self.get_project_name(dashboard_details=dataset),
                         owners=self.get_owner_ref(dashboard_details=dataset),
+                        sourceUrl=SourceUrl(source_url),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
