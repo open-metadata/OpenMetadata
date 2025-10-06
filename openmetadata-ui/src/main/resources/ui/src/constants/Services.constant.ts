@@ -85,6 +85,7 @@ import sqlite from '../assets/img/service-icon-sqlite.png';
 import superset from '../assets/img/service-icon-superset.png';
 import synapse from '../assets/img/service-icon-synapse.png';
 import tableau from '../assets/img/service-icon-tableau.png';
+import timescale from '../assets/img/service-icon-timescale.png';
 import trino from '../assets/img/service-icon-trino.png';
 import unitycatalog from '../assets/img/service-icon-unitycatalog.svg';
 import vertica from '../assets/img/service-icon-vertica.png';
@@ -102,8 +103,8 @@ import logo from '../assets/svg/logo-monogram.svg';
 import openSearch from '../assets/svg/open-search.svg';
 import pipelineDefault from '../assets/svg/pipeline.svg';
 import securitySafe from '../assets/svg/security-safe.svg';
-import hex from '../assets/svg/service-icon-hex.svg';
 import googleDrive from '../assets/svg/service-icon-google-drive.svg';
+import hex from '../assets/svg/service-icon-hex.svg';
 import mlflow from '../assets/svg/service-icon-mlflow.svg';
 import teradata from '../assets/svg/teradata.svg';
 import topicDefault from '../assets/svg/topic.svg';
@@ -223,6 +224,7 @@ export const COCKROACH = cockroach;
 export const SECURITY_DEFAULT = securitySafe;
 export const GRAFANA = grafana;
 export const GOOGLE_DRIVE = googleDrive;
+export const TIMESCALE = timescale;
 export const excludedService = [
   MlModelServiceType.Sklearn,
   MetadataServiceType.MetadataES,
@@ -467,6 +469,7 @@ export const BETA_SERVICES = [
   DashboardServiceType.Grafana,
   DashboardServiceType.Hex,
   DatabaseServiceType.ServiceNow,
+  DatabaseServiceType.Timescale,
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(

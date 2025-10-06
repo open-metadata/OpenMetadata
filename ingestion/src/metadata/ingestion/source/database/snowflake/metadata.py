@@ -20,6 +20,7 @@ import sqlalchemy.types as sqltypes
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
@@ -948,17 +949,26 @@ class SnowflakeSource(
                     table_name = result[6].split(".")[-1]
                     # Can't fetch source of stream is source is dropped or no priviledge
                     if table_name == "No privilege or table dropped":
-                        logger.debug(
-                            f"Couldn't fetch columns of stream [{result and result[1]}],"
-                            f" due to error on source: {table_name}. Result: {result}"
+                        logger.warning(
+                            f"Couldn't fetch columns of stream [{result and result[1]}] "
+                            f"(schema: '{schema_name}', db: '{db_name}') due to error on"
+                            f" source: [{table_name}]. Result: {result}"
                         )
                         return []
             except Exception:
                 pass
 
-        columns = inspector.get_columns(
-            table_name, schema_name, table_type=table_type, db_name=db_name
-        )
+        try:
+            columns = inspector.get_columns(
+                table_name, schema_name, table_type=table_type, db_name=db_name
+            )
+        except sa_exc.NoSuchTableError:
+            logger.warning(
+                f"Table [{table_name}] (schema: '{schema_name}', db: '{db_name}') not found."
+                " Unable to fetch columns. Please check if the configured Snowflake user has"
+                " necessary grants on this table."
+            )
+            return []
 
         if table_type == TableType.Stream:
             columns = [*columns, *DEFAULT_STREAM_COLUMNS]

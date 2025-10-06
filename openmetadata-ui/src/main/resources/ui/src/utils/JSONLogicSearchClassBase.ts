@@ -17,7 +17,6 @@ import {
   FieldOrGroup,
   Fields,
   ListItem,
-  ListValues,
   Operators,
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
@@ -542,7 +541,6 @@ class JSONLogicSearchClassBase {
     entitySearchIndex = [SearchIndex.TABLE],
   }: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<ListValues>;
   }) => {
     const fieldsConfig = {
       ...this.getCommonConfig(),
@@ -586,16 +584,14 @@ class JSONLogicSearchClassBase {
   };
 
   public getQbConfigs: (
-    tierOptions: Promise<ListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
-  ) => Config = (tierOptions, entitySearchIndex, isExplorePage) => {
+  ) => Config = (entitySearchIndex, isExplorePage) => {
     return {
       ...this.getInitialConfigWithoutFields(isExplorePage),
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,
-          tierOptions,
         }),
       },
     };
