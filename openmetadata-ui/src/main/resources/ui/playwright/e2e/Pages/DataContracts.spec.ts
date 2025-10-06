@@ -2107,5 +2107,44 @@ test.describe('Data Contracts', () => {
         );
       }
     );
+
+    await test.step('Validate after removing security policies', async () => {
+      await page.getByRole('tab', { name: 'Security' }).click();
+
+      await page.getByTestId('cancel-policy-button').click();
+      await page.getByTestId('delete-policy-0').click();
+
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        page.getByTestId('contract-security-policy-container')
+      ).not.toBeVisible();
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+
+      await page.getByTestId('contract-edit-button').click();
+
+      await page.getByRole('tab', { name: 'Security' }).click();
+
+      await expect(page.getByTestId('add-policy-button')).not.toBeDisabled();
+
+      await page.getByTestId('add-policy-button').click();
+
+      await expect(page.getByTestId('access-policy-input-0')).toBeVisible();
+      await expect(page.getByTestId('columnName-input-0-0')).toBeVisible();
+    });
   });
 });
