@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Cube01 as DataProductIcon } from '@untitledui/icons';
+import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
@@ -30,7 +30,10 @@ import { ReactComponent as MetricIcon } from '../assets/svg/metric.svg';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
+import { createIconWithStroke } from '../utils/IconUtils';
 import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
+
+const DataProductIcon = createIconWithStroke(Cube01, 1.2);
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
