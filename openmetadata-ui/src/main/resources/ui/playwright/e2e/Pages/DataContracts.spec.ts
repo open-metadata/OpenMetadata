@@ -1999,6 +1999,12 @@ test.describe('Data Contracts', () => {
         page.getByText('Retention: Data should be retained for 30 week')
       ).toBeVisible();
 
+      await expect(
+        page.getByText(
+          `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
+        )
+      ).toBeVisible();
+
       await page.getByTestId('manage-contract-actions').click();
 
       await page.waitForSelector('.contract-action-dropdown', {
@@ -2016,7 +2022,9 @@ test.describe('Data Contracts', () => {
       await saveSecurityAndSLADetails(
         page,
         DATA_CONTRACT_SECURITY_DETAILS_2,
-        table
+        table,
+        false,
+        true
       );
     });
 
@@ -2076,6 +2084,12 @@ test.describe('Data Contracts', () => {
           page.getByText('Retention: Data should be retained for 70 year')
         ).toBeVisible();
 
+        await expect(
+          page.getByText(
+            `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
+          )
+        ).toBeVisible();
+
         await page.getByTestId('manage-contract-actions').click();
 
         await page.waitForSelector('.contract-action-dropdown', {
@@ -2088,9 +2102,49 @@ test.describe('Data Contracts', () => {
             ...DATA_CONTRACT_SECURITY_DETAILS_2,
             ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
           },
-          table
+          table,
+          true
         );
       }
     );
+
+    await test.step('Validate after removing security policies', async () => {
+      await page.getByRole('tab', { name: 'Security' }).click();
+
+      await page.getByTestId('cancel-policy-button').click();
+      await page.getByTestId('delete-policy-0').click();
+
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        page.getByTestId('contract-security-policy-container')
+      ).not.toBeVisible();
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+
+      await page.getByTestId('contract-edit-button').click();
+
+      await page.getByRole('tab', { name: 'Security' }).click();
+
+      await expect(page.getByTestId('add-policy-button')).not.toBeDisabled();
+
+      await page.getByTestId('add-policy-button').click();
+
+      await expect(page.getByTestId('access-policy-input-0')).toBeVisible();
+      await expect(page.getByTestId('columnName-input-0-0')).toBeVisible();
+    });
   });
 });

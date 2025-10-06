@@ -63,6 +63,7 @@ import { PipelineService } from '../generated/entity/services/pipelineService';
 import { SearchService } from '../generated/entity/services/searchService';
 import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
+import { formatDateTime } from './date-time/DateTimeUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForEntityWithParent,
@@ -103,7 +104,7 @@ export const ExtraInfoLabel = ({
   return (
     <div className="d-flex align-start extra-info-container">
       <Typography.Text
-        className="whitespace-nowrap text-sm d-flex flex-col gap-2"
+        className="whitespace-nowrap text-sm d-flex flex-col gap-2 w-full"
         data-testid={dataTestId}>
         {!isEmpty(label) && (
           <span className="extra-info-label-heading">{label}</span>
@@ -834,7 +835,13 @@ export const getDataAssetsHeaderInfo = (
               />
               <ExtraInfoLabel
                 label={t('label.mime-type')}
-                value={spreadsheet.mimeType}
+                value={
+                  <Tooltip title={spreadsheet.mimeType}>
+                    <Typography.Text ellipsis className="w-full">
+                      {spreadsheet.mimeType}
+                    </Typography.Text>
+                  </Tooltip>
+                }
               />
             </>
           )}
@@ -846,7 +853,7 @@ export const getDataAssetsHeaderInfo = (
               />
               <ExtraInfoLabel
                 label={t('label.created-time')}
-                value={spreadsheet.createdTime}
+                value={formatDateTime(spreadsheet.createdTime)}
               />
             </>
           )}
@@ -858,7 +865,7 @@ export const getDataAssetsHeaderInfo = (
               />
               <ExtraInfoLabel
                 label={t('label.modified-time')}
-                value={spreadsheet.modifiedTime}
+                value={formatDateTime(spreadsheet.modifiedTime)}
               />
             </>
           )}
