@@ -134,19 +134,17 @@ public class AuditLogRepository {
             ex);
       }
 
-      // Fallback lookup for entity details if not stored directly in the audit log record.
-      if (record.getEntityFQN() == null
-          && record.getEntityType() != null
-          && record.getEntityId() != null) {
+      EntityReference resolvedReference = null;
+      if (record.getEntityType() != null) {
         try {
-          EntityReference reference =
-              Entity.getEntityReferenceById(
-                  record.getEntityType(), record.getEntityId(), Include.NON_DELETED);
-          if (reference != null) {
-            record.setEntityFQN(reference.getFullyQualifiedName());
-            if (changeEvent != null && changeEvent.getEntityFullyQualifiedName() == null) {
-              changeEvent.setEntityFullyQualifiedName(reference.getFullyQualifiedName());
-            }
+          if (record.getEntityFQN() != null) {
+            resolvedReference =
+                Entity.getEntityReferenceByName(
+                    record.getEntityType(), record.getEntityFQN(), Include.NON_DELETED);
+          } else if (record.getEntityId() != null) {
+            resolvedReference =
+                Entity.getEntityReferenceById(
+                    record.getEntityType(), record.getEntityId(), Include.NON_DELETED);
           }
         } catch (Exception lookupEx) {
           LOG.debug(
@@ -154,6 +152,20 @@ public class AuditLogRepository {
               record.getId(),
               record.getEntityType(),
               lookupEx);
+        }
+      }
+
+      if (resolvedReference != null) {
+        if (record.getEntityFQN() == null) {
+          record.setEntityFQN(resolvedReference.getFullyQualifiedName());
+        }
+        if (changeEvent != null) {
+          if (changeEvent.getEntityFullyQualifiedName() == null) {
+            changeEvent.setEntityFullyQualifiedName(resolvedReference.getFullyQualifiedName());
+          }
+          if (changeEvent.getEntity() == null) {
+            changeEvent.setEntity(resolvedReference);
+          }
         }
       }
 
