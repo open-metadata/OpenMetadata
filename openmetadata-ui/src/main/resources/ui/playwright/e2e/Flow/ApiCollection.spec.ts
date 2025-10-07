@@ -30,7 +30,6 @@ test.describe('API Collection Entity Special Test Cases', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
-    await EntityDataClass.preRequisitesForTests(apiContext);
     await entity.create(apiContext);
     await afterAction();
   });
@@ -43,7 +42,6 @@ test.describe('API Collection Entity Special Test Cases', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await entity.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
     await afterAction();
   });
 
