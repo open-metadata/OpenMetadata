@@ -74,58 +74,25 @@ const test = base.extend<{ page: Page; page2: Page }>({
 });
 
 test.describe('Data Contracts', () => {
-  const table = new TableClass();
-  const table2 = new TableClass();
   const testClassification = new ClassificationClass();
   const testTag = new TagClass({
     classification: testClassification.data.name,
   });
   const testGlossary = new Glossary();
   const testGlossaryTerm = new GlossaryTerm(testGlossary);
-  const testPersona = new PersonaClass();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
-    await table.create(apiContext);
-    await table2.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
     await testGlossary.create(apiContext);
     await testGlossaryTerm.create(apiContext);
-    await testPersona.create(apiContext);
     await adminUser.create(apiContext);
     await adminUser.setAdminRole(apiContext);
     await adminUser2.create(apiContext);
     await adminUser2.setAdminRole(apiContext);
-    await adminUser2.patch({
-      apiContext,
-      patchData: [
-        {
-          op: 'add',
-          path: '/personas/0',
-          value: {
-            id: testPersona.responseData.id,
-            name: testPersona.responseData.name,
-            displayName: testPersona.responseData.displayName,
-            fullyQualifiedName: testPersona.responseData.fullyQualifiedName,
-            type: 'persona',
-          },
-        },
-        {
-          op: 'add',
-          path: '/defaultPersona',
-          value: {
-            id: testPersona.responseData.id,
-            name: testPersona.responseData.name,
-            displayName: testPersona.responseData.displayName,
-            fullyQualifiedName: testPersona.responseData.fullyQualifiedName,
-            type: 'persona',
-          },
-        },
-      ],
-    });
 
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
@@ -135,8 +102,13 @@ test.describe('Data Contracts', () => {
     await afterAction();
   });
 
-  test('Create Data Contract and validate', async ({ page }) => {
+  test('Create Data Contract and validate', async ({ page, browser }) => {
     test.setTimeout(360000);
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
 
     await test.step('Redirect to Home Page and visit entity', async () => {
       await redirectToHomePage(page);
@@ -430,11 +402,18 @@ test.describe('Data Contracts', () => {
           'Pipeline will only be triggered manually.'
         );
 
+        const pipelineResponse = page.waitForResponse(
+          '/api/v1/services/ingestionPipelines'
+        );
+
         const testCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases'
         );
         await page.click('[data-testid="create-btn"]');
         await testCaseResponse;
+        await pipelineResponse;
+
+        await expect(page.getByRole('dialog')).not.toBeVisible();
 
         await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
@@ -692,13 +671,49 @@ test.describe('Data Contracts', () => {
 
   test('Contract Status badge should be visible on condition if Contract Tab is present/hidden by Persona', async ({
     page2,
+    browser,
   }) => {
     test.slow(true);
+
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+
+    const table = new TableClass();
+    const testPersona = new PersonaClass();
+    await table.create(apiContext);
+    await adminUser2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/personas/0',
+          value: {
+            id: testPersona.responseData.id,
+            name: testPersona.responseData.name,
+            displayName: testPersona.responseData.displayName,
+            fullyQualifiedName: testPersona.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
+        },
+        {
+          op: 'add',
+          path: '/defaultPersona',
+          value: {
+            id: testPersona.responseData.id,
+            name: testPersona.responseData.name,
+            displayName: testPersona.responseData.displayName,
+            fullyQualifiedName: testPersona.responseData.fullyQualifiedName,
+            type: 'persona',
+          },
+        },
+      ],
+    });
+
+    await afterAction();
 
     await test.step(
       'Create Data Contract in Table and validate it fails',
       async () => {
-        await table2.visitEntityPage(page2);
+        await table.visitEntityPage(page2);
 
         // Open contract section and start adding contract
         await page2.click('[data-testid="contract"]');
@@ -837,7 +852,7 @@ test.describe('Data Contracts', () => {
       'Verify Contract tab and status badge are visible if persona is set',
       async () => {
         await redirectToHomePage(page2);
-        await table2.visitEntityPage(page2);
+        await table.visitEntityPage(page2);
         await page2.waitForLoadState('networkidle');
         await page2.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -904,7 +919,7 @@ test.describe('Data Contracts', () => {
         // when viewing the table page with the customized persona.
 
         await redirectToHomePage(page2);
-        await table2.visitEntityPage(page2);
+        await table.visitEntityPage(page2);
         await page2.waitForLoadState('networkidle');
         await page2.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -1238,8 +1253,14 @@ test.describe('Data Contracts', () => {
 
   test('Semantic with Contains Operator should work for Tier, Tag and Glossary', async ({
     page,
+    browser,
   }) => {
     test.slow(true);
+
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
 
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
@@ -1410,7 +1431,13 @@ test.describe('Data Contracts', () => {
 
   test('Semantic with Not_Contains Operator should work for Tier, Tag and Glossary', async ({
     page,
+    browser,
   }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
@@ -1582,7 +1609,12 @@ test.describe('Data Contracts', () => {
     ).toContainText('Contract Failed');
   });
 
-  test('Nested Column should not be selectable', async ({ page }) => {
+  test('Nested Column should not be selectable', async ({ page, browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
     const entityFQN = table.entityResponseData.fullyQualifiedName;
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
@@ -1650,7 +1682,13 @@ test.describe('Data Contracts', () => {
 
   test('should allow adding a semantic with multiple rules', async ({
     page,
+    browser,
   }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
@@ -1725,7 +1763,13 @@ test.describe('Data Contracts', () => {
 
   test('should allow adding a second semantic and verify its rule', async ({
     page,
+    browser,
   }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
@@ -1814,7 +1858,13 @@ test.describe('Data Contracts', () => {
 
   test('should allow editing a semantic and reflect changes', async ({
     page,
+    browser,
   }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
@@ -1868,7 +1918,13 @@ test.describe('Data Contracts', () => {
 
   test('should allow deleting a semantic and remove it from the list', async ({
     page,
+    browser,
   }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
@@ -1933,7 +1989,12 @@ test.describe('Data Contracts', () => {
     ).not.toBeVisible();
   });
 
-  test('Add and update Security and SLA tabs', async ({ page }) => {
+  test('Add and update Security and SLA tabs', async ({ page, browser }) => {
+    const { afterAction, apiContext } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await afterAction();
+
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
 
