@@ -1063,6 +1063,34 @@
       <artifactId>jsqlparser</artifactId>
       <version>4.9</version>
     </dependency>
+    <!-- CommonMark - Thread-safe markdown parser -->
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-gfm-strikethrough</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark-ext-autolink</artifactId>
+      <version>${commonmark.version}</version>
+    </dependency>
+    <!-- Flexmark HTML to Markdown Converter -->
+    <dependency>
+      <groupId>com.vladsch.flexmark</groupId>
+      <artifactId>flexmark-html2md-converter</artifactId>
+      <version>${flexmark.version}</version>
+    </dependency>
+    <!-- OWASP HTML Sanitizer -->
+    <dependency>
+      <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+      <artifactId>owasp-java-html-sanitizer</artifactId>
+      <version>${owasp-html-sanitizer.version}</version>
+    </dependency>
   </dependencies>
 
   <profiles>
