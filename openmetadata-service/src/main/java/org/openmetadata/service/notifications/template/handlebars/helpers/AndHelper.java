@@ -1,17 +1,17 @@
-package org.openmetadata.service.template.handlebars.helpers;
+package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
-import org.openmetadata.service.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
 
 /**
- * Helper to check if any of the values are truthy.
- * Usage: {{#if (or value1 value2 value3)}}...{{/if}}
+ * Helper to check if all values are truthy.
+ * Usage: {{#if (and value1 value2 value3)}}...{{/if}}
  */
-public class OrHelper implements HandlebarsHelper {
+public class AndHelper implements HandlebarsHelper {
 
   @Override
   public String getName() {
-    return "or";
+    return "and";
   }
 
   @Override
@@ -19,21 +19,21 @@ public class OrHelper implements HandlebarsHelper {
     handlebars.registerHelper(
         getName(),
         (context, options) -> {
-          // Check if context is truthy
-          if (isTruthy(context)) {
-            return true;
+          // Check if context is falsy - short circuit
+          if (!isTruthy(context)) {
+            return false;
           }
 
-          // Check if any parameter is truthy
+          // Check if all parameters are truthy
           if (options.params != null) {
             for (Object param : options.params) {
-              if (isTruthy(param)) {
-                return true;
+              if (!isTruthy(param)) {
+                return false;
               }
             }
           }
 
-          return false;
+          return true;
         });
   }
 
