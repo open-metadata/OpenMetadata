@@ -495,6 +495,9 @@ test.describe('User Profile Feed Interactions', () => {
     // Click with force to handle pointer event interception
     await userNameElement.click({ force: true });
 
+    await userDetailsResponse;
+    await userFeedResponse;
+
     const [response] = await Promise.all([
       userDetailsResponse,
       userFeedResponse,

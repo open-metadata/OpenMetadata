@@ -43,6 +43,7 @@ export const waitForAllLoadersToDisappear = async (
   page: Page,
   dataTestId = 'loader'
 ) => {
+  await page.waitForLoadState('networkidle');
   for (let attempt = 0; attempt < 3; attempt++) {
     const allLoaders = page.locator(`[data-testid="${dataTestId}"]`);
     const count = await allLoaders.count();

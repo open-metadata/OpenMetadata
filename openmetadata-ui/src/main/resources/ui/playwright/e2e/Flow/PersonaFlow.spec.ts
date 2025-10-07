@@ -22,6 +22,7 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { validateFormNameFieldInput } from '../../utils/form';
 import {
   checkPersonaInProfile,
@@ -139,12 +140,6 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByRole('button', { name: 'Create' }).click();
 
-    // Verify created persona details
-
-    await expect(
-      page.getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-    ).toBeVisible();
-
     const personaResponse = page.waitForResponse(
       `/api/v1/personas/name/${encodeURIComponent(
         PERSONA_DETAILS.name
@@ -228,7 +223,7 @@ test.describe.serial('Persona operations', () => {
   test('Remove users in persona should work properly', async ({ page }) => {
     await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
-    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
     await page.getByRole('tab', { name: 'Users' }).click();
 
     await page
@@ -339,6 +334,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       async () => {
         await user.login(userPage);
         await userPage.waitForURL('/my-data');
+        await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(userPage); // Expect no persona
       }
     );
@@ -392,20 +388,17 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
         await adminPage.getByRole('button', { name: 'Create' }).click();
 
-        // Verify created persona details
-        await expect(
-          adminPage.getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-        ).toBeVisible();
-
         const personaResponse = adminPage.waitForResponse(
           `/api/v1/personas/name/${encodeURIComponent(
             PERSONA_DETAILS.name
           )}?fields=users`
         );
 
-        await adminPage
-          .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-          .click();
+        await navigateToPersonaWithPagination(
+          adminPage,
+          PERSONA_DETAILS.name,
+          true
+        );
 
         await personaResponse;
 
@@ -441,6 +434,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
       'User refreshes and checks the default persona is applied',
       async () => {
         await userPage.reload();
+        await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
       }
     );
@@ -459,6 +453,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
     await test.step('Verify changed default persona for new user', async () => {
       await userPage.reload();
+      await waitForAllLoadersToDisappear(userPage);
       await checkPersonaInProfile(userPage, persona1.responseData.displayName);
     });
 
@@ -472,6 +467,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
     await test.step('User refreshes and sees no default persona', async () => {
       await userPage.reload();
+      await waitForAllLoadersToDisappear(userPage);
       await checkPersonaInProfile(userPage); // Expect no persona again
     });
   });
