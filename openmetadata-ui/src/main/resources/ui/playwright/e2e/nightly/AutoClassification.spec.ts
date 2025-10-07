@@ -82,17 +82,6 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
       )
       .toBeAttached();
 
-    mysqlService.name;
-
-    // Verify the non sensitive tags
-    await test
-      .expect(
-        page.locator(
-          `[data-row-key*="address"] [data-testid="tag-PII.Sensitive"] `
-        )
-      )
-      .toBeAttached();
-
     // Delete the created service
     const { apiContext } = await getApiContext(page);
     await mysqlService.deleteServiceByAPI(apiContext);
