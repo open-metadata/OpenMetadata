@@ -125,6 +125,10 @@ export const ContractSecurityFormTab: React.FC<{
   useEffect(() => {
     if (!isEmpty(initialValues?.security)) {
       form.setFieldsValue(initialValues?.security);
+
+      if (!isEmpty(initialValues?.security?.policies)) {
+        setEditingKey(0);
+      }
     } else {
       form.setFieldsValue({
         dataClassification: '',
@@ -141,8 +145,9 @@ export const ContractSecurityFormTab: React.FC<{
           },
         ],
       });
+
+      setEditingKey(0);
     }
-    setEditingKey(0);
   }, [initialValues?.security]);
 
   return (
@@ -299,6 +304,7 @@ export const ContractSecurityFormTab: React.FC<{
                                           data-testid={`identities-input-${policyIndex}`}
                                           id={`identities-input-${policyIndex}`}
                                           mode="tags"
+                                          open={false}
                                           placeholder={t(
                                             'label.please-enter-value',
                                             {
@@ -402,6 +408,7 @@ export const ContractSecurityFormTab: React.FC<{
                                                           data-testid={`values-${policyIndex}-${rowFilterIndex}`}
                                                           id={`values-${policyIndex}-${rowFilterIndex}`}
                                                           mode="tags"
+                                                          open={false}
                                                           placeholder={t(
                                                             'label.please-enter-value',
                                                             {
@@ -508,6 +515,7 @@ export const ContractSecurityFormTab: React.FC<{
                                                   data-testid={`values-${policyIndex}-${rowFilterIndex}`}
                                                   id={`values-${policyIndex}-${rowFilterIndex}`}
                                                   mode="tags"
+                                                  open={false}
                                                   placeholder={t(
                                                     'label.please-enter-value',
                                                     {

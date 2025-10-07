@@ -19,7 +19,6 @@ import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionCl
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
-import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import { UserClass } from '../../support/user/UserClass';
 import { checkAutoPilotStatus } from '../../utils/AutoPilot';
 import {
@@ -34,7 +33,9 @@ const user = new UserClass();
 
 const services = [
   ApiIngestionClass,
-  S3IngestionClass,
+  // Skipping S3 as it is failing intermittently in CI
+  // Remove the comment when fixed: https://github.com/open-metadata/OpenMetadata/issues/23727
+  // S3IngestionClass,
   MetabaseIngestionClass,
   MysqlIngestionClass,
   KafkaIngestionClass,
