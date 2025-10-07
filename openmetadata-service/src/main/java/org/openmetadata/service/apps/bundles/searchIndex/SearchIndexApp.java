@@ -374,6 +374,21 @@ public class SearchIndexApp extends AbstractNativeApplication {
     return Optional.empty();
   }
 
+  private void finalizeEntityIndex(String entityType, boolean success) {
+    if (recreateIndexHandler == null
+        || recreateContext == null
+        || !Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+      return;
+    }
+
+    try {
+      recreateIndexHandler.finalizeEntityReindex(recreateContext, entityType, success);
+      LOG.info("Finalized index for entity '{}' with success={}", entityType, success);
+    } catch (Exception ex) {
+      LOG.error("Failed to finalize index for entity '{}'", entityType, ex);
+    }
+  }
+
   private void finalizeRecreateIndexes(boolean success) {
     if (recreateIndexHandler == null || recreateContext == null) {
       return;
@@ -878,27 +893,52 @@ public class SearchIndexApp extends AbstractNativeApplication {
       int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
 
       if (totalEntityRecords > 0) {
-        submitBatchTasks(entityType, loadPerThread, producerLatch);
+        // Create entity-specific latch to wait for all batches of this entity
+        CountDownLatch entityLatch = new CountDownLatch(loadPerThread);
+        submitBatchTasks(entityType, loadPerThread, producerLatch, entityLatch);
+
+        // Wait for all batches of this entity to complete
+        try {
+          entityLatch.await();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOG.warn("Interrupted while waiting for entity '{}' batches to complete", entityType);
+          finalizeEntityIndex(entityType, false);
+          return;
+        }
       }
 
       if (jobLogger != null) {
         jobLogger.markEntityCompleted(entityType);
       }
+
+      // Finalize index for this entity immediately after all its batches complete
+      finalizeEntityIndex(entityType, true);
     } catch (Exception e) {
       LOG.error("Error processing entity type {}", entityType, e);
+      // Cleanup staged index on failure
+      finalizeEntityIndex(entityType, false);
     }
   }
 
   private void submitBatchTasks(
-      String entityType, int loadPerThread, CountDownLatch producerLatch) {
+      String entityType,
+      int loadPerThread,
+      CountDownLatch producerLatch,
+      CountDownLatch entityLatch) {
     for (int i = 0; i < loadPerThread; i++) {
       LOG.debug("Submitting virtual thread producer task for batch {}/{}", i + 1, loadPerThread);
       int currentOffset = i * batchSize.get();
-      producerExecutor.submit(() -> processBatch(entityType, currentOffset, producerLatch));
+      producerExecutor.submit(
+          () -> processBatch(entityType, currentOffset, producerLatch, entityLatch));
     }
   }
 
-  private void processBatch(String entityType, int currentOffset, CountDownLatch producerLatch) {
+  private void processBatch(
+      String entityType,
+      int currentOffset,
+      CountDownLatch producerLatch,
+      CountDownLatch entityLatch) {
     try {
       if (shouldSkipBatch()) {
         return;
@@ -917,6 +957,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } finally {
       LOG.debug("Virtual thread completed batch, remaining: {}", producerLatch.getCount() - 1);
       producerLatch.countDown();
+      if (entityLatch != null) {
+        entityLatch.countDown();
+      }
     }
   }
 
