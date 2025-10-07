@@ -162,6 +162,9 @@ test('Classification Page', async ({ page }) => {
 
     await page.getByTestId(tag.responseData.name).click();
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(page.getByTestId('disabled')).toBeVisible();
     await expect(page.getByTestId('add-domain')).not.toBeVisible();
@@ -223,6 +226,9 @@ test('Classification Page', async ({ page }) => {
 
     await page.getByTestId(tag.responseData.name).click();
     await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     await expect(page.getByTestId('disabled')).not.toBeVisible();
     await expect(page.getByTestId('add-domain')).toBeVisible();
