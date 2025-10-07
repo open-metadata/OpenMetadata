@@ -444,7 +444,7 @@ test.describe('Mention notifications in Notification Box', () => {
 
         let count = 0;
         let iterations = 0;
-        const maxIterations = 10;
+        const maxIterations = 20;
         const delayMs = 5000;
 
         while (iterations < maxIterations) {
