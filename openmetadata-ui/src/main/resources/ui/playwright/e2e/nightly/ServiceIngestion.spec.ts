@@ -24,7 +24,6 @@ import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestion
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
 import PostgresIngestionClass from '../../support/entity/ingestion/PostgresIngestionClass';
 import RedshiftWithDBTIngestionClass from '../../support/entity/ingestion/RedshiftWithDBTIngestionClass';
-import S3IngestionClass from '../../support/entity/ingestion/S3IngestionClass';
 import SnowflakeIngestionClass from '../../support/entity/ingestion/SnowflakeIngestionClass';
 import SupersetIngestionClass from '../../support/entity/ingestion/SupersetIngestionClass';
 import { TableClass } from '../../support/entity/TableClass';
@@ -38,7 +37,9 @@ import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 const table = new TableClass();
 const services = [
   ApiIngestionClass,
-  S3IngestionClass,
+  // Skipping S3 as it is failing intermittently in CI
+  // Remove the comment when fixed: https://github.com/open-metadata/OpenMetadata/issues/23727
+  // S3IngestionClass,
   MetabaseIngestionClass,
   MysqlIngestionClass,
   BigQueryIngestionClass,
