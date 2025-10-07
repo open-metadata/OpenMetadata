@@ -154,6 +154,15 @@ test('Classification Page', async ({ page }) => {
       page.locator('[data-testid="add-new-tag-button"]')
     ).toBeDisabled();
 
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+    await expect(page.getByTestId('add-owner')).not.toBeVisible();
+
+    await page.getByTestId(tag.responseData.name).click();
+
+    await expect(page.getByTestId('disabled')).toBeVisible();
+    await expect(page.getByTestId('add-domain')).not.toBeVisible();
+    await expect(page.getByTestId('add-owner')).not.toBeVisible();
+
     // Check if the disabled Classification tag is not visible in the table
     await table.visitEntityPage(page);
 
@@ -202,6 +211,15 @@ test('Classification Page', async ({ page }) => {
         `[data-testid="classification-${classification.responseData.name}"] [data-testid="disabled"]`
       )
     ).not.toBeVisible();
+
+    await expect(page.getByTestId('add-domain')).toBeVisible();
+    await expect(page.getByTestId('add-owner')).toBeVisible();
+
+    await page.getByTestId(tag.responseData.name).click();
+
+    await expect(page.getByTestId('disabled')).not.toBeVisible();
+    await expect(page.getByTestId('add-domain')).toBeVisible();
+    await expect(page.getByTestId('add-owner')).toBeVisible();
 
     /* This code test will be fix in this PR  https://github.com/open-metadata/OpenMetadata/pull/18333  */
     // await table.visitEntityPage(page);
