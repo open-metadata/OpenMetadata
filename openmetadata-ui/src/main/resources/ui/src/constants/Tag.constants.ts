@@ -39,7 +39,7 @@ export const queryFilterToRemoveSomeClassification = {
       must: [
         {
           terms: {
-            'entityStatus.keyword': ['Approved', 'Unprocessed'],
+            entityStatus: ['Approved', 'Unprocessed'],
           },
         },
       ],
