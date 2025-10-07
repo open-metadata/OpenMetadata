@@ -4,6 +4,6 @@
   "displayName": "Entity Deleted Notification",
   "description": "System default template for entity permanent deletion notifications",
   "provider": "system",
-  "templateSubject": "{{entity.entityType}} {{entity.name}} deleted",
-  "templateBody": "{{#if (eq channel 'email')}}Hello {{recipientName}},<br/><br/>{{/if}}[{{publisherName}}] <b>{{event.userName}}</b> deleted {{entity.entityType}} {{entity.fullyQualifiedName}}{{#if (eq channel 'email')}}<br/><br/>Happy Exploring!<br/>Thanks.{{/if}}"
+  "templateSubject": "[{{publisherName}}] - Change Event Update from {{emailingEntity}}",
+  "templateBody": "<strong>{{event.userName}}</strong> deleted <strong>{{camelCaseToTitle event.entityType}}</strong> {{entity.fullyQualifiedName}}"
 }
