@@ -164,7 +164,7 @@ test('Table difference test case', async ({ page }) => {
 
       await page
         .locator('label')
-        .filter({ hasText: 'Key Columns' })
+        .filter({ hasText: "Table 1's key columns" })
         .getByRole('button')
         .click();
       await page.waitForSelector(`[data-id="tableDiff"]`, {
