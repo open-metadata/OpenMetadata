@@ -170,7 +170,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       Set<String> aliasesToAttach = new HashSet<>();
       aliasesToAttach.addAll(context.getExistingAliases(entityType));
       context.getCanonicalAlias(entityType).ifPresent(aliasesToAttach::add);
-      aliasesToAttach.add(canonicalIndex);
+
+      // Add canonical index name as an alias so queries using the full index name still work
+      // But only if no index exists with that name
+      if (!searchClient.indexExists(canonicalIndex)) {
+        aliasesToAttach.add(canonicalIndex);
+      }
+
       List<String> parentAliases = context.getParentAliases(entityType);
       if (parentAliases != null) {
         parentAliases.stream()

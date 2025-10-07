@@ -372,11 +372,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void finalizeEntityIndex(String entityType, boolean success) {
-    if (recreateIndexHandler == null || recreateContext == null) {
-      return;
-    }
-
-    if (!Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+    if (recreateIndexHandler == null
+        || recreateContext == null
+        || !Boolean.TRUE.equals(jobData.getRecreateIndex())) {
       return;
     }
 

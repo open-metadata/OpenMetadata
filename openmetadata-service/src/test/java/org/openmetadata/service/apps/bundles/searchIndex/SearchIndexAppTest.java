@@ -1257,6 +1257,79 @@ class SearchIndexAppTest extends OpenMetadataApplicationTest {
   }
 
   @Test
+  void testPerEntityFinalizationWithClusterAlias() {
+    SearchRepository searchRepo = Entity.getSearchRepository();
+    SearchClient<?> searchClient = searchRepo.getSearchClient();
+    String clusterAlias = searchRepo.getClusterAlias();
+
+    long timestamp = System.currentTimeMillis();
+    String canonicalIndexName =
+        clusterAlias.isEmpty()
+            ? "test_cluster_table_index"
+            : clusterAlias + "_test_cluster_table_index";
+    String oldIndex = canonicalIndexName + "_old_" + timestamp;
+    String stagedIndex = canonicalIndexName + "_rebuild_" + timestamp;
+
+    try {
+      // Create old index with canonical name as alias
+      searchClient.createIndex(oldIndex, "{}");
+      if (!clusterAlias.isEmpty()) {
+        // Add canonical index name as alias (simulating existing setup)
+        searchClient.addAliases(oldIndex, Set.of(canonicalIndexName, "test_cluster_alias"));
+      } else {
+        searchClient.addAliases(oldIndex, Set.of("test_cluster_alias"));
+      }
+
+      // Create staged index
+      searchClient.createIndex(stagedIndex, "{}");
+
+      RecreateIndexHandler.ReindexContext context = new RecreateIndexHandler.ReindexContext();
+      Set<String> existingAliases =
+          clusterAlias.isEmpty()
+              ? Set.of("test_cluster_alias")
+              : Set.of(canonicalIndexName, "test_cluster_alias");
+
+      context.add(
+          "test_cluster_table",
+          canonicalIndexName,
+          oldIndex,
+          stagedIndex,
+          existingAliases,
+          "test_cluster_table",
+          List.of());
+
+      DefaultRecreateHandler handler = new DefaultRecreateHandler();
+
+      // Finalize the entity
+      handler.finalizeEntityReindex(context, "test_cluster_table", true);
+
+      // Verify old index is deleted
+      assertFalse(searchClient.indexExists(oldIndex), "Old index should be deleted");
+      assertTrue(searchClient.indexExists(stagedIndex), "Staged index should exist");
+
+      // Verify aliases are attached to staged index
+      Set<String> stagedAliases = searchClient.getAliases(stagedIndex);
+      assertTrue(stagedAliases.contains("test_cluster_alias"), "Should have test_cluster_alias");
+
+      // Verify canonical index name works as alias (if cluster alias is configured)
+      if (!clusterAlias.isEmpty()) {
+        assertTrue(
+            stagedAliases.contains(canonicalIndexName),
+            "Should have canonical index name as alias: " + canonicalIndexName);
+      }
+
+      assertTrue(context.isFinalized("test_cluster_table"));
+    } finally {
+      // Cleanup
+      for (String index : List.of(oldIndex, stagedIndex)) {
+        if (searchClient.indexExists(index)) {
+          searchClient.deleteIndex(index);
+        }
+      }
+    }
+  }
+
+  @Test
   void testMultipleEntitiesWithPerEntityFinalization() {
     SearchRepository searchRepo = Entity.getSearchRepository();
     SearchClient<?> searchClient = searchRepo.getSearchClient();
