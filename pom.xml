@@ -161,6 +161,9 @@
     <mcp-sdk.version>0.11.2</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <angus-mail.version>2.0.4</angus-mail.version>
+    <commonmark.version>0.26.0</commonmark.version>
+    <flexmark.version>0.64.8</flexmark.version>
+    <owasp-html-sanitizer.version>20240325.1</owasp-html-sanitizer.version>
   </properties>
 
   <dependencyManagement>
