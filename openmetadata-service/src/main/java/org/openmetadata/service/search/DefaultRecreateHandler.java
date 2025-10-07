@@ -88,6 +88,41 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
   }
 
   @Override
+  public void finalizeEntityReindex(ReindexContext context, String entityType, boolean success) {
+    if (context == null || entityType == null) {
+      return;
+    }
+
+    // Check if already finalized
+    if (context.isFinalized(entityType)) {
+      LOG.debug("Entity '{}' already finalized, skipping", entityType);
+      return;
+    }
+
+    String canonicalIndex = context.getCanonicalIndex(entityType).orElse(null);
+    String activeIndex = context.getOriginalIndex(entityType).orElse(null);
+    String stagedIndex = context.getStagedIndex(entityType).orElse(null);
+
+    if (canonicalIndex == null || stagedIndex == null) {
+      LOG.debug("Skipping finalization for entity '{}' - missing index information", entityType);
+      return;
+    }
+
+    SearchRepository searchRepository = Entity.getSearchRepository();
+    SearchClient<?> searchClient = searchRepository.getSearchClient();
+
+    if (success) {
+      promoteIndexForEntity(
+          context, entityType, canonicalIndex, activeIndex, stagedIndex, searchClient);
+    } else {
+      cleanupStagedIndexForEntity(entityType, stagedIndex, searchClient);
+    }
+
+    // Mark as finalized
+    context.markFinalized(entityType);
+  }
+
+  @Override
   public void finalizeReindex(ReindexContext context, boolean success) {
     if (context == null || context.isEmpty()) {
       return;
@@ -97,6 +132,13 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     SearchClient<?> searchClient = searchRepository.getSearchClient();
 
     for (String entityType : context.getEntities()) {
+      // Skip if already finalized per-entity
+      if (context.isFinalized(entityType)) {
+        LOG.debug(
+            "Entity '{}' already finalized per-entity, skipping in batch finalization", entityType);
+        continue;
+      }
+
       String canonicalIndex = context.getCanonicalIndex(entityType).orElse(null);
       String activeIndex = context.getOriginalIndex(entityType).orElse(null);
       String stagedIndex = context.getStagedIndex(entityType).orElse(null);
@@ -106,86 +148,111 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
       }
 
       if (success) {
-        try {
-          Set<String> aliasesToAttach = new HashSet<>();
-          aliasesToAttach.addAll(context.getExistingAliases(entityType));
-          context.getCanonicalAlias(entityType).ifPresent(aliasesToAttach::add);
-          aliasesToAttach.add(canonicalIndex);
-          List<String> parentAliases = context.getParentAliases(entityType);
-          if (parentAliases != null) {
-            parentAliases.stream()
-                .filter(alias -> alias != null && !alias.isBlank())
-                .forEach(aliasesToAttach::add);
-          }
-          aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
-
-          for (String alias : aliasesToAttach) {
-            Set<String> targets = searchClient.getIndicesByAlias(alias);
-            for (String target : targets) {
-              if (target.equals(stagedIndex)) {
-                continue;
-              }
-
-              boolean belongsToEntity =
-                  target.equals(canonicalIndex) || target.startsWith(canonicalIndex + "_rebuild_");
-
-              if (!belongsToEntity) {
-                LOG.debug(
-                    "Skipping alias '{}' removal from index '{}' as it does not belong to entity '{}'.",
-                    alias,
-                    target,
-                    entityType);
-                continue;
-              }
-
-              searchClient.removeAliases(target, Set.of(alias));
-              LOG.info(
-                  "Removed alias '{}' from index '{}' during promotion for entity '{}'.",
-                  alias,
-                  target,
-                  entityType);
-
-              if (searchClient.indexExists(target)) {
-                searchClient.deleteIndex(target);
-                LOG.debug("Replaced old index '{}' for entity '{}'.", target, entityType);
-              }
-            }
-          }
-
-          if (activeIndex != null && searchClient.indexExists(activeIndex)) {
-            searchClient.deleteIndex(activeIndex);
-            LOG.debug("Replaced old index '{}' for entity '{}'.", activeIndex, entityType);
-          }
-
-          if (!aliasesToAttach.isEmpty()) {
-            searchClient.addAliases(stagedIndex, aliasesToAttach);
-          }
-          LOG.info(
-              "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
-              stagedIndex,
-              entityType,
-              aliasesToAttach);
-        } catch (Exception ex) {
-          LOG.error(
-              "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
-        }
+        promoteIndexForEntity(
+            context, entityType, canonicalIndex, activeIndex, stagedIndex, searchClient);
       } else {
-        try {
-          if (searchClient.indexExists(stagedIndex)) {
-            searchClient.deleteIndex(stagedIndex);
-            LOG.info(
-                "Deleted staged index '{}' after unsuccessful reindex for entity '{}'.",
-                stagedIndex,
-                entityType);
+        cleanupStagedIndexForEntity(entityType, stagedIndex, searchClient);
+      }
+
+      // Mark as finalized
+      context.markFinalized(entityType);
+    }
+  }
+
+  private void promoteIndexForEntity(
+      ReindexContext context,
+      String entityType,
+      String canonicalIndex,
+      String activeIndex,
+      String stagedIndex,
+      SearchClient<?> searchClient) {
+    try {
+      Set<String> aliasesToAttach = new HashSet<>();
+      aliasesToAttach.addAll(context.getExistingAliases(entityType));
+      context.getCanonicalAlias(entityType).ifPresent(aliasesToAttach::add);
+
+      // Add canonical index name as an alias so queries using the full index name still work
+      // But only if no index exists with that name
+      if (!searchClient.indexExists(canonicalIndex)) {
+        aliasesToAttach.add(canonicalIndex);
+      }
+
+      List<String> parentAliases = context.getParentAliases(entityType);
+      if (parentAliases != null) {
+        parentAliases.stream()
+            .filter(alias -> alias != null && !alias.isBlank())
+            .forEach(aliasesToAttach::add);
+      }
+      aliasesToAttach.removeIf(alias -> alias == null || alias.isBlank());
+
+      for (String alias : aliasesToAttach) {
+        Set<String> targets = searchClient.getIndicesByAlias(alias);
+        for (String target : targets) {
+          if (target.equals(stagedIndex)) {
+            continue;
           }
-        } catch (Exception ex) {
-          LOG.warn(
-              "Failed to delete staged index '{}' for entity '{}' after failure.",
-              stagedIndex,
-              entityType,
-              ex);
+
+          boolean belongsToEntity =
+              target.equals(canonicalIndex) || target.startsWith(canonicalIndex + "_rebuild_");
+
+          if (!belongsToEntity) {
+            LOG.debug(
+                "Skipping alias '{}' removal from index '{}' as it does not belong to entity '{}'.",
+                alias,
+                target,
+                entityType);
+            continue;
+          }
+
+          searchClient.removeAliases(target, Set.of(alias));
+          LOG.info(
+              "Removed alias '{}' from index '{}' during promotion for entity '{}'.",
+              alias,
+              target,
+              entityType);
+
+          if (searchClient.indexExists(target)) {
+            searchClient.deleteIndex(target);
+            LOG.debug("Replaced old index '{}' for entity '{}'.", target, entityType);
+          }
         }
       }
+
+      if (activeIndex != null && searchClient.indexExists(activeIndex)) {
+        searchClient.deleteIndex(activeIndex);
+        LOG.debug("Replaced old index '{}' for entity '{}'.", activeIndex, entityType);
+      }
+
+      if (!aliasesToAttach.isEmpty()) {
+        searchClient.addAliases(stagedIndex, aliasesToAttach);
+      }
+      LOG.info(
+          "Promoted staged index '{}' to serve entity '{}' (aliases: {}).",
+          stagedIndex,
+          entityType,
+          aliasesToAttach);
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to promote staged index '{}' for entity '{}'.", stagedIndex, entityType, ex);
+    }
+  }
+
+  private void cleanupStagedIndexForEntity(
+      String entityType, String stagedIndex, SearchClient<?> searchClient) {
+    try {
+      if (searchClient.indexExists(stagedIndex)) {
+        searchClient.deleteIndex(stagedIndex);
+        LOG.info(
+            "Deleted staged index '{}' after unsuccessful reindex for entity '{}'.",
+            stagedIndex,
+            entityType);
+      }
+    } catch (Exception ex) {
+      LOG.warn(
+          "Failed to delete staged index '{}' for entity '{}' after failure.",
+          stagedIndex,
+          entityType,
+          ex);
     }
   }
 
