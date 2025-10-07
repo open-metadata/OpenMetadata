@@ -1,4 +1,4 @@
-package org.openmetadata.service.template.handlebars;
+package org.openmetadata.service.notifications.template.handlebars;
 
 import com.github.jknack.handlebars.Handlebars;
 
