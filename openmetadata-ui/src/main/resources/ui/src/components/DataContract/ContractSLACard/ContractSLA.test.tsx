@@ -19,6 +19,7 @@ import {
   RetentionUnit,
 } from '../../../generated/entity/data/dataContract';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
+import { mockTableData } from '../../../mocks/TableVersion.mock';
 import ContractSLA from './ContractSLA.component';
 
 jest.mock('../../../utils/CommonUtils', () => ({
@@ -31,6 +32,12 @@ jest.mock('../../../utils/CommonUtils', () => ({
 
 jest.mock('../../../assets/svg/ic-check-circle-2.svg', () => ({
   ReactComponent: () => <svg data-testid="check-icon" />,
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockTableData,
+  })),
 }));
 
 describe('ContractSLA Component', () => {

@@ -293,7 +293,7 @@ class ColumnTypeParser:
         "STRG": "STRING",
         "RSTR": "STRING",
         # azuresql
-        "HIERARCHYID": "UNKNOWN",
+        "HIERARCHYID": "HIERARCHYID",
     }
 
     _COMPLEX_TYPE = re.compile("^(struct|map|array|uniontype)")

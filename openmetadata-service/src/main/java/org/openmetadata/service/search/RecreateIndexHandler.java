@@ -17,6 +17,16 @@ public interface RecreateIndexHandler {
 
   default void finalizeReindex(ReindexContext context, boolean success) {}
 
+  /**
+   * Finalize reindex for a specific entity. This allows per-entity index swapping
+   * to reduce memory footprint during reindexing.
+   *
+   * @param context The reindex context containing staged index information
+   * @param entityType The entity type to finalize
+   * @param success Whether the reindexing was successful for this entity
+   */
+  default void finalizeEntityReindex(ReindexContext context, String entityType, boolean success) {}
+
   class ReindexContext {
     private final Map<String, String> canonicalIndexByEntity = new HashMap<>();
     private final Map<String, String> originalIndexByEntity = new HashMap<>();
@@ -24,6 +34,7 @@ public interface RecreateIndexHandler {
     private final Map<String, Set<String>> existingAliasesByEntity = new HashMap<>();
     private final Map<String, String> canonicalAliasByEntity = new HashMap<>();
     private final Map<String, List<String>> parentAliasesByEntity = new HashMap<>();
+    private final Set<String> finalizedEntities = new HashSet<>();
 
     public void add(
         String entity,
@@ -40,6 +51,14 @@ public interface RecreateIndexHandler {
           entity, new HashSet<>(Optional.ofNullable(existingAliases).orElseGet(HashSet::new)));
       canonicalAliasByEntity.put(entity, canonicalAlias);
       parentAliasesByEntity.put(entity, parentAliases != null ? parentAliases : List.of());
+    }
+
+    public synchronized void markFinalized(String entity) {
+      finalizedEntities.add(entity);
+    }
+
+    public synchronized boolean isFinalized(String entity) {
+      return finalizedEntities.contains(entity);
     }
 
     public Optional<String> getCanonicalIndex(String entity) {
