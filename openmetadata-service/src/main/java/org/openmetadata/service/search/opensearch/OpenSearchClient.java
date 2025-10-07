@@ -527,7 +527,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
             request.getQuery(),
             request.getFrom(),
             request.getSize(),
-            request.getExplain());
+            request.getExplain(),
+            request.getIncludeAggregations());
 
     buildSearchRBACQuery(subjectContext, searchSourceBuilder);
 
