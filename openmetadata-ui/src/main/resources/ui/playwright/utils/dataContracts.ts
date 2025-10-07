@@ -126,7 +126,8 @@ export const saveSecurityAndSLADetails = async (
   page: Page,
   data: DataContractSecuritySlaData,
   tableData: TableClass,
-  addAnotherConsumer?: boolean
+  addAnotherConsumer?: boolean,
+  isUpdate?: boolean
 ) => {
   await page.getByRole('tab', { name: 'Security' }).click();
 
@@ -244,6 +245,9 @@ export const saveSecurityAndSLADetails = async (
 
   await page.locator('.ant-picker-ok .ant-btn').click();
 
+  await page.locator('#timezone').fill(data.timezone);
+  await page.locator('#timezone').press('Enter');
+
   await page.getByTestId('refresh-frequency-unit-select').click();
   await page
     .locator(
@@ -261,6 +265,11 @@ export const saveSecurityAndSLADetails = async (
     .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
     .click();
 
+  await page
+    .locator('#columnName-select')
+    .fill(tableData.columnsName[isUpdate ? 1 : 0]);
+  await page.locator('#columnName-select').press('Enter');
+
   await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
 
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
@@ -276,7 +285,8 @@ export const saveSecurityAndSLADetails = async (
 export const validateSecurityAndSLADetails = async (
   page: Page,
   data: DataContractSecuritySlaData,
-  table: TableClass
+  table: TableClass,
+  isUpdate?: boolean
 ) => {
   await page.getByRole('tab', { name: 'Security' }).click();
 
@@ -320,6 +330,14 @@ export const validateSecurityAndSLADetails = async (
   );
 
   await expect(page.getByTestId('availability')).toHaveValue(data.availability);
+
+  await expect(page.getByText(data.timezone)).toBeVisible();
+
+  await expect(
+    page
+      .getByTestId('columnName-select')
+      .getByText(table.columnsName[isUpdate ? 1 : 0])
+  ).toBeVisible();
 
   await expect(page.getByTestId('refresh-frequency-unit-select')).toContainText(
     data.refreshFrequencyUnitSelect

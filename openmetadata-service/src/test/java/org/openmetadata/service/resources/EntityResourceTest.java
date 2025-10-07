@@ -4489,11 +4489,18 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
             .withConfigType(SettingsType.ASSET_CERTIFICATION_SETTINGS)
             .withConfigValue(certificationSettings));
 
+    long timestampBeforePatch = System.currentTimeMillis();
     T patchedEntity = patchEntity(entity.getId(), json, entity, ADMIN_AUTH_HEADERS);
+    long timestampAfterPatch = System.currentTimeMillis();
     assertEquals(
         patchedEntity.getCertification().getTagLabel().getTagFQN(), certificationLabel.getTagFQN());
-    assertEquals(
-        patchedEntity.getCertification().getAppliedDate(), System.currentTimeMillis(), 10 * 1000);
+    // Verify the applied date is within the time window of the patch operation
+    assertTrue(
+        patchedEntity.getCertification().getAppliedDate() >= timestampBeforePatch - 1000,
+        "Applied date should be at or after the patch operation started (with 1s tolerance)");
+    assertTrue(
+        patchedEntity.getCertification().getAppliedDate() <= timestampAfterPatch + 1000,
+        "Applied date should be at or before the patch operation completed (with 1s tolerance)");
     assertEquals(
         (double)
             (patchedEntity.getCertification().getExpiryDate()

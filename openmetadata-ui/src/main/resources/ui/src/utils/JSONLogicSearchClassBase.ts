@@ -17,7 +17,6 @@ import {
   FieldOrGroup,
   Fields,
   ListItem,
-  ListValues,
   Operators,
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
@@ -183,7 +182,7 @@ class JSONLogicSearchClassBase {
     },
   };
 
-  mapFields: Record<string, FieldOrGroup>;
+  private _mapFieldsCache?: Record<string, FieldOrGroup>;
 
   defaultSelectOperators = [
     'select_equals',
@@ -194,8 +193,12 @@ class JSONLogicSearchClassBase {
     'is_not_null',
   ];
 
-  constructor() {
-    this.mapFields = {
+  public get mapFields(): Record<string, FieldOrGroup> {
+    if (this._mapFieldsCache) {
+      return this._mapFieldsCache;
+    }
+
+    this._mapFieldsCache = {
       [EntityReferenceFields.SERVICE]: {
         label: t('label.service'),
         type: 'select',
@@ -419,6 +422,8 @@ class JSONLogicSearchClassBase {
         },
       },
     };
+
+    return this._mapFieldsCache;
   }
 
   public getMapFields = () => {
@@ -536,7 +541,6 @@ class JSONLogicSearchClassBase {
     entitySearchIndex = [SearchIndex.TABLE],
   }: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<ListValues>;
   }) => {
     const fieldsConfig = {
       ...this.getCommonConfig(),
@@ -580,16 +584,14 @@ class JSONLogicSearchClassBase {
   };
 
   public getQbConfigs: (
-    tierOptions: Promise<ListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
-  ) => Config = (tierOptions, entitySearchIndex, isExplorePage) => {
+  ) => Config = (entitySearchIndex, isExplorePage) => {
     return {
       ...this.getInitialConfigWithoutFields(isExplorePage),
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,
-          tierOptions,
         }),
       },
     };
