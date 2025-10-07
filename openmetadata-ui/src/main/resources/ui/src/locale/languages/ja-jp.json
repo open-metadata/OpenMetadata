@@ -1334,6 +1334,8 @@
     "record-plural": "レコード",
     "recreate-index-plural": "インデックスを再作成",
     "reference-plural": "参照",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "更新",
     "refresh-entity": "{{entity}} を更新",
     "refresh-frequency": "更新頻度",

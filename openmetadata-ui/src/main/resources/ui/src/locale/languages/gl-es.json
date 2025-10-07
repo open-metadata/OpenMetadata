@@ -1334,6 +1334,8 @@
     "record-plural": "Rexistros",
     "recreate-index-plural": "Recrear índices",
     "reference-plural": "Referencias",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "Actualizar",
     "refresh-entity": "Refrescar {{entity}}",
     "refresh-frequency": "Frecuencia de actualización",

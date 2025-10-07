@@ -1334,6 +1334,8 @@
     "record-plural": "บันทึก",
     "recreate-index-plural": "สร้างดัชนีใหม่",
     "reference-plural": "การอ้างอิงหลายรายการ",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "รีเฟรช",
     "refresh-entity": "รีเฟรช {{entity}}",
     "refresh-frequency": "ความถี่ในการรีเฟรช",

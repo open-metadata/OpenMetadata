@@ -1334,6 +1334,8 @@
     "record-plural": "Записи",
     "recreate-index-plural": "Воссоздать индексы",
     "reference-plural": "Связанные ссылки",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "Обновить",
     "refresh-entity": "Обновить объект «{{entity}}»",
     "refresh-frequency": "Частота обновления",

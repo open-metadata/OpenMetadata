@@ -1334,6 +1334,8 @@
     "record-plural": "Kayıtlar",
     "recreate-index-plural": "Dizinleri Yeniden Oluştur",
     "reference-plural": "Referanslar",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "Yenile",
     "refresh-entity": "{{entity}} Yenile",
     "refresh-frequency": "Yenileme Sıklığı",

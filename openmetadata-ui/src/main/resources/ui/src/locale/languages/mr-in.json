@@ -1334,6 +1334,8 @@
     "record-plural": "नोंदी",
     "recreate-index-plural": "अनुक्रमणिका पुन्हा तयार करा",
     "reference-plural": "संदर्भ",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "ताजेतवाने करा",
     "refresh-entity": "{{entity}} चे पुनरावलोकन करा",
     "refresh-frequency": "रीफ्रेश वारंवारता",

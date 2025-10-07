@@ -443,12 +443,18 @@
   animation: blink-red 1s infinite;
 }
 
-.react-flow__panel.left.bottom,
-.react-flow__panel.right.bottom {
-  bottom: 24px;
+.react-flow__panel.right {
+  right: 24px;
+}
+
+.react-flow__panel {
+  margin: 16px !important;
 }
 
 .react-flow__minimap {
+  &.bottom.right {
+    bottom: 60px;
+  }
   height: 150px;
   border: 1px solid @border-color;
   border-radius: 10px;

@@ -1334,6 +1334,8 @@
     "record-plural": "記錄",
     "recreate-index-plural": "重建索引",
     "reference-plural": "參考",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "重新整理",
     "refresh-entity": "重新整理 {{entity}}",
     "refresh-frequency": "重新整理頻率",

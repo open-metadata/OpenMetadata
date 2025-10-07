@@ -1334,6 +1334,8 @@
     "record-plural": "رکوردها",
     "recreate-index-plural": "بازسازی شاخص‌ها",
     "reference-plural": "مراجع",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "تازه‌سازی",
     "refresh-entity": "تازه‌سازی {{entity}}",
     "refresh-frequency": "فرکانس تازه‌سازی",

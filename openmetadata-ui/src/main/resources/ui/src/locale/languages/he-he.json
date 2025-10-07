@@ -1334,6 +1334,8 @@
     "record-plural": "Records",
     "recreate-index-plural": "יצירת מחדש של אינדקסים",
     "reference-plural": "הפניות",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "Refresh",
     "refresh-entity": "רענון {{entity}}",
     "refresh-frequency": "תדירות ריענון",

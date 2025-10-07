@@ -15,7 +15,7 @@ import { SourceType } from '../../../SearchedData/SearchedData.interface';
  */
 export interface LayerButtonProps {
   isActive: boolean;
-  onClick: () => void;
+  value: string;
   icon: React.ReactNode;
   label: string;
   testId: string;

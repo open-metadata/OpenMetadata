@@ -26,6 +26,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/ic-download.svg';
 import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
@@ -85,6 +86,9 @@ const CustomControls: FC<{
   const theme = useTheme();
   const { fqn } = useFqn();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const [settingsAnchorEl, setSettingsAnchorEl] = useState<null | HTMLElement>(
+    null
+  );
 
   const queryFilter = useMemo(() => {
     const nodeIds = (nodes ?? [])
@@ -332,6 +336,56 @@ const CustomControls: FC<{
     [updateURLParams]
   );
 
+  const settingsButton = useMemo(() => {
+    let menu = null;
+    if (!activeTab || activeTab === 'lineage') {
+      menu = (
+        <StyledMenu
+          anchorEl={settingsAnchorEl}
+          open={Boolean(settingsAnchorEl)}
+          onClose={() => setSettingsAnchorEl(null)}>
+          <MenuItem
+            key="edit"
+            // selected={isEdit}
+            onClick={() => {
+              setSettingsAnchorEl(null);
+            }}>
+            <EditIcon />
+            {t('label.edit-entity', { entity: t('label.lineage') })}
+          </MenuItem>
+          <MenuItem
+            key="depth"
+            onClick={() => {
+              setSettingsAnchorEl(null);
+              setDialogVisible(true);
+            }}>
+            {t('label.lineage-config')}
+          </MenuItem>
+        </StyledMenu>
+      );
+    }
+
+    const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+      if (!activeTab || activeTab === 'lineage') {
+        event.stopPropagation();
+        setSettingsAnchorEl(event.currentTarget);
+      } else {
+        setDialogVisible(true);
+      }
+    };
+
+    return (
+      <>
+        <Tooltip arrow placement="top" title={t('label.lineage-configuration')}>
+          <StyledIconButton size="large" onClick={handleClick}>
+            <SettingsOutlined />
+          </StyledIconButton>
+        </Tooltip>
+        {menu}
+      </>
+    );
+  }, [activeTab, settingsAnchorEl, lineageConfig]);
+
   return (
     <div>
       <div className={classNames('d-flex w-full justify-between')}>
@@ -369,16 +423,7 @@ const CustomControls: FC<{
               <DownloadIcon />
             </StyledIconButton>
           </Tooltip>
-          <Tooltip
-            arrow
-            placement="top"
-            title={t('label.lineage-configuration')}>
-            <StyledIconButton
-              size="large"
-              onClick={() => setDialogVisible(true)}>
-              <SettingsOutlined />
-            </StyledIconButton>
-          </Tooltip>
+          {settingsButton}
           <Tooltip
             arrow
             placement="top"

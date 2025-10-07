@@ -1334,6 +1334,8 @@
     "record-plural": "Records",
     "recreate-index-plural": "Opnieuw creëren indexen",
     "reference-plural": "Verwijzingen",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "Refresh",
     "refresh-entity": "{{entity}} vernieuwen",
     "refresh-frequency": "Vernieuwfrequentie",

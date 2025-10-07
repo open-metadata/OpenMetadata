@@ -1334,6 +1334,8 @@
     "record-plural": "기록들",
     "recreate-index-plural": "인덱스 재생성",
     "reference-plural": "참조들",
+    "refocused-to-home": "Refocused to home",
+    "refocused-to-selected": "Refocused to selected",
     "refresh": "새로고침",
     "refresh-entity": "{entity}} 새로고침",
     "refresh-frequency": "새로 고침 빈도",
