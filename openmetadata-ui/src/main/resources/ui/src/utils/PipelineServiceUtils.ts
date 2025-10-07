@@ -16,6 +16,7 @@ import { COMMON_UI_SCHEMA } from '../constants/Services.constant';
 import { PipelineServiceType } from '../generated/entity/services/pipelineService';
 import airbyteConnection from '../jsons/connectionSchemas/connections/pipeline/airbyteConnection.json';
 import airflowConnection from '../jsons/connectionSchemas/connections/pipeline/airflowConnection.json';
+import confluentCdcConnection from '../jsons/connectionSchemas/connections/pipeline/confluentCdcConnection.json';
 import customPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/customPipelineConnection.json';
 import dagsterConnection from '../jsons/connectionSchemas/connections/pipeline/dagsterConnection.json';
 import databricksPipelineConnection from '../jsons/connectionSchemas/connections/pipeline/databricksPipelineConnection.json';
@@ -51,6 +52,11 @@ export const getPipelineConfig = (type: PipelineServiceType) => {
     }
     case PipelineServiceType.KafkaConnect: {
       schema = KafkaConnectConnection;
+
+      break;
+    }
+    case PipelineServiceType.ConfluentCDC: {
+      schema = confluentCdcConnection;
 
       break;
     }
