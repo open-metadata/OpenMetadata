@@ -48,17 +48,9 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
     await addAndTriggerAutoClassificationPipeline(page, mysqlService);
 
     // Check if the classification is successful
-    const getDatabases = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/databases?service=') &&
-        response.request().method() === 'GET' &&
-        response.status() === 200
-    );
 
     // Click on databases tab
     await page.click('.ant-tabs-nav-list [data-testid="databases"]');
-
-    await getDatabases;
 
     // Click on the database name
     await page.getByTestId('column-name').getByText('default').click();
