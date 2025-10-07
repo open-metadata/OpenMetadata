@@ -154,10 +154,14 @@ test('Classification Page', async ({ page }) => {
       page.locator('[data-testid="add-new-tag-button"]')
     ).toBeDisabled();
 
+    // Verify that the "Add Domain" and "Add Owner" icon buttons are not visible
+    // on both the Classification and Tag pages when Classification is disabled.
+
     await expect(page.getByTestId('add-domain')).not.toBeVisible();
     await expect(page.getByTestId('add-owner')).not.toBeVisible();
 
     await page.getByTestId(tag.responseData.name).click();
+    await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('disabled')).toBeVisible();
     await expect(page.getByTestId('add-domain')).not.toBeVisible();
@@ -212,10 +216,13 @@ test('Classification Page', async ({ page }) => {
       )
     ).not.toBeVisible();
 
+    // Verify that the "Add Domain" and "Add Owner" icon buttons are visible
+    // on both the Classification and Tag pages when Classification is enabled.
     await expect(page.getByTestId('add-domain')).toBeVisible();
     await expect(page.getByTestId('add-owner')).toBeVisible();
 
     await page.getByTestId(tag.responseData.name).click();
+    await page.waitForLoadState('networkidle');
 
     await expect(page.getByTestId('disabled')).not.toBeVisible();
     await expect(page.getByTestId('add-domain')).toBeVisible();
