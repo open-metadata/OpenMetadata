@@ -47,10 +47,6 @@ import {
   getGlossaryTermsVersionsPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { ActivityFeedTab } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../../ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
@@ -135,15 +131,12 @@ const GlossaryTermsV1 = ({
   const fetchGlossaryTermAssets = async () => {
     if (glossaryTerm) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(glossaryTerm.fullyQualifiedName)
-        );
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
           pageSize: 0,
           queryFilter: getTermQuery({
-            'tags.tagFQN': encodedFqn,
+            'tags.tagFQN': glossaryTerm.fullyQualifiedName ?? '',
           }),
           searchIndex: SearchIndex.ALL,
         });

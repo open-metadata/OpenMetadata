@@ -201,7 +201,7 @@ const AssetsTabs = forwardRef(
       switch (type) {
         case AssetsOfEntity.DOMAIN:
           return getTermQuery(
-            { 'domains.fullyQualifiedName': encodedFqn },
+            { 'domains.fullyQualifiedName': entityFqn ?? '' },
             'must',
             undefined,
             {
@@ -219,10 +219,10 @@ const AssetsTabs = forwardRef(
           return queryFilter ?? undefined;
 
         case AssetsOfEntity.GLOSSARY:
-          return getTermQuery({ 'tags.tagFQN': encodedFqn });
+          return getTermQuery({ 'tags.tagFQN': entityFqn ?? '' });
 
         case AssetsOfEntity.TAG:
-          return getTagAssetsQueryFilter(encodedFqn);
+          return getTagAssetsQueryFilter(entityFqn ?? '');
 
         default:
           return getTagAssetsQueryFilter(encodedFqn);
