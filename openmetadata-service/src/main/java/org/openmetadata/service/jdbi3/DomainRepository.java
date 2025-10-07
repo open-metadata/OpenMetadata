@@ -93,7 +93,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   @Override
   public void setFields(Domain entity, Fields fields) {
     entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
-    entity.withAssetsCount(fields.contains(FIELD_ASSETS_COUNT) ? getAssets(entity).size() : 0);
+    entity.withAssetsCount(fields.contains(FIELD_ASSETS_COUNT) ? getAssetsCount(entity) : null);
     entity.withParent(getParent(entity));
   }
 
@@ -190,6 +190,23 @@ public class DomainRepository extends EntityRepository<Domain> {
               return new InheritedFieldResult(new ArrayList<>(), 0);
             });
     return result.entities();
+  }
+
+  private int getAssetsCount(Domain entity) {
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for domain assets count. Returning 0 for consistency.");
+      return 0;
+    }
+
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain(entity.getFullyQualifiedName());
+    return inheritedFieldEntitySearch.getCountForField(
+        query,
+        () -> {
+          LOG.warn(
+              "Search fallback triggered for domain {} count. Returning 0 for consistency.",
+              entity.getFullyQualifiedName());
+          return 0;
+        });
   }
 
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
