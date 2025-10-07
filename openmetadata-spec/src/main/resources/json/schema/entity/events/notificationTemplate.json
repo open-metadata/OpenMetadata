@@ -79,15 +79,12 @@
       "description": "Indicates if this system template has been modified from its default version. Only applicable to system templates.",
       "type": "boolean",
       "default": false
-    },
-    "defaultTemplateChecksum": {
-      "description": "Checksum of the default template to detect if updates are available. Only applicable to system templates.",
-      "type": "string"
     }
   },
   "required": [
     "id",
     "name",
+    "templateSubject",
     "templateBody"
   ],
   "additionalProperties": false
