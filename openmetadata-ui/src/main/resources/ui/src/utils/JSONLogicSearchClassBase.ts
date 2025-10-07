@@ -217,9 +217,9 @@ class JSONLogicSearchClassBase {
         label: t('label.owner-plural'),
         type: '!group',
         mode: 'some',
-        defaultField: 'fullyQualifiedName',
+        defaultField: EntityFields.FULLY_QUALIFIED_NAME,
         subfields: {
-          fullyQualifiedName: {
+          [EntityFields.FULLY_QUALIFIED_NAME]: {
             label: 'Owners',
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
@@ -227,7 +227,7 @@ class JSONLogicSearchClassBase {
             fieldSettings: {
               asyncFetch: advancedSearchClassBase.autocomplete({
                 searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
-                entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+                entityField: EntityFields.NAME_KEYWORD,
               }),
               useAsyncSearch: true,
             },
