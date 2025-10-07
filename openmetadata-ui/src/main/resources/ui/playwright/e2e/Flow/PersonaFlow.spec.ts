@@ -140,6 +140,12 @@ test.describe.serial('Persona operations', () => {
 
     await page.getByRole('button', { name: 'Create' }).click();
 
+    await page.waitForLoadState('networkidle');
+
+    await navigateToPersonaSettings(page);
+
+    await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
+
     const personaResponse = page.waitForResponse(
       `/api/v1/personas/name/${encodeURIComponent(
         PERSONA_DETAILS.name
@@ -387,6 +393,12 @@ test.describe.serial('Default persona setting and removal flow', () => {
         await adminPage.getByTestId('selectable-list-update-btn').click();
 
         await adminPage.getByRole('button', { name: 'Create' }).click();
+
+        await adminPage.waitForLoadState('networkidle');
+
+        await navigateToPersonaSettings(adminPage);
+
+        await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
 
         const personaResponse = adminPage.waitForResponse(
           `/api/v1/personas/name/${encodeURIComponent(
