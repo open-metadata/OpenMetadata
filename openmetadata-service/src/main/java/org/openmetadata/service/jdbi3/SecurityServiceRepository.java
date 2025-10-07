@@ -11,28 +11,27 @@
  *  limitations under the License.
  */
 
- package org.openmetadata.service.jdbi3;
+package org.openmetadata.service.jdbi3;
 
- import lombok.extern.slf4j.Slf4j;
- import org.openmetadata.schema.entity.services.SecurityService;
- import org.openmetadata.schema.entity.services.ServiceType;
- import org.openmetadata.schema.type.SecurityConnection;
- import org.openmetadata.service.Entity;
- import org.openmetadata.service.resources.services.security.SecurityServiceResource;
- 
- @Slf4j
- public class SecurityServiceRepository
-     extends ServiceEntityRepository<SecurityService, SecurityConnection> {
- 
-   public SecurityServiceRepository() {
-     super(
-         SecurityServiceResource.COLLECTION_PATH,
-         Entity.SECURITY_SERVICE,
-         Entity.getCollectionDAO().securityServiceDAO(),
-         SecurityConnection.class,
-         "",
-         ServiceType.SECURITY);
-     supportsSearch = true;
-   }
- }
- 
+import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.services.SecurityService;
+import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.type.SecurityConnection;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.services.security.SecurityServiceResource;
+
+@Slf4j
+public class SecurityServiceRepository
+    extends ServiceEntityRepository<SecurityService, SecurityConnection> {
+
+  public SecurityServiceRepository() {
+    super(
+        SecurityServiceResource.COLLECTION_PATH,
+        Entity.SECURITY_SERVICE,
+        Entity.getCollectionDAO().securityServiceDAO(),
+        SecurityConnection.class,
+        "",
+        ServiceType.SECURITY);
+    supportsSearch = true;
+  }
+}
