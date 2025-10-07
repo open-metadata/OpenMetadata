@@ -33,9 +33,8 @@ import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-c
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.svg';
-import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
-
 import {
   CONTRACT_DATE_TIME_FORMAT,
   DataContractMode,
