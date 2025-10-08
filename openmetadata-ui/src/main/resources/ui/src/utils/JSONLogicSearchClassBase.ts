@@ -21,7 +21,6 @@ import {
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
-import { TEXT_FIELD_DESCRIPTION_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
@@ -208,7 +207,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.ALL,
             entityField: EntityFields.SERVICE_NAME,
-            sourceFields: 'service.name',
+            isCaseInsensitive: true,
           }),
           useAsyncSearch: true,
         },
@@ -217,9 +216,9 @@ class JSONLogicSearchClassBase {
         label: t('label.owner-plural'),
         type: '!group',
         mode: 'some',
-        defaultField: EntityFields.FULLY_QUALIFIED_NAME,
+        defaultField: 'fullyQualifiedName',
         subfields: {
-          [EntityFields.FULLY_QUALIFIED_NAME]: {
+          fullyQualifiedName: {
             label: 'Owners',
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
@@ -228,11 +227,6 @@ class JSONLogicSearchClassBase {
               asyncFetch: advancedSearchClassBase.autocomplete({
                 searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
                 entityField: EntityFields.DISPLAY_NAME_KEYWORD,
-                sourceFields: 'displayName,fullyQualifiedName',
-                sourceFieldOptionType: {
-                  label: 'displayName',
-                  value: 'fullyQualifiedName',
-                },
               }),
               useAsyncSearch: true,
             },
@@ -273,9 +267,8 @@ class JSONLogicSearchClassBase {
       [EntityReferenceFields.DESCRIPTION]: {
         label: t('label.description'),
         type: 'text',
-        defaultOperator: 'like',
         mainWidgetProps: this.mainWidgetProps,
-        operators: TEXT_FIELD_DESCRIPTION_OPERATORS,
+        operators: TEXT_FIELD_OPERATORS,
       },
       [EntityReferenceFields.TAG]: {
         label: t('label.tag-plural'),
@@ -321,7 +314,7 @@ class JSONLogicSearchClassBase {
           },
         },
       },
-      [EntityReferenceFields.DATA_PRODUCTS]: {
+      [EntityReferenceFields.DATA_PRODUCT]: {
         label: t('label.data-product'),
         type: '!group',
         mode: 'some',
@@ -358,7 +351,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.TABLE,
             entityField: EntityFields.DATABASE_NAME,
-            sourceFields: 'database.name',
+            isCaseInsensitive: true,
           }),
           useAsyncSearch: true,
         },
@@ -373,7 +366,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.TABLE,
             entityField: EntityFields.DATABASE_SCHEMA_NAME,
-            sourceFields: 'databaseSchema.name',
+            isCaseInsensitive: true,
           }),
           useAsyncSearch: true,
         },
@@ -534,9 +527,9 @@ class JSONLogicSearchClassBase {
       ),
     };
 
-    for (const index of entitySearchIndex) {
+    entitySearchIndex.forEach((index) => {
       configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
-    }
+    });
 
     return configs;
   }
