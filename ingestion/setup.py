@@ -35,7 +35,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.0.0",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0,>=2.7.0",
+    "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
