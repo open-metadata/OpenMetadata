@@ -837,3 +837,111 @@ class TestKafkaConnectColumnLineage(TestCase):
 
             # Should return None when no column lineage can be built
             self.assertIsNone(result)
+
+
+class TestCDCTopicParsing(TestCase):
+    """Test CDC topic name parsing functionality"""
+
+    def test_parse_cdc_topic_three_parts_standard(self):
+        """Test parsing CDC topic with 3 parts: {server}.{database}.{table}"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        result = parse_cdc_topic_name("MysqlKafkaV2.ecommerce.orders", "MysqlKafkaV2")
+        self.assertEqual(result, {"database": "ecommerce", "table": "orders"})
+
+    def test_parse_cdc_topic_three_parts_postgres(self):
+        """Test parsing PostgreSQL CDC topic with schema.database.table"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        result = parse_cdc_topic_name(
+            "PostgresKafkaCDC.public.orders", "PostgresKafkaCDC"
+        )
+        self.assertEqual(result, {"database": "public", "table": "orders"})
+
+    def test_parse_cdc_topic_two_parts(self):
+        """Test parsing CDC topic with 2 parts: {database}.{table}"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        result = parse_cdc_topic_name("ecommerce.customers")
+        self.assertEqual(result, {"database": "ecommerce", "table": "customers"})
+
+    def test_parse_cdc_topic_single_part_with_server_name(self):
+        """Test parsing CDC topic with 1 part when server name is provided"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        result = parse_cdc_topic_name("orders", "MysqlKafkaV2")
+        self.assertEqual(result, {"database": "MysqlKafkaV2", "table": "orders"})
+
+    def test_parse_cdc_topic_single_part_without_server_name(self):
+        """Test parsing CDC topic with 1 part without server name returns empty"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        result = parse_cdc_topic_name("orders")
+        self.assertEqual(result, {})
+
+    def test_parse_cdc_topic_skip_internal_topics(self):
+        """Test that internal topics are skipped"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        # Kafka internal topics
+        self.assertEqual(parse_cdc_topic_name("_schemas"), {})
+        self.assertEqual(parse_cdc_topic_name("__consumer_offsets"), {})
+        self.assertEqual(parse_cdc_topic_name("dbhistory.mysql"), {})
+
+    def test_parse_cdc_topic_empty_input(self):
+        """Test parsing empty topic name returns empty dict"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        result = parse_cdc_topic_name("")
+        self.assertEqual(result, {})
+
+        result = parse_cdc_topic_name(None)
+        self.assertEqual(result, {})
+
+    def test_parse_cdc_topic_case_insensitive_server_match(self):
+        """Test that server name matching is case-insensitive"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        # Three part topic with different case
+        result = parse_cdc_topic_name("mysqlkafkav2.ecommerce.orders", "MysqlKafkaV2")
+        self.assertEqual(result, {"database": "ecommerce", "table": "orders"})
+
+        # Two part topic with different case
+        result = parse_cdc_topic_name("mysqlkafkav2.orders", "MysqlKafkaV2")
+        self.assertEqual(result, {"database": "mysqlkafkav2", "table": "orders"})
+
+    def test_parse_cdc_topic_sql_server_pattern(self):
+        """Test parsing SQL Server CDC topic patterns"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        # SQL Server typically uses dbo schema
+        result = parse_cdc_topic_name("SqlServerCDC.dbo.users", "SqlServerCDC")
+        self.assertEqual(result, {"database": "dbo", "table": "users"})
+
+    def test_parse_cdc_topic_mongodb_pattern(self):
+        """Test parsing MongoDB CDC topic patterns"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            parse_cdc_topic_name,
+        )
+
+        # MongoDB uses database.collection
+        result = parse_cdc_topic_name("MongoCDC.mydb.users", "MongoCDC")
+        self.assertEqual(result, {"database": "mydb", "table": "users"})
