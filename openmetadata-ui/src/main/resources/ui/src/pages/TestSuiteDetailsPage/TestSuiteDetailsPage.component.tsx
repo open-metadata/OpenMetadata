@@ -440,6 +440,7 @@ const TestSuiteDetailsPage = () => {
     handleSortTestCase,
     fetchTestCases,
     ingestionPipelineCount,
+    testSuitePermissions,
   ]);
 
   const selectedTestCases = useMemo(() => {
