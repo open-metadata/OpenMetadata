@@ -31,8 +31,11 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 
-SUPPORTED_DATASETS = {
-    "table": [
+
+class ConnectorConfigKeys:
+    """Configuration keys for various Kafka Connect connectors"""
+
+    TABLE_KEYS = [
         "table",
         "collection",
         "snowflake.schema.name",
@@ -45,8 +48,9 @@ SUPPORTED_DATASETS = {
         "snowflake.schema",
         "snowflake.topic2table.map",
         "fields.included",
-    ],
-    "database": [
+    ]
+
+    DATABASE_KEYS = [
         "database",
         "db.name",
         "snowflake.database.name",
@@ -55,20 +59,29 @@ SUPPORTED_DATASETS = {
         "connection.url",
         "database.dbname",
         "topic.prefix",
-        "database.server.name",
+        "database.server.name",  # Debezium V1
         "databases.include",
         "database.names",
         "snowflake.database",
         "connection.host",
         "database.exclude.list",
-    ],
-    "container_name": [
+    ]
+
+    CONTAINER_KEYS = [
         "s3.bucket.name",
         "s3.bucket",
         "gcs.bucket.name",
         "azure.container.name",
         "topics.dir",
-    ],
+    ]
+
+    TOPIC_KEYS = ["kafka.topic", "topics", "topic"]
+
+
+SUPPORTED_DATASETS = {
+    "table": ConnectorConfigKeys.TABLE_KEYS,
+    "database": ConnectorConfigKeys.DATABASE_KEYS,
+    "container_name": ConnectorConfigKeys.CONTAINER_KEYS,
 }
 
 
@@ -205,37 +218,43 @@ class KafkaConnectClient:
         Returns:
             List of KafkaConnectColumnMapping objects if mappings can be inferred
         """
+        if not connector_config or not isinstance(connector_config, dict):
+            logger.debug("Invalid connector_config: expected dict")
+            return None
+
         try:
             column_mappings = []
 
             # Check for SMT (Single Message Transform) configurations
             transforms = connector_config.get("transforms", "")
-            if transforms:
-                transform_list = [t.strip() for t in transforms.split(",")]
-                for transform in transform_list:
-                    transform_type = connector_config.get(
-                        f"transforms.{transform}.type", ""
-                    )
+            if not transforms:
+                return None
 
-                    # ReplaceField transform can rename columns
-                    if "ReplaceField" in transform_type:
-                        renames = connector_config.get(
-                            f"transforms.{transform}.renames", ""
-                        )
-                        if renames:
-                            for rename in renames.split(","):
-                                if ":" in rename:
-                                    source_col, target_col = rename.split(":", 1)
-                                    column_mappings.append(
-                                        KafkaConnectColumnMapping(
-                                            source_column=source_col.strip(),
-                                            target_column=target_col.strip(),
-                                        )
+            transform_list = [t.strip() for t in transforms.split(",")]
+            for transform in transform_list:
+                transform_type = connector_config.get(
+                    f"transforms.{transform}.type", ""
+                )
+
+                # ReplaceField transform can rename columns
+                if "ReplaceField" in transform_type:
+                    renames = connector_config.get(
+                        f"transforms.{transform}.renames", ""
+                    )
+                    if renames:
+                        for rename in renames.split(","):
+                            if ":" in rename:
+                                source_col, target_col = rename.split(":", 1)
+                                column_mappings.append(
+                                    KafkaConnectColumnMapping(
+                                        source_column=source_col.strip(),
+                                        target_column=target_col.strip(),
                                     )
+                                )
 
             return column_mappings if column_mappings else None
 
-        except Exception as exc:
+        except (KeyError, AttributeError, ValueError) as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to extract column mappings: {exc}")
 
@@ -249,31 +268,30 @@ class KafkaConnectClient:
         Checks in the connector configurations for dataset fields
         if any related field is found returns the result
         Args:
-            connector (str): The name of the connector.
+            connector_config: The connector configuration dictionary
         Returns:
-            Optional[Dict]: A dictionary containing dataset information
-                        (type, table, database, or bucket_name)
-                        if a dataset is found, or None if the connector
-                        is not found, has no dataset, or an error occurs.
+            Optional[KafkaConnectDatasetDetails]: Dataset information including
+                table, database, or container_name if found, or None otherwise
         """
-        try:
-            if not connector_config:
-                return None
+        if not connector_config or not isinstance(connector_config, dict):
+            logger.debug("Invalid connector_config: expected dict")
+            return None
 
+        try:
             result = {}
-            for dataset in SUPPORTED_DATASETS or []:
-                for key in SUPPORTED_DATASETS[dataset] or []:
+            for dataset_type, config_keys in SUPPORTED_DATASETS.items():
+                for key in config_keys:
                     if connector_config.get(key):
-                        result[dataset] = connector_config[key]
+                        result[dataset_type] = connector_config[key]
                         dataset_details = KafkaConnectDatasetDetails(**result)
                         dataset_details.column_mappings = self.extract_column_mappings(
                             connector_config
                         )
                         return dataset_details
 
-        except Exception as exc:
+        except (KeyError, ValueError, TypeError) as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Unable to get connector dataset details {exc}")
+            logger.warning(f"Unable to get connector dataset details: {exc}")
 
         return None
 
@@ -303,8 +321,7 @@ class KafkaConnectClient:
                 if config:
                     topics = []
                     # Check common topic configuration keys
-                    topic_keys = ["kafka.topic", "topics", "topic"]
-                    for key in topic_keys:
+                    for key in ConnectorConfigKeys.TOPIC_KEYS:
                         if key in config:
                             topic_value = config[key]
                             # Handle single topic or comma-separated list

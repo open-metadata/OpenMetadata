@@ -13,7 +13,7 @@ KafkaConnect source to extract metadata from OM UI
 """
 import traceback
 from datetime import datetime
-from typing import Iterable, Optional
+from typing import Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -71,6 +71,11 @@ STATUS_MAP = {
     "PAUSED": StatusType.Pending.value,
     "UNASSIGNED": StatusType.Pending.value,
 }
+
+
+def get_field_name(field_name) -> str:
+    """Extract string name from FieldName object or string."""
+    return field_name.root if hasattr(field_name, "root") else str(field_name)
 
 
 class KafkaconnectSource(PipelineServiceSource):
@@ -179,6 +184,33 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return None
 
+    def _extract_columns_from_entity(self, entity: T) -> List[str]:
+        """
+        Extract column/field names from Table or Topic entity.
+
+        Args:
+            entity: Table or Topic entity
+
+        Returns:
+            List of column/field names
+        """
+        if isinstance(entity, Table):
+            return [col.name.root for col in entity.columns or []]
+
+        if isinstance(entity, Topic) and entity.messageSchema:
+            columns = []
+            for field in entity.messageSchema.schemaFields or []:
+                if field.children:
+                    # Nested structure (e.g., Avro RECORD with children)
+                    columns.extend(
+                        [get_field_name(child.name) for child in field.children]
+                    )
+                else:
+                    columns.append(get_field_name(field.name))
+            return columns
+
+        return []
+
     def _get_topic_field_fqn(
         self, topic_entity: Topic, field_name: str
     ) -> Optional[str]:
@@ -190,15 +222,14 @@ class KafkaconnectSource(PipelineServiceSource):
             not topic_entity.messageSchema
             or not topic_entity.messageSchema.schemaFields
         ):
-            logger.debug(f"Topic {topic_entity.name.root} has no message schema")
+            logger.debug(
+                f"Topic {get_field_name(topic_entity.name)} has no message schema"
+            )
             return None
 
         # Search for the field in the schema (including nested fields)
         for field in topic_entity.messageSchema.schemaFields:
-            # Extract the actual field name (handle FieldName objects)
-            field_name_str = (
-                field.name.root if hasattr(field.name, "root") else str(field.name)
-            )
+            field_name_str = get_field_name(field.name)
 
             # Check if it's a direct field
             if field_name_str == field_name:
@@ -209,12 +240,7 @@ class KafkaconnectSource(PipelineServiceSource):
             # Check if it's a child field (nested)
             if field.children:
                 for child in field.children:
-                    child_name_str = (
-                        child.name.root
-                        if hasattr(child.name, "root")
-                        else str(child.name)
-                    )
-                    if child_name_str == field_name:
+                    if get_field_name(child.name) == field_name:
                         return (
                             child.fullyQualifiedName.root
                             if child.fullyQualifiedName
@@ -222,7 +248,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         )
 
         logger.debug(
-            f"Field {field_name} not found in topic {topic_entity.name.root} schema"
+            f"Field {field_name} not found in topic {get_field_name(topic_entity.name)} schema"
         )
         return None
 
@@ -232,7 +258,7 @@ class KafkaconnectSource(PipelineServiceSource):
         to_entity: T,
         topic_entity: Topic,
         pipeline_details: KafkaConnectPipelineDetails,
-    ) -> Optional[list[ColumnLineage]]:
+    ) -> Optional[List[ColumnLineage]]:
         """
         Build column-level lineage between source table, topic, and target table.
         For source connectors: Table columns -> Topic schema fields
@@ -240,10 +266,6 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         try:
             column_lineages = []
-
-            logger.debug(
-                f"Building column lineage for {pipeline_details.name}, type: {pipeline_details.conn_type}"
-            )
 
             # Get column mappings from connector config if available
             if pipeline_details.dataset and pipeline_details.dataset.column_mappings:
@@ -281,116 +303,57 @@ class KafkaconnectSource(PipelineServiceSource):
                     source_entity = from_entity
                     target_entity = topic_entity
 
-                # Get columns/fields from both entities
-                source_columns = []
-                target_columns = []
+                # Extract columns from both entities
+                source_columns = self._extract_columns_from_entity(source_entity)
+                target_columns = self._extract_columns_from_entity(target_entity)
 
-                if isinstance(source_entity, Table):
-                    source_columns = [
-                        col.name.root for col in source_entity.columns or []
-                    ]
-                elif isinstance(source_entity, Topic) and source_entity.messageSchema:
-                    # Handle nested Avro schema structure (e.g., top-level RECORD with children)
-                    source_columns = []
-                    for field in source_entity.messageSchema.schemaFields or []:
-                        if field.children:
-                            # If field has children, use the children names (nested structure)
-                            source_columns.extend(
-                                [
-                                    child.name.root
-                                    if hasattr(child.name, "root")
-                                    else str(child.name)
-                                    for child in field.children
-                                ]
-                            )
-                        else:
-                            # Otherwise use the field name directly
-                            source_columns.append(
-                                field.name.root
-                                if hasattr(field.name, "root")
-                                else str(field.name)
-                            )
-
-                if isinstance(target_entity, Table):
-                    target_columns = [
-                        col.name.root for col in target_entity.columns or []
-                    ]
-                elif isinstance(target_entity, Topic) and target_entity.messageSchema:
-                    # Handle nested schema structure (Avro, Protobuf, or JSONSchema with nested fields)
-                    target_columns = []
-                    for field in target_entity.messageSchema.schemaFields or []:
-                        if field.children:
-                            # If field has children, use the children names (nested structure)
-                            target_columns.extend(
-                                [
-                                    child.name.root
-                                    if hasattr(child.name, "root")
-                                    else str(child.name)
-                                    for child in field.children
-                                ]
-                            )
-                        else:
-                            # Otherwise use the field name directly
-                            target_columns.append(
-                                field.name.root
-                                if hasattr(field.name, "root")
-                                else str(field.name)
-                            )
-
-                logger.debug(
-                    f"Source entity type: {type(source_entity).__name__}, columns: {source_columns[:5] if len(source_columns) > 5 else source_columns}"
-                )
-                logger.debug(
-                    f"Target entity type: {type(target_entity).__name__}, columns: {target_columns[:5] if len(target_columns) > 5 else target_columns}"
-                )
+                # Create lookup dictionary for O(n) performance instead of O(n²)
+                target_cols_map = {str(col).lower(): col for col in target_columns}
 
                 # Match columns by name (case-insensitive)
                 for source_col_name in source_columns:
-                    for target_col_name in target_columns:
-                        if str(source_col_name).lower() == str(target_col_name).lower():
-                            try:
-                                # For Topic entities with nested schema, we need to find the full path
-                                if isinstance(source_entity, Topic):
-                                    from_col = self._get_topic_field_fqn(
-                                        source_entity, source_col_name
-                                    )
-                                else:
-                                    from_col = get_column_fqn(
-                                        table_entity=source_entity,
-                                        column=source_col_name,
-                                    )
-
-                                if isinstance(target_entity, Topic):
-                                    to_col = self._get_topic_field_fqn(
-                                        target_entity, target_col_name
-                                    )
-                                else:
-                                    to_col = get_column_fqn(
-                                        table_entity=target_entity,
-                                        column=target_col_name,
-                                    )
-
-                                if from_col and to_col:
-                                    column_lineages.append(
-                                        ColumnLineage(
-                                            fromColumns=[from_col],
-                                            toColumn=to_col,
-                                            function=None,
-                                        )
-                                    )
-                                    logger.debug(
-                                        f"Added column lineage: {from_col} -> {to_col}"
-                                    )
-                                else:
-                                    logger.debug(
-                                        f"Could not create column lineage: from_col={from_col}, to_col={to_col}"
-                                    )
-                            except Exception as exc:
-                                logger.debug(
-                                    f"Error creating column lineage for {source_col_name} -> {target_col_name}: {exc}"
+                    source_key = str(source_col_name).lower()
+                    if source_key in target_cols_map:
+                        target_col_name = target_cols_map[source_key]
+                        try:
+                            # Get fully qualified names for source and target columns
+                            if isinstance(source_entity, Topic):
+                                from_col = self._get_topic_field_fqn(
+                                    source_entity, source_col_name
+                                )
+                            else:
+                                from_col = get_column_fqn(
+                                    table_entity=source_entity,
+                                    column=source_col_name,
                                 )
 
-            logger.debug(f"Total column lineages created: {len(column_lineages)}")
+                            if isinstance(target_entity, Topic):
+                                to_col = self._get_topic_field_fqn(
+                                    target_entity, target_col_name
+                                )
+                            else:
+                                to_col = get_column_fqn(
+                                    table_entity=target_entity,
+                                    column=target_col_name,
+                                )
+
+                            if from_col and to_col:
+                                column_lineages.append(
+                                    ColumnLineage(
+                                        fromColumns=[from_col],
+                                        toColumn=to_col,
+                                        function=None,
+                                    )
+                                )
+                        except (KeyError, AttributeError) as exc:
+                            logger.debug(
+                                f"Error creating column lineage for {source_col_name} -> {target_col_name}: {exc}"
+                            )
+
+            if column_lineages:
+                logger.debug(
+                    f"Created {len(column_lineages)} column lineages for {pipeline_details.name}"
+                )
             return column_lineages if column_lineages else None
 
         except Exception as exc:

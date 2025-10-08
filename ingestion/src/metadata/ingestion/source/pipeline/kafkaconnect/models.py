@@ -46,7 +46,7 @@ class KafkaConnectDatasetDetails(BaseModel):
     table: Optional[str] = None
     database: Optional[str] = None
     container_name: Optional[str] = None
-    column_mappings: Optional[List["KafkaConnectColumnMapping"]] = Field(
+    column_mappings: List[KafkaConnectColumnMapping] = Field(
         default_factory=list, description="Column-level mappings if available"
     )
 
