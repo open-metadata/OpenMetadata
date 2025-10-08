@@ -209,6 +209,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   @Override
   public void prepare(GlossaryTerm entity, boolean update) {
+    List<EntityReference> parentReviewers = null;
     // Validate parent term
     GlossaryTerm parentTerm =
         entity.getParent() != null
@@ -216,12 +217,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
                 entity.getParent().withType(GLOSSARY_TERM), "owners,reviewers", Include.NON_DELETED)
             : null;
     if (parentTerm != null) {
+      parentReviewers = parentTerm.getReviewers();
       entity.setParent(parentTerm.getEntityReference());
     }
+
     // Validate glossary
     Glossary glossary = Entity.getEntity(entity.getGlossary(), "reviewers", Include.NON_DELETED);
     entity.setGlossary(glossary.getEntityReference());
+    parentReviewers = parentReviewers != null ? parentReviewers : glossary.getReviewers();
+
     validateHierarchy(entity);
+
     // Validate related terms
     EntityUtil.populateEntityReferences(entity.getRelatedTerms());
 
