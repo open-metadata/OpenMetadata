@@ -41,7 +41,7 @@ jobs:
         run: |
           cd ..
           make install_antlr_cli
-          pip install datamodel-code-generator==0.25.6
+          pip install datamodel-code-generator==0.34.0
           mkdir -p ingestion/src/metadata/generated
           python scripts/datamodel_generation.py
           antlr4 -Dlanguage=Python3 -o ingestion/src/metadata/generated/antlr \
