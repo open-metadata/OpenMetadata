@@ -828,13 +828,18 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 if data[0] and data[0].strip() == "Comment":
                     description = data[1] if data and data[1] else None
                 elif data[0] and data[0].strip() == "Location":
-                    self.external_location_map[
-                        (self.context.get().database, schema_name, table_name)
-                    ] = (
-                        data[1]
-                        if data and data[1] and not data[1].startswith("dbfs")
-                        else None
-                    )
+                    location_path = data[1] if data and data[1] else None
+                    if location_path and not location_path.startswith("dbfs"):
+                        self.external_location_map[
+                            (self.context.get().database, schema_name, table_name)
+                        ] = location_path
+                        logger.info(
+                            f"Captured external location for table {self.context.get().database}.{schema_name}.{table_name}: {location_path}"
+                        )
+                    else:
+                        logger.debug(
+                            f"Skipped location for table {schema_name}.{table_name}: {location_path} (DBFS or empty)"
+                        )
 
         # Catch any exception without breaking the ingestion
         except Exception as exc:  # pylint: disable=broad-except

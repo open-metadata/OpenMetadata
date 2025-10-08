@@ -43,12 +43,19 @@ class ExternalTableLineageMixin(ABC):
         """
         Yield external table lineage
         """
+        logger.info(
+            f"Processing external table lineage for {len(self.external_location_map)} tables with external locations"
+        )
         for table_qualified_tuple, location in self.external_location_map.items() or []:
             try:
+                database_name, schema_name, table_name = table_qualified_tuple
+                logger.info(
+                    f"Searching for container with path: {location} for table {database_name}.{schema_name}.{table_name}"
+                )
+
                 location_entity = self.metadata.es_search_container_by_path(
                     full_path=location, fields="dataModel"
                 )
-                database_name, schema_name, table_name = table_qualified_tuple
 
                 table_fqn = fqn.build(
                     self.metadata,
@@ -64,38 +71,62 @@ class ExternalTableLineageMixin(ABC):
                     fqn_search_string=table_fqn,
                 )
 
-                if (
-                    location_entity
-                    and location_entity[0]
-                    and table_entity
-                    and table_entity[0]
-                ):
-                    columns_list = [
-                        column.name.root for column in table_entity[0].columns
-                    ]
-                    columns_lineage = self._get_column_lineage(
-                        location_entity[0].dataModel, table_entity[0], columns_list
+                if not location_entity or len(location_entity) == 0:
+                    logger.warning(
+                        f"No container found with path '{location}' for table {database_name}.{schema_name}.{table_name}"
                     )
-                    yield Either(
-                        right=AddLineageRequest(
-                            edge=EntitiesEdge(
-                                fromEntity=EntityReference(
-                                    id=location_entity[0].id,
-                                    type="container",
-                                ),
-                                toEntity=EntityReference(
-                                    id=table_entity[0].id,
-                                    type="table",
-                                ),
-                                lineageDetails=LineageDetails(
-                                    source=LineageSource.ExternalTableLineage,
-                                    columnsLineage=columns_lineage,
-                                ),
-                            )
+                    continue
+
+                if not table_entity or len(table_entity) == 0:
+                    logger.warning(f"Table entity not found in ES: {table_fqn}")
+                    continue
+
+                container_entity = location_entity[0]
+                table_entity_obj = table_entity[0]
+
+                logger.info(
+                    f"Found container {container_entity.fullyQualifiedName.root if container_entity.fullyQualifiedName else container_entity.name.root} "
+                    f"for table {table_fqn}"
+                )
+
+                columns_list = [column.name.root for column in table_entity_obj.columns]
+                columns_lineage = self._get_column_lineage(
+                    container_entity.dataModel, table_entity_obj, columns_list
+                )
+
+                if columns_lineage:
+                    logger.info(
+                        f"Created lineage with {len(columns_lineage)} column mappings between "
+                        f"container and table {database_name}.{schema_name}.{table_name}"
+                    )
+                else:
+                    logger.info(
+                        f"Created lineage without column mappings (container has no dataModel or columns don't match) "
+                        f"for table {database_name}.{schema_name}.{table_name}"
+                    )
+
+                yield Either(
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=container_entity.id,
+                                type="container",
+                            ),
+                            toEntity=EntityReference(
+                                id=table_entity_obj.id,
+                                type="table",
+                            ),
+                            lineageDetails=LineageDetails(
+                                source=LineageSource.ExternalTableLineage,
+                                columnsLineage=columns_lineage,
+                            ),
                         )
                     )
+                )
             except Exception as exc:
-                logger.warning(f"Failed to yield external table lineage due to - {exc}")
+                logger.warning(
+                    f"Failed to yield external table lineage for {table_qualified_tuple} with location {location}: {exc}"
+                )
                 logger.debug(traceback.format_exc())
 
     def _get_data_model_column_fqn(
