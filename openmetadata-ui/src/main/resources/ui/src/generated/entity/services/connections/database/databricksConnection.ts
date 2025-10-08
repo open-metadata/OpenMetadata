@@ -43,6 +43,25 @@ export interface DatabricksConnection {
      */
     databaseSchema?: string;
     /**
+     * Enable lineage between Unity Catalog external tables and their corresponding storage
+     * containers (S3, ADLS, GCS).
+     */
+    enableExternalLocationLineage?: boolean;
+    /**
+     * Enrich external location metadata using information_schema.external_locations.
+     */
+    enableExternalMetadataEnrichment?: boolean;
+    /**
+     * Use system.access.table_lineage to discover external table locations based on usage
+     * patterns.
+     */
+    enableSystemTableLineage?: boolean;
+    /**
+     * Number of days to look back in system.access.table_lineage for discovering external table
+     * locations.
+     */
+    externalLineageLookbackDays?: number;
+    /**
      * Host and port of the Databricks service.
      */
     hostPort: string;
