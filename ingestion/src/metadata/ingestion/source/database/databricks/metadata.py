@@ -50,6 +50,8 @@ from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
+    DATABRICKS_GET_EXTERNAL_LOCATION_LINEAGE,
+    DATABRICKS_GET_EXTERNAL_LOCATIONS,
     DATABRICKS_GET_SCHEMA_COMMENTS,
     DATABRICKS_GET_SCHEMA_TAGS,
     DATABRICKS_GET_TABLE_COMMENTS,
@@ -79,6 +81,56 @@ logger = ingestion_logger()
 DATABRICKS_TAG = "DATABRICKS TAG"
 DATABRICKS_TAG_CLASSIFICATION = "DATABRICKS TAG CLASSIFICATION"
 DEFAULT_TAG_VALUE = "NONE"
+
+INTERNAL_STORAGE_PREFIXES = ("dbfs:", "dbfs/", "file:", "/dbfs/")
+
+
+def normalize_storage_path(path: str) -> Optional[str]:
+    """
+    Normalize storage path for consistent matching with containers.
+
+    - Removes trailing slashes
+    - Preserves case for object storage paths (S3, GCS, Azure are case-sensitive for paths)
+    - Handles empty/None paths
+
+    Args:
+        path: Storage path (e.g., s3://bucket/path/)
+
+    Returns:
+        Normalized path or None
+    """
+    if not path:
+        return None
+    return path.rstrip("/")
+
+
+def get_base_path_from_partitioned_path(path: str) -> Optional[str]:
+    """
+    Extract base path from a partitioned table path.
+
+    Partitioned tables often have paths with partition segments like:
+    - s3://bucket/data/year=2025/month=10/ -> s3://bucket/data
+    - s3://bucket/data/dt=2025-10-07/ -> s3://bucket/data
+
+    Args:
+        path: Full storage path that may contain partition segments
+
+    Returns:
+        Base path without partition segments, or None if path is invalid
+    """
+    if not path:
+        return None
+
+    import re
+
+    partition_pattern = re.compile(r"/[a-zA-Z_][a-zA-Z0-9_]*=")
+
+    match = partition_pattern.search(path)
+    if match:
+        base_path = path[: match.start()]
+        return normalize_storage_path(base_path)
+
+    return None
 
 
 class STRUCT(String):
@@ -456,6 +508,8 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.schema_tags = {}
         self.table_tags = {}
         self.external_location_map = {}
+        self.external_location_lineage_map = {}
+        self.external_locations_metadata = {}
         self.column_tags = {}
 
     def _init_version(self):
@@ -603,6 +657,10 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         if configured_catalog:
             self.set_inspector(database_name=configured_catalog)
             self.populate_tags_cache(database_name=configured_catalog)
+            self.populate_external_location_lineage_cache(
+                catalog_name=configured_catalog
+            )
+            self.populate_external_locations_metadata()
             yield configured_catalog
         else:
             for new_catalog in self.get_database_names_raw():
@@ -625,6 +683,10 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 try:
                     self.set_inspector(database_name=new_catalog)
                     self.populate_tags_cache(database_name=new_catalog)
+                    self.populate_external_location_lineage_cache(
+                        catalog_name=new_catalog
+                    )
+                    self.populate_external_locations_metadata()
                     yield new_catalog
                 except Exception as exc:
                     logger.error(traceback.format_exc())
@@ -829,16 +891,21 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                     description = data[1] if data and data[1] else None
                 elif data[0] and data[0].strip() == "Location":
                     location_path = data[1] if data and data[1] else None
-                    if location_path and not location_path.startswith("dbfs"):
-                        self.external_location_map[
-                            (self.context.get().database, schema_name, table_name)
-                        ] = location_path
-                        logger.info(
-                            f"Captured external location for table {self.context.get().database}.{schema_name}.{table_name}: {location_path}"
-                        )
+                    if location_path and not any(
+                        location_path.startswith(prefix)
+                        for prefix in INTERNAL_STORAGE_PREFIXES
+                    ):
+                        normalized_path = normalize_storage_path(location_path)
+                        if normalized_path:
+                            self.external_location_map[
+                                (self.context.get().database, schema_name, table_name)
+                            ] = normalized_path
+                            logger.info(
+                                f"Captured external location for table {self.context.get().database}.{schema_name}.{table_name}: {normalized_path}"
+                            )
                     else:
                         logger.debug(
-                            f"Skipped location for table {schema_name}.{table_name}: {location_path} (DBFS or empty)"
+                            f"Skipped location for table {schema_name}.{table_name}: {location_path} (internal storage or empty)"
                         )
 
         # Catch any exception without breaking the ingestion
@@ -856,6 +923,100 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         return self.external_location_map.get(
             (self.context.get().database, schema_name, table_name)
         )
+
+    def get_base_path_from_partitioned_path(self, path: str) -> Optional[str]:
+        """
+        Extract base path from a partitioned table path.
+        Delegates to module-level function.
+        """
+        return get_base_path_from_partitioned_path(path)
+
+    def populate_external_location_lineage_cache(
+        self, catalog_name: str, lookback_days: int = 90
+    ) -> None:
+        """
+        Fetch external location lineage from system.access.table_lineage
+        where source_type = 'PATH'. This captures actual usage-based lineage.
+        """
+        try:
+            query = DATABRICKS_GET_EXTERNAL_LOCATION_LINEAGE.format(
+                catalog=catalog_name, days=lookback_days
+            )
+            logger.info(
+                f"Fetching external location lineage from system tables for catalog: {catalog_name}"
+            )
+
+            results = self.connection.execute(query)
+            count = 0
+
+            for row in results:
+                source_path = row.source_path
+                target_catalog = row.target_table_catalog
+                target_schema = row.target_table_schema
+                target_table = row.target_table_name
+
+                if source_path and not any(
+                    source_path.startswith(prefix)
+                    for prefix in INTERNAL_STORAGE_PREFIXES
+                ):
+                    normalized_path = normalize_storage_path(source_path)
+                    if normalized_path:
+                        table_key = (target_catalog, target_schema, target_table)
+                        self.external_location_lineage_map[table_key] = normalized_path
+                        count += 1
+
+                        logger.debug(
+                            f"Captured external lineage: {normalized_path} -> {target_catalog}.{target_schema}.{target_table}"
+                        )
+
+            logger.info(
+                f"Populated external location lineage cache with {count} entries from system tables"
+            )
+
+        except Exception as exc:
+            logger.warning(
+                f"Failed to populate external location lineage cache for catalog {catalog_name}: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+
+    def populate_external_locations_metadata(self) -> None:
+        """
+        Fetch external locations metadata from information_schema.external_locations.
+        This provides additional context like owner, credentials, and comments.
+        """
+        try:
+            query = DATABRICKS_GET_EXTERNAL_LOCATIONS
+            logger.info("Fetching external locations metadata")
+
+            results = self.connection.execute(query)
+            count = 0
+
+            for row in results:
+                location_name = row.external_location_name
+                url = row.url
+                normalized_url = normalize_storage_path(url) if url else None
+
+                if normalized_url:
+                    self.external_locations_metadata[normalized_url] = {
+                        "name": location_name,
+                        "url": url,
+                        "credential": row.storage_credential_name,
+                        "owner": row.external_location_owner,
+                        "comment": row.comment,
+                    }
+                    count += 1
+
+                    logger.debug(
+                        f"Captured external location metadata: {location_name} -> {url}"
+                    )
+
+            logger.info(
+                f"Populated external locations metadata cache with {count} entries"
+            )
+
+        except Exception as exc:
+            logger.warning(f"Failed to populate external locations metadata: {exc}")
+            logger.debug(traceback.format_exc())
 
     def _filter_owner_name(self, owner_name: str) -> str:
         """remove unnecessary keyword from name"""

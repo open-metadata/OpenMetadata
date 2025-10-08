@@ -41,12 +41,31 @@ class ExternalTableLineageMixin(ABC):
 
     def yield_external_table_lineage(self) -> Iterable[AddLineageRequest]:
         """
-        Yield external table lineage
+        Yield external table lineage from multiple sources:
+        1. system.access.table_lineage (usage-based lineage)
+        2. DESCRIBE TABLE EXTENDED (table metadata)
         """
+        merged_locations = {}
+
+        if hasattr(self, "external_location_lineage_map"):
+            merged_locations.update(self.external_location_lineage_map)
+            logger.info(
+                f"Found {len(self.external_location_lineage_map)} external locations from system.access.table_lineage"
+            )
+
+        if hasattr(self, "external_location_map"):
+            for key, value in self.external_location_map.items():
+                if key not in merged_locations:
+                    merged_locations[key] = value
+            logger.info(
+                f"Found {len(self.external_location_map)} external locations from DESCRIBE TABLE"
+            )
+
         logger.info(
-            f"Processing external table lineage for {len(self.external_location_map)} tables with external locations"
+            f"Processing external table lineage for {len(merged_locations)} tables with external locations (merged from all sources)"
         )
-        for table_qualified_tuple, location in self.external_location_map.items() or []:
+
+        for table_qualified_tuple, location in merged_locations.items() or []:
             try:
                 database_name, schema_name, table_name = table_qualified_tuple
                 logger.info(
@@ -56,6 +75,22 @@ class ExternalTableLineageMixin(ABC):
                 location_entity = self.metadata.es_search_container_by_path(
                     full_path=location, fields="dataModel"
                 )
+
+                if (not location_entity or len(location_entity) == 0) and hasattr(
+                    self, "get_base_path_from_partitioned_path"
+                ):
+                    base_path = self.get_base_path_from_partitioned_path(location)
+                    if base_path:
+                        logger.info(
+                            f"No container found with full path, trying base path: {base_path}"
+                        )
+                        location_entity = self.metadata.es_search_container_by_path(
+                            full_path=base_path, fields="dataModel"
+                        )
+                        if location_entity and len(location_entity) > 0:
+                            logger.info(
+                                f"Found container using base path for partitioned table {database_name}.{schema_name}.{table_name}"
+                            )
 
                 table_fqn = fqn.build(
                     self.metadata,
@@ -89,12 +124,28 @@ class ExternalTableLineageMixin(ABC):
                     f"for table {table_fqn}"
                 )
 
+                if hasattr(self, "external_locations_metadata"):
+                    external_loc_metadata = self.external_locations_metadata.get(
+                        location
+                    )
+                    if external_loc_metadata:
+                        logger.info(
+                            f"External location metadata found: {external_loc_metadata.get('name')} "
+                            f"(owner: {external_loc_metadata.get('owner')}, "
+                            f"credential: {external_loc_metadata.get('credential')})"
+                        )
+
                 columns_list = [column.name.root for column in table_entity_obj.columns]
                 columns_lineage = self._get_column_lineage(
                     container_entity.dataModel, table_entity_obj, columns_list
                 )
 
                 if columns_lineage:
+                    if len(columns_lineage) < len(columns_list):
+                        logger.warning(
+                            f"Partial column match: {len(columns_lineage)}/{len(columns_list)} columns matched "
+                            f"between container and table {database_name}.{schema_name}.{table_name}"
+                        )
                     logger.info(
                         f"Created lineage with {len(columns_lineage)} column mappings between "
                         f"container and table {database_name}.{schema_name}.{table_name}"

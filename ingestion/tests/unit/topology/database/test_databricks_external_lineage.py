@@ -502,3 +502,192 @@ class TestDatabricksExternalLineage(TestCase):
         lineage_requests = list(self.databricks_source.yield_external_table_lineage())
 
         self.assertEqual(0, len(lineage_requests))
+
+    def test_normalize_storage_path(self):
+        """Test path normalization"""
+        from metadata.ingestion.source.database.databricks.metadata import (
+            normalize_storage_path,
+        )
+
+        self.assertEqual(
+            "s3://bucket/path", normalize_storage_path("s3://bucket/path/")
+        )
+        self.assertEqual(
+            "s3://bucket/path", normalize_storage_path("s3://bucket/path///")
+        )
+        self.assertEqual("s3://bucket/path", normalize_storage_path("s3://bucket/path"))
+        self.assertIsNone(normalize_storage_path(""))
+        self.assertIsNone(normalize_storage_path(None))
+
+    def test_get_base_path_from_partitioned_path(self):
+        """Test extraction of base path from partitioned paths"""
+        from metadata.ingestion.source.database.databricks.metadata import (
+            get_base_path_from_partitioned_path,
+        )
+
+        self.assertEqual(
+            "s3://bucket/data",
+            get_base_path_from_partitioned_path("s3://bucket/data/year=2025/month=10/"),
+        )
+        self.assertEqual(
+            "s3://bucket/data",
+            get_base_path_from_partitioned_path("s3://bucket/data/dt=2025-10-07/"),
+        )
+        self.assertEqual(
+            "abfss://container@account.dfs.core.windows.net/data",
+            get_base_path_from_partitioned_path(
+                "abfss://container@account.dfs.core.windows.net/data/year=2025/"
+            ),
+        )
+        self.assertIsNone(
+            get_base_path_from_partitioned_path("s3://bucket/data/no/partitions/")
+        )
+        self.assertIsNone(get_base_path_from_partitioned_path(""))
+        self.assertIsNone(get_base_path_from_partitioned_path(None))
+
+    def test_yield_external_table_lineage_partitioned_path_fallback(self):
+        """Test lineage creation with partitioned path fallback"""
+        self.databricks_source.external_location_map = {
+            ("main", "dev", "partitioned_table"): "s3://bucket/data/year=2025/month=10/"
+        }
+
+        mock_metadata = Mock()
+
+        def mock_search_by_path(full_path, fields=None):
+            if full_path == "s3://bucket/data/year=2025/month=10":
+                return []
+            elif full_path == "s3://bucket/data":
+                return [MOCK_CONTAINER_WITH_DATAMODEL]
+            return []
+
+        mock_metadata.es_search_container_by_path = mock_search_by_path
+        mock_metadata.es_search_from_fqn = Mock(return_value=[MOCK_TABLE])
+        self.databricks_source.metadata = mock_metadata
+
+        lineage_requests = list(self.databricks_source.yield_external_table_lineage())
+
+        self.assertEqual(1, len(lineage_requests))
+        lineage = lineage_requests[0].right
+        self.assertIsNotNone(lineage.edge.lineageDetails.columnsLineage)
+
+    def test_populate_external_location_lineage_cache(self):
+        """Test populating external location lineage cache from system tables"""
+        from unittest.mock import MagicMock, PropertyMock
+
+        mock_result = [
+            MagicMock(
+                source_type="PATH",
+                source_path="s3://bucket/data/",
+                target_table_catalog="main",
+                target_table_schema="dev",
+                target_table_name="table1",
+            ),
+            MagicMock(
+                source_type="PATH",
+                source_path="dbfs:/internal/path",
+                target_table_catalog="main",
+                target_table_schema="dev",
+                target_table_name="table2",
+            ),
+        ]
+
+        mock_connection = Mock()
+        mock_connection.execute = Mock(return_value=mock_result)
+
+        with patch.object(
+            type(self.databricks_source), "connection", new_callable=PropertyMock
+        ) as mock_conn_prop:
+            mock_conn_prop.return_value = mock_connection
+
+            self.databricks_source.populate_external_location_lineage_cache(
+                catalog_name="main"
+            )
+
+            self.assertEqual(
+                1, len(self.databricks_source.external_location_lineage_map)
+            )
+            self.assertEqual(
+                "s3://bucket/data",
+                self.databricks_source.external_location_lineage_map[
+                    ("main", "dev", "table1")
+                ],
+            )
+
+    def test_populate_external_locations_metadata(self):
+        """Test populating external locations metadata from information schema"""
+        from unittest.mock import MagicMock, PropertyMock
+
+        mock_result = [
+            MagicMock(
+                external_location_name="s3_location",
+                url="s3://bucket/data/",
+                storage_credential_name="s3_cred",
+                external_location_owner="admin",
+                comment="Test location",
+            )
+        ]
+
+        mock_connection = Mock()
+        mock_connection.execute = Mock(return_value=mock_result)
+
+        with patch.object(
+            type(self.databricks_source), "connection", new_callable=PropertyMock
+        ) as mock_conn_prop:
+            mock_conn_prop.return_value = mock_connection
+
+            self.databricks_source.populate_external_locations_metadata()
+
+            self.assertEqual(1, len(self.databricks_source.external_locations_metadata))
+            metadata = self.databricks_source.external_locations_metadata[
+                "s3://bucket/data"
+            ]
+            self.assertEqual("s3_location", metadata["name"])
+            self.assertEqual("admin", metadata["owner"])
+            self.assertEqual("s3_cred", metadata["credential"])
+
+    def test_yield_external_table_lineage_merged_sources(self):
+        """Test lineage creation with merged sources (system tables + DESCRIBE TABLE)"""
+        self.databricks_source.external_location_map = {
+            ("main", "dev", "table1"): "s3://bucket/path1"
+        }
+        self.databricks_source.external_location_lineage_map = {
+            ("main", "dev", "table2"): "s3://bucket/path2",
+            ("main", "dev", "table1"): "s3://bucket/path1",
+        }
+
+        mock_metadata = Mock()
+        mock_metadata.es_search_container_by_path = Mock(
+            return_value=[MOCK_CONTAINER_WITH_DATAMODEL]
+        )
+        mock_metadata.es_search_from_fqn = Mock(return_value=[MOCK_TABLE])
+        self.databricks_source.metadata = mock_metadata
+
+        lineage_requests = list(self.databricks_source.yield_external_table_lineage())
+
+        self.assertEqual(2, len(lineage_requests))
+
+    def test_yield_external_table_lineage_with_metadata_enrichment(self):
+        """Test lineage creation with external location metadata enrichment"""
+        self.databricks_source.external_location_map = {
+            ("main", "dev", "table1"): "s3://bucket/path"
+        }
+        self.databricks_source.external_locations_metadata = {
+            "s3://bucket/path": {
+                "name": "s3_location",
+                "url": "s3://bucket/path",
+                "credential": "s3_cred",
+                "owner": "admin",
+                "comment": "Test",
+            }
+        }
+
+        mock_metadata = Mock()
+        mock_metadata.es_search_container_by_path = Mock(
+            return_value=[MOCK_CONTAINER_WITH_DATAMODEL]
+        )
+        mock_metadata.es_search_from_fqn = Mock(return_value=[MOCK_TABLE])
+        self.databricks_source.metadata = mock_metadata
+
+        lineage_requests = list(self.databricks_source.yield_external_table_lineage())
+
+        self.assertEqual(1, len(lineage_requests))

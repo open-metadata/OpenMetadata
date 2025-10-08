@@ -115,6 +115,40 @@ DATABRICKS_GET_COLUMN_LINEAGE_FOR_JOB = textwrap.dedent(
     """
 )
 
+DATABRICKS_GET_EXTERNAL_LOCATION_LINEAGE = textwrap.dedent(
+    """
+    SELECT DISTINCT
+        source_type,
+        source_path,
+        target_table_full_name,
+        target_table_catalog,
+        target_table_schema,
+        target_table_name,
+        max(event_time) as last_updated
+    FROM system.access.table_lineage
+    WHERE source_type = 'PATH'
+        AND source_path IS NOT NULL
+        AND target_table_catalog = '{catalog}'
+        AND event_time >= current_date() - INTERVAL {days} DAYS
+    GROUP BY
+        source_type, source_path,
+        target_table_full_name, target_table_catalog,
+        target_table_schema, target_table_name
+    """
+)
+
+DATABRICKS_GET_EXTERNAL_LOCATIONS = textwrap.dedent(
+    """
+    SELECT
+        external_location_name,
+        url,
+        storage_credential_name,
+        external_location_owner,
+        comment
+    FROM information_schema.external_locations
+    """
+)
+
 # Test connection queries
 TEST_VIEW_DEFINITIONS = textwrap.dedent(
     """
@@ -172,6 +206,22 @@ TEST_COLUMN_LINEAGE = textwrap.dedent(
     """
     SELECT COUNT(*) as count
     FROM system.access.column_lineage
+    WHERE 1=0
+    """
+)
+
+TEST_EXTERNAL_LOCATION_LINEAGE = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM system.access.table_lineage
+    WHERE 1=0
+    """
+)
+
+TEST_EXTERNAL_LOCATIONS = textwrap.dedent(
+    """
+    SELECT COUNT(*) as count
+    FROM information_schema.external_locations
     WHERE 1=0
     """
 )
