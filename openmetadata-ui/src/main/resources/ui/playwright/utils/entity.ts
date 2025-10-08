@@ -41,32 +41,13 @@ import { sidebarClick } from './sidebar';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
-  dataTestId = 'loader'
+  dataTestId = 'loader',
+  timeout = 5000
 ) => {
-  await page.waitForLoadState('networkidle');
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const allLoaders = page.locator(`[data-testid="${dataTestId}"]`);
-    const count = await allLoaders.count();
-
-    let allLoadersGone = true;
-
-    for (let i = 0; i < count; i++) {
-      const loader = allLoaders.nth(i);
-      try {
-        if (await loader.isVisible()) {
-          await loader.waitFor({ state: 'detached', timeout: 1000 });
-          allLoadersGone = false;
-        }
-      } catch {
-        // Do nothing
-      }
-    }
-
-    if (allLoadersGone) {
-      break;
-    }
-    await page.waitForTimeout(100); // slight buffer before next retry
-  }
+  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
+    state: 'detached',
+    timeout,
+  });
 };
 
 export const visitEntityPage = async (data: {
