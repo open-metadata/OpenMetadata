@@ -3,20 +3,21 @@
 # that replicate data from MySQL to PostgreSQL via Kafka
 
 source:
-  type: confluentcdc
+  type: kafkaconnect
   serviceName: confluent_cloud_cdc_production
   serviceConnection:
     config:
-      type: ConfluentCDC
+      type: KafkaConnect
       # Confluent Cloud Kafka Connect REST API endpoint
       hostPort: https://pkc-xxxxx.us-east-1.aws.confluent.cloud:443
 
       # Confluent Cloud API Key authentication
-      confluentCdcConfig:
-        apiKey: YOUR_CONFLUENT_CLOUD_API_KEY
-        apiSecret: YOUR_CONFLUENT_CLOUD_API_SECRET
+      KafkaConnectConfig:
+        username: YOUR_CONFLUENT_CLOUD_API_KEY
+        password: YOUR_CONFLUENT_CLOUD_API_SECRET
 
       verifySSL: true
+      messagingServiceName: KafkaCloudProd
 
       # Filter to include only production CDC connectors
       pipelineFilterPattern:
@@ -30,6 +31,11 @@ source:
   sourceConfig:
     config:
       type: PipelineMetadata
+      lineageInformation:
+        dbServiceNames:
+          - "MysqlProd"
+          - "PostgresProd"
+        storageServiceNames: []
 
 sink:
   type: metadata-rest

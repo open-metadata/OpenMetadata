@@ -1,26 +1,27 @@
 source:
-  type: confluentcdc
+  type: kafkaconnect
   serviceName: confluent_cdc_mysql_postgres
   serviceConnection:
     config:
-      type: ConfluentCDC
+      type: KafkaConnect
       hostPort: http://localhost:8083
-      # For Confluent CDC, choose one of the following authentication methods:
+      # For Kafka Connect, choose one of the following authentication methods:
 
       # Option 1: Username/Password Authentication (for self-hosted Kafka Connect)
-      confluentCdcConfig:
+      KafkaConnectConfig:
         username: admin
         password: admin_password
 
       # Option 2: API Key Authentication (for Confluent Cloud)
-      # confluentCdcConfig:
-      #   apiKey: YOUR_CONFLUENT_CLOUD_API_KEY
-      #   apiSecret: YOUR_CONFLUENT_CLOUD_API_SECRET
+      # KafkaConnectConfig:
+      #   username: YOUR_CONFLUENT_CLOUD_API_KEY
+      #   password: YOUR_CONFLUENT_CLOUD_API_SECRET
 
       # Option 3: No Authentication
-      # confluentCdcConfig: null
+      # KafkaConnectConfig: null
 
       verifySSL: true
+      messagingServiceName: KafkaProd
 
       # Optional: Filter CDC connectors/pipelines using regex patterns
       # pipelineFilterPattern:
@@ -34,9 +35,11 @@ source:
   sourceConfig:
     config:
       type: PipelineMetadata
-      # Note: You don't need to specify dbServiceNames or messagingServiceName
-      # The connector will automatically discover MySQL, Postgres, and Kafka services
-      # by their service types and match tables/topics across all available services
+      lineageInformation:
+        dbServiceNames:
+          - "MysqlProd"
+          - "PostgresProd"
+        storageServiceNames: []
 
 sink:
   type: metadata-rest
@@ -58,7 +61,7 @@ workflowConfig:
 # 2. MySQL database service already ingested into OpenMetadata
 # 3. Postgres database service already ingested into OpenMetadata
 # 4. Kafka messaging service already ingested into OpenMetadata
-# 5. Confluent CDC connectors configured and running
+# 5. Kafka Connect connectors configured and running
 #
 # The connector will create:
 # - Pipeline entities for each CDC connector

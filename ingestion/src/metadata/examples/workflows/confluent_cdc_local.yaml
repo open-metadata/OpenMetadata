@@ -6,27 +6,33 @@
 # - Local Kafka broker
 
 source:
-  type: confluentcdc
+  type: kafkaconnect
   serviceName: local_cdc_dev
   serviceConnection:
     config:
-      type: ConfluentCDC
+      type: KafkaConnect
       # Local Kafka Connect REST API
       hostPort: http://localhost:8083
 
       # No authentication for local development
-      # confluentCdcConfig: null
+      # KafkaConnectConfig: null
 
       # Or use basic auth if configured
-      confluentCdcConfig:
+      KafkaConnectConfig:
         username: connect-user
         password: connect-password
 
       verifySSL: false  # Typically disabled for local development
+      messagingServiceName: KafkaLocal
 
   sourceConfig:
     config:
       type: PipelineMetadata
+      lineageInformation:
+        dbServiceNames:
+          - "MysqlLocal"
+          - "PostgresLocal"
+        storageServiceNames: []
 
 sink:
   type: metadata-rest
