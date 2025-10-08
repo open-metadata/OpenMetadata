@@ -1,0 +1,581 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import {
+  ArrowBack as ArrowBackIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  KeyboardArrowUp as ArrowUpIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
+} from '@mui/icons-material';
+import {
+  Avatar,
+  Box,
+  Chip,
+  IconButton,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemButton,
+  ListItemText,
+  Menu,
+  MenuItem,
+  Popover,
+  TextField,
+  Typography,
+} from '@mui/material';
+import { AxiosError } from 'axios';
+import { debounce, isEmpty, startCase } from 'lodash';
+import React, { useCallback, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { EntityType } from '../../../../enums/entity.enum';
+import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
+import {
+  EntityReference,
+  TestCaseFailureReasonType,
+  TestCaseResolutionStatusTypes,
+} from '../../../../generated/tests/testCaseResolutionStatus';
+import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { Option } from '../../../../pages/TasksPage/TasksPage.interface';
+import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
+import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
+import {
+  getEntityName,
+  getEntityReferenceFromEntity,
+} from '../../../../utils/EntityUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
+import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
+
+interface InlineTestCaseIncidentStatusProps {
+  data: TestCaseStatusIncidentManagerProps['data'];
+  hasEditPermission: boolean;
+  onSubmit: TestCaseStatusIncidentManagerProps['onSubmit'];
+}
+
+const STATUS_COLORS: Record<
+  string,
+  { bg: string; color: string; border: string }
+> = {
+  New: { bg: '#E1D3FF', color: '#7147E8', border: '#7147E8' },
+  Ack: { bg: '#EBF6FE', color: '#3DA2F3', border: '#3DA2F3' },
+  Assigned: { bg: '#FFF6E1', color: '#D99601', border: '#D99601' },
+  Resolved: { bg: '#E8F5E9', color: '#4CAF50', border: '#81C784' },
+};
+
+const InlineTestCaseIncidentStatus = ({
+  data,
+  hasEditPermission,
+  onSubmit,
+}: InlineTestCaseIncidentStatusProps) => {
+  const { t } = useTranslation();
+  const { currentUser } = useApplicationStore();
+  const chipRef = React.useRef<HTMLDivElement>(null);
+  const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
+  const [showAssigneePopover, setShowAssigneePopover] = useState(false);
+  const [showResolvedPopover, setShowResolvedPopover] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [userOptions, setUserOptions] = useState<Option[]>([]);
+  const [selectedAssignee, setSelectedAssignee] =
+    useState<EntityReference | null>(
+      data?.testCaseResolutionStatusDetails?.assignee ?? null
+    );
+  const [selectedReason, setSelectedReason] =
+    useState<TestCaseFailureReasonType | null>(null);
+  const [comment, setComment] = useState('');
+
+  const statusType = data.testCaseResolutionStatusType;
+
+  const initialOptions = useMemo(() => {
+    const assignee = data?.testCaseResolutionStatusDetails?.assignee;
+    if (assignee) {
+      return [
+        {
+          label: getEntityName(assignee),
+          value: assignee.id || '',
+          type: assignee.type,
+          name: assignee.name,
+          displayName: assignee.displayName,
+        },
+      ];
+    }
+
+    return [];
+  }, [data?.testCaseResolutionStatusDetails?.assignee]);
+
+  const searchUsers = useCallback(
+    async (query: string) => {
+      try {
+        const res = await getUserAndTeamSearch(query, true);
+        const hits = res.data.hits.hits;
+        const suggestOptions: Option[] = hits.map((hit) => ({
+          label: getEntityName(hit._source),
+          value: hit._id ?? '',
+          type: hit._source.entityType,
+          name: hit._source.name,
+          displayName: hit._source.displayName,
+        }));
+
+        // If there's an assigned user and it's not in the results, add it at the top
+        if (initialOptions.length > 0) {
+          const assigneeId = initialOptions[0].value;
+          const isAssigneeInResults = suggestOptions.some(
+            (opt) => opt.value === assigneeId
+          );
+          if (!isAssigneeInResults) {
+            setUserOptions([initialOptions[0], ...suggestOptions]);
+          } else {
+            // Move assignee to top
+            const filteredOptions = suggestOptions.filter(
+              (opt) => opt.value !== assigneeId
+            );
+            setUserOptions([initialOptions[0], ...filteredOptions]);
+          }
+        } else {
+          setUserOptions(suggestOptions);
+        }
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      }
+    },
+    [initialOptions]
+  );
+
+  const debouncedSearch = useMemo(
+    () => debounce(searchUsers, 300),
+    [searchUsers]
+  );
+
+  const handleSearchUsers = useCallback(
+    (query: string) => {
+      if (isEmpty(query)) {
+        // When search is cleared, trigger search with empty query to get default results
+        searchUsers('');
+      } else {
+        debouncedSearch(query);
+      }
+    },
+    [debouncedSearch, searchUsers]
+  );
+
+  const submitStatusChange = useCallback(
+    async (
+      status: TestCaseResolutionStatusTypes,
+      additionalData?: {
+        assignee?: EntityReference;
+        reason?: TestCaseFailureReasonType;
+        comment?: string;
+      }
+    ) => {
+      setIsLoading(true);
+      const updatedData: CreateTestCaseResolutionStatus = {
+        testCaseResolutionStatusType: status,
+        testCaseReference: data.testCaseReference?.fullyQualifiedName ?? '',
+      };
+
+      if (
+        status === TestCaseResolutionStatusTypes.Assigned &&
+        additionalData?.assignee
+      ) {
+        updatedData.testCaseResolutionStatusDetails = {
+          assignee: {
+            name: additionalData.assignee.name,
+            displayName: additionalData.assignee.displayName,
+            id: additionalData.assignee.id,
+            type: EntityType.USER,
+          },
+        };
+      } else if (status === TestCaseResolutionStatusTypes.Resolved) {
+        updatedData.testCaseResolutionStatusDetails = {
+          testCaseFailureReason: additionalData?.reason,
+          testCaseFailureComment: additionalData?.comment ?? '',
+          resolvedBy: currentUser
+            ? getEntityReferenceFromEntity(currentUser, EntityType.USER)
+            : undefined,
+        };
+      }
+
+      try {
+        const responseData = await postTestCaseIncidentStatus(updatedData);
+        onSubmit(responseData);
+        setShowAssigneePopover(false);
+        setShowResolvedPopover(false);
+        setSelectedAssignee(null);
+        setSelectedReason(null);
+        setComment('');
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [currentUser, data.testCaseReference?.fullyQualifiedName, onSubmit]
+  );
+
+  const handleStatusClick = (event: React.MouseEvent<HTMLElement>) => {
+    if (!hasEditPermission) {
+      return;
+    }
+    event.stopPropagation();
+    event.preventDefault();
+
+    if (chipRef.current) {
+      setAnchorEl(chipRef.current);
+
+      // Open directly to the current status detail screen
+      if (statusType === TestCaseResolutionStatusTypes.Assigned) {
+        // Load initial user list with empty search
+        searchUsers('');
+        setShowAssigneePopover(true);
+      } else if (statusType === TestCaseResolutionStatusTypes.Resolved) {
+        // Pre-populate with existing values
+        setSelectedReason(
+          data?.testCaseResolutionStatusDetails?.testCaseFailureReason ?? null
+        );
+        setComment(
+          data?.testCaseResolutionStatusDetails?.testCaseFailureComment ?? ''
+        );
+        setShowResolvedPopover(true);
+      } else {
+        // For New/Ack, show the status menu
+        setShowStatusMenu(true);
+      }
+    }
+  };
+
+  const handleCloseStatusMenu = useCallback(() => {
+    setShowStatusMenu(false);
+    setAnchorEl(null);
+  }, []);
+
+  const handleStatusChange = useCallback(
+    async (newStatus: TestCaseResolutionStatusTypes) => {
+      setShowStatusMenu(false);
+
+      if (newStatus === TestCaseResolutionStatusTypes.Assigned) {
+        // Load initial user list with empty search
+        searchUsers('');
+        setShowAssigneePopover(true);
+      } else if (newStatus === TestCaseResolutionStatusTypes.Resolved) {
+        setShowResolvedPopover(true);
+      } else {
+        setAnchorEl(null);
+        await submitStatusChange(newStatus);
+      }
+    },
+    [searchUsers, submitStatusChange]
+  );
+
+  const handleBackToStatusMenu = useCallback(() => {
+    setShowAssigneePopover(false);
+    setShowResolvedPopover(false);
+    setSelectedAssignee(
+      data?.testCaseResolutionStatusDetails?.assignee ?? null
+    );
+    setUserOptions([]);
+    setSelectedReason(null);
+    setComment('');
+    setShowStatusMenu(true);
+  }, [data?.testCaseResolutionStatusDetails?.assignee]);
+
+  const handleCloseAllPopovers = useCallback(() => {
+    setShowAssigneePopover(false);
+    setShowResolvedPopover(false);
+    setShowStatusMenu(false);
+    setAnchorEl(null);
+    setSelectedAssignee(
+      data?.testCaseResolutionStatusDetails?.assignee ?? null
+    );
+    setUserOptions([]);
+    setSelectedReason(null);
+    setComment('');
+  }, [data?.testCaseResolutionStatusDetails?.assignee]);
+
+  const handleAssigneeSelect = (user: EntityReference) => {
+    setSelectedAssignee(user);
+  };
+
+  const handleAssigneeSubmit = () => {
+    if (selectedAssignee) {
+      submitStatusChange(TestCaseResolutionStatusTypes.Assigned, {
+        assignee: selectedAssignee,
+      });
+    }
+  };
+
+  const handleResolvedSubmit = () => {
+    if (selectedReason && comment) {
+      submitStatusChange(TestCaseResolutionStatusTypes.Resolved, {
+        reason: selectedReason,
+        comment,
+      });
+    }
+  };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const statusColor = STATUS_COLORS[statusType] || STATUS_COLORS.New;
+
+  return (
+    <Box ref={chipRef} sx={{ display: 'inline-flex', alignItems: 'center' }}>
+      <Chip
+        deleteIcon={
+          hasEditPermission ? (
+            showStatusMenu || showAssigneePopover || showResolvedPopover ? (
+              <ArrowUpIcon />
+            ) : (
+              <ArrowDownIcon />
+            )
+          ) : undefined
+        }
+        disabled={!hasEditPermission}
+        label={statusType}
+        sx={{
+          px: 1,
+          backgroundColor: statusColor.bg,
+          color: statusColor.color,
+          border: `1px solid ${statusColor.border}`,
+          borderRadius: '16px',
+          fontWeight: 500,
+          fontSize: '12px',
+          cursor: hasEditPermission ? 'pointer' : 'default',
+          '& .MuiChip-label': {
+            px: 1,
+          },
+          '& .MuiChip-deleteIcon': {
+            color: statusColor.color,
+            fontSize: '16px',
+            margin: '0 4px 0 -4px',
+          },
+          '&:hover': hasEditPermission
+            ? {
+                backgroundColor: statusColor.bg,
+                opacity: 0.8,
+              }
+            : {},
+        }}
+        onClick={handleStatusClick}
+        onDelete={handleStatusClick}
+      />
+
+      <Menu
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        open={showStatusMenu}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClose={handleCloseStatusMenu}>
+        {Object.values(TestCaseResolutionStatusTypes).map((status) => (
+          <MenuItem
+            key={status}
+            selected={status === statusType}
+            sx={{
+              minWidth: 150,
+              fontWeight: status === statusType ? 600 : 400,
+            }}
+            onClick={() => handleStatusChange(status)}>
+            {status}
+          </MenuItem>
+        ))}
+      </Menu>
+
+      <Popover
+        PaperProps={{
+          sx: { width: 400, maxHeight: 500 },
+        }}
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        open={showAssigneePopover}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClose={handleCloseAllPopovers}>
+        <Box sx={{ p: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              mb: 2,
+              gap: 1,
+            }}>
+            <IconButton size="small" onClick={handleBackToStatusMenu}>
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography sx={{ fontWeight: 600, fontSize: 16 }}>
+              {t('label.assigned')}
+            </Typography>
+            <Box sx={{ flex: 1 }} />
+            <IconButton size="small" onClick={handleCloseAllPopovers}>
+              <CloseIcon />
+            </IconButton>
+            <IconButton
+              color="primary"
+              disabled={!selectedAssignee || isLoading}
+              size="small"
+              onClick={handleAssigneeSubmit}>
+              <CheckIcon />
+            </IconButton>
+          </Box>
+
+          <TextField
+            fullWidth
+            placeholder={t('label.search')}
+            size="small"
+            sx={{ mb: 2 }}
+            onChange={(e) => handleSearchUsers(e.target.value)}
+          />
+
+          <List sx={{ maxHeight: 350, overflow: 'auto' }}>
+            {userOptions.map((option) => {
+              const user: EntityReference = {
+                id: option.value,
+                name: option.name,
+                displayName: option.displayName,
+                type: option.type || EntityType.USER,
+              };
+
+              return (
+                <ListItem disablePadding key={option.value}>
+                  <ListItemButton
+                    selected={selectedAssignee?.id === option.value}
+                    onClick={() => handleAssigneeSelect(user)}>
+                    <ListItemAvatar>
+                      <Avatar
+                        sx={{
+                          width: 32,
+                          height: 32,
+                          fontSize: 14,
+                          bgcolor: '#FFE7BA',
+                          color: '#000',
+                        }}>
+                        {getInitials(option.displayName || option.name || 'U')}
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText
+                      primary={option.label}
+                      primaryTypographyProps={{
+                        fontSize: 14,
+                      }}
+                    />
+                  </ListItemButton>
+                </ListItem>
+              );
+            })}
+          </List>
+        </Box>
+      </Popover>
+
+      <Popover
+        PaperProps={{
+          sx: { width: 400 },
+        }}
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        open={showResolvedPopover}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClose={handleCloseAllPopovers}>
+        <Box sx={{ p: 2 }}>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              mb: 2,
+              gap: 1,
+            }}>
+            <IconButton size="small" onClick={handleBackToStatusMenu}>
+              <ArrowBackIcon />
+            </IconButton>
+            <Typography sx={{ fontWeight: 600, fontSize: 16 }}>
+              {t('label.resolved')}
+            </Typography>
+            <Box sx={{ flex: 1 }} />
+            <IconButton size="small" onClick={handleCloseAllPopovers}>
+              <CloseIcon />
+            </IconButton>
+            <IconButton
+              color="primary"
+              disabled={!selectedReason || !comment || isLoading}
+              size="small"
+              onClick={handleResolvedSubmit}>
+              <CheckIcon />
+            </IconButton>
+          </Box>
+
+          <Typography
+            sx={{
+              fontSize: 14,
+              fontWeight: 500,
+              mb: 1,
+              '&::after': { content: '" *"', color: 'error.main' },
+            }}>
+            {t('label.reason')}
+          </Typography>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+            {Object.values(TestCaseFailureReasonType).map((reason) => (
+              <Chip
+                color={selectedReason === reason ? 'primary' : 'default'}
+                key={reason}
+                label={startCase(reason)}
+                sx={{ cursor: 'pointer' }}
+                variant={selectedReason === reason ? 'filled' : 'outlined'}
+                onClick={() => setSelectedReason(reason)}
+              />
+            ))}
+          </Box>
+
+          <Typography
+            sx={{
+              fontSize: 14,
+              fontWeight: 500,
+              mb: 1,
+              '&::after': { content: '" *"', color: 'error.main' },
+            }}>
+            {t('label.comment')}
+          </Typography>
+          <TextField
+            fullWidth
+            multiline
+            placeholder="Enter your comment"
+            rows={4}
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+          />
+        </Box>
+      </Popover>
+    </Box>
+  );
+};
+
+export default InlineTestCaseIncidentStatus;

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Typography as MuiTypography } from '@mui/material';
 import { Col, Row, Skeleton, Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
@@ -174,6 +175,39 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       {
+        title: 'Failed/aborted Reason',
+        dataIndex: 'testCaseResult',
+        key: 'Reason',
+        width: 200,
+        render: (result: TestCaseResult) => {
+          return result?.result ? (
+            <MuiTypography
+              sx={{
+                wordBreak: 'break-word',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+              }}>
+              {result.result}
+            </MuiTypography>
+          ) : (
+            '--'
+          );
+        },
+      },
+      {
+        title: t('label.last-run'),
+        dataIndex: 'testCaseResult',
+        key: 'lastRun',
+        width: 150,
+        sorter: true,
+        render: (result: TestCaseResult) => {
+          return <DateTimeDisplay timestamp={result?.timestamp} />;
+        },
+      },
+      {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
@@ -244,7 +278,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.column'),
         dataIndex: 'entityLink',
         key: 'column',
-        width: 150,
+        width: 120,
         render: (entityLink) => {
           const isColumn = entityLink.includes('::columns::');
           if (isColumn) {
@@ -256,7 +290,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               <Typography.Paragraph
                 className="m-0"
                 data-testid={name}
-                style={{ maxWidth: 150 }}>
+                style={{ maxWidth: 120 }}>
                 {name}
               </Typography.Paragraph>
             );
@@ -279,13 +313,41 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         sortDirections: ['ascend', 'descend'],
       },
       {
-        title: t('label.last-run'),
+        title: t('label.incident'),
         dataIndex: 'testCaseResult',
-        key: 'lastRun',
-        width: 150,
-        sorter: true,
-        render: (result: TestCaseResult) => {
-          return <DateTimeDisplay timestamp={result?.timestamp} />;
+        key: 'incident',
+        width: 120,
+        render: (_, record) => {
+          const testCaseResult = testCaseStatus.find(
+            (status) =>
+              status.testCaseReference?.fullyQualifiedName ===
+              record.fullyQualifiedName
+          );
+
+          if (isStatusLoading) {
+            return <Skeleton.Input size="small" />;
+          }
+
+          if (!testCaseResult) {
+            return '--';
+          }
+
+          // Check if user has permission to edit incident status
+          const testCasePermission = testCasePermissions.find(
+            (permission) =>
+              permission.fullyQualifiedName === record.fullyQualifiedName
+          );
+          const hasEditPermission =
+            isEditAllowed || testCasePermission?.EditAll;
+
+          return (
+            <TestCaseIncidentManagerStatus
+              isInline
+              data={testCaseResult}
+              hasPermission={hasEditPermission}
+              onSubmit={handleStatusSubmit}
+            />
+          );
         },
       },
       {

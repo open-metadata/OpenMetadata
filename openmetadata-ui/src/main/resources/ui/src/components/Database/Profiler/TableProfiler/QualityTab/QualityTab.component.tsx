@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Grid, Stack, Tab, Tabs, useTheme } from '@mui/material';
-import { Col, Form, Row, Select, Space } from 'antd';
+import { Form, Select, Space } from 'antd';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
@@ -45,7 +45,6 @@ import {
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import NextPrevious from '../../../../common/NextPrevious/NextPrevious';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
 import Searchbar from '../../../../common/SearchBarComponent/SearchBar.component';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
@@ -75,7 +74,6 @@ export const QualityTab = () => {
     paging,
     handlePageChange,
     handlePageSizeChange,
-    showPagination,
   } = testCasePaging;
 
   const { editTest } = useMemo(() => {
@@ -282,6 +280,25 @@ export const QualityTab = () => {
     ]
   );
 
+  const pagingData = useMemo(() => {
+    return {
+      isNumberBased: true,
+      currentPage,
+      isLoading: isTestsLoading,
+      pageSize,
+      paging,
+      pagingHandler: handleTestCasePageChange,
+      onShowSizeChange: handlePageSizeChange,
+    };
+  }, [
+    currentPage,
+    isTestsLoading,
+    pageSize,
+    paging,
+    handleTestCasePageChange,
+    handlePageSizeChange,
+  ]);
+
   const handleTabChange = (_: React.SyntheticEvent, tab: string) => {
     navigate(
       {
@@ -405,39 +422,23 @@ export const QualityTab = () => {
         </Box>
 
         {isTestCaseTab && (
-          <Row>
-            <Col span={24}>
-              <DataQualityTab
-                removeTableBorder
-                afterDeleteAction={async (...params) => {
-                  await fetchAllTests(...params); // Update current count when Create / Delete operation performed
-                  params?.length &&
-                    (await getResourceLimit('dataQuality', true, true));
-                }}
-                breadcrumbData={tableBreadcrumb}
-                fetchTestCases={handleSortTestCase}
-                isEditAllowed={editTest}
-                isLoading={isTestsLoading}
-                showTableColumn={false}
-                testCases={allTestCases}
-                onTestCaseResultUpdate={onTestCaseUpdate}
-                onTestUpdate={onTestCaseUpdate}
-              />
-            </Col>
-            <Col span={24}>
-              {showPagination && (
-                <NextPrevious
-                  isNumberBased
-                  currentPage={currentPage}
-                  isLoading={isTestsLoading}
-                  pageSize={pageSize}
-                  paging={paging}
-                  pagingHandler={handleTestCasePageChange}
-                  onShowSizeChange={handlePageSizeChange}
-                />
-              )}
-            </Col>
-          </Row>
+          <DataQualityTab
+            removeTableBorder
+            afterDeleteAction={async (...params) => {
+              await fetchAllTests(...params); // Update current count when Create / Delete operation performed
+              params?.length &&
+                (await getResourceLimit('dataQuality', true, true));
+            }}
+            breadcrumbData={tableBreadcrumb}
+            fetchTestCases={handleSortTestCase}
+            isEditAllowed={editTest}
+            isLoading={isTestsLoading}
+            pagingData={pagingData}
+            showTableColumn={false}
+            testCases={allTestCases}
+            onTestCaseResultUpdate={onTestCaseUpdate}
+            onTestUpdate={onTestCaseUpdate}
+          />
         )}
 
         {qualityTab === EntityTabs.PIPELINE && (
