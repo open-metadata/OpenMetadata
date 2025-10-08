@@ -54,8 +54,10 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
+from metadata.ingestion.source.pipeline.kafkaconnect.client import parse_cdc_topic_name
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectPipelineDetails,
+    KafkaConnectTopics,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -307,6 +309,12 @@ class KafkaconnectSource(PipelineServiceSource):
                 source_columns = self._extract_columns_from_entity(source_entity)
                 target_columns = self._extract_columns_from_entity(target_entity)
 
+                logger.debug(
+                    f"Column matching for {pipeline_details.name}: "
+                    f"source={len(source_columns)} cols from {source_entity.__class__.__name__}, "
+                    f"target={len(target_columns)} cols from {target_entity.__class__.__name__}"
+                )
+
                 # Create lookup dictionary for O(n) performance instead of O(n²)
                 target_cols_map = {str(col).lower(): col for col in target_columns}
 
@@ -386,7 +394,64 @@ class KafkaconnectSource(PipelineServiceSource):
 
             dataset_entity = self.get_dataset_entity(pipeline_details=pipeline_details)
 
-            for topic in pipeline_details.topics or []:
+            # Get database.server.name or topic.prefix for CDC topic parsing
+            # These are ONLY set by Debezium CDC connectors
+            database_server_name = None
+            if pipeline_details.config:
+                database_server_name = pipeline_details.config.get(
+                    "database.server.name"
+                ) or pipeline_details.config.get("topic.prefix")
+
+            # For CDC connectors without explicit topics, query topics from messaging service
+            # and filter by CDC naming pattern
+            # Only do this for Debezium CDC connectors (identified by database.server.name or topic.prefix)
+            topics_to_process = pipeline_details.topics or []
+            if (
+                not topics_to_process
+                and database_server_name
+                and pipeline_details.conn_type.lower() == "source"
+            ):
+                # Query topics from the configured messaging service only
+                try:
+                    logger.debug(
+                        f"CDC connector without topics list - querying messaging service for pattern: {database_server_name}.*"
+                    )
+
+                    # List topics from the configured messaging service only
+                    # Use FQN pattern to filter by service
+                    topics_list = self.metadata.list_entities(
+                        entity=Topic,
+                        fields=["name", "fullyQualifiedName", "service"],
+                        params={
+                            "service": self.service_connection.messagingServiceName
+                        },
+                    ).entities
+
+                    # Filter topics that match the CDC naming pattern
+                    for topic_entity in topics_list or []:
+                        topic_name = (
+                            topic_entity.name.root
+                            if hasattr(topic_entity.name, "root")
+                            else str(topic_entity.name)
+                        )
+                        # Parse the topic to see if it's a CDC topic related to this connector
+                        topic_info = parse_cdc_topic_name(
+                            topic_name, database_server_name
+                        )
+                        if topic_info:
+                            # This is a CDC topic that we can parse
+                            topics_to_process.append(
+                                KafkaConnectTopics(name=topic_name)
+                            )
+                            logger.debug(
+                                f"Matched CDC topic: {topic_name} -> {topic_info}"
+                            )
+                except Exception as exc:
+                    logger.debug(
+                        f"Unable to query topics from messaging service: {exc}"
+                    )
+
+            for topic in topics_to_process:
                 topic_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Topic,
@@ -396,13 +461,52 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
 
-                if topic_entity is None or dataset_entity is None:
+                if topic_entity is None:
+                    continue
+
+                # If no dataset entity from config, try to parse table info from CDC topic name
+                current_dataset_entity = dataset_entity
+                if (
+                    current_dataset_entity is None
+                    and pipeline_details.conn_type.lower() == "source"
+                ):
+                    # Parse CDC topic name to extract table information
+                    topic_info = parse_cdc_topic_name(
+                        str(topic.name), database_server_name
+                    )
+                    if topic_info.get("database") and topic_info.get("table"):
+                        logger.debug(
+                            f"Parsed CDC topic {topic.name}: database={topic_info['database']}, table={topic_info['table']}"
+                        )
+                        # Try to find the table entity
+                        for (
+                            dbservicename
+                        ) in self.source_config.lineageInformation.dbServiceNames or [
+                            "*"
+                        ]:
+                            table_fqn = fqn.build(
+                                metadata=self.metadata,
+                                entity_type=Table,
+                                table_name=topic_info["table"],
+                                database_name=None,
+                                schema_name=topic_info["database"],
+                                service_name=dbservicename,
+                            )
+                            current_dataset_entity = self.metadata.get_by_name(
+                                entity=Table, fqn=table_fqn
+                            )
+                            if current_dataset_entity:
+                                logger.debug(f"Found table entity: {table_fqn}")
+                                break
+
+                if current_dataset_entity is None:
+                    # No table entity found, skip this topic
                     continue
 
                 if pipeline_details.conn_type.lower() == "sink":
-                    from_entity, to_entity = topic_entity, dataset_entity
+                    from_entity, to_entity = topic_entity, current_dataset_entity
                 else:
-                    from_entity, to_entity = dataset_entity, topic_entity
+                    from_entity, to_entity = current_dataset_entity, topic_entity
 
                 # Build column-level lineage (best effort - don't fail entity-level lineage)
                 column_lineage = None
