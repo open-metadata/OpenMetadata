@@ -183,6 +183,7 @@ export enum Operation {
     EditUsage = "EditUsage",
     EditUsers = "EditUsers",
     GenerateToken = "GenerateToken",
+    Impersonate = "Impersonate",
     Kill = "Kill",
     Trigger = "Trigger",
     ViewAll = "ViewAll",
