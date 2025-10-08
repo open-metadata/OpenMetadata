@@ -274,18 +274,15 @@ class TestKafkaConnectClient(TestCase):
             client = KafkaConnectClient(self.mock_config)
 
             # Test various supported dataset configurations
+            # Note: Database-only configs return None (need table or container)
             test_configs = [
-                # Table configurations
+                # Table configurations (have table name)
                 ({"table": "users", "database": "mydb"}, "table", "users"),
                 ({"collection": "users"}, "table", "users"),
                 ({"snowflake.schema.name": "schema1"}, "table", "schema1"),
                 ({"table.whitelist": "table1,table2"}, "table", "table1,table2"),
                 ({"fields.whitelist": "field1,field2"}, "table", "field1,field2"),
-                # Database configurations
-                ({"database": "mydb"}, "database", "mydb"),
-                ({"db.name": "testdb"}, "database", "testdb"),
-                ({"snowflake.database.name": "snowdb"}, "database", "snowdb"),
-                # Container configurations
+                # Container configurations (have container name)
                 ({"s3.bucket.name": "my-bucket"}, "container_name", "my-bucket"),
             ]
 
@@ -374,7 +371,7 @@ class TestConfluentCloudSupport(TestCase):
         self.assertEqual(topics[2].name, "topic3")
 
     def test_confluent_cloud_database_include_list(self):
-        """Test extracting database from Confluent Cloud database.include.list field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"database.include.list": "mydb"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -385,8 +382,8 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "mydb")
+        # Should return None - database alone is not enough
+        self.assertIsNone(result)
 
     def test_confluent_cloud_table_include_list(self):
         """Test extracting table from Confluent Cloud table.include.list field"""
@@ -404,7 +401,7 @@ class TestConfluentCloudSupport(TestCase):
         self.assertEqual(result.table, "mydb.customers,mydb.orders")
 
     def test_confluent_cloud_database_hostname(self):
-        """Test extracting database from Confluent Cloud database.hostname field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"database.hostname": "mysql.example.com"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -415,11 +412,11 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "mysql.example.com")
+        # Should return None - database alone is not enough for table lineage
+        self.assertIsNone(result)
 
     def test_debezium_postgres_database_dbname(self):
-        """Test extracting database from Debezium PostgreSQL database.dbname field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"database.dbname": "postgres"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -430,11 +427,11 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "postgres")
+        # Should return None - database alone is not enough
+        self.assertIsNone(result)
 
     def test_debezium_topic_prefix(self):
-        """Test extracting database from Debezium topic.prefix field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"topic.prefix": "dbserver1"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -445,11 +442,11 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "dbserver1")
+        # Should return None - tables discovered via topic parsing for CDC
+        self.assertIsNone(result)
 
     def test_mysql_cdc_databases_include(self):
-        """Test extracting database from MySQL CDC V2 databases.include field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"databases.include": "mydb1,mydb2"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -460,8 +457,8 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "mydb1,mydb2")
+        # Should return None - CDC uses topic parsing
+        self.assertIsNone(result)
 
     def test_mysql_cdc_tables_include(self):
         """Test extracting tables from MySQL CDC V2 tables.include field"""
@@ -479,7 +476,7 @@ class TestConfluentCloudSupport(TestCase):
         self.assertEqual(result.table, "db1.users,db1.orders")
 
     def test_snowflake_database_field(self):
-        """Test extracting database from Snowflake snowflake.database field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"snowflake.database": "ANALYTICS_DB"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -490,8 +487,8 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "ANALYTICS_DB")
+        # Should return None - database alone is not enough
+        self.assertIsNone(result)
 
     def test_snowflake_schema_field(self):
         """Test extracting table/schema from Snowflake snowflake.schema field"""
@@ -509,7 +506,7 @@ class TestConfluentCloudSupport(TestCase):
         self.assertEqual(result.table, "PUBLIC")
 
     def test_sql_server_database_names(self):
-        """Test extracting database from SQL Server database.names field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"database.names": "AdventureWorks,Northwind"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -520,8 +517,8 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "AdventureWorks,Northwind")
+        # Should return None - database alone is not enough
+        self.assertIsNone(result)
 
     def test_s3_bucket_field(self):
         """Test extracting bucket from S3 s3.bucket field"""
@@ -554,7 +551,7 @@ class TestConfluentCloudSupport(TestCase):
         self.assertEqual(result.container_name, "my-gcs-bucket")
 
     def test_postgres_sink_connection_host(self):
-        """Test extracting database from PostgreSQL Sink connection.host field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"connection.host": "postgres.example.com"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -565,8 +562,8 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "postgres.example.com")
+        # Should return None - database alone is not enough
+        self.assertIsNone(result)
 
     def test_sink_fields_included(self):
         """Test extracting fields from Sink connector fields.included field"""
@@ -584,7 +581,7 @@ class TestConfluentCloudSupport(TestCase):
         self.assertEqual(result.table, "id,name,email,created_at")
 
     def test_debezium_mysql_database_exclude_list(self):
-        """Test extracting database from Debezium MySQL database.exclude.list field"""
+        """Test that database-only config returns None (needs table name)"""
         config = {"database.exclude.list": "test,temp"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -595,11 +592,15 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "test,temp")
+        # Should return None - database alone is not enough
+        self.assertIsNone(result)
 
     def test_debezium_v1_database_server_name(self):
-        """Test extracting database from Debezium V1 database.server.name field"""
+        """Test that CDC connectors with only database.server.name return None
+
+        CDC connectors don't have explicit table configs - tables are discovered
+        via topic name parsing instead.
+        """
         config = {"database.server.name": "mysql-server-1"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -610,11 +611,16 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "mysql-server-1")
+        # Should return None because CDC connectors don't have explicit table names
+        # Tables are discovered via topic parsing instead
+        self.assertIsNone(result)
 
     def test_debezium_v2_topic_prefix(self):
-        """Test extracting database from Debezium V2 topic.prefix field (already tested but documenting V2)"""
+        """Test that CDC connectors with only topic.prefix return None
+
+        CDC connectors don't have explicit table configs - tables are discovered
+        via topic name parsing instead.
+        """
         config = {"topic.prefix": "postgres-server-1"}
 
         client_config = Mock(spec=KafkaConnectConnection)
@@ -625,8 +631,8 @@ class TestConfluentCloudSupport(TestCase):
         client = KafkaConnectClient(client_config)
         result = client.get_connector_dataset_info(config)
 
-        self.assertIsNotNone(result)
-        self.assertEqual(result.database, "postgres-server-1")
+        # Should return None - tables discovered via topic parsing
+        self.assertIsNone(result)
 
 
 class TestKafkaConnectColumnLineage(TestCase):
@@ -945,3 +951,222 @@ class TestCDCTopicParsing(TestCase):
         # MongoDB uses database.collection
         result = parse_cdc_topic_name("MongoCDC.mydb.users", "MongoCDC")
         self.assertEqual(result, {"database": "mydb", "table": "users"})
+
+
+class TestKafkaConnectCDCColumnExtraction(TestCase):
+    """Test CDC column extraction from Debezium schema"""
+
+    def _create_mock_source(self):
+        """Helper to create a minimal mock source for testing"""
+        from metadata.ingestion.source.pipeline.kafkaconnect.metadata import (
+            KafkaconnectSource,
+        )
+
+        # Create a mock source that bypasses __init__
+        source = object.__new__(KafkaconnectSource)
+        return source
+
+    def setUp(self):
+        """Set up test fixtures"""
+        # Create a mock Debezium CDC topic with nested envelope structure
+        self.cdc_topic = MagicMock()
+        self.cdc_topic.name = "MysqlKafkaV2.ecommerce.orders"
+        self.cdc_topic.fullyQualifiedName.root = (
+            'KafkaProd."MysqlKafkaV2.ecommerce.orders"'
+        )
+
+        # Mock message schema with CDC structure
+        self.cdc_topic.messageSchema = MagicMock()
+        self.cdc_topic.messageSchema.schemaText = '{"type":"object","title":"MysqlKafkaV2.ecommerce.orders.Envelope","properties":{"op":{"type":"string"},"before":{"oneOf":[{"type":"null"},{"type":"object","properties":{"id":{"type":"integer"},"order_number":{"type":"string"},"customer_name":{"type":"string"}}}]},"after":{"oneOf":[{"type":"null"},{"type":"object","properties":{"id":{"type":"integer"},"order_number":{"type":"string"},"customer_name":{"type":"string"},"customer_email":{"type":"string"},"product_name":{"type":"string"}}}]},"source":{"type":"object","properties":{"version":{"type":"string"}}},"ts_ms":{"type":"integer"}}}'
+
+        # Mock schema fields - single envelope with CDC children
+        # Use a helper function to create field names with root attribute
+        def create_field_name(name_str):
+            name_obj = MagicMock()
+            name_obj.root = name_str
+            return name_obj
+
+        envelope_field = MagicMock()
+        envelope_field.name = create_field_name(
+            "MysqlKafkaV2.ecommerce.orders.Envelope"
+        )
+        envelope_field.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope'
+
+        # CDC envelope children
+        op_field = MagicMock()
+        op_field.name = create_field_name("op")
+        op_field.children = None
+        op_field.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.op'
+
+        before_field = MagicMock()
+        before_field.name = create_field_name("before")
+        before_field.children = None
+        before_field.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.before'
+
+        after_field = MagicMock()
+        after_field.name = create_field_name("after")
+        after_field.children = None
+        after_field.fullyQualifiedName.root = 'KafkaProd."MysqlKafkaV2.ecommerce.orders".MysqlKafkaV2.ecommerce.orders.Envelope.after'
+
+        source_field = MagicMock()
+        source_field.name = create_field_name("source")
+        source_field.children = [MagicMock()]  # Has children (version field)
+
+        ts_field = MagicMock()
+        ts_field.name = create_field_name("ts_ms")
+        ts_field.children = None
+
+        envelope_field.children = [
+            op_field,
+            before_field,
+            after_field,
+            source_field,
+            ts_field,
+        ]
+
+        self.cdc_topic.messageSchema.schemaFields = [envelope_field]
+
+    def test_extract_columns_from_cdc_topic(self):
+        """Test extracting columns from Debezium CDC topic schema text"""
+        source = self._create_mock_source()
+
+        # Extract columns from CDC topic
+        columns = source._extract_columns_from_entity(self.cdc_topic)
+
+        # Should extract columns from 'after' field in schema text
+        self.assertIsNotNone(columns)
+        self.assertIn("id", columns)
+        self.assertIn("order_number", columns)
+        self.assertIn("customer_name", columns)
+        self.assertIn("customer_email", columns)
+        self.assertIn("product_name", columns)
+
+        # Should have 5 columns total
+        self.assertEqual(len(columns), 5)
+
+    def test_get_topic_field_fqn_for_cdc(self):
+        """Test constructing FQN for CDC topic fields"""
+        source = self._create_mock_source()
+
+        # Get FQN for a CDC column
+        fqn = source._get_topic_field_fqn(self.cdc_topic, "id")
+
+        # Should construct FQN manually for CDC envelope structure
+        self.assertIsNotNone(fqn)
+        self.assertIn("MysqlKafkaV2.ecommerce.orders.Envelope", fqn)
+        self.assertTrue(fqn.endswith(".id"))
+
+    def test_cdc_envelope_detection(self):
+        """Test that Debezium CDC envelope is correctly detected"""
+        source = self._create_mock_source()
+
+        columns = source._extract_columns_from_entity(self.cdc_topic)
+
+        # Should not return CDC envelope fields (op, before, after, source, ts_ms)
+        self.assertNotIn("op", columns)
+        self.assertNotIn("before", columns)
+        self.assertNotIn("after", columns)
+        self.assertNotIn("source", columns)
+        self.assertNotIn("ts_ms", columns)
+
+        # Should return actual table columns
+        self.assertIn("id", columns)
+        self.assertIn("order_number", columns)
+
+    def test_non_cdc_topic_column_extraction(self):
+        """Test that non-CDC topics still work correctly"""
+        source = self._create_mock_source()
+
+        # Helper to create field names
+        def create_field_name(name_str):
+            name_obj = MagicMock()
+            name_obj.root = name_str
+            return name_obj
+
+        # Create a regular (non-CDC) topic
+        regular_topic = MagicMock()
+        regular_topic.name = create_field_name("orders")
+        regular_topic.fullyQualifiedName.root = "KafkaProd.orders"
+
+        # Mock regular fields (not CDC envelope)
+        id_field = MagicMock()
+        id_field.name = create_field_name("id")
+        id_field.children = None
+        id_field.fullyQualifiedName.root = "KafkaProd.orders.id"
+
+        name_field = MagicMock()
+        name_field.name = create_field_name("customer_name")
+        name_field.children = None
+        name_field.fullyQualifiedName.root = "KafkaProd.orders.customer_name"
+
+        regular_topic.messageSchema = MagicMock()
+        regular_topic.messageSchema.schemaFields = [id_field, name_field]
+
+        columns = source._extract_columns_from_entity(regular_topic)
+
+        # Should extract regular fields
+        self.assertEqual(len(columns), 2)
+        self.assertIn("id", columns)
+        self.assertIn("customer_name", columns)
+
+    def test_cdc_schema_text_missing(self):
+        """Test handling CDC topic without schema text"""
+        source = self._create_mock_source()
+
+        # Helper to create field names
+        def create_field_name(name_str):
+            name_obj = MagicMock()
+            name_obj.root = name_str
+            return name_obj
+
+        # Create CDC topic without schemaText
+        cdc_topic_no_text = MagicMock()
+        cdc_topic_no_text.name = create_field_name("MysqlKafkaV2.ecommerce.orders")
+
+        # CDC envelope structure but no schemaText
+        envelope_field = MagicMock()
+        envelope_field.name = create_field_name(
+            "MysqlKafkaV2.ecommerce.orders.Envelope"
+        )
+
+        op_field = MagicMock()
+        op_field.name = create_field_name("op")
+        op_field.children = None
+
+        before_field = MagicMock()
+        before_field.name = create_field_name("before")
+        before_field.children = None
+
+        after_field = MagicMock()
+        after_field.name = create_field_name("after")
+        after_field.children = None
+
+        envelope_field.children = [op_field, before_field, after_field]
+
+        cdc_topic_no_text.messageSchema = MagicMock()
+        cdc_topic_no_text.messageSchema.schemaText = None  # No schema text
+        cdc_topic_no_text.messageSchema.schemaFields = [envelope_field]
+
+        columns = source._extract_columns_from_entity(cdc_topic_no_text)
+
+        # Should return empty list when schema text is not available
+        self.assertEqual(columns, [])
+
+    def test_cdc_with_before_field(self):
+        """Test CDC extraction prefers 'after' but falls back to 'before'"""
+        source = self._create_mock_source()
+
+        # Create CDC topic with only 'before' field having data (after only has null)
+        cdc_topic_before = MagicMock()
+        cdc_topic_before.name = "Test.cdc.topic"
+        cdc_topic_before.fullyQualifiedName.root = "KafkaProd.Test.cdc.topic"
+
+        cdc_topic_before.messageSchema = MagicMock()
+        cdc_topic_before.messageSchema.schemaText = '{"type":"object","properties":{"op":{"type":"string"},"before":{"oneOf":[{"type":"null"},{"type":"object","properties":{"field1":{"type":"string"},"field2":{"type":"integer"}}}]},"after":{"oneOf":[{"type":"null"}]}}}'
+        cdc_topic_before.messageSchema.schemaFields = []
+
+        columns = source._extract_columns_from_entity(cdc_topic_before)
+
+        # Should extract from 'before' field when 'after' only has null
+        self.assertIn("field1", columns)
+        self.assertIn("field2", columns)

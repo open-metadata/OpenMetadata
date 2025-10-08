@@ -406,11 +406,17 @@ class KafkaConnectClient:
                 for key in config_keys:
                     if connector_config.get(key):
                         result[dataset_type] = connector_config[key]
-                        dataset_details = KafkaConnectDatasetDetails(**result)
-                        dataset_details.column_mappings = self.extract_column_mappings(
-                            connector_config
-                        )
-                        return dataset_details
+
+            # Only create dataset details if we have meaningful dataset information
+            # For CDC connectors, database.server.name/topic.prefix are captured
+            # but don't represent actual table names, so skip dataset creation
+            # We need either: table name OR container name
+            if result and (result.get("table") or result.get("container_name")):
+                dataset_details = KafkaConnectDatasetDetails(**result)
+                dataset_details.column_mappings = self.extract_column_mappings(
+                    connector_config
+                )
+                return dataset_details
 
         except (KeyError, ValueError, TypeError) as exc:
             logger.debug(traceback.format_exc())

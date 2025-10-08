@@ -190,6 +190,9 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         Extract column/field names from Table or Topic entity.
 
+        For Debezium CDC topics, extracts columns from the 'after' or 'before' field
+        which contains the actual table structure, not the CDC envelope fields.
+
         Args:
             entity: Table or Topic entity
 
@@ -200,10 +203,75 @@ class KafkaconnectSource(PipelineServiceSource):
             return [col.name.root for col in entity.columns or []]
 
         if isinstance(entity, Topic) and entity.messageSchema:
+            schema_fields = entity.messageSchema.schemaFields or []
+
+            # Check if this is a Debezium CDC envelope structure
+            # Can be either flat (top-level: op, before, after) or nested (Envelope -> op, before, after)
+            field_names = {get_field_name(f.name) for f in schema_fields}
+            is_debezium_cdc = {"after", "before", "op"}.issubset(field_names)
+
+            logger.debug(
+                f"Topic {entity.name.root if entity.name else 'unknown'}: field_names={field_names}, is_debezium_cdc={is_debezium_cdc}"
+            )
+
+            # Check for nested Debezium CDC structure (single Envelope field with CDC children)
+            if not is_debezium_cdc and len(schema_fields) == 1:
+                envelope_field = schema_fields[0]
+                if envelope_field.children:
+                    envelope_child_names = {
+                        get_field_name(c.name) for c in envelope_field.children
+                    }
+                    is_debezium_cdc = {"after", "before", "op"}.issubset(
+                        envelope_child_names
+                    )
+                    if is_debezium_cdc:
+                        logger.debug(
+                            f"Nested Debezium CDC envelope detected: {get_field_name(envelope_field.name)}"
+                        )
+                        schema_fields = (
+                            envelope_field.children
+                        )  # Use envelope children as schema fields
+
+            if is_debezium_cdc:
+                # For Debezium CDC, the 'after'/'before' fields don't have expanded children
+                # in OpenMetadata's representation. We need to parse the raw schema text.
+                if entity.messageSchema.schemaText:
+                    try:
+                        import json
+
+                        schema_dict = json.loads(entity.messageSchema.schemaText)
+
+                        # Look for 'after' or 'before' field in the schema
+                        for field_name in ["after", "before"]:
+                            if field_name in schema_dict.get("properties", {}):
+                                field_def = schema_dict["properties"][field_name]
+                                # Handle oneOf (nullable types)
+                                if "oneOf" in field_def:
+                                    for option in field_def["oneOf"]:
+                                        if (
+                                            isinstance(option, dict)
+                                            and option.get("type") == "object"
+                                        ):
+                                            # Found the table structure
+                                            columns = list(
+                                                option.get("properties", {}).keys()
+                                            )
+                                            logger.debug(
+                                                f"Debezium CDC: extracted {len(columns)} columns from '{field_name}' field via schema text"
+                                            )
+                                            return columns
+                    except Exception as exc:
+                        logger.debug(f"Unable to parse Debezium CDC schema text: {exc}")
+
+                logger.debug(
+                    "Debezium CDC detected but unable to extract columns from schema"
+                )
+                return []
+
+            # Non-CDC topic: extract all fields
             columns = []
-            for field in entity.messageSchema.schemaFields or []:
+            for field in schema_fields:
                 if field.children:
-                    # Nested structure (e.g., Avro RECORD with children)
                     columns.extend(
                         [get_field_name(child.name) for child in field.children]
                     )
@@ -219,6 +287,7 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         Get the fully qualified name for a field in a Topic's schema.
         Handles nested structures where fields may be children of a parent RECORD.
+        For Debezium CDC topics, searches for fields inside after/before envelope children.
         """
         if (
             not topic_entity.messageSchema
@@ -239,7 +308,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     field.fullyQualifiedName.root if field.fullyQualifiedName else None
                 )
 
-            # Check if it's a child field (nested)
+            # Check if it's a child field (nested - one level deep)
             if field.children:
                 for child in field.children:
                     if get_field_name(child.name) == field_name:
@@ -248,6 +317,17 @@ class KafkaconnectSource(PipelineServiceSource):
                             if child.fullyQualifiedName
                             else None
                         )
+
+                    # Check if it's a grandchild field (nested - two levels deep)
+                    # This handles Debezium CDC topics where columns are inside after/before fields
+                    if child.children:
+                        for grandchild in child.children:
+                            if get_field_name(grandchild.name) == field_name:
+                                return (
+                                    grandchild.fullyQualifiedName.root
+                                    if grandchild.fullyQualifiedName
+                                    else None
+                                )
 
         logger.debug(
             f"Field {field_name} not found in topic {get_field_name(topic_entity.name)} schema"
@@ -314,6 +394,8 @@ class KafkaconnectSource(PipelineServiceSource):
                     f"source={len(source_columns)} cols from {source_entity.__class__.__name__}, "
                     f"target={len(target_columns)} cols from {target_entity.__class__.__name__}"
                 )
+                logger.debug(f"Source columns: {source_columns[:5]}")  # First 5
+                logger.debug(f"Target columns: {target_columns}")
 
                 # Create lookup dictionary for O(n) performance instead of O(n²)
                 target_cols_map = {str(col).lower(): col for col in target_columns}
@@ -323,6 +405,9 @@ class KafkaconnectSource(PipelineServiceSource):
                     source_key = str(source_col_name).lower()
                     if source_key in target_cols_map:
                         target_col_name = target_cols_map[source_key]
+                        logger.debug(
+                            f"Matched column: {source_col_name} -> {target_col_name}"
+                        )
                         try:
                             # Get fully qualified names for source and target columns
                             if isinstance(source_entity, Topic):
@@ -345,6 +430,8 @@ class KafkaconnectSource(PipelineServiceSource):
                                     column=target_col_name,
                                 )
 
+                            logger.debug(f"FQNs: from_col={from_col}, to_col={to_col}")
+
                             if from_col and to_col:
                                 column_lineages.append(
                                     ColumnLineage(
@@ -352,6 +439,9 @@ class KafkaconnectSource(PipelineServiceSource):
                                         toColumn=to_col,
                                         function=None,
                                     )
+                                )
+                                logger.debug(
+                                    f"Added column lineage: {from_col} -> {to_col}"
                                 )
                         except (KeyError, AttributeError) as exc:
                             logger.debug(
