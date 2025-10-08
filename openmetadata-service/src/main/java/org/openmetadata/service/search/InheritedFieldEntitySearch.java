@@ -156,6 +156,18 @@ public interface InheritedFieldEntitySearch {
           .build();
     }
 
+    public static InheritedFieldQuery forDomain(String domainFqn, int from, int size) {
+      return builder()
+          .fieldPath("domains.fullyQualifiedName")
+          .fieldValue(domainFqn)
+          .supportsHierarchy(true)
+          .filterType(QueryFilterType.DOMAIN_ASSETS)
+          .includeDeleted(true)
+          .from(from)
+          .size(size)
+          .build();
+    }
+
     public static InheritedFieldQuery forOwner(String ownerId) {
       return builder()
           .fieldPath("owners.id")

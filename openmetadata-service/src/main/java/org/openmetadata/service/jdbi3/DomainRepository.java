@@ -53,6 +53,7 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FieldPagination;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 
@@ -92,7 +93,9 @@ public class DomainRepository extends EntityRepository<Domain> {
 
   @Override
   public void setFields(Domain entity, Fields fields) {
-    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+    if (fields.contains(FIELD_ASSETS)) {
+      fetchAndSetAssets(List.of(entity), fields);
+    }
     entity.withAssetsCount(fields.contains(FIELD_ASSETS_COUNT) ? getAssetsCount(entity) : null);
     entity.withParent(getParent(entity));
   }
@@ -109,7 +112,14 @@ public class DomainRepository extends EntityRepository<Domain> {
     if (!fields.contains(FIELD_ASSETS) || domains == null || domains.isEmpty()) {
       return;
     }
-    setFieldFromMap(true, domains, batchFetchAssets(domains), Domain::setAssets);
+    int limit = FieldPagination.DEFAULT_LIMIT;
+    int offset = FieldPagination.DEFAULT_OFFSET;
+    FieldPagination pagination = fields.getFieldPagination();
+    if (pagination != null) {
+      limit = pagination.getLimit(FIELD_ASSETS);
+      offset = pagination.getOffset(FIELD_ASSETS);
+    }
+    setFieldFromMap(true, domains, batchFetchAssets(domains, limit, offset), Domain::setAssets);
   }
 
   private void fetchAndSetAssetsCount(List<Domain> domains, Fields fields) {
@@ -406,7 +416,8 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  private Map<UUID, List<EntityReference>> batchFetchAssets(List<Domain> domains) {
+  private Map<UUID, List<EntityReference>> batchFetchAssets(
+      List<Domain> domains, int limit, int offset) {
     if (domains == null || domains.isEmpty()) {
       return new HashMap<>();
     }
@@ -420,7 +431,8 @@ public class DomainRepository extends EntityRepository<Domain> {
 
     var assetsMap = new HashMap<UUID, List<EntityReference>>();
     for (Domain domain : domains) {
-      InheritedFieldQuery query = InheritedFieldQuery.forDomain(domain.getFullyQualifiedName());
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), offset, limit);
       InheritedFieldResult result =
           inheritedFieldEntitySearch.getEntitiesForField(
               query,

@@ -86,9 +86,10 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
 
       String queryFilter = getQueryFilter(query);
       int currentFrom = query.getFrom();
+      int requestedSize = query.getSize();
 
       // Get total count from first batch response instead of separate count query
-      int batchSize = MAX_PAGE_SIZE;
+      int batchSize = requestedSize > 0 ? Math.min(requestedSize, MAX_PAGE_SIZE) : MAX_PAGE_SIZE;
       SearchRequest searchRequest =
           buildSearchRequest(currentFrom, batchSize, queryFilter, true, ENTITY_REFERENCE_FIELDS);
 
@@ -107,8 +108,12 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       List<EntityReference> allEntities = new ArrayList<>(batchEntities);
       currentFrom += batchSize;
 
-      while (allEntities.size() < totalCount) {
-        batchSize = Math.min(MAX_PAGE_SIZE, totalCount - allEntities.size());
+      // If size is specified and > 0, fetch only that many entities
+      int entitiesToFetch = requestedSize > 0 ? requestedSize : totalCount;
+
+      while (allEntities.size() < entitiesToFetch && allEntities.size() < totalCount) {
+        batchSize =
+            Math.min(MAX_PAGE_SIZE, Math.min(entitiesToFetch, totalCount) - allEntities.size());
 
         searchRequest =
             buildSearchRequest(currentFrom, batchSize, queryFilter, true, ENTITY_REFERENCE_FIELDS);

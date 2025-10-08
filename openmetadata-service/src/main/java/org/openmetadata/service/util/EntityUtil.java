@@ -364,9 +364,14 @@ public final class EntityUtil {
   public static class Fields implements Iterable<String> {
     public static final Fields EMPTY_FIELDS = new Fields(Collections.emptySet());
     @Getter private final Set<String> fieldList;
+    @Getter private FieldPagination fieldPagination;
 
     public Fields(Set<String> fieldList) {
       this.fieldList = fieldList;
+    }
+
+    public void setFieldPagination(FieldPagination fieldPagination) {
+      this.fieldPagination = fieldPagination;
     }
 
     public Fields(Set<String> allowedFields, String fieldsParam) {

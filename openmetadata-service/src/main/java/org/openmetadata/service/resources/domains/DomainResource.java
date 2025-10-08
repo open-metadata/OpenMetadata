@@ -62,6 +62,8 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.EntityHierarchyList;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.FieldPagination;
 
 @Slf4j
 @Path("/v1/domains")
@@ -131,9 +133,36 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               description = "Returns list of Domain after this cursor",
               schema = @Schema(type = "string"))
           @QueryParam("after")
-          String after) {
+          String after,
+      @Parameter(
+              description = "Limit the number of assets returned per domain",
+              schema = @Schema(type = "integer"))
+          @DefaultValue("10")
+          @QueryParam("assetsLimit")
+          int assetsLimit,
+      @Parameter(description = "Offset for assets pagination", schema = @Schema(type = "integer"))
+          @DefaultValue("0")
+          @QueryParam("assetsOffset")
+          int assetsOffset) {
+    ListFilter filter = new ListFilter(null);
+    Fields fields = getFields(fieldsParam);
+    FieldPagination pagination = new FieldPagination();
+    pagination.addFieldPagination("assets", assetsLimit, assetsOffset);
+    fields.setFieldPagination(pagination);
+
+    OperationContext listOperationContext =
+        new OperationContext(entityType, getViewOperations(fields));
+
     return listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(null), limitParam, before, after);
+        uriInfo,
+        securityContext,
+        fields,
+        filter,
+        limitParam,
+        before,
+        after,
+        listOperationContext,
+        filter.getResourceContext(entityType));
   }
 
   @GET
@@ -161,8 +190,25 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
           @QueryParam("fields")
           String fieldsParam,
       @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
-          UUID id) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
+          UUID id,
+      @Parameter(
+              description = "Limit the number of assets returned",
+              schema = @Schema(type = "integer"))
+          @DefaultValue("10")
+          @QueryParam("assetsLimit")
+          int assetsLimit,
+      @Parameter(description = "Offset for assets pagination", schema = @Schema(type = "integer"))
+          @DefaultValue("0")
+          @QueryParam("assetsOffset")
+          int assetsOffset) {
+    Fields fields = getFields(fieldsParam);
+    FieldPagination pagination = new FieldPagination();
+    pagination.addFieldPagination("assets", assetsLimit, assetsOffset);
+    fields.setFieldPagination(pagination);
+
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    return getInternal(
+        uriInfo, securityContext, id, fields, null, operationContext, getResourceContextById(id));
   }
 
   @GET
@@ -191,8 +237,31 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
+          String fieldsParam,
+      @Parameter(
+              description = "Limit the number of assets returned",
+              schema = @Schema(type = "integer"))
+          @DefaultValue("10")
+          @QueryParam("assetsLimit")
+          int assetsLimit,
+      @Parameter(description = "Offset for assets pagination", schema = @Schema(type = "integer"))
+          @DefaultValue("0")
+          @QueryParam("assetsOffset")
+          int assetsOffset) {
+    Fields fields = getFields(fieldsParam);
+    FieldPagination pagination = new FieldPagination();
+    pagination.addFieldPagination("assets", assetsLimit, assetsOffset);
+    fields.setFieldPagination(pagination);
+
+    OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
+    return getByNameInternal(
+        uriInfo,
+        securityContext,
+        name,
+        fields,
+        null,
+        operationContext,
+        getResourceContextByName(name));
   }
 
   @GET

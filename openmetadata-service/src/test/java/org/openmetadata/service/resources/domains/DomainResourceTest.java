@@ -3,6 +3,7 @@ package org.openmetadata.service.resources.domains;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOf;
@@ -528,6 +529,319 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(schema.getId())));
     assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(table1.getId())));
     assertTrue(fetchedDomain.getAssets().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+  }
+
+  @Test
+  void test_domainAssetsPaginationListDefault(TestInfo test) throws IOException {
+    // Tests default pagination (10 assets) on list API when no limit/offset specified
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 25; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(domain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    WebTarget target = getResource("domains");
+    target = target.queryParam("fields", "assets");
+    target = target.queryParam("limit", 100);
+    DomainList domainList = TestUtils.get(target, DomainList.class, ADMIN_AUTH_HEADERS);
+
+    Domain fetchedDomain =
+        domainList.getData().stream()
+            .filter(d -> d.getId().equals(domain.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(fetchedDomain, "Domain should be in the list");
+    assertNotNull(fetchedDomain.getAssets());
+    assertEquals(
+        10, fetchedDomain.getAssets().size(), "Default assets limit should be 10 in list API");
+  }
+
+  @Test
+  void test_domainAssetsPaginationListWithCustomLimit(TestInfo test) throws IOException {
+    // Tests custom pagination on list API
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 25; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(domain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    WebTarget target = getResource("domains");
+    target = target.queryParam("fields", "assets");
+    target = target.queryParam("assetsLimit", 7);
+    target = target.queryParam("assetsOffset", 3);
+    target = target.queryParam("limit", 100);
+    DomainList domainList = TestUtils.get(target, DomainList.class, ADMIN_AUTH_HEADERS);
+
+    Domain fetchedDomain =
+        domainList.getData().stream()
+            .filter(d -> d.getId().equals(domain.getId()))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(fetchedDomain, "Domain should be in the list");
+    assertNotNull(fetchedDomain.getAssets());
+    assertEquals(
+        7,
+        fetchedDomain.getAssets().size(),
+        "Custom assets limit should be 7 with offset 3 in list API");
+  }
+
+  @Test
+  void test_domainAssetsPaginationGetByIdDefault(TestInfo test) throws IOException {
+    // Tests default pagination (10 assets) on get by ID when no limit/offset specified
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 25; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(domain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    WebTarget target = getResource("domains/" + domain.getId());
+    target = target.queryParam("fields", "assets");
+    Domain fetchedDomain = TestUtils.get(target, Domain.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(fetchedDomain.getAssets());
+    assertEquals(10, fetchedDomain.getAssets().size(), "Default assets limit should be 10");
+  }
+
+  @Test
+  void test_domainAssetsPaginationGetByIdWithLimitAndOffset(TestInfo test) throws IOException {
+    // Tests pagination on get by ID API - verifies different pages return different assets with no
+    // duplicates
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 25; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(domain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    WebTarget target = getResource("domains/" + domain.getId());
+    target = target.queryParam("fields", "assets");
+    target = target.queryParam("assetsLimit", 5);
+    target = target.queryParam("assetsOffset", 0);
+    Domain firstPage = TestUtils.get(target, Domain.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(firstPage.getAssets());
+    assertEquals(5, firstPage.getAssets().size(), "Should return 5 assets");
+
+    List<UUID> firstPageIds = firstPage.getAssets().stream().map(EntityReference::getId).toList();
+
+    target = getResource("domains/" + domain.getId());
+    target = target.queryParam("fields", "assets");
+    target = target.queryParam("assetsLimit", 5);
+    target = target.queryParam("assetsOffset", 5);
+    Domain secondPage = TestUtils.get(target, Domain.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(secondPage.getAssets());
+    assertEquals(5, secondPage.getAssets().size(), "Should return 5 more assets");
+
+    List<UUID> secondPageIds = secondPage.getAssets().stream().map(EntityReference::getId).toList();
+
+    for (UUID id : firstPageIds) {
+      assertFalse(secondPageIds.contains(id), "Second page should not contain first page assets");
+    }
+  }
+
+  @Test
+  void test_domainAssetsPaginationGetByIdWithCustomLimit(TestInfo test) throws IOException {
+    // Tests custom pagination on get by ID API
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 20; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(domain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    WebTarget target = getResource("domains/" + domain.getId());
+    target = target.queryParam("fields", "assets");
+    target = target.queryParam("assetsLimit", 15);
+    target = target.queryParam("assetsOffset", 5);
+    Domain fetchedDomain = TestUtils.get(target, Domain.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(fetchedDomain.getAssets());
+    assertEquals(
+        15, fetchedDomain.getAssets().size(), "Should return 15 assets starting from offset 5");
+  }
+
+  @Test
+  void test_domainAssetsPaginationGetByNameDefault(TestInfo test) throws IOException {
+    // Tests default pagination on get by name when no limit/offset specified
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 20; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(domain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    WebTarget target = getResource("domains/name/" + domain.getFullyQualifiedName());
+    target = target.queryParam("fields", "assets");
+    Domain fetchedDomain = TestUtils.get(target, Domain.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(fetchedDomain.getAssets());
+    assertEquals(10, fetchedDomain.getAssets().size(), "Default assets limit should be 10");
+  }
+
+  @Test
+  void test_domainAssetsPaginationGetByNameWithCustomLimit(TestInfo test) throws IOException {
+    // Tests custom pagination on get by name
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 20; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(domain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    WebTarget target = getResource("domains/name/" + domain.getFullyQualifiedName());
+    target = target.queryParam("fields", "assets");
+    target = target.queryParam("assetsLimit", 12);
+    target = target.queryParam("assetsOffset", 3);
+    Domain fetchedDomain = TestUtils.get(target, Domain.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(fetchedDomain.getAssets());
+    assertEquals(
+        12, fetchedDomain.getAssets().size(), "Should return 12 assets starting from offset 3");
+  }
+
+  @Test
+  void test_domainAssetsPaginationMultiplePages(TestInfo test) throws IOException {
+    // Tests fetching 35 assets across multiple pages (10 per page), verifies all assets are
+    // returned without duplicates across
+    Domain domain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 35; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(domain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    List<UUID> allFetchedIds = new ArrayList<>();
+
+    for (int offset = 0; offset < 35; offset += 10) {
+      WebTarget target = getResource("domains/" + domain.getId());
+      target = target.queryParam("fields", "assets");
+      target = target.queryParam("assetsLimit", 10);
+      target = target.queryParam("assetsOffset", offset);
+      Domain fetchedDomain = TestUtils.get(target, Domain.class, ADMIN_AUTH_HEADERS);
+
+      assertNotNull(fetchedDomain.getAssets());
+      int expectedSize = Math.min(10, 35 - offset);
+      assertEquals(
+          expectedSize,
+          fetchedDomain.getAssets().size(),
+          "Page at offset " + offset + " should return " + expectedSize + " assets");
+
+      List<UUID> pageIds = fetchedDomain.getAssets().stream().map(EntityReference::getId).toList();
+      for (UUID id : pageIds) {
+        assertFalse(allFetchedIds.contains(id), "Asset should not appear in multiple pages");
+      }
+      allFetchedIds.addAll(pageIds);
+    }
+
+    assertEquals(35, allFetchedIds.size(), "All assets should be fetched across pages");
+  }
+
+  @Test
+  void test_domainAssetsPaginationOnlyAppliedToSpecifiedField(TestInfo test) throws IOException {
+    // Verifies pagination only applies to fields in FieldPagination
+    Domain parentDomain = createEntity(createRequest(test), ADMIN_AUTH_HEADERS);
+
+    Domain childDomain1 =
+        createEntity(
+            createRequest(getEntityName(test, 1)).withParent(parentDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Domain childDomain2 =
+        createEntity(
+            createRequest(getEntityName(test, 2)).withParent(parentDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+    Domain childDomain3 =
+        createEntity(
+            createRequest(getEntityName(test, 3)).withParent(parentDomain.getFullyQualifiedName()),
+            ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    List<EntityReference> tables = new ArrayList<>();
+
+    for (int i = 0; i < 15; i++) {
+      Table table =
+          tableTest.createEntity(
+              tableTest.createRequest(getEntityName(test, i + 10)), ADMIN_AUTH_HEADERS);
+      tables.add(table.getEntityReference());
+    }
+
+    bulkAddAssets(parentDomain.getFullyQualifiedName(), new BulkAssets().withAssets(tables));
+
+    WebTarget target = getResource("domains/" + parentDomain.getId());
+    target = target.queryParam("fields", "assets,children");
+    target = target.queryParam("assetsLimit", 5);
+    target = target.queryParam("assetsOffset", 0);
+    Domain fetchedDomain = TestUtils.get(target, Domain.class, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(fetchedDomain.getAssets());
+    assertEquals(5, fetchedDomain.getAssets().size(), "Assets should be paginated with limit 5");
+
+    assertNotNull(fetchedDomain.getChildren());
+    assertEquals(
+        3,
+        fetchedDomain.getChildren().size(),
+        "Children should not be paginated, all 3 children should be returned");
   }
 
   private void bulkAddAssets(String domainName, BulkAssets request) throws HttpResponseException {
