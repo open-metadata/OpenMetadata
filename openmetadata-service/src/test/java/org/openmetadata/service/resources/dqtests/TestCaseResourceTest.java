@@ -3545,7 +3545,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
     TestSuite logicalTestSuite =
-            testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+        testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
 
     CreateTestCase createTestCase = createRequest(getEntityName(test));
     TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
@@ -3553,66 +3553,66 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     String testSuiteOwnerUsername = "test-suite-owner";
     UserResourceTest userResourceTest = new UserResourceTest();
     CreateUser createUser =
-            userResourceTest
-                    .createRequest(testSuiteOwnerUsername)
-                    .withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+        userResourceTest
+            .createRequest(testSuiteOwnerUsername)
+            .withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
     User testSuiteOwner = userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
 
     String originalTestSuiteJson = JsonUtils.pojoToJson(logicalTestSuite);
     logicalTestSuite.setOwners(List.of(testSuiteOwner.getEntityReference()));
     testSuiteResourceTest.patchEntity(
-            logicalTestSuite.getId(), originalTestSuiteJson, logicalTestSuite, ADMIN_AUTH_HEADERS);
+        logicalTestSuite.getId(), originalTestSuiteJson, logicalTestSuite, ADMIN_AUTH_HEADERS);
 
     PolicyResourceTest policyResourceTest = new PolicyResourceTest();
     Rule testSuiteEditAllRule =
-            new Rule()
-                    .withName("testSuiteEditAllRule")
-                    .withDescription("Allow EDIT_ALL on TEST_SUITE entities owned by user")
-                    .withEffect(Rule.Effect.ALLOW)
-                    .withOperations(List.of(MetadataOperation.EDIT_ALL))
-                    .withResources(List.of(Entity.TEST_SUITE))
-                    .withCondition("isOwner()");
+        new Rule()
+            .withName("testSuiteEditAllRule")
+            .withDescription("Allow EDIT_ALL on TEST_SUITE entities owned by user")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withResources(List.of(Entity.TEST_SUITE))
+            .withCondition("isOwner()");
 
     Policy testSuiteEditAllPolicy =
-            policyResourceTest.createEntity(
-                    new CreatePolicy()
-                            .withName("Policy_TestSuiteEditAll_" + test.getDisplayName())
-                            .withDescription("Policy that allows TEST_SUITE:EDIT_ALL for owners")
-                            .withRules(List.of(testSuiteEditAllRule)),
-                    ADMIN_AUTH_HEADERS);
+        policyResourceTest.createEntity(
+            new CreatePolicy()
+                .withName("Policy_TestSuiteEditAll_" + test.getDisplayName())
+                .withDescription("Policy that allows TEST_SUITE:EDIT_ALL for owners")
+                .withRules(List.of(testSuiteEditAllRule)),
+            ADMIN_AUTH_HEADERS);
 
     RoleResourceTest roleResourceTest = new RoleResourceTest();
     Role testSuiteEditAllRole =
-            roleResourceTest.createEntity(
-                    new CreateRole()
-                            .withName("Role_TestSuiteEditAll_" + test.getDisplayName())
-                            .withPolicies(List.of(testSuiteEditAllPolicy.getFullyQualifiedName())),
-                    ADMIN_AUTH_HEADERS);
+        roleResourceTest.createEntity(
+            new CreateRole()
+                .withName("Role_TestSuiteEditAll_" + test.getDisplayName())
+                .withPolicies(List.of(testSuiteEditAllPolicy.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
 
     String testSuiteOwnerJson = JsonUtils.pojoToJson(testSuiteOwner);
     testSuiteOwner.setRoles(
-            List.of(
-                    DATA_CONSUMER_ROLE.getEntityReference(), testSuiteEditAllRole.getEntityReference()));
+        List.of(
+            DATA_CONSUMER_ROLE.getEntityReference(), testSuiteEditAllRole.getEntityReference()));
     userResourceTest.patchEntity(
-            testSuiteOwner.getId(), testSuiteOwnerJson, testSuiteOwner, ADMIN_AUTH_HEADERS);
+        testSuiteOwner.getId(), testSuiteOwnerJson, testSuiteOwner, ADMIN_AUTH_HEADERS);
 
     Map<String, String> ownerAuthHeaders = authHeaders(testSuiteOwnerUsername);
 
     testSuiteResourceTest.addTestCasesToLogicalTestSuite(
-            logicalTestSuite, List.of(testCase.getId()), ownerAuthHeaders);
+        logicalTestSuite, List.of(testCase.getId()), ownerAuthHeaders);
 
     UUID testCaseIdToDelete = testCase.getId();
     deleteLogicalTestCase(logicalTestSuite, testCaseIdToDelete, ownerAuthHeaders);
 
     Map<String, String> unauthorizedUserHeaders = authHeaders(USER2.getName());
     TestCase anotherTestCase =
-            createAndCheckEntity(createRequest("another_test"), ADMIN_AUTH_HEADERS);
+        createAndCheckEntity(createRequest("another_test"), ADMIN_AUTH_HEADERS);
     assertResponse(
-            () ->
-                    testSuiteResourceTest.addTestCasesToLogicalTestSuite(
-                            logicalTestSuite, List.of(anotherTestCase.getId()), unauthorizedUserHeaders),
-            FORBIDDEN,
-            "User does not have ANY of the required permissions.");
+        () ->
+            testSuiteResourceTest.addTestCasesToLogicalTestSuite(
+                logicalTestSuite, List.of(anotherTestCase.getId()), unauthorizedUserHeaders),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
   }
 
   public ResultList<TestCaseResult> getTestCaseResults(
