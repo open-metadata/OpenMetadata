@@ -20,6 +20,10 @@ export interface Application {
      */
     appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
+     * Fully Qualified Name (FQN) of the application
+     */
+    applicationFqn?: string;
+    /**
      * External Application Private configuration
      */
     appPrivateConfig?: CollateAIAppPrivateConfig | string;
