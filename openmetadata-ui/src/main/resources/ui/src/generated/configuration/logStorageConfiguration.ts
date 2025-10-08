@@ -27,6 +27,10 @@ export interface LogStorageConfiguration {
      */
     bucketName?: string;
     /**
+     * Enable it for pipelines deployed in the server
+     */
+    enabled?: boolean;
+    /**
      * Enable server-side encryption for S3 objects
      */
     enableServerSideEncryption?: boolean;
@@ -34,6 +38,10 @@ export interface LogStorageConfiguration {
      * Number of days after which logs are automatically deleted (0 means no expiration)
      */
     expirationDays?: number;
+    /**
+     * KMS Key ID for server-side encryption (if applicable)
+     */
+    kmsKeyId?: string;
     /**
      * Maximum number of concurrent log streams allowed
      */
@@ -43,9 +51,9 @@ export interface LogStorageConfiguration {
      */
     prefix?: string;
     /**
-     * AWS region for the S3 bucket (required for S3 type)
+     * Server-side encryption algorithm (if applicable)
      */
-    region?: string;
+    sseAlgorithm?: SSEAlgorithm;
     /**
      * S3 storage class for log objects
      */
@@ -106,6 +114,14 @@ export interface AWSCredentials {
      * The name of a profile to use with the boto session.
      */
     profileName?: string;
+}
+
+/**
+ * Server-side encryption algorithm (if applicable)
+ */
+export enum SSEAlgorithm {
+    Aes256 = "AES256",
+    AwsKms = "aws:kms",
 }
 
 /**

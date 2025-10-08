@@ -41,10 +41,12 @@ import static org.openmetadata.schema.type.ColumnDataType.BINARY;
 import static org.openmetadata.schema.type.ColumnDataType.CHAR;
 import static org.openmetadata.schema.type.ColumnDataType.DATE;
 import static org.openmetadata.schema.type.ColumnDataType.DECIMAL;
+import static org.openmetadata.schema.type.ColumnDataType.DOUBLE;
 import static org.openmetadata.schema.type.ColumnDataType.FLOAT;
 import static org.openmetadata.schema.type.ColumnDataType.INT;
 import static org.openmetadata.schema.type.ColumnDataType.STRING;
 import static org.openmetadata.schema.type.ColumnDataType.STRUCT;
+import static org.openmetadata.schema.type.ColumnDataType.TIMESTAMP;
 import static org.openmetadata.schema.type.ColumnDataType.VARCHAR;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -77,17 +79,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -146,6 +138,8 @@ import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.ColumnProfilerConfig;
+import org.openmetadata.schema.type.CompressionStrategy;
+import org.openmetadata.schema.type.CompressionStrategy.CompressionType;
 import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.DataModel.ModelType;
 import org.openmetadata.schema.type.Edge;
@@ -351,6 +345,55 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     create.setTablePartition(partition);
     Table created = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
     assertTablePartition(partition, created.getTablePartition());
+  }
+
+  @Test
+  void patch_tableCompressionAttributes(TestInfo test) throws IOException {
+    CreateTable create = createRequest(test).withTableConstraints(null);
+    List<Column> columns = new ArrayList<>();
+    columns.add(getColumn("time", TIMESTAMP, null));
+    columns.add(getColumn("device_id", INT, null));
+    columns.add(getColumn("temperature", DOUBLE, null));
+    create.setColumns(columns);
+
+    Table table = createEntity(create, ADMIN_AUTH_HEADERS);
+
+    CompressionStrategy compressionStrategy =
+        new CompressionStrategy()
+            .withCompressionType(CompressionType.POLICY_BASED)
+            .withSegmentColumns(List.of("device_id"))
+            .withOrderColumns(List.of("time"));
+
+    String originalJson = JsonUtils.pojoToJson(table);
+    ChangeDescription change = getChangeDescription(table, MINOR_UPDATE);
+    table
+        .withCompressionEnabled(true)
+        .withCompressionCodec("TimescaleDB Native")
+        .withCompressionStrategy(compressionStrategy);
+    fieldAdded(change, "compressionEnabled", true);
+    fieldAdded(change, "compressionCodec", "TimescaleDB Native");
+    fieldAdded(change, "compressionStrategy", compressionStrategy);
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(true, table.getCompressionEnabled());
+    assertEquals("TimescaleDB Native", table.getCompressionCodec());
+    assertCompressionStrategy(compressionStrategy, table.getCompressionStrategy());
+
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    table.withCompressionCodec("LZ4");
+    fieldUpdated(change, "compressionCodec", "TimescaleDB Native", "LZ4");
+    table = patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    originalJson = JsonUtils.pojoToJson(table);
+    change = getChangeDescription(table, MINOR_UPDATE);
+    change.setPreviousVersion(table.getVersion());
+    table.withCompressionEnabled(null).withCompressionCodec(null).withCompressionStrategy(null);
+    fieldDeleted(change, "compressionEnabled", true);
+    fieldDeleted(change, "compressionCodec", "LZ4");
+    fieldDeleted(change, "compressionStrategy", compressionStrategy);
+    patchEntityAndCheck(table, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
   }
 
   @Test
@@ -3803,6 +3846,19 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     }
   }
 
+  private void assertCompressionStrategy(CompressionStrategy expected, CompressionStrategy actual) {
+    if (expected == null && actual == null) {
+      return;
+    }
+
+    assertNotNull(expected);
+    assertNotNull(actual);
+    assertEquals(expected.getCompressionType(), actual.getCompressionType());
+    assertEquals(expected.getSegmentColumns(), actual.getSegmentColumns());
+    assertEquals(expected.getOrderColumns(), actual.getOrderColumns());
+    assertEquals(expected.getCompressionLevel(), actual.getCompressionLevel());
+  }
+
   @Override
   public void assertFieldChange(String fieldName, Object expected, Object actual)
       throws IOException {
@@ -3833,6 +3889,16 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
       TableType expectedTableType = TableType.fromValue(expected.toString());
       TableType actualTableType = TableType.fromValue(actual.toString());
       assertEquals(expectedTableType, actualTableType);
+    } else if (fieldName.endsWith("compressionStrategy")) {
+      CompressionStrategy expectedStrategy =
+          JsonUtils.convertValue(expected, CompressionStrategy.class);
+      CompressionStrategy actualStrategy =
+          JsonUtils.convertValue(actual, CompressionStrategy.class);
+      assertEquals(expectedStrategy, actualStrategy);
+    } else if (fieldName.endsWith("compressionEnabled")) {
+      assertEquals(expected, actual);
+    } else if (fieldName.endsWith("compressionCodec")) {
+      assertEquals(expected, actual);
     } else if (fieldName.endsWith("owners")) {
       @SuppressWarnings("unchecked")
       List<EntityReference> expectedOwners =
@@ -5279,7 +5345,7 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
 
     // Update the table using the clean API
     var fluentTable = Tables.find(createdTable.getId().toString()).fetch();
-    fluentTable.get().setColumns(createdTable.getColumns());
+    fluentTable.withColumns(createdTable.getColumns());
     Table updatedTable = fluentTable.save().get();
     assertNotNull(updatedTable);
     assertEquals(4, updatedTable.getColumns().size());
@@ -5532,5 +5598,70 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
     dataProductTest.deleteEntity(dataProduct.getId(), false, true, ADMIN_AUTH_HEADERS);
     domainTest.deleteEntity(domain.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_columnWithMultipleTags_withClassificationReason(TestInfo test) throws IOException {
+    // Patch a table:
+    // 1. PII.Sensitive - from classification with reason "Classified with score 1.0"
+    // 2. Personal.Name - manual tag with no reason (null)
+    Column column = getColumn(C1, ColumnDataType.STRING, null);
+
+    CreateTable request = createRequest(test).withColumns(List.of(column));
+    Table table = createEntity(request, ADMIN_AUTH_HEADERS);
+
+    TagLabel personalTagLabel = PERSONAL_DATA_TAG_LABEL;
+    TagLabel sensitiveTagLabel =
+        PII_SENSITIVE_TAG_LABEL.withReason("Classified with score 1.0"); // Classification reason
+
+    // Create a column with sensitive tag
+    Column columnWithAutoClassification = column.withTags(List.of(sensitiveTagLabel));
+
+    String originalTable = JsonUtils.pojoToJson(table);
+
+    table = table.withColumns(List.of(columnWithAutoClassification));
+
+    Table patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedTable.getColumns());
+    assertEquals(1, patchedTable.getColumns().size());
+    Column patchedColumn = patchedTable.getColumns().getFirst();
+    List<TagLabel> tags = patchedColumn.getTags();
+    assertNotNull(tags);
+    assertEquals(1, tags.size());
+
+    TagLabel piiTag = tags.getFirst();
+    assertNotNull(piiTag);
+    assertEquals("Sensitive", piiTag.getName());
+    assertEquals("PII.Sensitive", piiTag.getTagFQN());
+    assertEquals("Classified with score 1.0", piiTag.getReason());
+
+    // Now add personal tag manually
+    Column columnWithBothTags = column.withTags(List.of(sensitiveTagLabel, personalTagLabel));
+
+    originalTable = JsonUtils.pojoToJson(patchedTable);
+
+    table = patchedTable.withColumns(List.of(columnWithBothTags));
+
+    patchedTable = patchEntity(table.getId(), originalTable, table, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(patchedTable.getColumns());
+    assertEquals(1, patchedTable.getColumns().size());
+    patchedColumn = patchedTable.getColumns().getFirst();
+    tags = patchedColumn.getTags();
+    assertNotNull(tags);
+    assertEquals(2, tags.size());
+
+    piiTag = tags.getFirst();
+    assertNotNull(piiTag);
+    assertEquals("Sensitive", piiTag.getName());
+    assertEquals("PII.Sensitive", piiTag.getTagFQN());
+    assertEquals("Classified with score 1.0", piiTag.getReason());
+
+    TagLabel personalTag = tags.getLast();
+    assertNotNull(personalTag);
+    assertEquals("Personal", personalTag.getName());
+    assertEquals("PersonalData.Personal", personalTag.getTagFQN());
+    assertNull(personalTag.getReason());
   }
 }

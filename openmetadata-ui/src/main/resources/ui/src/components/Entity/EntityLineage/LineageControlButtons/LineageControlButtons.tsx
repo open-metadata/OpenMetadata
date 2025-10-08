@@ -23,15 +23,19 @@ import {
 } from '@ant-design/icons';
 import { Button } from 'antd';
 import classNames from 'classnames';
+import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
 import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
+import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { SERVICE_TYPES } from '../../../../constants/Services.constant';
 import { useLineageProvider } from '../../../../context/LineageProvider/LineageProvider';
 import { LineagePlatformView } from '../../../../context/LineageProvider/LineageProvider.interface';
 import { LineageLayer } from '../../../../generated/configuration/lineageSettings';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getLoadingStatusValue } from '../../../../utils/EntityLineageUtils';
 import { AssetsUnion } from '../../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { LineageConfig } from '../EntityLineage.interface';
@@ -40,8 +44,6 @@ import './lineage-control-buttons.less';
 import { LineageControlButtonsProps } from './LineageControlButtons.interface';
 
 const LineageControlButtons: FC<LineageControlButtonsProps> = ({
-  handleFullScreenViewClick,
-  onExitFullScreenViewClick,
   deleted,
   hasEditAccess,
   entityType,
@@ -63,6 +65,8 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
     reactFlowInstance,
     redraw,
   } = useLineageProvider();
+  const navigate = useNavigate();
+  const location = useCustomLocation();
 
   const isColumnLayerActive = useMemo(() => {
     return activeLayer.includes(LineageLayer.ColumnLevelLineage);
@@ -73,6 +77,20 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
       <EditIcon className={isEditMode ? 'active' : ''} height={18} width={18} />
     </span>
   );
+
+  const isFullscreen = useMemo(() => {
+    const params = Qs.parse(location.search, { ignoreQueryPrefix: true });
+
+    return params[FULLSCREEN_QUERY_PARAM_KEY] === 'true';
+  }, [location.search]);
+
+  const toggleFullscreenView = useCallback(() => {
+    navigate({
+      search: isFullscreen
+        ? ''
+        : Qs.stringify({ [FULLSCREEN_QUERY_PARAM_KEY]: !isFullscreen }),
+    });
+  }, [isFullscreen]);
 
   const handleDialogSave = useCallback(
     (config: LineageConfig) => {
@@ -153,34 +171,22 @@ const LineageControlButtons: FC<LineageControlButtonsProps> = ({
           onClick={handleExportClick}
         />
 
-        {handleFullScreenViewClick && (
-          <Button
-            className="lineage-button"
-            data-testid="full-screen"
-            icon={
-              <span className="anticon">
-                <FullscreenOutlined />
-              </span>
-            }
-            title={t('label.full-screen')}
-            type="text"
-            onClick={handleFullScreenViewClick}
-          />
-        )}
-        {onExitFullScreenViewClick && (
-          <Button
-            className="lineage-button"
-            data-testid="exit-full-screen"
-            icon={
-              <span className="anticon">
+        <Button
+          className="lineage-button"
+          data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
+          icon={
+            <span className="anticon">
+              {isFullscreen ? (
                 <FullscreenExitOutlined />
-              </span>
-            }
-            title={t('label.exit-full-screen')}
-            type="text"
-            onClick={onExitFullScreenViewClick}
-          />
-        )}
+              ) : (
+                <FullscreenOutlined />
+              )}
+            </span>
+          }
+          title={t('label.full-screen')}
+          type="text"
+          onClick={toggleFullscreenView}
+        />
 
         <Button
           className="lineage-button"

@@ -152,7 +152,9 @@ test('Search Index Application', async ({ page }) => {
     await clickOutside(page);
     await page.locator('[for="root/searchIndexMappingLanguage"]').click();
 
-    await page.getByTestId('select-widget').click();
+    await page
+      .getByTestId('select-widget-root/searchIndexMappingLanguage')
+      .click();
 
     await expect(page.getByTestId('select-option-JP')).toBeVisible();
 
@@ -185,14 +187,15 @@ test('Search Index Application', async ({ page }) => {
   });
 
   await test.step('Install application', async () => {
-    await page.click('[data-testid="add-application"]');
-
     // Verify response status code
-    const getMarketPlaceResponse = await page.waitForResponse(
+    const getMarketPlaceResponse = page.waitForResponse(
       '/api/v1/apps/marketplace?limit=15'
     );
+    await page.click('[data-testid="add-application"]');
 
-    expect(getMarketPlaceResponse.status()).toBe(200);
+    const response = await getMarketPlaceResponse;
+
+    expect(response.status()).toBe(200);
 
     // Check if search-indexing-application-card is visible, if not paginate through pages
     let cardFound = await page

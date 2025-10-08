@@ -25,24 +25,7 @@ public class MlModel extends org.openmetadata.schema.entity.data.MlModel {
 
   // Static CRUD methods - Stripe style
   public static org.openmetadata.schema.entity.data.MlModel create(CreateMlModel request) {
-    // Convert CreateMlModel to MlModel entity
-    org.openmetadata.schema.entity.data.MlModel mlModel =
-        new org.openmetadata.schema.entity.data.MlModel();
-    mlModel.setName(request.getName());
-    mlModel.setDisplayName(request.getDisplayName());
-    mlModel.setDescription(request.getDescription());
-    mlModel.setOwners(request.getOwners());
-    mlModel.setAlgorithm(request.getAlgorithm());
-    mlModel.setMlFeatures(request.getMlFeatures());
-    mlModel.setMlHyperParameters(request.getMlHyperParameters());
-    mlModel.setTarget(request.getTarget());
-    mlModel.setMlStore(request.getMlStore());
-    mlModel.setExtension(request.getExtension());
-    mlModel.setSourceHash(request.getSourceHash());
-    mlModel.setLifeCycle(request.getLifeCycle());
-    mlModel.setSourceUrl(request.getSourceUrl());
-
-    return (org.openmetadata.schema.entity.data.MlModel) getClient().mlModels().create(mlModel);
+    return getClient().mlModels().create(request);
   }
 
   public static org.openmetadata.schema.entity.data.MlModel retrieve(String id) {

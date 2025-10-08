@@ -99,3 +99,6 @@ CREATE INDEX IF NOT EXISTS idx_feedback_entity ON recognizer_feedback_entity(ent
 CREATE INDEX IF NOT EXISTS idx_feedback_tag ON recognizer_feedback_entity(tagFQN);
 CREATE INDEX IF NOT EXISTS idx_feedback_status ON recognizer_feedback_entity(status);
 CREATE INDEX IF NOT EXISTS idx_feedback_created ON recognizer_feedback_entity(createdAt);
+
+ALTER TABLE tag_usage
+ADD COLUMN reason TEXT;

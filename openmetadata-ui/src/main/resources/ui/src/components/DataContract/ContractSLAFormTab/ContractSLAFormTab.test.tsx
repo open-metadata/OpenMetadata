@@ -18,7 +18,14 @@ import {
   RefreshFrequencyUnit,
   RetentionUnit,
 } from '../../../generated/entity/data/dataContract';
+import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { ContractSLAFormTab } from './ContractSLAFormTab';
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockTableData,
+  })),
+}));
 
 const mockOnChange = jest.fn();
 const mockOnPrev = jest.fn();

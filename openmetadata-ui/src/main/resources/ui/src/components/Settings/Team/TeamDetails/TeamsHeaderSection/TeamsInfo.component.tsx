@@ -28,10 +28,11 @@ import {
 } from '../../../../../constants/constants';
 import { EMAIL_REG_EX } from '../../../../../constants/regex.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
+import { Operation } from '../../../../../generated/entity/policies/policy';
 import { Team, TeamType } from '../../../../../generated/entity/teams/team';
 import { EntityReference } from '../../../../../generated/entity/type';
-import { useAuth } from '../../../../../hooks/authHooks';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
+import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import { DomainLabel } from '../../../../common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../../../../common/OwnerLabel/OwnerLabel.component';
 import TeamTypeSelect from '../../../../common/TeamTypeSelect/TeamTypeSelect.component';
@@ -49,8 +50,6 @@ const TeamsInfo = ({
 }: TeamsInfoProps) => {
   const { t } = useTranslation();
 
-  const { isAdminUser } = useAuth();
-
   const [isEmailEdit, setIsEmailEdit] = useState<boolean>(false);
   const [showTypeSelector, setShowTypeSelector] = useState(false);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -62,10 +61,12 @@ const TeamsInfo = ({
     [currentTeam]
   );
 
-  const { hasEditPermission, hasAccess } = useMemo(
+  const { hasEditPermission, hasEditOwnerPermission } = useMemo(
     () => ({
       hasEditPermission: entityPermissions.EditAll && !isTeamDeleted,
-      hasAccess: isAdminUser && !isTeamDeleted,
+      hasEditOwnerPermission:
+        getPrioritizedEditPermission(entityPermissions, Operation.EditOwners) &&
+        !isTeamDeleted,
     }),
 
     [entityPermissions, isTeamDeleted]
@@ -307,7 +308,10 @@ const TeamsInfo = ({
   ]);
 
   return (
-    <Space className="teams-info-header-container" size={0}>
+    <Space
+      className="teams-info-header-container"
+      data-testid="teams-info-header"
+      size={0}>
       <DomainLabel
         headerLayout
         multiple
@@ -320,7 +324,7 @@ const TeamsInfo = ({
       <Divider className="vertical-divider" type="vertical" />
       <OwnerLabel
         className="text-sm"
-        hasPermission={hasAccess}
+        hasPermission={hasEditOwnerPermission}
         isCompactView={false}
         owners={owners}
         onUpdate={updateOwner}
