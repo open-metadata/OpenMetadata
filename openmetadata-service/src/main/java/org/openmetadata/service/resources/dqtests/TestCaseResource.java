@@ -918,10 +918,25 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context SecurityContext securityContext,
       @PathParam("testSuiteId") UUID testSuiteId,
       @PathParam("id") UUID id) {
-    ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
-    OperationContext operationContext =
+
+    TestSuite testSuite =
+        Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "domains,owners", null, false);
+
+    ResourceContextInterface testCaseRC = TestCaseResourceContext.builder().id(id).build();
+    OperationContext testCaseDeleteOpContext =
         new OperationContext(Entity.TEST_CASE, MetadataOperation.DELETE);
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    ResourceContextInterface testSuiteRC =
+        TestCaseResourceContext.builder().entity(testSuite).build();
+    OperationContext testSuiteEditAllOpContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(testCaseDeleteOpContext, testCaseRC),
+            new AuthRequest(testSuiteEditAllOpContext, testSuiteRC));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+
     DeleteResponse<TestCase> response =
         repository.deleteTestCaseFromLogicalTestSuite(testSuiteId, id);
     return response.toResponse();
@@ -1090,15 +1105,28 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Valid CreateLogicalTestCases createLogicalTestCases) {
 
     // don't get entity from cache as test result summary may be stale
-    // Fetch with domains field to ensure proper authorization
+    // Fetch with domains and owners fields to ensure proper authorization
     TestSuite testSuite =
         Entity.getEntity(
-            Entity.TEST_SUITE, createLogicalTestCases.getTestSuiteId(), "domains", null, false);
-    OperationContext operationContext =
+            Entity.TEST_SUITE,
+            createLogicalTestCases.getTestSuiteId(),
+            "domains,owners",
+            null,
+            false);
+
+    OperationContext editTestsOpContext =
         new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface resourceContext =
+    ResourceContextInterface testSuiteRC =
         TestCaseResourceContext.builder().entity(testSuite).build();
-    authorizer.authorize(securityContext, operationContext, resourceContext);
+
+    OperationContext editAllOpContext =
+        new OperationContext(Entity.TEST_SUITE, MetadataOperation.EDIT_ALL);
+
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(editTestsOpContext, testSuiteRC),
+            new AuthRequest(editAllOpContext, testSuiteRC));
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     if (Boolean.TRUE.equals(testSuite.getBasic())) {
       throw new IllegalArgumentException("You are trying to add test cases to a basic test suite.");
     }
