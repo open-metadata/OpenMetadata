@@ -33,6 +33,16 @@
           "type": "integer",
           "default": 1296000000,
           "description": "The amount of time a Job gets locked before being retried. Default: 15 Days. This avoids jobs that takes too long to run being retried while running."
+        },
+        "asyncJobAcquisitionInterval": {
+          "type": "integer",
+          "default": 60000,
+          "description": "The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls how often Flowable polls for new jobs."
+        },
+        "timerJobAcquisitionInterval": {
+          "type": "integer",
+          "default": 60000,
+          "description": "The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls how often Flowable polls for scheduled jobs."
         }
       },
       "additionalProperties": false
