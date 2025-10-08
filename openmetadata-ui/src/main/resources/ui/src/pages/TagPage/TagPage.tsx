@@ -33,6 +33,12 @@ import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
+import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
+import {
+  ActivityFeedLayoutType,
+  ActivityFeedTabs,
+} from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
+import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
@@ -64,6 +70,7 @@ import {
 } from '../../constants/constants';
 import { CustomizeEntityType } from '../../constants/Customize.constants';
 import { TAGS_DOCS } from '../../constants/docs.constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
@@ -76,9 +83,10 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { Style } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
+import { FeedCounts } from '../../interface/feed.interface';
 import { searchData } from '../../rest/miscAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
-import { getEntityDeleteMessage } from '../../utils/CommonUtils';
+import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -123,6 +131,9 @@ const TagPage = () => {
   const assetTabRef = useRef<AssetsTabRef>(null);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const breadcrumb: TitleBreadcrumbProps['titleLinks'] = useMemo(() => {
     return tagItem
       ? [
@@ -150,6 +161,10 @@ const TagPage = () => {
     },
     []
   );
+
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
 
   const { editTagsPermission, editDescriptionPermission } = useMemo(() => {
     if (tagItem) {
@@ -362,6 +377,16 @@ const TagPage = () => {
     }
   };
 
+  const fetchFeedCount = async () => {
+    if (tagItem?.fullyQualifiedName) {
+      await getFeedCounts(
+        EntityType.TAG,
+        tagItem.fullyQualifiedName,
+        handleFeedCount
+      );
+    }
+  };
+
   const handleAssetSave = useCallback(() => {
     fetchClassificationTagAssets();
     assetTabRef.current?.refreshAssets();
@@ -442,38 +467,29 @@ const TagPage = () => {
         label: <TabsLabel id={TagTabs.OVERVIEW} name={t('label.overview')} />,
         key: 'overview',
         children: (
-          <GenericProvider<Tag>
-            data={tagItem as Tag}
-            isVersionView={false}
-            permissions={tagPermissions}
-            type={EntityType.TAG as CustomizeEntityType}
-            onUpdate={(updatedData: Tag) =>
-              Promise.resolve(updateTag(updatedData))
-            }>
-            <Row gutter={16}>
-              <Col span={18}>
-                <Card className="card-padding-md">
-                  <DescriptionV1
-                    removeBlur
-                    wrapInCard
-                    description={tagItem?.description}
-                    entityName={getEntityName(tagItem)}
-                    entityType={EntityType.TAG}
-                    hasEditAccess={editDescriptionPermission}
-                    showActions={!tagItem?.deleted}
-                    showCommentsIcon={false}
-                    onDescriptionUpdate={onDescriptionUpdate}
-                  />
-                </Card>
-              </Col>
-              <Col span={6}>
-                <div className="d-flex flex-column gap-5">
-                  <DomainLabelV2 multiple showDomainHeading />
-                  <OwnerLabelV2 dataTestId="tag-owner-name" />
-                </div>
-              </Col>
-            </Row>
-          </GenericProvider>
+          <Row gutter={16}>
+            <Col span={18}>
+              <Card className="card-padding-md">
+                <DescriptionV1
+                  removeBlur
+                  wrapInCard
+                  description={tagItem?.description}
+                  entityName={getEntityName(tagItem)}
+                  entityType={EntityType.TAG}
+                  hasEditAccess={editDescriptionPermission}
+                  showActions={!tagItem?.deleted}
+                  showCommentsIcon={false}
+                  onDescriptionUpdate={onDescriptionUpdate}
+                />
+              </Card>
+            </Col>
+            <Col span={6}>
+              <div className="d-flex flex-column gap-5">
+                <DomainLabelV2 multiple showDomainHeading />
+                <OwnerLabelV2 dataTestId="tag-owner-name" />
+              </div>
+            </Col>
+          </Row>
         ),
       },
       {
@@ -532,6 +548,31 @@ const TagPage = () => {
           />
         ),
       },
+      {
+        label: (
+          <TabsLabel
+            count={feedCount.totalCount}
+            id={TagTabs.ACTIVITY_FEED}
+            isActive={activeTab === TagTabs.ACTIVITY_FEED}
+            name={t('label.activity-feed-and-task-plural')}
+          />
+        ),
+        key: TagTabs.ACTIVITY_FEED,
+        children: (
+          <ActivityFeedTab
+            refetchFeed
+            entityFeedTotalCount={feedCount.totalCount}
+            entityType={EntityType.TAG}
+            feedCount={feedCount}
+            layoutType={ActivityFeedLayoutType.THREE_PANEL}
+            owners={tagItem?.owners}
+            subTab={ActivityFeedTabs.ALL}
+            onFeedUpdate={fetchFeedCount}
+            onUpdateEntityDetails={getTagData}
+            onUpdateFeedCount={handleFeedCount}
+          />
+        ),
+      },
     ];
 
     return items;
@@ -540,6 +581,7 @@ const TagPage = () => {
     previewAsset,
     activeTab,
     assetCount,
+    feedCount,
     assetTabRef,
     handleAssetSave,
     editTagsPermission,
@@ -567,6 +609,7 @@ const TagPage = () => {
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
+    fetchFeedCount();
   }, [tagFqn]);
 
   useEffect(() => {
@@ -669,15 +712,24 @@ const TagPage = () => {
           </Row>
         </Col>
 
-        <Col span={24} style={{ overflowY: 'auto' }}>
-          <Tabs
-            destroyInactiveTabPane
-            activeKey={activeTab}
-            className="tabs-new tag-page-tabs"
-            items={tabItems}
-            onChange={activeTabHandler}
-          />
-        </Col>
+        <GenericProvider<Tag>
+          data={tagItem as Tag}
+          isVersionView={false}
+          permissions={tagPermissions}
+          type={EntityType.TAG as CustomizeEntityType}
+          onUpdate={(updatedData: Tag) =>
+            Promise.resolve(updateTag(updatedData))
+          }>
+          <Col span={24} style={{ overflowY: 'auto' }}>
+            <Tabs
+              destroyInactiveTabPane
+              activeKey={activeTab}
+              className="tabs-new tag-page-tabs"
+              items={tabItems}
+              onChange={activeTabHandler}
+            />
+          </Col>
+        </GenericProvider>
       </Row>
 
       <EntityDeleteModal
@@ -733,4 +785,4 @@ const TagPage = () => {
   );
 };
 
-export default TagPage;
+export default withActivityFeed(TagPage);

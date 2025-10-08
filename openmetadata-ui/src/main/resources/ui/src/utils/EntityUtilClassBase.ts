@@ -67,6 +67,7 @@ import {
 import {
   getApplicationDetailsPath,
   getBotsPath,
+  getClassificationTagPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
@@ -218,6 +219,7 @@ class EntityUtilClassBase {
         );
       case SearchIndex.TAG:
       case EntityType.TAG:
+        return getClassificationTagPath(fullyQualifiedName, tab, subTab);
       case EntityType.CLASSIFICATION:
         return getTagsDetailsPath(fullyQualifiedName);
 
