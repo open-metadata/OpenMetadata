@@ -90,12 +90,15 @@ def test_pipeline_startdate_uses_timestamp():
 
                 # Verify that startDate is a timestamp (integer), not an ISO string
                 assert pipeline_request.startDate is not None
+                # The Pydantic model may wrap the timestamp in a DateTime object
+                # Check the actual value when serialized
+                serialized = pipeline_request.model_dump()
                 assert isinstance(
-                    pipeline_request.startDate, int
-                ), f"startDate should be an integer timestamp, not {type(pipeline_request.startDate)}"
+                    serialized["startDate"], int
+                ), f"Serialized startDate should be an integer timestamp, not {type(serialized['startDate'])}"
                 assert (
-                    pipeline_request.startDate == expected_timestamp
-                ), f"startDate should be {expected_timestamp}, got {pipeline_request.startDate}"
+                    serialized["startDate"] == expected_timestamp
+                ), f"Serialized startDate should be {expected_timestamp}, got {serialized['startDate']}"
 
 
 def test_pipeline_without_startdate():
