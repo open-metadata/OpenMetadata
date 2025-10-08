@@ -107,7 +107,9 @@ class SnowflakeLineageSource(
                         )
                     except Exception as exc:
                         logger.debug(traceback.format_exc())
-                        logger.warning(f"Error processing query_dict {query_dict}: {exc}")
+                        logger.warning(
+                            f"Error processing query_dict {query_dict}: {exc}"
+                        )
                 total_fetched += row_count
                 if row_count < batch_size:
                     break
