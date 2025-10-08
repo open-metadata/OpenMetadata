@@ -233,38 +233,34 @@ class KafkaconnectSource(PipelineServiceSource):
                         )  # Use envelope children as schema fields
 
             if is_debezium_cdc:
-                # For Debezium CDC, the 'after'/'before' fields don't have expanded children
-                # in OpenMetadata's representation. We need to parse the raw schema text.
-                if entity.messageSchema.schemaText:
-                    try:
-                        import json
+                # For Debezium CDC, extract columns from the 'after' field (or 'before' as fallback)
+                # The 'after' field contains the complete record structure after the change
+                for field in schema_fields:
+                    field_name_str = get_field_name(field.name)
+                    # Prefer 'after' for source connectors (contains new/updated record state)
+                    if field_name_str == "after" and field.children:
+                        columns = [
+                            get_field_name(child.name) for child in field.children
+                        ]
+                        logger.debug(
+                            f"Debezium CDC: extracted {len(columns)} columns from 'after' field"
+                        )
+                        return columns
 
-                        schema_dict = json.loads(entity.messageSchema.schemaText)
-
-                        # Look for 'after' or 'before' field in the schema
-                        for field_name in ["after", "before"]:
-                            if field_name in schema_dict.get("properties", {}):
-                                field_def = schema_dict["properties"][field_name]
-                                # Handle oneOf (nullable types)
-                                if "oneOf" in field_def:
-                                    for option in field_def["oneOf"]:
-                                        if (
-                                            isinstance(option, dict)
-                                            and option.get("type") == "object"
-                                        ):
-                                            # Found the table structure
-                                            columns = list(
-                                                option.get("properties", {}).keys()
-                                            )
-                                            logger.debug(
-                                                f"Debezium CDC: extracted {len(columns)} columns from '{field_name}' field via schema text"
-                                            )
-                                            return columns
-                    except Exception as exc:
-                        logger.debug(f"Unable to parse Debezium CDC schema text: {exc}")
+                # Fallback to 'before' if 'after' has no children
+                for field in schema_fields:
+                    field_name_str = get_field_name(field.name)
+                    if field_name_str == "before" and field.children:
+                        columns = [
+                            get_field_name(child.name) for child in field.children
+                        ]
+                        logger.debug(
+                            f"Debezium CDC: extracted {len(columns)} columns from 'before' field"
+                        )
+                        return columns
 
                 logger.debug(
-                    "Debezium CDC detected but unable to extract columns from schema"
+                    "Debezium CDC detected but unable to extract columns from after/before fields"
                 )
                 return []
 
@@ -310,17 +306,39 @@ class KafkaconnectSource(PipelineServiceSource):
 
             # Check if it's a child field (nested - one level deep)
             if field.children:
+                # For Debezium CDC, prioritize 'after' over 'before' when searching for grandchildren
+                children_to_search = field.children
+                after_child = None
+                before_child = None
+
                 for child in field.children:
-                    if get_field_name(child.name) == field_name:
+                    child_name = get_field_name(child.name)
+                    if child_name == "after":
+                        after_child = child
+                    elif child_name == "before":
+                        before_child = child
+                    # Check direct child match
+                    if child_name == field_name:
                         return (
                             child.fullyQualifiedName.root
                             if child.fullyQualifiedName
                             else None
                         )
 
-                    # Check if it's a grandchild field (nested - two levels deep)
-                    # This handles Debezium CDC topics where columns are inside after/before fields
-                    if child.children:
+                # Search grandchildren - prefer 'after' over 'before' for CDC topics
+                for cdc_child in [after_child, before_child]:
+                    if cdc_child and cdc_child.children:
+                        for grandchild in cdc_child.children:
+                            if get_field_name(grandchild.name) == field_name:
+                                return (
+                                    grandchild.fullyQualifiedName.root
+                                    if grandchild.fullyQualifiedName
+                                    else None
+                                )
+
+                # Search other grandchildren (non-CDC fields)
+                for child in field.children:
+                    if child not in [after_child, before_child] and child.children:
                         for grandchild in child.children:
                             if get_field_name(grandchild.name) == field_name:
                                 return (
