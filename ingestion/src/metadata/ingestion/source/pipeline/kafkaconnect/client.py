@@ -21,6 +21,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnect
     KafkaConnectConnection,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
+    KafkaConnectColumnMapping,
     KafkaConnectDatasetDetails,
     KafkaConnectPipelineDetails,
     KafkaConnectTopics,
@@ -37,9 +38,37 @@ SUPPORTED_DATASETS = {
         "snowflake.schema.name",
         "table.whitelist",
         "fields.whitelist",
+        "table.include.list",
+        "table.name.format",
+        "tables.include",
+        "table.exclude.list",
+        "snowflake.schema",
+        "snowflake.topic2table.map",
+        "fields.included",
     ],
-    "database": ["database", "db.name", "snowflake.database.name"],
-    "container_name": ["s3.bucket.name"],
+    "database": [
+        "database",
+        "db.name",
+        "snowflake.database.name",
+        "database.include.list",
+        "database.hostname",
+        "connection.url",
+        "database.dbname",
+        "topic.prefix",
+        "database.server.name",
+        "databases.include",
+        "database.names",
+        "snowflake.database",
+        "connection.host",
+        "database.exclude.list",
+    ],
+    "container_name": [
+        "s3.bucket.name",
+        "s3.bucket",
+        "gcs.bucket.name",
+        "azure.container.name",
+        "topics.dir",
+    ],
 }
 
 
@@ -55,6 +84,9 @@ class KafkaConnectClient:
         if config.KafkaConnectConfig:
             auth = f"{config.KafkaConnectConfig.username}:{config.KafkaConnectConfig.password.get_secret_value()}"
         self.client = KafkaConnect(url=url, auth=auth, ssl_verify=ssl_verify)
+
+        # Detect if this is Confluent Cloud (managed connectors)
+        self.is_confluent_cloud = "api.confluent.cloud" in url
 
     def _enrich_connector_details(
         self, connector_details: KafkaConnectPipelineDetails, connector_name: str
@@ -73,7 +105,31 @@ class KafkaConnectClient:
     def get_cluster_info(self) -> Optional[dict]:
         """
         Get the version and other details of the Kafka Connect cluster.
+
+        For Confluent Cloud, the root endpoint is not supported, so we use
+        the /connectors endpoint to verify authentication and connectivity.
         """
+        if self.is_confluent_cloud:
+            # Confluent Cloud doesn't support the root endpoint (/)
+            # Use /connectors to test authentication and connectivity
+            logger.info(
+                "Confluent Cloud detected - testing connection via connectors list endpoint"
+            )
+            try:
+                connectors = self.client.list_connectors()
+                # Connection successful - return a valid response
+                logger.info(
+                    f"Confluent Cloud connection successful - found {len(connectors) if connectors else 0} connectors"
+                )
+                return {
+                    "version": "confluent-cloud",
+                    "commit": "managed",
+                    "kafka_cluster_id": "confluent-managed",
+                }
+            except Exception as exc:
+                logger.error(f"Failed to connect to Confluent Cloud: {exc}")
+                raise
+
         return self.client.get_cluster_info()
 
     def get_connectors_list(
@@ -135,6 +191,56 @@ class KafkaConnectClient:
 
         return None
 
+    def extract_column_mappings(
+        self, connector_config: dict
+    ) -> Optional[List[KafkaConnectColumnMapping]]:
+        """
+        Extract column mappings from connector configuration.
+        For Debezium and JDBC connectors, columns are typically mapped 1:1
+        unless transforms are applied.
+
+        Args:
+            connector_config: The connector configuration dictionary
+
+        Returns:
+            List of KafkaConnectColumnMapping objects if mappings can be inferred
+        """
+        try:
+            column_mappings = []
+
+            # Check for SMT (Single Message Transform) configurations
+            transforms = connector_config.get("transforms", "")
+            if transforms:
+                transform_list = [t.strip() for t in transforms.split(",")]
+                for transform in transform_list:
+                    transform_type = connector_config.get(
+                        f"transforms.{transform}.type", ""
+                    )
+
+                    # ReplaceField transform can rename columns
+                    if "ReplaceField" in transform_type:
+                        renames = connector_config.get(
+                            f"transforms.{transform}.renames", ""
+                        )
+                        if renames:
+                            for rename in renames.split(","):
+                                if ":" in rename:
+                                    source_col, target_col = rename.split(":", 1)
+                                    column_mappings.append(
+                                        KafkaConnectColumnMapping(
+                                            source_column=source_col.strip(),
+                                            target_column=target_col.strip(),
+                                        )
+                                    )
+
+            return column_mappings if column_mappings else None
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to extract column mappings: {exc}")
+
+        return None
+
     def get_connector_dataset_info(
         self, connector_config: dict
     ) -> Optional[KafkaConnectDatasetDetails]:
@@ -159,7 +265,11 @@ class KafkaConnectClient:
                 for key in SUPPORTED_DATASETS[dataset] or []:
                     if connector_config.get(key):
                         result[dataset] = connector_config[key]
-                        return KafkaConnectDatasetDetails(**result)
+                        dataset_details = KafkaConnectDatasetDetails(**result)
+                        dataset_details.column_mappings = self.extract_column_mappings(
+                            connector_config
+                        )
+                        return dataset_details
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -173,6 +283,9 @@ class KafkaConnectClient:
         """
         Get the list of topics for a connector.
 
+        For Confluent Cloud, the /topics endpoint is not supported, so we extract
+        topics from the connector configuration instead.
+
         Args:
             connector (str): The name of the connector.
 
@@ -183,15 +296,43 @@ class KafkaConnectClient:
                                             or an error occurs.
         """
         try:
-            result = self.client.list_connector_topics(connector=connector).get(
-                connector
-            )
-            if result:
-                topics = [
-                    KafkaConnectTopics(name=topic)
-                    for topic in result.get("topics") or []
-                ]
-                return topics
+            if self.is_confluent_cloud:
+                # Confluent Cloud doesn't support /connectors/{name}/topics endpoint
+                # Extract topics from connector config instead
+                config = self.get_connector_config(connector=connector)
+                if config:
+                    topics = []
+                    # Check common topic configuration keys
+                    topic_keys = ["kafka.topic", "topics", "topic"]
+                    for key in topic_keys:
+                        if key in config:
+                            topic_value = config[key]
+                            # Handle single topic or comma-separated list
+                            if isinstance(topic_value, str):
+                                topic_list = [t.strip() for t in topic_value.split(",")]
+                                topics.extend(
+                                    [
+                                        KafkaConnectTopics(name=topic)
+                                        for topic in topic_list
+                                    ]
+                                )
+
+                    if topics:
+                        logger.info(
+                            f"Extracted {len(topics)} topics from Confluent Cloud connector config"
+                        )
+                        return topics
+            else:
+                # Self-hosted Kafka Connect supports /topics endpoint
+                result = self.client.list_connector_topics(connector=connector).get(
+                    connector
+                )
+                if result:
+                    topics = [
+                        KafkaConnectTopics(name=topic)
+                        for topic in result.get("topics") or []
+                    ]
+                    return topics
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get connector Topics {exc}")

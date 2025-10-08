@@ -13,13 +13,14 @@
 Test KafkaConnect client and models
 """
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 from metadata.generated.schema.entity.services.connections.pipeline.kafkaConnectConnection import (
     KafkaConnectConnection,
 )
 from metadata.ingestion.source.pipeline.kafkaconnect.client import KafkaConnectClient
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
+    KafkaConnectColumnMapping,
     KafkaConnectDatasetDetails,
     KafkaConnectPipelineDetails,
     KafkaConnectTasks,
@@ -298,3 +299,541 @@ class TestKafkaConnectClient(TestCase):
                         expected_value,
                         f"Expected {expected_field}={expected_value}, got {actual_value}",
                     )
+
+
+class TestConfluentCloudSupport(TestCase):
+    """Test Confluent Cloud specific functionality"""
+
+    def test_confluent_cloud_detection(self):
+        """Test that Confluent Cloud URLs are detected correctly"""
+        confluent_config = Mock(spec=KafkaConnectConnection)
+        confluent_config.hostPort = "https://api.confluent.cloud/connect/v1/environments/env-123/clusters/lkc-456"
+        confluent_config.verifySSL = True
+        confluent_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(confluent_config)
+        self.assertTrue(client.is_confluent_cloud)
+
+    def test_self_hosted_detection(self):
+        """Test that self-hosted Kafka Connect is detected correctly"""
+        self_hosted_config = Mock(spec=KafkaConnectConnection)
+        self_hosted_config.hostPort = "http://localhost:8083"
+        self_hosted_config.verifySSL = False
+        self_hosted_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(self_hosted_config)
+        self.assertFalse(client.is_confluent_cloud)
+
+    def test_confluent_cloud_get_cluster_info(self):
+        """Test that get_cluster_info works for Confluent Cloud"""
+        confluent_config = Mock(spec=KafkaConnectConnection)
+        confluent_config.hostPort = "https://api.confluent.cloud/connect/v1/environments/env-123/clusters/lkc-456"
+        confluent_config.verifySSL = True
+        confluent_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(confluent_config)
+        client.client.list_connectors = Mock(return_value=["connector1", "connector2"])
+
+        result = client.get_cluster_info()
+        self.assertIsNotNone(result)
+        self.assertEqual(result["version"], "confluent-cloud")
+        self.assertEqual(result["kafka_cluster_id"], "confluent-managed")
+
+    def test_confluent_cloud_get_connector_topics_from_config(self):
+        """Test extracting topics from Confluent Cloud connector config"""
+        confluent_config = Mock(spec=KafkaConnectConnection)
+        confluent_config.hostPort = "https://api.confluent.cloud/connect/v1/environments/env-123/clusters/lkc-456"
+        confluent_config.verifySSL = True
+        confluent_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(confluent_config)
+        client.get_connector_config = Mock(return_value={"kafka.topic": "orders_topic"})
+
+        topics = client.get_connector_topics("test-connector")
+        self.assertIsNotNone(topics)
+        self.assertEqual(len(topics), 1)
+        self.assertEqual(topics[0].name, "orders_topic")
+
+    def test_confluent_cloud_get_connector_topics_multiple(self):
+        """Test extracting multiple topics from Confluent Cloud connector config"""
+        confluent_config = Mock(spec=KafkaConnectConnection)
+        confluent_config.hostPort = "https://api.confluent.cloud/connect/v1/environments/env-123/clusters/lkc-456"
+        confluent_config.verifySSL = True
+        confluent_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(confluent_config)
+        client.get_connector_config = Mock(
+            return_value={"topics": "topic1,topic2,topic3"}
+        )
+
+        topics = client.get_connector_topics("test-connector")
+        self.assertIsNotNone(topics)
+        self.assertEqual(len(topics), 3)
+        self.assertEqual(topics[0].name, "topic1")
+        self.assertEqual(topics[1].name, "topic2")
+        self.assertEqual(topics[2].name, "topic3")
+
+    def test_confluent_cloud_database_include_list(self):
+        """Test extracting database from Confluent Cloud database.include.list field"""
+        config = {"database.include.list": "mydb"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "mydb")
+
+    def test_confluent_cloud_table_include_list(self):
+        """Test extracting table from Confluent Cloud table.include.list field"""
+        config = {"table.include.list": "mydb.customers,mydb.orders"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.table, "mydb.customers,mydb.orders")
+
+    def test_confluent_cloud_database_hostname(self):
+        """Test extracting database from Confluent Cloud database.hostname field"""
+        config = {"database.hostname": "mysql.example.com"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "mysql.example.com")
+
+    def test_debezium_postgres_database_dbname(self):
+        """Test extracting database from Debezium PostgreSQL database.dbname field"""
+        config = {"database.dbname": "postgres"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "postgres")
+
+    def test_debezium_topic_prefix(self):
+        """Test extracting database from Debezium topic.prefix field"""
+        config = {"topic.prefix": "dbserver1"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "dbserver1")
+
+    def test_mysql_cdc_databases_include(self):
+        """Test extracting database from MySQL CDC V2 databases.include field"""
+        config = {"databases.include": "mydb1,mydb2"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "mydb1,mydb2")
+
+    def test_mysql_cdc_tables_include(self):
+        """Test extracting tables from MySQL CDC V2 tables.include field"""
+        config = {"tables.include": "db1.users,db1.orders"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.table, "db1.users,db1.orders")
+
+    def test_snowflake_database_field(self):
+        """Test extracting database from Snowflake snowflake.database field"""
+        config = {"snowflake.database": "ANALYTICS_DB"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "ANALYTICS_DB")
+
+    def test_snowflake_schema_field(self):
+        """Test extracting table/schema from Snowflake snowflake.schema field"""
+        config = {"snowflake.schema": "PUBLIC"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.table, "PUBLIC")
+
+    def test_sql_server_database_names(self):
+        """Test extracting database from SQL Server database.names field"""
+        config = {"database.names": "AdventureWorks,Northwind"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "AdventureWorks,Northwind")
+
+    def test_s3_bucket_field(self):
+        """Test extracting bucket from S3 s3.bucket field"""
+        config = {"s3.bucket": "my-data-lake"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.container_name, "my-data-lake")
+
+    def test_gcs_bucket_field(self):
+        """Test extracting bucket from GCS gcs.bucket.name field"""
+        config = {"gcs.bucket.name": "my-gcs-bucket"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.container_name, "my-gcs-bucket")
+
+    def test_postgres_sink_connection_host(self):
+        """Test extracting database from PostgreSQL Sink connection.host field"""
+        config = {"connection.host": "postgres.example.com"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "postgres.example.com")
+
+    def test_sink_fields_included(self):
+        """Test extracting fields from Sink connector fields.included field"""
+        config = {"fields.included": "id,name,email,created_at"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.table, "id,name,email,created_at")
+
+    def test_debezium_mysql_database_exclude_list(self):
+        """Test extracting database from Debezium MySQL database.exclude.list field"""
+        config = {"database.exclude.list": "test,temp"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "test,temp")
+
+    def test_debezium_v1_database_server_name(self):
+        """Test extracting database from Debezium V1 database.server.name field"""
+        config = {"database.server.name": "mysql-server-1"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "mysql-server-1")
+
+    def test_debezium_v2_topic_prefix(self):
+        """Test extracting database from Debezium V2 topic.prefix field (already tested but documenting V2)"""
+        config = {"topic.prefix": "postgres-server-1"}
+
+        client_config = Mock(spec=KafkaConnectConnection)
+        client_config.hostPort = "http://localhost:8083"
+        client_config.verifySSL = False
+        client_config.KafkaConnectConfig = None
+
+        client = KafkaConnectClient(client_config)
+        result = client.get_connector_dataset_info(config)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result.database, "postgres-server-1")
+
+
+class TestKafkaConnectColumnLineage(TestCase):
+    """Test KafkaConnect column-level lineage functionality"""
+
+    def test_column_mapping_model(self):
+        """Test KafkaConnectColumnMapping model creation"""
+        mapping = KafkaConnectColumnMapping(source_column="id", target_column="user_id")
+        self.assertEqual(mapping.source_column, "id")
+        self.assertEqual(mapping.target_column, "user_id")
+
+    def test_dataset_details_with_column_mappings(self):
+        """Test KafkaConnectDatasetDetails with column mappings"""
+        mappings = [
+            KafkaConnectColumnMapping(source_column="id", target_column="user_id"),
+            KafkaConnectColumnMapping(source_column="name", target_column="full_name"),
+        ]
+        dataset = KafkaConnectDatasetDetails(
+            table="users", database="mydb", column_mappings=mappings
+        )
+
+        self.assertEqual(len(dataset.column_mappings), 2)
+        self.assertEqual(dataset.column_mappings[0].source_column, "id")
+        self.assertEqual(dataset.column_mappings[0].target_column, "user_id")
+
+    def test_dataset_details_column_mappings_default(self):
+        """Test KafkaConnectDatasetDetails column_mappings defaults to empty list"""
+        dataset = KafkaConnectDatasetDetails(table="users")
+        self.assertEqual(dataset.column_mappings, [])
+
+    def test_extract_column_mappings_with_smt_renames(self):
+        """Test extract_column_mappings with SMT ReplaceField transform"""
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
+            mock_config = MagicMock(spec=KafkaConnectConnection)
+            mock_config.hostPort = "http://localhost:8083"
+            mock_config.verifySSL = True
+            mock_config.KafkaConnectConfig = None
+
+            client = KafkaConnectClient(mock_config)
+
+            config = {
+                "transforms": "rename",
+                "transforms.rename.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
+                "transforms.rename.renames": "id:user_id,name:full_name",
+            }
+
+            result = client.extract_column_mappings(config)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(len(result), 2)
+            self.assertEqual(result[0].source_column, "id")
+            self.assertEqual(result[0].target_column, "user_id")
+            self.assertEqual(result[1].source_column, "name")
+            self.assertEqual(result[1].target_column, "full_name")
+
+    def test_extract_column_mappings_no_transforms(self):
+        """Test extract_column_mappings with no transforms"""
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
+            mock_config = MagicMock(spec=KafkaConnectConnection)
+            mock_config.hostPort = "http://localhost:8083"
+            mock_config.verifySSL = True
+            mock_config.KafkaConnectConfig = None
+
+            client = KafkaConnectClient(mock_config)
+            config = {"some.config": "value"}
+
+            result = client.extract_column_mappings(config)
+
+            self.assertIsNone(result)
+
+    def test_extract_column_mappings_transform_without_renames(self):
+        """Test extract_column_mappings with transform but no renames"""
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
+            mock_config = MagicMock(spec=KafkaConnectConnection)
+            mock_config.hostPort = "http://localhost:8083"
+            mock_config.verifySSL = True
+            mock_config.KafkaConnectConfig = None
+
+            client = KafkaConnectClient(mock_config)
+
+            config = {
+                "transforms": "mask",
+                "transforms.mask.type": "org.apache.kafka.connect.transforms.MaskField$Value",
+            }
+
+            result = client.extract_column_mappings(config)
+
+            self.assertIsNone(result)
+
+    def test_extract_column_mappings_multiple_transforms(self):
+        """Test extract_column_mappings with multiple transforms"""
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
+            mock_config = MagicMock(spec=KafkaConnectConnection)
+            mock_config.hostPort = "http://localhost:8083"
+            mock_config.verifySSL = True
+            mock_config.KafkaConnectConfig = None
+
+            client = KafkaConnectClient(mock_config)
+
+            config = {
+                "transforms": "rename,mask",
+                "transforms.rename.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
+                "transforms.rename.renames": "id:user_id",
+                "transforms.mask.type": "org.apache.kafka.connect.transforms.MaskField$Value",
+            }
+
+            result = client.extract_column_mappings(config)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(len(result), 1)
+            self.assertEqual(result[0].source_column, "id")
+            self.assertEqual(result[0].target_column, "user_id")
+
+    def test_get_connector_dataset_info_includes_column_mappings(self):
+        """Test get_connector_dataset_info includes column mappings"""
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
+            mock_config = MagicMock(spec=KafkaConnectConnection)
+            mock_config.hostPort = "http://localhost:8083"
+            mock_config.verifySSL = True
+            mock_config.KafkaConnectConfig = None
+
+            client = KafkaConnectClient(mock_config)
+
+            config = {
+                "table": "users",
+                "database": "mydb",
+                "transforms": "rename",
+                "transforms.rename.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
+                "transforms.rename.renames": "id:user_id",
+            }
+
+            result = client.get_connector_dataset_info(config)
+
+            self.assertIsNotNone(result)
+            self.assertEqual(result.table, "users")
+            self.assertIsNotNone(result.column_mappings)
+            self.assertEqual(len(result.column_mappings), 1)
+            self.assertEqual(result.column_mappings[0].source_column, "id")
+            self.assertEqual(result.column_mappings[0].target_column, "user_id")
+
+    def test_column_lineage_failure_gracefully_handled(self):
+        """Test that column lineage building handles errors gracefully"""
+        from metadata.generated.schema.entity.data.table import Table
+        from metadata.generated.schema.entity.data.topic import Topic
+        from metadata.ingestion.source.pipeline.kafkaconnect.metadata import (
+            KafkaconnectSource,
+        )
+
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
+            # Create a minimal source instance
+            mock_config = MagicMock(spec=KafkaConnectConnection)
+            mock_config.hostPort = "http://localhost:8083"
+            mock_config.verifySSL = True
+            mock_config.KafkaConnectConfig = None
+            mock_config.messagingServiceName = "test_kafka"
+
+            mock_metadata = Mock()
+
+            # Create source with minimal setup - we're only testing build_column_lineage
+            source = Mock(spec=KafkaconnectSource)
+            source._get_topic_field_fqn = (
+                KafkaconnectSource._get_topic_field_fqn.__get__(
+                    source, KafkaconnectSource
+                )
+            )
+            source.build_column_lineage = (
+                KafkaconnectSource.build_column_lineage.__get__(
+                    source, KafkaconnectSource
+                )
+            )
+
+            # Create mock entities
+            mock_table_entity = Mock(spec=Table)
+            mock_table_entity.columns = []
+
+            mock_topic_entity = Mock(spec=Topic)
+            mock_topic_name = Mock()
+            mock_topic_name.root = "test-topic"
+            mock_topic_entity.name = mock_topic_name
+            # Missing messageSchema will cause column lineage to return None
+            mock_topic_entity.messageSchema = None
+
+            pipeline_details = KafkaConnectPipelineDetails(
+                name="test-connector",
+                status="RUNNING",
+                conn_type="source",
+            )
+
+            # Test column lineage build - should return None gracefully without raising
+            result = source.build_column_lineage(
+                from_entity=mock_table_entity,
+                to_entity=mock_topic_entity,
+                topic_entity=mock_topic_entity,
+                pipeline_details=pipeline_details,
+            )
+
+            # Should return None when no column lineage can be built
+            self.assertIsNone(result)

@@ -35,10 +35,20 @@ class KafkaConnectTopics(BaseModel):
     name: str = Field(..., description="Name of the topic (e.g., random-source-avro)")
 
 
+class KafkaConnectColumnMapping(BaseModel):
+    """Model for column-level mapping between source and target"""
+
+    source_column: str = Field(..., description="Source column name")
+    target_column: str = Field(..., description="Target column/field name")
+
+
 class KafkaConnectDatasetDetails(BaseModel):
     table: Optional[str] = None
     database: Optional[str] = None
     container_name: Optional[str] = None
+    column_mappings: Optional[List["KafkaConnectColumnMapping"]] = Field(
+        default_factory=list, description="Column-level mappings if available"
+    )
 
     @property
     def dataset_type(self) -> Optional[Type[Union[Table, Container]]]:
