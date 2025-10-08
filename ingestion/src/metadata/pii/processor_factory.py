@@ -14,7 +14,8 @@ from metadata.pii.tag_processor import TagAnalyzerGenerator, TagProcessor
 def create_pii_processor(
     metadata: OpenMetadata[Any, Any], openmetadata_config: OpenMetadataWorkflowConfig
 ) -> AutoClassificationProcessor:
-    if getattr(openmetadata_config.processor, "type") == "tag-pii-processor":
+    processor_type = getattr(openmetadata_config.processor, "type", "tag-pii-processor")
+    if processor_type == "tag-pii-processor":
         return TagProcessor(
             config=parse_workflow_config_gracefully(openmetadata_config.model_dump()),
             metadata=metadata,
