@@ -764,7 +764,7 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_redshift_source(self, source_expression: str) -> Optional[dict]:
+    def _parse_redshift_source(self, source_expression: str) -> Optional[List[dict]]:
         try:
             db_match = re.search(
                 r'AmazonRedshift\.Database\("[^"]+","([^"]+)"\)', source_expression
@@ -781,14 +781,16 @@ class PowerbiSource(DashboardServiceSource):
                 table = schema_table_match[1] if len(schema_table_match) > 1 else None
 
             if table:  # atlease table should be fetched
-                return {"database": database, "schema": schema, "table": table}
+                return [{"database": database, "schema": schema, "table": table}]
             return None
         except Exception as exc:
             logger.debug(f"Error to parse redshift table source: {exc}")
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_snowflake_query_source(self, source_expression: str):
+    def _parse_snowflake_query_source(
+        self, source_expression: str
+    ) -> Optional[List[dict]]:
         """
         Parse snowflake query source
         source expressions like `Value.NativeQuery(Snowflake.Databases())`
@@ -858,66 +860,71 @@ class PowerbiSource(DashboardServiceSource):
                     logger.debug(
                         f"source table: {table.raw_name}, schema: {table.schema if hasattr(table, 'schema') else 'N/A'}"
                     )
-                source_table = parser.source_tables[0]
+                lineage_tables_list = []
+                for source_table in parser.source_tables:
+                    # source_table = parser.source_tables[0]
 
-                # Extract database from schema's parent if it exists
-                database = None
-                schema = None
-
-                if hasattr(source_table, "schema") and source_table.schema:
-                    # Log what we have in the schema object
-                    logger.debug(
-                        f"Schema object type: {type(source_table.schema)}, value: {source_table.schema}"
-                    )
-
-                    # Get schema as string first
-                    schema_str = (
-                        source_table.schema.raw_name
-                        if hasattr(source_table.schema, "raw_name")
-                        else str(source_table.schema)
-                    )
-
-                    # If schema contains dots, it might be database.schema format
-                    if "." in schema_str:
-                        parts = schema_str.split(".")
-                        if len(parts) == 2:
-                            # Format: database.schema
-                            # Check for placeholder (case insensitive)
-                            database = (
-                                parts[0]
-                                if parts[0].upper() != "PLACEHOLDER_DB"
-                                else None
-                            )
-                            schema = parts[1]
-                        else:
-                            # Just use as is
-                            schema = schema_str
-                    else:
-                        schema = schema_str
-                        # Check if schema has a parent (database)
-                        if (
-                            hasattr(source_table.schema, "parent")
-                            and source_table.schema.parent
-                        ):
-                            database = (
-                                source_table.schema.parent.raw_name
-                                if hasattr(source_table.schema.parent, "raw_name")
-                                else str(source_table.schema.parent)
-                            )
-
-                # Filter out placeholder values (case insensitive)
-                if database and database.upper() == "PLACEHOLDER_DB":
+                    # Extract database from schema's parent if it exists
                     database = None
+                    schema = None
 
-                table = source_table.raw_name
+                    if hasattr(source_table, "schema") and source_table.schema:
+                        # Log what we have in the schema object
+                        logger.debug(
+                            f"Schema object type: {type(source_table.schema)}, value: {source_table.schema}"
+                        )
 
-                if table:
-                    logger.debug(f"tables found = {database}.{schema}.{table}")
-                    return {
-                        "database": database,
-                        "schema": schema,
-                        "table": table,
-                    }
+                        # Get schema as string first
+                        schema_str = (
+                            source_table.schema.raw_name
+                            if hasattr(source_table.schema, "raw_name")
+                            else str(source_table.schema)
+                        )
+
+                        # If schema contains dots, it might be database.schema format
+                        if "." in schema_str:
+                            parts = schema_str.split(".")
+                            if len(parts) == 2:
+                                # Format: database.schema
+                                # Check for placeholder (case insensitive)
+                                database = (
+                                    parts[0]
+                                    if parts[0].upper() != "PLACEHOLDER_DB"
+                                    else None
+                                )
+                                schema = parts[1]
+                            else:
+                                # Just use as is
+                                schema = schema_str
+                        else:
+                            schema = schema_str
+                            # Check if schema has a parent (database)
+                            if (
+                                hasattr(source_table.schema, "parent")
+                                and source_table.schema.parent
+                            ):
+                                database = (
+                                    source_table.schema.parent.raw_name
+                                    if hasattr(source_table.schema.parent, "raw_name")
+                                    else str(source_table.schema.parent)
+                                )
+
+                    # Filter out placeholder values (case insensitive)
+                    if database and database.upper() == "PLACEHOLDER_DB":
+                        database = None
+
+                    table = source_table.raw_name
+
+                    if table:
+                        logger.debug(f"tables found = {database}.{schema}.{table}")
+                        lineage_tables_list.append(
+                            {
+                                "database": database,
+                                "schema": schema,
+                                "table": table,
+                            }
+                        )
+                return lineage_tables_list
             logger.debug("tables in query not found through parser")
             return None
         except Exception as exc:
@@ -927,7 +934,7 @@ class PowerbiSource(DashboardServiceSource):
 
     def _parse_snowflake_source(
         self, source_expression: str, datamodel_entity: DashboardDataModel
-    ) -> Optional[dict]:
+    ) -> Optional[List[dict]]:
         try:
             if "Snowflake.Databases" not in source_expression:
                 # Not a snowflake valid expression
@@ -954,11 +961,13 @@ class PowerbiSource(DashboardServiceSource):
             view = self._parse_snowflake_regex_exp(view_match, datamodel_entity)
 
             if table or view:  # atlease table or view should be fetched
-                return {
-                    "database": database,
-                    "schema": schema,
-                    "table": table if table else view,
-                }
+                return [
+                    {
+                        "database": database,
+                        "schema": schema,
+                        "table": table if table else view,
+                    }
+                ]
             return None
         except Exception as exc:
             logger.debug(f"Error to parse snowflake table source: {exc}")
@@ -967,29 +976,29 @@ class PowerbiSource(DashboardServiceSource):
 
     def _parse_table_info_from_source_exp(
         self, table: PowerBiTable, datamodel_entity: DashboardDataModel
-    ) -> dict:
+    ) -> Optional[List[dict]]:
         try:
             if not isinstance(table.source, list):
-                return {}
+                return None
             source_expression = table.source[0].expression
             if not source_expression:
                 logger.debug(f"No source expression found for table: {table.name}")
-                return {}
+                return None
             # parse snowflake source
-            table_info = self._parse_snowflake_source(
+            table_info_list = self._parse_snowflake_source(
                 source_expression, datamodel_entity
             )
-            if isinstance(table_info, dict):
-                return table_info
+            if isinstance(table_info_list, List):
+                return table_info_list
             # parse redshift source
-            table_info = self._parse_redshift_source(source_expression)
-            if isinstance(table_info, dict):
-                return table_info
-            return {}
+            table_info_list = self._parse_redshift_source(source_expression)
+            if isinstance(table_info_list, List):
+                return table_info_list
+            return None
         except Exception as exc:
             logger.debug(f"Error to parse table source: {exc}")
             logger.debug(traceback.format_exc())
-        return {}
+        return None
 
     def _get_table_and_datamodel_lineage(
         self,
@@ -1008,60 +1017,64 @@ class PowerbiSource(DashboardServiceSource):
         ) = self.parse_db_service_prefix(db_service_prefix)
 
         try:
-            table_info = self._parse_table_info_from_source_exp(table, datamodel_entity)
-            table_name = table_info.get("table") or table.name
-            schema_name = table_info.get("schema")
-            database_name = table_info.get("database")
-            if (
-                prefix_table_name
-                and table_name
-                and prefix_table_name.lower() != table_name.lower()
-            ):
-                logger.debug(
-                    f"Table {table_name} does not match prefix {prefix_table_name}"
-                )
-                return
-
-            if (
-                prefix_schema_name
-                and schema_name
-                and prefix_schema_name.lower() != schema_name.lower()
-            ):
-                logger.debug(
-                    f"Schema {table_info.get('schema')} does not match prefix {prefix_schema_name}"
-                )
-                return
-
-            if (
-                prefix_database_name
-                and database_name
-                and prefix_database_name.lower() != database_name.lower()
-            ):
-                logger.debug(
-                    f"Database {table_info.get('database')} does not match prefix {prefix_database_name}"
-                )
-                return
-
-            fqn_search_string = build_es_fqn_search_string(
-                service_name=prefix_service_name or "*",
-                table_name=(prefix_table_name or table_name),
-                schema_name=(prefix_schema_name or schema_name),
-                database_name=(prefix_database_name or database_name),
+            table_info_list = self._parse_table_info_from_source_exp(
+                table, datamodel_entity
             )
-            table_entity = self.metadata.search_in_any_service(
-                entity_type=Table,
-                fqn_search_string=fqn_search_string,
-            )
-            if table_entity and datamodel_entity:
-                columns_list = [column.name for column in table.columns]
-                column_lineage = self._get_column_lineage(
-                    table_entity, datamodel_entity, columns_list
-                )
-                yield self._get_add_lineage_request(
-                    to_entity=datamodel_entity,
-                    from_entity=table_entity,
-                    column_lineage=column_lineage,
-                )
+            if isinstance(table_info_list, List):
+                for table_info in table_info_list:
+                    table_name = table_info.get("table") or table.name
+                    schema_name = table_info.get("schema")
+                    database_name = table_info.get("database")
+                    if (
+                        prefix_table_name
+                        and table_name
+                        and prefix_table_name.lower() != table_name.lower()
+                    ):
+                        logger.debug(
+                            f"Table {table_name} does not match prefix {prefix_table_name}"
+                        )
+                        return
+
+                    if (
+                        prefix_schema_name
+                        and schema_name
+                        and prefix_schema_name.lower() != schema_name.lower()
+                    ):
+                        logger.debug(
+                            f"Schema {table_info.get('schema')} does not match prefix {prefix_schema_name}"
+                        )
+                        return
+
+                    if (
+                        prefix_database_name
+                        and database_name
+                        and prefix_database_name.lower() != database_name.lower()
+                    ):
+                        logger.debug(
+                            f"Database {table_info.get('database')} does not match prefix {prefix_database_name}"
+                        )
+                        return
+
+                    fqn_search_string = build_es_fqn_search_string(
+                        service_name=prefix_service_name or "*",
+                        table_name=(prefix_table_name or table_name),
+                        schema_name=(prefix_schema_name or schema_name),
+                        database_name=(prefix_database_name or database_name),
+                    )
+                    table_entity = self.metadata.search_in_any_service(
+                        entity_type=Table,
+                        fqn_search_string=fqn_search_string,
+                    )
+                    if table_entity and datamodel_entity:
+                        columns_list = [column.name for column in table.columns]
+                        column_lineage = self._get_column_lineage(
+                            table_entity, datamodel_entity, columns_list
+                        )
+                        yield self._get_add_lineage_request(
+                            to_entity=datamodel_entity,
+                            from_entity=table_entity,
+                            column_lineage=column_lineage,
+                        )
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
                 left=StackTraceError(

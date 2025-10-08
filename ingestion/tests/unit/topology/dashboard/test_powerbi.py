@@ -51,11 +51,13 @@ in
 customers_clean1
 """
 
-EXPECTED_REDSHIFT_RESULT = {
-    "database": "dev",
-    "schema": "demo_dbt_jaffle",
-    "table": "customers_clean",
-}
+EXPECTED_REDSHIFT_RESULT = [
+    {
+        "database": "dev",
+        "schema": "demo_dbt_jaffle",
+        "table": "customers_clean",
+    }
+]
 
 
 MOCK_SNOWFLAKE_EXP = """let
@@ -72,11 +74,13 @@ MOCK_SNOWFLAKE_EXP_INVALID = """let
 in
     STG_CUSTOMERS_View"""
 
-EXPECTED_SNOWFLAKE_RESULT = {
-    "database": "DEMO_STAGE",
-    "schema": "PUBLIC",
-    "table": "STG_CUSTOMERS",
-}
+EXPECTED_SNOWFLAKE_RESULT = [
+    {
+        "database": "DEMO_STAGE",
+        "schema": "PUBLIC",
+        "table": "STG_CUSTOMERS",
+    }
+]
 
 mock_config = {
     "source": {
@@ -160,11 +164,13 @@ MOCK_USER_2_ENITYTY_REF_LIST = EntityReferenceList(
 )
 
 MOCK_SNOWFLAKE_EXP_V2 = 'let\n    Source = Snowflake.Databases(Snowflake_URL,Warehouse,[Role=Role]),\n    Database = Source{[Name=DB,Kind="Database"]}[Data],\n    DB_Schema = Database{[Name=Schema,Kind="Schema"]}[Data],\n    Table = DB_Schema{[Name="CUSTOMER_TABLE",Kind="Table"]}[Data],\n    #"Andere entfernte Spalten" = Table.SelectColumns(Table,{"ID_BERICHTSMONAT", "ID_AKQUISE_VERMITTLER", "ID_AKQUISE_OE", "ID_SPARTE", "ID_RISIKOTRAEGER", "ID_KUNDE", "STUECK", "BBE"})\nin\n    #"Andere entfernte Spalten"'
-EXPECTED_SNOWFLAKE_RESULT_V2 = {
-    "database": "MY_DB",
-    "schema": "MY_SCHEMA",
-    "table": "CUSTOMER_TABLE",
-}
+EXPECTED_SNOWFLAKE_RESULT_V2 = [
+    {
+        "database": "MY_DB",
+        "schema": "MY_SCHEMA",
+        "table": "CUSTOMER_TABLE",
+    }
+]
 MOCK_DATASET_FROM_WORKSPACE = Dataset(
     id="testdataset",
     name="Test Dataset",
@@ -269,8 +275,10 @@ class PowerBIUnitTest(TestCase):
         )
         # Test should parse the Snowflake query and extract table info
         self.assertIsNotNone(result)
-        self.assertEqual(result.get("schema"), "STG")
-        self.assertEqual(result.get("table"), "STATIC_AOPANDLE")
+        self.assertEqual(len(result), 1)
+        result_table = result[0]
+        self.assertEqual(result_table.get("schema"), "STG")
+        self.assertEqual(result_table.get("table"), "STATIC_AOPANDLE")
 
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
@@ -379,7 +387,7 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_table_info_from_source_exp(
             table, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertEqual(result, {})
+        self.assertEqual(result, None)
 
         # no source
         table = PowerBiTable(
@@ -389,7 +397,7 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_table_info_from_source_exp(
             table, MOCK_DASHBOARD_DATA_MODEL
         )
-        self.assertEqual(result, {})
+        self.assertEqual(result, None)
 
     @pytest.mark.order(4)
     @patch.object(
@@ -403,6 +411,7 @@ class PowerBIUnitTest(TestCase):
         result = self.powerbi._parse_snowflake_source(
             MOCK_SNOWFLAKE_EXP_V2, MOCK_DASHBOARD_DATA_MODEL
         )
+        result = result[0]
         self.assertIsNone(result["database"])
         self.assertIsNone(result["schema"])
         self.assertEqual(result["table"], "CUSTOMER_TABLE")
