@@ -21,7 +21,7 @@ import {
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
-import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
+import { TEXT_FIELD_DESCRIPTION_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
@@ -269,7 +269,7 @@ class JSONLogicSearchClassBase {
         label: t('label.description'),
         type: 'text',
         mainWidgetProps: this.mainWidgetProps,
-        operators: TEXT_FIELD_OPERATORS,
+        operators: TEXT_FIELD_DESCRIPTION_OPERATORS,
       },
       [EntityReferenceFields.TAG]: {
         label: t('label.tag-plural'),

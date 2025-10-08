@@ -605,7 +605,7 @@ test.describe('Data Contracts Semantics Rule Description', () => {
     );
 
     await test.step(
-      'Description with contains and wrong value should fail',
+      'Description with contains and wrong value should failed',
       async () => {
         // Move to Schema Tab
         await page.getByTestId('schema').click();
