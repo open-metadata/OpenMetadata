@@ -14,7 +14,7 @@ Test Kinesis Firehose using the topology
 """
 import json
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline
@@ -32,9 +32,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.source.pipeline.kinesisfirehose.metadata import (
-    FirehoseSource,
-)
+from metadata.ingestion.source.pipeline.kinesisfirehose.metadata import FirehoseSource
 
 mock_firehose_config = {
     "source": {
@@ -165,9 +163,9 @@ class FirehoseUnitTest(TestCase):
         )
 
     def test_pipeline_creation(self):
-        pipeline = list(
-            self.firehose.yield_pipeline(EXPECTED_DELIVERY_STREAM_DETAILS)
-        )[0].right
+        pipeline = list(self.firehose.yield_pipeline(EXPECTED_DELIVERY_STREAM_DETAILS))[
+            0
+        ].right
         assert pipeline == EXPECTED_CREATED_PIPELINE
 
     def test_extract_dynamodb_table_from_arn(self):
@@ -197,3 +195,292 @@ class FirehoseUnitTest(TestCase):
         )
         assert s3_path == "s3://my-data-lake/cdc/"
         assert "cdc/" in s3_path
+
+    def test_malformed_dynamodb_arn(self):
+        """Test handling of malformed DynamoDB ARNs"""
+        bad_arns = [
+            "arn:aws:kinesis:us-east-1:123456789012:stream/MyStream",
+            "not-an-arn-at-all",
+            "arn:aws:dynamodb:us-east-1:123:invalid-format",
+            "",
+            "arn:aws:dynamodb:us-east-1:123:table",
+        ]
+        for arn in bad_arns:
+            result = self.firehose._extract_dynamodb_table_from_stream_arn(arn)
+            assert result is None, f"Expected None for ARN: {arn}, got {result}"
+
+    def test_valid_dynamodb_arn_extraction(self):
+        """Test extraction from various valid DynamoDB ARN formats"""
+        test_cases = [
+            (
+                "arn:aws:dynamodb:us-east-1:123456789012:table/Users/stream/2024-01-01T00:00:00.000",
+                "Users",
+            ),
+            (
+                "arn:aws:dynamodb:eu-west-1:999999999999:table/Products/stream/latest",
+                "Products",
+            ),
+            (
+                "arn:aws:dynamodb:ap-south-1:111111111111:table/Orders-Prod/stream/12345",
+                "Orders-Prod",
+            ),
+        ]
+        for arn, expected_table in test_cases:
+            result = self.firehose._extract_dynamodb_table_from_stream_arn(arn)
+            assert result == expected_table, f"Expected {expected_table}, got {result}"
+
+    def test_s3_path_with_no_prefix(self):
+        """Test S3 path extraction when no prefix is specified"""
+        details = {
+            "S3DestinationDescription": {
+                "BucketARN": "arn:aws:s3:::my-bucket",
+                "Prefix": "",
+            }
+        }
+        result = self.firehose._get_s3_path_from_destination(details)
+        assert result == "s3://my-bucket/"
+
+    def test_s3_path_with_trailing_slash_in_prefix(self):
+        """Test S3 path extraction handles trailing slashes correctly"""
+        details = {
+            "ExtendedS3DestinationDescription": {
+                "BucketARN": "arn:aws:s3:::my-bucket",
+                "Prefix": "data/cdc/",
+            }
+        }
+        result = self.firehose._get_s3_path_from_destination(details)
+        assert result == "s3://my-bucket/data/cdc/"
+
+    def test_s3_path_missing_bucket_arn(self):
+        """Test handling when BucketARN is missing"""
+        details = {"S3DestinationDescription": {"Prefix": "cdc/"}}
+        result = self.firehose._get_s3_path_from_destination(details)
+        assert result is None
+
+    def test_s3_path_with_invalid_arn_format(self):
+        """Test handling of invalid S3 ARN formats"""
+        details = {
+            "S3DestinationDescription": {
+                "BucketARN": "arn:aws:s3:us-east-1:123456789012:bucket/my-bucket",
+                "Prefix": "cdc/",
+            }
+        }
+        result = self.firehose._get_s3_path_from_destination(details)
+        assert result is None
+
+    def test_s3_path_no_destination(self):
+        """Test handling when no S3 destination is configured"""
+        details = {"DeliveryStreamName": "test-stream"}
+        result = self.firehose._get_s3_path_from_destination(details)
+        assert result is None
+
+    def test_pipeline_name_missing(self):
+        """Test handling when DeliveryStreamName is missing"""
+        result = self.firehose.get_pipeline_name({})
+        assert result == ""
+
+    def test_empty_delivery_stream_list(self):
+        """Test handling of empty delivery stream response"""
+        from metadata.ingestion.source.pipeline.kinesisfirehose.models import (
+            ListDeliveryStreamsResponse,
+        )
+
+        empty_response = {
+            "DeliveryStreamNames": [],
+            "HasMoreDeliveryStreams": False,
+        }
+        response = ListDeliveryStreamsResponse.model_validate(empty_response)
+        assert response.DeliveryStreamNames == []
+        assert response.HasMoreDeliveryStreams is False
+
+    def test_redshift_jdbc_url_parsing(self):
+        """Test Redshift JDBC URL database name extraction"""
+        test_cases = [
+            (
+                "jdbc:redshift://my-cluster.us-east-1.redshift.amazonaws.com:5439/analytics",
+                "analytics",
+            ),
+            (
+                "jdbc:postgresql://redshift-cluster.region.redshift.amazonaws.com:5439/prod_db",
+                "prod_db",
+            ),
+            (
+                "jdbc:redshift://cluster.redshift-serverless.us-west-2.amazonaws.com:5439/dev",
+                "dev",
+            ),
+        ]
+
+        import re
+
+        jdbc_pattern = r"jdbc:(?:redshift|postgresql)://[^/]+/([^?]+)"
+        for jdbc_url, expected_db in test_cases:
+            match = re.match(jdbc_pattern, jdbc_url)
+            assert match is not None, f"Failed to parse JDBC URL: {jdbc_url}"
+            assert match.group(1) == expected_db
+
+    def test_redshift_destination_model(self):
+        """Test Redshift destination model validation"""
+        from metadata.ingestion.source.pipeline.kinesisfirehose.models import (
+            RedshiftDestinationDescription,
+        )
+
+        redshift_dest = {
+            "RoleARN": "arn:aws:iam::123456789012:role/firehose-role",
+            "ClusterJDBCURL": "jdbc:redshift://my-cluster.us-east-1.redshift.amazonaws.com:5439/analytics",
+            "CopyCommand": {
+                "DataTableName": "events",
+                "CopyOptions": "JSON 'auto'",
+            },
+            "Username": "firehose_user",
+        }
+
+        dest = RedshiftDestinationDescription.model_validate(redshift_dest)
+        assert dest.CopyCommand.DataTableName == "events"
+        assert dest.ClusterJDBCURL.endswith("/analytics")
+        assert dest.Username == "firehose_user"
+
+    def test_opensearch_destination_model(self):
+        """Test OpenSearch destination model validation"""
+        from metadata.ingestion.source.pipeline.kinesisfirehose.models import (
+            AmazonopensearchserviceDestinationDescription,
+        )
+
+        opensearch_dest = {
+            "RoleARN": "arn:aws:iam::123456789012:role/firehose-role",
+            "DomainARN": "arn:aws:es:us-east-1:123456789012:domain/my-domain",
+            "IndexName": "events-index",
+            "TypeName": "_doc",
+        }
+
+        dest = AmazonopensearchserviceDestinationDescription.model_validate(
+            opensearch_dest
+        )
+        assert dest.IndexName == "events-index"
+        assert "my-domain" in dest.DomainARN
+
+    def test_snowflake_destination_model(self):
+        """Test Snowflake destination model validation"""
+        from metadata.ingestion.source.pipeline.kinesisfirehose.models import (
+            SnowflakeDestinationDescription,
+        )
+
+        snowflake_dest = {
+            "AccountUrl": "https://myaccount.snowflakecomputing.com",
+            "User": "firehose_user",
+            "Database": "ANALYTICS_DB",
+            "Schema": "PUBLIC",
+            "Table": "EVENTS",
+            "RoleARN": "arn:aws:iam::123456789012:role/firehose-role",
+        }
+
+        dest = SnowflakeDestinationDescription.model_validate(snowflake_dest)
+        assert dest.Database == "ANALYTICS_DB"
+        assert dest.Schema == "PUBLIC"
+        assert dest.Table == "EVENTS"
+
+    def test_http_endpoint_destination_model(self):
+        """Test HTTP endpoint destination model for MongoDB"""
+        from metadata.ingestion.source.pipeline.kinesisfirehose.models import (
+            HttpEndpointDestinationDescription,
+        )
+
+        http_dest = {
+            "EndpointConfiguration": {
+                "Url": "https://realm.mongodb.com/api/client/v2.0/app/myapp-abcde/functions/firehose",
+                "Name": "MongoDB Atlas",
+            },
+            "RoleARN": "arn:aws:iam::123456789012:role/firehose-role",
+        }
+
+        dest = HttpEndpointDestinationDescription.model_validate(http_dest)
+        assert "mongodb" in dest.EndpointConfiguration.Url.lower()
+        assert dest.EndpointConfiguration.Name == "MongoDB Atlas"
+
+    def test_delivery_stream_with_redshift_destination(self):
+        """Test Redshift destination dict extraction"""
+        stream_details = {
+            "DeliveryStreamName": "s3-to-redshift",
+            "RedshiftDestinationDescription": {
+                "RoleARN": "arn:aws:iam::123456789012:role/firehose-role",
+                "ClusterJDBCURL": "jdbc:redshift://cluster.us-east-1.redshift.amazonaws.com:5439/analytics",
+                "CopyCommand": {"DataTableName": "events"},
+            },
+        }
+
+        redshift_dest = stream_details.get("RedshiftDestinationDescription")
+        assert redshift_dest is not None
+        assert redshift_dest["CopyCommand"]["DataTableName"] == "events"
+        assert "analytics" in redshift_dest["ClusterJDBCURL"]
+
+    def test_delivery_stream_with_opensearch_destination(self):
+        """Test OpenSearch destination dict extraction"""
+        stream_details = {
+            "DeliveryStreamName": "logs-to-opensearch",
+            "AmazonopensearchserviceDestinationDescription": {
+                "RoleARN": "arn:aws:iam::123456789012:role/firehose-role",
+                "DomainARN": "arn:aws:es:us-east-1:123456789012:domain/logs",
+                "IndexName": "application-logs",
+            },
+        }
+
+        opensearch_dest = stream_details.get(
+            "AmazonopensearchserviceDestinationDescription"
+        )
+        assert opensearch_dest is not None
+        assert opensearch_dest["IndexName"] == "application-logs"
+        assert "domain/logs" in opensearch_dest["DomainARN"]
+
+    def test_delivery_stream_with_snowflake_destination(self):
+        """Test Snowflake destination dict extraction"""
+        stream_details = {
+            "DeliveryStreamName": "events-to-snowflake",
+            "SnowflakeDestinationDescription": {
+                "AccountUrl": "https://myaccount.snowflakecomputing.com",
+                "User": "firehose_user",
+                "Database": "PROD_DB",
+                "Schema": "RAW",
+                "Table": "EVENTS",
+                "RoleARN": "arn:aws:iam::123456789012:role/firehose-role",
+            },
+        }
+
+        snowflake_dest = stream_details.get("SnowflakeDestinationDescription")
+        assert snowflake_dest is not None
+        assert snowflake_dest["Database"] == "PROD_DB"
+        assert snowflake_dest["Schema"] == "RAW"
+        assert snowflake_dest["Table"] == "EVENTS"
+
+    def test_delivery_stream_with_http_endpoint_destination(self):
+        """Test HTTP endpoint (MongoDB) destination dict extraction"""
+        stream_details = {
+            "DeliveryStreamName": "events-to-mongodb",
+            "HttpEndpointDestinationDescription": {
+                "EndpointConfiguration": {
+                    "Url": "https://realm.mongodb.com/api/client/v2.0/app/myapp/functions/firehose",
+                    "Name": "MongoDB Atlas",
+                },
+                "RoleARN": "arn:aws:iam::123456789012:role/firehose-role",
+            },
+        }
+
+        http_dest = stream_details.get("HttpEndpointDestinationDescription")
+        assert http_dest is not None
+        endpoint_config = http_dest["EndpointConfiguration"]
+        assert "mongodb" in endpoint_config["Url"].lower()
+        assert endpoint_config["Name"] == "MongoDB Atlas"
+
+    def test_invalid_jdbc_url_format(self):
+        """Test handling of invalid JDBC URL formats"""
+        invalid_urls = [
+            "not-a-jdbc-url",
+            "jdbc:mysql://localhost:3306/db",
+            "jdbc:redshift://cluster.region.redshift.amazonaws.com",
+            "",
+        ]
+
+        import re
+
+        jdbc_pattern = r"jdbc:(?:redshift|postgresql)://[^/]+/([^?]+)"
+        for url in invalid_urls:
+            match = re.match(jdbc_pattern, url)
+            assert match is None, f"Should not match invalid URL: {url}"

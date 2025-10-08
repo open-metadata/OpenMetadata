@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Optional
+from typing import Any, Optional
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.automations.workflow import (
@@ -39,14 +39,24 @@ def get_connection(connection: KinesisFirehoseConnection):
 
 def test_connection(
     metadata: OpenMetadata,
-    client,
+    client: Any,
     service_connection: KinesisFirehoseConnection,
     automation_workflow: Optional[AutomationWorkflow] = None,
     timeout_seconds: Optional[int] = THREE_MIN,
 ) -> TestConnectionResult:
     """
     Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
+    of a metadata workflow or during an Automation Workflow.
+
+    Args:
+        metadata: OpenMetadata client instance
+        client: AWS Firehose client (boto3)
+        service_connection: Firehose connection configuration
+        automation_workflow: Optional automation workflow context
+        timeout_seconds: Connection test timeout
+
+    Returns:
+        TestConnectionResult with connection status
     """
 
     test_fn = {"GetPipelines": client.list_delivery_streams}
