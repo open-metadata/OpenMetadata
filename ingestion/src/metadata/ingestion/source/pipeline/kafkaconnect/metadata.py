@@ -13,7 +13,7 @@ KafkaConnect source to extract metadata from OM UI
 """
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional
+from typing import Any, Iterable, List, Optional
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -56,6 +56,7 @@ from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
 from metadata.ingestion.source.pipeline.kafkaconnect.client import parse_cdc_topic_name
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
+    ConnectorType,
     KafkaConnectPipelineDetails,
     KafkaConnectTopics,
 )
@@ -74,9 +75,20 @@ STATUS_MAP = {
     "UNASSIGNED": StatusType.Pending.value,
 }
 
+# CDC envelope field names used for Debezium detection and parsing
+CDC_ENVELOPE_FIELDS = {"after", "before", "op"}
 
-def get_field_name(field_name) -> str:
-    """Extract string name from FieldName object or string."""
+
+def get_field_name(field_name: Any) -> str:
+    """
+    Extract string name from FieldName object or string.
+
+    Args:
+        field_name: FieldName object with .root attribute, or plain string
+
+    Returns:
+        String representation of the field name
+    """
     return field_name.root if hasattr(field_name, "root") else str(field_name)
 
 
@@ -117,9 +129,11 @@ class KafkaconnectSource(PipelineServiceSource):
                     for task in pipeline_details.tasks or []
                 ],
                 service=self.context.get().pipeline_service,
-                description=Markdown(pipeline_details.description)
-                if pipeline_details.description
-                else None,
+                description=(
+                    Markdown(pipeline_details.description)
+                    if pipeline_details.description
+                    else None
+                ),
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
@@ -186,6 +200,70 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return None
 
+    def _get_entity_column_fqn(self, entity: T, column_name: str) -> Optional[str]:
+        """
+        Get column FQN for any supported entity type.
+        Dispatch based on entity type.
+
+        Args:
+            entity: Table or Topic entity
+            column_name: Column/field name
+
+        Returns:
+            Fully qualified column name or None
+        """
+        if isinstance(entity, Topic):
+            return self._get_topic_field_fqn(entity, column_name)
+        elif isinstance(entity, Table):
+            return get_column_fqn(table_entity=entity, column=column_name)
+        else:
+            logger.warning(
+                f"Unsupported entity type for column FQN: {type(entity).__name__}"
+            )
+            return None
+
+    def _parse_cdc_schema_columns(self, schema_text: str) -> List[str]:
+        """
+        Parse Debezium CDC schema JSON to extract table column names.
+
+        Looks for columns in 'after' or 'before' fields within the schema,
+        handling nullable oneOf structures.
+
+        Args:
+            schema_text: Raw JSON schema string from topic
+
+        Returns:
+            List of column names, or empty list if parsing fails
+        """
+        try:
+            import json
+
+            schema_dict = json.loads(schema_text)
+
+            # Look for 'after' or 'before' field in the schema
+            for field_name in ["after", "before"]:
+                if field_name not in schema_dict.get("properties", {}):
+                    continue
+
+                field_def = schema_dict["properties"][field_name]
+
+                # Handle oneOf (nullable types)
+                if "oneOf" not in field_def:
+                    continue
+
+                for option in field_def["oneOf"]:
+                    if isinstance(option, dict) and option.get("type") == "object":
+                        columns = list(option.get("properties", {}).keys())
+                        logger.debug(
+                            f"Parsed {len(columns)} columns from CDC '{field_name}' field"
+                        )
+                        return columns
+
+        except Exception as exc:
+            logger.debug(f"Unable to parse CDC schema text: {exc}")
+
+        return []
+
     def _extract_columns_from_entity(self, entity: T) -> List[str]:
         """
         Extract column/field names from Table or Topic entity.
@@ -202,16 +280,30 @@ class KafkaconnectSource(PipelineServiceSource):
         if isinstance(entity, Table):
             return [col.name.root for col in entity.columns or []]
 
-        if isinstance(entity, Topic) and entity.messageSchema:
+        if hasattr(entity, "messageSchema") and entity.messageSchema:
             schema_fields = entity.messageSchema.schemaFields or []
 
             # Check if this is a Debezium CDC envelope structure
             # Can be either flat (top-level: op, before, after) or nested (Envelope -> op, before, after)
             field_names = {get_field_name(f.name) for f in schema_fields}
-            is_debezium_cdc = {"after", "before", "op"}.issubset(field_names)
+            is_debezium_cdc = CDC_ENVELOPE_FIELDS.issubset(field_names)
+
+            # Fallback: Check schemaText for CDC structure if schemaFields doesn't indicate CDC
+            if not is_debezium_cdc and entity.messageSchema.schemaText:
+                try:
+                    import json
+
+                    schema_dict = json.loads(entity.messageSchema.schemaText)
+                    schema_props = schema_dict.get("properties", {})
+                    # Check if schemaText has CDC envelope fields
+                    is_debezium_cdc = CDC_ENVELOPE_FIELDS.issubset(
+                        set(schema_props.keys())
+                    )
+                except Exception:
+                    pass
 
             logger.debug(
-                f"Topic {entity.name.root if entity.name else 'unknown'}: field_names={field_names}, is_debezium_cdc={is_debezium_cdc}"
+                f"Topic {get_field_name(entity.name) if hasattr(entity, 'name') else 'unknown'}: field_names={field_names}, is_debezium_cdc={is_debezium_cdc}"
             )
 
             # Check for nested Debezium CDC structure (single Envelope field with CDC children)
@@ -221,9 +313,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     envelope_child_names = {
                         get_field_name(c.name) for c in envelope_field.children
                     }
-                    is_debezium_cdc = {"after", "before", "op"}.issubset(
-                        envelope_child_names
-                    )
+                    is_debezium_cdc = CDC_ENVELOPE_FIELDS.issubset(envelope_child_names)
                     if is_debezium_cdc:
                         logger.debug(
                             f"Nested Debezium CDC envelope detected: {get_field_name(envelope_field.name)}"
@@ -347,6 +437,16 @@ class KafkaconnectSource(PipelineServiceSource):
                                     else None
                                 )
 
+        # For Debezium CDC topics, columns might only exist in schemaText (not as field objects)
+        # Manually construct FQN: topicFQN.Envelope.columnName
+        for field in topic_entity.messageSchema.schemaFields:
+            field_name_str = get_field_name(field.name)
+            # Check if this is a CDC envelope field
+            if "Envelope" in field_name_str and field.fullyQualifiedName:
+                # Construct FQN manually for CDC column
+                envelope_fqn = field.fullyQualifiedName.root
+                return f"{envelope_fqn}.{field_name}"
+
         logger.debug(
             f"Field {field_name} not found in topic {get_field_name(topic_entity.name)} schema"
         )
@@ -371,7 +471,7 @@ class KafkaconnectSource(PipelineServiceSource):
             if pipeline_details.dataset and pipeline_details.dataset.column_mappings:
                 # Use explicit column mappings from connector config
                 for mapping in pipeline_details.dataset.column_mappings:
-                    if pipeline_details.conn_type.lower() == "sink":
+                    if pipeline_details.conn_type == ConnectorType.SINK.value:
                         from_col = get_column_fqn(
                             table_entity=topic_entity, column=mapping.source_column
                         )
@@ -396,7 +496,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         )
             else:
                 # Infer 1:1 column mappings based on matching column names
-                if pipeline_details.conn_type.lower() == "sink":
+                if pipeline_details.conn_type == ConnectorType.SINK.value:
                     source_entity = topic_entity
                     target_entity = to_entity
                 else:
@@ -428,25 +528,12 @@ class KafkaconnectSource(PipelineServiceSource):
                         )
                         try:
                             # Get fully qualified names for source and target columns
-                            if isinstance(source_entity, Topic):
-                                from_col = self._get_topic_field_fqn(
-                                    source_entity, source_col_name
-                                )
-                            else:
-                                from_col = get_column_fqn(
-                                    table_entity=source_entity,
-                                    column=source_col_name,
-                                )
-
-                            if isinstance(target_entity, Topic):
-                                to_col = self._get_topic_field_fqn(
-                                    target_entity, target_col_name
-                                )
-                            else:
-                                to_col = get_column_fqn(
-                                    table_entity=target_entity,
-                                    column=target_col_name,
-                                )
+                            from_col = self._get_entity_column_fqn(
+                                source_entity, source_col_name
+                            )
+                            to_col = self._get_entity_column_fqn(
+                                target_entity, target_col_name
+                            )
 
                             logger.debug(f"FQNs: from_col={from_col}, to_col={to_col}")
 
@@ -477,6 +564,55 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.warning(f"Unable to build column lineage: {exc}")
 
         return None
+
+    def _query_cdc_topics_from_messaging_service(
+        self, database_server_name: str
+    ) -> List[KafkaConnectTopics]:
+        """
+        Query topics from messaging service and filter by CDC naming pattern.
+
+        Used for CDC connectors without explicit topic lists - discovers topics
+        by matching against database.server.name prefix.
+
+        Args:
+            database_server_name: The database.server.name or topic.prefix from connector config
+
+        Returns:
+            List of matching CDC topics
+        """
+        topics_found = []
+
+        try:
+            logger.debug(
+                f"CDC connector without topics list - querying messaging service "
+                f"for pattern: {database_server_name}.*"
+            )
+
+            # List topics from the configured messaging service only
+            topics_list = self.metadata.list_entities(
+                entity=Topic,
+                fields=["name", "fullyQualifiedName", "service"],
+                params={"service": self.service_connection.messagingServiceName},
+            ).entities
+
+            # Filter topics that match the CDC naming pattern
+            for topic_entity in topics_list or []:
+                topic_name = (
+                    topic_entity.name.root
+                    if hasattr(topic_entity.name, "root")
+                    else str(topic_entity.name)
+                )
+
+                # Parse the topic to see if it's a CDC topic related to this connector
+                topic_info = parse_cdc_topic_name(topic_name, database_server_name)
+                if topic_info:
+                    topics_found.append(KafkaConnectTopics(name=topic_name))
+                    logger.debug(f"Matched CDC topic: {topic_name} -> {topic_info}")
+
+        except Exception as exc:
+            logger.debug(f"Unable to query topics from messaging service: {exc}")
+
+        return topics_found
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: KafkaConnectPipelineDetails
@@ -517,47 +653,11 @@ class KafkaconnectSource(PipelineServiceSource):
             if (
                 not topics_to_process
                 and database_server_name
-                and pipeline_details.conn_type.lower() == "source"
+                and pipeline_details.conn_type == ConnectorType.SOURCE.value
             ):
-                # Query topics from the configured messaging service only
-                try:
-                    logger.debug(
-                        f"CDC connector without topics list - querying messaging service for pattern: {database_server_name}.*"
-                    )
-
-                    # List topics from the configured messaging service only
-                    # Use FQN pattern to filter by service
-                    topics_list = self.metadata.list_entities(
-                        entity=Topic,
-                        fields=["name", "fullyQualifiedName", "service"],
-                        params={
-                            "service": self.service_connection.messagingServiceName
-                        },
-                    ).entities
-
-                    # Filter topics that match the CDC naming pattern
-                    for topic_entity in topics_list or []:
-                        topic_name = (
-                            topic_entity.name.root
-                            if hasattr(topic_entity.name, "root")
-                            else str(topic_entity.name)
-                        )
-                        # Parse the topic to see if it's a CDC topic related to this connector
-                        topic_info = parse_cdc_topic_name(
-                            topic_name, database_server_name
-                        )
-                        if topic_info:
-                            # This is a CDC topic that we can parse
-                            topics_to_process.append(
-                                KafkaConnectTopics(name=topic_name)
-                            )
-                            logger.debug(
-                                f"Matched CDC topic: {topic_name} -> {topic_info}"
-                            )
-                except Exception as exc:
-                    logger.debug(
-                        f"Unable to query topics from messaging service: {exc}"
-                    )
+                topics_to_process = self._query_cdc_topics_from_messaging_service(
+                    database_server_name
+                )
 
             for topic in topics_to_process:
                 topic_fqn = fqn.build(
@@ -576,7 +676,7 @@ class KafkaconnectSource(PipelineServiceSource):
                 current_dataset_entity = dataset_entity
                 if (
                     current_dataset_entity is None
-                    and pipeline_details.conn_type.lower() == "source"
+                    and pipeline_details.conn_type == ConnectorType.SOURCE.value
                 ):
                     # Parse CDC topic name to extract table information
                     topic_info = parse_cdc_topic_name(
@@ -611,7 +711,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     # No table entity found, skip this topic
                     continue
 
-                if pipeline_details.conn_type.lower() == "sink":
+                if pipeline_details.conn_type == ConnectorType.SINK.value:
                     from_entity, to_entity = topic_entity, current_dataset_entity
                 else:
                     from_entity, to_entity = current_dataset_entity, topic_entity
@@ -710,7 +810,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     pipeline_details.status, StatusType.Pending
                 ),
                 taskStatus=task_status,
-                timestamp=Timestamp(datetime_to_ts(datetime.now()))
+                timestamp=Timestamp(datetime_to_ts(datetime.now())),
                 # Kafka connect doesn't provide any details with exec time
             )
 

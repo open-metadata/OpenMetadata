@@ -13,12 +13,21 @@
 KafkaConnect Source Model module
 """
 
+from enum import Enum
 from typing import List, Optional, Type, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
+
+
+class ConnectorType(str, Enum):
+    """Kafka Connect connector types"""
+
+    SOURCE = "source"
+    SINK = "sink"
+    UNKNOWN = "UNKNOWN"
 
 
 class KafkaConnectTasks(BaseModel):
@@ -73,3 +82,15 @@ class KafkaConnectPipelineDetails(BaseModel):
     description: Optional[str] = None
     dataset: Optional[KafkaConnectDatasetDetails] = None
     config: Optional[dict] = Field(default_factory=dict)
+
+    @field_validator("conn_type", mode="before")
+    @classmethod
+    def normalize_connector_type(cls, value: str) -> str:
+        """Normalize connector type to enum value"""
+        if value:
+            value_lower = value.lower()
+            if value_lower == "source":
+                return ConnectorType.SOURCE.value
+            elif value_lower == "sink":
+                return ConnectorType.SINK.value
+        return ConnectorType.UNKNOWN.value

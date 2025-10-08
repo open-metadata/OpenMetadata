@@ -14,6 +14,7 @@ Client to interact with Kafka Connect REST APIs
 
 import traceback
 from typing import List, Optional
+from urllib.parse import urlparse
 
 from kafka_connect import KafkaConnect
 
@@ -126,7 +127,7 @@ class ConnectorConfigKeys:
         "s3.bucket",
         "gcs.bucket.name",
         "azure.container.name",
-        "topics.dir",
+        "topics.dir",  # Directory path within storage container for sink connectors
     ]
 
     TOPIC_KEYS = ["kafka.topic", "topics", "topic"]
@@ -153,7 +154,8 @@ class KafkaConnectClient:
         self.client = KafkaConnect(url=url, auth=auth, ssl_verify=ssl_verify)
 
         # Detect if this is Confluent Cloud (managed connectors)
-        self.is_confluent_cloud = "api.confluent.cloud" in url
+        parsed_url = urlparse(url)
+        self.is_confluent_cloud = parsed_url.hostname == "api.confluent.cloud"
 
     def _infer_cdc_topics_from_server_name(
         self, database_server_name: str
@@ -308,15 +310,14 @@ class KafkaConnectClient:
                 # Transform Confluent Cloud format: [{config: "key", value: "val"}] -> {key: val}
                 configs_array = result.get("configs", [])
                 if isinstance(configs_array, list):
-                    config_dict = {}
-                    for item in configs_array:
-                        if (
-                            isinstance(item, dict)
-                            and "config" in item
-                            and "value" in item
-                        ):
-                            config_dict[item["config"]] = item["value"]
-                    return config_dict if config_dict else None
+                    config_dict = {
+                        item["config"]: item["value"]
+                        for item in configs_array
+                        if isinstance(item, dict)
+                        and "config" in item
+                        and "value" in item
+                    }
+                    return config_dict or None
 
             # Standard self-hosted Kafka Connect format
             return result.get("config")
@@ -413,8 +414,8 @@ class KafkaConnectClient:
             # We need either: table name OR container name
             if result and (result.get("table") or result.get("container_name")):
                 dataset_details = KafkaConnectDatasetDetails(**result)
-                dataset_details.column_mappings = self.extract_column_mappings(
-                    connector_config
+                dataset_details.column_mappings = (
+                    self.extract_column_mappings(connector_config) or []
                 )
                 return dataset_details
 
