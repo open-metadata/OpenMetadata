@@ -411,6 +411,8 @@ test = {
     "pytest-order",
     "dirty-equals",
     # install dbt dependency
+    "dbt-artifacts-parser",
+    "dbt-postgres", # for running dbt lineage tests
     "collate-dbt-artifacts-parser",
     "freezegun",
     VERSIONS["sqlalchemy-databricks"],
