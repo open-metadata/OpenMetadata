@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
@@ -100,8 +101,11 @@ import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -1413,6 +1417,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Drop data streams and data quality indexes created by DataInsightsApp
       dropDataInsightsIndexes();
 
+      // Drop orphaned rebuild indexes from zero-downtime reindexing
+      dropRebuildIndexes();
+
       LOG.info("All indexes dropped successfully.");
       return 0;
     } catch (Exception e) {
@@ -1441,6 +1448,79 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
       LOG.debug("Data Insights index cleanup error details: ", e);
     }
+  }
+
+  private void dropRebuildIndexes() {
+    try {
+      LOG.info("Dropping orphaned rebuild indexes from zero-downtime reindexing...");
+
+      Set<String> allIndices = getAllIndices();
+      List<String> rebuildIndices =
+          allIndices.stream()
+              .filter(index -> index.contains("_rebuild_"))
+              .collect(Collectors.toList());
+
+      if (rebuildIndices.isEmpty()) {
+        LOG.info("No rebuild indexes found to delete.");
+        return;
+      }
+
+      LOG.info("Found {} rebuild indexes to delete: {}", rebuildIndices.size(), rebuildIndices);
+
+      for (String index : rebuildIndices) {
+        try {
+          searchRepository.getSearchClient().deleteIndex(index);
+          LOG.info("Deleted rebuild index: {}", index);
+        } catch (Exception ex) {
+          LOG.warn("Failed to delete rebuild index {}: {}", index, ex.getMessage());
+        }
+      }
+
+      LOG.info("Rebuild index cleanup completed.");
+    } catch (Exception e) {
+      LOG.warn("Failed to drop rebuild indexes: {}", e.getMessage());
+      LOG.debug("Rebuild index cleanup error details: ", e);
+    }
+  }
+
+  private Set<String> getAllIndices() {
+    Set<String> indices = new HashSet<>();
+    try {
+      SearchClient<?> searchClient = searchRepository.getSearchClient();
+
+      if (searchClient instanceof ElasticSearchClient) {
+        es.org.elasticsearch.client.Request request =
+            new es.org.elasticsearch.client.Request("GET", "/_cat/indices?format=json");
+        es.org.elasticsearch.client.RestClient lowLevelClient =
+            (es.org.elasticsearch.client.RestClient) searchClient.getLowLevelClient();
+        es.org.elasticsearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      } else if (searchClient instanceof OpenSearchClient) {
+        os.org.opensearch.client.Request request =
+            new os.org.opensearch.client.Request("GET", "/_cat/indices?format=json");
+        os.org.opensearch.client.RestClient lowLevelClient =
+            (os.org.opensearch.client.RestClient) searchClient.getLowLevelClient();
+        os.org.opensearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve all indices", e);
+    }
+    return indices;
   }
 
   @Command(

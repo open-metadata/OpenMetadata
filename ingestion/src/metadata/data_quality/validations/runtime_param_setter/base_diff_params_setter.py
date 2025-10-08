@@ -92,6 +92,8 @@ class BaseTableParameter:
             ),
             privateKey=None,
             passPhrase=None,
+            key_columns=key_columns,
+            extra_columns=extra_columns,
         )
 
     @staticmethod
@@ -153,6 +155,13 @@ class BaseTableParameter:
                 if service_connection_config
                 else None
             )
+
+    @classmethod
+    def get_service_connection_config(
+        cls,
+        service: DatabaseService,
+    ) -> Optional[Union[str, dict]]:
+        return cls._get_service_connection_config(service.connection.config)
 
     def get_data_diff_url(
         self,

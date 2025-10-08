@@ -21,6 +21,7 @@ import {
   navigateToCustomizeLandingPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
+import { updateDescription } from '../../utils/entity';
 
 const test = base;
 
@@ -418,10 +419,56 @@ test.describe('Mention notifications in Notification Box', () => {
     adminPage,
     user1Page,
   }) => {
+    test.slow();
+
     await test.step(
       'Admin user creates a conversation on an entity',
       async () => {
         await entity.visitEntityPage(adminPage);
+
+        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await updateDescription(
+          adminPage,
+          'update the old description with new one'
+        );
+
+        await adminPage.reload();
+        await adminPage.waitForLoadState('networkidle');
+        await adminPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        let count = 0;
+        let iterations = 0;
+        const maxIterations = 20;
+        const delayMs = 5000;
+
+        while (iterations < maxIterations) {
+          const countElement = adminPage
+            .getByTestId('activity_feed')
+            .getByTestId('filter-count');
+
+          const countText = await countElement.textContent();
+          count = parseInt(countText ?? '0', 10);
+
+          if (count > 0) {
+            break;
+          }
+
+          iterations++;
+          if (iterations < maxIterations) {
+            await adminPage.waitForTimeout(delayMs);
+            await adminPage.reload();
+            await adminPage.waitForLoadState('networkidle');
+            await adminPage.waitForSelector('[data-testid="loader"]', {
+              state: 'detached',
+            });
+          }
+        }
 
         await adminPage.getByTestId('activity_feed').click();
         await adminPage.waitForLoadState('networkidle');
