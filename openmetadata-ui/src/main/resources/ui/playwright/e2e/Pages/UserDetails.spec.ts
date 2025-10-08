@@ -255,7 +255,10 @@ test.describe('User with different Roles', () => {
       state: 'visible',
     });
 
-    await adminPage.getByText('Application bot role').click();
+    await adminPage
+      .locator('.ant-select-item-option-content')
+      .getByText('Application bot role')
+      .click();
 
     await adminPage.getByTestId('user-profile-edit-roles-save-button').click();
 

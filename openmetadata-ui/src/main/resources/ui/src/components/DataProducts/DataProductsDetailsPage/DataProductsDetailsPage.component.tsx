@@ -42,7 +42,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -56,6 +56,7 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -190,17 +191,18 @@ const DataProductsDetailsPage = ({
         const encodedFqn = getEncodedFqn(
           escapeESReservedCharacters(dataProduct.fullyQualifiedName)
         );
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(dataProducts.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
+        const queryFilter = getTermQuery({
+          'dataProducts.fullyQualifiedName': encodedFqn,
+        });
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter,
+          searchIndex: SearchIndex.ALL,
+        });
 
-        setAssetCount(res.data.hits.total.value ?? 0);
+        setAssetCount(res.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
         showErrorToast(

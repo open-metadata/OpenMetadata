@@ -61,10 +61,13 @@ jest.mock('../../rest/userAPI', () => ({
   updateUser: jest.fn(),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockImplementation(() =>
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      data: MOCK_USER_DATA,
+      hits: {
+        hits: MOCK_USER_DATA.data.map((user) => ({ _source: user })),
+        total: { value: MOCK_USER_DATA.data.length },
+      },
     })
   ),
 }));
