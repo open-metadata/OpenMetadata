@@ -20,6 +20,7 @@ public class DashboardDataModelMapper
         .withServiceType(create.getServiceType())
         .withColumns(create.getColumns())
         .withProject(create.getProject())
-        .withSourceHash(create.getSourceHash());
+        .withSourceHash(create.getSourceHash())
+        .withSourceUrl(create.getSourceUrl());
   }
 }

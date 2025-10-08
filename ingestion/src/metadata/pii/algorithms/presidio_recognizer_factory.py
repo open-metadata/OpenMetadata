@@ -219,6 +219,8 @@ class PresidioRecognizerFactory:
             args["supported_language"] = supported_language
         if context := config.context:
             args["context"] = context
+        if supported_entities := config.supportedEntities:
+            args["supported_entities"] = [entity.value for entity in supported_entities]
 
         return predefined_class(**args)
 

@@ -15,10 +15,13 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.Response;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -43,6 +46,30 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   private static final String ENTITY_TYPE_KEY = "entityType";
   private static final String TYPE_KEY = "type";
 
+  private static final List<String> ENTITY_REFERENCE_FIELDS;
+  private static final ObjectMapper ENTITY_REF_MAPPER;
+
+  static {
+    ENTITY_REF_MAPPER = JsonUtils.getObjectMapper().copy();
+    ENTITY_REF_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    // Extract field names to limit ES response payload - only fetch required fields from ES_source
+    ENTITY_REFERENCE_FIELDS = extractEntityReferenceFieldNames();
+  }
+
+  private static List<String> extractEntityReferenceFieldNames() {
+    List<String> fieldNames = new ArrayList<>();
+    for (Field field : EntityReference.class.getDeclaredFields()) {
+      JsonProperty annotation = field.getAnnotation(JsonProperty.class);
+      if (annotation != null) {
+        String fieldName = annotation.value();
+        String searchFieldName = TYPE_KEY.equals(fieldName) ? ENTITY_TYPE_KEY : fieldName;
+        fieldNames.add(searchFieldName);
+      }
+    }
+    return Collections.unmodifiableList(fieldNames);
+  }
+
   private final SearchRepository searchRepository;
 
   public DefaultInheritedFieldEntitySearch(SearchRepository searchRepository) {
@@ -58,34 +85,39 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       }
 
       String queryFilter = getQueryFilter(query);
+      int currentFrom = query.getFrom();
 
-      Integer totalCount = fetchTotalCount(queryFilter);
+      // Get total count from first batch response instead of separate count query
+      int batchSize = MAX_PAGE_SIZE;
+      SearchRequest searchRequest =
+          buildSearchRequest(currentFrom, batchSize, queryFilter, true, ENTITY_REFERENCE_FIELDS);
+
+      Response response = searchRepository.search(searchRequest, null);
+      String responseBody = extractResponseBody(response);
+      JsonNode searchResponse = JsonUtils.readTree(responseBody);
+
+      int totalCount = extractTotalCountFromSearchResponse(searchResponse);
 
       if (totalCount == 0) {
         return new InheritedFieldResult(Collections.emptyList(), 0);
       }
 
-      if (query.getSize() == 0) {
-        return new InheritedFieldResult(Collections.emptyList(), totalCount);
-      }
+      List<EntityReference> batchEntities =
+          extractEntityReferencesFromSearchResponse(searchResponse);
+      List<EntityReference> allEntities = new ArrayList<>(batchEntities);
+      currentFrom += batchSize;
 
-      int entitiesToFetch =
-          query.getSize() > 0 ? Math.min(query.getSize(), totalCount) : totalCount;
+      while (allEntities.size() < totalCount) {
+        batchSize = Math.min(MAX_PAGE_SIZE, totalCount - allEntities.size());
 
-      List<EntityReference> allEntities = new ArrayList<>();
-      int currentFrom = query.getFrom();
+        searchRequest =
+            buildSearchRequest(currentFrom, batchSize, queryFilter, true, ENTITY_REFERENCE_FIELDS);
 
-      while (allEntities.size() < entitiesToFetch) {
-        int batchSize = Math.min(MAX_PAGE_SIZE, entitiesToFetch - allEntities.size());
+        response = searchRepository.search(searchRequest, null);
+        responseBody = extractResponseBody(response);
+        searchResponse = JsonUtils.readTree(responseBody);
 
-        SearchRequest searchRequest = buildSearchRequest(currentFrom, batchSize, queryFilter, true);
-
-        Response response = searchRepository.search(searchRequest, null);
-        String responseBody = extractResponseBody(response);
-        JsonNode searchResponse = JsonUtils.readTree(responseBody);
-
-        List<EntityReference> batchEntities =
-            extractEntityReferencesFromSearchResponse(searchResponse);
+        batchEntities = extractEntityReferencesFromSearchResponse(searchResponse);
         if (batchEntities.isEmpty()) {
           break;
         }
@@ -102,16 +134,6 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     }
   }
 
-  private Integer fetchTotalCount(String queryFilter) throws Exception {
-    SearchRequest countRequest = buildSearchRequest(0, 0, queryFilter, false);
-
-    Response response = searchRepository.search(countRequest, null);
-    String responseBody = extractResponseBody(response);
-    JsonNode searchResponse = JsonUtils.readTree(responseBody);
-
-    return extractTotalCountFromSearchResponse(searchResponse);
-  }
-
   @Override
   public Integer getCountForField(InheritedFieldQuery query, Supplier<Integer> fallback) {
     try {
@@ -120,7 +142,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       }
 
       String queryFilter = getQueryFilter(query);
-      SearchRequest searchRequest = buildSearchRequest(0, 0, queryFilter, false);
+      SearchRequest searchRequest = buildSearchRequest(0, 0, queryFilter, false, null);
 
       Response response = searchRepository.search(searchRequest, null);
 
@@ -173,17 +195,15 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   }
 
   private EntityReference extractEntityReferenceFromDocument(JsonNode document) throws Exception {
-    ObjectNode modifiedDocument = document.deepCopy();
-    if (modifiedDocument.has(ENTITY_TYPE_KEY) && !modifiedDocument.has(TYPE_KEY)) {
-      modifiedDocument.set(TYPE_KEY, modifiedDocument.get(ENTITY_TYPE_KEY));
-      modifiedDocument.remove(ENTITY_TYPE_KEY);
+    // ES returns 'entityType' but EntityReference expects 'type'
+    // Since we explicitly request 'entityType' in ENTITY_REFERENCE_FIELDS, we always need to remap
+    if (!document.has(TYPE_KEY) && document.has(ENTITY_TYPE_KEY)) {
+      ObjectNode mutableDoc = (ObjectNode) document;
+      mutableDoc.set(TYPE_KEY, mutableDoc.get(ENTITY_TYPE_KEY));
+      mutableDoc.remove(ENTITY_TYPE_KEY);
     }
 
-    ObjectMapper mapper = JsonUtils.getObjectMapper().copy();
-    mapper.configure(
-        com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-
-    return mapper.readValue(modifiedDocument.toString(), EntityReference.class);
+    return ENTITY_REF_MAPPER.treeToValue(document, EntityReference.class);
   }
 
   private Integer extractTotalCountFromSearchResponse(JsonNode searchResponse) {
@@ -210,7 +230,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   }
 
   private SearchRequest buildSearchRequest(
-      int from, int size, String queryFilter, boolean fetchSource) {
+      int from, int size, String queryFilter, boolean fetchSource, List<String> includeFields) {
     SearchRequest searchRequest = new SearchRequest();
     searchRequest.setIndex(searchRepository.getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     searchRequest.setQuery(EMPTY_QUERY);
@@ -219,6 +239,11 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     searchRequest.setQueryFilter(queryFilter);
     searchRequest.setTrackTotalHits(true);
     searchRequest.setFetchSource(fetchSource);
+
+    if (includeFields != null && !includeFields.isEmpty()) {
+      searchRequest.setIncludeSourceFields(includeFields);
+    }
+
     return searchRequest;
   }
 }

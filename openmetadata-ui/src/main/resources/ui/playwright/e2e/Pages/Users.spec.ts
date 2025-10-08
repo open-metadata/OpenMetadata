@@ -957,44 +957,6 @@ test.describe('User Profile Persona Interactions', () => {
     // Wait for the persona card to be visible
     await adminPage.waitForSelector('[data-testid="persona-details-card"]');
 
-    // Test adding personas
-    await test.step('Add personas to user profile', async () => {
-      // Click edit button for Personas section
-      await adminPage
-        .locator('[data-testid="edit-user-persona"]')
-        .first()
-        .click();
-
-      // Wait for persona popover to be visible
-      await adminPage.waitForSelector('[data-testid="persona-select-list"]');
-
-      // Open the persona select dropdown and wait for options to load
-      await adminPage.locator('[data-testid="persona-select-list"]').click();
-
-      // Wait for dropdown to open and options to be visible
-      await adminPage.waitForSelector('.ant-select-dropdown', {
-        state: 'visible',
-      });
-
-      // Select first available persona - try test ID first, fallback to role selector
-      const personaOptionTestId = adminPage.getByTestId(
-        `${persona1.data.displayName}-option`
-      );
-
-      await personaOptionTestId.click();
-
-      // Save the changes
-      await adminPage
-        .locator('[data-testid="user-profile-persona-edit-save"]')
-        .click();
-
-      // Wait for the API call to complete and persona to appear
-      await adminPage.waitForResponse('/api/v1/users/*');
-      await adminPage.waitForSelector(
-        '[data-testid="chip-container"] [data-testid="tag-chip"]'
-      );
-    });
-
     // Test clicking on persona chip to navigate to persona page
     await test.step(
       'Navigate to persona page by clicking on persona chip',
@@ -1064,44 +1026,6 @@ test.describe('User Profile Persona Interactions', () => {
 
     // Wait for the persona card to be visible
     await adminPage.waitForSelector('[data-testid="persona-details-card"]');
-
-    // First, add some personas to the user so we can select a default persona
-    await test.step('Add personas to user profile first', async () => {
-      // Click edit button for Personas section (regular personas, not default)
-      await adminPage
-        .locator('[data-testid="edit-user-persona"]')
-        .first()
-        .click();
-
-      // Wait for persona popover and select multiple personas
-      await adminPage.waitForSelector('[data-testid="persona-select-list"]');
-      await adminPage.locator('[data-testid="persona-select-list"]').click();
-
-      // Wait for dropdown to open and options to be visible
-      await adminPage.waitForSelector('.ant-select-dropdown', {
-        state: 'visible',
-      });
-
-      // Select multiple personas - try test IDs first, fallback to role selectors
-      const persona1OptionTestId = adminPage.getByTestId(
-        `${persona1.data.displayName}-option`
-      );
-
-      await persona1OptionTestId.click();
-
-      const persona2OptionTestId = adminPage.getByTestId(
-        `${persona2.data.displayName}-option`
-      );
-
-      await persona2OptionTestId.click();
-
-      const personaEditResponse = adminPage.waitForResponse('/api/v1/users/*');
-      // Save the changes
-      await adminPage
-        .locator('[data-testid="user-profile-persona-edit-save"]')
-        .click();
-      await personaEditResponse;
-    });
 
     // Test adding default persona
     await test.step('Add default persona to user profile', async () => {

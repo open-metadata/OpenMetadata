@@ -148,7 +148,7 @@ export const navigateToCustomizeLandingPage = async (
   );
 
   // Need to find persona card and click as the list might get paginated
-  await navigateToPersonaWithPagination(page, personaName, true, 3);
+  await navigateToPersonaWithPagination(page, personaName, true);
 
   // Navigate to the customize landing page
   await page.getByRole('tab', { name: 'Customize UI' }).click();

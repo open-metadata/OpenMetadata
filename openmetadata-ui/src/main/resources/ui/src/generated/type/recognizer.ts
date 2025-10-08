@@ -206,6 +206,11 @@ export interface RecognizerConfig {
      * Name of the recognizer (defaults to class name if not provided)
      */
     name?: Name;
+    /**
+     * PII (Personally Identifiable Information) tags for classification and detection of
+     * sensitive data
+     */
+    supportedEntities?: PIIEntity[];
 }
 
 /**

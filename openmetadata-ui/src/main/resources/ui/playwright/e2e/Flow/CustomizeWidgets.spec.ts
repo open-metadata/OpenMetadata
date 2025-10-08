@@ -348,8 +348,6 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget loads KPI data correctly', async () => {
-      await waitForAllLoadersToDisappear(page);
-
       // Wait for the KPI list API to be called
       const kpiListResponse = page.waitForResponse(
         (response) =>
@@ -363,6 +361,8 @@ test.describe('Widgets', () => {
           response.url().includes('/api/v1/kpi/') &&
           response.url().includes('/kpiResult')
       );
+
+      await waitForAllLoadersToDisappear(page);
 
       const widget = page.getByTestId(widgetKey);
 

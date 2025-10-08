@@ -92,6 +92,11 @@ public class MigrationProcessImpl implements MigrationProcess {
   }
 
   @Override
+  public String getMigrationsDir() {
+    return migrationFile.getDirPath();
+  }
+
+  @Override
   public Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration) {
     return performSqlExecutionAndUpdate(
         handle,

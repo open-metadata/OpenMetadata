@@ -64,6 +64,24 @@
           "target": "content"
         },
         {
+          "name": "SpacyRecognizer",
+          "displayName": "Recognizer using spaCy NLP model",
+          "description": "Recognize PII entities using a spaCy NLP model.",
+          "enabled": true,
+          "isSystemDefault": true,
+          "recognizerConfig": {
+            "type": "predefined",
+            "name": "SpacyRecognizer",
+            "supportedEntities": [
+              "DATE_TIME",
+              "NRP",
+              "LOCATION"
+            ]
+          },
+          "confidenceThreshold": 0.6,
+          "target": "content"
+        },
+        {
           "displayName": "Date time column name",
           "name": "date_time",
           "description": "A regex recognizer for column names",
@@ -724,7 +742,10 @@
             "isSystemDefault": true,
             "recognizerConfig": {
               "type": "predefined",
-              "name": "SpacyRecognizer"
+              "name": "SpacyRecognizer",
+              "supportedEntities": [
+                "PERSON"
+              ]
             },
             "confidenceThreshold": 0.6,
             "target": "content"
