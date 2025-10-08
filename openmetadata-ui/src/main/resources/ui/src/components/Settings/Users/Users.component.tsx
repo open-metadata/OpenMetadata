@@ -122,7 +122,7 @@ const Users = ({
 
   const tabDataRender = useCallback(
     (props: {
-      queryFilter: string;
+      queryFilter: string | Record<string, unknown>;
       type: AssetsOfEntity;
       noDataPlaceholder: AssetNoDataPlaceholderProps;
     }) => (

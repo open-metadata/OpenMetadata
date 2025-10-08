@@ -265,6 +265,8 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
       await removeAssetsFromDataProduct(page, dataProduct1.data, assets);
+      await page.reload();
+      await page.waitForLoadState('networkidle');
       await checkAssetsCount(page, 0);
     });
 
@@ -830,7 +832,10 @@ test.describe('Domains', () => {
         await addCustomPropertiesForEntity({
           page,
           propertyName,
-          customPropertyData: { description: 'Test domain custom property' },
+          customPropertyData: {
+            description: 'Test domain custom property',
+            entityApiType: 'domain',
+          },
           customType: 'String',
         });
       });
