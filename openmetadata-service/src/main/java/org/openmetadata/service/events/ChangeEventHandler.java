@@ -77,6 +77,14 @@ public class ChangeEventHandler implements EventHandler {
         // Insert ChangeEvents if ENTITY Changed
         if (!changeEvent.getEventType().equals(EventType.ENTITY_NO_CHANGE)) {
           Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+          try {
+            if (Entity.getAuditLogRepository() != null) {
+              Entity.getAuditLogRepository().write(changeEvent);
+            }
+          } catch (Exception auditEx) {
+            LOG.warn(
+                "Failed to persist audit log for change event {}", changeEvent.getId(), auditEx);
+          }
         }
       }
     } catch (Exception e) {
@@ -94,6 +102,7 @@ public class ChangeEventHandler implements EventHandler {
         .withEventType(changeEvent.getEventType())
         .withEntityId(changeEvent.getEntityId())
         .withEntityType(changeEvent.getEntityType())
+        .withEntityFullyQualifiedName(changeEvent.getEntityFullyQualifiedName())
         .withUserName(changeEvent.getUserName())
         .withTimestamp(changeEvent.getTimestamp())
         .withChangeDescription(changeEvent.getChangeDescription())

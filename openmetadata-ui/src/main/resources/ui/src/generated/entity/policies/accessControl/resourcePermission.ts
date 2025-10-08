@@ -72,6 +72,7 @@ export enum Access {
  */
 export enum Operation {
     All = "All",
+    AuditLogs = "AuditLogs",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
     CreateScim = "CreateScim",

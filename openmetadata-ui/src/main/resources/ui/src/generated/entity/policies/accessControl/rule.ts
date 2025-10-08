@@ -55,6 +55,7 @@ export enum Effect {
  */
 export enum Operation {
     All = "All",
+    AuditLogs = "AuditLogs",
     Create = "Create",
     CreateIngestionPipelineAutomator = "CreateIngestionPipelineAutomator",
     CreateScim = "CreateScim",
