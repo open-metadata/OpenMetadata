@@ -12,9 +12,7 @@
  */
 
 import { Button, Form, FormProps, Space } from 'antd';
-import { AxiosError } from 'axios';
-import { toLower } from 'lodash';
-import { useEffect, useState } from 'react';
+import { debounce } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../../../constants/regex.constants';
 import { ServiceCategory } from '../../../../../enums/service.enum';
@@ -22,10 +20,8 @@ import {
   FieldProp,
   FieldTypes,
 } from '../../../../../interface/FormUtils.interface';
-import { ServicesType } from '../../../../../interface/service.interface';
-import { getServices } from '../../../../../rest/serviceAPI';
 import { generateFormFields } from '../../../../../utils/formUtils';
-import { showErrorToast } from '../../../../../utils/ToastUtils';
+import { validateServiceName } from '../../../../../utils/ServiceUtils';
 import { useRequiredParams } from '../../../../../utils/useRequiredParams';
 import { ConfigureServiceProps } from './Steps.interface';
 
@@ -36,9 +32,26 @@ const ConfigureService = ({
 }: ConfigureServiceProps) => {
   const { serviceCategory } =
     useRequiredParams<{ serviceCategory: ServiceCategory }>();
-  const [allServices, setAllServices] = useState<ServicesType[]>([]);
   const [form] = Form.useForm();
   const { t } = useTranslation();
+
+  const debouncedValidateServiceName = debounce(
+    async (
+      value: string,
+      serviceCategory: ServiceCategory,
+      resolve: () => void,
+      reject: (err: Error) => void
+    ) => {
+      const errorMessage = await validateServiceName(value, serviceCategory);
+      if (errorMessage) {
+        reject(new Error(errorMessage));
+      } else {
+        resolve();
+      }
+    },
+    300
+  );
+
   const formFields: FieldProp[] = [
     {
       name: 'name',
@@ -52,21 +65,15 @@ const ConfigureService = ({
           message: t('message.entity-name-validation'),
         },
         {
-          validator: (_, value) => {
-            if (
-              allServices.some(
-                (service) => toLower(service.name) === toLower(value)
-              )
-            ) {
-              return Promise.reject(
-                t('message.entity-already-exists', {
-                  entity: t('label.name'),
-                })
+          validator: (_, value) =>
+            new Promise<void>((resolve, reject) => {
+              debouncedValidateServiceName(
+                value,
+                serviceCategory,
+                resolve,
+                reject
               );
-            }
-
-            return Promise.resolve();
-          },
+            }),
         },
       ],
       props: {
@@ -91,27 +98,9 @@ const ConfigureService = ({
     },
   ];
 
-  const fetchAllServices = async () => {
-    try {
-      const { data } = await getServices({
-        serviceName: serviceCategory,
-        limit: 10000,
-      });
-      setAllServices(data);
-    } catch (error) {
-      showErrorToast(error as AxiosError, t('server.unexpected-response'));
-    }
-  };
-
   const handleSubmit: FormProps['onFinish'] = (data) => {
     onNext({ name: data.name, description: data.description ?? '' });
   };
-
-  useEffect(() => {
-    if (serviceCategory) {
-      fetchAllServices();
-    }
-  }, [serviceCategory]);
 
   return (
     <Form

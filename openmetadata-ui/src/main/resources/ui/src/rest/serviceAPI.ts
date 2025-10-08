@@ -192,6 +192,8 @@ export const searchService = async ({
   currentPage?: number;
   queryFilter?: Record<string, unknown>;
   deleted?: boolean;
+  trackTotalHits?: boolean;
+  wildcard?: boolean;
 }) => {
   const response = await searchQuery({
     query: search ?? WILD_CARD_CHAR,
