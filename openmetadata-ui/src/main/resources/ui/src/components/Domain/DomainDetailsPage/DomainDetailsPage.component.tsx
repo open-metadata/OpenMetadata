@@ -456,7 +456,8 @@ const DomainDetailsPage = ({
           pageNumber: 1,
           pageSize: 0,
           queryFilter: getTermQuery({
-            'parent.fullyQualifiedName.keyword': encodedFqn,
+            'parent.fullyQualifiedName.keyword':
+              domain.fullyQualifiedName ?? '',
           }),
           searchIndex: SearchIndex.DOMAIN,
           trackTotalHits: true,
