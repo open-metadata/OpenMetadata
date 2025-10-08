@@ -205,3 +205,11 @@ export const DATA_CONTRACT_SECURITY_CONSUMER_DETAILS = {
     },
   ],
 };
+
+export const DATA_CONTRACT_SEMANTIC_OPERATIONS = {
+  is_not: 'Is Not',
+  any_in: 'Any in',
+  not_in: 'Not in',
+  is_set: 'Is Set',
+  is_not_set: 'Is Not Set',
+};
