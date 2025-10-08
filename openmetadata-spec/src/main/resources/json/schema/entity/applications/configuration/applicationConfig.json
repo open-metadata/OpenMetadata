@@ -51,6 +51,7 @@
         },
         {
           "type": "string",
+          "format": "password",
           "description": "Used when private config is stored in secrets manager and secret key passed as a string"
         }
       ]
