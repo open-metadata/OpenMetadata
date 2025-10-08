@@ -225,7 +225,13 @@ test.describe('Domains', () => {
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
       await followEntity(page, EntityTypeEndpoint.DataProduct);
+
+      // Wait for the search query that will populate the following widget
+      const followingSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await redirectToHomePage(page);
+      await followingSearchResponse;
 
       // Check that the followed data product is shown in the following widget
       await expect(
@@ -233,7 +239,7 @@ test.describe('Domains', () => {
       ).toBeVisible();
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toContainText(dataProduct1.data.displayName);
+      ).toContainText(dataProduct1.data.displayName, { timeout: 15000 });
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
@@ -285,7 +291,16 @@ test.describe('Domains', () => {
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
     await followEntity(page, EntityTypeEndpoint.Domain);
+
+    // Wait for the search query that will populate the following widget
+    const followingSearchResponse = page.waitForResponse(
+      '/api/v1/search/query?*index=all*'
+    );
     await redirectToHomePage(page);
+    await followingSearchResponse;
+
+    await page.reload();
+    await page.waitForLoadState('networkidle');
 
     // Check that the followed domain is shown in the following widget
     await expect(
@@ -293,7 +308,7 @@ test.describe('Domains', () => {
     ).toBeVisible();
     await expect(
       page.locator('[data-testid="following-widget"]')
-    ).toContainText(domain.data.displayName);
+    ).toContainText(domain.data.displayName, { timeout: 15000 });
 
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
@@ -462,7 +477,13 @@ test.describe('Domains', () => {
       await verifyDomain(page, subDomain.data, domain.data, false);
       // Follow domain
       await followEntity(page, EntityTypeEndpoint.Domain);
+
+      // Wait for the search query that will populate the following widget
+      const followingSearchResponse = page.waitForResponse(
+        '/api/v1/search/query?*index=all*'
+      );
       await redirectToHomePage(page);
+      await followingSearchResponse;
       await page.waitForLoadState('networkidle');
 
       // Check that the followed domain is shown in the following widget
@@ -471,7 +492,7 @@ test.describe('Domains', () => {
       ).toBeVisible();
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toContainText(subDomain.data.displayName);
+      ).toContainText(subDomain.data.displayName, { timeout: 15000 });
 
       const subDomainRes = page.waitForResponse('/api/v1/domains/name/*');
       await page
@@ -834,7 +855,7 @@ test.describe('Domains', () => {
           propertyName,
           customPropertyData: {
             description: 'Test domain custom property',
-            entityApiType: 'domain',
+            entityApiType: 'domains',
           },
           customType: 'String',
         });

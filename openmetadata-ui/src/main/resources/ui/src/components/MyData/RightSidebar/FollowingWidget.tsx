@@ -85,15 +85,14 @@ function FollowingWidget({
 
       const queryFilterObj = getTermQuery(
         { followers: currentUser.id },
-        'should',
-        1
+        'must'
       );
 
       const res = await searchQuery({
         pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: SearchIndex.ALL,
+        filters: `followers:${currentUser.id}`,
         query: '*',
-        queryFilter: queryFilterObj,
         sortField,
         sortOrder,
       });
