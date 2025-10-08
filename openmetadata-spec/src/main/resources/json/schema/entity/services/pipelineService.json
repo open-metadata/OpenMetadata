@@ -31,7 +31,6 @@
         "Spark",
         "OpenLineage",
         "KafkaConnect",
-        "ConfluentCDC",
         "DBTCloud",
         "Matillion",
         "Stitch",
@@ -82,9 +81,6 @@
         },
         {
           "name": "KafkaConnect"
-        },
-        {
-          "name": "ConfluentCDC"
         },
         {
           "name": "DBTCloud"
@@ -167,9 +163,6 @@
             },
             {
               "$ref": "./connections/pipeline/kafkaConnectConnection.json"
-            },
-            {
-              "$ref": "./connections/pipeline/confluentCdcConnection.json"
             },
             {
               "$ref": "./connections/pipeline/dbtCloudConnection.json"
