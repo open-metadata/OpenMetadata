@@ -349,6 +349,17 @@ class KafkaconnectSource(PipelineServiceSource):
                         )
                         return columns
 
+                # Final fallback: Parse schemaText if after/before don't have children
+                if entity.messageSchema.schemaText:
+                    columns = self._parse_cdc_schema_columns(
+                        entity.messageSchema.schemaText
+                    )
+                    if columns:
+                        logger.debug(
+                            f"Debezium CDC: extracted {len(columns)} columns from schemaText"
+                        )
+                        return columns
+
                 logger.debug(
                     "Debezium CDC detected but unable to extract columns from after/before fields"
                 )
