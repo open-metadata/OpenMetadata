@@ -10,12 +10,14 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFI
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -67,6 +69,8 @@ import org.openmetadata.service.search.RecreateIndexHandler.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
+import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.interfaces.Source;
@@ -368,6 +372,21 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
 
     return Optional.empty();
+  }
+
+  private void finalizeEntityIndex(String entityType, boolean success) {
+    if (recreateIndexHandler == null
+        || recreateContext == null
+        || !Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+      return;
+    }
+
+    try {
+      recreateIndexHandler.finalizeEntityReindex(recreateContext, entityType, success);
+      LOG.info("Finalized index for entity '{}' with success={}", entityType, success);
+    } catch (Exception ex) {
+      LOG.error("Failed to finalize index for entity '{}'", entityType, ex);
+    }
   }
 
   private void finalizeRecreateIndexes(boolean success) {
@@ -874,27 +893,52 @@ public class SearchIndexApp extends AbstractNativeApplication {
       int loadPerThread = calculateNumberOfThreads(totalEntityRecords);
 
       if (totalEntityRecords > 0) {
-        submitBatchTasks(entityType, loadPerThread, producerLatch);
+        // Create entity-specific latch to wait for all batches of this entity
+        CountDownLatch entityLatch = new CountDownLatch(loadPerThread);
+        submitBatchTasks(entityType, loadPerThread, producerLatch, entityLatch);
+
+        // Wait for all batches of this entity to complete
+        try {
+          entityLatch.await();
+        } catch (InterruptedException e) {
+          Thread.currentThread().interrupt();
+          LOG.warn("Interrupted while waiting for entity '{}' batches to complete", entityType);
+          finalizeEntityIndex(entityType, false);
+          return;
+        }
       }
 
       if (jobLogger != null) {
         jobLogger.markEntityCompleted(entityType);
       }
+
+      // Finalize index for this entity immediately after all its batches complete
+      finalizeEntityIndex(entityType, true);
     } catch (Exception e) {
       LOG.error("Error processing entity type {}", entityType, e);
+      // Cleanup staged index on failure
+      finalizeEntityIndex(entityType, false);
     }
   }
 
   private void submitBatchTasks(
-      String entityType, int loadPerThread, CountDownLatch producerLatch) {
+      String entityType,
+      int loadPerThread,
+      CountDownLatch producerLatch,
+      CountDownLatch entityLatch) {
     for (int i = 0; i < loadPerThread; i++) {
       LOG.debug("Submitting virtual thread producer task for batch {}/{}", i + 1, loadPerThread);
       int currentOffset = i * batchSize.get();
-      producerExecutor.submit(() -> processBatch(entityType, currentOffset, producerLatch));
+      producerExecutor.submit(
+          () -> processBatch(entityType, currentOffset, producerLatch, entityLatch));
     }
   }
 
-  private void processBatch(String entityType, int currentOffset, CountDownLatch producerLatch) {
+  private void processBatch(
+      String entityType,
+      int currentOffset,
+      CountDownLatch producerLatch,
+      CountDownLatch entityLatch) {
     try {
       if (shouldSkipBatch()) {
         return;
@@ -913,6 +957,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
     } finally {
       LOG.debug("Virtual thread completed batch, remaining: {}", producerLatch.getCount() - 1);
       producerLatch.countDown();
+      if (entityLatch != null) {
+        entityLatch.countDown();
+      }
     }
   }
 
@@ -1375,8 +1422,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private List<String> getSearchIndexFields(String entityType) {
     if (TIME_SERIES_ENTITIES.contains(entityType)) {
-      return List.of(); // Empty list for time series
+      return List.of();
     }
+
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    Set<String> searchDerivedFields = repository.getSearchDerivedFields();
+
+    // Excludes search-derived fields during reindexing to avoid circular dependencies.
+    if (!searchDerivedFields.isEmpty()) {
+      Fields fieldsWithExclusions =
+          EntityUtil.Fields.createWithExcludedFields(
+              repository.getAllowedFieldsCopy(), searchDerivedFields);
+      return new ArrayList<>(fieldsWithExclusions.getFieldList());
+    }
+
     return List.of("*");
   }
 
@@ -1554,6 +1613,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     Map<String, Object> contextData = new HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
     contextData.put(RECREATE_INDEX, jobData.getRecreateIndex());
+    contextData.put(RECREATE_CONTEXT, recreateContext);
     getTargetIndexForEntity(entityType)
         .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
     return contextData;

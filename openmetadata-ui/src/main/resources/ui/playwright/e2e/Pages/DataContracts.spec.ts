@@ -68,6 +68,7 @@ const test = base.extend<{ page: Page }>({
 
 test.describe('Data Contracts', () => {
   const table = new TableClass();
+  const table2 = new TableClass();
   const testClassification = new ClassificationClass();
   const testTag = new TagClass({
     classification: testClassification.data.name,
@@ -81,6 +82,7 @@ test.describe('Data Contracts', () => {
 
     const { apiContext, afterAction, page } = await performAdminLogin(browser);
     await table.create(apiContext);
+    await table2.create(apiContext);
     await testClassification.create(apiContext);
     await testTag.create(apiContext);
     await testGlossary.create(apiContext);
@@ -136,6 +138,9 @@ test.describe('Data Contracts', () => {
       'Open contract section and start adding contract',
       async () => {
         await page.click('[data-testid="contract"]');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -684,10 +689,13 @@ test.describe('Data Contracts', () => {
     await test.step(
       'Create Data Contract in Table and validate it fails',
       async () => {
-        await table.visitEntityPage(page);
+        await table2.visitEntityPage(page);
 
         // Open contract section and start adding contract
         await page.click('[data-testid="contract"]');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
 
         await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
         await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -775,9 +783,12 @@ test.describe('Data Contracts', () => {
 
     await test.step('Create Persona and assign user to it', async () => {
       await redirectToHomePage(page);
+
+      const personaGetResponse = page.waitForResponse('/api/v1/personas**');
       await settingClick(page, GlobalSettingOptions.PERSONA);
-      await page.waitForLoadState('networkidle');
-      await page.waitForSelector('[data-testid="loader"]', {
+      await personaGetResponse;
+
+      await page.waitForSelector('.ant-skeleton-content', {
         state: 'detached',
       });
 
@@ -817,7 +828,7 @@ test.describe('Data Contracts', () => {
       'Verify Contract tab and status badge are visible if persona is set',
       async () => {
         await redirectToHomePage(page);
-        await table.visitEntityPage(page);
+        await table2.visitEntityPage(page);
         await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -884,7 +895,7 @@ test.describe('Data Contracts', () => {
         // when viewing the table page with the customized persona.
 
         await redirectToHomePage(page);
-        await table.visitEntityPage(page);
+        await table2.visitEntityPage(page);
         await page.waitForLoadState('networkidle');
         await page.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
@@ -932,6 +943,9 @@ test.describe('Data Contracts', () => {
         'Open contract section and start adding contract',
         async () => {
           await page.click('[data-testid="contract"]');
+          await page.waitForSelector('[data-testid="loader"]', {
+            state: 'detached',
+          });
 
           await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
           await expect(page.getByTestId('add-contract-button')).toBeVisible();
@@ -1221,6 +1235,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1350,6 +1368,9 @@ test.describe('Data Contracts', () => {
     await assignGlossaryTerm(page, testGlossaryTerm.responseData);
 
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const runNowResponse = page.waitForResponse(
       '/api/v1/dataContracts/*/validate'
@@ -1384,6 +1405,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1513,6 +1538,9 @@ test.describe('Data Contracts', () => {
     await assignGlossaryTerm(page, testGlossaryTerm.responseData);
 
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
 
     const runNowResponse = page.waitForResponse(
       '/api/v1/dataContracts/*/validate'
@@ -1550,6 +1578,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1613,6 +1645,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
 
     await expect(page.getByTestId('add-contract-card')).toBeVisible();
@@ -1685,6 +1721,10 @@ test.describe('Data Contracts', () => {
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
     await page.getByTestId('add-contract-button').click();
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
     await expect(page.getByTestId('add-semantic-button')).toBeDisabled();
@@ -1769,6 +1809,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1819,6 +1863,10 @@ test.describe('Data Contracts', () => {
     await redirectToHomePage(page);
     await table.visitEntityPage(page);
     await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.getByTestId('add-contract-button').click();
     await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1893,6 +1941,7 @@ test.describe('Data Contracts', () => {
       await saveSecurityAndSLADetails(
         page,
         DATA_CONTRACT_SECURITY_DETAILS_1,
+        table,
         true
       );
 
@@ -1902,6 +1951,37 @@ test.describe('Data Contracts', () => {
     });
 
     await test.step('Validate Security and SLA Details', async () => {
+      // Validate on Contract Detail Page For Security
+      await expect(page.getByTestId('security-card')).toBeVisible();
+
+      await expect(
+        page.getByTestId('contract-security-classification')
+      ).toContainText(DATA_CONTRACT_SECURITY_DETAILS_1.dataClassificationName);
+
+      await expect(
+        page.getByTestId('contract-security-access-policy-0')
+      ).toContainText(
+        DATA_CONTRACT_SECURITY_DETAILS_1.consumers.accessPolicyName
+      );
+
+      for (const identity of DATA_CONTRACT_SECURITY_DETAILS_1.consumers
+        .identities) {
+        await expect(
+          page.getByTestId(`contract-security-identities-0-${identity}`)
+        ).toBeVisible();
+      }
+
+      for (const filter of DATA_CONTRACT_SECURITY_DETAILS_1.consumers
+        .row_filters) {
+        await expect(
+          page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
+        ).toContainText(
+          `${table.columnsName[filter.index]} = ${filter.values[0]},${
+            filter.values[1]
+          }`
+        );
+      }
+
       // Validate on Contract Detail Page
       await expect(page.getByTestId('contract-sla-card')).toBeVisible();
       await expect(
@@ -1919,6 +1999,12 @@ test.describe('Data Contracts', () => {
         page.getByText('Retention: Data should be retained for 30 week')
       ).toBeVisible();
 
+      await expect(
+        page.getByText(
+          `Column: Represents data refresh time corresponding to ${table.columnsName[0]}`
+        )
+      ).toBeVisible();
+
       await page.getByTestId('manage-contract-actions').click();
 
       await page.waitForSelector('.contract-action-dropdown', {
@@ -1927,17 +2013,58 @@ test.describe('Data Contracts', () => {
       await page.getByTestId('contract-edit-button').click();
       await validateSecurityAndSLADetails(
         page,
-        DATA_CONTRACT_SECURITY_DETAILS_1
+        DATA_CONTRACT_SECURITY_DETAILS_1,
+        table
       );
     });
 
     await test.step('Update Security and SLA Details', async () => {
-      await saveSecurityAndSLADetails(page, DATA_CONTRACT_SECURITY_DETAILS_2);
+      await saveSecurityAndSLADetails(
+        page,
+        DATA_CONTRACT_SECURITY_DETAILS_2,
+        table,
+        false,
+        true
+      );
     });
 
     await test.step(
       'Validate the updated values Security and SLA Details',
       async () => {
+        const updatedContractSecurityData = {
+          ...DATA_CONTRACT_SECURITY_DETAILS_2,
+          ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+        };
+
+        // Validate on Contract Detail Page For Security
+        await expect(page.getByTestId('security-card')).toBeVisible();
+
+        await expect(
+          page.getByTestId('contract-security-classification')
+        ).toContainText(updatedContractSecurityData.dataClassificationName);
+
+        await expect(
+          page.getByTestId('contract-security-access-policy-0')
+        ).toContainText(updatedContractSecurityData.consumers.accessPolicyName);
+
+        for (const identity of updatedContractSecurityData.consumers
+          .identities) {
+          await expect(
+            page.getByTestId(`contract-security-identities-0-${identity}`)
+          ).toBeVisible();
+        }
+
+        for (const filter of updatedContractSecurityData.consumers
+          .row_filters) {
+          await expect(
+            page.getByTestId(`contract-security-rowFilter-0-${filter.index}`)
+          ).toContainText(
+            `${table.columnsName[filter.index]} = ${filter.values[0]},${
+              filter.values[1]
+            },${filter.values[2]},${filter.values[3]}`
+          );
+        }
+
         // Validate the updated data on Contract Detail Page
         await expect(page.getByTestId('contract-sla-card')).toBeVisible();
         await expect(
@@ -1957,17 +2084,67 @@ test.describe('Data Contracts', () => {
           page.getByText('Retention: Data should be retained for 70 year')
         ).toBeVisible();
 
+        await expect(
+          page.getByText(
+            `Column: Represents data refresh time corresponding to ${table.columnsName[1]}`
+          )
+        ).toBeVisible();
+
         await page.getByTestId('manage-contract-actions').click();
 
         await page.waitForSelector('.contract-action-dropdown', {
           state: 'visible',
         });
         await page.getByTestId('contract-edit-button').click();
-        await validateSecurityAndSLADetails(page, {
-          ...DATA_CONTRACT_SECURITY_DETAILS_2,
-          ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
-        });
+        await validateSecurityAndSLADetails(
+          page,
+          {
+            ...DATA_CONTRACT_SECURITY_DETAILS_2,
+            ...DATA_CONTRACT_SECURITY_DETAILS_2_VERIFIED_DETAILS,
+          },
+          table,
+          true
+        );
       }
     );
+
+    await test.step('Validate after removing security policies', async () => {
+      await page.getByRole('tab', { name: 'Security' }).click();
+
+      await page.getByTestId('cancel-policy-button').click();
+      await page.getByTestId('delete-policy-0').click();
+
+      const saveContractResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*'
+      );
+      await page.getByTestId('save-contract-btn').click();
+      await saveContractResponse;
+
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        page.getByTestId('contract-security-policy-container')
+      ).not.toBeVisible();
+
+      await page.getByTestId('manage-contract-actions').click();
+
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
+
+      await page.getByTestId('contract-edit-button').click();
+
+      await page.getByRole('tab', { name: 'Security' }).click();
+
+      await expect(page.getByTestId('add-policy-button')).not.toBeDisabled();
+
+      await page.getByTestId('add-policy-button').click();
+
+      await expect(page.getByTestId('access-policy-input-0')).toBeVisible();
+      await expect(page.getByTestId('columnName-input-0-0')).toBeVisible();
+    });
   });
 });

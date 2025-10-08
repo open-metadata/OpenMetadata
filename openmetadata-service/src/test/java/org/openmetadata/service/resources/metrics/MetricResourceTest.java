@@ -2,7 +2,11 @@ package org.openmetadata.service.resources.metrics;
 
 import static jakarta.ws.rs.core.Response.Status;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
@@ -20,6 +24,7 @@ import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.openmetadata.schema.api.data.CreateMetric;
@@ -27,6 +32,7 @@ import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetricExpressionLanguage;
 import org.openmetadata.schema.type.MetricGranularity;
 import org.openmetadata.schema.type.MetricType;
@@ -423,6 +429,121 @@ public class MetricResourceTest extends EntityResourceTest<Metric, CreateMetric>
         default -> assertCommonFieldChange(fieldName, expected, actual);
       }
     }
+  }
+
+  @Test
+  void test_reviewersUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a metric with no reviewers initially
+    CreateMetric createMetric = createRequest(getEntityName(test));
+    Metric metric = createEntity(createMetric, ADMIN_AUTH_HEADERS);
+
+    // Verify the metric is created with no reviewers
+    assertTrue(
+        listOrEmpty(metric.getReviewers()).isEmpty(), "Metric should have no reviewers initially");
+
+    // Update the reviewers using PATCH operation without explicit change tracking
+    String originalJson = JsonUtils.pojoToJson(metric);
+    List<EntityReference> reviewers = List.of(USER1_REF);
+    metric.setReviewers(reviewers);
+
+    Metric updatedMetric = patchEntity(metric.getId(), originalJson, metric, ADMIN_AUTH_HEADERS);
+
+    // Verify the reviewers were added correctly
+    assertNotNull(updatedMetric.getReviewers(), "Metric should have reviewers after update");
+    assertEquals(1, updatedMetric.getReviewers().size(), "Metric should have one reviewer");
+    assertEquals(
+        USER1_REF.getId(),
+        updatedMetric.getReviewers().get(0).getId(),
+        "Reviewer should match USER1");
+
+    // Get the metric again to confirm the reviewers are persisted
+    Metric retrievedMetric = getEntity(updatedMetric.getId(), FIELD_REVIEWERS, ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedMetric.getReviewers(), "Retrieved metric should have reviewers");
+    assertEquals(
+        1, retrievedMetric.getReviewers().size(), "Retrieved metric should have one reviewer");
+    assertEquals(
+        USER1_REF.getId(),
+        retrievedMetric.getReviewers().get(0).getId(),
+        "Retrieved reviewer should match USER1");
+
+    // Update reviewers - replace existing reviewer with a new one
+    String metricJson = JsonUtils.pojoToJson(updatedMetric);
+    List<EntityReference> newReviewers = List.of(USER2_REF);
+    updatedMetric.setReviewers(newReviewers);
+    updatedMetric =
+        patchEntity(updatedMetric.getId(), metricJson, updatedMetric, ADMIN_AUTH_HEADERS);
+
+    // Verify the reviewer was updated
+    assertEquals(1, updatedMetric.getReviewers().size(), "Metric should still have one reviewer");
+    assertEquals(
+        USER2_REF.getId(),
+        updatedMetric.getReviewers().get(0).getId(),
+        "Reviewer should now be USER2");
+
+    // Add a second reviewer
+    metricJson = JsonUtils.pojoToJson(updatedMetric);
+    List<EntityReference> multipleReviewers = List.of(USER2_REF, USER1_REF);
+    updatedMetric.setReviewers(multipleReviewers);
+    updatedMetric =
+        patchEntity(updatedMetric.getId(), metricJson, updatedMetric, ADMIN_AUTH_HEADERS);
+
+    // Verify multiple reviewers
+    assertEquals(2, updatedMetric.getReviewers().size(), "Metric should have two reviewers");
+    assertTrue(
+        updatedMetric.getReviewers().stream().anyMatch(r -> r.getId().equals(USER1_REF.getId())),
+        "Should contain USER1 as reviewer");
+    assertTrue(
+        updatedMetric.getReviewers().stream().anyMatch(r -> r.getId().equals(USER2_REF.getId())),
+        "Should contain USER2 as reviewer");
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a metric with default status
+    CreateMetric createMetric = createRequest(getEntityName(test));
+    Metric metric = createEntity(createMetric, ADMIN_AUTH_HEADERS);
+
+    // Verify the metric is created with UNPROCESSED status (actual default behavior)
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        metric.getEntityStatus(),
+        "Metric should be created with UNPROCESSED status");
+
+    // Update the entityStatus using PATCH operation
+    String originalJson = JsonUtils.pojoToJson(metric);
+    metric.setEntityStatus(EntityStatus.IN_REVIEW);
+
+    ChangeDescription change = getChangeDescription(metric, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
+    Metric updatedMetric =
+        patchEntityAndCheck(metric, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedMetric.getEntityStatus(),
+        "Metric should be updated to IN_REVIEW status");
+
+    // Get the metric again to confirm the status is persisted
+    Metric retrievedMetric = getEntity(updatedMetric.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedMetric.getEntityStatus(),
+        "Retrieved metric should maintain IN_REVIEW status");
+
+    // Update to DEPRECATED status
+    String metricJson = JsonUtils.pojoToJson(updatedMetric);
+    updatedMetric.setEntityStatus(EntityStatus.DEPRECATED);
+    change = getChangeDescription(updatedMetric, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.IN_REVIEW, EntityStatus.DEPRECATED);
+    updatedMetric =
+        patchEntityAndCheck(updatedMetric, metricJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify DEPRECATED status
+    assertEquals(
+        EntityStatus.DEPRECATED,
+        updatedMetric.getEntityStatus(),
+        "Metric should be updated to DEPRECATED status");
   }
 
   public Metric getMetric(UUID id, String fields, Map<String, String> authHeaders)

@@ -28,16 +28,13 @@
     "types": ["node"],
     "typeRoots": ["./node_modules/@types"]
   },
-  "include": [
-    "src/**/*",
-    "vite.config.ts"
-  ],
+  "include": ["src/**/*"],
   "exclude": [
     "node_modules",
     "dist",
     "**/*.test.ts",
     "**/*.test.tsx",
-    "**/*.stories.ts", 
+    "**/*.stories.ts",
     "**/*.stories.tsx",
     "**/*.spec.ts",
     "**/*.spec.tsx"
