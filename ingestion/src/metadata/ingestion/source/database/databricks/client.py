@@ -331,7 +331,11 @@ class DatabricksClient:
                     self.job_table_lineage[row.job_id].append(
                         {
                             "source_table_full_name": row.source_table_full_name,
+                            "source_type": row.source_type,
+                            "source_path": row.source_path,
                             "target_table_full_name": row.target_table_full_name,
+                            "target_type": row.target_type,
+                            "target_path": row.target_path,
                         }
                     )
                 except Exception as exc:

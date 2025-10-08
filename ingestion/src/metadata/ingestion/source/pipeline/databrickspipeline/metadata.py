@@ -27,6 +27,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
@@ -247,6 +248,44 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 )
             )
 
+    def _get_table_entity(self, table_full_name: str) -> Optional[Table]:
+        """
+        Get table entity from table full name by checking all configured db services
+        """
+        table_info = fqn.split_table_name(table_full_name)
+        for dbservicename in self.get_db_service_names() or ["*"]:
+            table_entity = self.metadata.get_by_name(
+                entity=Table,
+                fqn=fqn.build(
+                    metadata=self.metadata,
+                    entity_type=Table,
+                    table_name=table_info.get("table"),
+                    database_name=table_info.get("database"),
+                    schema_name=table_info.get("database_schema"),
+                    service_name=dbservicename,
+                ),
+            )
+            if table_entity:
+                return table_entity
+        return None
+
+    def _get_container_entity_by_path(self, path: str) -> Optional[Container]:
+        """
+        Get container entity from path by checking all configured storage services
+        """
+        try:
+            containers = self.metadata.es_search_container_by_path(full_path=path)
+            if containers:
+                for container in containers:
+                    if container.service.name in self.get_storage_service_names():
+                        return container
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.debug(
+                f"Unable to find container for path {path} in service {self.get_storage_service_names()}: {exc}"
+            )
+        return None
+
     def _process_and_validate_column_lineage(
         self,
         column_lineage: List[Tuple[str, str]],
@@ -300,6 +339,36 @@ class DatabrickspipelineSource(PipelineServiceSource):
             )
         return processed_column_lineage or []
 
+    def _create_lineage_request(
+        self,
+        from_entity,
+        to_entity,
+        pipeline_entity: Pipeline,
+        column_lineage: Optional[List[ColumnLineage]] = None,
+    ) -> AddLineageRequest:
+        """
+        Create lineage request from entities
+        """
+        lineage_details = LineageDetails(
+            pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
+            source=LineageSource.PipelineLineage,
+            columnsLineage=column_lineage if column_lineage else None,
+        )
+
+        return AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(
+                    id=from_entity.id,
+                    type="table" if isinstance(from_entity, Table) else "container",
+                ),
+                toEntity=EntityReference(
+                    id=to_entity.id,
+                    type="table" if isinstance(to_entity, Table) else "container",
+                ),
+                lineageDetails=lineage_details,
+            )
+        )
+
     def yield_pipeline_lineage_details(
         self, pipeline_details: DataBrickPipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -323,85 +392,55 @@ class DatabrickspipelineSource(PipelineServiceSource):
             )
             if table_lineage_list:
                 for table_lineage in table_lineage_list:
-                    source_table_full_name = table_lineage.get("source_table_full_name")
-                    target_table_full_name = table_lineage.get("target_table_full_name")
-                    if source_table_full_name and target_table_full_name:
-                        source = fqn.split_table_name(source_table_full_name)
-                        target = fqn.split_table_name(target_table_full_name)
-                        for dbservicename in self.get_db_service_names() or ["*"]:
+                    from_entity = None
+                    if table_lineage.get("source_type").lower() == "table":
+                        from_entity = self._get_table_entity(
+                            table_lineage.get("source_table_full_name")
+                        )
+                    elif table_lineage.get("source_type").lower() == "path":
+                        from_entity = self._get_container_entity_by_path(
+                            table_lineage.get("source_path")
+                        )
 
-                            from_entity = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=fqn.build(
-                                    metadata=self.metadata,
-                                    entity_type=Table,
-                                    table_name=source.get("table"),
-                                    database_name=source.get("database"),
-                                    schema_name=source.get("database_schema"),
-                                    service_name=dbservicename,
+                    to_entity = None
+                    if table_lineage.get("target_type").lower() == "table":
+                        to_entity = self._get_table_entity(
+                            table_lineage.get("target_table_full_name")
+                        )
+                    elif table_lineage.get("target_type").lower() == "path":
+                        to_entity = self._get_container_entity_by_path(
+                            table_lineage.get("target_path")
+                        )
+
+                    if not from_entity or not to_entity:
+                        logger.debug(
+                            f"No source or target entity found for job {pipeline_details.job_id}"
+                        )
+                        continue
+
+                    column_lineage = None
+                    if isinstance(from_entity, Table) and isinstance(to_entity, Table):
+                        column_lineage = self._process_and_validate_column_lineage(
+                            column_lineage=self.client.get_column_lineage(
+                                job_id=pipeline_details.job_id,
+                                TableKey=(
+                                    table_lineage.get("source_table_full_name"),
+                                    table_lineage.get("target_table_full_name"),
                                 ),
-                            )
+                            ),
+                            from_entity=from_entity,
+                            to_entity=to_entity,
+                        )
 
-                            if from_entity is None:
-                                continue
-
-                            to_entity = self.metadata.get_by_name(
-                                entity=Table,
-                                fqn=fqn.build(
-                                    metadata=self.metadata,
-                                    entity_type=Table,
-                                    table_name=target.get("table"),
-                                    database_name=target.get("database"),
-                                    schema_name=target.get("database_schema"),
-                                    service_name=dbservicename,
-                                ),
-                            )
-
-                            if to_entity is None:
-                                continue
-
-                            processed_column_lineage = (
-                                self._process_and_validate_column_lineage(
-                                    column_lineage=self.client.get_column_lineage(
-                                        job_id=pipeline_details.job_id,
-                                        TableKey=(
-                                            source_table_full_name,
-                                            target_table_full_name,
-                                        ),
-                                    ),
-                                    from_entity=from_entity,
-                                    to_entity=to_entity,
-                                )
-                            )
-
-                            lineage_details = LineageDetails(
-                                pipeline=EntityReference(
-                                    id=pipeline_entity.id.root, type="pipeline"
-                                ),
-                                source=LineageSource.PipelineLineage,
-                                columnsLineage=processed_column_lineage,
-                            )
-
-                            yield Either(
-                                right=AddLineageRequest(
-                                    edge=EntitiesEdge(
-                                        fromEntity=EntityReference(
-                                            id=from_entity.id,
-                                            type="table",
-                                        ),
-                                        toEntity=EntityReference(
-                                            id=to_entity.id,
-                                            type="table",
-                                        ),
-                                        lineageDetails=lineage_details,
-                                    )
-                                )
-                            )
-
-                else:
-                    logger.debug(
-                        f"No source or target table full name found for job {pipeline_details.job_id}"
+                    yield Either(
+                        right=self._create_lineage_request(
+                            from_entity=from_entity,
+                            to_entity=to_entity,
+                            pipeline_entity=pipeline_entity,
+                            column_lineage=column_lineage,
+                        )
                     )
+
             else:
                 logger.debug(
                     f"No table lineage found for job {pipeline_details.job_id}"

@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     Task,
     TaskStatus,
 )
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.pipelineService import (
     PipelineConnection,
@@ -364,7 +365,11 @@ class DatabricksPipelineTests(TestCase):
                 mock_get_table_lineage.return_value = [
                     {
                         "source_table_full_name": "local_table.dev.table_1",
+                        "source_type": "TABLE",
+                        "source_path": None,
                         "target_table_full_name": "local_table.dev.table_2",
+                        "target_type": "TABLE",
+                        "target_path": None,
                     }
                 ]
                 with patch.object(
@@ -379,6 +384,7 @@ class DatabricksPipelineTests(TestCase):
                             DataBrickPipelineDetails(**mock_data[0])
                         )
                     )[0].right
+
                     self.assertEqual(
                         lineage_details.edge.fromEntity.id,
                         EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
@@ -413,7 +419,11 @@ class DatabricksPipelineTests(TestCase):
                 mock_get_table_lineage.return_value = [
                     {
                         "source_table_full_name": "local_table.dev.table_1",
+                        "source_type": "TABLE",
+                        "source_path": None,
                         "target_table_full_name": "local_table.dev.table_2",
+                        "target_type": "TABLE",
+                        "target_path": None,
                     }
                 ]
                 with patch.object(
@@ -425,6 +435,7 @@ class DatabricksPipelineTests(TestCase):
                             DataBrickPipelineDetails(**mock_data[0])
                         )
                     )[0].right
+
                     self.assertEqual(
                         lineage_details.edge.fromEntity.id,
                         EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
@@ -435,5 +446,224 @@ class DatabricksPipelineTests(TestCase):
                     )
                     self.assertEqual(
                         lineage_details.edge.lineageDetails.columnsLineage,
-                        [],
+                        None,
                     )
+
+    def test_databricks_pipeline_storage_to_table_lineage(self):
+        """Test lineage from storage container to table through Databricks pipeline"""
+        self.databricks.context.get().__dict__["pipeline"] = "11223344"
+        self.databricks.context.get().__dict__[
+            "pipeline_service"
+        ] = "databricks_pipeline_test"
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="11223344",
+            fullyQualifiedName="databricks_pipeline_test.11223344",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+
+        # Create mock container for S3 source
+        mock_source_container = Container(
+            id="aaa11111-22e8-45fb-b50a-918529d43ed1",
+            name="raw-data",
+            fullyQualifiedName="s3_storage.raw-data-bucket.raw-data",
+            service=EntityReference(id=uuid.uuid4(), type="storageService"),
+        )
+
+        # Create target table
+        mock_target_table = Table(
+            id="bbb22222-12e8-45fb-b50a-918529d43ed1",
+            name="processed_data",
+            fullyQualifiedName="databricks.dev.processed_data",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[
+                Column(
+                    name="id",
+                    fullyQualifiedName="databricks.dev.processed_data.id",
+                    dataType="VARCHAR",
+                ),
+                Column(
+                    name="value",
+                    fullyQualifiedName="databricks.dev.processed_data.value",
+                    dataType="DOUBLE",
+                ),
+            ],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        with patch.object(self.databricks.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    if fqn == "databricks_pipeline_test.11223344":
+                        return mock_pipeline
+                elif entity == Table:
+                    if "processed_data" in fqn:
+                        return mock_target_table
+                elif entity == Container:
+                    if "raw-data" in fqn:
+                        return mock_source_container
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.databricks.metadata, "es_search_container_by_path"
+            ) as mock_search_container:
+                mock_search_container.return_value = [mock_source_container]
+
+                with patch.object(
+                    self.databricks, "get_storage_service_names"
+                ) as mock_get_storage_services:
+                    mock_get_storage_services.return_value = ["s3_storage"]
+
+                    with patch.object(
+                        self.databricks.client, "get_table_lineage"
+                    ) as mock_get_table_lineage:
+                        mock_get_table_lineage.return_value = [
+                            {
+                                "source_table_full_name": None,
+                                "source_type": "PATH",
+                                "source_path": "s3://raw-data-bucket/raw-data/",
+                                "target_table_full_name": "databricks.dev.processed_data",
+                                "target_type": "TABLE",
+                                "target_path": None,
+                            }
+                        ]
+
+                        lineage_details_list = list(
+                            self.databricks.yield_pipeline_lineage_details(
+                                DataBrickPipelineDetails(**mock_data[0])
+                            )
+                        )
+
+                        # Should have one lineage edge
+                        self.assertEqual(len(lineage_details_list), 1)
+                        lineage_details = lineage_details_list[0].right
+
+                        # Verify it's from container to table
+                        self.assertEqual(
+                            lineage_details.edge.fromEntity.id,
+                            mock_source_container.id,
+                        )
+                        self.assertEqual(
+                            lineage_details.edge.fromEntity.type, "container"
+                        )
+                        self.assertEqual(
+                            lineage_details.edge.toEntity.id,
+                            mock_target_table.id,
+                        )
+                        self.assertEqual(lineage_details.edge.toEntity.type, "table")
+
+                        # No column lineage for container-to-table
+                        self.assertIsNone(
+                            lineage_details.edge.lineageDetails.columnsLineage
+                        )
+
+    def test_databricks_pipeline_table_to_storage_lineage(self):
+        """Test lineage from table to storage container through Databricks pipeline"""
+        self.databricks.context.get().__dict__["pipeline"] = "11223344"
+        self.databricks.context.get().__dict__[
+            "pipeline_service"
+        ] = "databricks_pipeline_test"
+
+        mock_pipeline = Pipeline(
+            id=uuid.uuid4(),
+            name="11223344",
+            fullyQualifiedName="databricks_pipeline_test.11223344",
+            service=EntityReference(id=uuid.uuid4(), type="pipelineService"),
+        )
+
+        # Create source table
+        mock_source_table = Table(
+            id="ccc33333-12e8-45fb-b50a-918529d43ed1",
+            name="staging_data",
+            fullyQualifiedName="databricks.staging.staging_data",
+            database=EntityReference(id=uuid.uuid4(), type="database"),
+            columns=[
+                Column(
+                    name="id",
+                    fullyQualifiedName="databricks.staging.staging_data.id",
+                    dataType="VARCHAR",
+                )
+            ],
+            databaseSchema=EntityReference(id=uuid.uuid4(), type="databaseSchema"),
+        )
+
+        # Create target container for S3 export
+        mock_target_container = Container(
+            id="ddd44444-22e8-45fb-b50a-918529d43ed1",
+            name="export",
+            fullyQualifiedName="s3_storage.data-lake-bucket.export",
+            service=EntityReference(id=uuid.uuid4(), type="storageService"),
+        )
+
+        with patch.object(self.databricks.metadata, "get_by_name") as mock_get_by_name:
+
+            def get_by_name_side_effect(entity, fqn):
+                if entity == Pipeline:
+                    if fqn == "databricks_pipeline_test.11223344":
+                        return mock_pipeline
+                elif entity == Table:
+                    if "staging_data" in fqn:
+                        return mock_source_table
+                elif entity == Container:
+                    if "export" in fqn:
+                        return mock_target_container
+                return None
+
+            mock_get_by_name.side_effect = get_by_name_side_effect
+
+            with patch.object(
+                self.databricks.metadata, "es_search_container_by_path"
+            ) as mock_search_container:
+                mock_search_container.return_value = [mock_target_container]
+
+                with patch.object(
+                    self.databricks, "get_storage_service_names"
+                ) as mock_get_storage_services:
+                    mock_get_storage_services.return_value = ["s3_storage"]
+
+                    with patch.object(
+                        self.databricks.client, "get_table_lineage"
+                    ) as mock_get_table_lineage:
+                        mock_get_table_lineage.return_value = [
+                            {
+                                "source_table_full_name": "databricks.staging.staging_data",
+                                "source_type": "TABLE",
+                                "source_path": None,
+                                "target_table_full_name": None,
+                                "target_type": "PATH",
+                                "target_path": "s3://data-lake-bucket/export/",
+                            }
+                        ]
+
+                        lineage_details_list = list(
+                            self.databricks.yield_pipeline_lineage_details(
+                                DataBrickPipelineDetails(**mock_data[0])
+                            )
+                        )
+
+                        # Should have one lineage edge
+                        self.assertEqual(len(lineage_details_list), 1)
+                        lineage_details = lineage_details_list[0].right
+
+                        # Verify it's from table to container
+                        self.assertEqual(
+                            lineage_details.edge.fromEntity.id,
+                            mock_source_table.id,
+                        )
+                        self.assertEqual(lineage_details.edge.fromEntity.type, "table")
+                        self.assertEqual(
+                            lineage_details.edge.toEntity.id,
+                            mock_target_container.id,
+                        )
+                        self.assertEqual(
+                            lineage_details.edge.toEntity.type, "container"
+                        )
+
+                        # No column lineage for table-to-container
+                        self.assertIsNone(
+                            lineage_details.edge.lineageDetails.columnsLineage
+                        )
