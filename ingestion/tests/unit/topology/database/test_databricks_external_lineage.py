@@ -50,6 +50,10 @@ mock_databricks_config = {
                 },
                 "hostPort": "localhost:443",
                 "httpPath": "/sql/1.0/warehouses/test",
+                "enableExternalLocationLineage": True,
+                "enableSystemTableLineage": True,
+                "enableExternalMetadataEnrichment": True,
+                "externalLineageLookbackDays": 90,
             }
         },
         "sourceConfig": {

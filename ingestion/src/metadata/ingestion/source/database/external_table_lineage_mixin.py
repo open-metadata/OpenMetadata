@@ -45,6 +45,115 @@ class ExternalTableLineageMixin(ABC):
         1. system.access.table_lineage (usage-based lineage)
         2. DESCRIBE TABLE EXTENDED (table metadata)
         """
+        if (
+            hasattr(self, "external_location_manager")
+            and self.external_location_manager
+        ):
+            yield from self._yield_lineage_from_manager()
+        else:
+            yield from self._yield_lineage_from_dicts()
+
+    def _yield_lineage_from_manager(self) -> Iterable[AddLineageRequest]:
+        """Yield lineage using ExternalLocationManager (new approach)"""
+        logger.info(
+            f"Processing {self.external_location_manager.location_count} external table locations from manager"
+        )
+
+        for location in self.external_location_manager.iter_locations():
+            try:
+                database_name, schema_name, table_name = location.qualified_name
+                logger.info(
+                    f"Searching for container with path: {location.storage_path} for table {database_name}.{schema_name}.{table_name}"
+                )
+
+                container_entity = self._find_container_for_path(location.storage_path)
+                if not container_entity:
+                    logger.warning(
+                        f"No container found with path '{location.storage_path}' for table {database_name}.{schema_name}.{table_name}"
+                    )
+                    continue
+
+                table_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Table,
+                    service_name=self.context.get().database_service,
+                    database_name=database_name,
+                    schema_name=schema_name,
+                    table_name=table_name,
+                    skip_es_search=True,
+                )
+                table_entity = self.metadata.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=table_fqn,
+                )
+
+                if not table_entity or len(table_entity) == 0:
+                    logger.warning(f"Table entity not found in ES: {table_fqn}")
+                    continue
+
+                table_entity_obj = table_entity[0]
+
+                logger.info(
+                    f"Found container {container_entity.fullyQualifiedName.root if container_entity.fullyQualifiedName else container_entity.name.root} "
+                    f"for table {table_fqn}"
+                )
+
+                ext_metadata = self.external_location_manager.get_metadata_for_path(
+                    location.storage_path
+                )
+                if ext_metadata:
+                    logger.info(
+                        f"External location: {ext_metadata.name} "
+                        f"(owner: {ext_metadata.owner}, credential: {ext_metadata.credential_name})"
+                    )
+
+                columns_list = [column.name.root for column in table_entity_obj.columns]
+                columns_lineage = self._get_column_lineage(
+                    container_entity.dataModel, table_entity_obj, columns_list
+                )
+
+                if columns_lineage:
+                    if len(columns_lineage) < len(columns_list):
+                        logger.warning(
+                            f"Partial column match: {len(columns_lineage)}/{len(columns_list)} columns matched "
+                            f"between container and table {database_name}.{schema_name}.{table_name}"
+                        )
+                    logger.info(
+                        f"Created lineage with {len(columns_lineage)} column mappings between "
+                        f"container and table {database_name}.{schema_name}.{table_name}"
+                    )
+                else:
+                    logger.info(
+                        f"Created lineage without column mappings (container has no dataModel or columns don't match) "
+                        f"for table {database_name}.{schema_name}.{table_name}"
+                    )
+
+                yield Either(
+                    right=AddLineageRequest(
+                        edge=EntitiesEdge(
+                            fromEntity=EntityReference(
+                                id=container_entity.id,
+                                type="container",
+                            ),
+                            toEntity=EntityReference(
+                                id=table_entity_obj.id,
+                                type="table",
+                            ),
+                            lineageDetails=LineageDetails(
+                                source=LineageSource.ExternalTableLineage,
+                                columnsLineage=columns_lineage,
+                            ),
+                        )
+                    )
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Failed to yield external table lineage for {location.qualified_name} with location {location.storage_path}: {exc}"
+                )
+                logger.debug(traceback.format_exc())
+
+    def _yield_lineage_from_dicts(self) -> Iterable[AddLineageRequest]:
+        """Yield lineage using dict-based approach (legacy/fallback)"""
         merged_locations = {}
 
         if hasattr(self, "external_location_lineage_map"):
@@ -217,3 +326,35 @@ class ExternalTableLineageMixin(ABC):
         except Exception as exc:
             logger.debug(f"Error to get column lineage: {exc}")
             logger.debug(traceback.format_exc())
+
+    def _find_container_for_path(self, path: str) -> Optional:
+        """
+        Find container entity for storage path with partitioned path fallback.
+
+        Args:
+            path: Storage path
+
+        Returns:
+            Container entity if found
+        """
+        location_entity = self.metadata.es_search_container_by_path(
+            full_path=path, fields="dataModel"
+        )
+
+        if location_entity and len(location_entity) > 0:
+            return location_entity[0]
+
+        if hasattr(self, "get_base_path_from_partitioned_path"):
+            base_path = self.get_base_path_from_partitioned_path(path)
+            if base_path:
+                logger.info(
+                    f"No container found with full path, trying base path: {base_path}"
+                )
+                location_entity = self.metadata.es_search_container_by_path(
+                    full_path=base_path, fields="dataModel"
+                )
+                if location_entity and len(location_entity) > 0:
+                    logger.info("Found container using base path for partitioned table")
+                    return location_entity[0]
+
+        return None

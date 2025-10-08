@@ -45,6 +45,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
+from metadata.ingestion.source.database.databricks.external_location_manager import (
+    ExternalLocationConfig,
+    ExternalLocationManager,
+)
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
     DATABRICKS_GET_CATALOGS,
@@ -507,10 +511,11 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.catalog_tags = {}
         self.schema_tags = {}
         self.table_tags = {}
+        self.column_tags = {}
         self.external_location_map = {}
         self.external_location_lineage_map = {}
         self.external_locations_metadata = {}
-        self.column_tags = {}
+        self.external_location_manager: Optional[ExternalLocationManager] = None
 
     def _init_version(self):
         try:
@@ -661,6 +666,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                 catalog_name=configured_catalog
             )
             self.populate_external_locations_metadata()
+            self._initialize_external_location_manager(catalog_name=configured_catalog)
             yield configured_catalog
         else:
             for new_catalog in self.get_database_names_raw():
@@ -687,6 +693,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                         catalog_name=new_catalog
                     )
                     self.populate_external_locations_metadata()
+                    self._initialize_external_location_manager(catalog_name=new_catalog)
                     yield new_catalog
                 except Exception as exc:
                     logger.error(traceback.format_exc())
@@ -900,6 +907,15 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
                             self.external_location_map[
                                 (self.context.get().database, schema_name, table_name)
                             ] = normalized_path
+
+                            if self.external_location_manager:
+                                self.external_location_manager.add_location_from_describe(
+                                    catalog=self.context.get().database,
+                                    schema=schema_name,
+                                    table=table_name,
+                                    path=location_path,
+                                )
+
                             logger.info(
                                 f"Captured external location for table {self.context.get().database}.{schema_name}.{table_name}: {normalized_path}"
                             )
@@ -1017,6 +1033,31 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         except Exception as exc:
             logger.warning(f"Failed to populate external locations metadata: {exc}")
             logger.debug(traceback.format_exc())
+
+    def _initialize_external_location_manager(self, catalog_name: str) -> None:
+        """
+        Initialize external location manager for catalog.
+        Populates from all available sources.
+        """
+        if not self.service_connection.enableExternalLocationLineage:
+            logger.info("External location lineage is disabled via configuration")
+            return
+
+        config = ExternalLocationConfig(
+            enable_system_table_lineage=self.service_connection.enableSystemTableLineage
+            or True,
+            enable_metadata_enrichment=self.service_connection.enableExternalMetadataEnrichment
+            or True,
+            lineage_lookback_days=self.service_connection.externalLineageLookbackDays
+            or 90,
+        )
+
+        self.external_location_manager = ExternalLocationManager(
+            connection=self.connection, config=config, catalog_name=catalog_name
+        )
+
+        self.external_location_manager.populate_from_system_tables()
+        self.external_location_manager.populate_metadata()
 
     def _filter_owner_name(self, owner_name: str) -> str:
         """remove unnecessary keyword from name"""
