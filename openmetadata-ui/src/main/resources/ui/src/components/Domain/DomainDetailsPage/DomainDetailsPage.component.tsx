@@ -533,7 +533,7 @@ const DomainDetailsPage = ({
           pageNumber: 1,
           pageSize: 0,
           queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': encodedFqn,
+            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
           }),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });

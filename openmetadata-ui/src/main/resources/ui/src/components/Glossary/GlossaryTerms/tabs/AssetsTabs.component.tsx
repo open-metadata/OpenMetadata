@@ -210,7 +210,7 @@ const AssetsTabs = forwardRef(
           );
         case AssetsOfEntity.DATA_PRODUCT:
           return getTermQuery({
-            'dataProducts.fullyQualifiedName': encodedFqn,
+            'dataProducts.fullyQualifiedName': entityFqn ?? '',
           });
 
         case AssetsOfEntity.TEAM:

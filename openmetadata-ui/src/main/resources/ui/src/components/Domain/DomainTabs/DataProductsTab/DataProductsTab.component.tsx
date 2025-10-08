@@ -32,10 +32,6 @@ import { useFqn } from '../../../../hooks/useFqn';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
 import { getTermQuery } from '../../../../utils/SearchUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../../utils/StringsUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../common/Loader/Loader';
@@ -62,13 +58,12 @@ const DataProductsTab = forwardRef(
     const fetchDataProducts = async () => {
       try {
         setLoading(true);
-        const encodedFqn = getEncodedFqn(escapeESReservedCharacters(domainFqn));
         const res = await searchQuery({
           query: '',
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
           queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': encodedFqn,
+            'domains.fullyQualifiedName': domainFqn ?? '',
           }),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
