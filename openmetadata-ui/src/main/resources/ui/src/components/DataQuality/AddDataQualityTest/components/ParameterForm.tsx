@@ -36,6 +36,7 @@ import { SUPPORTED_PARTITION_TYPE_FOR_DATE_TIME } from '../../../../constants/pr
 import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import { CSMode } from '../../../../enums/codemirror.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Table } from '../../../../generated/entity/data/table';
 import {
   Rule,
   TestCaseParameterDefinition,
@@ -46,9 +47,11 @@ import {
   TableSearchSource,
 } from '../../../../interface/search.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { getPopupContainer } from '../../../../utils/formUtils';
 import {
+  getSelectedColumnsSet,
   validateEquals,
   validateGreaterThanOrEquals,
   validateLessThanOrEquals,
@@ -319,6 +322,13 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
     );
   };
 
+  /**
+   * Special form for table diff tests
+   * Allows comparing data between two tables by selecting:
+   * - Table 2 (the second table to compare against)
+   * - Key columns from both tables for join operations
+   * - Additional columns to use in comparison
+   */
   const TableDiffForm = () => {
     const [isOptionsLoading, setIsOptionsLoading] = useState(false);
     const [tableList, setTableList] = useState<
@@ -327,17 +337,23 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         Pick<TableSearchSource, 'name' | 'displayName' | 'fullyQualifiedName'>
       >[]
     >([]);
+    const [table2Data, setTable2Data] = useState<Table | undefined>();
+
+    // Transform search results into Select options
     const tableOptions = useMemo(
       () =>
-        tableList.map((hit) => {
-          return {
-            label: hit._source.fullyQualifiedName,
-            value: hit._source.fullyQualifiedName,
-          };
-        }),
+        tableList.map((hit) => ({
+          label: hit._source.fullyQualifiedName,
+          value: hit._source.fullyQualifiedName,
+        })),
       [tableList]
     );
-    const fetchTableData = async (search = WILD_CARD_CHAR) => {
+
+    /**
+     * Fetches table list based on search query
+     * Used for table selection dropdown in table diff tests
+     */
+    const fetchTableData = useCallback(async (search = WILD_CARD_CHAR) => {
       setIsOptionsLoading(true);
       try {
         const response = await searchQuery({
@@ -355,65 +371,106 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       } finally {
         setIsOptionsLoading(false);
       }
-    };
+    }, []);
 
-    const debounceFetchTableData = useCallback(debounce(fetchTableData, 1000), [
-      fetchTableData,
-    ]);
+    // Create debounced function with useMemo to avoid recreating on every render
+    const debounceFetchTableData = useMemo(
+      () => debounce(fetchTableData, 1000),
+      [fetchTableData]
+    );
 
+    /**
+     * Fetches full table details including columns and constraints
+     * Used when Table 2 is selected to populate column options
+     */
+    const fetchTableDetailsByFQN = useCallback(async (fqn: string) => {
+      try {
+        const tableData = await getTableDetailsByFQN(fqn, {
+          fields: 'columns,tableConstraints',
+        });
+        setTable2Data(tableData);
+      } catch (error) {
+        setTable2Data(undefined);
+      }
+    }, []);
+
+    /**
+     * Renders form fields based on parameter type
+     * Special handling for table diff test parameters
+     */
     const getFormData = (data: TestCaseParameterDefinition) => {
       switch (data.name) {
+        // Table 2 selector - searchable dropdown with table list
         case 'table2':
-          return prepareForm(
-            data,
-            <Select
-              allowClear
-              showSearch
-              data-testid="table2"
-              getPopupContainer={getPopupContainer}
-              loading={isOptionsLoading}
-              options={tableOptions}
-              placeholder={t('label.table')}
-              popupClassName="no-wrap-option"
-              onSearch={debounceFetchTableData}
-            />
+          return (
+            <Form.Item noStyle shouldUpdate>
+              {({ setFieldsValue }) =>
+                prepareForm(
+                  data,
+                  <Select
+                    allowClear
+                    showSearch
+                    data-testid="table2"
+                    getPopupContainer={getPopupContainer}
+                    loading={isOptionsLoading}
+                    options={tableOptions}
+                    placeholder={t('label.table')}
+                    popupClassName="no-wrap-option"
+                    onChange={async (value) => {
+                      if (value) {
+                        // Fetch full table details to populate column options
+                        await fetchTableDetailsByFQN(value);
+                      } else {
+                        setTable2Data(undefined);
+                      }
+                      // Clear table2 key columns selection (empty array keeps the field, undefined removes it)
+                      setFieldsValue({
+                        params: { 'table2.keyColumns': [{ value: undefined }] },
+                      });
+                    }}
+                    onSearch={debounceFetchTableData}
+                  />
+                )
+              }
+            </Form.Item>
           );
 
+        // Column selectors - dynamically populated from table columns
+        // Handles both Table 1 and Table 2 columns with overlap prevention
         case 'keyColumns':
+        case 'table2.keyColumns':
         case 'useColumns':
           return (
             <Form.Item noStyle shouldUpdate>
               {({ getFieldValue }) => {
-                // Convert selectedKeyColumn and selectedUseColumns to Sets for efficient lookup
-                const selectedKeyColumnSet = new Set(
-                  getFieldValue(['params', 'keyColumns'])?.map(
-                    (item: { value: string }) => item?.value
-                  )
-                );
-                const selectedUseColumnsSet = new Set(
-                  getFieldValue(['params', 'useColumns'])?.map(
-                    (item: { value: string }) => item?.value
-                  )
+                const isTable2KeyColumns = data.name === 'table2.keyColumns';
+                // Get table2 value to track changes
+                const table2Value = getFieldValue(['params', 'table2']);
+                // Use table2Data for Table 2 columns, table prop for Table 1
+                const sourceTable = isTable2KeyColumns ? table2Data : table;
+                const selectedColumnsSet = getSelectedColumnsSet(
+                  data,
+                  getFieldValue
                 );
 
-                // Combine both Sets for a single lookup operation
-                const selectedColumnsSet = new Set([
-                  ...selectedKeyColumnSet,
-                  ...selectedUseColumnsSet,
-                ]);
-
-                const columns = table?.columns.map((column) => ({
+                // Build column options with already selected ones disabled
+                const columns = sourceTable?.columns?.map((column) => ({
                   label: getEntityName(column),
                   value: column.name,
-                  // Check if column.name is in the combined Set to determine if it should be disabled
                   disabled: selectedColumnsSet.has(column.name),
                 }));
+
+                // Determine if field should be disabled
+                // For table2.keyColumns: disabled if no table selected OR no table data OR no columns
+                const isDisabled =
+                  isTable2KeyColumns && (!table2Value || !table2Data);
 
                 return prepareForm(
                   data,
                   <Select
                     allowClear
                     showSearch
+                    disabled={isDisabled}
                     getPopupContainer={getPopupContainer}
                     options={columns}
                     placeholder={t('label.column')}
@@ -423,6 +480,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             </Form.Item>
           );
 
+        // Default form fields (text, number, etc.)
         default:
           return prepareForm(data);
       }

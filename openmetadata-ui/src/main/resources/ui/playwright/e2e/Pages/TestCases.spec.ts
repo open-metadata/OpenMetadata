@@ -75,6 +75,14 @@ test('Table difference test case', async ({ page }) => {
       );
       await page.getByTestId('tableDiff').click();
       await tableListSearchResponse;
+
+      // Verify table2.keyColumns is initially disabled before table2 selection
+      const table2KeyColumnsInput = page.locator(
+        '#testCaseFormV1_params_table2\\.keyColumns_0_value'
+      );
+
+      await expect(table2KeyColumnsInput).toBeDisabled();
+
       await page.click('#testCaseFormV1_params_table2');
       await page.waitForSelector(`[data-id="tableDiff"]`, {
         state: 'visible',
@@ -107,6 +115,16 @@ test('Table difference test case', async ({ page }) => {
         table1.entity?.columns[0].name
       );
       await page.getByTitle(table1.entity?.columns[0].name).click();
+      // Fill table2.keyColumns after table2 is selected
+      await page.fill(
+        '#testCaseFormV1_params_table2\\.keyColumns_0_value',
+        table2.entity?.columns[0].name
+      );
+      await page.getByTitle(table2.entity?.columns[0].name).click();
+
+      // Now table2.keyColumns should be enabled with a value
+      await expect(table2KeyColumnsInput).not.toBeDisabled();
+
       await page.fill('#testCaseFormV1_params_threshold', testCase.threshold);
       await page.fill(
         '#testCaseFormV1_params_useColumns_0_value',
