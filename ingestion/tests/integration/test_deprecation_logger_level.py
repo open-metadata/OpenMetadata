@@ -38,7 +38,12 @@ class TestDeprecationLoggerLevel(TestCase):
 
     def test_deprecation_warnings_respect_logger_level(self):
         """Test that deprecation warnings are controlled by logger level."""
-        logger_levels = [LogLevels.DEBUG, LogLevels.INFO, LogLevels.WARN, LogLevels.ERROR]
+        logger_levels = [
+            LogLevels.DEBUG,
+            LogLevels.INFO,
+            LogLevels.WARN,
+            LogLevels.ERROR,
+        ]
         log_counts = []
 
         for level in logger_levels:
@@ -61,17 +66,24 @@ class TestDeprecationLoggerLevel(TestCase):
 
             # Count deprecation log messages
             log_output = log_capture.getvalue()
-            log_lines = [line for line in log_output.split('\n') if 'will be deprecated' in line]
+            log_lines = [
+                line for line in log_output.split("\n") if "will be deprecated" in line
+            ]
             log_counts.append(len(log_lines))
 
             # Clean up
             metadata_logger.removeHandler(handler)
 
         # ERROR level should suppress deprecation warnings, others should show them
-        expected_logs = [1, 1, 1, 0]  # DEBUG, INFO, WARN show warnings, ERROR suppresses them
+        expected_logs = [
+            1,
+            1,
+            1,
+            0,
+        ]  # DEBUG, INFO, WARN show warnings, ERROR suppresses them
 
         self.assertEqual(
             log_counts,
             expected_logs,
-            f"Expected {expected_logs} deprecation warnings for each level, got: {log_counts}"
+            f"Expected {expected_logs} deprecation warnings for each level, got: {log_counts}",
         )
