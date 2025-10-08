@@ -241,8 +241,12 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   }
 
   private void setDefaultFields(Worksheet worksheet) {
-    worksheet.withService(getContainer(worksheet.getId()));
-    worksheet.withSpreadsheet(getSpreadsheet(worksheet));
+    EntityReference spreadsheet = getSpreadsheet(worksheet);
+    EntityReference service =
+        getFromEntityRef(
+            spreadsheet.getId(), SPREADSHEET, Relationship.CONTAINS, Entity.DRIVE_SERVICE, true);
+    worksheet.withService(service);
+    worksheet.withSpreadsheet(spreadsheet);
   }
 
   @Override
