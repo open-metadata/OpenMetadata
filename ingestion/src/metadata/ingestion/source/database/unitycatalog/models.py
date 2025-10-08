@@ -22,6 +22,8 @@ class DatabricksTable(BaseModel):
     name: Optional[str] = None
     catalog_name: Optional[str] = None
     schema_name: Optional[str] = None
+    table_type: Optional[str] = None
+    lineage_timestamp: Optional[str] = None
 
 
 class DatabricksColumn(BaseModel):
@@ -31,9 +33,23 @@ class DatabricksColumn(BaseModel):
     table_name: Optional[str] = None
 
 
+class FileInfo(BaseModel):
+    path: Optional[str] = None
+    has_permission: Optional[bool] = None
+    securable_name: Optional[str] = None
+    storage_location: Optional[str] = None
+    securable_type: Optional[str] = None
+    lineage_timestamp: Optional[str] = None
+
+
+class LineageEntity(BaseModel):
+    tableInfo: Optional[DatabricksTable] = None
+    fileInfo: Optional[FileInfo] = None
+
+
 class LineageTableStreams(BaseModel):
-    upstream_tables: Optional[List[DatabricksTable]] = []
-    downstream_tables: Optional[List[DatabricksTable]] = []
+    upstreams: Optional[List[LineageEntity]] = []
+    downstreams: Optional[List[LineageEntity]] = []
 
 
 class LineageColumnStreams(BaseModel):

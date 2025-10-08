@@ -31,7 +31,9 @@ SNOWFLAKE_SQL_STATEMENT = textwrap.dedent(
     AND query_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND start_time between to_timestamp_ltz('{start_time}') and to_timestamp_ltz('{end_time}')
     {filters}
+    ORDER BY start_time
     LIMIT {result_limit}
+    OFFSET {offset}
     """
 )
 

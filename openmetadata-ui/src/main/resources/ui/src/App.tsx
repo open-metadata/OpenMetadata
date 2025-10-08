@@ -35,6 +35,7 @@ import {
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
 
+import GlobalStyles from '@mui/material/GlobalStyles';
 import { ThemeProvider } from '@mui/material/styles';
 import {
   createMuiTheme,
@@ -106,6 +107,7 @@ const App: FC = () => {
               <ErrorBoundary>
                 <AntDConfigProvider>
                   <ThemeProvider theme={muiTheme}>
+                    <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
                     <SnackbarProvider
                       Components={{
                         default: SnackbarContent,
