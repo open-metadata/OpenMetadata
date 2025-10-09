@@ -550,7 +550,9 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       state: 'visible',
     });
 
-    await adminPage.getByTestId(`${persona1.data.displayName}-option`).click();
+    await adminPage
+      .getByTestId(`${persona1.responseData.displayName}-option`)
+      .click();
 
     const defaultPersonaUpdateResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -704,7 +706,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         .allTextContents();
 
       // Verify first one contains the default persona name
-      expect(personaTexts[0]).toContain(persona1.data.displayName);
+      expect(personaTexts[0]).toContain(persona1.responseData.displayName);
     }
   });
 
@@ -843,7 +845,9 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     });
 
     // Select the second persona as default
-    await adminPage.getByTestId(`${persona2.data.displayName}-option`).click();
+    await adminPage
+      .getByTestId(`${persona2.responseData.displayName}-option`)
+      .click();
 
     const defaultPersonaChangeResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -876,7 +880,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .locator('.ant-typography')
       .textContent();
 
-    expect(newDefaultPersonaText).toContain(persona2.data.displayName);
+    expect(newDefaultPersonaText).toContain(persona2.responseData.displayName);
     expect(newDefaultPersonaText).not.toBe(originalDefaultPersonaText);
 
     await expect(
@@ -1052,7 +1056,7 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Select specific persona for default - try test ID first, fallback to role selector
       const defaultPersonaOptionTestId = adminPage.getByTestId(
-        `${persona1.data.displayName}-option`
+        `${persona1.responseData.displayName}-option`
       );
 
       await defaultPersonaOptionTestId.click();
@@ -1068,7 +1072,7 @@ test.describe('User Profile Persona Interactions', () => {
       // Check that success notification appears with correct message
       await toastNotification(
         adminPage,
-        `Your Default Persona changed to ${persona1.data.displayName}`
+        `Your Default Persona changed to ${persona1.responseData.displayName}`
       );
 
       await adminPage.waitForSelector(
