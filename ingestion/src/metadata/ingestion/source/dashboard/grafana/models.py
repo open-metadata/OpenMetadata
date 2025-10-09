@@ -14,7 +14,7 @@ Grafana API response models
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 
 class GrafanaUser(BaseModel):
@@ -63,26 +63,8 @@ class GrafanaTarget(BaseModel):
     rawSql: Optional[str] = None
     query: Optional[str] = None
     expr: Optional[str] = None  # For Prometheus queries
-    format: Optional[Union[str, int]] = None
+    format: Optional[Any] = None
     hide: Optional[bool] = False
-
-    @field_validator('format', mode='before')
-    @classmethod
-    def convert_format_field(cls, v):
-        """Convert integer format codes to string equivalents"""
-        if v is None:
-            return None
-        if isinstance(v, int):
-            # Map common Grafana format integer codes to string values
-            # Based on Grafana documentation and common usage patterns
-            format_map = {
-                0: "table",       # Table format
-                1: "time_series", # Time series format  
-                2: "logs",        # Logs format
-                3: "trace",       # Trace format
-            }
-            return format_map.get(v, "table")  # Default to "table" for unknown codes
-        return str(v) if v is not None else None
 
 
 class GrafanaPanel(BaseModel):
