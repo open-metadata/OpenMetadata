@@ -19,15 +19,13 @@ import {
   Close as CloseIcon,
 } from '@mui/icons-material';
 import {
-  Avatar,
   Box,
   Chip,
+  Divider,
   IconButton,
   List,
   ListItem,
-  ListItemAvatar,
   ListItemButton,
-  ListItemText,
   Menu,
   MenuItem,
   Popover,
@@ -38,6 +36,7 @@ import { AxiosError } from 'axios';
 import { debounce, isEmpty, startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
 import {
@@ -54,6 +53,8 @@ import {
   getEntityReferenceFromEntity,
 } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
+import { UserTag } from '../../../common/UserTag/UserTag.component';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
 
 interface InlineTestCaseIncidentStatusProps {
@@ -72,6 +73,40 @@ const STATUS_COLORS: Record<
   Resolved: { bg: '#E8F5E9', color: '#4CAF50', border: '#81C784' },
 };
 
+const ACTION_BUTTON_STYLES = {
+  cancel: {
+    width: 24,
+    height: 24,
+    padding: 0,
+    borderRadius: '4px',
+    backgroundColor: 'grey.200',
+    color: 'grey.600',
+    '&:hover': {
+      backgroundColor: 'grey.300',
+    },
+  },
+  submit: {
+    width: 24,
+    height: 24,
+    padding: 0,
+    borderRadius: '4px',
+    backgroundColor: 'primary.main',
+    color: 'common.white',
+    '&:hover': {
+      backgroundColor: 'primary.dark',
+    },
+    '&:disabled': {
+      backgroundColor: 'grey.200',
+      color: 'grey.400',
+    },
+  },
+  icon: {
+    fontSize: 14,
+    width: 14,
+    height: 14,
+  },
+};
+
 const InlineTestCaseIncidentStatus = ({
   data,
   hasEditPermission,
@@ -85,6 +120,7 @@ const InlineTestCaseIncidentStatus = ({
   const [showAssigneePopover, setShowAssigneePopover] = useState(false);
   const [showResolvedPopover, setShowResolvedPopover] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingUsers, setIsLoadingUsers] = useState(false);
   const [userOptions, setUserOptions] = useState<Option[]>([]);
   const [selectedAssignee, setSelectedAssignee] =
     useState<EntityReference | null>(
@@ -115,8 +151,9 @@ const InlineTestCaseIncidentStatus = ({
 
   const searchUsers = useCallback(
     async (query: string) => {
+      setIsLoadingUsers(true);
       try {
-        const res = await getUserAndTeamSearch(query, true);
+        const res = await getUserAndTeamSearch(query, true, PAGE_SIZE_BASE);
         const hits = res.data.hits.hits;
         const suggestOptions: Option[] = hits.map((hit) => ({
           label: getEntityName(hit._source),
@@ -146,6 +183,8 @@ const InlineTestCaseIncidentStatus = ({
         }
       } catch (err) {
         showErrorToast(err as AxiosError);
+      } finally {
+        setIsLoadingUsers(false);
       }
     },
     [initialOptions]
@@ -322,15 +361,6 @@ const InlineTestCaseIncidentStatus = ({
     }
   };
 
-  const getInitials = (name: string) => {
-    return name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
   const statusColor = STATUS_COLORS[statusType] || STATUS_COLORS.New;
 
   return (
@@ -382,6 +412,11 @@ const InlineTestCaseIncidentStatus = ({
           horizontal: 'left',
         }}
         open={showStatusMenu}
+        sx={{
+          '.MuiPaper-root': {
+            width: 'max-content',
+          },
+        }}
         transformOrigin={{
           vertical: 'top',
           horizontal: 'left',
@@ -392,8 +427,15 @@ const InlineTestCaseIncidentStatus = ({
             key={status}
             selected={status === statusType}
             sx={{
-              minWidth: 150,
+              minWidth: 100,
               fontWeight: status === statusType ? 600 : 400,
+              '&.Mui-selected': {
+                backgroundColor: 'primary.main',
+                color: 'primary.contrastText',
+                '&:hover': {
+                  backgroundColor: 'primary.dark',
+                },
+              },
             }}
             onClick={() => handleStatusChange(status)}>
             {status}
@@ -401,48 +443,55 @@ const InlineTestCaseIncidentStatus = ({
         ))}
       </Menu>
 
+      {/* Assigned status popover */}
       <Popover
-        PaperProps={{
-          sx: { width: 400, maxHeight: 500 },
-        }}
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'bottom',
           horizontal: 'left',
         }}
         open={showAssigneePopover}
+        slotProps={{
+          paper: {
+            sx: { width: 300, maxHeight: 500 },
+          },
+        }}
         transformOrigin={{
           vertical: 'top',
           horizontal: 'left',
         }}
         onClose={handleCloseAllPopovers}>
-        <Box sx={{ p: 2 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              mb: 2,
-              gap: 1,
-            }}>
-            <IconButton size="small" onClick={handleBackToStatusMenu}>
-              <ArrowBackIcon />
-            </IconButton>
-            <Typography sx={{ fontWeight: 600, fontSize: 16 }}>
-              {t('label.assigned')}
-            </Typography>
-            <Box sx={{ flex: 1 }} />
-            <IconButton size="small" onClick={handleCloseAllPopovers}>
-              <CloseIcon />
-            </IconButton>
-            <IconButton
-              color="primary"
-              disabled={!selectedAssignee || isLoading}
-              size="small"
-              onClick={handleAssigneeSubmit}>
-              <CheckIcon />
-            </IconButton>
-          </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
 
+            gap: 2,
+            p: 3,
+          }}>
+          <IconButton size="small" onClick={handleBackToStatusMenu}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography sx={{ fontWeight: 600, fontSize: 16 }}>
+            {t('label.assigned')}
+          </Typography>
+          <Box sx={{ flex: 1 }} />
+          <IconButton
+            size="small"
+            sx={ACTION_BUTTON_STYLES.cancel}
+            onClick={handleCloseAllPopovers}>
+            <CloseIcon sx={ACTION_BUTTON_STYLES.icon} />
+          </IconButton>
+          <IconButton
+            disabled={!selectedAssignee || isLoading}
+            size="small"
+            sx={ACTION_BUTTON_STYLES.submit}
+            onClick={handleAssigneeSubmit}>
+            <CheckIcon sx={ACTION_BUTTON_STYLES.icon} />
+          </IconButton>
+        </Box>
+        <Divider sx={{ borderColor: 'grey.200' }} />
+        <Box sx={{ p: 4 }}>
           <TextField
             fullWidth
             placeholder={t('label.search')}
@@ -451,105 +500,150 @@ const InlineTestCaseIncidentStatus = ({
             onChange={(e) => handleSearchUsers(e.target.value)}
           />
 
-          <List sx={{ maxHeight: 350, overflow: 'auto' }}>
-            {userOptions.map((option) => {
-              const user: EntityReference = {
-                id: option.value,
-                name: option.name,
-                displayName: option.displayName,
-                type: option.type || EntityType.USER,
-              };
+          <List sx={{ maxHeight: 300, overflow: 'auto' }}>
+            {isLoadingUsers ? (
+              <Box sx={{ p: 4, display: 'flex', justifyContent: 'center' }}>
+                <Loader size="small" />
+              </Box>
+            ) : userOptions.length === 0 ? (
+              <Box sx={{ p: 2, textAlign: 'center' }}>
+                <Typography color="text.secondary" variant="body2">
+                  {t('message.no-users-found')}
+                </Typography>
+              </Box>
+            ) : (
+              userOptions.map((option) => {
+                const user: EntityReference = {
+                  id: option.value,
+                  name: option.name,
+                  displayName: option.displayName,
+                  type: option.type || EntityType.USER,
+                };
 
-              return (
-                <ListItem disablePadding key={option.value}>
-                  <ListItemButton
-                    selected={selectedAssignee?.id === option.value}
-                    onClick={() => handleAssigneeSelect(user)}>
-                    <ListItemAvatar>
-                      <Avatar
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          fontSize: 14,
-                          bgcolor: '#FFE7BA',
-                          color: '#000',
-                        }}>
-                        {getInitials(option.displayName || option.name || 'U')}
-                      </Avatar>
-                    </ListItemAvatar>
-                    <ListItemText
-                      primary={option.label}
-                      primaryTypographyProps={{
-                        fontSize: 14,
-                      }}
-                    />
-                  </ListItemButton>
-                </ListItem>
-              );
-            })}
+                return (
+                  <ListItem disablePadding key={option.value}>
+                    <ListItemButton
+                      selected={selectedAssignee?.id === option.value}
+                      sx={{ py: 1.5 }}
+                      onClick={() => handleAssigneeSelect(user)}>
+                      <UserTag
+                        avatarType="outlined"
+                        id={option.name || ''}
+                        name={option.label}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                );
+              })
+            )}
           </List>
         </Box>
       </Popover>
 
+      {/* Resolved status popover */}
       <Popover
-        PaperProps={{
-          sx: { width: 400 },
-        }}
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'bottom',
           horizontal: 'left',
         }}
         open={showResolvedPopover}
+        slotProps={{
+          paper: {
+            sx: { width: 400 },
+          },
+        }}
         transformOrigin={{
           vertical: 'top',
           horizontal: 'left',
         }}
         onClose={handleCloseAllPopovers}>
-        <Box sx={{ p: 2 }}>
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              mb: 2,
-              gap: 1,
-            }}>
-            <IconButton size="small" onClick={handleBackToStatusMenu}>
-              <ArrowBackIcon />
-            </IconButton>
-            <Typography sx={{ fontWeight: 600, fontSize: 16 }}>
-              {t('label.resolved')}
-            </Typography>
-            <Box sx={{ flex: 1 }} />
-            <IconButton size="small" onClick={handleCloseAllPopovers}>
-              <CloseIcon />
-            </IconButton>
-            <IconButton
-              color="primary"
-              disabled={!selectedReason || !comment || isLoading}
-              size="small"
-              onClick={handleResolvedSubmit}>
-              <CheckIcon />
-            </IconButton>
-          </Box>
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 2,
+            p: 3,
+          }}>
+          <IconButton size="small" onClick={handleBackToStatusMenu}>
+            <ArrowBackIcon />
+          </IconButton>
+          <Typography sx={{ fontWeight: 600, fontSize: 16 }}>
+            {t('label.resolved')}
+          </Typography>
+          <Box sx={{ flex: 1 }} />
+          <IconButton
+            size="small"
+            sx={ACTION_BUTTON_STYLES.cancel}
+            onClick={handleCloseAllPopovers}>
+            <CloseIcon sx={ACTION_BUTTON_STYLES.icon} />
+          </IconButton>
+          <IconButton
+            disabled={!selectedReason || !comment || isLoading}
+            size="small"
+            sx={ACTION_BUTTON_STYLES.submit}
+            onClick={handleResolvedSubmit}>
+            <CheckIcon sx={ACTION_BUTTON_STYLES.icon} />
+          </IconButton>
+        </Box>
 
+        <Divider sx={{ borderColor: 'grey.200' }} />
+        <Box sx={{ p: 4 }}>
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 500,
+              color: 'grey.800',
               mb: 1,
               '&::after': { content: '" *"', color: 'error.main' },
             }}>
             {t('label.reason')}
           </Typography>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 5 }}>
             {Object.values(TestCaseFailureReasonType).map((reason) => (
               <Chip
-                color={selectedReason === reason ? 'primary' : 'default'}
+                icon={
+                  selectedReason === reason ? (
+                    <CheckIcon
+                      sx={{ fontSize: 14, color: 'common.white', mx: 0.5 }}
+                    />
+                  ) : undefined
+                }
                 key={reason}
                 label={startCase(reason)}
-                sx={{ cursor: 'pointer' }}
-                variant={selectedReason === reason ? 'filled' : 'outlined'}
+                sx={{
+                  cursor: 'pointer',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: 500,
+                  height: 'auto',
+                  '& .MuiChip-label': {
+                    px: selectedReason === reason ? 0.5 : 1.5,
+                    py: 0.5,
+                  },
+                  ...(selectedReason === reason
+                    ? {
+                        backgroundColor: 'primary.main',
+                        color: 'common.white',
+                        border: 'none',
+                        '&:hover': {
+                          backgroundColor: 'primary.dark',
+                        },
+                        '& .MuiChip-icon': {
+                          color: 'common.white',
+                          // marginLeft: '8px',
+                        },
+                      }
+                    : {
+                        backgroundColor: 'grey.50',
+                        color: 'grey.900',
+                        border: '1px solid',
+                        borderColor: 'grey.200',
+                        '&:hover': {
+                          backgroundColor: 'grey.100',
+                        },
+                      }),
+                }}
                 onClick={() => setSelectedReason(reason)}
               />
             ))}
@@ -557,9 +651,10 @@ const InlineTestCaseIncidentStatus = ({
 
           <Typography
             sx={{
-              fontSize: 14,
+              fontSize: 13,
               fontWeight: 500,
               mb: 1,
+              color: 'grey.800',
               '&::after': { content: '" *"', color: 'error.main' },
             }}>
             {t('label.comment')}
