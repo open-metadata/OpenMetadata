@@ -31,6 +31,9 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityIsNotEmpty;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.glossaryTermMismatch;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.resources.databases.TableResourceTest.getColumn;
 import static org.openmetadata.service.resources.glossary.GlossaryResourceTest.waitForTaskToBeCreated;
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
@@ -118,6 +121,7 @@ import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.feeds.FeedResource.ThreadList;
 import org.openmetadata.service.resources.feeds.FeedResourceTest;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.metadata.TypeResourceTest;
 import org.openmetadata.service.resources.tags.ClassificationResourceTest;
@@ -2245,7 +2249,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, authHeaders(DATA_CONSUMER.getName()));
 
     // Verify workflow task was created
-    boolean taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    boolean taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
     assertTrue(taskCreated, "Workflow should be triggered when non-reviewer updates the term");
 
     // Verify term status moved to IN_REVIEW
@@ -2427,7 +2431,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Patch workflow to include isOwner in OR condition
     String patchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"or\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"isOwner\\\":{\\\"var\\\":\\\"updatedBy\\\"}}]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"or\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"isOwner\\\":{\\\"var\\\":\\\"updatedBy\\\"}}]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
 
     // Wait for workflow patch to take effect
@@ -2446,7 +2450,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Reset workflow filter back to empty AND
     String resetPatchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", resetPatchJson);
   }
 
@@ -2472,7 +2476,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Patch workflow to use AND: isReviewer AND description exists
     String patchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"!=\\\":[{\\\"var\\\":\\\"description\\\"},null]}]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[{\\\"isReviewer\\\":{\\\"var\\\":\\\"updatedBy\\\"}},{\\\"!=\\\":[{\\\"var\\\":\\\"description\\\"},null]}]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchJson);
 
     // Wait for workflow patch to take effect
@@ -2495,7 +2499,7 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     patchEntity(term.getId(), json, term, ADMIN_AUTH_HEADERS);
 
     // Verify workflow task was created
-    taskCreated = wasWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
+    taskCreated = wasDetailedWorkflowTaskCreated(term.getFullyQualifiedName(), 30000L);
     assertTrue(taskCreated, "Workflow should be triggered when AND condition is false");
 
     // Resolve the task to complete the workflow and prevent EntityNotFoundException
@@ -2511,8 +2515,222 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
 
     // Reset workflow filter back to empty AND
     String resetPatchJson =
-        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":\"{\\\"and\\\":[]}\"}]";
+        "[{\"op\":\"replace\",\"path\":\"/trigger/config/filter\",\"value\":{\"glossaryterm\":\"{\\\"and\\\":[]}\",\"default\":\"\"}}]";
     patchWorkflowDefinition("GlossaryTermApprovalWorkflow", resetPatchJson);
+  }
+
+  @Test
+  void test_MultipleReviewerApprovalThreshold(TestInfo test) throws Exception {
+    // Test 1: Multiple reviewer approval with threshold of 2
+    // Create two reviewers
+    EntityReference reviewer1 = USER1.getEntityReference();
+    EntityReference reviewer2 = USER2.getEntityReference();
+    List<EntityReference> reviewers = Arrays.asList(reviewer1, reviewer2);
+
+    // Patch workflow to set approval threshold to 2 BEFORE creating entities
+    // Node at index 12 is "ApproveGlossaryTerm" userApprovalTask
+    String patchOp =
+        "[{\"op\":\"replace\",\"path\":\"/nodes/12/config/approvalThreshold\",\"value\":2}]";
+    patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchOp);
+
+    // Create glossary with reviewers
+    Glossary glossary = createGlossary(test, reviewers, null);
+
+    // Create glossary term with reviewers
+    CreateGlossaryTerm createRequest =
+        createRequest(getEntityName(test))
+            .withDescription("Test term for multi-approval")
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withReviewers(reviewers)
+            .withSynonyms(null)
+            .withRelatedTerms(null);
+    GlossaryTerm term = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    // Term should be in DRAFT status initially
+    assertEquals(EntityStatus.DRAFT, term.getEntityStatus());
+
+    // Wait for workflow to process and task to be created
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+
+    // After workflow processing, term should be IN_REVIEW
+    assertEquals(
+        EntityStatus.IN_REVIEW, getEntity(term.getId(), ADMIN_AUTH_HEADERS).getEntityStatus());
+
+    // Get the task
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName())
+            .getLinkString();
+    ThreadList threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer1.getName()));
+    assertFalse(threads.getData().isEmpty());
+    Thread task = threads.getData().getFirst();
+    int taskId = task.getTask().getId();
+
+    // First reviewer approves
+    ResolveTask resolveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+    taskTest.resolveTask(taskId, resolveTask, authHeaders(reviewer1.getName()));
+
+    // After first approval, term should still be IN_REVIEW
+    java.lang.Thread.sleep(2000); // Wait for async processing
+    GlossaryTerm termAfterFirstApproval = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(EntityStatus.IN_REVIEW, termAfterFirstApproval.getEntityStatus());
+
+    // Second reviewer approves
+    taskTest.resolveTask(taskId, resolveTask, authHeaders(reviewer2.getName()));
+
+    // After second approval, term should be APPROVED
+    java.lang.Thread.sleep(2000); // Wait for async processing
+    GlossaryTerm termAfterSecondApproval = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(EntityStatus.APPROVED, termAfterSecondApproval.getEntityStatus());
+
+    // Reset workflow back to threshold of 1
+    patchOp = "[{\"op\":\"replace\",\"path\":\"/nodes/12/config/approvalThreshold\",\"value\":1}]";
+    patchWorkflowDefinition("GlossaryTermApprovalWorkflow", patchOp);
+  }
+
+  @Test
+  void test_RollbackOnRejection(TestInfo test) throws Exception {
+    // Test 2: Rollback on rejection scenario
+    EntityReference reviewer = USER1.getEntityReference();
+    List<EntityReference> reviewers = List.of(reviewer);
+
+    // Create glossary with reviewer
+    Glossary glossary = createGlossary(test, reviewers, null);
+
+    // Create glossary term
+    String initialDescription = "Initial approved description";
+    CreateGlossaryTerm createRequest =
+        createRequest(getEntityName(test))
+            .withDescription(initialDescription)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withReviewers(reviewers)
+            .withSynonyms(null)
+            .withRelatedTerms(null);
+    GlossaryTerm term = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    // Wait for task and approve it
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName())
+            .getLinkString();
+    ThreadList threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer.getName()));
+    Thread task = threads.getData().getFirst();
+    int taskId = task.getTask().getId();
+
+    ResolveTask approveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+    taskTest.resolveTask(taskId, approveTask, authHeaders(reviewer.getName()));
+
+    java.lang.Thread.sleep(2000);
+    GlossaryTerm approvedTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
+    double version1 = approvedTerm.getVersion();
+
+    // Update term with non-reviewer (should trigger workflow)
+    String updatedDescription = "Updated description by non-reviewer";
+    String origJson = JsonUtils.pojoToJson(approvedTerm);
+    approvedTerm.setDescription(updatedDescription);
+    GlossaryTerm updatedTerm =
+        patchEntityUsingFqn(
+            approvedTerm.getFullyQualifiedName(),
+            origJson,
+            approvedTerm,
+            authHeaders(USER2.getName()));
+
+    // Wait for new task to be created for the update
+    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 60000L);
+
+    // Get the new task
+    threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer.getName()));
+    Thread updateTask = threads.getData().getFirst();
+    int updateTaskId = updateTask.getTask().getId();
+
+    // Reject the changes
+    ResolveTask rejectTask = new ResolveTask().withNewValue(EntityStatus.REJECTED.value());
+    taskTest.resolveTask(updateTaskId, rejectTask, authHeaders(reviewer.getName()));
+
+    java.lang.Thread.sleep(2000);
+    GlossaryTerm rolledBackTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify rollback: description should be back to initial, status should be approved
+    assertEquals(initialDescription, rolledBackTerm.getDescription());
+    assertEquals(EntityStatus.APPROVED, rolledBackTerm.getEntityStatus());
+    // Version should be bumped for audit trail
+    assertTrue(
+        rolledBackTerm.getVersion() > version1, "Version should be incremented for audit trail");
+  }
+
+  @Test
+  void test_ReviewerSuggestionApplication(TestInfo test) throws Exception {
+    // Test 3: Reviewer suggestion application
+    EntityReference reviewer = USER1.getEntityReference();
+    List<EntityReference> reviewers = List.of(reviewer);
+
+    // Create glossary with reviewer
+    Glossary glossary = createGlossary(test, reviewers, null);
+
+    // Create glossary term
+    String initialDescription = "Initial description";
+    CreateGlossaryTerm createRequest =
+        createRequest(getEntityName(test))
+            .withDescription(initialDescription)
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withReviewers(reviewers)
+            .withSynonyms(null)
+            .withRelatedTerms(null);
+    GlossaryTerm term = createEntity(createRequest, ADMIN_AUTH_HEADERS);
+
+    // Wait for task to be created
+    waitForTaskToBeCreated(term.getFullyQualifiedName());
+
+    // Get the task
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, term.getFullyQualifiedName())
+            .getLinkString();
+    ThreadList threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer.getName()));
+    Thread task = threads.getData().getFirst();
+    int taskId = task.getTask().getId();
+
+    // Approve initially
+    ResolveTask approveTask = new ResolveTask().withNewValue(EntityStatus.APPROVED.value());
+    taskTest.resolveTask(taskId, approveTask, authHeaders(reviewer.getName()));
+
+    java.lang.Thread.sleep(2000);
+    GlossaryTerm approvedTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(EntityStatus.APPROVED, approvedTerm.getEntityStatus());
+
+    // Update term to trigger a new approval workflow
+    String updateDescription = "Updated description for review";
+    String origJson = JsonUtils.pojoToJson(approvedTerm);
+    approvedTerm.setDescription(updateDescription);
+    GlossaryTerm updatedTerm =
+        patchEntityUsingFqn(
+            approvedTerm.getFullyQualifiedName(),
+            origJson,
+            approvedTerm,
+            authHeaders(USER2.getName()));
+
+    // Wait for detailed task to be created
+    waitForDetailedTaskToBeCreated(term.getFullyQualifiedName(), 60000L);
+
+    // Get the new task
+    threads =
+        taskTest.listTasks(entityLink, null, null, null, 100, authHeaders(reviewer.getName()));
+    Thread updateTask = threads.getData().getFirst();
+    int updateTaskId = updateTask.getTask().getId();
+
+    // Reviewer simply approves the term without suggestions
+    approveTask = new ResolveTask().withNewValue("approved");
+    taskTest.resolveTask(updateTaskId, approveTask, authHeaders(reviewer.getName()));
+
+    java.lang.Thread.sleep(2000);
+    GlossaryTerm finalTerm = getEntity(term.getId(), ADMIN_AUTH_HEADERS);
+
+    // Verify the term is approved with the original update description
+    assertEquals(EntityStatus.APPROVED, finalTerm.getEntityStatus());
+    assertEquals(updateDescription, finalTerm.getDescription());
   }
 
   /**
@@ -3020,5 +3238,32 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     deleteEntity(term1_1.getId(), true, true, ADMIN_AUTH_HEADERS);
     deleteEntity(term1.getId(), true, true, ADMIN_AUTH_HEADERS);
     glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+  }
+
+  private boolean wasDetailedWorkflowTaskCreated(String termFqn, long timeoutMs) {
+    try {
+      waitForDetailedTaskToBeCreated(termFqn, timeoutMs);
+      return true;
+    } catch (Exception e) {
+      return false;
+    }
+  }
+
+  public static void waitForDetailedTaskToBeCreated(String fullyQualifiedName, long timeout) {
+    String entityLink =
+        new MessageParser.EntityLink(Entity.GLOSSARY_TERM, fullyQualifiedName).getLinkString();
+    Awaitility.await(
+            String.format(
+                "Wait for Detailed Task to be Created for Glossary Term: '%s'", fullyQualifiedName))
+        .ignoreExceptions()
+        .pollInterval(Duration.ofMillis(2000L))
+        .atMost(Duration.ofMillis(timeout))
+        .until(
+            () ->
+                WorkflowHandler.getInstance()
+                    .isActivityWithVariableExecuting(
+                        "ApprovalForUpdates.approvalTask",
+                        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+                        entityLink));
   }
 }
