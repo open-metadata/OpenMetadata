@@ -180,7 +180,7 @@ export const getCSVStringFromColumnsAndDataSource = (
         const value = get(row, col.key ?? '', '');
         const colName = col.key ?? '';
         if (
-          colName === 'column.name*' &&
+          (colName === 'column.name*' || colName === 'name*') &&
           value.includes('.') &&
           !value.includes('"')
         ) {
