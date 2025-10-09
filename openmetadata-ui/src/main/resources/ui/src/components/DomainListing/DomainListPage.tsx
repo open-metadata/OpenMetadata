@@ -49,6 +49,7 @@ import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
+import './domain-list.less';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
 const DomainListPage = () => {
