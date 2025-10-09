@@ -453,7 +453,7 @@ export const getEmptyJsonTree = (
  */
 export const getEmptyJsonTreeForQueryBuilder = (
   defaultField: string = EntityReferenceFields.OWNERS,
-  subField = 'displayName'
+  subField = 'name'
 ): OldJsonTree => {
   const uuid1 = QbUtils.uuid();
   const uuid2 = QbUtils.uuid();
