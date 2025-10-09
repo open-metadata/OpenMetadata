@@ -289,7 +289,7 @@ export const buildDataQualityDashboardFilters = (data: {
     }
   }
 
-  if (filters?.startTs && filters?.endTs) {
+  if (filters?.startTs && filters?.endTs && !isTableApi) {
     mustFilter.push({
       range: {
         'testCaseResult.timestamp': {
