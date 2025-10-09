@@ -27,6 +27,12 @@ KAFKA_STREAM_PATTERN = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
+# Pattern to extract variable assignments like: TOPIC = "tracker-events"
+VARIABLE_ASSIGNMENT_PATTERN = re.compile(
+    r'^\s*([A-Z_][A-Z0-9_]*)\s*=\s*["\']([^"\']+)["\']\s*$',
+    re.MULTILINE,
+)
+
 
 @dataclass
 class KafkaSourceConfig:
@@ -35,6 +41,28 @@ class KafkaSourceConfig:
     bootstrap_servers: Optional[str] = None
     topics: List[str] = field(default_factory=list)
     group_id_prefix: Optional[str] = None
+
+
+def _extract_variables(source_code: str) -> dict:
+    """
+    Extract variable assignments from source code
+
+    Examples:
+        TOPIC = "events"
+        KAFKA_BROKER = "localhost:9092"
+
+    Returns dict like: {"TOPIC": "events", "KAFKA_BROKER": "localhost:9092"}
+    """
+    variables = {}
+    try:
+        for match in VARIABLE_ASSIGNMENT_PATTERN.finditer(source_code):
+            var_name = match.group(1)
+            var_value = match.group(2)
+            variables[var_name] = var_value
+            logger.debug(f"Found variable: {var_name} = {var_value}")
+    except Exception as exc:
+        logger.debug(f"Error extracting variables: {exc}")
+    return variables
 
 
 def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
@@ -46,6 +74,10 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
     - .option("kafka.bootstrap.servers", "broker:9092")
     - .option("groupIdPrefix", "dlt-pipeline")
 
+    Also supports variable references:
+    - TOPIC = "events"
+    - .option("subscribe", TOPIC)
+
     Returns empty list if parsing fails or no sources found
     """
     kafka_configs = []
@@ -55,16 +87,23 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
             logger.debug("Empty or None source code provided")
             return kafka_configs
 
+        # Extract variable assignments for resolution
+        variables = _extract_variables(source_code)
+
         for match in KAFKA_STREAM_PATTERN.finditer(source_code):
             try:
                 config_block = match.group(1)
 
                 bootstrap_servers = _extract_option(
-                    config_block, r"kafka\.bootstrap\.servers"
+                    config_block, r"kafka\.bootstrap\.servers", variables
                 )
-                subscribe_topics = _extract_option(config_block, r"subscribe")
-                topics = _extract_option(config_block, r"topics")
-                group_id_prefix = _extract_option(config_block, r"groupIdPrefix")
+                subscribe_topics = _extract_option(
+                    config_block, r"subscribe", variables
+                )
+                topics = _extract_option(config_block, r"topics", variables)
+                group_id_prefix = _extract_option(
+                    config_block, r"groupIdPrefix", variables
+                )
 
                 topic_list = []
                 if subscribe_topics:
@@ -95,18 +134,44 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
     return kafka_configs
 
 
-def _extract_option(config_block: str, option_name: str) -> Optional[str]:
+def _extract_option(
+    config_block: str, option_name: str, variables: dict = None
+) -> Optional[str]:
     """
     Extract a single option value from Kafka configuration block
+    Supports both string literals and variable references
     Safely handles any parsing errors
     """
+    if variables is None:
+        variables = {}
+
     try:
-        pattern = (
+        # Try matching quoted string literal: .option("subscribe", "topic")
+        pattern_literal = (
             rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*["\']([^"\']+)["\']\s*\)'
         )
-        match = re.search(pattern, config_block, re.IGNORECASE)
+        match = re.search(pattern_literal, config_block, re.IGNORECASE)
         if match:
             return match.group(2)
+
+        # Try matching variable reference: .option("subscribe", TOPIC)
+        pattern_variable = (
+            rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*([A-Z_][A-Z0-9_]*)\s*\)'
+        )
+        match = re.search(pattern_variable, config_block, re.IGNORECASE)
+        if match:
+            var_name = match.group(2)
+            # Resolve variable
+            if var_name in variables:
+                logger.debug(
+                    f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}"
+                )
+                return variables[var_name]
+            else:
+                logger.debug(
+                    f"Variable {var_name} referenced but not found in source code"
+                )
+
     except Exception as exc:
         logger.debug(f"Failed to extract option {option_name}: {exc}")
     return None
