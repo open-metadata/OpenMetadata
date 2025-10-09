@@ -1,0 +1,70 @@
+source:
+  type: kafkaconnect
+  serviceName: confluent_cdc_mysql_postgres
+  serviceConnection:
+    config:
+      type: KafkaConnect
+      hostPort: http://localhost:8083
+      # For Kafka Connect, choose one of the following authentication methods:
+
+      # Option 1: Username/Password Authentication (for self-hosted Kafka Connect)
+      KafkaConnectConfig:
+        username: admin
+        password: admin_password
+
+      # Option 2: API Key Authentication (for Confluent Cloud)
+      # KafkaConnectConfig:
+      #   username: YOUR_CONFLUENT_CLOUD_API_KEY
+      #   password: YOUR_CONFLUENT_CLOUD_API_SECRET
+
+      # Option 3: No Authentication
+      # KafkaConnectConfig: null
+
+      verifySSL: true
+      messagingServiceName: KafkaProd
+
+      # Optional: Filter CDC connectors/pipelines using regex patterns
+      # pipelineFilterPattern:
+      #   includes:
+      #     - "mysql-cdc-.*"
+      #     - "postgres-sink-.*"
+      #   excludes:
+      #     - ".*test.*"
+      #     - ".*dev.*"
+
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+      lineageInformation:
+        dbServiceNames:
+          - "MysqlProd"
+          - "PostgresProd"
+        storageServiceNames: []
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO  # DEBUG, INFO, WARN or ERROR
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: <your-jwt-token-here>
+
+# To run this workflow:
+# metadata ingest -c /path/to/confluent_cdc.yaml
+
+# Prerequisites:
+# 1. OpenMetadata server running at http://localhost:8585
+# 2. MySQL database service already ingested into OpenMetadata
+# 3. Postgres database service already ingested into OpenMetadata
+# 4. Kafka messaging service already ingested into OpenMetadata
+# 5. Kafka Connect connectors configured and running
+#
+# The connector will create:
+# - Pipeline entities for each CDC connector
+# - Table → Topic lineage with column-level mapping
+# - Topic → Table lineage with column-level mapping
+# - Complete end-to-end lineage: MySQL columns → Kafka topic fields → Postgres columns

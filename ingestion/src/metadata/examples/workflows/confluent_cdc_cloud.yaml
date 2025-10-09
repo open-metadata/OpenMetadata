@@ -1,0 +1,86 @@
+# Example: Confluent Cloud CDC Configuration
+# This example shows how to connect to Confluent Cloud CDC connectors
+# that replicate data from MySQL to PostgreSQL via Kafka
+
+source:
+  type: kafkaconnect
+  serviceName: confluent_cloud_cdc_production
+  serviceConnection:
+    config:
+      type: KafkaConnect
+      # Confluent Cloud Kafka Connect REST API endpoint
+      hostPort: https://pkc-xxxxx.us-east-1.aws.confluent.cloud:443
+
+      # Confluent Cloud API Key authentication
+      KafkaConnectConfig:
+        username: YOUR_CONFLUENT_CLOUD_API_KEY
+        password: YOUR_CONFLUENT_CLOUD_API_SECRET
+
+      verifySSL: true
+      messagingServiceName: KafkaCloudProd
+
+      # Filter to include only production CDC connectors
+      pipelineFilterPattern:
+        includes:
+          - "prod-mysql-cdc-.*"
+          - "prod-postgres-sink-.*"
+        excludes:
+          - ".*staging.*"
+          - ".*test.*"
+
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+      lineageInformation:
+        dbServiceNames:
+          - "MysqlProd"
+          - "PostgresProd"
+        storageServiceNames: []
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: INFO
+  openMetadataServerConfig:
+    hostPort: https://your-openmetadata-server.com/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: <your-jwt-token>
+
+# Example CDC Connector Configuration that this workflow will discover:
+#
+# MySQL CDC Source Connector:
+# {
+#   "name": "prod-mysql-cdc-customers",
+#   "config": {
+#     "connector.class": "io.debezium.connector.mysql.MySqlConnector",
+#     "database.hostname": "mysql.example.com",
+#     "database.name": "ecommerce",
+#     "table.include.list": "ecommerce.customers,ecommerce.orders",
+#     "database.server.name": "prod-mysql",
+#     "topics": "prod-mysql.ecommerce.customers"
+#   }
+# }
+#
+# Postgres Sink Connector:
+# {
+#   "name": "prod-postgres-sink-customers",
+#   "config": {
+#     "connector.class": "io.confluent.connect.jdbc.JdbcSinkConnector",
+#     "connection.url": "jdbc:postgresql://postgres.example.com:5432/analytics",
+#     "topics": "prod-mysql.ecommerce.customers",
+#     "table.name.format": "customers",
+#     "schema": "public"
+#   }
+# }
+#
+# This will create lineage:
+# MySQL: ecommerce.customers (id, name, email, created_at)
+#   ↓
+# Kafka: prod-mysql.ecommerce.customers (id, name, email, created_at) [topic schema fields]
+#   ↓
+# Postgres: analytics.public.customers (id, name, email, created_at)
+#
+# With column-level lineage showing exact field mappings at each hop!
