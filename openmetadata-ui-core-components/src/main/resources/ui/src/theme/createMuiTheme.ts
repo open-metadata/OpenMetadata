@@ -13,15 +13,15 @@
 
 import type { Shadows } from '@mui/material/styles';
 import { createTheme } from '@mui/material/styles';
+import { defaultColors } from '../colors/defaultColors';
+import { generateAllMuiPalettes } from '../colors/generateMuiPalettes';
+import type { CustomColors, ThemeColors } from '../types';
 import { buttonTheme } from './button-theme';
 import { dataDisplayTheme } from './data-display-theme';
-import { defaultColors } from '../colors/defaultColors';
 import { formTheme } from './form-theme';
-import { generateAllMuiPalettes } from '../colors/generateMuiPalettes';
+import './mui-theme-types';
 import { navigationTheme } from './navigation-theme';
 import { shadows } from './shadows';
-import type { CustomColors, ThemeColors } from '../types';
-import './mui-theme-types';
 
 /**
  * Creates dynamic MUI theme with user customizations or default colors
@@ -127,6 +127,8 @@ export const createMuiTheme = (
       allShades: themeColors,
     },
     typography: {
+      fontSize: 14,
+      htmlFontSize: 14,
       fontFamily:
         'var(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
       h1: {
