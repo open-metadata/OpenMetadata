@@ -238,6 +238,74 @@ class TestKafkaParser(unittest.TestCase):
         self.assertEqual(len(configs), 1)
         self.assertEqual(configs[0].topics, ["topic1", "topic2", "topic3"])
 
+    def test_variable_topic_reference(self):
+        """Test Kafka config with variable reference for topic"""
+        source_code = """
+        TOPIC = "events_topic"
+        df = spark.readStream.format("kafka") \\
+            .option("subscribe", TOPIC) \\
+            .load()
+        """
+        configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(configs[0].topics, ["events_topic"])
+
+    def test_real_world_dlt_pattern(self):
+        """Test real-world DLT pattern with variables"""
+        source_code = """
+        import dlt
+        from pyspark.sql.functions import *
+
+        TOPIC = "tracker-events"
+        KAFKA_BROKER = spark.conf.get("KAFKA_SERVER")
+
+        raw_kafka_events = (spark.readStream
+            .format("kafka")
+            .option("subscribe", TOPIC)
+            .option("kafka.bootstrap.servers", KAFKA_BROKER)
+            .option("startingOffsets", "earliest")
+            .load()
+        )
+
+        @dlt.table(table_properties={"pipelines.reset.allowed":"false"})
+        def kafka_bronze():
+            return raw_kafka_events
+        """
+        configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(configs[0].topics, ["tracker-events"])
+
+    def test_multiple_variable_topics(self):
+        """Test multiple topics defined as variables"""
+        source_code = """
+        TOPIC_A = "orders"
+        TOPIC_B = "payments"
+
+        df = spark.readStream.format("kafka") \\
+            .option("subscribe", TOPIC_A) \\
+            .load()
+
+        df2 = spark.readStream.format("kafka") \\
+            .option("topics", TOPIC_B) \\
+            .load()
+        """
+        configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(configs), 2)
+        topics = [c.topics[0] for c in configs]
+        self.assertIn("orders", topics)
+        self.assertIn("payments", topics)
+
+    def test_variable_not_defined(self):
+        """Test variable reference without definition"""
+        source_code = """
+        df = spark.readStream.format("kafka") \\
+            .option("subscribe", UNDEFINED_TOPIC) \\
+            .load()
+        """
+        configs = extract_kafka_sources(source_code)
+        # Should still find Kafka source but with empty topics
+        self.assertEqual(len(configs), 0)
+
 
 class TestPipelineLibraries(unittest.TestCase):
     """Test cases for pipeline library extraction"""
