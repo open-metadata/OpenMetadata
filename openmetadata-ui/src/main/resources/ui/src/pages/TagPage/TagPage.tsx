@@ -151,7 +151,12 @@ const TagPage = () => {
     []
   );
 
-  const { editTagsPermission, editDescriptionPermission } = useMemo(() => {
+  const {
+    editTagsPermission,
+    editDescriptionPermission,
+    editOwnerPermission,
+    editDomainPermission,
+  } = useMemo(() => {
     if (tagItem) {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
@@ -160,6 +165,9 @@ const TagPage = () => {
         editDescriptionPermission:
           isEditable &&
           (tagPermissions.EditDescription || tagPermissions.EditAll),
+        editOwnerPermission:
+          isEditable && (tagPermissions.EditAll || tagPermissions.EditOwners),
+        editDomainPermission: isEditable && tagPermissions.EditAll,
       };
     }
 
@@ -468,8 +476,15 @@ const TagPage = () => {
               </Col>
               <Col span={6}>
                 <div className="d-flex flex-column gap-5">
-                  <DomainLabelV2 multiple showDomainHeading />
-                  <OwnerLabelV2 dataTestId="tag-owner-name" />
+                  <DomainLabelV2
+                    multiple
+                    showDomainHeading
+                    hasPermission={editDomainPermission}
+                  />
+                  <OwnerLabelV2
+                    dataTestId="tag-owner-name"
+                    hasPermission={editOwnerPermission}
+                  />
                 </div>
               </Col>
             </Row>

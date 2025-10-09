@@ -168,6 +168,7 @@ test.describe('Widgets', () => {
     await expect(widget).toBeVisible();
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(
         page,
         widgetKey,
@@ -177,10 +178,14 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget filters', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyActivityFeedFilters(page, widgetKey);
     });
 
     await test.step('Test widget footer navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyWidgetFooterViewMore(page, {
         widgetKey,
         link: `/users/${adminUser.responseData.name}/activity_feed/all`,
@@ -190,6 +195,7 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget customization', async () => {
+      await waitForAllLoadersToDisappear(page);
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
@@ -206,6 +212,7 @@ test.describe('Widgets', () => {
     await expect(widget).toBeVisible();
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(
         page,
         widgetKey,
@@ -217,6 +224,8 @@ test.describe('Widgets', () => {
     await test.step(
       'Test widget displays entities and navigation',
       async () => {
+        await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
         // Data Assets widget needs special handling for multiple search indexes
         const searchIndexes = [
           SearchIndex.TABLE,
@@ -241,6 +250,8 @@ test.describe('Widgets', () => {
     );
 
     await test.step('Test widget footer navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyWidgetFooterViewMore(page, {
         widgetKey,
         link: 'explore',
@@ -250,6 +261,7 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget customization', async () => {
+      await waitForAllLoadersToDisappear(page);
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
@@ -266,6 +278,7 @@ test.describe('Widgets', () => {
     await expect(widget).toBeVisible();
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(
         page,
         widgetKey,
@@ -275,12 +288,16 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget filters', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyDataFilters(page, widgetKey);
     });
 
     await test.step(
       'Test widget displays entities and navigation',
       async () => {
+        await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
         await verifyWidgetEntityNavigation(page, {
           widgetKey,
           entitySelector: '[data-testid^="My-Data-"]',
@@ -292,6 +309,8 @@ test.describe('Widgets', () => {
     );
 
     await test.step('Test widget footer navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       // My Data footer navigates to explore with owner filter
       await verifyWidgetFooterViewMore(page, {
         widgetKey,
@@ -302,6 +321,7 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget customization', async () => {
+      await waitForAllLoadersToDisappear(page);
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
@@ -330,6 +350,7 @@ test.describe('Widgets', () => {
     await expect(widget).toBeVisible();
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(
         page,
         widgetKey,
@@ -339,6 +360,8 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget footer navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyWidgetFooterViewMore(page, {
         widgetKey,
         link: 'data-insights/kpi',
@@ -404,6 +427,7 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget customization', async () => {
+      await waitForAllLoadersToDisappear(page);
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
@@ -421,6 +445,7 @@ test.describe('Widgets', () => {
     await expect(widget).toBeVisible();
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(
         page,
         widgetKey,
@@ -430,10 +455,14 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget filters', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyTotalDataAssetsFilters(page, widgetKey);
     });
 
     await test.step('Test widget footer navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyWidgetFooterViewMore(page, {
         widgetKey,
         link: 'data-insights',
@@ -443,6 +472,7 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget customization', async () => {
+      await waitForAllLoadersToDisappear(page);
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
@@ -452,6 +482,7 @@ test.describe('Widgets', () => {
     test.slow(true);
 
     await testDomain.visitEntityPage(page);
+    await waitForAllLoadersToDisappear(page);
 
     await followEntity(page, testDomain.endpoint);
 
@@ -468,6 +499,7 @@ test.describe('Widgets', () => {
     await expect(widget).toBeVisible();
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(
         page,
         widgetKey,
@@ -477,10 +509,14 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget filters', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyDataFilters(page, widgetKey);
     });
 
     await test.step('Test widget displays followed entities', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       // Verify that followed entities appear in the widget
       await verifyWidgetEntityNavigation(page, {
         widgetKey,
@@ -492,6 +528,8 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget footer navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       // Following footer navigates to explore with following filter
       await verifyWidgetFooterViewMore(page, {
         widgetKey,
@@ -502,6 +540,8 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget customization', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
@@ -518,20 +558,25 @@ test.describe('Widgets', () => {
     await expect(widget).not.toBeVisible();
 
     await test.step('Add widget', async () => {
+      await waitForAllLoadersToDisappear(page);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(page, widgetKey, 'Domains', '/domain');
     });
 
     await test.step('Test widget filters', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyDomainsFilters(page, widgetKey);
     });
 
     await test.step(
       'Test widget displays entities and navigation',
       async () => {
+        await waitForAllLoadersToDisappear(page);
         await verifyWidgetEntityNavigation(page, {
           widgetKey,
           entitySelector: '[data-testid^="domain-card-"]',
@@ -543,6 +588,8 @@ test.describe('Widgets', () => {
     );
 
     await test.step('Test widget footer navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyWidgetFooterViewMore(page, {
         widgetKey,
         link: 'domain',
@@ -551,6 +598,7 @@ test.describe('Widgets', () => {
 
     await test.step('Remove widget', async () => {
       await redirectToHomePage(page);
+      await waitForAllLoadersToDisappear(page);
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
   });
@@ -562,6 +610,7 @@ test.describe('Widgets', () => {
       const glossary1 = EntityDataClass.glossary1;
       // Navigate to one of the created glossaries to create a task
       await glossary1.visitEntityPage(page);
+      await waitForAllLoadersToDisappear(page);
 
       // Create a description task for the glossary
       await page.getByTestId('request-description').click();
@@ -606,10 +655,12 @@ test.describe('Widgets', () => {
     await expect(widget).not.toBeVisible();
 
     await test.step('Add widget', async () => {
+      await waitForAllLoadersToDisappear(page);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(
         page,
         widgetKey,
@@ -619,12 +670,16 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget filters', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyTaskFilters(page, widgetKey);
     });
 
     await test.step(
       'Test widget displays entities and navigation',
       async () => {
+        await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
         await verifyWidgetEntityNavigation(page, {
           widgetKey,
           entitySelector:
@@ -638,6 +693,7 @@ test.describe('Widgets', () => {
 
     await test.step('Remove widget', async () => {
       await redirectToHomePage(page);
+      await waitForAllLoadersToDisappear(page);
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
   });
@@ -653,10 +709,12 @@ test.describe('Widgets', () => {
     await expect(widget).not.toBeVisible();
 
     await test.step('Add widget', async () => {
+      await waitForAllLoadersToDisappear(page);
       await addAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
 
     await test.step('Test widget header and navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
       await verifyWidgetHeaderNavigation(
         page,
         widgetKey,
@@ -666,12 +724,16 @@ test.describe('Widgets', () => {
     });
 
     await test.step('Test widget filters', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyDataProductsFilters(page, widgetKey);
     });
 
     await test.step(
       'Test widget displays entities and navigation',
       async () => {
+        await waitForAllLoadersToDisappear(page);
+        await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
         await verifyWidgetEntityNavigation(page, {
           widgetKey,
           entitySelector: '[data-testid^="data-product-card-"]',
@@ -683,6 +745,8 @@ test.describe('Widgets', () => {
     );
 
     await test.step('Test widget footer navigation', async () => {
+      await waitForAllLoadersToDisappear(page);
+      await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
       await verifyWidgetFooterViewMore(page, {
         widgetKey,
         link: '/explore',
@@ -691,6 +755,7 @@ test.describe('Widgets', () => {
 
     await test.step('Remove widget', async () => {
       await redirectToHomePage(page);
+      await waitForAllLoadersToDisappear(page);
       await removeAndVerifyWidget(page, widgetKey, persona.responseData.name);
     });
   });

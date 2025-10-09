@@ -27,6 +27,7 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 
 interface OwnerLabelV2Props {
   dataTestId?: string;
+  hasPermission?: boolean;
 }
 
 export const OwnerLabelV2 = <
@@ -43,15 +44,21 @@ export const OwnerLabelV2 = <
     await onUpdate(updatedEntity);
   };
 
+  const hasPermission = useMemo(() => {
+    return (
+      props?.hasPermission ?? (permissions?.EditOwners || permissions?.EditAll)
+    );
+  }, [permissions?.EditOwners, permissions?.EditAll, props?.hasPermission]);
+
   const header = useMemo(
     () => (
       <div className="d-flex items-center gap-2">
         <Typography.Text className="text-sm font-medium">
           {t('label.owner-plural')}
         </Typography.Text>
-        {!isVersionView && (permissions.EditOwners || permissions.EditAll) && (
+        {!isVersionView && hasPermission && (
           <UserTeamSelectableList
-            hasPermission={permissions.EditOwners || permissions.EditAll}
+            hasPermission={hasPermission}
             listHeight={200}
             multiple={{ user: true, team: false }}
             owner={data.owners}
@@ -78,7 +85,7 @@ export const OwnerLabelV2 = <
         )}
       </div>
     ),
-    [data, permissions, handleUpdatedOwner, isVersionView]
+    [data, hasPermission, handleUpdatedOwner, isVersionView]
   );
 
   return (
@@ -92,7 +99,7 @@ export const OwnerLabelV2 = <
         data,
         isVersionView ?? false,
         TabSpecificField.OWNERS,
-        permissions.EditOwners || permissions.EditAll
+        hasPermission
       )}
     </ExpandableCard>
   );
