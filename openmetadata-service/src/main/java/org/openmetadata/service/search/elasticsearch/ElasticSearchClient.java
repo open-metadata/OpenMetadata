@@ -2284,31 +2284,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteComponentTemplate(String componentTemplateName) throws IOException {
-    try {
-      Request request = new Request("DELETE", "/_component_template/" + componentTemplateName);
-      es.org.elasticsearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Component template {} does not exist", componentTemplateName);
-        return;
-      }
-      if (response.getStatusLine().getStatusCode() != 200) {
-        throw new IOException(
-            "Failed to delete component template: " + response.getStatusLine().getReasonPhrase());
-      }
-      LOG.info("Successfully deleted component template: {}", componentTemplateName);
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
-      } else {
-        throw new IOException(
-            "Failed to delete component template: "
-                + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Error deleting component template: {}", componentTemplateName, e);
-      throw new IOException("Failed to delete component template: " + e.getMessage());
-    }
+    genericManager.deleteComponentTemplate(componentTemplateName);
   }
 
   @Override

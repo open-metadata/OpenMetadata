@@ -132,7 +132,24 @@ public class OpenSearchGenericManager implements GenericClient {
 
   @Override
   public void deleteComponentTemplate(String componentTemplateName) throws IOException {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot delete component template.");
+      return;
+    }
+    try {
+      client.cluster().deleteComponentTemplate(d -> d.name(componentTemplateName));
+      LOG.info("Successfully deleted component template: {}", componentTemplateName);
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
+      } else {
+        LOG.error("Failed to delete component template: {}", componentTemplateName, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete component template {}", componentTemplateName, e);
+      throw e;
+    }
   }
 
   @Override
