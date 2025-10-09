@@ -351,43 +351,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       {
-        title: t('label.incident'),
-        dataIndex: 'testCaseResult',
-        key: 'incident',
-        width: 120,
-        render: (_, record) => {
-          const testCaseResult = testCaseStatus.find(
-            (status) =>
-              status.testCaseReference?.fullyQualifiedName ===
-              record.fullyQualifiedName
-          );
-
-          if (isStatusLoading) {
-            return <Skeleton.Input size="small" />;
-          }
-
-          if (!testCaseResult) {
-            return '--';
-          }
-
-          // Check if user has permission to edit incident status
-          const testCasePermission = testCasePermissions.find(
-            (permission) =>
-              permission.fullyQualifiedName === record.fullyQualifiedName
-          );
-          const hasEditPermission =
-            isEditAllowed || testCasePermission?.EditAll;
-
-          return (
-            <TestCaseIncidentManagerStatus
-              data={testCaseResult}
-              hasPermission={hasEditPermission}
-              onSubmit={handleStatusSubmit}
-            />
-          );
-        },
-      },
-      {
         title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
