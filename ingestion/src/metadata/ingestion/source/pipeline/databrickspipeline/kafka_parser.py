@@ -177,10 +177,20 @@ def _extract_option(
     return None
 
 
-def get_pipeline_libraries(pipeline_config: dict) -> List[str]:
+def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:
     """
     Extract notebook and file paths from pipeline configuration
-    Safely handles missing or malformed configuration
+    Supports:
+    - Direct notebook paths: {"notebook": {"path": "/path/to/notebook"}}
+    - Direct file paths: {"file": {"path": "/path/to/file.py"}}
+    - Glob patterns: {"glob": {"include": "/path/**"}} (requires client)
+
+    Args:
+        pipeline_config: Pipeline configuration dict from Databricks API
+        client: Optional DatabricksClient for expanding glob patterns
+
+    Returns:
+        List of notebook/file paths
     """
     libraries = []
 
@@ -188,7 +198,9 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[str]:
         if not pipeline_config:
             return libraries
 
-        for lib in pipeline_config.get("libraries", []):
+        spec = pipeline_config.get("spec", pipeline_config)
+
+        for lib in spec.get("libraries", []):
             try:
                 if "notebook" in lib:
                     notebook_path = lib["notebook"].get("path")
@@ -198,6 +210,15 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[str]:
                     file_path = lib["file"].get("path")
                     if file_path:
                         libraries.append(file_path)
+                elif "glob" in lib and client:
+                    # Expand glob pattern using Workspace API
+                    glob_pattern = lib["glob"].get("include", "")
+                    if glob_pattern:
+                        expanded_paths = _expand_glob_pattern(glob_pattern, client)
+                        libraries.extend(expanded_paths)
+                        logger.debug(
+                            f"Expanded glob {glob_pattern} to {len(expanded_paths)} files"
+                        )
             except Exception as exc:
                 logger.debug(f"Failed to process library entry {lib}: {exc}")
                 continue
@@ -206,3 +227,55 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[str]:
         logger.warning(f"Error extracting pipeline libraries: {exc}")
 
     return libraries
+
+
+def _expand_glob_pattern(glob_pattern: str, client) -> List[str]:
+    """
+    Expand glob pattern by listing Workspace files
+    Converts /path/** to list of actual file paths
+
+    Args:
+        glob_pattern: Glob pattern like "/Workspace/Users/user@email.com/pipeline/**"
+        client: DatabricksClient instance for API calls
+
+    Returns:
+        List of file paths matching the pattern
+    """
+    files = []
+
+    try:
+        # Extract base path from glob (remove /** or /*)
+        base_path = glob_pattern.replace("/**", "").replace("/*", "")
+
+        # Call Workspace API to list directory
+        url = f"{client.base_url}/workspace/list"
+        response = client.client.get(
+            url,
+            params={"path": base_path},
+            headers=client.headers,
+            timeout=client.api_timeout,
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            objects = data.get("objects", [])
+
+            # Filter for files (notebooks and Python files)
+            for obj in objects:
+                obj_type = obj.get("object_type")
+                path = obj.get("path")
+
+                # Include notebooks and files
+                if obj_type in ["NOTEBOOK", "FILE"] or (path and path.endswith(".py")):
+                    files.append(path)
+
+            logger.debug(f"Found {len(files)} files matching glob {glob_pattern}")
+        else:
+            logger.warning(
+                f"Workspace API returned {response.status_code} for path {base_path}"
+            )
+
+    except Exception as exc:
+        logger.warning(f"Failed to expand glob pattern {glob_pattern}: {exc}")
+
+    return files

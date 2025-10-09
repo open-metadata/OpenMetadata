@@ -52,6 +52,7 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
@@ -105,12 +106,56 @@ class DatabrickspipelineSource(PipelineServiceSource):
         return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[DataBrickPipelineDetails]:
+        """
+        Fetch both Databricks Jobs AND DLT Pipelines
+
+        - Jobs from /api/2.1/jobs (existing functionality)
+        - DLT Pipelines from /api/2.0/pipelines (new - for direct pipeline access)
+        """
+        # Fetch regular jobs (existing)
         try:
             for workflow in self.client.list_jobs() or []:
-                yield DataBrickPipelineDetails(**workflow)
+                try:
+                    yield DataBrickPipelineDetails(**workflow)
+                except Exception as exc:
+                    logger.debug(f"Error creating job details: {exc}")
+                    continue
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.error(f"Failed to get pipeline list due to : {exc}")
+            logger.error(f"Failed to get jobs list due to : {exc}")
+
+        # Fetch DLT pipelines directly (new)
+        try:
+            for pipeline in self.client.list_pipelines() or []:
+                try:
+                    # Convert DLT pipeline format to job format for compatibility
+                    # DLT pipelines don't have job_id, so we use pipeline_id
+                    pipeline_as_job = {
+                        "job_id": pipeline.get(
+                            "pipeline_id"
+                        ),  # Use pipeline_id as job_id
+                        "creator_user_name": pipeline.get("creator_user_name"),
+                        "created_time": pipeline.get("creation_time", 0),
+                        "settings": {
+                            "name": pipeline.get("name", "Unnamed Pipeline"),
+                            "description": f"DLT Pipeline - {pipeline.get('state', 'UNKNOWN')}",
+                            # Add a marker so we know this is a direct DLT pipeline
+                            "_is_dlt_pipeline": True,
+                            "_pipeline_id": pipeline.get("pipeline_id"),
+                        },
+                    }
+                    yield DataBrickPipelineDetails(**pipeline_as_job)
+                    logger.debug(
+                        f"Added DLT pipeline: {pipeline.get('name')} ({pipeline.get('pipeline_id')})"
+                    )
+                except Exception as exc:
+                    logger.debug(f"Error creating DLT pipeline details: {exc}")
+                    logger.debug(traceback.format_exc())
+                    continue
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Failed to get DLT pipelines list due to : {exc}")
+
         return None
 
     def get_pipeline_name(
@@ -122,6 +167,20 @@ class DatabrickspipelineSource(PipelineServiceSource):
             logger.debug(traceback.format_exc())
             logger.error(f"Failed to get pipeline name due to : {exc}")
 
+        return None
+
+    def get_owner(self, owner_name: str) -> Optional[EntityReferenceList]:
+        """
+        Fetch owner by name from OpenMetadata
+        Uses the creator_user_name field from Databricks pipeline/job
+        """
+        try:
+            if owner_name:
+                return self.metadata.get_reference_by_name(
+                    name=owner_name, is_owner=True
+                )
+        except Exception as exc:
+            logger.warning(f"Error while getting details of user {owner_name} - {exc}")
         return None
 
     def yield_pipeline(
@@ -141,6 +200,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     else None
                 ),
                 service=FullyQualifiedEntityName(self.context.get().pipeline_service),
+                owners=self.get_owner(pipeline_details.creator_user_name),
             )
             yield Either(right=pipeline_request)
             self.register_record(pipeline_request=pipeline_request)
@@ -379,21 +439,62 @@ class DatabrickspipelineSource(PipelineServiceSource):
         Uses smart topic discovery - works with or without messagingServiceNames config
         """
         try:
-            # Check for pipeline_task in job settings
+            # Check for pipeline_id - either from direct DLT pipeline or from job's pipeline_task
             pipeline_id = None
+
+            # Method 1: Check if this is a direct DLT pipeline (has _pipeline_id marker)
             try:
-                for task in pipeline_details.settings.__dict__.get("tasks", []) or []:
-                    if hasattr(task, "pipeline_task"):
-                        pipeline_id = task.pipeline_task.pipeline_id
-                        break
+                if hasattr(pipeline_details.settings, "__dict__"):
+                    settings_dict = pipeline_details.settings.__dict__
+                    if settings_dict.get("_is_dlt_pipeline"):
+                        pipeline_id = settings_dict.get("_pipeline_id")
+                        logger.info(
+                            f"Processing direct DLT pipeline: {pipeline_id} ({pipeline_details.settings.name})"
+                        )
             except Exception as exc:
-                logger.debug(f"Error checking for pipeline tasks: {exc}")
-                return None
+                logger.debug(f"Error checking for direct DLT pipeline: {exc}")
+
+            # Method 2: Check for pipeline_task in job settings (existing logic)
+            if not pipeline_id:
+                try:
+                    # Try to get tasks from __root_fields__ first (Pydantic v2)
+                    tasks = getattr(pipeline_details.settings, "tasks", None)
+
+                    # If not found, try __dict__ (raw data)
+                    if not tasks:
+                        raw_dict = getattr(pipeline_details, "__dict__", {})
+                        settings_dict = raw_dict.get("settings", {})
+                        if isinstance(settings_dict, dict):
+                            tasks = settings_dict.get("tasks")
+
+                    logger.debug(f"Found tasks type: {type(tasks)}, value: {tasks}")
+
+                    if tasks:
+                        for task in tasks:
+                            # Check if task has pipeline_task attribute
+                            pipeline_task = getattr(task, "pipeline_task", None)
+                            if not pipeline_task and isinstance(task, dict):
+                                pipeline_task = task.get("pipeline_task")
+
+                            if pipeline_task:
+                                if isinstance(pipeline_task, dict):
+                                    pipeline_id = pipeline_task.get("pipeline_id")
+                                else:
+                                    pipeline_id = getattr(
+                                        pipeline_task, "pipeline_id", None
+                                    )
+
+                                if pipeline_id:
+                                    logger.info(
+                                        f"Found DLT pipeline_id from job task: {pipeline_id} for job {pipeline_details.job_id}"
+                                    )
+                                    break
+                except Exception as exc:
+                    logger.debug(f"Error checking for pipeline tasks: {exc}")
+                    logger.debug(traceback.format_exc())
 
             if not pipeline_id:
-                logger.debug(
-                    f"No DLT pipeline task found for job {pipeline_details.job_id}"
-                )
+                logger.debug(f"No DLT pipeline found for job {pipeline_details.job_id}")
                 return None
 
             # Get pipeline configuration
@@ -408,9 +509,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 )
                 return None
 
-            # Extract notebook/file paths from libraries
+            # Extract notebook/file paths from libraries (pass client for glob expansion)
             try:
-                library_paths = get_pipeline_libraries(pipeline_config)
+                library_paths = get_pipeline_libraries(
+                    pipeline_config, client=self.client
+                )
                 logger.debug(
                     f"Found {len(library_paths)} libraries for pipeline {pipeline_id}"
                 )
