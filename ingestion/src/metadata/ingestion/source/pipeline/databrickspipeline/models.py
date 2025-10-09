@@ -13,7 +13,7 @@
 Databricks pipeline Source Model module
 """
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -25,6 +25,20 @@ class DBRunSchedule(BaseModel):
 
 class DependentTask(BaseModel):
     name: Optional[str] = Field(None, alias="task_key")
+
+
+class PipelineTask(BaseModel):
+    pipeline_id: Optional[str] = None
+    full_refresh: Optional[bool] = None
+
+
+class DBJobTask(BaseModel):
+    name: Optional[str] = Field(None, alias="task_key")
+    description: Optional[str] = None
+    depends_on: Optional[List[DependentTask]] = None
+    pipeline_task: Optional[PipelineTask] = None
+    notebook_task: Optional[Dict[str, Any]] = None
+    spark_python_task: Optional[Dict[str, Any]] = None
 
 
 class DBTasks(BaseModel):
@@ -41,13 +55,21 @@ class DBSettings(BaseModel):
     description: Optional[str] = None
     schedule: Optional[DBRunSchedule] = None
     task_type: Optional[str] = Field(None, alias="format")
+    tasks: Optional[List[DBJobTask]] = None
 
 
 class DataBrickPipelineDetails(BaseModel):
-    job_id: int
+    job_id: Optional[int] = None
+    pipeline_id: Optional[str] = None
     creator_user_name: Optional[str] = None
     settings: Optional[DBSettings] = None
-    created_time: int
+    created_time: Optional[int] = None
+    name: Optional[str] = None
+    pipeline_type: Optional[str] = None
+
+    @property
+    def id(self) -> str:
+        return str(self.pipeline_id) if self.pipeline_id else str(self.job_id)
 
 
 class DBRunState(BaseModel):
