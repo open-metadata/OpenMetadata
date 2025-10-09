@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.data.pipeline import (
     TaskStatus,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
     DatabricksPipelineConnection,
 )
@@ -56,6 +57,10 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+    extract_kafka_sources,
+    get_pipeline_libraries,
+)
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
     DBRun,
@@ -300,6 +305,139 @@ class DatabrickspipelineSource(PipelineServiceSource):
             )
         return processed_column_lineage or []
 
+    def _yield_kafka_lineage(
+        self, pipeline_details: DataBrickPipelineDetails, pipeline_entity: Pipeline
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Extract and yield Kafka topic lineage from DLT pipeline source code
+        Continues processing even if individual steps fail
+        """
+        try:
+            # Check for pipeline_task in job settings
+            pipeline_id = None
+            try:
+                for task in pipeline_details.settings.__dict__.get("tasks", []) or []:
+                    if hasattr(task, "pipeline_task"):
+                        pipeline_id = task.pipeline_task.pipeline_id
+                        break
+            except Exception as exc:
+                logger.debug(f"Error checking for pipeline tasks: {exc}")
+                return
+
+            if not pipeline_id:
+                logger.debug(
+                    f"No DLT pipeline task found for job {pipeline_details.job_id}"
+                )
+                return
+
+            # Get pipeline configuration
+            try:
+                pipeline_config = self.client.get_pipeline_details(pipeline_id)
+                if not pipeline_config:
+                    logger.debug(f"Could not fetch pipeline config for {pipeline_id}")
+                    return
+            except Exception as exc:
+                logger.warning(
+                    f"Failed to fetch pipeline config for {pipeline_id}: {exc}"
+                )
+                return
+
+            # Extract notebook/file paths from libraries
+            try:
+                library_paths = get_pipeline_libraries(pipeline_config)
+                logger.debug(
+                    f"Found {len(library_paths)} libraries for pipeline {pipeline_id}"
+                )
+            except Exception as exc:
+                logger.warning(f"Failed to extract library paths: {exc}")
+                return
+
+            # Process each library to extract Kafka sources
+            for lib_path in library_paths:
+                try:
+                    source_code = self.client.export_notebook_source(lib_path)
+                    if not source_code:
+                        logger.debug(f"Could not export source for {lib_path}")
+                        continue
+
+                    kafka_sources = extract_kafka_sources(source_code)
+                    logger.debug(
+                        f"Found {len(kafka_sources)} Kafka sources in {lib_path}"
+                    )
+
+                    # Create lineage for each Kafka topic found
+                    for kafka_config in kafka_sources:
+                        for topic_name in kafka_config.topics:
+                            try:
+                                # Try to find Kafka topic in OpenMetadata
+                                for messaging_service in (
+                                    self.source_config.messagingServiceNames or []
+                                ):
+                                    try:
+                                        topic_fqn = fqn.build(
+                                            metadata=self.metadata,
+                                            entity_type=Topic,
+                                            service_name=messaging_service,
+                                            topic_name=topic_name,
+                                        )
+
+                                        kafka_topic = self.metadata.get_by_name(
+                                            entity=Topic, fqn=topic_fqn
+                                        )
+
+                                        if kafka_topic:
+                                            logger.info(
+                                                f"Creating Kafka lineage: {topic_name} -> Pipeline {pipeline_details.job_id}"
+                                            )
+
+                                            yield Either(
+                                                right=AddLineageRequest(
+                                                    edge=EntitiesEdge(
+                                                        fromEntity=EntityReference(
+                                                            id=kafka_topic.id,
+                                                            type="topic",
+                                                        ),
+                                                        toEntity=EntityReference(
+                                                            id=pipeline_entity.id.root,
+                                                            type="pipeline",
+                                                        ),
+                                                        lineageDetails=LineageDetails(
+                                                            pipeline=EntityReference(
+                                                                id=pipeline_entity.id.root,
+                                                                type="pipeline",
+                                                            ),
+                                                            source=LineageSource.PipelineLineage,
+                                                        ),
+                                                    )
+                                                )
+                                            )
+                                            break
+                                        else:
+                                            logger.debug(
+                                                f"Kafka topic {topic_name} not found in messaging service {messaging_service}"
+                                            )
+                                    except Exception as exc:
+                                        logger.warning(
+                                            f"Failed to create lineage for topic {topic_name} in service {messaging_service}: {exc}"
+                                        )
+                                        continue
+                            except Exception as exc:
+                                logger.warning(
+                                    f"Failed to process topic {topic_name}: {exc}"
+                                )
+                                continue
+                except Exception as exc:
+                    logger.warning(
+                        f"Failed to process library {lib_path}: {exc}. Continuing with next library."
+                    )
+                    continue
+
+        except Exception as exc:
+            logger.error(
+                f"Unexpected error in Kafka lineage extraction for job {pipeline_details.job_id}: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+
     def yield_pipeline_lineage_details(
         self, pipeline_details: DataBrickPipelineDetails
     ) -> Iterable[Either[AddLineageRequest]]:
@@ -314,6 +452,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
             pipeline_entity = self.metadata.get_by_name(
                 entity=Pipeline, fqn=pipeline_fqn
             )
+
+            # Extract Kafka topic lineage from source code
+            if self.source_config.includeKafkaLineage:
+                yield from self._yield_kafka_lineage(pipeline_details, pipeline_entity)
 
             table_lineage_list = self.client.get_table_lineage(
                 job_id=pipeline_details.job_id

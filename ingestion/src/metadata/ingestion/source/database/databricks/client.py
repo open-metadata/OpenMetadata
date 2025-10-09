@@ -372,3 +372,55 @@ class DatabricksClient:
                     continue
         self._job_column_lineage_executed = True
         logger.debug("Table and column lineage caching completed.")
+
+    def get_pipeline_details(self, pipeline_id: str) -> Optional[dict]:
+        """
+        Get DLT pipeline configuration including libraries and notebooks
+        """
+        try:
+            base_url, *_ = self.config.hostPort.split(":")
+            url = f"https://{base_url}{API_VERSION}/pipelines/{pipeline_id}"
+            response = self.client.get(
+                url,
+                headers=self.headers,
+                timeout=self.api_timeout,
+            )
+            if response.status_code == 200:
+                return response.json()
+            logger.warning(
+                f"Failed to get pipeline details for {pipeline_id}: {response.status_code}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error getting pipeline details for {pipeline_id}: {exc}")
+        return None
+
+    def export_notebook_source(self, notebook_path: str) -> Optional[str]:
+        """
+        Export notebook source code from Databricks workspace
+        """
+        try:
+            import base64
+
+            base_url, *_ = self.config.hostPort.split(":")
+            url = f"https://{base_url}{API_VERSION}/workspace/export"
+            params = {"path": notebook_path, "format": "SOURCE"}
+
+            response = self.client.get(
+                url,
+                params=params,
+                headers=self.headers,
+                timeout=self.api_timeout,
+            )
+
+            if response.status_code == 200:
+                content = response.json().get("content")
+                if content:
+                    return base64.b64decode(content).decode("utf-8")
+            logger.warning(
+                f"Failed to export notebook {notebook_path}: {response.status_code}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error exporting notebook {notebook_path}: {exc}")
+        return None
