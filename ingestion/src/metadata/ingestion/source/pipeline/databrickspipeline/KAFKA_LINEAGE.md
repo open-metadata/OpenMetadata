@@ -9,7 +9,10 @@ The connector automatically discovers Kafka topics consumed by DLT pipelines by:
 2. Extracting notebook/file paths from pipeline libraries
 3. Exporting source code from Databricks Workspace
 4. Parsing Kafka configurations from the code
-5. Creating lineage between Kafka topics and DLT pipelines in OpenMetadata
+5. **Smart topic discovery** - searches for topics across all messaging services (or configured ones)
+6. Creating lineage between Kafka topics and DLT pipelines in OpenMetadata
+
+**No configuration required!** Works out of the box with automatic topic discovery.
 
 ## Configuration
 
@@ -22,10 +25,11 @@ The connector automatically discovers Kafka topics consumed by DLT pipelines by:
 
 2. **OpenMetadata Setup**:
    - Kafka topics must be ingested into OpenMetadata first
-   - Configure `messagingServiceNames` to specify which Kafka services to search
+   - Optionally configure `messagingServiceNames` for faster performance (not required)
 
 ### Configuration Example
 
+**Minimal Configuration (Automatic Discovery):**
 ```yaml
 source:
   type: databricksPipeline
@@ -38,9 +42,24 @@ source:
   sourceConfig:
     config:
       type: PipelineMetadata
-      # Enable Kafka lineage extraction
-      includeKafkaLineage: true
-      # Specify Kafka/messaging services to search for topics
+      # That's it! Kafka lineage works automatically
+      # Topics are discovered via search API
+```
+
+**Optimized Configuration (Faster Performance):**
+```yaml
+source:
+  type: databricksPipeline
+  serviceName: databricks_pipeline_service
+  serviceConnection:
+    config:
+      type: DatabricksPipeline
+      hostPort: https://your-workspace.cloud.databricks.com
+      token: <your-databricks-token>
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+      # Optional: specify messaging services for faster lookup
       messagingServiceNames:
         - kafka_production
         - kafka_staging
@@ -98,12 +117,22 @@ AS SELECT * FROM read_kafka(
 )
 ```
 
-### 4. Lineage Creation
+### 4. Smart Topic Discovery
 
-For each discovered Kafka topic:
-1. Search for the topic in configured messaging services
-2. If found, create lineage edge: `Kafka Topic → DLT Pipeline`
-3. Include pipeline reference in lineage details
+For each discovered Kafka topic name, the connector:
+
+**If `messagingServiceNames` configured (fast path):**
+1. Search only in specified services using direct FQN lookup
+2. Return first match found
+
+**If `messagingServiceNames` NOT configured (automatic discovery):**
+1. Use OpenMetadata search API to find topic across ALL services
+2. Match by exact topic name
+3. Return first match found
+
+**Lineage Creation:**
+- Create lineage edge: `Kafka Topic → DLT Pipeline`
+- Include pipeline reference in lineage details
 
 ## Supported Kafka Options
 
@@ -123,13 +152,14 @@ The parser recognizes these Kafka configuration options:
 **Issue**: Kafka topics not appearing in lineage
 
 **Checks**:
-1. Verify `includeKafkaLineage: true` in configuration
-2. Ensure Kafka topics are ingested in OpenMetadata
-3. Check `messagingServiceNames` includes the correct Kafka service
-4. Review logs for parsing errors:
+1. Ensure Kafka topics are ingested in OpenMetadata first
+2. Check topic names match exactly (case-sensitive)
+3. Review logs for parsing errors:
    ```
    DEBUG: Found 0 Kafka sources in /path/to/notebook
+   DEBUG: Topic events_topic not found
    ```
+4. Optional: Add `messagingServiceNames` for faster/more reliable lookup
 
 ### Pipeline Not Detected
 
@@ -162,12 +192,13 @@ The parser recognizes these Kafka configuration options:
 
 **Checks**:
 1. Verify topic names match exactly (case-sensitive)
-2. Ensure topics are ingested in the specified messaging services
-3. Check FQN format: `<service>.<topic_name>`
-4. Review logs:
+2. Ensure topics are ingested in OpenMetadata (run Kafka connector first)
+3. Check search is working:
    ```
-   DEBUG: Kafka topic events_topic not found in messaging service kafka_prod
+   DEBUG: No messaging services configured, searching all services for events_topic
+   DEBUG: Topic events_topic not found
    ```
+4. Try adding `messagingServiceNames` to narrow search scope
 
 ## Example Lineage Flow
 

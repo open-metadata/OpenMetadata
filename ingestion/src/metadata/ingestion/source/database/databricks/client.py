@@ -11,6 +11,7 @@
 """
 Client to interact with databricks apis
 """
+import base64
 import json
 import traceback
 from datetime import timedelta
@@ -378,8 +379,7 @@ class DatabricksClient:
         Get DLT pipeline configuration including libraries and notebooks
         """
         try:
-            base_url, *_ = self.config.hostPort.split(":")
-            url = f"https://{base_url}{API_VERSION}/pipelines/{pipeline_id}"
+            url = f"{self.base_url}/pipelines/{pipeline_id}"
             response = self.client.get(
                 url,
                 headers=self.headers,
@@ -400,10 +400,7 @@ class DatabricksClient:
         Export notebook source code from Databricks workspace
         """
         try:
-            import base64
-
-            base_url, *_ = self.config.hostPort.split(":")
-            url = f"https://{base_url}{API_VERSION}/workspace/export"
+            url = f"{self.base_url}/workspace/export"
             params = {"path": notebook_path, "format": "SOURCE"}
 
             response = self.client.get(
