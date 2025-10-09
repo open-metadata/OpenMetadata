@@ -13,7 +13,7 @@
 import { Card } from 'antd';
 import classNames from 'classnames';
 import { DragEvent, useCallback, useEffect, useRef, useState } from 'react';
-import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
+import ReactFlow, { Background, Edge, MiniMap, Node, Panel } from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -35,7 +35,13 @@ import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { LineageProps } from './Lineage.interface';
 
-const Lineage = ({ entity, entityType, isPlatformLineage }: LineageProps) => {
+const Lineage = ({
+  deleted,
+  entity,
+  entityType,
+  isPlatformLineage,
+  hasEditAccess,
+}: LineageProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [showMiniMap, setShowMiniMap] = useState(true);
 
@@ -66,7 +72,7 @@ const Lineage = ({ entity, entityType, isPlatformLineage }: LineageProps) => {
 
   // Memoize callback for onEdgeClick to prevent unnecessary re-renders
   const handleEdgeClick = useCallback(
-    (_e: React.MouseEvent, data: any) => {
+    (_e: React.MouseEvent, data: Edge) => {
       onEdgeClick(data);
       _e.stopPropagation();
     },
@@ -75,7 +81,7 @@ const Lineage = ({ entity, entityType, isPlatformLineage }: LineageProps) => {
 
   // Memoize callback for onNodeClick to prevent unnecessary re-renders
   const handleNodeClick = useCallback(
-    (_e: React.MouseEvent, node: any) => {
+    (_e: React.MouseEvent, node: Node) => {
       onNodeClick(node);
       _e.stopPropagation();
     },
@@ -109,7 +115,10 @@ const Lineage = ({ entity, entityType, isPlatformLineage }: LineageProps) => {
             className={classNames('lineage-header', {
               'lineage-header-edit-mode': isEditMode,
             })}>
-            <CustomControlsComponent />
+            <CustomControlsComponent
+              deleted={Boolean(deleted)}
+              hasEditAccess={hasEditAccess}
+            />
           </div>
         )
       }>

@@ -45,8 +45,8 @@ const StyledButton = styled((props: ToggleButtonProps) => (
   alignItems: 'center',
   gap: '4px',
   backgroundColor: theme.palette.allShades.white,
-  fontSize: '10px',
-  color: '#181d27',
+  fontSize: theme.typography.pxToRem(10),
+  color: theme.palette.text.primary,
   wordBreak: 'break-word',
   padding: '8px 16px',
 
@@ -55,7 +55,8 @@ const StyledButton = styled((props: ToggleButtonProps) => (
   },
 
   '&:hover': {
-    border: '1px solid' + ' ' + theme.palette.primary.main + ' !important',
+    border: '1px solid',
+    borderColor: theme.palette.primary.main + ' !important',
     // To show all the border on hover
     zIndex: 1,
     margin: '0',
@@ -76,7 +77,8 @@ const StyledButton = styled((props: ToggleButtonProps) => (
   },
 
   '&.highlight': {
-    border: '1px solid' + ' ' + theme.palette.primary.main + ' !important',
+    border: '1px solid',
+    borderColor: theme.palette.primary.main + ' !important',
     // To show all the border on hover
     zIndex: 1,
     margin: '0',
@@ -99,7 +101,6 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
   const { t } = useTranslation();
   const [layersAnchorEl, setLayersAnchorEl] =
     React.useState<null | HTMLElement>(null);
-  // const isLayerMenuOpen = Boolean(layersAnchorEl);
   const selectedValues = [...activeLayer, platformView];
 
   const handleLayerClick = React.useCallback(
@@ -170,6 +171,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       buttons.push(
         <StyledButton
           data-testid="lineage-layer-column-btn"
+          key={LineageLayer.ColumnLevelLineage}
           value={LineageLayer.ColumnLevelLineage}>
           {searchClassBase.getEntityIcon(EntityType.TABLE)}
           {t('label.column')}
@@ -178,6 +180,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       buttons.push(
         <StyledButton
           data-testid="lineage-layer-observability-btn"
+          key={LineageLayer.DataObservability}
           value={LineageLayer.DataObservability}>
           <DataQualityIcon />
           {t('label.observability')}
@@ -189,6 +192,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       buttons.push(
         <StyledButton
           data-testid="lineage-layer-service-btn"
+          key={LineagePlatformView.Service}
           value={LineagePlatformView.Service}>
           <ServiceView />
           {t('label.service')}
@@ -200,6 +204,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       buttons.push(
         <StyledButton
           data-testid="lineage-layer-domain-btn"
+          key={LineagePlatformView.Domain}
           value={LineagePlatformView.Domain}>
           <DomainIcon />
           {t('label.domain')}
@@ -211,6 +216,7 @@ const LineageLayers = ({ entityType, entity }: LineageLayersProps) => {
       buttons.push(
         <StyledButton
           data-testid="lineage-layer-data-product-btn"
+          key={LineagePlatformView.DataProduct}
           value={LineagePlatformView.DataProduct}>
           <DataProductIcon />
           {t('label.data-product')}

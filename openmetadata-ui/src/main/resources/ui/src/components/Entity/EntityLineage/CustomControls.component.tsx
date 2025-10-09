@@ -36,7 +36,9 @@ import { ReactComponent as SortIcon } from '../../../assets/svg/ic-sort-both.svg
 import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
+import { SERVICE_TYPES } from '../../../constants/Services.constant';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
+import { LineagePlatformView } from '../../../context/LineageProvider/LineageProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { LineageDirection } from '../../../generated/api/lineage/entityCountLineageRequest';
@@ -48,6 +50,7 @@ import { getQuickFilterQuery } from '../../../utils/ExploreUtils';
 import { getSearchNameEsQuery } from '../../../utils/Lineage/LineageUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
+import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
 import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import {
@@ -63,11 +66,15 @@ const CustomControls: FC<{
   onSearchValueChange?: (value: string) => void;
   searchValue?: string;
   queryFilterNodeIds?: string[];
+  deleted?: boolean;
+  hasEditAccess?: boolean;
 }> = ({
   nodeDepthOptions,
   onSearchValueChange,
   searchValue,
   queryFilterNodeIds,
+  deleted = false,
+  hasEditAccess = false,
 }) => {
   const { t } = useTranslation();
   const {
@@ -79,6 +86,7 @@ const CustomControls: FC<{
     onLineageConfigUpdate,
     onLineageEditClick,
     isEditMode,
+    platformView,
   } = useLineageProvider();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -341,7 +349,15 @@ const CustomControls: FC<{
 
   const settingsButton = useMemo(() => {
     let menu = null;
-    if (!activeTab || activeTab === 'lineage') {
+
+    const showEditOption =
+      hasEditAccess &&
+      !deleted &&
+      platformView === LineagePlatformView.None &&
+      entityType &&
+      !SERVICE_TYPES.includes(entityType as AssetsUnion);
+
+    if ((!activeTab || activeTab === 'lineage') && showEditOption) {
       menu = (
         <StyledMenu
           anchorEl={settingsAnchorEl}
@@ -366,6 +382,7 @@ const CustomControls: FC<{
             {t('label.edit-entity', { entity: t('label.lineage') })}
           </MenuItem>
           <MenuItem
+            disabled={isEditMode}
             key="depth"
             onClick={() => {
               setSettingsAnchorEl(null);
@@ -379,7 +396,7 @@ const CustomControls: FC<{
     }
 
     const handleClick = (event: React.MouseEvent<HTMLElement>) => {
-      if (!activeTab || activeTab === 'lineage') {
+      if ((!activeTab || activeTab === 'lineage') && showEditOption) {
         event.stopPropagation();
         setSettingsAnchorEl(event.currentTarget);
       } else {
@@ -389,11 +406,13 @@ const CustomControls: FC<{
 
     return (
       <>
-        <Tooltip arrow placement="top" title={t('label.lineage-configuration')}>
-          <StyledIconButton size="large" onClick={handleClick}>
-            <SettingsOutlined />
-          </StyledIconButton>
-        </Tooltip>
+        <StyledIconButton
+          data-testid="lineage-config"
+          size="large"
+          onClick={handleClick}>
+          <SettingsOutlined />
+        </StyledIconButton>
+
         {menu}
       </>
     );
@@ -403,6 +422,9 @@ const CustomControls: FC<{
     lineageConfig,
     isEditMode,
     onLineageEditClick,
+    deleted,
+    platformView,
+    entityType,
   ]);
 
   return (
@@ -442,7 +464,10 @@ const CustomControls: FC<{
                 ? t('label.export-as-type', { type: t('label.csv') })
                 : t('label.export')
             }>
-            <StyledIconButton size="large" onClick={handleExportClick}>
+            <StyledIconButton
+              disabled={isEditMode}
+              size="large"
+              onClick={handleExportClick}>
               <DownloadIcon />
             </StyledIconButton>
           </Tooltip>

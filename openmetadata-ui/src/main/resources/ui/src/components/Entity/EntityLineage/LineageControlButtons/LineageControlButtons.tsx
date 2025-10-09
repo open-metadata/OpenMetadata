@@ -12,11 +12,11 @@
  */
 import { ArrowsAltOutlined, ShrinkOutlined } from '@ant-design/icons';
 import {
-  Button,
   MenuItem,
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
+  useTheme,
 } from '@mui/material';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
@@ -42,6 +42,7 @@ const LineageControlButtons: FC<{
   miniMapVisible?: boolean;
 }> = ({ onToggleMiniMap, miniMapVisible = false }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [lineageViewOptionsAnchorEl, setLineageViewOptionsAnchorEl] =
     useState<null | HTMLElement>(null);
 
@@ -113,23 +114,27 @@ const LineageControlButtons: FC<{
         color="primary"
         sx={{
           /* Shadows/shadow-xs */
-          boxShadow: '0 1px 2px 0 rgba(10, 13, 18, 0.05)',
-          background: '#fff',
+          boxShadow: theme.shadows[1],
+          background: theme.palette.background.paper,
 
           svg: {
-            height: 16,
-            width: 16,
+            height: theme.spacing(4),
+            width: theme.spacing(4),
           },
         }}>
-        <ToggleButton
-          data-testid="fit-screen"
-          title={t('label.fit-to-screen')}
-          value="fit-view"
-          onClick={(event) =>
-            setLineageViewOptionsAnchorEl(event.currentTarget)
-          }>
-          <FitViewOptionsIcon />
-        </ToggleButton>
+        <Tooltip
+          arrow
+          placement="top"
+          title={t('label.lineage-view-option-plural')}>
+          <ToggleButton
+            data-testid="fit-screen"
+            value="fit-view"
+            onClick={(event) =>
+              setLineageViewOptionsAnchorEl(event.currentTarget)
+            }>
+            <FitViewOptionsIcon />
+          </ToggleButton>
+        </Tooltip>
 
         <StyledMenu
           anchorEl={lineageViewOptionsAnchorEl}
@@ -170,41 +175,50 @@ const LineageControlButtons: FC<{
         </StyledMenu>
 
         {isColumnLayerActive && !isEditMode && (
-          <Button
-            className="lineage-button"
-            data-testid="expand-column"
+          <Tooltip
+            arrow
+            placement="top"
             title={
               expandAllColumns ? t('label.collapse-all') : t('label.expand-all')
-            }
-            onClick={toggleColumnView}>
-            {expandAllColumns ? <ShrinkOutlined /> : <ArrowsAltOutlined />}
-          </Button>
+            }>
+            <ToggleButton
+              className="lineage-button"
+              data-testid="expand-column"
+              value="expand-column"
+              onClick={toggleColumnView}>
+              {expandAllColumns ? <ShrinkOutlined /> : <ArrowsAltOutlined />}
+            </ToggleButton>
+          </Tooltip>
         )}
 
-        <ToggleButton
-          data-testid="toggle-mini-map"
-          selected={miniMapVisible}
-          title={t('label.mini-map')}
-          value="mini-map"
-          onClick={onToggleMiniMap}>
-          <MapIcon />
-        </ToggleButton>
+        <Tooltip arrow placement="top" title={t('label.mind-map')}>
+          <ToggleButton
+            data-testid="toggle-mind-map"
+            selected={miniMapVisible}
+            value="mind-map"
+            onClick={onToggleMiniMap}>
+            <MapIcon />
+          </ToggleButton>
+        </Tooltip>
 
-        <ToggleButton
-          data-testid="zoom-in"
-          title={t('label.zoom-in')}
-          value="zoom-in"
-          onClick={handleZoomIn}>
-          <ZoomInIcon />
-        </ToggleButton>
+        <Tooltip arrow placement="top" title={t('label.zoom-in')}>
+          <ToggleButton
+            data-testid="zoom-in"
+            value="zoom-in"
+            onClick={handleZoomIn}>
+            <ZoomInIcon />
+          </ToggleButton>
+        </Tooltip>
 
-        <ToggleButton
-          data-testid="zoom-out"
-          title={t('label.zoom-out')}
-          value="zoom-out"
-          onClick={handleZoomOut}>
-          <ZoomOutIcon />
-        </ToggleButton>
+        <Tooltip arrow placement="top" title={t('label.zoom-out')}>
+          <ToggleButton
+            data-testid="zoom-out"
+            value="zoom-out"
+            onClick={handleZoomOut}>
+            <ZoomOutIcon />
+          </ToggleButton>
+        </Tooltip>
+
         <Tooltip
           arrow
           placement="top"
