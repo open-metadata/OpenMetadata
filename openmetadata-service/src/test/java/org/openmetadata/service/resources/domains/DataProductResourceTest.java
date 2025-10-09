@@ -8,6 +8,7 @@ import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
+import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
@@ -32,6 +33,7 @@ import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -590,5 +592,40 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
     assertEquals(2, removeResult.getNumberOfRowsProcessed());
     assertEquals(2, removeResult.getNumberOfRowsPassed());
     assertEquals(0, removeResult.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a data product with APPROVED status by default
+    CreateDataProduct createDataProduct = createRequest(getEntityName(test));
+    DataProduct dataProduct = createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
+
+    // Verify the data product is created with UNPROCESSED status
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        dataProduct.getEntityStatus(),
+        "DataProduct should be created with UNPROCESSED status");
+
+    // Update the entityStatus using PATCH operation
+    String originalJson = JsonUtils.pojoToJson(dataProduct);
+    dataProduct.setEntityStatus(EntityStatus.IN_REVIEW);
+
+    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
+    DataProduct updatedDataProduct =
+        patchEntityAndCheck(dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedDataProduct.getEntityStatus(),
+        "DataProduct should be updated to IN_REVIEW status");
+
+    // Get the data product again to confirm the status is persisted
+    DataProduct retrievedDataProduct = getEntity(updatedDataProduct.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedDataProduct.getEntityStatus(),
+        "Retrieved data product should maintain IN_REVIEW status");
   }
 }

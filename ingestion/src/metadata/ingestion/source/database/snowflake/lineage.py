@@ -13,7 +13,7 @@ Snowflake lineage module
 """
 
 import traceback
-from typing import Dict, Iterator, List
+from typing import Iterator
 
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.source.database.lineage_source import LineageSource
@@ -22,10 +22,10 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_SQL_STATEMENT,
 )
 from metadata.ingestion.source.database.snowflake.query_parser import (
+    SNOWFLAKE_QUERY_BATCH_SIZE,
     SnowflakeQueryParserSource,
 )
 from metadata.ingestion.source.database.stored_procedures_mixin import (
-    QueryByProcedure,
     StoredProcedureLineageMixin,
 )
 from metadata.utils.helpers import get_start_and_end
@@ -55,21 +55,17 @@ class SnowflakeLineageSource(
 
     stored_procedure_query = SNOWFLAKE_GET_STORED_PROCEDURE_QUERIES
 
-    def get_stored_procedure_queries_dict(self) -> Dict[str, List[QueryByProcedure]]:
+    def get_stored_procedure_sql_statement(self) -> str:
         """
-        Return the dictionary associating stored procedures to the
-        queries they triggered
+        Return the SQL statement to get the stored procedure queries
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         query = self.stored_procedure_query.format(
             start_date=start,
             account_usage=self.service_connection.accountUsageSchema,
         )
-        queries_dict = self.procedure_queries_dict(
-            query=query,
-        )
 
-        return queries_dict
+        return query
 
     def yield_table_query(self) -> Iterator[TableQuery]:
         """
@@ -77,26 +73,48 @@ class SnowflakeLineageSource(
         yield a TableQuery with query parsing info
         """
         for engine in self.get_engine():
-            rows = []
-            with engine.connect() as conn:
-                rows = conn.execution_options(
-                    stream_results=True, max_row_buffer=100
-                ).execute(
-                    self.get_sql_statement(start_time=self.start, end_time=self.end)
+            offset = 0
+            total_fetched = 0
+            max_results = self.source_config.resultLimit
+            while total_fetched < max_results:
+                batch_size = min(
+                    SNOWFLAKE_QUERY_BATCH_SIZE, max_results - total_fetched
                 )
-            # exit from active connection after fetching rows & during
-            # further process of `yield_query_lineage`
-            for row in rows:
-                query_dict = dict(row)
-                query_dict.update({k.lower(): v for k, v in query_dict.items()})
-                try:
-                    yield TableQuery(
-                        dialect=self.dialect.value,
-                        query=query_dict["query_text"],
-                        databaseName=self.get_database_name(query_dict),
-                        serviceName=self.config.serviceName,
-                        databaseSchema=self.get_schema_name(query_dict),
+                rows = []
+                row_count = 0
+                with engine.connect() as conn:
+                    rows = conn.execution_options(
+                        stream_results=True, max_row_buffer=100
+                    ).execute(
+                        self.get_sql_statement(
+                            start_time=self.start,
+                            end_time=self.end,
+                            offset=offset,
+                            limit=batch_size,
+                        )
                     )
-                except Exception as exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Error processing query_dict {query_dict}: {exc}")
+                for row in rows:
+                    query_dict = dict(row)
+                    query_dict.update({k.lower(): v for k, v in query_dict.items()})
+                    row_count += 1
+                    try:
+                        yield TableQuery(
+                            dialect=self.dialect.value,
+                            query=query_dict["query_text"],
+                            databaseName=self.get_database_name(query_dict),
+                            serviceName=self.config.serviceName,
+                            databaseSchema=self.get_schema_name(query_dict),
+                        )
+                    except Exception as exc:
+                        logger.debug(traceback.format_exc())
+                        logger.warning(
+                            f"Error processing query_dict {query_dict}: {exc}"
+                        )
+                total_fetched += row_count
+                if row_count < batch_size:
+                    break
+                offset += batch_size
+                logger.info(
+                    f"Fetching next page with offset {offset} (fetched {total_fetched}/{max_results}) "
+                    f"for lineage queries"
+                )

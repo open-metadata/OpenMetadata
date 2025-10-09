@@ -29,7 +29,7 @@ import {
   getSortField,
   getSortOrder,
 } from '../../../../constants/Widgets.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../../enums/common.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
 import { Domain } from '../../../../generated/entity/domains/domain';
 import {
@@ -131,7 +131,9 @@ const DomainsWidget = ({
         actionButtonLink={ROUTES.DOMAIN}
         actionButtonText={t('label.explore-domain')}
         description={t('message.domains-no-data-message')}
-        icon={<DomainNoDataPlaceholder />}
+        icon={
+          <DomainNoDataPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />
+        }
         title={t('label.no-domains-yet')}
       />
     ),
@@ -148,6 +150,7 @@ const DomainsWidget = ({
                 'domain-card-full': isFullSize,
                 'p-0': !isFullSize,
               })}
+              data-testid={`domain-card-${domain.id || domain.name}`}
               key={domain.id}
               onClick={() => handleDomainClick(domain)}>
               {isFullSize ? (

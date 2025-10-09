@@ -239,7 +239,7 @@ public class WebsocketNotificationHandler {
 
   public static void sendCsvImportFailedNotification(
       String jobId, SecurityContext securityContext, String errorMessage) {
-    CSVExportMessage message = new CSVExportMessage(jobId, "FAILED", null, errorMessage);
+    CSVImportMessage message = new CSVImportMessage(jobId, "FAILED", null, errorMessage);
     String jsonMessage = JsonUtils.pojoToJson(message);
     UUID userId = getUserIdFromSecurityContext(securityContext);
     if (userId != null) {

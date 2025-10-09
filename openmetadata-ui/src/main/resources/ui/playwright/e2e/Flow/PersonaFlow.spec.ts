@@ -26,6 +26,7 @@ import { validateFormNameFieldInput } from '../../utils/form';
 import {
   checkPersonaInProfile,
   navigateToPersonaSettings,
+  navigateToPersonaWithPagination,
   removePersonaDefault,
   setPersonaAsDefault,
   updatePersonaDisplayName,
@@ -91,7 +92,9 @@ test.describe.serial('Persona operations', () => {
 
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
+    const personaListResponse = page.waitForResponse(`/api/v1/personas?*`);
     await settingClick(page, GlobalSettingOptions.PERSONA);
+    await personaListResponse;
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   });
@@ -148,9 +151,7 @@ test.describe.serial('Persona operations', () => {
       )}?fields=users`
     );
 
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await personaResponse;
 
@@ -182,9 +183,7 @@ test.describe.serial('Persona operations', () => {
   test('Persona update description flow should work properly', async ({
     page,
   }) => {
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await page.getByTestId('edit-description').click();
 
@@ -208,9 +207,7 @@ test.describe.serial('Persona operations', () => {
   });
 
   test('Persona rename flow should work properly', async ({ page }) => {
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await updatePersonaDisplayName({ page, displayName: 'Test Persona' });
 
@@ -229,9 +226,7 @@ test.describe.serial('Persona operations', () => {
   });
 
   test('Remove users in persona should work properly', async ({ page }) => {
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await page.waitForLoadState('networkidle');
     await page.getByRole('tab', { name: 'Users' }).click();
@@ -259,9 +254,7 @@ test.describe.serial('Persona operations', () => {
   });
 
   test('Delete persona should work properly', async ({ page }) => {
-    await page
-      .getByTestId(`persona-details-card-${PERSONA_DETAILS.name}`)
-      .click();
+    await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
 
     await page.click('[data-testid="manage-button"]');
 

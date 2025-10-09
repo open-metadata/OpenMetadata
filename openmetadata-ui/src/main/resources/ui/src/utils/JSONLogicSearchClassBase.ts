@@ -17,12 +17,14 @@ import {
   FieldOrGroup,
   Fields,
   ListItem,
-  ListValues,
   Operators,
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
-import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
+import {
+  RANGE_FIELD_OPERATORS,
+  TEXT_FIELD_OPERATORS,
+} from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
@@ -55,6 +57,14 @@ class JSONLogicSearchClassBase {
         text: {
           operators: ['like', 'not_like', 'regexp'],
         },
+        multiselect: {
+          operators: [
+            ...(this.baseConfig.types.multiselect?.widgets?.multiselect
+              ?.operators || []),
+            'array_contains',
+            'array_not_contains',
+          ],
+        },
       },
       // Limits source to user input values, not other fields
       valueSources: ['value'],
@@ -66,11 +76,22 @@ class JSONLogicSearchClassBase {
         text: {
           operators: ['like', 'not_like', 'regexp'],
         },
+        select: {
+          operators: [
+            ...(this.baseConfig.types.select?.widgets?.select?.operators || []),
+            'array_contains',
+            'array_not_contains',
+          ],
+        },
       },
       valueSources: ['value'],
     },
     text: {
       ...this.baseConfig.types.text,
+      valueSources: ['value'],
+    },
+    date: {
+      ...this.baseConfig.types.date,
       valueSources: ['value'],
     },
   };
@@ -99,8 +120,19 @@ class JSONLogicSearchClassBase {
     text: {
       ...this.baseConfig.widgets.text,
     },
+    date: {
+      ...this.baseConfig.widgets.date,
+      jsonLogic: function (val) {
+        // Convert date to Unix timestamp (milliseconds)
+        return this.utils.moment.utc(val).valueOf();
+      },
+      jsonLogicImport: function (val) {
+        // Check if valueFormat indicates timestamp
+        return this.utils.moment.utc(val).toISOString();
+      },
+    },
   };
-  configOperators = {
+  configOperators: Config['operators'] = {
     ...this.baseConfig.operators,
     like: {
       ...this.baseConfig.operators.like,
@@ -141,7 +173,6 @@ class JSONLogicSearchClassBase {
       label: t('label.is-entity', { entity: t('label.reviewer') }),
       labelForFormat: t('label.is-entity', { entity: t('label.reviewer') }),
       cardinality: 0,
-      unary: true,
       jsonLogic: 'isReviewer',
       sqlOp: 'IS REVIEWER',
     },
@@ -149,13 +180,27 @@ class JSONLogicSearchClassBase {
       label: t('label.is-entity', { entity: t('label.owner') }),
       labelForFormat: t('label.is-entity', { entity: t('label.owner') }),
       cardinality: 0,
-      unary: true,
       jsonLogic: 'isOwner',
       sqlOp: 'IS OWNER',
     },
+    array_contains: {
+      label: t('label.contain-plural'),
+      labelForFormat: t('label.contain-plural'),
+      valueTypes: ['multiselect', 'select'],
+      cardinality: 1,
+      valueSources: ['value'],
+      jsonLogic: 'contains',
+    },
+    array_not_contains: {
+      label: t('label.not-contain-plural'),
+      labelForFormat: t('label.not-contain-plural'),
+      valueTypes: ['multiselect', 'select'],
+      valueSources: ['value'],
+      reversedOp: 'array_contains',
+    },
   };
 
-  mapFields: Record<string, FieldOrGroup>;
+  private _mapFieldsCache?: Record<string, FieldOrGroup>;
 
   defaultSelectOperators = [
     'select_equals',
@@ -166,8 +211,12 @@ class JSONLogicSearchClassBase {
     'is_not_null',
   ];
 
-  constructor() {
-    this.mapFields = {
+  public get mapFields(): Record<string, FieldOrGroup> {
+    if (this._mapFieldsCache) {
+      return this._mapFieldsCache;
+    }
+
+    this._mapFieldsCache = {
       [EntityReferenceFields.SERVICE]: {
         label: t('label.service'),
         type: 'select',
@@ -390,7 +439,35 @@ class JSONLogicSearchClassBase {
           useAsyncSearch: true,
         },
       },
+      [EntityReferenceFields.UPDATED_AT]: {
+        label: t('label.updated-on'),
+        type: 'date',
+        mainWidgetProps: this.mainWidgetProps,
+        defaultOperator: 'between',
+        operators: [
+          ...RANGE_FIELD_OPERATORS,
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
+      },
+      [EntityReferenceFields.VERSION]: {
+        label: t('label.version'),
+        type: 'number',
+        mainWidgetProps: this.mainWidgetProps,
+        operators: [
+          'equal',
+          'not_equal',
+          'less',
+          'less_or_equal',
+          'greater',
+          'greater_or_equal',
+        ],
+      },
     };
+
+    return this._mapFieldsCache;
   }
 
   public getMapFields = () => {
@@ -508,7 +585,6 @@ class JSONLogicSearchClassBase {
     entitySearchIndex = [SearchIndex.TABLE],
   }: {
     entitySearchIndex?: Array<SearchIndex>;
-    tierOptions?: Promise<ListValues>;
   }) => {
     const fieldsConfig = {
       ...this.getCommonConfig(),
@@ -552,19 +628,82 @@ class JSONLogicSearchClassBase {
   };
 
   public getQbConfigs: (
-    tierOptions: Promise<ListValues>,
     entitySearchIndex?: Array<SearchIndex>,
     isExplorePage?: boolean
-  ) => Config = (tierOptions, entitySearchIndex, isExplorePage) => {
+  ) => Config = (entitySearchIndex, isExplorePage) => {
     return {
       ...this.getInitialConfigWithoutFields(isExplorePage),
       fields: {
         ...this.getQueryBuilderFields({
           entitySearchIndex,
-          tierOptions,
         }),
       },
     };
+  };
+
+  // Custom handling for array_not_contains operator
+  // Check the tree structure to determine if array_not_contains was used
+  // Return the rule with negation applied at group level
+  getNegativeQueryForNotContainsReverserOperation = (
+    logic: Record<string, unknown>
+  ) => {
+    const processNotContains = (
+      logic: Record<string, unknown>
+    ): Record<string, unknown> | unknown => {
+      if (!logic || typeof logic !== 'object') {
+        return logic;
+      }
+
+      // Check if this is a "some" operation with nested "!" and "contains"
+      // This pattern is generated when array_not_contains is used with reversedOp
+      if (logic.some && Array.isArray(logic.some)) {
+        const [variable, condition] = logic.some as [
+          unknown,
+          Record<string, unknown>
+        ];
+
+        // Check if the condition has a negated contains (indicating array_not_contains was used)
+        if (
+          condition &&
+          condition['!'] &&
+          typeof condition['!'] === 'object' &&
+          (condition['!'] as Record<string, unknown>).contains
+        ) {
+          // Transform to NOT around the entire some operation
+          return {
+            '!': {
+              some: [
+                variable,
+                {
+                  contains: (condition['!'] as Record<string, unknown>)
+                    .contains,
+                },
+              ],
+            },
+          };
+        }
+      }
+
+      // Recursively process nested logic
+      if (logic.and && Array.isArray(logic.and)) {
+        return {
+          and: logic.and.map((item: unknown) =>
+            processNotContains(item as Record<string, unknown>)
+          ),
+        };
+      }
+      if (logic.or && Array.isArray(logic.or)) {
+        return {
+          or: logic.or.map((item: unknown) =>
+            processNotContains(item as Record<string, unknown>)
+          ),
+        };
+      }
+
+      return logic;
+    };
+
+    return processNotContains(logic);
   };
 }
 

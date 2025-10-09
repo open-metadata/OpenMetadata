@@ -1,0 +1,47 @@
+{
+    "$id": "https://open-metadata.org/schema/entity/automations/response/queryRunnerResponse.json",
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "QueryRunnerResponse",
+    "javaType": "org.openmetadata.schema.entity.automations.QueryRunnerResponse",
+    "description": "Query Runner Response",
+    "type": "object",
+    "definitions": {
+        "statusType": {
+            "javaType": "org.openmetadata.schema.entity.automations.QueryRunnerStatus",
+            "description": "Enum defining possible Query Runner status",
+            "type": "string",
+            "enum": [
+                "Successful",
+                "Failed",
+                "Running"
+            ]
+        }
+    },
+    "properties": {
+        "status": {
+            "description": "Status of the query execution",
+            "$ref": "#/definitions/statusType"
+        },
+        "message": {
+            "description": "Error message in case of failure",
+            "type": "string"
+        },
+        "errorLog": {
+            "description": "Detailed error log in case of failure",
+            "type": "string"
+        },
+        "duration": {
+            "description": "Duration of the query execution in seconds",
+            "type": "number"
+        },
+        "results": {
+            "description": "Results of the query execution",
+            "$ref": "../../data/table.json#/definitions/tableData"
+        },
+        "executedQuery": {
+            "description": "The actual query that was executed (may be transpiled or modified from the original)",
+            "type": "string"
+        }
+    },
+    "additionalProperties": false
+}

@@ -74,6 +74,8 @@ public interface MigrationProcess {
 
   String getPostDDLScriptFilePath();
 
+  String getMigrationsDir();
+
   // Handle Non-transactional supported SQLs here Example changes in table struct (DDL
   Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration);
 

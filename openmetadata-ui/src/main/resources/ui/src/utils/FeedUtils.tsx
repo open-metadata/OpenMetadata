@@ -149,6 +149,10 @@ export const buildMentionLink = (entityType: string, entityFqn: string) => {
     const classificationFqn = Fqn.split(entityFqn);
 
     return `${document.location.protocol}//${document.location.host}/tags/${classificationFqn[0]}`;
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return `${document.location.protocol}//${
+      document.location.host
+    }/knowledge-center/${getEncodedFqn(entityFqn)}`;
   }
 
   return `${document.location.protocol}//${
@@ -498,7 +502,11 @@ export const updateThreadData = async (
   }
 };
 
-export const prepareFeedLink = (entityType: string, entityFQN: string) => {
+export const prepareFeedLink = (
+  entityType: string,
+  entityFQN: string,
+  subTab?: string
+) => {
   const withoutFeedEntities = [
     EntityType.WEBHOOK,
     EntityType.TYPE,
@@ -508,7 +516,9 @@ export const prepareFeedLink = (entityType: string, entityFQN: string) => {
   const entityLink = entityUtilClassBase.getEntityLink(entityType, entityFQN);
 
   if (!withoutFeedEntities.includes(entityType as EntityType)) {
-    return `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+    const activityFeedLink = `${entityLink}/${TabSpecificField.ACTIVITY_FEED}`;
+
+    return subTab ? `${activityFeedLink}/${subTab}` : activityFeedLink;
   } else {
     return entityLink;
   }

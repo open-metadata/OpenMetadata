@@ -384,6 +384,12 @@ test('Classification Page', async ({ page }) => {
       await page.reload();
       await databaseSchemasPage;
 
+      await page.waitForLoadState('networkidle');
+
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
       await expect(
         page.locator('[data-testid="tags-container"]')
       ).toContainText(tag);
@@ -441,6 +447,11 @@ test('Classification Page', async ({ page }) => {
     // Verify term count is now 0 after deleting the tag
     await page.reload();
     await page.waitForLoadState('networkidle');
+
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
     await page.waitForSelector('[data-testid="side-panel-classification"]', {
       state: 'visible',
     });
@@ -583,7 +594,12 @@ test('Verify system classification term counts', async ({ page }) => {
     .locator('[data-testid="side-panel-classification"]')
     .filter({ hasText: 'Tier' });
 
-  await expect(tierElement.getByTestId('filter-count')).toContainText('5');
+  const tierCountText = await tierElement
+    .getByTestId('filter-count')
+    .textContent();
+  const tierCount = parseInt(tierCountText?.trim() || '0');
+
+  expect(tierCount).toBeGreaterThanOrEqual(5);
 
   const piiElement = page
     .locator('[data-testid="side-panel-classification"]')

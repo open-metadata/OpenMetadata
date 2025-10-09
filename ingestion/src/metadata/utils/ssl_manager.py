@@ -224,11 +224,17 @@ class SSLManager:
                 "ssl.key.location": getattr(self, "key_consumer_config", None),
                 "ssl.certificate.location": getattr(self, "cert_consumer_config", None),
             }
-        connection.schemaRegistryConfig["ssl.ca.location"] = self.ca_file_path
-        connection.schemaRegistryConfig["ssl.key.location"] = self.key_file_path
-        connection.schemaRegistryConfig[
-            "ssl.certificate.location"
-        ] = self.cert_file_path
+        if connection.schemaRegistrySSL:
+            connection.schemaRegistryConfig["ssl.ca.location"] = getattr(
+                self, "ca_schema_registry", None
+            )
+
+            connection.schemaRegistryConfig["ssl.key.location"] = getattr(
+                self, "key_schema_registry", None
+            )
+            connection.schemaRegistryConfig["ssl.certificate.location"] = getattr(
+                self, "cert_schema_registry", None
+            )
         return connection
 
     @setup_ssl.register(CassandraConnection)

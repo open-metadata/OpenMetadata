@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -77,13 +78,19 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
 
   @Override
   public List<EntityReference> getDomains() {
-    if (nullOrEmpty(parentEntities)) {
-      return null;
-    }
     List<EntityReference> domains = new ArrayList<>();
-    for (EntityInterface parent : parentEntities) {
-      if (parent.getDomains() != null) {
-        domains = mergedInheritedEntityRefs(domains, parent.getDomains());
+
+    // Add assigned domains at the time of entity creation
+    if (entity != null && !nullOrEmpty(entity.getDomains())) {
+      domains.addAll(entity.getDomains());
+    }
+
+    // Add inherited domains from parent entities
+    if (!nullOrEmpty(parentEntities)) {
+      for (EntityInterface parent : parentEntities) {
+        if (parent.getDomains() != null) {
+          domains = mergedInheritedEntityRefs(domains, parent.getDomains());
+        }
       }
     }
     return domains;
@@ -124,6 +131,7 @@ public class CreateResourceContext<T extends EntityInterface> implements Resourc
             case Entity.GLOSSARY_TERM -> List.of(((GlossaryTerm) entity).getGlossary());
             case Entity.TAG -> List.of(((Tag) entity).getClassification());
             case Entity.DATA_PRODUCT -> entity.getDomains();
+            case Entity.TEAM -> ((Team) entity).getParents();
             default -> null;
           };
 

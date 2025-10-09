@@ -227,7 +227,9 @@ describe('CustomizeMyData component', () => {
 
     const saveButton = screen.getByTestId('save-button');
 
-    fireEvent.click(saveButton);
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
 
     expect(mockProps.onSaveLayout).toHaveBeenCalledTimes(1);
 

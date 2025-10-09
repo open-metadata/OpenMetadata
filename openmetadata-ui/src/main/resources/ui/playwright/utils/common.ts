@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Browser, expect, Page, request } from '@playwright/test';
+import { Browser, expect, Locator, Page, request } from '@playwright/test';
 import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
@@ -55,10 +55,15 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-export const redirectToHomePage = async (page: Page) => {
+export const redirectToHomePage = async (
+  page: Page,
+  waitForNetworkIdle = true
+) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
-  await page.waitForLoadState('networkidle');
+  if (waitForNetworkIdle) {
+    await page.waitForLoadState('networkidle');
+  }
 };
 
 export const redirectToExplorePage = async (page: Page) => {
@@ -68,9 +73,25 @@ export const redirectToExplorePage = async (page: Page) => {
 };
 
 export const removeLandingBanner = async (page: Page) => {
-  const widgetResponse = page.waitForResponse('/api/v1/search/query?q=**');
-  await page.click('[data-testid="welcome-screen-close-btn"]');
-  await widgetResponse;
+  try {
+    const welcomePageCloseButton = await page
+      .waitForSelector('[data-testid="welcome-screen-close-btn"]', {
+        state: 'visible',
+        timeout: 5000,
+      })
+      .catch(() => {
+        // Do nothing if the welcome banner does not exist
+        return;
+      });
+
+    // Close the welcome banner if it exists
+    if (welcomePageCloseButton?.isVisible()) {
+      await welcomePageCloseButton.click();
+    }
+  } catch {
+    // Do nothing if the welcome banner does not exist
+    return;
+  }
 };
 
 export const createNewPage = async (browser: Browser) => {
@@ -168,22 +189,31 @@ export const assignDomain = async (
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const searchDomain = page.waitForResponse(
     `/api/v1/search/query?q=*${encodeURIComponent(domain.name)}*`
   );
+
   await page
     .getByTestId('domain-selectable-tree')
     .getByTestId('searchbar')
     .fill(domain.name);
+
   await searchDomain;
 
-  await page.getByTestId(`tag-${domain.fullyQualifiedName}`).click();
+  // Wait for the tag element to be visible and ensure page is still valid
+  const tagSelector = page.getByTestId(`tag-${domain.fullyQualifiedName}`);
+  await tagSelector.waitFor({ state: 'visible' });
+  await tagSelector.click();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -219,7 +249,10 @@ export const updateDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
@@ -234,7 +267,8 @@ export const updateDomain = async (
 
 export const removeDomain = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  showDashPlaceholder = true
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -245,11 +279,16 @@ export const removeDomain = async (
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('domain-selectable-tree')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('No Domains');
+  await expect(page.getByTestId('no-domain-text')).toContainText(
+    showDashPlaceholder ? '--' : 'No Domains'
+  );
 };
 
 export const assignDataProduct = async (
@@ -279,13 +318,20 @@ export const assignDataProduct = async (
   await searchDataProduct;
   await page.getByTestId(`tag-${dataProduct.fullyQualifiedName}`).click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
 
   await expect(
@@ -318,13 +364,20 @@ export const removeDataProduct = async (
     .locator('svg')
     .click();
 
-  await expect(page.getByTestId('saveAssociatedTag')).toBeEnabled();
+  await expect(
+    page
+      .getByTestId('data-product-dropdown-actions')
+      .getByTestId('saveAssociatedTag')
+  ).toBeEnabled();
 
   const patchReq = page.waitForResponse(
     (req) => req.request().method() === 'PATCH'
   );
 
-  await page.getByTestId('saveAssociatedTag').click();
+  await page
+    .getByTestId('data-product-dropdown-actions')
+    .getByTestId('saveAssociatedTag')
+    .click();
   await patchReq;
 
   await expect(
@@ -366,6 +419,23 @@ export const generateRandomUsername = (prefix = '') => {
   };
 };
 
+export const verifyDomainLinkInCard = async (
+  entityCard: Locator,
+  domain: Domain['responseData']
+) => {
+  const domainLink = entityCard.getByTestId('domain-link').filter({
+    hasText: domain.displayName,
+  });
+
+  await expect(domainLink).toBeVisible();
+  await expect(domainLink).toContainText(domain.displayName);
+
+  const href = await domainLink.getAttribute('href');
+
+  expect(href).toContain('/domain/');
+  await expect(domainLink).toBeEnabled();
+};
+
 export const verifyDomainPropagation = async (
   page: Page,
   domain: Domain['responseData'],
@@ -373,12 +443,16 @@ export const verifyDomainPropagation = async (
 ) => {
   await page.getByTestId('searchBox').fill(childFqnSearchTerm);
   await page.getByTestId('searchBox').press('Enter');
+  await page.waitForSelector(`[data-testid*="table-data-card"]`);
 
-  await expect(
-    page
-      .getByTestId(`table-data-card_${childFqnSearchTerm}`)
-      .getByTestId('domains-link')
-  ).toContainText(domain.displayName);
+  const entityCard = page.getByTestId(`table-data-card_${childFqnSearchTerm}`);
+
+  await expect(entityCard).toBeVisible();
+
+  const domainLink = entityCard.getByTestId('domain-link').first();
+
+  await expect(domainLink).toBeVisible();
+  await expect(domainLink).toContainText(domain.displayName);
 };
 
 export const replaceAllSpacialCharWith_ = (text: string) => {
@@ -461,5 +535,46 @@ export const executeWithRetry = async <T>(
         break;
       }
     }
+  }
+};
+
+export const readElementInListWithScroll = async (
+  page: Page,
+  locator: Locator,
+  hierarchyElementLocator: Locator
+) => {
+  const element = locator;
+
+  // Reset scroll position to top before starting pagination
+  await hierarchyElementLocator.hover();
+  await page.mouse.wheel(0, -99999);
+
+  await page.waitForTimeout(1000);
+
+  // Retry mechanism for pagination
+  let elementCount = await element.count();
+  let retryCount = 0;
+  const maxRetries = 10;
+
+  while (elementCount === 0 && retryCount < maxRetries) {
+    await hierarchyElementLocator.hover();
+    await page.mouse.wheel(0, 1000);
+    await page.waitForTimeout(500);
+
+    // Create fresh locator and check if the article is now visible after this retry
+    const freshArticle = locator;
+    const count = await freshArticle.count();
+
+    // Check if the article is now visible after this retry
+    elementCount = count;
+
+    // If we found the element, validate it and break out of the loop
+    if (count > 0) {
+      await expect(freshArticle).toBeVisible();
+
+      return; // Exit the function early since we found and validated the article
+    }
+
+    retryCount++;
   }
 };
