@@ -65,6 +65,7 @@ export interface DataQualityTabProps {
   pagingData?: NextPreviousProps;
   removeFromTestSuite?: {
     testSuite: TestSuite;
+    isAllowed: boolean;
   };
   showPagination?: boolean;
   breadcrumbData?: TitleBreadcrumbProps['titleLinks'];

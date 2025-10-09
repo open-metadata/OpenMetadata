@@ -495,6 +495,9 @@ test.describe('User Profile Feed Interactions', () => {
     // Click with force to handle pointer event interception
     await userNameElement.click({ force: true });
 
+    await userDetailsResponse;
+    await userFeedResponse;
+
     const [response] = await Promise.all([
       userDetailsResponse,
       userFeedResponse,
@@ -947,7 +950,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
   });
 });
 
-test.describe('User Profile Persona Interactions', () => {
+test.describe.serial('User Profile Persona Interactions', () => {
   test('Should add, remove, and navigate to persona pages for Personas section', async ({
     adminPage,
   }) => {
@@ -1026,6 +1029,44 @@ test.describe('User Profile Persona Interactions', () => {
 
     // Wait for the persona card to be visible
     await adminPage.waitForSelector('[data-testid="persona-details-card"]');
+
+    // First, add some personas to the user so we can select a default persona
+    await test.step('Add personas to user profile first', async () => {
+      // Click edit button for Personas section (regular personas, not default)
+      await adminPage
+        .locator('[data-testid="edit-user-persona"]')
+        .first()
+        .click();
+
+      // Wait for persona popover and select multiple personas
+      await adminPage.waitForSelector('[data-testid="persona-select-list"]');
+      await adminPage.locator('[data-testid="persona-select-list"]').click();
+
+      // Wait for dropdown to open and options to be visible
+      await adminPage.waitForSelector('.ant-select-dropdown', {
+        state: 'visible',
+      });
+
+      // Select multiple personas - try test IDs first, fallback to role selectors
+      const persona1OptionTestId = adminPage.getByTestId(
+        `${persona1.data.displayName}-option`
+      );
+
+      await persona1OptionTestId.click();
+
+      const persona2OptionTestId = adminPage.getByTestId(
+        `${persona2.data.displayName}-option`
+      );
+
+      await persona2OptionTestId.click();
+
+      const personaEditResponse = adminPage.waitForResponse('/api/v1/users/*');
+      // Save the changes
+      await adminPage
+        .locator('[data-testid="user-profile-persona-edit-save"]')
+        .click();
+      await personaEditResponse;
+    });
 
     // Test adding default persona
     await test.step('Add default persona to user profile', async () => {
