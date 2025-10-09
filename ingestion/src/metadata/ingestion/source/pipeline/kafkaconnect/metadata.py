@@ -599,11 +599,23 @@ class KafkaconnectSource(PipelineServiceSource):
                 f"for pattern: {database_server_name}.*"
             )
 
-            # List topics from the configured messaging service only
+            # Build params for topic query
+            params = {}
+            if self.service_connection.messagingServiceName:
+                # Filter by specific service if configured
+                params["service"] = self.service_connection.messagingServiceName
+                logger.debug(
+                    f"Searching topics in service: {self.service_connection.messagingServiceName}"
+                )
+            else:
+                # Search all messaging services
+                logger.debug("Searching topics across all messaging services")
+
+            # List topics from messaging service(s)
             topics_list = self.metadata.list_entities(
                 entity=Topic,
                 fields=["name", "fullyQualifiedName", "service"],
-                params={"service": self.service_connection.messagingServiceName},
+                params=params if params else None,
             ).entities
 
             # Filter topics that match the CDC naming pattern
@@ -633,8 +645,9 @@ class KafkaconnectSource(PipelineServiceSource):
         """
         try:
             if not self.service_connection.messagingServiceName:
-                logger.debug("Kafka messagingServiceName not found")
-                return
+                logger.info(
+                    "messagingServiceName not configured - will search all messaging services for topics"
+                )
 
             pipeline_fqn = fqn.build(
                 metadata=self.metadata,
@@ -671,16 +684,32 @@ class KafkaconnectSource(PipelineServiceSource):
                 )
 
             for topic in topics_to_process:
-                topic_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Topic,
-                    service_name=self.service_connection.messagingServiceName,
-                    topic_name=str(topic.name),
-                )
+                topic_entity = None
 
-                topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
+                # If messagingServiceName is configured, use it to build FQN directly
+                if self.service_connection.messagingServiceName:
+                    topic_fqn = fqn.build(
+                        metadata=self.metadata,
+                        entity_type=Topic,
+                        service_name=self.service_connection.messagingServiceName,
+                        topic_name=str(topic.name),
+                    )
+                    topic_entity = self.metadata.get_by_name(
+                        entity=Topic, fqn=topic_fqn
+                    )
+                else:
+                    # Search across all messaging services
+                    topic_entity = self.metadata.search_in_any_service(
+                        entity_type=Topic,
+                        fqn_search_string=str(topic.name),
+                    )
+                    if topic_entity:
+                        logger.debug(
+                            f"Found topic {topic.name} via search in service {topic_entity.service.name if topic_entity.service else 'unknown'}"
+                        )
 
                 if topic_entity is None:
+                    logger.debug(f"Topic {topic.name} not found in OpenMetadata")
                     continue
 
                 # If no dataset entity from config, try to parse table info from CDC topic name
