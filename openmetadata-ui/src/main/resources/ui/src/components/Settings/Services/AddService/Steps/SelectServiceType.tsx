@@ -140,7 +140,7 @@ const SelectServiceType = ({
               key={type}
               onClick={() => handleServiceTypeClick(type)}>
               <div data-testid="service-icon">
-                {getServiceLogo(type || '', 'h-9')}
+                {getServiceLogo(type || '', 'h-9', { serviceType: type })}
               </div>
               <div className="absolute" style={{ right: '4px', top: '0px' }}>
                 {type === selectServiceType && (

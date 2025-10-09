@@ -358,14 +358,30 @@ export const getImages = (imageUri: string) => {
 
 export const getServiceLogo = (
   serviceType: string,
-  className = ''
+  className = '',
+  serviceEntity?: { logoUrl?: string; serviceType?: string }
 ): JSX.Element | null => {
-  const logo = serviceUtilClassBase.getServiceTypeLogo({
-    serviceType,
-  } as SearchSourceAlias);
+  // Check for custom logoUrl first
+  const logo = serviceEntity?.logoUrl || 
+    serviceUtilClassBase.getServiceTypeLogo({
+      serviceType,
+    } as SearchSourceAlias);
 
   if (!isNull(logo)) {
-    return <img alt="" className={className} src={logo} />;
+    return (
+      <img 
+        alt="" 
+        className={className} 
+        src={logo}
+        onError={(e) => {
+          // Fallback to default icon if custom logo fails to load
+          const target = e.target as HTMLImageElement;
+          target.src = serviceUtilClassBase.getServiceTypeLogo({
+            serviceType,
+          } as SearchSourceAlias);
+        }}
+      />
+    );
   }
 
   return null;

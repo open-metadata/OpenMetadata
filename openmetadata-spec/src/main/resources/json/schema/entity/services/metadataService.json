@@ -88,6 +88,12 @@
       "description": "Display Name that identifies this database service.",
       "type": "string"
     },
+    "logoUrl": {
+      "title": "Service Logo URL",
+      "description": "URL to the logo image for this service. Primarily used for custom service types to provide a visual identifier.",
+      "type": "string",
+      "format": "uri"
+    },
     "serviceType": {
       "description": "Type of database service such as MySQL, BigQuery, Snowflake, Redshift, Postgres...",
       "$ref": "#/definitions/metadataServiceType"

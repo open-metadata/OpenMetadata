@@ -395,7 +395,16 @@ class ServiceUtilClassBase {
     return EntityType.TABLE;
   }
 
-  public getServiceLogo(type: string): string {
+  public getServiceLogo(
+    type: string, 
+    serviceEntity?: { logoUrl?: string; serviceType?: string }
+  ): string {
+    // Priority 1: If service entity has a custom logoUrl, use it
+    if (serviceEntity?.logoUrl) {
+      return serviceEntity.logoUrl;
+    }
+    
+    // Priority 2: Use hardcoded logo mappings for known services
     const serviceTypes = this.getSupportedServiceFromList();
     switch (toLower(type)) {
       case this.DatabaseServiceTypeSmallCase.CustomDatabase:
@@ -689,6 +698,7 @@ class ServiceUtilClassBase {
         return TIMESCALE;
 
       default: {
+        // Priority 3: Fallback to generic service type icon
         let logo;
         if (serviceTypes.messagingServices.includes(type)) {
           logo = TOPIC_DEFAULT;

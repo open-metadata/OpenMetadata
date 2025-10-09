@@ -16,6 +16,7 @@ export interface ServiceConfig {
   name: string;
   description: string;
   serviceType: string;
+  logoUrl?: string;
   connection: {
     config: ConfigData;
   };

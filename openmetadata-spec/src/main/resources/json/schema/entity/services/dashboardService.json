@@ -179,6 +179,12 @@
       "description": "Display Name that identifies this dashboard service.",
       "type": "string"
     },
+    "logoUrl": {
+      "title": "Service Logo URL",
+      "description": "URL to the logo image for this service. Primarily used for custom service types to provide a visual identifier.",
+      "type": "string",
+      "format": "uri"
+    },
     "serviceType": {
       "description": "Type of dashboard service such as Looker or Superset...",
       "$ref": "#/definitions/dashboardServiceType"
