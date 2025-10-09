@@ -239,7 +239,7 @@ export const buildDataQualityDashboardFilters = (data: {
   if (filters?.entityFQN) {
     mustFilter.push({
       term: {
-        [isTableApi ? 'fullyQualifiedName.keyword' : 'entityFQN']:
+        [isTableApi ? 'fullyQualifiedName.keyword' : 'originEntityFQN']:
           filters.entityFQN,
       },
     });
@@ -287,6 +287,17 @@ export const buildDataQualityDashboardFilters = (data: {
     if (filters.testCaseType === TestCaseType.column) {
       mustFilter.push({ regexp: { entityLink: '.*::columns::.*' } });
     }
+  }
+
+  if (filters?.startTs && filters?.endTs) {
+    mustFilter.push({
+      range: {
+        'testCaseResult.timestamp': {
+          gte: filters.startTs,
+          lte: filters.endTs,
+        },
+      },
+    });
   }
 
   // Add the deleted filter to the mustFilter array
