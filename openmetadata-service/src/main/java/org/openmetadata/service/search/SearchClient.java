@@ -34,7 +34,8 @@ import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
-public interface SearchClient<T> extends IndexManagementClient, EntityManagementClient {
+public interface SearchClient<T>
+    extends IndexManagementClient, EntityManagementClient, GenericClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
@@ -563,54 +564,6 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
   SearchHealthStatus getSearchHealthStatus() throws IOException;
 
   QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
-
-  /**
-   * Get a list of data stream names that match the given prefix.
-   */
-  default List<String> getDataStreams(String prefix) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Delete data streams that match the given name or pattern.
-   */
-  default void deleteDataStream(String dataStreamName) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Delete an Index Lifecycle Management (ILM) policy.
-   */
-  default void deleteILMPolicy(String policyName) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Delete an index template.
-   */
-  default void deleteIndexTemplate(String templateName) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Delete a component template.
-   */
-  default void deleteComponentTemplate(String componentTemplateName) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Detach an ILM policy from indexes matching the given pattern.
-   */
-  default void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
 
   /**
    * Removes ILM policy from a component template while preserving all other settings.

@@ -75,7 +75,6 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -198,6 +197,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
   private final ElasticSearchIndexManager indexManager;
   private final ElasticSearchEntityManager entityManager;
+  private final ElasticSearchGenericManager genericManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -241,6 +241,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     entityManager = new ElasticSearchEntityManager(newClient);
+    genericManager = new ElasticSearchGenericManager(newClient);
     nlqService = null;
   }
 
@@ -2264,37 +2265,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public List<String> getDataStreams(String prefix) throws IOException {
-    try {
-      // Use low-level client to get data streams
-      Request request = new Request("GET", "/_data_stream/" + prefix);
-      es.org.elasticsearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-
-      // Parse the response body
-      String responseBody = EntityUtils.toString(response.getEntity());
-      JsonNode jsonNode = JsonUtils.readTree(responseBody);
-      JsonNode dataStreams = jsonNode.get("data_streams");
-
-      List<String> streams = new ArrayList<>();
-      if (dataStreams != null && dataStreams.isArray()) {
-        for (JsonNode stream : dataStreams) {
-          streams.add(stream.get("name").asText());
-        }
-      }
-
-      return streams;
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("No DataStreams exist with prefix  '{}'. Skipping deletion.", prefix);
-        return Collections.emptyList();
-      } else {
-        throw new IOException(
-            "Failed to find DataStreams: " + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to get data streams for prefix {}", prefix, e);
-      throw e;
-    }
+    return genericManager.getDataStreams(prefix);
   }
 
   @Override

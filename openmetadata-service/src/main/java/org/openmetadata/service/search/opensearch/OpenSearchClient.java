@@ -32,7 +32,6 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -128,7 +127,6 @@ import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
-import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
@@ -145,10 +143,7 @@ import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
-import os.org.opensearch.client.indices.DataStream;
 import os.org.opensearch.client.indices.DeleteDataStreamRequest;
-import os.org.opensearch.client.indices.GetDataStreamRequest;
-import os.org.opensearch.client.indices.GetDataStreamResponse;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -215,6 +210,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final String clusterAlias;
   private final OpenSearchIndexManager indexManager;
   private final OpenSearchEntityManager entityManager;
+  private final OpenSearchGenericManager genericManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -258,6 +254,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
+    genericManager = new OpenSearchGenericManager(newClient);
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
@@ -2409,26 +2406,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public List<String> getDataStreams(String prefix) {
-    try {
-      GetDataStreamRequest request = new GetDataStreamRequest(prefix + "*");
-      GetDataStreamResponse response =
-          client.indices().getDataStream(request, RequestOptions.DEFAULT);
-      return response.getDataStreams().stream()
-          .map(DataStream::getName)
-          .collect(Collectors.toList());
-    } catch (OpenSearchException e) {
-      if (e.status().getStatus() == 404) {
-        LOG.warn("No DataStreams exist with prefix  '{}'. Skipping deletion.", prefix);
-        return Collections.emptyList();
-      } else {
-        LOG.error("Failed to find DataStreams", e);
-        throw e;
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to get data streams with prefix {}", prefix, e);
-      return Collections.emptyList();
-    }
+  public List<String> getDataStreams(String prefix) throws IOException {
+    return genericManager.getDataStreams(prefix);
   }
 
   @Override
