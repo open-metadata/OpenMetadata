@@ -36,7 +36,7 @@ public class ElasticSearchGenericManager implements GenericClient {
         return Collections.emptyList();
       } else {
         LOG.error("Failed to find DataStreams with prefix: {}", prefix, e);
-        throw new IOException("Failed to find DataStreams: " + e.getMessage(), e);
+        throw e;
       }
     } catch (Exception e) {
       LOG.error("Failed to get data streams with prefix {}", prefix, e);
@@ -46,7 +46,24 @@ public class ElasticSearchGenericManager implements GenericClient {
 
   @Override
   public void deleteDataStream(String dataStreamName) throws IOException {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot delete data stream.");
+      return;
+    }
+    try {
+      client.indices().deleteDataStream(d -> d.name(dataStreamName));
+      LOG.info("Successfully deleted data stream: {}", dataStreamName);
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        LOG.warn("Data stream {} does not exist. Skipping deletion.", dataStreamName);
+      } else {
+        LOG.error("Failed to delete data stream: {}", dataStreamName, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete data stream {}", dataStreamName, e);
+      throw e;
+    }
   }
 
   @Override
