@@ -17,19 +17,23 @@ from metadata.pii.processor import PIIProcessor
 def test_pii_processor_build_tag_label_for_pii_sensitive():
 
     tag = PIISensitivityTag.SENSITIVE
-    tag_label = PIIProcessor.build_tag_label(tag)
+    tag_label = PIIProcessor.build_tag_label(tag, score=0.7)
 
     assert tag_label.tagFQN.root == "PII.Sensitive"
     assert tag_label.source == TagSource.Classification
     assert tag_label.state == State.Suggested
     assert tag_label.labelType == LabelType.Generated
+    assert tag_label.reason == "Chose PII.Sensitive with a classification score of 0.70"
 
 
 def test_pii_processor_build_tag_label_for_pii_nonsensitive():
     tag = PIISensitivityTag.NONSENSITIVE
-    tag_label = PIIProcessor.build_tag_label(tag)
+    tag_label = PIIProcessor.build_tag_label(tag, score=0.7)
 
     assert tag_label.tagFQN.root == "PII.NonSensitive"
     assert tag_label.source == TagSource.Classification
     assert tag_label.state == State.Suggested
     assert tag_label.labelType == LabelType.Generated
+    assert (
+        tag_label.reason == "Chose PII.NonSensitive with a classification score of 0.70"
+    )

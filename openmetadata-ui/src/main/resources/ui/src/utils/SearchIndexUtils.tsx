@@ -12,16 +12,17 @@
  */
 
 import { uniqueId } from 'lodash';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import Loader from '../components/common/Loader/Loader';
 import QueryViewer from '../components/common/QueryViewer/QueryViewer.component';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import SampleDataWithMessages from '../components/Database/SampleDataWithMessages/SampleDataWithMessages';
-import { EntityLineageTab } from '../components/Lineage/EntityLineageTab/EntityLineageTab';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../enums/common.enum';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
@@ -32,6 +33,11 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import SearchIndexFieldsTab from '../pages/SearchIndexDetailsPage/SearchIndexFieldsTab/SearchIndexFieldsTab';
 import { t } from './i18next/LocalUtil';
 import { SearchIndexDetailPageTabProps } from './SearchIndexDetailsClassBase';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.FIELDS},${TabSpecificField.FOLLOWERS},${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.DOMAINS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
@@ -132,12 +138,14 @@ export const getSearchIndexDetailsTabs = ({
       ),
       key: EntityTabs.LINEAGE,
       children: (
-        <EntityLineageTab
-          deleted={Boolean(deleted)}
-          entity={searchIndexDetails as SourceType}
-          entityType={EntityType.SEARCH_INDEX}
-          hasEditAccess={editLineagePermission}
-        />
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
+            entity={searchIndexDetails as SourceType}
+            entityType={EntityType.SEARCH_INDEX}
+            hasEditAccess={editLineagePermission}
+          />
+        </Suspense>
       ),
     },
     {

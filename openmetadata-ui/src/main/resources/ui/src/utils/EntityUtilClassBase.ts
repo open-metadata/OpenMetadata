@@ -47,16 +47,10 @@ import StoredProcedurePage from '../pages/StoredProcedure/StoredProcedurePage';
 import TableDetailsPageV1 from '../pages/TableDetailsPageV1/TableDetailsPageV1';
 import TopicDetailsPage from '../pages/TopicDetails/TopicDetailsPage.component';
 import WorksheetDetailsPage from '../pages/WorksheetDetailsPage/WorksheetDetailsPage';
-import {
-  getDatabaseDetailsByFQN,
-  getDatabaseSchemaDetailsByFQN,
-} from '../rest/databaseAPI';
-import { getGlossariesByName } from '../rest/glossaryAPI';
-import { getServiceByFQN } from '../rest/serviceAPI';
-import { getTableDetailsByFQN } from '../rest/tableAPI';
 import { ExtraDatabaseDropdownOptions } from './Database/Database.util';
 import { ExtraDatabaseSchemaDropdownOptions } from './DatabaseSchemaDetailsUtils';
 import { ExtraDatabaseServiceDropdownOptions } from './DatabaseServiceUtils';
+import { getEntityByFqnUtil } from './EntityByFqnUtils';
 import { EntityTypeName } from './EntityUtils';
 import {
   FormattedAPIServiceType,
@@ -372,20 +366,8 @@ class EntityUtilClassBase {
     }
   }
 
-  public getEntityByFqn(entityType: string, fqn: string, fields?: string[]) {
-    switch (entityType) {
-      case EntityType.DATABASE_SERVICE:
-        return getServiceByFQN('databaseServices', fqn, { fields });
-      case EntityType.DATABASE:
-        return getDatabaseDetailsByFQN(fqn, { fields });
-      case EntityType.DATABASE_SCHEMA:
-        return getDatabaseSchemaDetailsByFQN(fqn, { fields });
-
-      case EntityType.GLOSSARY_TERM:
-        return getGlossariesByName(fqn, { fields });
-      default:
-        return getTableDetailsByFQN(fqn, { fields });
-    }
+  public getEntityByFqn(entityType: string, fqn: string, fields?: string) {
+    return getEntityByFqnUtil(entityType, fqn, fields);
   }
 
   public getEntityDetailComponent(entityType: string): FC | null {

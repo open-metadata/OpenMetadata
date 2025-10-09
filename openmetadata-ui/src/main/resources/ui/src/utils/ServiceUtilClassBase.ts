@@ -112,6 +112,7 @@ import {
   SYNAPSE,
   TABLEAU,
   TERADATA,
+  TIMESCALE,
   TOPIC_DEFAULT,
   TRINO,
   UNITYCATALOG,
@@ -185,6 +186,7 @@ class ServiceUtilClassBase {
     PipelineServiceType.Snowplow,
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
+    DatabaseServiceType.ServiceNow,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
@@ -682,6 +684,9 @@ class ServiceUtilClassBase {
 
       case this.DriveServiceTypeSmallCase.GoogleDrive:
         return GOOGLE_DRIVE;
+
+      case this.DatabaseServiceTypeSmallCase.Timescale:
+        return TIMESCALE;
 
       default: {
         let logo;

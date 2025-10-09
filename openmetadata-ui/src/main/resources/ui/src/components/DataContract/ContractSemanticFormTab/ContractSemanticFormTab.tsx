@@ -282,7 +282,14 @@ export const ContractSemanticFormTab: React.FC<{
                                   required: true,
                                 },
                               ]}>
-                              <Input />
+                              <Input
+                                placeholder={t(
+                                  'label.please-enter-entity-name',
+                                  {
+                                    entity: t('label.semantic'),
+                                  }
+                                )}
+                              />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -295,7 +302,12 @@ export const ContractSemanticFormTab: React.FC<{
                                   required: true,
                                 },
                               ]}>
-                              <TextArea rows={4} />
+                              <TextArea
+                                placeholder={t('label.please-enter-value', {
+                                  name: t('label.description'),
+                                })}
+                                rows={4}
+                              />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
