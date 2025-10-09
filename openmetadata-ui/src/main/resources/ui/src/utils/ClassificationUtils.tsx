@@ -248,6 +248,7 @@ export const getClassificationInfo = (
   return {
     currentVersion: currentClassification?.version ?? '0.1',
     isClassificationDisabled: currentClassification?.disabled ?? false,
+    isClassificationDeleted: currentClassification?.deleted ?? false,
     isTier: currentClassification?.name === 'Tier',
     isSystemClassification:
       currentClassification?.provider === ProviderType.System,
