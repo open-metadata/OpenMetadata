@@ -1,3 +1,4 @@
 // Component exports
-export * from './checkbox-icons';
-export { SnackbarContent } from './SnackbarContent';
+export * from "./Button";
+export * from "./checkbox-icons";
+export { SnackbarContent } from "./SnackbarContent";
