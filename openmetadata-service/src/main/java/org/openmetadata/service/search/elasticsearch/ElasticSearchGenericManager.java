@@ -68,7 +68,24 @@ public class ElasticSearchGenericManager implements GenericClient {
 
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot delete ILM policy.");
+      return;
+    }
+    try {
+      client.ilm().deleteLifecycle(req -> req.name(policyName));
+      LOG.info("Successfully deleted ILM policy: {}", policyName);
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        LOG.warn("ILM policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        LOG.error("Failed to delete ILM policy: {}", policyName, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete ILM policy {}", policyName, e);
+      throw e;
+    }
   }
 
   @Override

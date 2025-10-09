@@ -2274,34 +2274,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
-    try {
-      // Elasticsearch uses the low-level REST client for ILM operations
-      Request request = new Request("DELETE", "/_ilm/policy/" + policyName);
-      es.org.elasticsearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      if (response.getStatusLine().getStatusCode() == 200) {
-        LOG.debug("Deleted ILM policy {}", policyName);
-      } else if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
-      } else {
-        LOG.error(
-            "Failed to delete ILM policy {}. Status: {}",
-            policyName,
-            response.getStatusLine().getStatusCode());
-        throw new IOException(
-            "Failed to delete ILM policy: " + response.getStatusLine().getReasonPhrase());
-      }
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("ILM Policy {} does not exist. Skipping deletion.", policyName);
-      } else {
-        throw new IOException(
-            "Failed to delete ILM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to delete ILM policy {}", policyName, e);
-      throw e;
-    }
+    genericManager.deleteILMPolicy(policyName);
   }
 
   @Override

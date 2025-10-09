@@ -6,6 +6,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
+import os.org.opensearch.client.Request;
+import os.org.opensearch.client.Response;
+import os.org.opensearch.client.ResponseException;
+import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.indices.DataStreamInfo;
@@ -14,11 +18,15 @@ import os.org.opensearch.client.opensearch.indices.GetDataStreamResponse;
 @Slf4j
 public class OpenSearchGenericManager implements GenericClient {
   private final OpenSearchClient client;
+  private final RestClient restClient;
   private final boolean isClientAvailable;
+  private final boolean isRestClientAvailable;
 
-  public OpenSearchGenericManager(OpenSearchClient client) {
+  public OpenSearchGenericManager(OpenSearchClient client, RestClient restClient) {
     this.client = client;
     this.isClientAvailable = client != null;
+    this.restClient = restClient;
+    this.isRestClientAvailable = restClient != null;
   }
 
   @Override
@@ -68,7 +76,36 @@ public class OpenSearchGenericManager implements GenericClient {
 
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (!isRestClientAvailable) {
+      LOG.error("OpenSearch rest client is not available. Cannot delete ISM policy.");
+      return;
+    }
+    try {
+      // strongly typed API support not exist so need to use restClient for OS
+      Request request = new Request("DELETE", "/_plugins/_ism/policies/" + policyName);
+      Response response = restClient.performRequest(request);
+
+      int statusCode = response.getStatusLine().getStatusCode();
+      if (statusCode == 200) {
+        LOG.info("Successfully deleted ISM policy: {}", policyName);
+      } else if (statusCode == 404) {
+        LOG.warn("ISM policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        LOG.error("Failed to delete ILM policy: {}", policyName);
+        throw new IOException(
+            "Failed to delete ISM policy: " + response.getStatusLine().getReasonPhrase());
+      }
+    } catch (ResponseException e) {
+      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+        LOG.warn("ISM Policy {} does not exist. Skipping deletion.", policyName);
+      } else {
+        throw new IOException(
+            "Failed to delete ISM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete ISM policy {}", policyName, e);
+      throw e;
+    }
   }
 
   @Override

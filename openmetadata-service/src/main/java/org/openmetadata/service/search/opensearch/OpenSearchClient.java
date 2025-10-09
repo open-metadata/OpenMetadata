@@ -253,7 +253,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
-    genericManager = new OpenSearchGenericManager(newClient);
+    genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
@@ -2416,32 +2416,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
-    try {
-      // OpenSearch uses _plugins/_ism/policies/{policyName} for ISM policies
-      Request request = new Request("DELETE", "/_plugins/_ism/policies/" + policyName);
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-
-      if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("ISM policy {} does not exist", policyName);
-        return;
-      }
-      if (response.getStatusLine().getStatusCode() != 200) {
-        throw new IOException(
-            "Failed to delete ISM policy: " + response.getStatusLine().getReasonPhrase());
-      }
-      LOG.info("Successfully deleted ISM policy: {}", policyName);
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("ISM Policy {} does not exist. Skipping deletion.", policyName);
-      } else {
-        throw new IOException(
-            "Failed to delete ISM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Error deleting ISM policy: {}", policyName, e);
-      throw new IOException("Failed to delete ISM policy: " + e.getMessage());
-    }
+    genericManager.deleteILMPolicy(policyName);
   }
 
   @Override
