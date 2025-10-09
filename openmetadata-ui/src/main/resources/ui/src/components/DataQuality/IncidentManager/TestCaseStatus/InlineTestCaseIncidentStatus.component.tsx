@@ -54,6 +54,7 @@ import {
 } from '../../../../utils/EntityUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
+import { RequiredLabel } from '../../../common/MuiComponents/RequiredLabel/RequiredLabel.styled';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
 
@@ -589,16 +590,7 @@ const InlineTestCaseIncidentStatus = ({
 
         <Divider sx={{ borderColor: 'grey.200' }} />
         <Box sx={{ p: 4 }}>
-          <Typography
-            sx={{
-              fontSize: 13,
-              fontWeight: 500,
-              color: 'grey.800',
-              mb: 1,
-              '&::after': { content: '" *"', color: 'error.main' },
-            }}>
-            {t('label.reason')}
-          </Typography>
+          <RequiredLabel mb={1}>{t('label.reason')}</RequiredLabel>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 5 }}>
             {Object.values(TestCaseFailureReasonType).map((reason) => (
               <Chip
@@ -649,16 +641,7 @@ const InlineTestCaseIncidentStatus = ({
             ))}
           </Box>
 
-          <Typography
-            sx={{
-              fontSize: 13,
-              fontWeight: 500,
-              mb: 1,
-              color: 'grey.800',
-              '&::after': { content: '" *"', color: 'error.main' },
-            }}>
-            {t('label.comment')}
-          </Typography>
+          <RequiredLabel mb={1}>{t('label.comment')}</RequiredLabel>
           <TextField
             fullWidth
             multiline
