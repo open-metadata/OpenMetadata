@@ -80,6 +80,8 @@ export enum EntityFields {
   TAGS_LABEL_TYPE = 'tags.labelType',
   TIER_LABEL_TYPE = 'tier.labelType',
   CREATED_BY = 'createdBy',
+  DATA_PRODUCT = 'dataProducts.displayName.keyword',
+  FULLY_QUALIFIED_NAME = 'fullyQualifiedName',
   PARENT = 'parent.displayName.keyword',
   DIRECTORY = 'directory.displayName.keyword',
   FILE_TYPE = 'fileType',
@@ -117,4 +119,6 @@ export enum EntityReferenceFields {
   UPDATED_BY = 'updatedBy',
   CHANGE_DESCRIPTION = 'changeDescription',
   DELETED = 'deleted',
+  UPDATED_AT = 'updatedAt',
+  VERSION = 'version',
 }
