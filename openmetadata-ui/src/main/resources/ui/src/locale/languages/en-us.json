@@ -2249,7 +2249,7 @@
     "metadata-agents-table-description": "Metadata Agents are used to extract metadata from the source services.",
     "metadata-ingestion-description": "Based on the service type selected, enter the filter pattern details for the schema or table (database), or topic (messaging), or dashboard. You can include or exclude the filter patterns. Choose to include views, enable or disable the data profiler, and ingest sample data, as required.",
     "metric-configuration-description": "Customize fields to control metric behavior. You can add, remove, hide, or disable fields as needed.",
-    "metric-description": "Track the health of your data assets with metrics.",
+    "metric-description": "Define and catalog standardized metrics across your organization.",
     "minimum-value-error": "The minimum value should be smaller than the maximum value.",
     "minute": "Minute",
     "missing-config-value": "Missing config value: {{field}}",
