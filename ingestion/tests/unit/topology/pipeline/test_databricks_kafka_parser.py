@@ -224,11 +224,8 @@ class TestKafkaParser(unittest.TestCase):
 
     def test_null_source_code(self):
         """Test None source code doesn't crash"""
-        try:
-            configs = extract_kafka_sources(None)
-            # Should handle gracefully
-        except Exception as e:
-            self.fail(f"Should handle None gracefully, got: {e}")
+        configs = extract_kafka_sources(None)
+        self.assertEqual(len(configs), 0)
 
     def test_topics_with_whitespace(self):
         """Test topics with surrounding whitespace are trimmed"""

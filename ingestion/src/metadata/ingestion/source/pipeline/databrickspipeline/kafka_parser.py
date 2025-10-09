@@ -14,25 +14,27 @@ Kafka configuration parser for Databricks DLT pipelines
 """
 
 import re
+from dataclasses import dataclass, field
 from typing import List, Optional
 
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Compile regex patterns at module level for performance
+KAFKA_STREAM_PATTERN = re.compile(
+    r'\.format\s*\(\s*["\']kafka["\']\s*\)(.*?)\.load\s*\(\s*\)',
+    re.DOTALL | re.IGNORECASE,
+)
 
+
+@dataclass
 class KafkaSourceConfig:
     """Model for Kafka source configuration extracted from DLT code"""
 
-    def __init__(
-        self,
-        bootstrap_servers: Optional[str] = None,
-        topics: Optional[List[str]] = None,
-        group_id_prefix: Optional[str] = None,
-    ):
-        self.bootstrap_servers = bootstrap_servers
-        self.topics = topics or []
-        self.group_id_prefix = group_id_prefix
+    bootstrap_servers: Optional[str] = None
+    topics: List[str] = field(default_factory=list)
+    group_id_prefix: Optional[str] = None
 
 
 def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
@@ -53,12 +55,7 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
             logger.debug("Empty or None source code provided")
             return kafka_configs
 
-        kafka_stream_pattern = re.compile(
-            r'\.format\s*\(\s*["\']kafka["\']\s*\)(.*?)\.load\s*\(\s*\)',
-            re.DOTALL | re.IGNORECASE,
-        )
-
-        for match in kafka_stream_pattern.finditer(source_code):
+        for match in KAFKA_STREAM_PATTERN.finditer(source_code):
             try:
                 config_block = match.group(1)
 
