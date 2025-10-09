@@ -1,13 +1,19 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
+
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
+import org.openmetadata.service.exception.CustomExceptionMessage;
 
 /**
  * Interface for generic search client operations.
  * This interface provides methods for managing data streams and other generic operations.
  */
 public interface GenericClient {
+
+  String NOT_IMPLEMENTED_ERROR_TYPE = "NOT_IMPLEMENTED";
 
   /**
    * Get list of data streams matching a prefix.
@@ -16,7 +22,10 @@ public interface GenericClient {
    * @return list of data stream names matching the prefix
    * @throws IOException if the operation fails
    */
-  List<String> getDataStreams(String prefix) throws IOException;
+  default List<String> getDataStreams(String prefix) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 
   /**
    * Delete a data stream by name.
@@ -24,7 +33,10 @@ public interface GenericClient {
    * @param dataStreamName the name of the data stream to delete
    * @throws IOException if the operation fails
    */
-  void deleteDataStream(String dataStreamName) throws IOException;
+  default void deleteDataStream(String dataStreamName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 
   /**
    * Delete an ILM (Index Lifecycle Management) policy.
@@ -32,7 +44,10 @@ public interface GenericClient {
    * @param policyName the name of the policy to delete
    * @throws IOException if the operation fails
    */
-  void deleteILMPolicy(String policyName) throws IOException;
+  default void deleteILMPolicy(String policyName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 
   /**
    * Delete an index template.
@@ -40,7 +55,10 @@ public interface GenericClient {
    * @param templateName the name of the template to delete
    * @throws IOException if the operation fails
    */
-  void deleteIndexTemplate(String templateName) throws IOException;
+  default void deleteIndexTemplate(String templateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 
   /**
    * Delete a component template.
@@ -48,7 +66,10 @@ public interface GenericClient {
    * @param componentTemplateName the name of the component template to delete
    * @throws IOException if the operation fails
    */
-  void deleteComponentTemplate(String componentTemplateName) throws IOException;
+  default void deleteComponentTemplate(String componentTemplateName) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 
   /**
    * Detach ILM policy from indices matching a pattern.
@@ -56,5 +77,8 @@ public interface GenericClient {
    * @param indexPattern the pattern to match indices
    * @throws IOException if the operation fails
    */
-  void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException;
+  default void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
 }

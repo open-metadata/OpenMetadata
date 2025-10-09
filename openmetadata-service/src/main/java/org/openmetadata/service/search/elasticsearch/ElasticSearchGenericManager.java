@@ -35,11 +35,11 @@ public class ElasticSearchGenericManager implements GenericClient {
         LOG.warn("No DataStreams exist with prefix '{}'. Skipping.", prefix);
         return Collections.emptyList();
       } else {
-        LOG.error("Failed to find DataStreams", e);
+        LOG.error("Failed to find DataStreams with prefix: {}", prefix, e);
         throw new IOException("Failed to find DataStreams: " + e.getMessage(), e);
       }
     } catch (Exception e) {
-      LOG.error("Failed to get data streams for prefix {}", prefix, e);
+      LOG.error("Failed to get data streams with prefix {}", prefix, e);
       throw e;
     }
   }

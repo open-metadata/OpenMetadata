@@ -1,17 +1,15 @@
 package org.openmetadata.service.search.opensearch;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.indices.DataStreamInfo;
-import os.org.opensearch.client.opensearch.indices.GetDataStreamRequest;
 import os.org.opensearch.client.opensearch.indices.GetDataStreamResponse;
-
-import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 public class OpenSearchGenericManager implements GenericClient {
@@ -30,15 +28,14 @@ public class OpenSearchGenericManager implements GenericClient {
       return Collections.emptyList();
     }
     try {
-      GetDataStreamRequest request = GetDataStreamRequest.of(builder -> builder.name(prefix + "*"));
-      GetDataStreamResponse response = client.indices().getDataStream(request);
+      GetDataStreamResponse response = client.indices().getDataStream(g -> g.name(prefix + "*"));
       return response.dataStreams().stream().map(DataStreamInfo::name).collect(Collectors.toList());
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
         LOG.warn("No DataStreams exist with prefix '{}'. Skipping.", prefix);
         return Collections.emptyList();
       } else {
-        LOG.error("Failed to find DataStreams", e);
+        LOG.error("Failed to find DataStreams with prefix: {}", prefix, e);
         throw new IOException("Failed to find DataStreams: " + e.getMessage(), e);
       }
     } catch (Exception e) {
