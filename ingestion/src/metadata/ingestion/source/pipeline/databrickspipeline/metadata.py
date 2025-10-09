@@ -20,6 +20,7 @@ from pydantic import ValidationError
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
@@ -66,8 +67,12 @@ from metadata.ingestion.source.pipeline.databrickspipeline.models import (
     DataBrickPipelineDetails,
     DBRun,
 )
+from metadata.ingestion.source.pipeline.databrickspipeline.parsers.base_parser import (
+    SourceReference,
+)
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
+from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -129,24 +134,28 @@ class DatabrickspipelineSource(PipelineServiceSource):
             for pipeline in self.client.list_pipelines() or []:
                 try:
                     # Convert DLT pipeline format to job format for compatibility
-                    # DLT pipelines don't have job_id, so we use pipeline_id
+                    # DLT pipeline_id is a UUID string, convert to integer hash for job_id
+                    pipeline_id_str = pipeline.get("pipeline_id")
+                    # Use hash to convert UUID to integer (consistent across runs)
+                    job_id_from_uuid = abs(hash(pipeline_id_str)) % (
+                        10**15
+                    )  # Keep it under 15 digits
+
                     pipeline_as_job = {
-                        "job_id": pipeline.get(
-                            "pipeline_id"
-                        ),  # Use pipeline_id as job_id
+                        "job_id": job_id_from_uuid,  # Use hash of pipeline_id as integer job_id
                         "creator_user_name": pipeline.get("creator_user_name"),
-                        "created_time": pipeline.get("creation_time", 0),
+                        "created_time": 0,  # DLT pipelines don't have created_time
                         "settings": {
                             "name": pipeline.get("name", "Unnamed Pipeline"),
                             "description": f"DLT Pipeline - {pipeline.get('state', 'UNKNOWN')}",
-                            # Add a marker so we know this is a direct DLT pipeline
-                            "_is_dlt_pipeline": True,
-                            "_pipeline_id": pipeline.get("pipeline_id"),
+                            # Add markers for DLT pipeline
+                            "is_dlt_pipeline": True,
+                            "dlt_pipeline_id": pipeline_id_str,
                         },
                     }
                     yield DataBrickPipelineDetails(**pipeline_as_job)
-                    logger.debug(
-                        f"Added DLT pipeline: {pipeline.get('name')} ({pipeline.get('pipeline_id')})"
+                    logger.info(
+                        f"Added DLT pipeline: {pipeline.get('name')} ({pipeline_id_str})"
                     )
                 except Exception as exc:
                     logger.debug(f"Error creating DLT pipeline details: {exc}")
@@ -401,28 +410,25 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     f"No messaging services configured, searching all services for {topic_name}"
                 )
 
+                # Build search string with wildcard for service: *.topic_name
+                fqn_search_string = fqn._build("*", topic_name)
+
                 # Use OpenMetadata's search API to find topic by name
-                search_results = self.metadata.es_search_from_fqn(
+                es_result = self.metadata.es_search_from_fqn(
                     entity_type=Topic,
-                    fqn_search_string=topic_name,
+                    fqn_search_string=fqn_search_string,
                 )
 
-                # Get first matching result
-                if search_results and search_results.get("hits", {}).get("hits"):
-                    for hit in search_results["hits"]["hits"]:
-                        source = hit.get("_source", {})
-                        # Match exact topic name (not FQN prefix match)
-                        if source.get("name") == topic_name:
-                            topic_fqn = source.get("fullyQualifiedName")
-                            if topic_fqn:
-                                topic = self.metadata.get_by_name(
-                                    entity=Topic, fqn=topic_fqn
-                                )
-                                if topic:
-                                    logger.info(
-                                        f"Found topic {topic_name} via search: {topic_fqn}"
-                                    )
-                                    return topic
+                # Extract entity from search results
+                topic = get_entity_from_es_result(
+                    entity_list=es_result, fetch_multiple_entities=False
+                )
+
+                if topic:
+                    logger.info(
+                        f"Found topic {topic_name} via search: {topic.fullyQualifiedName.root}"
+                    )
+                    return topic
 
             except Exception as exc:
                 logger.debug(f"Search failed for topic {topic_name}: {exc}")
@@ -430,7 +436,213 @@ class DatabrickspipelineSource(PipelineServiceSource):
         logger.debug(f"Topic {topic_name} not found")
         return None
 
-    def _yield_kafka_lineage(
+    def _find_delta_table(self, source_ref: SourceReference) -> Optional[Table]:
+        """
+        Find Delta/Unity Catalog table in OpenMetadata
+
+        Strategy:
+        1. If databaseServiceNames configured -> search only those
+        2. Else -> search ALL database services using search API
+        """
+        table_fqn = source_ref.source_fqn
+
+        # Strategy 1: Search configured database services
+        if getattr(self.source_config, "databaseServiceNames", None):
+            for service_name in self.source_config.databaseServiceNames:
+                try:
+                    full_fqn = f"{service_name}.{table_fqn}"
+                    table = self.metadata.get_by_name(entity=Table, fqn=full_fqn)
+                    if table:
+                        logger.debug(
+                            f"Found table {table_fqn} in service {service_name}"
+                        )
+                        return table
+                except Exception as exc:
+                    logger.debug(
+                        f"Could not find table {table_fqn} in service {service_name}: {exc}"
+                    )
+                    continue
+        else:
+            # Strategy 2: Search across ALL database services
+            try:
+                logger.debug(f"Searching all services for table {table_fqn}")
+                search_results = self.metadata.es_search_from_fqn(
+                    entity_type=Table,
+                    fqn_search_string=table_fqn,
+                )
+
+                if search_results and search_results.get("hits", {}).get("hits"):
+                    for hit in search_results["hits"]["hits"]:
+                        source = hit.get("_source", {})
+                        # Match table name
+                        if source.get("name") == source_ref.metadata.get("table"):
+                            full_fqn = source.get("fullyQualifiedName")
+                            if full_fqn:
+                                table = self.metadata.get_by_name(
+                                    entity=Table, fqn=full_fqn
+                                )
+                                if table:
+                                    logger.info(
+                                        f"Found table {table_fqn} via search: {full_fqn}"
+                                    )
+                                    return table
+            except Exception as exc:
+                logger.debug(f"Search failed for table {table_fqn}: {exc}")
+
+        logger.debug(f"Table {table_fqn} not found")
+        return None
+
+    def _find_jdbc_table(self, source_ref: SourceReference) -> Optional[Table]:
+        """
+        Find JDBC table in OpenMetadata
+
+        Uses connection details to find the right database service
+        """
+        db_type = source_ref.connection_details.get("database_type")
+        database = source_ref.connection_details.get("database")
+        schema = source_ref.metadata.get("schema")
+        table = source_ref.metadata.get("table")
+
+        # Try configured services first
+        if getattr(self.source_config, "databaseServiceNames", None):
+            for service_name in self.source_config.databaseServiceNames:
+                try:
+                    # Build FQN: service.database.schema.table
+                    fqn_parts = [service_name]
+                    if database:
+                        fqn_parts.append(database)
+                    if schema:
+                        fqn_parts.append(schema)
+                    fqn_parts.append(table)
+
+                    table_fqn = ".".join(fqn_parts)
+                    table_entity = self.metadata.get_by_name(
+                        entity=Table, fqn=table_fqn
+                    )
+                    if table_entity:
+                        logger.info(f"Found JDBC table {table_fqn}")
+                        return table_entity
+                except Exception as exc:
+                    logger.debug(f"Could not find JDBC table in {service_name}: {exc}")
+                    continue
+
+        # Fall back to search
+        try:
+            search_results = self.metadata.es_search_from_fqn(
+                entity_type=Table,
+                fqn_search_string=table,
+            )
+
+            if search_results and search_results.get("hits", {}).get("hits"):
+                for hit in search_results["hits"]["hits"]:
+                    source = hit.get("_source", {})
+                    if source.get("name") == table:
+                        full_fqn = source.get("fullyQualifiedName")
+                        if full_fqn:
+                            table_entity = self.metadata.get_by_name(
+                                entity=Table, fqn=full_fqn
+                            )
+                            if table_entity:
+                                logger.info(f"Found JDBC table via search: {full_fqn}")
+                                return table_entity
+        except Exception as exc:
+            logger.debug(f"Search failed for JDBC table {table}: {exc}")
+
+        logger.debug(f"JDBC table {table} not found")
+        return None
+
+    def _find_storage_container(
+        self, source_ref: SourceReference
+    ) -> Optional[Container]:
+        """
+        Find storage container (S3/ADLS/GCS) in OpenMetadata
+
+        Strategy:
+        1. If storageServiceNames configured -> search only those
+        2. Else -> search ALL storage services
+        """
+        container_name = source_ref.source_name
+        cloud_provider = source_ref.metadata.get("cloud_provider")
+
+        # Strategy 1: Search configured storage services
+        if getattr(self.source_config, "storageServiceNames", None):
+            for service_name in self.source_config.storageServiceNames:
+                try:
+                    # Try direct lookup
+                    container_fqn = f"{service_name}.{container_name}"
+                    container = self.metadata.get_by_name(
+                        entity=Container, fqn=container_fqn
+                    )
+                    if container:
+                        logger.debug(
+                            f"Found container {container_name} in service {service_name}"
+                        )
+                        return container
+                except Exception as exc:
+                    logger.debug(f"Could not find container in {service_name}: {exc}")
+                    continue
+        else:
+            # Strategy 2: Search across ALL storage services
+            try:
+                logger.debug(f"Searching all storage services for {container_name}")
+                search_results = self.metadata.es_search_from_fqn(
+                    entity_type=Container,
+                    fqn_search_string=container_name,
+                )
+
+                if search_results and search_results.get("hits", {}).get("hits"):
+                    for hit in search_results["hits"]["hits"]:
+                        source = hit.get("_source", {})
+                        full_fqn = source.get("fullyQualifiedName")
+                        if full_fqn:
+                            container = self.metadata.get_by_name(
+                                entity=Container, fqn=full_fqn
+                            )
+                            if container:
+                                logger.info(f"Found container via search: {full_fqn}")
+                                return container
+            except Exception as exc:
+                logger.debug(f"Search failed for container {container_name}: {exc}")
+
+        logger.debug(f"Container {container_name} not found")
+        return None
+
+    def _find_source_entity(self, source_ref: SourceReference):
+        """
+        Find source entity in OpenMetadata based on source type
+
+        Returns: Topic, Table, or Container entity, or None
+        """
+        try:
+            source_type = source_ref.source_type
+
+            # Kafka topics
+            if source_type == "kafka_topic" or source_type.startswith("kafka"):
+                return self._find_kafka_topic(source_ref.source_name)
+
+            # Delta Lake / Unity Catalog tables
+            elif source_type in ["unity_catalog_table", "delta_table", "delta_path"]:
+                return self._find_delta_table(source_ref)
+
+            # JDBC tables
+            elif source_type.startswith("jdbc_"):
+                return self._find_jdbc_table(source_ref)
+
+            # Storage (S3, ADLS, GCS)
+            elif source_type in ["s3_path", "adls_path", "gcs_path", "dbfs_mount"]:
+                return self._find_storage_container(source_ref)
+
+            else:
+                logger.debug(f"Unsupported source type: {source_type}")
+                return None
+
+        except Exception as exc:
+            logger.debug(
+                f"Error finding source entity for {source_ref.source_name}: {exc}"
+            )
+            return None
+
+    def _yield_multi_source_lineage(
         self, pipeline_details: DataBrickPipelineDetails, pipeline_entity: Pipeline
     ) -> Iterable[Either[AddLineageRequest]]:
         """
@@ -442,15 +654,16 @@ class DatabrickspipelineSource(PipelineServiceSource):
             # Check for pipeline_id - either from direct DLT pipeline or from job's pipeline_task
             pipeline_id = None
 
-            # Method 1: Check if this is a direct DLT pipeline (has _pipeline_id marker)
+            # Method 1: Check if this is a direct DLT pipeline (has dlt_pipeline_id field)
             try:
-                if hasattr(pipeline_details.settings, "__dict__"):
-                    settings_dict = pipeline_details.settings.__dict__
-                    if settings_dict.get("_is_dlt_pipeline"):
-                        pipeline_id = settings_dict.get("_pipeline_id")
-                        logger.info(
-                            f"Processing direct DLT pipeline: {pipeline_id} ({pipeline_details.settings.name})"
-                        )
+                if (
+                    pipeline_details.settings
+                    and pipeline_details.settings.is_dlt_pipeline
+                ):
+                    pipeline_id = pipeline_details.settings.dlt_pipeline_id
+                    logger.info(
+                        f"Processing direct DLT pipeline: {pipeline_id} ({pipeline_details.settings.name})"
+                    )
             except Exception as exc:
                 logger.debug(f"Error checking for direct DLT pipeline: {exc}")
 
@@ -603,9 +816,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
                 entity=Pipeline, fqn=pipeline_fqn
             )
 
-            # Extract Kafka topic lineage from source code
+            # Extract multi-source lineage from source code (Kafka, Delta, JDBC, Storage)
             # Works automatically - no configuration required!
-            yield from self._yield_kafka_lineage(pipeline_details, pipeline_entity)
+            yield from self._yield_multi_source_lineage(
+                pipeline_details, pipeline_entity
+            )
 
             table_lineage_list = self.client.get_table_lineage(
                 job_id=pipeline_details.job_id
@@ -701,7 +916,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
-                    name=pipeline_details.job_id,
+                    name=str(pipeline_details.job_id),
                     error=f"Wild error ingesting pipeline lineage {pipeline_details} - {exc}",
                     stackTrace=traceback.format_exc(),
                 )

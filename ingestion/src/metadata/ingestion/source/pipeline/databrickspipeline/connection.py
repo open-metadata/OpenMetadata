@@ -24,11 +24,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.databricksPi
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
-from metadata.ingestion.connections.builders import (
-    create_generic_db_connection,
-    get_connection_args_common,
-    init_empty_connection_arguments,
-)
+from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
@@ -50,12 +46,9 @@ def get_connection(connection: DatabricksPipelineConnection) -> DatabricksClient
             connection.connectionArguments = init_empty_connection_arguments()
         connection.connectionArguments.root["http_path"] = connection.httpPath
 
-    engine = create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-    )
-    return DatabricksClient(connection, engine)
+    # For pipeline source, we only need REST APIs, not SQL engine
+    # Pass None as engine to avoid databricks-sqlalchemy dependency
+    return DatabricksClient(connection, None)
 
 
 def test_connection(

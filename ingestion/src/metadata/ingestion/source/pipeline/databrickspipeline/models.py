@@ -41,6 +41,11 @@ class DBSettings(BaseModel):
     description: Optional[str] = None
     schedule: Optional[DBRunSchedule] = None
     task_type: Optional[str] = Field(None, alias="format")
+    # DLT-specific fields
+    dlt_pipeline_id: Optional[
+        str
+    ] = None  # Stores the actual UUID pipeline_id for DLT pipelines
+    is_dlt_pipeline: bool = False  # Marker to identify DLT pipelines
 
 
 class DataBrickPipelineDetails(BaseModel):
