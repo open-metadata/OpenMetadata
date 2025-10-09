@@ -12,4 +12,4 @@
  */
 
 // Base Button
-export { Button, IconButton } from "./Button.component";
+export { Button } from "./Button.component";

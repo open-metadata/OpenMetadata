@@ -12,14 +12,8 @@
  */
 
 import { Button as MuiButton } from "@mui/material";
-import MuiIconButton from "@mui/material/IconButton";
 import type { ButtonProps as MuiButtonProps } from "@mui/material";
-import type { IconButtonProps as MuiIconButtonProps } from "@mui/material";
 
 export const Button = ({ ...props }: MuiButtonProps) => (
   <MuiButton {...props} />
-);
-
-export const IconButton = ({ ...props }: MuiIconButtonProps) => (
-  <MuiIconButton {...props} />
 );

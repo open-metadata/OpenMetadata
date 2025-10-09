@@ -12,18 +12,19 @@
  */
 import {
   Add,
-  Delete,
-  Settings,
   CheckCircle,
-  Info,
-  Warning,
-  SyncDisabled,
+  Delete,
   Error,
+  Info,
+  Settings,
+  SyncDisabled,
+  Warning,
 } from "@mui/icons-material";
-import { Box, Button, ThemeProvider, Typography } from "@mui/material";
 import type { ButtonProps } from "@mui/material";
+import { Box, ThemeProvider, Typography } from "@mui/material";
 import type { Meta } from "@storybook/react";
 import { createMuiTheme } from "../../theme/createMuiTheme";
+import { Button } from "./Button.component";
 
 type ButtonVariants = "contained" | "outlined" | "text";
 type CustomButtonArgs = ButtonProps & {
