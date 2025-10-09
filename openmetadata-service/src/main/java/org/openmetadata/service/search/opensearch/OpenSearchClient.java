@@ -2421,35 +2421,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteIndexTemplate(String templateName) throws IOException {
-    try {
-      // OpenSearch uses the low-level REST client for index template operations
-      Request request = new Request("DELETE", "/_index_template/" + templateName);
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      if (response.getStatusLine().getStatusCode() == 200) {
-        LOG.debug("Deleted index template {}", templateName);
-      } else if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
-      } else {
-        LOG.error(
-            "Failed to delete index template {}. Status: {}",
-            templateName,
-            response.getStatusLine().getStatusCode());
-        throw new IOException(
-            "Failed to delete index template: " + response.getStatusLine().getReasonPhrase());
-      }
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
-      } else {
-        throw new IOException(
-            "Failed to delete index template: "
-                + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to delete index template {}", templateName, e);
-      throw e;
-    }
+    genericManager.deleteIndexTemplate(templateName);
   }
 
   @Override

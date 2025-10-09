@@ -90,7 +90,24 @@ public class ElasticSearchGenericManager implements GenericClient {
 
   @Override
   public void deleteIndexTemplate(String templateName) throws IOException {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot delete index template.");
+      return;
+    }
+    try {
+      client.indices().deleteIndexTemplate(d -> d.name(templateName));
+      LOG.info("Successfully deleted index template: {}", templateName);
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        LOG.warn("Index template {} does not exist. Skipping deletion.", templateName);
+      } else {
+        LOG.error("Failed to delete index template: {}", templateName, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to delete index template {}", templateName, e);
+      throw e;
+    }
   }
 
   @Override
