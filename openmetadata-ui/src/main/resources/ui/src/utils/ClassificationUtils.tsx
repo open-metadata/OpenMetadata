@@ -80,7 +80,7 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
           <Badge
             className="badge-grey"
             count={t('label.disabled')}
-            data-testid="disabled"
+            data-testid={`tag-disabled-${record.name}`}
           />
         ) : null}
       </div>
