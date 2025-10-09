@@ -58,50 +58,31 @@ export const validateNotEquals = (fieldValue: number, value: number) => {
   return Promise.resolve();
 };
 
-/**
- * Helper to extract column values from form field and convert to Set
- * Used in table diff tests to track selected columns
- */
 export const getColumnSet = (
   getFieldValue: (path: (string | number)[]) => unknown,
   fieldName: string
 ): Set<string> => {
   const columnValues = getFieldValue(['params', fieldName]);
 
-  // Handle undefined, null, or non-array values
   if (!columnValues || !Array.isArray(columnValues)) {
     return new Set();
   }
 
-  // Map array of objects to Set of values
   return new Set(
     (columnValues as { value: string }[]).map((item) => item?.value)
   );
 };
 
-/**
- * Gets the set of already selected columns to disable them in other column selectors
- * Prevents same column from being selected multiple times across:
- * - keyColumns (Table 1 key columns)
- * - table2.keyColumns (Table 2 key columns)
- * - useColumns (additional comparison columns)
- *
- * @param data - Parameter definition containing the field name
- * @param getFieldValue - Form function to get field values
- * @returns Set of column names that should be disabled
- */
 export const getSelectedColumnsSet = (
   data: TestCaseParameterDefinition,
   getFieldValue: (path: (string | number)[]) => unknown
 ): Set<string> => {
   const isTable2KeyColumns = data.name === 'table2.keyColumns';
 
-  // Table 2 columns are independent, only disable what's selected in table2.keyColumns
   if (isTable2KeyColumns) {
     return getColumnSet(getFieldValue, 'table2.keyColumns');
   }
 
-  // For Table 1 fields, merge keyColumns and useColumns to prevent overlap
   const keyColumns = getColumnSet(getFieldValue, 'keyColumns');
   const useColumns = getColumnSet(getFieldValue, 'useColumns');
 
