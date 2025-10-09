@@ -11,12 +11,14 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Dropdown, Row, Tabs, Tooltip, Typography } from 'antd';
+import { Box, useTheme } from '@mui/material';
+import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { cloneDeep, toString } from 'lodash';
+import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +27,7 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
+import { ROUTES } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -44,9 +47,11 @@ import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -60,15 +65,17 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
+import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
+import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
-import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { DomainTabs } from '../../Domain/DomainPage.interface';
 import DocumentationTab from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
 import { DocumentationEntity } from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
@@ -98,6 +105,8 @@ const DataProductsDetailsPage = ({
   handleFollowingClick,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
+  const theme = useTheme();
+  const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
   const { getEntityPermission } = usePermissionProvider();
   const { tab: activeTab, version } = useRequiredParams<{
@@ -109,27 +118,43 @@ const DataProductsDetailsPage = ({
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
-  const [assetModalVisible, setAssetModelVisible] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const assetTabRef = useRef<AssetsTabRef>(null);
+  const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
   const [assetCount, setAssetCount] = useState<number>(0);
 
-  const breadcrumbs = useMemo(() => {
-    if (!dataProduct.domains) {
-      return [];
-    }
+  const openAssetDrawer = useCallback(() => {
+    setIsAssetDrawerOpen(true);
+  }, []);
 
-    return [
-      {
+  const closeAssetDrawer = useCallback(() => {
+    setIsAssetDrawerOpen(false);
+  }, []);
+
+  const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
+    const items: BreadcrumbItem[] = [];
+
+    // Add Data Products listing page FIRST
+    items.push({
+      name: t('label.data-product-plural'),
+      url: ROUTES.DATA_PRODUCT,
+    });
+
+    // Add parent domain SECOND (if exists)
+    if (dataProduct.domains && dataProduct.domains.length > 0) {
+      items.push({
         name: getEntityName(dataProduct.domains[0]),
         url: getDomainPath(dataProduct.domains[0].fullyQualifiedName),
-        activeTitle: false,
-      },
-    ];
-  }, [dataProduct.domains]);
+      });
+    }
+
+    return items;
+  }, [dataProduct.domains, t]);
+
+  const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
 
   const [name, displayName] = useMemo(() => {
     const defaultName = dataProduct.name;
@@ -203,11 +228,13 @@ const DataProductsDetailsPage = ({
         setAssetCount(res.data.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
-        showErrorToast(
+        showNotistackError(
+          enqueueSnackbar,
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
-          })
+          }),
+          { vertical: 'top', horizontal: 'center' }
         );
       }
     }
@@ -221,9 +248,12 @@ const DataProductsDetailsPage = ({
       );
       setDataProductPermission(response);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
+        vertical: 'top',
+        horizontal: 'center',
+      });
     }
-  }, [dataProduct]);
+  }, [dataProduct, enqueueSnackbar]);
 
   const manageButtonContent: ItemType[] = [
     ...(editDisplayNamePermission
@@ -429,7 +459,7 @@ const DataProductsDetailsPage = ({
                         permissions={dataProductPermission}
                         ref={assetTabRef}
                         type={AssetsOfEntity.DATA_PRODUCT}
-                        onAddAsset={() => setAssetModelVisible(true)}
+                        onAddAsset={openAssetDrawer}
                         onAssetClick={handleAssetClick}
                         onRemoveAsset={handleAssetSave}
                       />
@@ -491,131 +521,160 @@ const DataProductsDetailsPage = ({
     handelExtensionUpdate,
   ]);
 
+  const iconData = useMemo(() => {
+    return (
+      <EntityAvatar
+        entity={{
+          ...dataProduct,
+          entityType: 'dataProduct',
+        }}
+        size={91}
+        sx={{
+          borderRadius: '5px',
+          border: '2px solid',
+          borderColor: theme.palette.allShades.white,
+          marginTop: '-25px',
+          marginRight: 2,
+        }}
+      />
+    );
+  }, [dataProduct, theme]);
+
   useEffect(() => {
     fetchDataProductPermission();
     fetchDataProductAssets();
   }, [dataProductFqn]);
 
-  return (
+  const content = (
     <>
-      <Row
+      <Box
         className="data-product-details"
         data-testid="data-product-details"
-        gutter={[0, 12]}>
-        <Col className="p-x-md" flex="auto">
-          <EntityHeader
-            breadcrumb={breadcrumbs}
-            entityData={{ ...dataProduct, displayName, name }}
-            entityType={EntityType.DATA_PRODUCT}
-            handleFollowingClick={handleFollowingClick}
-            icon={
-              <EntityAvatar
-                entity={{
-                  ...dataProduct,
-                  entityType: 'dataProduct',
-                }}
-                size={36}
-              />
-            }
-            isFollowing={isFollowing}
-            isFollowingLoading={isFollowingLoading}
-            serviceName=""
-            titleColor={dataProduct.style?.color}
-          />
-        </Col>
-        <Col className="p-x-md" flex="320px">
-          <div className="d-flex justify-end gap-3">
-            {!isVersionsView && dataProductPermission.Create && (
-              <Button
-                className="h-10"
-                data-testid="data-product-details-add-button"
-                type="primary"
-                onClick={() => setAssetModelVisible(true)}>
-                {t('label.add-entity', {
-                  entity: t('label.asset-plural'),
-                })}
-              </Button>
-            )}
-
-            <ButtonGroup className="spaced" size="small">
-              {dataProduct?.version && (
-                <Tooltip
-                  title={t(
-                    `label.${
-                      isVersionsView
-                        ? 'exit-version-history'
-                        : 'version-plural-history'
-                    }`
-                  )}>
-                  <Button
-                    className={classNames('', {
-                      'text-primary border-primary': version,
-                    })}
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
-                    <Typography.Text
-                      className={classNames('', {
-                        'text-primary': version,
-                      })}>
-                      {toString(dataProduct.version)}
-                    </Typography.Text>
-                  </Button>
-                </Tooltip>
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+        }}>
+        <CoverImage />
+        <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
+          <Box sx={{ flex: 1 }}>
+            <EntityHeader
+              breadcrumb={[]}
+              entityData={{ ...dataProduct, displayName, name }}
+              entityType={EntityType.DATA_PRODUCT}
+              handleFollowingClick={handleFollowingClick}
+              icon={iconData}
+              isFollowing={isFollowing}
+              isFollowingLoading={isFollowingLoading}
+              serviceName=""
+              titleColor={dataProduct.style?.color}
+            />
+          </Box>
+          <Box sx={{ width: '320px' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 3,
+                justifyContent: 'flex-end',
+                pb: '4px',
+              }}>
+              {!isVersionsView && dataProductPermission.Create && (
+                <Button
+                  className="h-10"
+                  data-testid="data-product-details-add-button"
+                  type="primary"
+                  onClick={openAssetDrawer}>
+                  {t('label.add-entity', {
+                    entity: t('label.asset-plural'),
+                  })}
+                </Button>
               )}
 
-              {!isVersionsView && manageButtonContent.length > 0 && (
-                <Dropdown
-                  align={{ targetOffset: [-12, 0] }}
-                  className="m-l-xs"
-                  menu={{
-                    items: manageButtonContent,
-                  }}
-                  open={showActions}
-                  overlayClassName="domain-manage-dropdown-list-container"
-                  overlayStyle={{ width: '350px' }}
-                  placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={setShowActions}>
+              <ButtonGroup className="spaced" size="small">
+                {dataProduct?.version && (
                   <Tooltip
-                    placement="topRight"
-                    title={t('label.manage-entity', {
-                      entity: t('label.data-product'),
-                    })}>
+                    title={t(
+                      `label.${
+                        isVersionsView
+                          ? 'exit-version-history'
+                          : 'version-plural-history'
+                      }`
+                    )}>
                     <Button
-                      className="domain-manage-dropdown-button tw-px-1.5"
-                      data-testid="manage-button"
-                      icon={
-                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                      }
-                      onClick={() => setShowActions(true)}
-                    />
+                      className={classNames('', {
+                        'text-primary border-primary': version,
+                      })}
+                      data-testid="version-button"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={handleVersionClick}>
+                      <Typography.Text
+                        className={classNames('', {
+                          'text-primary': version,
+                        })}>
+                        {toString(dataProduct.version)}
+                      </Typography.Text>
+                    </Button>
                   </Tooltip>
-                </Dropdown>
-              )}
-            </ButtonGroup>
-          </div>
-        </Col>
+                )}
+
+                {!isVersionsView && manageButtonContent.length > 0 && (
+                  <Dropdown
+                    align={{ targetOffset: [-12, 0] }}
+                    className="m-l-xs"
+                    menu={{
+                      items: manageButtonContent,
+                    }}
+                    open={showActions}
+                    overlayClassName="domain-manage-dropdown-list-container"
+                    overlayStyle={{ width: '350px' }}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setShowActions}>
+                    <Tooltip
+                      placement="topRight"
+                      title={t('label.manage-entity', {
+                        entity: t('label.data-product'),
+                      })}>
+                      <Button
+                        className="domain-manage-dropdown-button tw-px-1.5"
+                        data-testid="manage-button"
+                        icon={
+                          <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                        }
+                        onClick={() => setShowActions(true)}
+                      />
+                    </Tooltip>
+                  </Dropdown>
+                )}
+              </ButtonGroup>
+            </Box>
+          </Box>
+        </Box>
 
         <GenericProvider<DataProduct>
+          muiTags
           currentVersionData={dataProduct}
           data={dataProduct}
           isVersionView={isVersionsView}
           permissions={dataProductPermission}
           type={EntityType.DATA_PRODUCT as CustomizeEntityType}
           onUpdate={onUpdate}>
-          <Col span={24}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              onChange={handleTabChange}
-            />
-          </Col>
+          <Box
+            className="data-product-details-page-tabs"
+            sx={{ width: '100%' }}>
+            <Box sx={{ padding: 5 }}>
+              <Tabs
+                destroyInactiveTabPane
+                activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                onChange={handleTabChange}
+              />
+            </Box>
+          </Box>
         </GenericProvider>
-      </Row>
+      </Box>
 
       <EntityNameModal<DataProduct>
         entity={dataProduct}
@@ -635,28 +694,30 @@ const DataProductsDetailsPage = ({
         onConfirm={onDelete}
       />
 
-      {assetModalVisible && (
-        <AssetSelectionModal
-          emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
-            name: dataProduct.domains
-              ?.map((domain) => getEntityName(domain))
-              .join(', '),
-          })}
-          entityFqn={dataProductFqn}
-          open={assetModalVisible}
-          queryFilter={
-            getQueryFilterToIncludeDomain(
-              dataProduct.domains
-                ?.map((domain) => domain.fullyQualifiedName)
-                .join(', ') ?? '',
-              dataProduct.fullyQualifiedName ?? ''
-            ) as QueryFilterInterface
-          }
-          type={AssetsOfEntity.DATA_PRODUCT}
-          onCancel={() => setAssetModelVisible(false)}
-          onSave={handleAssetSave}
-        />
-      )}
+      <AssetSelectionDrawer
+        emptyPlaceHolderText={t('message.domain-does-not-have-assets', {
+          name: dataProduct.domains
+            ?.map((domain) => getEntityName(domain))
+            .join(', '),
+        })}
+        entityFqn={dataProductFqn}
+        open={isAssetDrawerOpen}
+        queryFilter={
+          getQueryFilterToIncludeDomain(
+            dataProduct.domains
+              ?.map((domain) => domain.fullyQualifiedName)
+              .join(', ') ?? '',
+            dataProduct.fullyQualifiedName ?? ''
+          ) as QueryFilterInterface
+        }
+        type={AssetsOfEntity.DATA_PRODUCT}
+        onCancel={closeAssetDrawer}
+        onSave={() => {
+          fetchDataProductAssets();
+          assetTabRef.current?.refreshAssets();
+          activeTab !== 'assets' && handleTabChange('assets');
+        }}
+      />
 
       <StyleModal
         open={isStyleEditing}
@@ -664,6 +725,13 @@ const DataProductsDetailsPage = ({
         onCancel={() => setIsStyleEditing(false)}
         onSubmit={onStyleSave}
       />
+    </>
+  );
+
+  return (
+    <>
+      {breadcrumbs}
+      <Box sx={getDomainContainerStyles(theme)}>{content}</Box>
     </>
   );
 };
