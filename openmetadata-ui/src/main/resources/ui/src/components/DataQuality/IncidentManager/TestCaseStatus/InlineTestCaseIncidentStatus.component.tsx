@@ -454,7 +454,12 @@ const InlineTestCaseIncidentStatus = ({
         open={showAssigneePopover}
         slotProps={{
           paper: {
-            sx: { width: 300, maxHeight: 500 },
+            sx: {
+              width: 300,
+              maxHeight: 500,
+              border: '1px solid',
+              borderColor: 'grey.300',
+            },
           },
         }}
         transformOrigin={{
@@ -491,7 +496,7 @@ const InlineTestCaseIncidentStatus = ({
             <CheckIcon sx={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
         </Box>
-        <Divider sx={{ borderColor: 'grey.200' }} />
+        <Divider sx={{ borderColor: 'grey.300' }} />
         <Box sx={{ p: 4 }}>
           <TextField
             fullWidth
@@ -551,7 +556,11 @@ const InlineTestCaseIncidentStatus = ({
         open={showResolvedPopover}
         slotProps={{
           paper: {
-            sx: { width: 400 },
+            sx: {
+              width: 400,
+              border: '1px solid',
+              borderColor: 'grey.300',
+            },
           },
         }}
         transformOrigin={{
@@ -588,7 +597,7 @@ const InlineTestCaseIncidentStatus = ({
           </IconButton>
         </Box>
 
-        <Divider sx={{ borderColor: 'grey.200' }} />
+        <Divider sx={{ borderColor: 'grey.300' }} />
         <Box sx={{ p: 4 }}>
           <RequiredLabel mb={1}>{t('label.reason')}</RequiredLabel>
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 5 }}>
