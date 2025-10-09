@@ -48,9 +48,7 @@ test.describe('Service Listing', () => {
 
   test('should render the service listing page', async ({ page }) => {
     await page.waitForLoadState('networkidle');
-    await page.waitForResponse(
-      '/api/v1/services/databaseServices?fields=owners&limit=15&include=non-deleted'
-    );
+
     await page.getByTestId('filter-icon').click();
 
     const searchService1Response = page.waitForResponse(

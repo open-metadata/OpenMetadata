@@ -347,7 +347,7 @@ test('Classification Page', async ({ page }) => {
       await clickOutside(page);
 
       const suggestTag = page.waitForResponse(
-        'api/v1/search/query?q=*%20AND%20disabled:false&index=tag_search_index*'
+        'api/v1/search/query?q=*&index=tag_search_index*'
       );
       await page.click('[data-testid="tag-selector"]');
       await page.keyboard.type(tag);
