@@ -57,10 +57,6 @@ import {
   getVersionPath,
 } from '../../../utils/RouterUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
@@ -188,11 +184,9 @@ const DataProductsDetailsPage = ({
   const fetchDataProductAssets = async () => {
     if (dataProduct) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
-        );
         const queryFilter = getTermQuery({
-          'dataProducts.fullyQualifiedName': encodedFqn,
+          'dataProducts.fullyQualifiedName':
+            dataProduct.fullyQualifiedName ?? '',
         });
         const res = await searchQuery({
           query: '',
