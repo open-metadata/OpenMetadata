@@ -13,13 +13,17 @@
 
 import { Button, Card, RadioChangeEvent, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
+import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
+import { ReactComponent as TermsIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
+import { ReactComponent as SLAIcon } from '../../../assets/svg/timeout.svg';
 import {
   DataContractMode,
   EDataContractTab,
@@ -27,19 +31,21 @@ import {
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import {
-  ContractStatus,
   DataContract,
+  EntityStatus,
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { createContract, updateContract } from '../../../rest/contractAPI';
-import { getUpdatedContractDetails } from '../../../utils/DataContract/DataContractUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import SchemaEditor from '../../Database/SchemaEditor/SchemaEditor';
 import { ContractDetailFormTab } from '../ContractDetailFormTab/ContractDetailFormTab';
 import { ContractQualityFormTab } from '../ContractQualityFormTab/ContractQualityFormTab';
 import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFormTab';
+import { ContractSecurityFormTab } from '../ContractSecurityFormTab/ContractSecurityFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
+import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
+import ContractTermsOfService from '../ContractTermOfService/ContractTermsOfService.component';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -73,28 +79,66 @@ const AddDataContract: React.FC<{
     setActiveTab(key);
   }, []);
 
-  const handleSave = useCallback(async () => {
-    setIsSubmitting(true);
-
+  const { validSemantics, validSecurity, isSaveDisabled } = useMemo(() => {
     const validSemantics = formValues.semantics?.filter(
       (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
     );
 
+    const validSecurity = formValues.security
+      ? {
+          ...formValues.security,
+          policies: formValues.security.policies?.map((policy) => ({
+            ...policy,
+            rowFilters: policy.rowFilters?.filter(
+              (filter) =>
+                !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
+            ),
+          })),
+        }
+      : undefined;
+
+    return {
+      validSemantics,
+      validSecurity,
+      isSaveDisabled: isEmpty(
+        compare(contract ?? {}, {
+          ...contract,
+          ...formValues,
+          semantics: validSemantics,
+          security: validSecurity,
+        })
+      ),
+    };
+  }, [contract, formValues]);
+
+  const handleSave = useCallback(async () => {
+    setIsSubmitting(true);
+
     try {
-      await (contract
-        ? updateContract({
-            ...getUpdatedContractDetails(contract, formValues),
-            semantics: validSemantics,
-          })
-        : createContract({
+      if (contract) {
+        await updateContract(
+          contract?.id,
+          compare(contract, {
+            ...contract,
             ...formValues,
-            entity: {
-              id: table.id,
-              type: EntityType.TABLE,
-            },
             semantics: validSemantics,
-            status: ContractStatus.Active,
-          }));
+            security: validSecurity,
+            displayName: formValues.name,
+          })
+        );
+      } else {
+        await createContract({
+          ...formValues,
+          displayName: formValues.name,
+          entity: {
+            id: table.id,
+            type: EntityType.TABLE,
+          },
+          semantics: validSemantics,
+          security: validSecurity,
+          entityStatus: EntityStatus.Approved,
+        });
+      }
 
       showSuccessToast(t('message.data-contract-saved-successfully'));
       onSave();
@@ -103,7 +147,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues, table?.id]);
+  }, [contract, formValues, table?.id, validSemantics, validSecurity]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {
@@ -112,7 +156,7 @@ const AddDataContract: React.FC<{
     [setFormValues]
   );
 
-  const onNext = useCallback(async () => {
+  const onNext = useCallback(() => {
     setActiveTab((prev) => (Number(prev) + 1).toString());
   }, [setActiveTab]);
 
@@ -133,9 +177,28 @@ const AddDataContract: React.FC<{
         children: (
           <ContractDetailFormTab
             initialValues={contract}
-            nextLabel={t('label.schema')}
+            nextLabel={t('label.terms-of-service')}
             onChange={onFormChange}
             onNext={onNext}
+          />
+        ),
+      },
+      {
+        label: (
+          <div className="d-flex items-center">
+            <TermsIcon className="contract-tab-icon" />
+            <span>{t('label.terms-of-service')}</span>
+          </div>
+        ),
+        key: EDataContractTab.TERMS_OF_SERVICE.toString(),
+        children: (
+          <ContractTermsOfService
+            initialValues={contract}
+            nextLabel={t('label.schema')}
+            prevLabel={t('label.contract-detail-plural')}
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
           />
         ),
       },
@@ -150,10 +213,8 @@ const AddDataContract: React.FC<{
         children: (
           <ContractSchemaFormTab
             nextLabel={t('label.semantic-plural')}
-            prevLabel={t('label.contract-detail-plural')}
-            selectedSchema={
-              contract?.schema?.map((column) => column.name) || []
-            }
+            prevLabel={t('label.terms-of-service')}
+            selectedSchema={contract?.schema ?? []}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -171,8 +232,27 @@ const AddDataContract: React.FC<{
         children: (
           <ContractSemanticFormTab
             initialValues={contract}
-            nextLabel={t('label.quality')}
+            nextLabel={t('label.security')}
             prevLabel={t('label.schema')}
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
+          />
+        ),
+      },
+      {
+        label: (
+          <div className="d-flex items-center">
+            <SecurityIcon className="contract-tab-icon" />
+            <span>{t('label.security')}</span>
+          </div>
+        ),
+        key: EDataContractTab.SECURITY.toString(),
+        children: (
+          <ContractSecurityFormTab
+            initialValues={contract}
+            nextLabel={t('label.quality')}
+            prevLabel={t('label.semantic-plural')}
             onChange={onFormChange}
             onNext={onNext}
             onPrev={onPrev}
@@ -189,12 +269,31 @@ const AddDataContract: React.FC<{
         key: EDataContractTab.QUALITY.toString(),
         children: (
           <ContractQualityFormTab
-            prevLabel={t('label.semantic-plural')}
+            nextLabel={t('label.sla')}
+            prevLabel={t('label.security')}
             selectedQuality={
               contract?.qualityExpectations?.map(
                 (quality) => quality.id ?? ''
               ) ?? []
             }
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
+          />
+        ),
+      },
+      {
+        label: (
+          <div className="d-flex items-center">
+            <SLAIcon className="contract-tab-icon" />
+            <span>{t('label.sla')}</span>
+          </div>
+        ),
+        key: EDataContractTab.SLA.toString(),
+        children: (
+          <ContractSLAFormTab
+            initialValues={contract}
+            prevLabel={t('label.quality')}
             onChange={onFormChange}
             onPrev={onPrev}
           />
@@ -229,6 +328,7 @@ const AddDataContract: React.FC<{
           <Button
             className="add-contract-save-button"
             data-testid="save-contract-btn"
+            disabled={isSaveDisabled}
             loading={isSubmitting}
             type="primary"
             onClick={handleSave}>
@@ -237,7 +337,14 @@ const AddDataContract: React.FC<{
         </div>
       </div>
     );
-  }, [mode, handleModeChange, onCancel, handleSave, isSubmitting]);
+  }, [
+    mode,
+    isSubmitting,
+    isSaveDisabled,
+    handleModeChange,
+    onCancel,
+    handleSave,
+  ]);
 
   const cardContent = useMemo(() => {
     if (mode === DataContractMode.YAML) {

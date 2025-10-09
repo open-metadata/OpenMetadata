@@ -42,7 +42,6 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
-import { getEntityName } from '../../utils/EntityUtils';
 import { getCountLabel, shouldTestConnection } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -441,12 +440,6 @@ jest.mock('../../utils/CommonUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('Entity not found'),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
-  getEntityFeedLink: jest.fn().mockReturnValue(''),
-  getEntityName: jest.fn().mockReturnValue('Test Service'),
-  getEntityReferenceFromEntity: jest.fn().mockReturnValue({}),
-}));
-
 jest.mock('../../utils/RouterUtils', () => ({
   getEditConnectionPath: jest.fn().mockReturnValue('/edit-connection'),
   getServiceDetailsPath: jest.fn().mockReturnValue('/service-details'),
@@ -482,6 +475,9 @@ jest.mock('../../utils/DatasetDetailsUtils', () => ({
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({
   getCurrentMillis: jest.fn().mockImplementation(() => 1715404800000),
   getDayAgoStartGMTinMillis: jest.fn().mockImplementation(() => 1715318400000),
+  getEpochMillisForPastDays: jest
+    .fn()
+    .mockImplementation((days) => 1715404800000 - days * 24 * 60 * 60 * 1000),
 }));
 
 jest.mock('../../utils/PermissionsUtils', () => ({
@@ -496,10 +492,6 @@ jest.mock('../../utils/StringsUtils', () => ({
 
 describe('ServiceDetailsPage', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-  });
-
-  afterEach(() => {
     jest.clearAllMocks();
   });
 
@@ -521,7 +513,7 @@ describe('ServiceDetailsPage', () => {
         </MemoryRouter>
       );
 
-      expect(await screen.findByTestId('loader')).toBeInTheDocument();
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
     });
 
     it('should render service details when loaded', async () => {
@@ -1119,52 +1111,18 @@ describe('ServiceDetailsPage', () => {
         );
       });
     });
-
-    it('should use correct entity utilities', async () => {
-      await renderComponent();
-
-      await waitFor(() => {
-        // getEntityName is called multiple times during component lifecycle
-        // Just verify it was called (it gets called with different service states)
-        expect(getEntityName).toHaveBeenCalled();
-      });
-    });
   });
 
   describe('Error Handling', () => {
     it('should handle service fetch error', async () => {
-      // Reset mocks to ensure clean state
-      jest.clearAllMocks();
-
-      // Ensure we're not testing OpenMetadata service (which has different logic)
-      (useFqn as jest.Mock).mockImplementation(() => ({
-        fqn: 'test-service',
-      }));
-
-      // Ensure permissions are properly set for the test
-      const mockGetEntityPermissionByFqn = jest
-        .fn()
-        .mockImplementation(() =>
-          Promise.resolve({ ViewAll: true, EditAll: true, Create: true })
-        );
-
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        getEntityPermissionByFqn: mockGetEntityPermissionByFqn,
-      }));
-
-      // Mock service fetch to fail
+      // Mock service fetch to fail with a generic error
       (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
         Promise.reject(new Error('Service not found'))
       );
 
       await renderComponent();
 
-      // Wait for all async operations to complete
-      await waitFor(() => {
-        expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-      });
-
-      // The component should show error placeholder when serviceDetails is empty
+      // The component should show error placeholder when service fetch fails
       await waitFor(() => {
         expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
       });

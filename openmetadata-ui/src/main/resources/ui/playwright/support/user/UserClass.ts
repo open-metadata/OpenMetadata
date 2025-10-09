@@ -210,7 +210,7 @@ export class UserClass {
     await emailInput.fill(userName);
     await page.locator('#email').press('Tab');
     await page.fill('input[id="password"]', password);
-    const loginRes = page.waitForResponse('/api/v1/users/login');
+    const loginRes = page.waitForResponse('/api/v1/auth/login');
     await page.getByTestId('login').click();
     await loginRes;
 

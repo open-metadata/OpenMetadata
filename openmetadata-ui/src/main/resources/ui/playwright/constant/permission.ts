@@ -117,6 +117,16 @@ export const EDIT_USER_FOR_TEAM_RULES: PolicyRulesType[] = [
   },
 ];
 
+export const OWNER_TEAM_RULES: PolicyRulesType[] = [
+  {
+    name: 'Owner-EditRule',
+    resources: ['team'],
+    operations: ['Create', 'EditAll'],
+    effect: 'allow',
+    condition: 'isOwner()',
+  },
+];
+
 export const ORGANIZATION_POLICY_RULES: PolicyRulesType[] = [
   {
     name: 'OrganizationPolicy-NoOwner-Rule',

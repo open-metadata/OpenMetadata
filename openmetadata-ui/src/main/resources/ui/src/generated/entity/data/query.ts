@@ -40,6 +40,10 @@ export interface Query {
      */
     duration?: number;
     /**
+     * Status of the Query.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Flag to check if query is to be excluded while processing usage
      */
     exclude_usage?: boolean;
@@ -257,6 +261,21 @@ export interface EntityReference {
 }
 
 /**
+ * Status of the Query.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * This schema defines the type for labeling an entity with a Tag.
  */
 export interface TagLabel {
@@ -284,6 +303,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

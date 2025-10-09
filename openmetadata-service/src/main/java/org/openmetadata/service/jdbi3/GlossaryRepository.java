@@ -54,8 +54,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.TermReference;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
-import org.openmetadata.schema.entity.data.GlossaryTerm.Status;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Relationship;
@@ -236,6 +237,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     @Override
     protected void createEntity(CSVPrinter printer, List<CSVRecord> csvRecords) throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) return;
       GlossaryTerm glossaryTerm = new GlossaryTerm().withGlossary(glossary.getEntityReference());
       String glossaryTermFqn =
           nullOrEmpty(csvRecord.get(0))
@@ -257,8 +259,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
                   printer, csvRecord, List.of(Pair.of(7, TagLabel.TagSource.CLASSIFICATION))))
           .withReviewers(getReviewers(printer, csvRecord, 8))
           .withOwners(getOwners(printer, csvRecord, 9))
-          .withStatus(getTermStatus(printer, csvRecord))
-          .withExtension(getExtension(printer, csvRecord, 11));
+          .withEntityStatus(getTermStatus(printer, csvRecord))
+          .withStyle(getStyle(csvRecord))
+          .withExtension(getExtension(printer, csvRecord, 13));
       if (processRecord) {
         createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
@@ -294,13 +297,13 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       return list;
     }
 
-    private Status getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
+    private EntityStatus getTermStatus(CSVPrinter printer, CSVRecord csvRecord) throws IOException {
       if (!processRecord) {
         return null;
       }
       String termStatus = csvRecord.get(10);
       try {
-        return nullOrEmpty(termStatus) ? Status.DRAFT : Status.fromValue(termStatus);
+        return nullOrEmpty(termStatus) ? EntityStatus.DRAFT : EntityStatus.fromValue(termStatus);
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(
@@ -310,6 +313,29 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         processRecord = false;
         return null;
       }
+    }
+
+    private Style getStyle(CSVRecord csvRecord) {
+      if (!processRecord) {
+        return null;
+      }
+      String color = csvRecord.get(11);
+      String iconURL = csvRecord.get(12);
+
+      // If both fields are empty, explicitly return null to remove any existing style
+      if (nullOrEmpty(color) && nullOrEmpty(iconURL)) {
+        return null;
+      }
+
+      Style style = new Style();
+      if (!nullOrEmpty(color)) {
+        style.setColor(color);
+      }
+      if (!nullOrEmpty(iconURL)) {
+        style.setIconURL(iconURL);
+      }
+
+      return style;
     }
 
     @Override
@@ -325,7 +351,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       addTagLabels(recordList, entity.getTags());
       addReviewers(recordList, entity.getReviewers());
       addOwners(recordList, entity.getOwners());
-      addField(recordList, entity.getStatus().value());
+      addField(recordList, entity.getEntityStatus().value());
+      addField(recordList, entity.getStyle() != null ? entity.getStyle().getColor() : null);
+      addField(recordList, entity.getStyle() != null ? entity.getStyle().getIconURL() : null);
       addExtension(recordList, entity.getExtension());
       addRecord(csvFile, recordList);
     }
@@ -495,7 +523,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
 
         List<GlossaryTerm> childTerms = getAllTerms(updated);
         for (GlossaryTerm term : childTerms) {
-          if (term.getStatus().equals(Status.IN_REVIEW)) {
+          if (term.getEntityStatus().equals(EntityStatus.IN_REVIEW)) {
             repository.updateTaskWithNewReviewers(term);
           }
         }

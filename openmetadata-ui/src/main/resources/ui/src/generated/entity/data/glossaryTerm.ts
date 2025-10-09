@@ -52,6 +52,10 @@ export interface GlossaryTerm {
      */
     domains?: EntityReference[];
     /**
+     * Approval status of the glossary term.
+     */
+    entityStatus?: EntityStatus;
+    /**
      * Entity extension data with custom attributes added to the entity.
      */
     extension?: any;
@@ -109,11 +113,7 @@ export interface GlossaryTerm {
      * User names of the reviewers for this glossary.
      */
     reviewers?: EntityReference[];
-    /**
-     * Status of the glossary term.
-     */
-    status?: Status;
-    style?:  Style;
+    style?:     Style;
     /**
      * Alternate names that are synonyms or near-synonyms for the glossary term.
      */
@@ -276,6 +276,21 @@ export interface EntityReference {
 }
 
 /**
+ * Approval status of the glossary term.
+ *
+ * Status of an entity. It is used for governance and is applied to all the entities in the
+ * catalog.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
  * Type of provider of an entity. Some entities are provided by the `system`. Some are
  * entities created and provided by the `user`. Typically `system` provide entities can't be
  * deleted and can only be disabled. Some apps such as AutoPilot create entities with
@@ -296,17 +311,6 @@ export interface TermReference {
      * Name that identifies the source of an external glossary term. Example `HealthCare.gov`.
      */
     name?: string;
-}
-
-/**
- * Status of the glossary term.
- */
-export enum Status {
-    Approved = "Approved",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
 }
 
 /**
@@ -352,6 +356,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
