@@ -256,6 +256,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     OPENSEARCH_REQUEST_OPTIONS = builder.build();
   }
 
+  private static final Set<String> AGG_CASE_SENSITIVE_FIELDS = Set.of("displayName.actualCase");
+
   private NLQService nlqService;
 
   public OpenSearchClient(ElasticSearchConfiguration config, NLQService nlqService) {
@@ -1695,6 +1697,9 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
     int bucketSize = request.getSize();
     String includeValue = request.getFieldValue().toLowerCase();
+    if (!AGG_CASE_SENSITIVE_FIELDS.contains(aggregationField)) {
+      includeValue = includeValue.toLowerCase();
+    }
 
     TermsAggregationBuilder termsAgg =
         AggregationBuilders.terms(aggregationField)

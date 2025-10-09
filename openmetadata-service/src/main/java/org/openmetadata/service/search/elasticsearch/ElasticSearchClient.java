@@ -234,6 +234,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
               Stream.of("schemaDefinition", "customMetrics", "embedding"))
           .toList();
 
+  private static final Set<String> AGG_CASE_SENSITIVE_FIELDS = Set.of("displayName.actualCase");
   // Add this field to the class
   private NLQService nlqService;
 
@@ -1595,6 +1596,9 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
     int bucketSize = request.getSize();
     String includeValue = request.getFieldValue().toLowerCase();
+    if (!AGG_CASE_SENSITIVE_FIELDS.contains(aggregationField)) {
+      includeValue = includeValue.toLowerCase();
+    }
 
     TermsAggregationBuilder termsAgg =
         AggregationBuilders.terms(aggregationField)
