@@ -33,6 +33,12 @@ VARIABLE_ASSIGNMENT_PATTERN = re.compile(
     re.MULTILINE,
 )
 
+# Pattern to extract DLT table decorators: @dlt.table(name="table_name", ...)
+DLT_TABLE_PATTERN = re.compile(
+    r'@dlt\.table\s*\(\s*(?:.*?name\s*=\s*["\']([^"\']+)["\'])?',
+    re.DOTALL | re.IGNORECASE,
+)
+
 
 @dataclass
 class KafkaSourceConfig:
@@ -177,7 +183,36 @@ def _extract_option(
     return None
 
 
-def get_pipeline_libraries(pipeline_config: dict) -> List[str]:
+def extract_dlt_table_names(source_code: str) -> List[str]:
+    """
+    Extract DLT table names from @dlt.table decorators
+
+    Parses patterns like:
+    - @dlt.table(name="user_events_bronze_pl", ...)
+    - @dlt.table(comment="...", name="my_table")
+
+    Returns list of table names found in decorators
+    """
+    table_names = []
+
+    try:
+        if not source_code:
+            logger.debug("Empty or None source code provided")
+            return table_names
+
+        for match in DLT_TABLE_PATTERN.finditer(source_code):
+            table_name = match.group(1)
+            if table_name:
+                table_names.append(table_name)
+                logger.debug(f"Found DLT table: {table_name}")
+
+    except Exception as exc:
+        logger.warning(f"Error parsing DLT table names from code: {exc}")
+
+    return table_names
+
+
+def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:
     """
     Extract notebook and file paths from pipeline configuration
     Safely handles missing or malformed configuration
