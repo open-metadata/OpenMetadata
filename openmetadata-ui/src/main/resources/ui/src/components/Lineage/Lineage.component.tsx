@@ -159,7 +159,9 @@ const Lineage = ({ entity, entityType, isPlatformLineage }: LineageProps) => {
                   <MiniMap pannable zoomable position="bottom-right" />
                 )}
 
-                <Panel position="bottom-left">
+                <Panel
+                  className={classNames({ 'edit-mode': isEditMode })}
+                  position="bottom-left">
                   <LineageLayers entity={entity} entityType={entityType} />
                 </Panel>
                 <Panel position="bottom-right">

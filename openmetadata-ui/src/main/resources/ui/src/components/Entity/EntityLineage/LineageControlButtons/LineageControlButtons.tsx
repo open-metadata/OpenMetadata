@@ -10,24 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ArrowsAltOutlined,
-  FullscreenExitOutlined,
-  FullscreenOutlined,
-  ShrinkOutlined,
-} from '@ant-design/icons';
+import { ArrowsAltOutlined, ShrinkOutlined } from '@ant-design/icons';
 import {
   Button,
   MenuItem,
   ToggleButton,
   ToggleButtonGroup,
+  Tooltip,
 } from '@mui/material';
 import Qs from 'qs';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as ExitFullScreenIcon } from '../../../../assets/svg/ic-exit-fullscreen.svg';
 import { ReactComponent as FitScreenIcon } from '../../../../assets/svg/ic-fit-screen.svg';
 import { ReactComponent as FitViewOptionsIcon } from '../../../../assets/svg/ic-fit-view-options.svg';
+import { ReactComponent as FullscreenIcon } from '../../../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as HomeIcon } from '../../../../assets/svg/ic-home.svg';
 import { ReactComponent as MapIcon } from '../../../../assets/svg/ic-map.svg';
 import { ReactComponent as RearrangeNodesIcon } from '../../../../assets/svg/ic-rearrange-nodes.svg';
@@ -112,6 +110,7 @@ const LineageControlButtons: FC<{
     <>
       <ToggleButtonGroup
         exclusive
+        color="primary"
         sx={{
           /* Shadows/shadow-xs */
           boxShadow: '0 1px 2px 0 rgba(10, 13, 18, 0.05)',
@@ -206,14 +205,23 @@ const LineageControlButtons: FC<{
           onClick={handleZoomOut}>
           <ZoomOutIcon />
         </ToggleButton>
-
-        <ToggleButton
-          data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
-          title={t('label.full-screen')}
-          value="full-screen"
-          onClick={toggleFullscreenView}>
-          {isFullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-        </ToggleButton>
+        <Tooltip
+          arrow
+          placement="top"
+          title={
+            isFullscreen
+              ? t('label.exit-full-screen')
+              : t('label.full-screen-view')
+          }>
+          <ToggleButton
+            data-testid={isFullscreen ? 'exit-full-screen' : 'full-screen'}
+            selected={isFullscreen}
+            size="large"
+            value="full-screen"
+            onClick={toggleFullscreenView}>
+            {isFullscreen ? <ExitFullScreenIcon /> : <FullscreenIcon />}
+          </ToggleButton>
+        </Tooltip>
       </ToggleButtonGroup>
     </>
   );

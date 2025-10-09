@@ -32,6 +32,7 @@ import { ReactComponent as ExitFullScreenIcon } from '../../../assets/svg/ic-exi
 import { ReactComponent as FilterLinesIcon } from '../../../assets/svg/ic-filter-lines.svg';
 import { ReactComponent as FullscreenIcon } from '../../../assets/svg/ic-fullscreen.svg';
 import { ReactComponent as SettingsOutlined } from '../../../assets/svg/ic-settings-gear.svg';
+import { ReactComponent as SortIcon } from '../../../assets/svg/ic-sort-both.svg';
 import { LINEAGE_DROPDOWN_ITEMS } from '../../../constants/AdvancedSearch.constants';
 import { FULLSCREEN_QUERY_PARAM_KEY } from '../../../constants/constants';
 import { ExportTypes } from '../../../constants/Export.constants';
@@ -76,6 +77,8 @@ const CustomControls: FC<{
     lineageConfig,
     onExportClick,
     onLineageConfigUpdate,
+    onLineageEditClick,
+    isEditMode,
   } = useLineageProvider();
   const [filterSelectionActive, setFilterSelectionActive] = useState(false);
   const [dialogVisible, setDialogVisible] = useState(false);
@@ -342,12 +345,21 @@ const CustomControls: FC<{
       menu = (
         <StyledMenu
           anchorEl={settingsAnchorEl}
+          anchorOrigin={{
+            horizontal: 'right',
+            vertical: 'bottom',
+          }}
           open={Boolean(settingsAnchorEl)}
+          transformOrigin={{
+            horizontal: 'right',
+            vertical: 'top',
+          }}
           onClose={() => setSettingsAnchorEl(null)}>
           <MenuItem
             key="edit"
-            // selected={isEdit}
+            selected={isEditMode}
             onClick={() => {
+              onLineageEditClick();
               setSettingsAnchorEl(null);
             }}>
             <EditIcon />
@@ -359,7 +371,8 @@ const CustomControls: FC<{
               setSettingsAnchorEl(null);
               setDialogVisible(true);
             }}>
-            {t('label.lineage-config')}
+            <SortIcon />
+            {t('label.node-depth')}
           </MenuItem>
         </StyledMenu>
       );
@@ -384,7 +397,13 @@ const CustomControls: FC<{
         {menu}
       </>
     );
-  }, [activeTab, settingsAnchorEl, lineageConfig]);
+  }, [
+    activeTab,
+    settingsAnchorEl,
+    lineageConfig,
+    isEditMode,
+    onLineageEditClick,
+  ]);
 
   return (
     <div>
@@ -418,7 +437,11 @@ const CustomControls: FC<{
           <Tooltip
             arrow
             placement="top"
-            title={t('label.export-as-type', { type: t('label.csv') })}>
+            title={
+              activeTab === 'impact_analysis'
+                ? t('label.export-as-type', { type: t('label.csv') })
+                : t('label.export')
+            }>
             <StyledIconButton size="large" onClick={handleExportClick}>
               <DownloadIcon />
             </StyledIconButton>
