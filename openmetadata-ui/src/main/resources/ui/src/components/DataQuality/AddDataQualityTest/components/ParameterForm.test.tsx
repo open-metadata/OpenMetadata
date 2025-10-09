@@ -225,5 +225,23 @@ describe('ParameterForm component test', () => {
 
       expect(parameters.length).toBeGreaterThan(0);
     });
+
+    it('Should have table2.keyColumns disabled when table2 is not selected', async () => {
+      await act(async () => {
+        renderWithForm(
+          <ParameterForm
+            definition={MOCK_TABLE_DIFF_DEFINITION as TestDefinition}
+            table={MOCK_TABLE_WITH_DATE_TIME_COLUMNS}
+          />
+        );
+      });
+
+      const keyColumnsInputs = screen.getAllByRole('combobox');
+      const table2KeyColumnsInput = keyColumnsInputs.find((input) =>
+        input.id.includes('table2.keyColumns')
+      );
+
+      expect(table2KeyColumnsInput).toBeDisabled();
+    });
   });
 });

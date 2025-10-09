@@ -178,6 +178,16 @@ test('Table difference test case', async ({ page }) => {
         `Edit ${testCase.name}`
       );
 
+      // Verify table2.keyColumns is enabled and populated in edit mode
+      const table2KeyColumnsEditInput = page.locator(
+        '#tableTestForm_params_table2\\.keyColumns_0_value'
+      );
+
+      await expect(table2KeyColumnsEditInput).not.toBeDisabled();
+      await expect(table2KeyColumnsEditInput).toHaveValue(
+        table2.entity?.columns[0].name
+      );
+
       await page
         .locator('label')
         .filter({ hasText: "Table 1's key columns" })

@@ -322,6 +322,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
   };
 
   const TableDiffForm = () => {
+    const form = Form.useFormInstance();
     const [isOptionsLoading, setIsOptionsLoading] = useState(false);
     const [tableList, setTableList] = useState<
       SearchHitBody<
@@ -359,9 +360,8 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
             'columns',
           ],
         });
-
         setTableList(response.hits.hits);
-      } catch (error) {
+      } catch {
         setTableList([]);
       } finally {
         setIsOptionsLoading(false);
@@ -373,11 +373,27 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
       [fetchTableData]
     );
 
+    useEffect(() => {
+      fetchTableData();
+    }, [fetchTableData]);
+
+    useEffect(() => {
+      const table2Value = form.getFieldValue(['params', 'table2']);
+      if (table2Value && !table2Columns && tableList.length > 0) {
+        const selectedTable = tableList.find(
+          (hit) => hit._source.fullyQualifiedName === table2Value
+        );
+        if (selectedTable) {
+          setTable2Columns(selectedTable._source.columns);
+        }
+      }
+    }, [tableList, table2Columns, form]);
+
     const getFormData = (data: TestCaseParameterDefinition) => {
       switch (data.name) {
         case 'table2':
           return (
-            <Form.Item noStyle shouldUpdate>
+            <Form.Item noStyle shouldUpdate key={data.name}>
               {({ setFieldsValue }) =>
                 prepareForm(
                   data,
@@ -391,6 +407,12 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                     placeholder={t('label.table')}
                     popupClassName="no-wrap-option"
                     onChange={(value) => {
+                      // Clear key columns when table2 changes
+                      setFieldsValue({
+                        params: { 'table2.keyColumns': [{ value: undefined }] },
+                      });
+
+                      // Update columns or clear them
                       if (value) {
                         const selectedTable = tableList.find(
                           (hit) => hit._source.fullyQualifiedName === value
@@ -399,10 +421,6 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                       } else {
                         setTable2Columns(undefined);
                       }
-                      // Clear table2 key columns selection (empty array keeps the field, undefined removes it)
-                      setFieldsValue({
-                        params: { 'table2.keyColumns': [{ value: undefined }] },
-                      });
                     }}
                     onSearch={debounceFetchTableData}
                   />
@@ -415,26 +433,39 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
         case 'table2.keyColumns':
         case 'useColumns':
           return (
-            <Form.Item noStyle shouldUpdate>
+            <Form.Item noStyle shouldUpdate key={data.name}>
               {({ getFieldValue }) => {
                 const isTable2KeyColumns = data.name === 'table2.keyColumns';
                 const table2Value = getFieldValue(['params', 'table2']);
-                const sourceColumns = isTable2KeyColumns
-                  ? table2Columns
-                  : table?.columns;
+
+                let sourceColumns = table?.columns;
+                if (isTable2KeyColumns) {
+                  if (table2Value) {
+                    const selectedTable =
+                      tableList.find(
+                        (hit) => hit._source.fullyQualifiedName === table2Value
+                      ) ?? undefined;
+                    sourceColumns =
+                      selectedTable?._source.columns ?? table2Columns;
+                  } else {
+                    sourceColumns = undefined;
+                  }
+                }
+
+                // Disable when no table2 selected
+                const isDisabled = isTable2KeyColumns && !table2Value;
+
                 const selectedColumnsSet = getSelectedColumnsSet(
                   data,
                   getFieldValue
                 );
 
-                const columns = sourceColumns?.map((column) => ({
-                  label: getEntityName(column),
-                  value: column.name,
-                  disabled: selectedColumnsSet.has(column.name),
-                }));
-
-                const isDisabled =
-                  isTable2KeyColumns && (!table2Value || !table2Columns);
+                const columnOptions =
+                  sourceColumns?.map((column) => ({
+                    label: getEntityName(column),
+                    value: column.name,
+                    disabled: selectedColumnsSet.has(column.name),
+                  })) ?? [];
 
                 return prepareForm(
                   data,
@@ -443,7 +474,7 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
                     showSearch
                     disabled={isDisabled}
                     getPopupContainer={getPopupContainer}
-                    options={columns}
+                    options={columnOptions}
                     placeholder={t('label.column')}
                   />
                 );
@@ -455,10 +486,6 @@ const ParameterForm: React.FC<ParameterFormProps> = ({ definition, table }) => {
           return prepareForm(data);
       }
     };
-
-    useEffect(() => {
-      fetchTableData();
-    }, []);
 
     return <>{definition.parameterDefinition?.map(getFormData)}</>;
   };
