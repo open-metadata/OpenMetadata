@@ -124,7 +124,7 @@ const LogsViewerPage = () => {
       }
       const res = await getIngestionPipelineLogById(
         ingestionId || ingestionDetails?.id || '',
-        paging?.total !== paging?.after ? paging?.after : ''
+        paging?.total === paging?.after ? '' : paging?.after
       );
 
       setPaging({
@@ -322,7 +322,7 @@ const LogsViewerPage = () => {
         element.download = fileName;
         document.body.appendChild(element);
         element.click();
-        document.body.removeChild(element);
+        element.remove();
       } else {
         const logsBlob = await downloadIngestionLog(ingestionDetails?.id);
 
@@ -331,7 +331,7 @@ const LogsViewerPage = () => {
         element.download = fileName;
         document.body.appendChild(element);
         element.click();
-        document.body.removeChild(element);
+        element.remove();
       }
     } catch (err) {
       showErrorToast(err as AxiosError);

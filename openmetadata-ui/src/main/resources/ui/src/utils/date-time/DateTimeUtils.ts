@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import cronstrue from 'cronstrue';
-import { capitalize, isNil, toInteger, toNumber } from 'lodash';
+import { capitalize, isNaN, isNil, toInteger, toNumber } from 'lodash';
 import { DateTime, Duration } from 'luxon';
 import { DATE_TIME_SHORT_UNITS } from '../../enums/common.enum';
 import { getCurrentLocaleForConstrue } from '../i18next/i18nextUtil';
@@ -122,7 +122,7 @@ export const formatDateTimeWithTimezone = (timeStamp: number): string => {
  * @returns Formatted duration for valid input. Format: 00:09:31
  */
 export const formatTimeDurationFromSeconds = (seconds: number) =>
-  !isNil(seconds) ? Duration.fromObject({ seconds }).toFormat('hh:mm:ss') : '';
+  isNil(seconds) ? '' : Duration.fromObject({ seconds }).toFormat('hh:mm:ss');
 
 /**
  *
@@ -152,11 +152,11 @@ export const customFormatDateTime = (
  * @returns
  */
 export const getRelativeTime = (timeStamp?: number): string => {
-  return !isNil(timeStamp)
-    ? DateTime.fromMillis(timeStamp, {
+  return isNil(timeStamp)
+    ? ''
+    : DateTime.fromMillis(timeStamp, {
         locale: i18next.language,
-      }).toRelative() ?? ''
-    : '';
+      }).toRelative() ?? '';
 };
 
 /**
@@ -245,7 +245,7 @@ export const isValidDateFormat = (format: string) => {
     const dt = DateTime.fromFormat(DateTime.now().toFormat(format), format);
 
     return dt.isValid;
-  } catch (error) {
+  } catch {
     return false;
   }
 };
@@ -285,7 +285,7 @@ export const calculateInterval = (
     const hours = Math.floor(duration.as('hours')) % 24;
 
     return `${days} Days, ${hours} Hours`;
-  } catch (error) {
+  } catch {
     return 'Invalid interval';
   }
 };
@@ -372,7 +372,7 @@ export const formatDuration = (ms: number) => {
   const hours = minutes / 60;
 
   const pluralize = (value: number, unit: string) =>
-    `${value.toFixed(2)} ${unit}${value !== 1 ? 's' : ''}`;
+    `${value.toFixed(2)} ${unit}${value === 1 ? '' : 's'}`;
 
   if (seconds < 60) {
     return pluralize(seconds, 'second');
