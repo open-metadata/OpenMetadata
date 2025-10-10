@@ -107,13 +107,9 @@ export const fetchTestCaseSummaryByNoDimension = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags));
   }
 
   return getDataQualityReport({
@@ -142,13 +138,9 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   // NOTE: testCaseResolutionStatus index only includes testCase.tags, not testCase.tier
   // Tier filtering is not supported for incident metrics due to backend index limitations
   // See TestCaseResolutionStatusIndex.java line 35-48 for index structure
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
   }
 
   return getDataQualityReport({
@@ -187,13 +179,9 @@ export const fetchIncidentTimeMetrics = (
   // NOTE: testCaseResolutionStatus index only includes testCase.tags, not testCase.tier
   // Tier filtering is not supported for incident metrics due to backend index limitations
   // See TestCaseResolutionStatusIndex.java line 35-48 for index structure
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
   }
 
   return getDataQualityReport({
