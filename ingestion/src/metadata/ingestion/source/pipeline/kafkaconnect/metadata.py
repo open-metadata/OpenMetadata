@@ -182,7 +182,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         )
                         # Build search string: schema.table format
                         search_string = (
-                            f"{dataset_details.database}.{dataset_details.table}"
+                            f"{fqn.quote_name(dataset_details.database)}.{fqn.quote_name(dataset_details.table)}"
                             if dataset_details.database
                             else dataset_details.table
                         )

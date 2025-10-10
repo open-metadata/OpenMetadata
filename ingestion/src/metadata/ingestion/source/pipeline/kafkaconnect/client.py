@@ -110,16 +110,16 @@ class ConnectorConfigKeys:
         "db.name",
         "snowflake.database.name",
         "database.include.list",
-        "database.hostname",
-        "connection.url",
+        # "database.hostname",
+        # "connection.url",
         "database.dbname",
         "topic.prefix",
-        "database.server.name",  # Debezium V1
+        # "database.server.name",  # This maps the server name, not the actual database
         "databases.include",
         "database.names",
         "snowflake.database",
-        "connection.host",
-        "database.exclude.list",
+        # "connection.host",
+        # "database.exclude.list",
     ]
 
     CONTAINER_KEYS = [
