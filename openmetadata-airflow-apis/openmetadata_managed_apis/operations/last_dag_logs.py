@@ -35,7 +35,7 @@ def get_log_file_info(
     dag_id: str, task_id: str, try_number: int, log_file_path: str, mtime: float
 ) -> Tuple[int, int]:
     """
-        Get total size and number of chunks for a log file.
+    Get total size and number of chunks for a log file.
         :param dag_id: DAG identifier
         :param task_id: Task identifier
         :param try_number: Task attempt number
@@ -68,9 +68,9 @@ def read_log_chunk_from_file(file_path: str, chunk_index: int) -> Optional[str]:
 
 def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Response:
     """
-        Validate that the DAG is registered by Airflow and have at least one Run.
-        If exists, returns all logs for each task instance of the last DAG run.
-        Uses file streaming to avoid loading entire log file into memory.
+    Validate that the DAG is registered by Airflow and have at least one Run.
+    If exists, returns all logs for each task instance of the last DAG run.
+    Uses file streaming to avoid loading entire log file into memory.
         :param dag_id: DAG to look for
         :param task_id: Task to fetch logs from
         :param after: log stream cursor
@@ -168,7 +168,7 @@ def _last_dag_logs_fallback(
     try_number: int,
 ) -> Response:
     """
-        Fallback to reading entire log file into memory (old behavior).
+    Fallback to reading entire log file into memory (old behavior).
         :param dag_id: DAG to look for
         :param task_id: Task to fetch logs from
         :param after: log stream cursor
