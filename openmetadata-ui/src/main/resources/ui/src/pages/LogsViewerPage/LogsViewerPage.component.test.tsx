@@ -45,6 +45,46 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(),
 }));
 
+jest.mock('../../utils/EntityUtils', () => ({
+  getEntityName: jest.fn((entity) => entity?.name || entity?.displayName || ''),
+}));
+
+jest.mock('../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
+jest.mock('../../utils/IngestionLogs/LogsUtils', () => ({
+  downloadAppLogs: jest.fn(),
+  downloadIngestionLog: jest.fn(),
+}));
+
+jest.mock('../../utils/DataAssetsHeader.utils', () => ({
+  ExtraInfoLabel: jest.fn(({ label, value }) => (
+    <div>
+      <span>{label}</span>
+      <span>{value}</span>
+    </div>
+  )),
+}));
+
+jest.mock('../../hooks/useFqn', () => ({
+  useFqn: jest.fn(() => {
+    const { useParams } = jest.requireMock('react-router-dom');
+    const params = useParams();
+
+    return { fqn: params.fqn || params.ingestionName || '' };
+  }),
+}));
+
+jest.mock('../../utils/useRequiredParams', () => ({
+  useRequiredParams: jest.fn(() => {
+    const { useParams } = jest.requireMock('react-router-dom');
+    const params = useParams();
+
+    return { logEntityType: params.logEntityType || 'TestSuite' };
+  }),
+}));
+
 jest.mock('../../utils/LogsClassBase', () => ({
   getLogBreadCrumbs: jest
     .fn()
@@ -77,9 +117,25 @@ jest.mock(
   })
 );
 
-jest.mock('./LogsViewerPageSkeleton.component', () => {
-  return jest.fn().mockImplementation(() => <p>LogsViewerPageSkeleton</p>);
-});
+// Mock @mui/system/useThemeWithoutDefault to provide theme context for Box component
+jest.mock('@mui/system/useThemeWithoutDefault', () => ({
+  __esModule: true,
+  default: () => ({
+    palette: { mode: 'light' },
+    spacing: (value: number) => `${value * 8}px`,
+  }),
+}));
+
+jest.mock('../../utils/date-time/DateTimeUtils', () => ({
+  getScheduleDescriptionTexts: jest.fn().mockReturnValue({
+    descriptionFirstPart: 'Every day',
+    descriptionSecondPart: 'at 12:00 AM',
+  }),
+  getEpochMillisForPastDays: jest.fn(
+    () => Date.now() - 7 * 24 * 60 * 60 * 1000
+  ),
+  getCurrentMillis: jest.fn(() => Date.now()),
+}));
 
 jest.mock('../../rest/applicationAPI', () => ({
   getApplicationByName: jest
@@ -194,13 +250,12 @@ describe('LogsViewerPage.component', () => {
       render(<LogsViewerPage />);
     });
 
-    expect(screen.getByText('Type:')).toBeInTheDocument();
+    expect(screen.getByText('Type')).toBeInTheDocument();
     expect(screen.getByText('Custom')).toBeInTheDocument();
 
-    expect(screen.getByText('Schedule:')).toBeInTheDocument();
-    expect(screen.getByText('0 0 * * *')).toBeInTheDocument();
+    expect(screen.getByText('Schedule')).toBeInTheDocument();
 
-    expect(screen.getByText('Recent Runs:')).toBeInTheDocument();
+    expect(screen.getByText('Recent Runs')).toBeInTheDocument();
     expect(screen.getByText('IngestionRecentRuns')).toBeInTheDocument();
   });
 
@@ -357,5 +412,252 @@ describe('LogsViewerPage.component', () => {
       'c379d75a-43cd-4d93-a799-0bba4a22c690',
       '1'
     );
+  });
+
+  it('should handle Profiler pipeline type logs', async () => {
+    const mockProfilerPipeline = {
+      ...mockIngestionPipeline,
+      pipelineType: 'profiler',
+    };
+    const mockProfilerLogs = {
+      ...mockLogsData,
+      profiler_task: 'Profiler logs content',
+    };
+
+    const { getIngestionPipelineByFqn } = jest.requireMock(
+      '../../rest/ingestionPipelineAPI'
+    );
+    (getIngestionPipelineByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockProfilerPipeline)
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockProfilerLogs })
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Profiler logs content')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle Usage pipeline type logs', async () => {
+    const mockUsagePipeline = {
+      ...mockIngestionPipeline,
+      pipelineType: 'usage',
+    };
+    const mockUsageLogs = {
+      ...mockLogsData,
+      usage_task: 'Usage logs content',
+    };
+
+    const { getIngestionPipelineByFqn } = jest.requireMock(
+      '../../rest/ingestionPipelineAPI'
+    );
+    (getIngestionPipelineByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockUsagePipeline)
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockUsageLogs })
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Usage logs content')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle Lineage pipeline type logs', async () => {
+    const mockLineagePipeline = {
+      ...mockIngestionPipeline,
+      pipelineType: 'lineage',
+    };
+    const mockLineageLogs = {
+      ...mockLogsData,
+      lineage_task: 'Lineage logs content',
+    };
+
+    const { getIngestionPipelineByFqn } = jest.requireMock(
+      '../../rest/ingestionPipelineAPI'
+    );
+    (getIngestionPipelineByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockLineagePipeline)
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockLineageLogs })
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('Lineage logs content')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle DBT pipeline type logs', async () => {
+    const mockDbtPipeline = {
+      ...mockIngestionPipeline,
+      pipelineType: 'dbt',
+    };
+    const mockDbtLogs = {
+      ...mockLogsData,
+      dbt_task: 'DBT logs content',
+    };
+
+    const { getIngestionPipelineByFqn } = jest.requireMock(
+      '../../rest/ingestionPipelineAPI'
+    );
+    (getIngestionPipelineByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockDbtPipeline)
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockDbtLogs })
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('DBT logs content')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle DataInsight pipeline type logs', async () => {
+    const mockDataInsightPipeline = {
+      ...mockIngestionPipeline,
+      pipelineType: 'dataInsight',
+    };
+    const mockDataInsightLogs = {
+      ...mockLogsData,
+      data_insight_task: 'DataInsight logs content',
+    };
+
+    const { getIngestionPipelineByFqn } = jest.requireMock(
+      '../../rest/ingestionPipelineAPI'
+    );
+    (getIngestionPipelineByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockDataInsightPipeline)
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockDataInsightLogs })
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('DataInsight logs content')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle ElasticSearchReindex pipeline type logs', async () => {
+    const mockEsReindexPipeline = {
+      ...mockIngestionPipeline,
+      pipelineType: 'elasticSearchReindex',
+    };
+    const mockEsReindexLogs = {
+      ...mockLogsData,
+      elasticsearch_reindex_task: 'ES Reindex logs content',
+    };
+
+    const { getIngestionPipelineByFqn } = jest.requireMock(
+      '../../rest/ingestionPipelineAPI'
+    );
+    (getIngestionPipelineByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockEsReindexPipeline)
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockEsReindexLogs })
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText('ES Reindex logs content')).toBeInTheDocument();
+    });
+  });
+
+  it('should handle AutoClassification pipeline type logs', async () => {
+    const mockAutoClassificationPipeline = {
+      ...mockIngestionPipeline,
+      pipelineType: 'autoClassification',
+    };
+    const mockAutoClassificationLogs = {
+      ...mockLogsData,
+      auto_classification_task: 'AutoClassification logs content',
+    };
+
+    const { getIngestionPipelineByFqn } = jest.requireMock(
+      '../../rest/ingestionPipelineAPI'
+    );
+    (getIngestionPipelineByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(mockAutoClassificationPipeline)
+    );
+    (getIngestionPipelineLogById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: mockAutoClassificationLogs })
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('AutoClassification logs content')
+      ).toBeInTheDocument();
+    });
+  });
+
+  it('should handle error when fetching ingestion pipeline details', async () => {
+    const { getIngestionPipelineByFqn } = jest.requireMock(
+      '../../rest/ingestionPipelineAPI'
+    );
+    const { showErrorToast } = jest.requireMock('../../utils/ToastUtils');
+    const mockError = new Error('Failed to fetch pipeline');
+
+    (getIngestionPipelineByFqn as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject(mockError)
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(mockError);
+    });
+  });
+
+  it('should handle error when fetching application details', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      logEntityType: 'apps',
+      fqn: 'DataInsightsApplication',
+    });
+
+    const { showErrorToast } = jest.requireMock('../../utils/ToastUtils');
+    const mockError = new Error('Failed to fetch application');
+
+    (getApplicationByName as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject(mockError)
+    );
+
+    await act(async () => {
+      render(<LogsViewerPage />);
+    });
+
+    await waitFor(() => {
+      expect(showErrorToast).toHaveBeenCalledWith(mockError);
+    });
   });
 });
