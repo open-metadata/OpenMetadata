@@ -33,7 +33,6 @@ import {
 import {
   EntityFields,
   EntityReferenceFields,
-  EntitySourceFields,
   SuggestionField,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
@@ -167,7 +166,6 @@ class AdvancedSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     entityField: EntityFields | EntityReferenceFields;
     suggestField?: SuggestionField;
-    isCaseInsensitive?: boolean;
     sourceFields?: string;
     sourceFieldOptionType?: {
       label: string;
@@ -177,7 +175,6 @@ class AdvancedSearchClassBase {
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     entityField,
-    isCaseInsensitive = false,
     q = '',
     sourceFields,
     sourceFieldOptionType,
@@ -185,17 +182,12 @@ class AdvancedSearchClassBase {
     let pendingResolve: // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ((result: { values: any[]; hasMore: boolean }) => void) | null = null;
     const debouncedFetch = debounce((search: string) => {
-      const finalSourceFields = isCaseInsensitive
-        ? sourceFields ??
-          EntitySourceFields?.[entityField as EntityFields]?.join(',')
-        : undefined;
-
       getAggregateFieldOptions(
         searchIndex,
         entityField,
         search ?? '',
         q,
-        finalSourceFields
+        sourceFields
       )
         .then((response) => {
           const buckets =
@@ -203,7 +195,7 @@ class AdvancedSearchClassBase {
 
           const bucketsData = parseBucketsData(
             buckets,
-            finalSourceFields,
+            sourceFields,
             sourceFieldOptionType
           );
 
@@ -814,7 +806,7 @@ class AdvancedSearchClassBase {
           asyncFetch: this.autocomplete({
             searchIndex: entitySearchIndex,
             entityField: EntityFields.NAME_KEYWORD,
-            isCaseInsensitive: true,
+            sourceFields: 'name',
           }),
           useAsyncSearch: true,
         },

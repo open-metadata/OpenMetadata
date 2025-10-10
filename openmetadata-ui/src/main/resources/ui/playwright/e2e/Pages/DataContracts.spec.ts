@@ -71,7 +71,8 @@ const testPersona = base.extend<{ page: Page }>({
 
 test.describe('Data Contracts', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    await user.create(apiContext);
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
       await resetTokenFromBotPage(page, 'testsuite-bot');
