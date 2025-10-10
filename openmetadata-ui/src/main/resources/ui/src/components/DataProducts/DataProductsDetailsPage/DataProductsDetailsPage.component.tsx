@@ -555,7 +555,14 @@ const DataProductsDetailsPage = ({
           flexDirection: 'column',
           gap: 1.5,
         }}>
-        <CoverImage />
+        <CoverImage
+          imageUrl={dataProduct.style?.coverImage}
+          position={
+            dataProduct.style?.coverImagePosition !== undefined
+              ? { y: dataProduct.style.coverImagePosition }
+              : undefined
+          }
+        />
         <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
           <Box sx={{ flex: 1 }}>
             <EntityHeader

@@ -787,7 +787,14 @@ const DomainDetails = ({
           flexDirection: 'column',
           gap: 1.5,
         }}>
-        <CoverImage />
+        <CoverImage
+          imageUrl={domain.style?.coverImage}
+          position={
+            domain.style?.coverImagePosition !== undefined
+              ? { y: domain.style.coverImagePosition }
+              : undefined
+          }
+        />
         <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
           <Box sx={{ flex: 1 }}>
             <EntityHeader

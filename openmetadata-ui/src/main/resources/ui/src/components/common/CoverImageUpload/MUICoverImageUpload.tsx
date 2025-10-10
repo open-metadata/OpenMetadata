@@ -70,6 +70,20 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
   const imageSrc = authenticatedResult?.imageSrc ?? value?.url ?? '';
   const imageLoading = authenticatedResult?.isLoading ?? false;
 
+  // Check if image is ready to display (prevent 401 errors on authenticated URLs)
+  const showImage = useMemo(() => {
+    if (!imageSrc) {
+      return false;
+    }
+    // For authenticated URLs, only show when blob is ready
+    if (value?.url?.includes('/api/v1/attachments/')) {
+      return imageSrc.startsWith('blob:');
+    }
+
+    // For regular URLs, show immediately
+    return true;
+  }, [imageSrc, value?.url]);
+
   // Reset error state when image source changes
   useEffect(() => {
     if (imageSrc) {
@@ -622,6 +636,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
         </Box>
       ) : (
         <Box
+          data-testid="cover-image-upload-preview-container"
           ref={imageContainerRef}
           sx={{
             position: 'relative',
@@ -636,40 +651,62 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
           }}
           tabIndex={isRepositioning ? 0 : -1}
           onKeyDown={handleRepositionKeyDown}>
-          <Box
-            alt="Cover"
-            component="img"
-            src={imageSrc}
-            sx={{
-              width: '100%',
-              height: 'auto',
-              minHeight: 103,
-              objectFit: 'cover',
-              objectPosition: 'center top',
-              transform: isRepositioning
-                ? `translateY(${tempOffsetY}px)`
-                : value?.position?.y
-                ? `translateY(${value.position.y}px)`
-                : 'none',
-              display: imageError ? 'none' : 'block',
-              cursor: isRepositioning ? 'ns-resize' : 'default',
-              transition: isRepositionDragging ? 'none' : 'transform 0.2s ease',
-              userSelect: 'none',
-              WebkitUserDrag: 'none',
-              touchAction: isRepositioning ? 'none' : 'auto',
-            }}
-            onError={() => setImageError(true)}
-            onLoad={handleImageLoad}
-            onMouseDown={
-              isRepositioning ? handleRepositionMouseDown : undefined
-            }
-            onTouchStart={
-              isRepositioning ? handleRepositionTouchStart : undefined
-            }
-          />
+          {showImage ? (
+            <Box
+              alt="Cover"
+              component="img"
+              data-testid="cover-image-upload-preview"
+              src={imageSrc}
+              sx={{
+                width: '100%',
+                height: 'auto',
+                minHeight: 103,
+                objectFit: 'cover',
+                objectPosition: 'center top',
+                transform: isRepositioning
+                  ? `translateY(${tempOffsetY}px)`
+                  : value?.position?.y
+                  ? `translateY(${value.position.y}px)`
+                  : 'none',
+                display: imageError ? 'none' : 'block',
+                cursor: isRepositioning ? 'ns-resize' : 'default',
+                transition: isRepositionDragging
+                  ? 'none'
+                  : 'transform 0.2s ease',
+                userSelect: 'none',
+                WebkitUserDrag: 'none',
+                touchAction: isRepositioning ? 'none' : 'auto',
+              }}
+              onError={() => setImageError(true)}
+              onLoad={handleImageLoad}
+              onMouseDown={
+                isRepositioning ? handleRepositionMouseDown : undefined
+              }
+              onTouchStart={
+                isRepositioning ? handleRepositionTouchStart : undefined
+              }
+            />
+          ) : imageLoading ? (
+            <Box
+              data-testid="cover-image-upload-loading"
+              sx={{
+                width: '100%',
+                height: 103,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: theme.palette.grey?.[100],
+              }}>
+              <CircularProgress
+                data-testid="cover-image-upload-loading-spinner"
+                size={24}
+              />
+            </Box>
+          ) : null}
 
           {imageError && (
             <Box
+              data-testid="cover-image-upload-error"
               sx={{
                 width: '100%',
                 height: 103,
