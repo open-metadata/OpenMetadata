@@ -292,6 +292,7 @@ class JSONLogicSearchClassBase {
       [EntityReferenceFields.DESCRIPTION]: {
         label: t('label.description'),
         type: 'text',
+        defaultOperator: 'like',
         mainWidgetProps: this.mainWidgetProps,
         operators: TEXT_FIELD_DESCRIPTION_OPERATORS,
       },
