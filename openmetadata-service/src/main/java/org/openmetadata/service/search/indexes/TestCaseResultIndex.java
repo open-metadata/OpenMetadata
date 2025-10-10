@@ -47,7 +47,7 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
         Entity.getEntityByName(
             Entity.TEST_CASE,
             testCaseResult.getTestCaseFQN(),
-            "testSuites,testSuite,testDefinition,entityLink,owners",
+            "testSuites,testSuite,testDefinition,entityLink,owners,tags,tier",
             Include.ALL);
 
     // Load TestDefinition with only required fields
