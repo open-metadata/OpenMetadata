@@ -75,7 +75,6 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await adminUser.create(apiContext);
   await adminUser.setAdminRole(apiContext);
   await persona.create(apiContext, [adminUser.responseData.id]);
-  await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
 
   // Set adminUser as owner for entities created by entityDetails config
   // Only domains and glossaries from entityDetails typically support owners

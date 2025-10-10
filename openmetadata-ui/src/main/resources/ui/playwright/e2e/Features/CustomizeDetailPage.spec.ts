@@ -17,7 +17,6 @@ import {
 } from '../../constant/customizeDetail';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
-import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { PersonaClass } from '../../support/persona/PersonaClass';
 import { AdminClass } from '../../support/user/AdminClass';
@@ -315,26 +314,6 @@ test.describe('Persona customize UI tab', async () => {
 });
 
 test.describe('Persona customization', () => {
-  test.beforeAll(async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    test.slow();
-
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-
-    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
-
-    await afterAction();
-  });
-
   Object.values(ECustomizedDataAssets).forEach(async (type) => {
     test(`${type} - customization should work`, async ({
       adminPage,

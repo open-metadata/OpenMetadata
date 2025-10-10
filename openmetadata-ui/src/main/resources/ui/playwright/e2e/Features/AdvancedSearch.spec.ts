@@ -14,7 +14,6 @@ import test from '@playwright/test';
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
-import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -28,19 +27,6 @@ import {
 } from '../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
-
-const creationConfig: EntityDataClassCreationConfig = {
-  table: true,
-  topic: true,
-  dashboard: true,
-  mlModel: true,
-  pipeline: true,
-  dashboardDataModel: true,
-  apiCollection: true,
-  searchIndex: true,
-  container: true,
-  entityDetails: true,
-};
 
 const user = new UserClass();
 const table = new TableClass(undefined, 'Regular');
@@ -56,7 +42,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     test.slow(true);
 
     const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
     await user.create(apiContext);
     glossaryEntity = new Glossary(undefined, [
       {
