@@ -447,7 +447,7 @@ const TeamDetailsV1 = ({
           ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
-                parent.name ?? parent.fullyQualifiedName ?? ''
+                parent.fullyQualifiedName ?? parent.name ?? ''
               ),
             }))
           : [];
