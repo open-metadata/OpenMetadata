@@ -27,7 +27,6 @@ import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
-import es.org.elasticsearch.client.ResponseException;
 import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
 import es.org.elasticsearch.client.RestHighLevelClient;
@@ -2294,55 +2293,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
-    try {
-      // 1. Get the existing component template
-      Request getRequest = new Request("GET", "/_component_template/" + componentTemplateName);
-      es.org.elasticsearch.client.Response getResponse =
-          client.getLowLevelClient().performRequest(getRequest);
-      String responseBody = org.apache.http.util.EntityUtils.toString(getResponse.getEntity());
-      com.fasterxml.jackson.databind.JsonNode templateNode = JsonUtils.readTree(responseBody);
-
-      if (!templateNode.has("component_templates")
-          || templateNode.get("component_templates").isEmpty()) {
-        LOG.warn("Component template {} does not exist", componentTemplateName);
-        return;
-      }
-
-      // 2. Update the template in place
-      com.fasterxml.jackson.databind.JsonNode template =
-          templateNode.get("component_templates").get(0).get("component_template");
-      if (template.has("template") && template.get("template").has("settings")) {
-        ((com.fasterxml.jackson.databind.node.ObjectNode) template.get("template").get("settings"))
-            .put("index.lifecycle.name", (String) null);
-      }
-
-      // 3. Update the component template
-      Request putRequest = new Request("PUT", "/_component_template/" + componentTemplateName);
-      putRequest.setJsonEntity(template.toString());
-      es.org.elasticsearch.client.Response putResponse =
-          client.getLowLevelClient().performRequest(putRequest);
-
-      if (putResponse.getStatusLine().getStatusCode() == 200) {
-        LOG.info(
-            "Successfully removed ILM policy from component template: {}", componentTemplateName);
-      } else {
-        throw new IOException(
-            "Failed to update component template: "
-                + putResponse.getStatusLine().getReasonPhrase());
-      }
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
-      } else {
-        throw new IOException(
-            "Failed to remove ILM from component template: "
-                + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Error removing ILM policy from component template: {}", componentTemplateName, e);
-      throw new IOException(
-          "Failed to remove ILM policy from component template: " + e.getMessage());
-    }
+    genericManager.removeILMFromComponentTemplate(componentTemplateName);
   }
 
   @SuppressWarnings("unchecked")

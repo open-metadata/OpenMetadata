@@ -565,14 +565,6 @@ public interface SearchClient<T>
 
   QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
 
-  /**
-   * Removes ILM policy from a component template while preserving all other settings.
-   * This is only implemented for Elasticsearch as OpenSearch handles ILM differently.
-   */
-  default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
-    // Default implementation does nothing as this is only needed for Elasticsearch
-  }
-
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
 

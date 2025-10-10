@@ -2,11 +2,14 @@ package org.openmetadata.service.search.elasticsearch;
 
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch.indices.Alias;
+import es.co.elastic.clients.elasticsearch.indices.AliasDefinition;
 import es.co.elastic.clients.elasticsearch.indices.DataStream;
 import es.co.elastic.clients.elasticsearch.indices.GetDataStreamResponse;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
@@ -172,6 +175,87 @@ public class ElasticSearchGenericManager implements GenericClient {
       }
     } catch (Exception e) {
       LOG.error("Error detaching ILM policy from indexes matching pattern: {}", indexPattern, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error(
+          "ElasticSearch client is not available. Cannot remove ILM policy from component template.");
+      return;
+    }
+    try {
+      var getResponse = client.cluster().getComponentTemplate(g -> g.name(componentTemplateName));
+
+      if (getResponse.componentTemplates().isEmpty()) {
+        LOG.warn("Component template {} does not exist. Skipping.", componentTemplateName);
+        return;
+      }
+
+      var componentTemplate = getResponse.componentTemplates().getFirst().componentTemplate();
+      var template = componentTemplate.template();
+
+      if (template != null && template.settings() != null) {
+        // Update the component template with ILM policy removed
+        client
+            .cluster()
+            .putComponentTemplate(
+                p ->
+                    p.name(componentTemplateName)
+                        .template(
+                            t -> {
+                              // Copy all settings except lifecycle
+                              t.settings(s -> s.lifecycle(l -> l.name(null)));
+
+                              // Copy mappings if they exist
+                              if (template.mappings() != null) {
+                                t.mappings(template.mappings());
+                              }
+
+                              // Convert and preserve aliases
+                              if (template.aliases() != null) {
+                                t.aliases(
+                                    template.aliases().entrySet().stream()
+                                        .collect(
+                                            Collectors.toMap(
+                                                Map.Entry::getKey,
+                                                entry ->
+                                                    Alias.of(
+                                                        a -> {
+                                                          AliasDefinition def = entry.getValue();
+                                                          if (def.filter() != null)
+                                                            a.filter(def.filter());
+                                                          if (def.indexRouting() != null)
+                                                            a.indexRouting(def.indexRouting());
+                                                          if (def.searchRouting() != null)
+                                                            a.searchRouting(def.searchRouting());
+                                                          if (def.isWriteIndex() != null)
+                                                            a.isWriteIndex(def.isWriteIndex());
+                                                          return a;
+                                                        }))));
+                              }
+                              return t;
+                            }));
+
+        LOG.info(
+            "Successfully removed ILM policy from component template: {}", componentTemplateName);
+      } else {
+        LOG.info(
+            "Component template {} has no settings or lifecycle policy. No changes needed.",
+            componentTemplateName);
+      }
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        LOG.warn("Component template {} does not exist. Skipping.", componentTemplateName);
+      } else {
+        LOG.error(
+            "Failed to remove ILM policy from component template: {}", componentTemplateName, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Error removing ILM policy from component template: {}", componentTemplateName, e);
       throw e;
     }
   }

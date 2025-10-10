@@ -81,4 +81,15 @@ public interface GenericClient {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
+
+  /**
+   * Remove ILM policy from a component template while preserving all other settings.
+   * This is only implemented for Elasticsearch as OpenSearch handles ILM differently.
+   *
+   * @param componentTemplateName the name of the component template
+   * @throws IOException if the operation fails
+   */
+  default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
+    // Default implementation does nothing as this is only needed for Elasticsearch
+  }
 }
