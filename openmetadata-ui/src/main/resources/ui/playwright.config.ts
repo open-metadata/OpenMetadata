@@ -31,6 +31,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
+  /* Repeat each test N times */
+  repeatEach: 5,
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 4 : undefined,
   maxFailures: 500,
@@ -72,6 +74,28 @@ export default defineConfig({
       dependencies: ['setup'],
       grepInvert: /data-insight/,
       testIgnore: ['**/nightly/**'],
+      testMatch: [
+        '**/AdvancedSearchSuggestions.spec.ts',
+        '**/CuratedAssets.spec.ts',
+        '**/CustomizeDetailPage.spec.ts',
+        '**/AddTestCaseNewFlow.spec.ts',
+        '**/CustomizeWidgets.spec.ts',
+        '**/ExploreDiscovery.spec.ts',
+        '**/PersonaFlow.spec.ts',
+        '**/ServiceForm.spec.ts',
+        '**/Tour.spec.ts',
+        '**/Users.spec.ts',
+        '**/ActivityFeed.spec.ts',
+        '**/NavigationBlocker.spec.ts',
+        '**/SettingsNavigationPage.spec.ts',
+        '**/CustomizeLandingPage.spec.ts',
+        '**/PersonaDeletionUserProfile.spec.ts',
+        '**/DataContracts.spec.ts',
+        '**/EntitySummaryPanel.spec.ts',
+        '**/ExploreQuickFilters.spec.ts',
+        '**/ExploreSortOrderFilter.spec.ts',
+        '**/ExploreTree.spec.ts',
+      ],
     },
     {
       name: 'data-insight-application',

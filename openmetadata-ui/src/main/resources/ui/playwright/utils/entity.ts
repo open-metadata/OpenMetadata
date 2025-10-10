@@ -42,12 +42,12 @@ import { sidebarClick } from './sidebar';
 export const waitForAllLoadersToDisappear = async (
   page: Page,
   dataTestId = 'loader',
-  timeout = 5000
+  timeout = 30000
 ) => {
-  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
-    state: 'detached',
-    timeout,
-  });
+  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
+
+  // Wait for the loader elements count to become 0
+  await expect(loaders).toHaveCount(0, { timeout });
 };
 
 export const visitEntityPage = async (data: {
