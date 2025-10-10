@@ -99,6 +99,7 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -136,7 +137,6 @@ import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
@@ -144,7 +144,12 @@ import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
+import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
+import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
+import os.org.opensearch.client.opensearch.nodes.Stats;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
 import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
@@ -2433,42 +2438,120 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     genericManager.dettachIlmPolicyFromIndexes(indexPattern);
   }
 
-  @SuppressWarnings("unchecked")
-  public Map<String, Object> clusterStats() throws IOException {
+  public ClusterStatsResponse clusterStats() throws IOException {
+    if (!isNewClientAvailable) {
+      LOG.error("New OpenSearch client is not available. Cannot fetch cluster stats.");
+      throw new IOException("New OpenSearch client is not available");
+    }
     try {
-      Request request = new Request("GET", "/_cluster/stats");
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
-      return JsonUtils.readValue(responseBody, Map.class);
+      return newClient.cluster().stats();
     } catch (Exception e) {
       LOG.error("Failed to fetch cluster stats", e);
       throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public Map<String, Object> nodesStats() throws IOException {
+  public NodesStatsResponse nodesStats() throws IOException {
+    if (!isNewClientAvailable) {
+      LOG.error("New OpenSearch client is not available. Cannot fetch nodes stats.");
+      throw new IOException("New OpenSearch client is not available");
+    }
     try {
-      Request request = new Request("GET", "/_nodes/stats");
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
-      return JsonUtils.readValue(responseBody, Map.class);
+      return newClient.nodes().stats();
     } catch (Exception e) {
       LOG.error("Failed to fetch nodes stats", e);
       throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
     }
   }
 
-  @SuppressWarnings("unchecked")
-  public Map<String, Object> clusterSettings() throws IOException {
+  public double averageCpuPercentFromNodesStats(NodesStatsResponse nodesStats) {
+    if (nodesStats == null || nodesStats.nodes() == null || nodesStats.nodes().isEmpty()) {
+      LOG.warn("Unable to extract CPU percent from response, using default 50%");
+      return SearchClusterMetrics.DEFAULT_CPU_PERCENT;
+    }
+
+    double total = 0.0;
+    int count = 0;
+
+    for (Stats nodeStats : nodesStats.nodes().values()) {
+      var os = nodeStats.os();
+      var cpu = os != null ? os.cpu() : null;
+
+      if (cpu != null) {
+        total += cpu.percent();
+        count++;
+      }
+    }
+
+    if (count > 0) return total / count;
+
+    LOG.warn("Unable to extract CPU percent from response, using default 50%");
+    return SearchClusterMetrics.DEFAULT_CPU_PERCENT;
+  }
+
+  public Map<String, Object> extractJvmMemoryStats(NodesStatsResponse nodesStats) {
+    Map<String, Object> result = new HashMap<>();
+
+    long heapUsedBytes = SearchClusterMetrics.DEFAULT_HEAP_USED_BYTES;
+    long heapMaxBytes = SearchClusterMetrics.DEFAULT_HEAP_MAX_BYTES;
+
+    if (nodesStats != null && nodesStats.nodes() != null && !nodesStats.nodes().isEmpty()) {
+      Stats firstNodeStats = nodesStats.nodes().values().iterator().next();
+      if (firstNodeStats != null
+          && firstNodeStats.jvm() != null
+          && firstNodeStats.jvm().mem() != null) {
+        heapUsedBytes = firstNodeStats.jvm().mem().usedInBytes();
+        heapMaxBytes = firstNodeStats.jvm().mem().totalInBytes();
+      }
+    }
+
+    result.put("heapMaxBytes", heapMaxBytes);
+    double memoryUsagePercent =
+        heapMaxBytes > 0 ? (double) heapUsedBytes / heapMaxBytes * 100.0 : -1.0;
+    result.put("memoryUsagePercent", memoryUsagePercent);
+
+    return result;
+  }
+
+  public String extractMaxContentLengthStr(GetClusterSettingsResponse clusterSettings) {
     try {
-      Request request = new Request("GET", "/_cluster/settings");
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
-      return JsonUtils.readValue(responseBody, Map.class);
+      String maxContentLengthStr = null;
+
+      // 1. Check in persistent settings
+      Map<String, JsonData> persistentSettings = clusterSettings.persistent();
+      if (persistentSettings != null && persistentSettings.containsKey("http.max_content_length")) {
+        JsonData value = persistentSettings.get("http.max_content_length");
+        if (value != null) {
+          maxContentLengthStr = value.to(String.class);
+        }
+      }
+
+      // 2. Check in transient settings if not found in persistent
+      if (maxContentLengthStr == null) {
+        Map<String, JsonData> transientSettings = clusterSettings.transient_();
+        if (transientSettings != null && transientSettings.containsKey("http.max_content_length")) {
+          JsonData value = transientSettings.get("http.max_content_length");
+          if (value != null) {
+            maxContentLengthStr = value.to(String.class);
+          }
+        }
+      }
+
+      return maxContentLengthStr;
+
+    } catch (Exception e) {
+      LOG.warn("Failed to extract maxContentLength from cluster settings: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  public GetClusterSettingsResponse clusterSettings() throws IOException {
+    if (!isNewClientAvailable) {
+      LOG.error("New OpenSearch client is not available. Cannot fetch cluster settings.");
+      throw new IOException("New OpenSearch client is not available");
+    }
+    try {
+      return newClient.cluster().getSettings();
     } catch (Exception e) {
       LOG.error("Failed to fetch cluster settings", e);
       throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
