@@ -73,10 +73,6 @@ public record TestCaseResultIndex(TestCaseResult testCaseResult) implements Sear
                 "testSuite",
                 "testCaseResult",
                 "testDefinition")); // remove testCase fields not needed
-
-    // Get entity tags which includes inherited tier from parent table
-    testCaseMap.put("tags", Entity.getEntityTags(Entity.TEST_CASE, testCase));
-
     esDoc.put("testCase", testCaseMap);
     esDoc.put("@timestamp", testCaseResult.getTimestamp());
     if (testDefinition != null) {
