@@ -2251,7 +2251,7 @@
     "metadata-agents-table-description": "Metadata Agents werden verwendet, um Metadaten aus den Quellservices zu extrahieren.",
     "metadata-ingestion-description": "Geben Sie basierend auf dem ausgewählten Diensttyp die Filtermusterdetails für das Schema oder die Tabelle (Datenbank) oder das Thema (Messaging) oder das Dashboard ein. Sie können die Filtermuster einschließen oder ausschließen. Wählen Sie aus, ob Ansichten einbezogen werden sollen, aktivieren oder deaktivieren Sie den Datenprofiler und erfassen Sie bei Bedarf Beispieldaten.",
     "metric-configuration-description": "Passen Sie Felder an, um das Metrikverhalten zu steuern. Sie können Felder nach Bedarf hinzufügen, entfernen, ausblenden oder deaktivieren.",
-    "metric-description": "Überwachen Sie die Gesundheit Ihrer Datenobjekte mit Metriken.",
+    "metric-description": "Definieren und katalogisieren Sie standardisierte Metriken in Ihrer Organisation.",
     "minimum-value-error": "Der Minimalwert sollte kleiner als der Maximalwert sein.",
     "minute": "Minute",
     "missing-config-value": "Fehlender Konfigurationswert: {{field}}",
