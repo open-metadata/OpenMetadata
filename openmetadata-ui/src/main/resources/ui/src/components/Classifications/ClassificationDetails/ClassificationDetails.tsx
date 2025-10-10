@@ -154,6 +154,7 @@ const ClassificationDetails = forwardRef(
       description,
       isTier,
       isSystemClassification,
+      isClassificationDeleted,
     } = useMemo(
       () => getClassificationInfo(currentClassification, isVersionView),
       [currentClassification, isVersionView]
@@ -176,8 +177,12 @@ const ClassificationDetails = forwardRef(
       createPermission,
       deletePermission,
       editDisplayNamePermission,
-    } = useMemo(
-      () => ({
+      editOwnerPermission,
+      editDomainPermission,
+    } = useMemo(() => {
+      const isEditable = !isClassificationDisabled && !isClassificationDeleted;
+
+      return {
         editClassificationPermission: classificationPermissions.EditAll,
         editDescriptionPermission:
           !isVersionView &&
@@ -193,20 +198,26 @@ const ClassificationDetails = forwardRef(
         editDisplayNamePermission:
           classificationPermissions.EditAll ||
           classificationPermissions.EditDisplayName,
-      }),
-      [
-        permissions,
-        classificationPermissions,
-        isVersionView,
-        isClassificationDisabled,
-        isSystemClassification,
-      ]
-    );
+        editOwnerPermission:
+          isEditable &&
+          (classificationPermissions.EditAll ||
+            classificationPermissions.EditOwners),
+        editDomainPermission: isEditable && classificationPermissions.EditAll,
+      };
+    }, [
+      permissions,
+      classificationPermissions,
+      isVersionView,
+      isClassificationDisabled,
+      isSystemClassification,
+      isClassificationDeleted,
+    ]);
 
     const headerBadge = useMemo(
       () =>
         isSystemClassification ? (
           <AppBadge
+            className="whitespace-nowrap"
             icon={<LockIcon height={12} />}
             label={capitalize(currentClassification?.provider)}
           />
@@ -339,13 +350,14 @@ const ClassificationDetails = forwardRef(
                       <div data-testid="mutually-exclusive-container">
                         <AppBadge
                           bgColor={theme.primaryColor}
+                          className="whitespace-nowrap"
                           label={t('label.mutually-exclusive')}
                         />
                       </div>
                     )}
                   </div>
                 }
-                className={classNames({
+                className={classNames('flex-wrap', {
                   'opacity-60': isClassificationDisabled,
                 })}
                 displayName={displayName}
@@ -481,8 +493,15 @@ const ClassificationDetails = forwardRef(
             </Col>
             <Col span={6}>
               <div className="d-flex flex-column gap-5">
-                <DomainLabelV2 multiple showDomainHeading />
-                <OwnerLabelV2 dataTestId="classification-owner-name" />
+                <DomainLabelV2
+                  multiple
+                  showDomainHeading
+                  hasPermission={editDomainPermission}
+                />
+                <OwnerLabelV2
+                  dataTestId="classification-owner-name"
+                  hasPermission={editOwnerPermission}
+                />
               </div>
             </Col>
           </Row>
