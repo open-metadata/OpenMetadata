@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, waitFor } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useTableFilters } from '../../hooks/useTableFilters';
+import { searchData } from '../../rest/miscAPI';
 import { getUsers } from '../../rest/userAPI';
 import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
@@ -128,6 +129,20 @@ jest.mock(
 );
 
 describe('Test UserListPage component', () => {
+  let mockTableComponent: jest.Mock;
+
+  beforeAll(() => {
+    // Get reference to mocked Table component
+    mockTableComponent = jest.requireMock(
+      '../../components/common/Table/Table'
+    );
+  });
+
+  beforeEach(() => {
+    // Clear mock calls before each test
+    mockTableComponent.mockClear();
+  });
+
   it('users api should called on initial load', async () => {
     const { findByTestId } = render(<UserListPageV1 />);
 
@@ -240,5 +255,142 @@ describe('Test UserListPage component', () => {
 
     // reset mockParam
     mockParam.tab = GlobalSettingOptions.USERS;
+  });
+
+  it('should pass searchValue prop to Table component searchProps', async () => {
+    const mockSearchValue = 'test user';
+    (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
+      filters: {
+        user: mockSearchValue,
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(mockTableComponent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchProps: expect.objectContaining({
+            searchValue: mockSearchValue,
+          }),
+        }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('should pass onSearch handler (not noop) to Table component searchProps', async () => {
+    render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      const lastCall =
+        mockTableComponent.mock.calls[mockTableComponent.mock.calls.length - 1];
+      const searchProps = lastCall[0].searchProps;
+
+      expect(searchProps.onSearch).toBeDefined();
+      expect(typeof searchProps.onSearch).toBe('function');
+      expect(searchProps.onSearch.name).toBe('handleSearch');
+    });
+  });
+
+  it('should call searchData API when search value is provided', async () => {
+    const mockSearchValue = 'john';
+    (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
+      filters: {
+        user: mockSearchValue,
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(searchData).toHaveBeenCalledWith(
+        mockSearchValue,
+        1,
+        15,
+        'isAdmin:false isBot:false',
+        '',
+        '',
+        'user_search_index',
+        false
+      );
+    });
+  });
+
+  it('should call searchData with isAdmin filter when on admin page', async () => {
+    const mockSearchValue = 'admin user';
+    mockParam.tab = GlobalSettingOptions.ADMINS;
+    (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
+      filters: {
+        user: mockSearchValue,
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(searchData).toHaveBeenCalledWith(
+        mockSearchValue,
+        1,
+        15,
+        'isAdmin:true isBot:false',
+        '',
+        '',
+        'user_search_index',
+        false
+      );
+    });
+
+    // reset mockParam
+    mockParam.tab = GlobalSettingOptions.USERS;
+  });
+
+  it('should maintain search functionality during loading state', async () => {
+    const mockSearchValue = 'test';
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {
+        user: mockSearchValue,
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    const { rerender } = render(<UserListPageV1 />);
+
+    // Simulate re-render during loading
+    rerender(<UserListPageV1 />);
+
+    await waitFor(() => {
+      const lastCall =
+        mockTableComponent.mock.calls[mockTableComponent.mock.calls.length - 1];
+      const searchProps = lastCall[0].searchProps;
+
+      // Search value should be maintained even during re-renders
+      expect(searchProps.searchValue).toBe(mockSearchValue);
+      expect(searchProps.onSearch).toBeDefined();
+    });
+
+    // Reset to default mock
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {},
+      setFilters: mockSetFilters,
+    }));
+  });
+
+  it('should have correct debounce interval for search', async () => {
+    render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(mockTableComponent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          searchProps: expect.objectContaining({
+            typingInterval: 400,
+          }),
+        }),
+        expect.anything()
+      );
+    });
   });
 });
