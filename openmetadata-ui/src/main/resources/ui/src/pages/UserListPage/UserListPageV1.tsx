@@ -14,7 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty, noop } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -501,10 +501,10 @@ const UserListPageV1 = () => {
               placeholder: `${t('label.search-for-type', {
                 type: t('label.user'),
               })}...`,
-              value: searchValue,
+              searchValue: searchValue,
               typingInterval: 400,
               urlSearchKey: 'user',
-              onSearch: noop,
+              onSearch: handleSearch,
             }}
             size="small"
           />
