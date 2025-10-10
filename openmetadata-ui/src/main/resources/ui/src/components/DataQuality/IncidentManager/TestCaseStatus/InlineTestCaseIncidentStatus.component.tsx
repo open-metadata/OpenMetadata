@@ -13,10 +13,10 @@
 
 import {
   ArrowBack as ArrowBackIcon,
-  Check as CheckIcon,
-  Close as CloseIcon,
   KeyboardArrowDown as ArrowDownIcon,
   KeyboardArrowUp as ArrowUpIcon,
+  Check as CheckIcon,
+  Close as CloseIcon,
 } from '@mui/icons-material';
 import {
   Box,
@@ -551,7 +551,7 @@ const InlineTestCaseIncidentStatus = ({
         anchorEl={anchorEl}
         anchorOrigin={{
           vertical: 'bottom',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         open={showResolvedPopover}
         slotProps={{
@@ -565,7 +565,7 @@ const InlineTestCaseIncidentStatus = ({
         }}
         transformOrigin={{
           vertical: 'top',
-          horizontal: 'left',
+          horizontal: 'right',
         }}
         onClose={handleCloseAllPopovers}>
         <Box

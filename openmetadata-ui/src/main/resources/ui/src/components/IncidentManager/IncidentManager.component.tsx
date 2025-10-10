@@ -261,8 +261,8 @@ const IncidentManager = ({
   );
 
   const handleSeveritySubmit = async (
-    severity: Severities,
-    record: TestCaseResolutionStatus
+    record: TestCaseResolutionStatus,
+    severity?: Severities
   ) => {
     const updatedData = { ...record, severity };
     const patch = compare(record, updatedData);
@@ -505,9 +505,10 @@ const IncidentManager = ({
 
           return (
             <Severity
+              isInline
               hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               severity={value}
-              onSubmit={(severity) => handleSeveritySubmit(severity, record)}
+              onSubmit={(severity) => handleSeveritySubmit(record, severity)}
             />
           );
         },
@@ -553,6 +554,7 @@ const IncidentManager = ({
       sx={{
         border: `1px solid ${theme.palette.grey[200]}`,
         borderRadius: '10px',
+        backgroundColor: theme.palette.common.white,
       }}>
       <Box
         className="new-form-style"
