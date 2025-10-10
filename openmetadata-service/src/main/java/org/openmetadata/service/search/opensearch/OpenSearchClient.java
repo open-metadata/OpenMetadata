@@ -1696,7 +1696,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
 
     int bucketSize = request.getSize();
-    String includeValue = request.getFieldValue().toLowerCase();
+    String includeValue = request.getFieldValue();
     if (!AGG_CASE_SENSITIVE_FIELDS.contains(aggregationField)) {
       includeValue = includeValue.toLowerCase();
     }
