@@ -1,12 +1,9 @@
 {
   "settings": {
-    "index": {
-      "max_ngram_diff": 17
-    },
     "analysis": {
       "tokenizer": {
-        "n_gram_tokenizer": {
-          "type": "ngram",
+        "edge_ngram_tokenizer": {
+          "type": "edge_ngram",
           "min_gram": 3,
           "max_gram": 20,
           "token_chars": [
@@ -35,7 +32,7 @@
         },
         "om_ngram": {
           "type": "custom",
-          "tokenizer": "n_gram_tokenizer",
+          "tokenizer": "edge_ngram_tokenizer",
           "filter": [
             "lowercase"
           ]
@@ -80,7 +77,6 @@
       },
       "name": {
         "type": "text",
-        "analyzer": "om_analyzer",
         "fields": {
           "keyword": {
             "type": "keyword",
@@ -104,12 +100,10 @@
         "type": "keyword"
       },
       "displayName": {
-        "type": "text",
-        "analyzer": "om_analyzer",
+        "type": "keyword",
         "fields": {
           "keyword": {
             "type": "keyword",
-            "normalizer": "lowercase_normalizer",
             "ignore_above": 256
           },
           "ngram": {
@@ -123,10 +117,7 @@
         }
       },
       "description": {
-        "type": "text",
-        "analyzer": "om_analyzer",
-        "index_options": "docs",
-        "term_vector": "with_positions_offsets"
+        "type": "text"
       },
       "teamType": {
         "type": "text"
@@ -143,15 +134,6 @@
       },
       "href": {
         "type": "text"
-      },
-      "email": {
-        "type": "text",
-        "fields": {
-          "keyword": {
-            "type": "keyword",
-            "ignore_above": 256
-          }
-        }
       },
       "domains": {
         "properties": {
@@ -337,59 +319,8 @@
         "type": "long",
         "null_value": 0
       },
-      "votes": {
-        "type": "object"
-      },
       "descriptionStatus": {
         "type": "keyword"
-      },
-      "owners": {
-        "properties": {
-          "id": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 36
-              }
-            }
-          },
-          "type": {
-            "type": "keyword"
-          },
-          "name": {
-            "type": "keyword",
-            "normalizer": "lowercase_normalizer",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "ignore_above": 256
-              }
-            }
-          },
-          "displayName": {
-            "type": "keyword",
-            "fields": {
-              "keyword": {
-                "type": "keyword",
-                "normalizer": "lowercase_normalizer",
-                "ignore_above": 256
-              }
-            }
-          },
-          "fullyQualifiedName": {
-            "type": "text"
-          },
-          "description": {
-            "type": "text"
-          },
-          "deleted": {
-            "type": "boolean"
-          },
-          "href": {
-            "type": "text"
-          }
-        }
       }
     }
   }
