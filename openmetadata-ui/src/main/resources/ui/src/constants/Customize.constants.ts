@@ -13,7 +13,7 @@
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 
-export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
+export const TAB_LABEL_MAP: Partial<Record<EntityTabs, string>> = {
   [EntityTabs.OVERVIEW]: 'label.overview',
   [EntityTabs.GLOSSARY_TERMS]: 'label.glossary-term-plural',
   [EntityTabs.ASSETS]: 'label.asset-plural',

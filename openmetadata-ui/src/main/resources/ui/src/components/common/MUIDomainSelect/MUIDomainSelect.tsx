@@ -33,8 +33,8 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
   value,
   onChange,
   hasPermission = true,
-  onBlur,
-  onFocus,
+  // onBlur,
+  // onFocus,
   'data-testid': dataTestId,
 }) => {
   const convertDomainToTreeNode = useCallback(
@@ -169,9 +169,9 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
       showIcon={false}
       size={size}
       value={selectedValue}
-      onBlur={onBlur}
+      // onBlur={onBlur}
       onChange={handleChange}
-      onFocus={onFocus}
+      // onFocus={onFocus}
     />
   );
 };

@@ -35,9 +35,15 @@ import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 
+interface Post {
+  id: string;
+  from: string;
+  message: string;
+  postTs?: number;
+}
 interface CommentCardInterface {
   feed: Thread;
-  post: any;
+  post: Post;
   isLastReply: boolean;
   closeFeedEditor: () => void;
 }

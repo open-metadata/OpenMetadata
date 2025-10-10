@@ -62,6 +62,26 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
 
+  const fetchOptions = async (searchText: string) => {
+    setLoading(true);
+    try {
+      const response = await tagClassBase.getTags(searchText, 1, true);
+      const fetchedOptions = response?.data || [];
+      const mappedOptions: TagOption[] = fetchedOptions.map(
+        (opt: SelectOption) => ({
+          label: opt.label,
+          value: opt.value,
+          data: opt.data as TagLabel,
+        })
+      );
+      setOptions(mappedOptions);
+    } catch (error) {
+      setOptions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const searchDebounced = useRef(
     debounce(async (searchValue: string) => {
       await fetchOptions(searchValue);
@@ -94,26 +114,6 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
     }
   }, [open]);
 
-  const fetchOptions = async (searchText: string) => {
-    setLoading(true);
-    try {
-      const response = await tagClassBase.getTags(searchText, 1, 20);
-      const fetchedOptions = response?.data || [];
-      const mappedOptions: TagOption[] = fetchedOptions.map(
-        (opt: SelectOption) => ({
-          label: opt.label,
-          value: opt.value,
-          data: opt.data as TagLabel,
-        })
-      );
-      setOptions(mappedOptions);
-    } catch (error) {
-      setOptions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleInputChange = useCallback(
     (_event: React.SyntheticEvent, newInputValue: string) => {
       setInputValue(newInputValue);
@@ -122,11 +122,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
   );
 
   const handleChange = useCallback(
-    (
-      event: React.SyntheticEvent,
-      newValue: (TagOption | string)[],
-      reason: string
-    ) => {
+    (_event: React.SyntheticEvent, newValue: (TagOption | string)[]) => {
       if (isArray(newValue)) {
         // Filter out string values from freeSolo
         const optionValues = newValue.filter(
@@ -183,7 +179,9 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         typeof option === 'string' ? option : option.label
       }
       inputValue={inputValue}
-      isOptionEqualToValue={(option, value) => option.value === value.value}
+      isOptionEqualToValue={(option, value) =>
+        (option as TagOption).value === (value as TagOption).value
+      }
       loading={loading}
       open={open && (memoizedOptions.length > 0 || loading)}
       options={memoizedOptions}
@@ -208,33 +206,37 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           variant="outlined"
         />
       )}
-      renderOption={(props, option) => (
+      renderOption={(props, option: string | TagOption) => (
         <Box component="li" {...props}>
           <Box display="flex" flexDirection="column">
             <Box
               fontWeight="medium"
-              sx={{ color: option.data?.style?.color || undefined }}>
-              {option.label}
+              sx={{
+                color: (option as TagOption).data?.style?.color || undefined,
+              }}>
+              {(option as TagOption).label}
             </Box>
-            {(option.data?.displayName || option.data?.name) && (
+            {((option as TagOption).data?.displayName ||
+              (option as TagOption).data?.name) && (
               <Box color="text.secondary" fontSize="0.875rem">
-                {option.data?.displayName || option.data?.name}
+                {(option as TagOption).data?.displayName ||
+                  (option as TagOption).data?.name}
               </Box>
             )}
           </Box>
         </Box>
       )}
-      renderTags={(value: TagOption[], getTagProps) =>
-        value.map((option: TagOption, index: number) => {
+      renderTags={(value: (string | TagOption)[], getTagProps) =>
+        value.map((option: string | TagOption, index: number) => {
           const chipProps = getTagProps({ index });
 
           return (
             <TagChip
               {...chipProps}
-              key={option.value}
-              label={option.label}
+              key={(option as TagOption).value}
+              label={(option as TagOption).label}
               size="small"
-              tagColor={option.data?.style?.color}
+              tagColor={(option as TagOption).data?.style?.color}
             />
           );
         })

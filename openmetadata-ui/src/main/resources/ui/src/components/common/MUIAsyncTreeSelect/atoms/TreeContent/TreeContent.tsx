@@ -23,13 +23,13 @@ export interface TreeContentProps {
   error: string | null;
   hasData: boolean;
   children: ReactNode;
-  selectedItems?: string[] | null;
+  selectedItems?: string | null | undefined;
   expandedItems?: string[];
   focusedItem?: string;
   apiRef?: MutableRefObject<any>;
   loadingMessage?: string;
   noDataMessage?: string;
-  onNodeToggle?: SimpleTreeViewProps['onExpandedItemsChange'];
+  onNodeToggle?: SimpleTreeViewProps<boolean>['onExpandedItemsChange'];
   onFocusedItemChange?: (event: React.SyntheticEvent, itemId: string) => void;
   onItemClick?: (event: React.MouseEvent, itemId: string) => void;
 }
@@ -41,12 +41,12 @@ const TreeContent: FC<TreeContentProps> = ({
   children,
   selectedItems = null,
   expandedItems,
-  focusedItem,
+  // focusedItem,
   apiRef,
   loadingMessage,
   noDataMessage,
   onNodeToggle,
-  onFocusedItemChange,
+  // onFocusedItemChange,
   onItemClick,
 }) => {
   const { t } = useTranslation();
@@ -88,7 +88,7 @@ const TreeContent: FC<TreeContentProps> = ({
     <SimpleTreeView
       apiRef={apiRef}
       expandedItems={expandedItems}
-      focusedItem={focusedItem}
+      // focusedItem={focusedItem}
       selectedItems={selectedItems}
       slots={{
         collapseIcon: ExpandMoreIcon,
@@ -130,7 +130,7 @@ const TreeContent: FC<TreeContentProps> = ({
         },
       }}
       onExpandedItemsChange={onNodeToggle}
-      onFocusedItemChange={onFocusedItemChange}
+      // onFocusedItemChange={onFocusedItemChange}
       onItemClick={onItemClick}>
       {children}
     </SimpleTreeView>
