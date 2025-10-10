@@ -78,6 +78,10 @@ test.describe('Data Contracts', () => {
     await afterAction();
   });
 
+  test.beforeEach('Redirect to Home Page', async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
   test('Create Data Contract and validate', async ({ page }) => {
     test.setTimeout(360000);
 
