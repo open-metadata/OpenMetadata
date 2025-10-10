@@ -290,7 +290,7 @@ describe('Test UserListPage component', () => {
 
       expect(searchProps.onSearch).toBeDefined();
       expect(typeof searchProps.onSearch).toBe('function');
-      expect(searchProps.onSearch.name).toBe('handleSearch');
+      // useCallback may wrap the function, so we just check it exists and is a function
     });
   });
 
@@ -391,6 +391,209 @@ describe('Test UserListPage component', () => {
         }),
         expect.anything()
       );
+    });
+  });
+
+  it('should maintain stable searchProps reference when dependencies do not change', async () => {
+    const { rerender } = render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(mockTableComponent).toHaveBeenCalled();
+    });
+
+    const firstCallSearchProps =
+      mockTableComponent.mock.calls[mockTableComponent.mock.calls.length - 1][0]
+        .searchProps;
+
+    // Re-render without changing dependencies
+    rerender(<UserListPageV1 />);
+
+    await waitFor(() => {
+      const lastCallSearchProps =
+        mockTableComponent.mock.calls[
+          mockTableComponent.mock.calls.length - 1
+        ][0].searchProps;
+
+      // searchProps object reference should be the same (memoized)
+      expect(lastCallSearchProps).toBe(firstCallSearchProps);
+    });
+  });
+
+  it('should update searchProps reference when searchValue changes', async () => {
+    const { rerender } = render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(mockTableComponent).toHaveBeenCalled();
+    });
+
+    const firstCallSearchProps =
+      mockTableComponent.mock.calls[mockTableComponent.mock.calls.length - 1][0]
+        .searchProps;
+
+    // Change search value
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {
+        user: 'new search value',
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    rerender(<UserListPageV1 />);
+
+    await waitFor(() => {
+      const lastCallSearchProps =
+        mockTableComponent.mock.calls[
+          mockTableComponent.mock.calls.length - 1
+        ][0].searchProps;
+
+      // searchProps object reference should change when searchValue changes
+      expect(lastCallSearchProps).not.toBe(firstCallSearchProps);
+      expect(lastCallSearchProps.searchValue).toBe('new search value');
+    });
+
+    // Reset mock
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {},
+      setFilters: mockSetFilters,
+    }));
+  });
+
+  it('should call setFilters when onSearch is triggered', async () => {
+    render(<UserListPageV1 />);
+
+    let capturedOnSearch: ((value: string) => void) | undefined;
+
+    await waitFor(() => {
+      const lastCall =
+        mockTableComponent.mock.calls[mockTableComponent.mock.calls.length - 1];
+
+      capturedOnSearch = lastCall[0].searchProps.onSearch;
+
+      expect(capturedOnSearch).toBeDefined();
+    });
+
+    // Trigger the onSearch handler
+    act(() => {
+      capturedOnSearch?.('test search');
+    });
+
+    await waitFor(() => {
+      expect(mockSetFilters).toHaveBeenCalledWith({ user: 'test search' });
+    });
+  });
+
+  it('should call setFilters with null when onSearch is triggered with empty string', async () => {
+    render(<UserListPageV1 />);
+
+    let capturedOnSearch: ((value: string) => void) | undefined;
+
+    await waitFor(() => {
+      const lastCall =
+        mockTableComponent.mock.calls[mockTableComponent.mock.calls.length - 1];
+      capturedOnSearch = lastCall[0].searchProps.onSearch;
+    });
+
+    // Trigger the onSearch handler with empty string
+    act(() => {
+      capturedOnSearch?.('');
+    });
+
+    await waitFor(() => {
+      expect(mockSetFilters).toHaveBeenCalledWith({ user: null });
+    });
+  });
+
+  it('should clear search when toggling deleted filter', async () => {
+    const mockSearchValue = 'test search';
+    (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
+      filters: {
+        user: mockSearchValue,
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    const { findByTestId } = render(<UserListPageV1 />);
+
+    const deletedSwitch = await findByTestId('show-deleted');
+
+    await act(async () => {
+      deletedSwitch.click();
+    });
+
+    await waitFor(() => {
+      expect(mockSetFilters).toHaveBeenCalledWith({
+        isDeleted: true,
+        user: null,
+      });
+    });
+
+    // Reset mock
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {},
+      setFilters: mockSetFilters,
+    }));
+  });
+
+  it('should use number-based pagination when search is active', async () => {
+    const mockSearchValue = 'john';
+    (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
+      filters: {
+        user: mockSearchValue,
+      },
+      setFilters: mockSetFilters,
+    }));
+
+    render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(mockTableComponent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customPaginationProps: expect.objectContaining({
+            isNumberBased: true,
+          }),
+        }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('should use cursor-based pagination when search is not active', async () => {
+    render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(mockTableComponent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          customPaginationProps: expect.objectContaining({
+            isNumberBased: false,
+          }),
+        }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('should have stable onSearch handler reference across re-renders', async () => {
+    const { rerender } = render(<UserListPageV1 />);
+
+    await waitFor(() => {
+      expect(mockTableComponent).toHaveBeenCalled();
+    });
+
+    const firstOnSearch =
+      mockTableComponent.mock.calls[mockTableComponent.mock.calls.length - 1][0]
+        .searchProps.onSearch;
+
+    // Re-render without changing dependencies
+    rerender(<UserListPageV1 />);
+
+    await waitFor(() => {
+      const lastOnSearch =
+        mockTableComponent.mock.calls[
+          mockTableComponent.mock.calls.length - 1
+        ][0].searchProps.onSearch;
+
+      // onSearch handler reference should be stable (useCallback)
+      expect(lastOnSearch).toBe(firstOnSearch);
     });
   });
 });

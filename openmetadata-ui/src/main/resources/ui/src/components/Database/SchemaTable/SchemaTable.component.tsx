@@ -679,7 +679,6 @@ const SchemaTable = () => {
         setSearchText(value);
         handlePageChange(1);
       },
-      onClear: () => setSearchText(''),
     }),
     [searchText, handlePageChange]
   );
