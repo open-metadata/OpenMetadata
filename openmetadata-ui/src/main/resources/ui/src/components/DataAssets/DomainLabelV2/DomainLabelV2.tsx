@@ -151,8 +151,8 @@ export const DomainLabelV2 = <
   }, [activeDomain]);
 
   const hasPermission = useMemo(() => {
-    return permissions?.EditAll && !data?.deleted;
-  }, [permissions?.EditAll, data?.deleted]);
+    return props?.hasPermission ?? (permissions?.EditAll && !data?.deleted);
+  }, [permissions?.EditAll, data?.deleted, props?.hasPermission]);
 
   const selectableList = useMemo(() => {
     return (
