@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Post, Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
@@ -35,12 +35,6 @@ import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditorNew';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import ActivityFeedActions from '../Shared/ActivityFeedActions';
 
-interface Post {
-  id: string;
-  from: string;
-  message: string;
-  postTs?: number;
-}
 interface CommentCardInterface {
   feed: Thread;
   post: Post;
