@@ -19,10 +19,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.cluster.ClusterStatsResponse;
 import es.co.elastic.clients.elasticsearch.cluster.GetClusterSettingsResponse;
-import es.co.elastic.clients.elasticsearch.nodes.Cpu;
 import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
-import es.co.elastic.clients.elasticsearch.nodes.Stats;
-import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
@@ -149,7 +146,6 @@ import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
-import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchHealthStatus;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -2304,118 +2300,27 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   public ClusterStatsResponse clusterStats() throws IOException {
-    if (!isNewClientAvailable) {
-      LOG.error("New Elasticsearch client is not available. Cannot fetch cluster stats.");
-      throw new IOException("New Elasticsearch client is not available");
-    }
-    try {
-      return newClient.cluster().stats();
-    } catch (Exception e) {
-      LOG.error("Failed to fetch cluster stats", e);
-      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
-    }
+    return genericManager.clusterStats();
   }
 
   public NodesStatsResponse nodesStats() throws IOException {
-    if (!isNewClientAvailable) {
-      LOG.error("New Elasticsearch client is not available. Cannot fetch nodes stats.");
-      throw new IOException("New Elasticsearch client is not available");
-    }
-    try {
-      return newClient.nodes().stats();
-    } catch (Exception e) {
-      LOG.error("Failed to fetch nodes stats", e);
-      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
-    }
-  }
-
-  public double averageCpuPercentFromNodesStats(NodesStatsResponse nodesStats) {
-    if (nodesStats == null || nodesStats.nodes() == null || nodesStats.nodes().isEmpty()) {
-      LOG.warn("Unable to extract CPU percent from response, using default 50%");
-      return SearchClusterMetrics.DEFAULT_CPU_PERCENT;
-    }
-
-    double total = 0.0;
-    int count = 0;
-
-    for (Stats nodeStats : nodesStats.nodes().values()) {
-      Cpu cpu = nodeStats.os() != null ? nodeStats.os().cpu() : null;
-      if (cpu != null && cpu.percent() != null) {
-        total += cpu.percent();
-        count++;
-      }
-    }
-
-    if (count > 0) return total / count;
-
-    LOG.warn("Unable to extract CPU percent from response, using default 50%");
-    return SearchClusterMetrics.DEFAULT_CPU_PERCENT;
-  }
-
-  public Map<String, Object> extractJvmMemoryStats(NodesStatsResponse nodesStats) {
-    Map<String, Object> result = new HashMap<>();
-
-    long heapUsedBytes = SearchClusterMetrics.DEFAULT_HEAP_USED_BYTES;
-    long heapMaxBytes = SearchClusterMetrics.DEFAULT_HEAP_MAX_BYTES;
-
-    if (nodesStats != null && nodesStats.nodes() != null && !nodesStats.nodes().isEmpty()) {
-      Stats firstNodeStats = nodesStats.nodes().values().iterator().next();
-
-      if (firstNodeStats.jvm() != null && firstNodeStats.jvm().mem() != null) {
-        if (firstNodeStats.jvm().mem().heapUsedInBytes() != null) {
-          heapUsedBytes = firstNodeStats.jvm().mem().heapUsedInBytes();
-        }
-        if (firstNodeStats.jvm().mem().heapMaxInBytes() != null) {
-          heapMaxBytes = firstNodeStats.jvm().mem().heapMaxInBytes();
-        }
-      }
-    }
-
-    result.put("heapMaxBytes", heapMaxBytes);
-    double memoryUsagePercent =
-        heapMaxBytes > 0 ? (double) heapUsedBytes / heapMaxBytes * 100.0 : -1.0;
-    result.put("memoryUsagePercent", memoryUsagePercent);
-
-    return result;
+    return genericManager.nodesStats();
   }
 
   public GetClusterSettingsResponse clusterSettings() throws IOException {
-    if (!isNewClientAvailable) {
-      LOG.error("New Elasticsearch client is not available. Cannot fetch cluster settings.");
-      throw new IOException("New Elasticsearch client is not available");
-    }
-    try {
-      return newClient.cluster().getSettings();
-    } catch (Exception e) {
-      LOG.error("Failed to fetch cluster settings", e);
-      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
-    }
+    return genericManager.clusterSettings();
+  }
+
+  public double averageCpuPercentFromNodesStats(NodesStatsResponse nodesStats) {
+    return genericManager.averageCpuPercentFromNodesStats(nodesStats);
+  }
+
+  public Map<String, Object> extractJvmMemoryStats(NodesStatsResponse nodesStats) {
+    return genericManager.extractJvmMemoryStats(nodesStats);
   }
 
   public String extractMaxContentLengthStr(GetClusterSettingsResponse clusterSettings) {
-    try {
-      String maxContentLengthStr = null;
-
-      // Check in persistent settings
-      JsonData persistentValue = clusterSettings.persistent().get("http.max_content_length");
-      if (persistentValue != null) {
-        maxContentLengthStr = persistentValue.to(String.class);
-      }
-
-      // Check in transient settings if not found in persistent
-      if (maxContentLengthStr == null) {
-        JsonData transientValue = clusterSettings.transient_().get("http.max_content_length");
-        if (transientValue != null) {
-          maxContentLengthStr = transientValue.to(String.class);
-        }
-      }
-
-      return maxContentLengthStr;
-
-    } catch (Exception e) {
-      LOG.warn("Failed to extract maxContentLength from cluster settings: {}", e.getMessage());
-      return null;
-    }
+    return genericManager.extractMaxContentLengthStr(clusterSettings);
   }
 
   @Override

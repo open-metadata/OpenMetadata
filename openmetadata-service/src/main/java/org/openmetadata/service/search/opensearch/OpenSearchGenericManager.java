@@ -2,18 +2,26 @@ package org.openmetadata.service.search.opensearch;
 
 import java.io.IOException;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
+import org.openmetadata.service.search.SearchClusterMetrics;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
 import os.org.opensearch.client.ResponseException;
 import os.org.opensearch.client.RestClient;
+import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
+import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
+import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.indices.DataStreamInfo;
 import os.org.opensearch.client.opensearch.indices.GetDataStreamResponse;
+import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
+import os.org.opensearch.client.opensearch.nodes.Stats;
 
 @Slf4j
 public class OpenSearchGenericManager implements GenericClient {
@@ -204,6 +212,124 @@ public class OpenSearchGenericManager implements GenericClient {
     } catch (Exception e) {
       LOG.error("Error detaching ISM policy from indexes matching pattern: {}", indexPattern, e);
       throw e;
+    }
+  }
+
+  public ClusterStatsResponse clusterStats() throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot fetch cluster stats.");
+      throw new IOException("OpenSearch client is not available");
+    }
+    try {
+      return client.cluster().stats();
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster stats", e);
+      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
+    }
+  }
+
+  public NodesStatsResponse nodesStats() throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot fetch nodes stats.");
+      throw new IOException("OpenSearch client is not available");
+    }
+    try {
+      return client.nodes().stats();
+    } catch (Exception e) {
+      LOG.error("Failed to fetch nodes stats", e);
+      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
+    }
+  }
+
+  public GetClusterSettingsResponse clusterSettings() throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot fetch cluster settings.");
+      throw new IOException("OpenSearch client is not available");
+    }
+    try {
+      return client.cluster().getSettings();
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster settings", e);
+      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
+    }
+  }
+
+  public double averageCpuPercentFromNodesStats(NodesStatsResponse nodesStats) {
+    if (nodesStats == null || nodesStats.nodes() == null || nodesStats.nodes().isEmpty()) {
+      LOG.warn("Unable to extract CPU percent from response, using default 50%");
+      return SearchClusterMetrics.DEFAULT_CPU_PERCENT;
+    }
+
+    double total = 0.0;
+    int count = 0;
+
+    for (Stats nodeStats : nodesStats.nodes().values()) {
+      var os = nodeStats.os();
+      var cpu = os != null ? os.cpu() : null;
+
+      if (cpu != null) {
+        total += cpu.percent();
+        count++;
+      }
+    }
+
+    if (count > 0) return total / count;
+
+    LOG.warn("Unable to extract CPU percent from response, using default 50%");
+    return SearchClusterMetrics.DEFAULT_CPU_PERCENT;
+  }
+
+  public Map<String, Object> extractJvmMemoryStats(NodesStatsResponse nodesStats) {
+    Map<String, Object> result = new HashMap<>();
+
+    long heapUsedBytes = SearchClusterMetrics.DEFAULT_HEAP_USED_BYTES;
+    long heapMaxBytes = SearchClusterMetrics.DEFAULT_HEAP_MAX_BYTES;
+
+    if (nodesStats != null && nodesStats.nodes() != null && !nodesStats.nodes().isEmpty()) {
+      Stats firstNodeStats = nodesStats.nodes().values().iterator().next();
+      if (firstNodeStats != null
+          && firstNodeStats.jvm() != null
+          && firstNodeStats.jvm().mem() != null) {
+        heapUsedBytes = firstNodeStats.jvm().mem().usedInBytes();
+        heapMaxBytes = firstNodeStats.jvm().mem().totalInBytes();
+      }
+    }
+
+    result.put("heapMaxBytes", heapMaxBytes);
+    double memoryUsagePercent =
+        heapMaxBytes > 0 ? (double) heapUsedBytes / heapMaxBytes * 100.0 : -1.0;
+    result.put("memoryUsagePercent", memoryUsagePercent);
+
+    return result;
+  }
+
+  public String extractMaxContentLengthStr(GetClusterSettingsResponse clusterSettings) {
+    try {
+      String maxContentLengthStr = null;
+
+      Map<String, JsonData> persistentSettings = clusterSettings.persistent();
+      if (persistentSettings != null && persistentSettings.containsKey("http.max_content_length")) {
+        JsonData value = persistentSettings.get("http.max_content_length");
+        if (value != null) {
+          maxContentLengthStr = value.to(String.class);
+        }
+      }
+
+      if (maxContentLengthStr == null) {
+        Map<String, JsonData> transientSettings = clusterSettings.transient_();
+        if (transientSettings != null && transientSettings.containsKey("http.max_content_length")) {
+          JsonData value = transientSettings.get("http.max_content_length");
+          if (value != null) {
+            maxContentLengthStr = value.to(String.class);
+          }
+        }
+      }
+
+      return maxContentLengthStr;
+
+    } catch (Exception e) {
+      LOG.warn("Failed to extract maxContentLength from cluster settings: {}", e.getMessage());
+      return null;
     }
   }
 }
