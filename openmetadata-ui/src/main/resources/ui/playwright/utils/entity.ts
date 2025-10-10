@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
   BIG_ENTITY_DELETE_TIMEOUT,
@@ -1876,7 +1877,9 @@ export const getTextFromHtmlString = (description?: string): string => {
     return '';
   }
 
-  return description.replace(/<[^>]*>/g, '').trim();
+  const dom = new JSDOM(description);
+
+  return dom.window.document.body.textContent?.trim() ?? '';
 };
 
 export const getFirstRowColumnLink = (page: Page) => {
