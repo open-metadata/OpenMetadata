@@ -91,8 +91,7 @@ function FollowingWidget({
       const res = await searchQuery({
         pageSize: PAGE_SIZE_MEDIUM,
         searchIndex: SearchIndex.ALL,
-        filters: `followers:${currentUser.id}`,
-        query: '*',
+        queryFilter: queryFilterObj,
         sortField,
         sortOrder,
       });

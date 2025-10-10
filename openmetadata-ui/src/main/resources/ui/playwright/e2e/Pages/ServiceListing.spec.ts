@@ -64,9 +64,8 @@ test.describe('Service Listing', () => {
       '/api/v1/search/query?q=*&index=database_service_search_index&*'
     );
 
-    await searchService2Response;
-
     await page.getByTestId('searchbar').fill(databaseService2.entity.name);
+    await searchService2Response;
 
     await page.getByTestId('filter-icon').click();
     const searchService2Response2 = page.waitForResponse(

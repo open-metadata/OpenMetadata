@@ -287,9 +287,9 @@ const OnlineUsersPage = () => {
                 <FilterTablePlaceHolder
                   placeholderText={
                     searchValue
-                      ? t('message.no-entity-found-for-query', {
+                      ? t('message.no-entity-found-for-name', {
                           entity: t('label.user-lowercase'),
-                          query: searchValue,
+                          name: searchValue,
                         })
                       : t('message.no-online-users-found')
                   }
