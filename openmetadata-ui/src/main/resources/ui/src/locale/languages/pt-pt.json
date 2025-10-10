@@ -2249,7 +2249,7 @@
     "metadata-agents-table-description": "Os agentes de metadados são usados para extrair metadados dos serviços de origem.",
     "metadata-ingestion-description": "Com base no tipo de serviço selecionado, insira os detalhes do padrão de filtro para o esquema ou tabela (banco de dados), ou tópico (mensagens), ou painel. Você pode incluir ou excluir os padrões de filtro. Escolha incluir visualizações, habilitar ou desabilitar o examinador de dados e ingerir dados de amostra, conforme necessário.",
     "metric-configuration-description": "Personalize campos para controlar o comportamento das métricas. Pode adicionar, remover, ocultar ou desabilitar campos conforme necessário.",
-    "metric-description": "Confirme o bom estado dos seus conjuntos de dados com as métricas.",
+    "metric-description": "Defina e catalogue métricas padronizadas em toda a sua organização.",
     "minimum-value-error": "The minimum value should be smaller than the maximum value.",
     "minute": "Minuto",
     "missing-config-value": "Valor de configuração em falta: {{field}}",

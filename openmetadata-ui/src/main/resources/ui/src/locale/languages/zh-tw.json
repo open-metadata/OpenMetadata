@@ -2249,7 +2249,7 @@
     "metadata-agents-table-description": "元資料代理程式用於從來源服務中擷取元資料。",
     "metadata-ingestion-description": "根據所選的服務類型，輸入結構或資料表（資料庫）、主題（訊息傳遞）或儀表板的篩選模式詳細資料。您可以包含或排除篩選模式。根據需要選擇包含檢視、啟用或停用資料分析器，以及擷取範例資料。",
     "metric-configuration-description": "自訂欄位以控制指標行為。您可以根據需要新增、移除、隱藏或停用欄位。",
-    "metric-description": "用指標追蹤您資料資產的健康狀況。",
+    "metric-description": "在整個組織中定義並編目標準化指標。",
     "minimum-value-error": "最小值應小於最大值。",
     "minute": "分鐘",
     "missing-config-value": "缺少組態值：{{field}}",
