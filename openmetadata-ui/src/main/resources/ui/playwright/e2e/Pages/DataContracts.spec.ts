@@ -212,7 +212,7 @@ test.describe('Data Contracts', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        user.responseData.name,
+        user.responseData.displayName,
         true
       );
       await page.getByRole('button', { name: 'Add New Rule' }).click();

@@ -168,18 +168,26 @@ class AdvancedSearchClassBase {
     entityField: EntityFields | EntityReferenceFields;
     suggestField?: SuggestionField;
     isCaseInsensitive?: boolean;
+    sourceFields?: string;
+    sourceFieldOptionType?: {
+      label: string;
+      value: string;
+    };
     q?: string;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     entityField,
     isCaseInsensitive = false,
     q = '',
+    sourceFields,
+    sourceFieldOptionType,
   }) => {
     let pendingResolve: // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ((result: { values: any[]; hasMore: boolean }) => void) | null = null;
     const debouncedFetch = debounce((search: string) => {
-      const sourceFields = isCaseInsensitive
-        ? EntitySourceFields?.[entityField as EntityFields]?.join(',')
+      const finalSourceFields = isCaseInsensitive
+        ? sourceFields ??
+          EntitySourceFields?.[entityField as EntityFields]?.join(',')
         : undefined;
 
       getAggregateFieldOptions(
@@ -187,13 +195,17 @@ class AdvancedSearchClassBase {
         entityField,
         search ?? '',
         q,
-        sourceFields
+        finalSourceFields
       )
         .then((response) => {
           const buckets =
             response.data.aggregations[`sterms#${entityField}`].buckets;
 
-          const bucketsData = parseBucketsData(buckets, sourceFields);
+          const bucketsData = parseBucketsData(
+            buckets,
+            finalSourceFields,
+            sourceFieldOptionType
+          );
 
           if (pendingResolve) {
             pendingResolve({
