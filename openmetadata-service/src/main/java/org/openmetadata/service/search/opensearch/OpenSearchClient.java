@@ -2430,42 +2430,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
-    try {
-      // 1. Get all indices matching the pattern
-      Request catRequest = new Request("GET", "/_cat/indices/" + indexPattern);
-      catRequest.addParameter("format", "json");
-      os.org.opensearch.client.Response catResponse =
-          client.getLowLevelClient().performRequest(catRequest);
-      String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
-      com.fasterxml.jackson.databind.JsonNode indices = JsonUtils.readTree(responseBody);
-      if (!indices.isArray()) {
-        LOG.warn("No indices found matching pattern: {}", indexPattern);
-        return;
-      }
-      for (com.fasterxml.jackson.databind.JsonNode indexNode : indices) {
-        String indexName = indexNode.get("index").asText();
-        try {
-          // 2. Remove ISM policy by updating settings
-          Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
-          putSettings.setJsonEntity("{\"index.plugins.index_state_management.policy_id\": null}");
-          os.org.opensearch.client.Response putResponse =
-              client.getLowLevelClient().performRequest(putSettings);
-          if (putResponse.getStatusLine().getStatusCode() == 200) {
-            LOG.info("Detached ISM policy from index: {}", indexName);
-          } else {
-            LOG.warn(
-                "Failed to detach ISM policy from index: {}. Status: {}",
-                indexName,
-                putResponse.getStatusLine().getStatusCode());
-          }
-        } catch (Exception e) {
-          LOG.error("Error detaching ISM policy from index: {}", indexName, e);
-        }
-      }
-    } catch (Exception e) {
-      LOG.error("Error detaching ISM policy from indexes matching pattern: {}", indexPattern, e);
-      throw new IOException("Failed to detach ISM policy from indexes: " + e.getMessage());
-    }
+    genericManager.dettachIlmPolicyFromIndexes(indexPattern);
   }
 
   @SuppressWarnings("unchecked")

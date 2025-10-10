@@ -154,6 +154,56 @@ public class OpenSearchGenericManager implements GenericClient {
 
   @Override
   public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (!isClientAvailable || !isRestClientAvailable) {
+      LOG.error(
+          "OpenSearch client or rest client is not available. Cannot detach ISM policy from indexes.");
+      return;
+    }
+    try {
+      // Use strongly typed API to get indices
+      var getIndexResponse = client.indices().get(g -> g.index(indexPattern));
+
+      if (getIndexResponse.result().isEmpty()) {
+        LOG.warn("No indices found matching pattern: {}", indexPattern);
+        return;
+      }
+
+      // Use REST client to update ISM settings since strongly typed API doesn't support ISM plugin
+      // settings for OpenSearch
+      for (String indexName : getIndexResponse.result().keySet()) {
+        try {
+          Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
+          putSettings.setJsonEntity("{\"index.plugins.index_state_management.policy_id\": null}");
+          Response putResponse = restClient.performRequest(putSettings);
+
+          if (putResponse.getStatusLine().getStatusCode() == 200) {
+            LOG.info("Detached ISM policy from index: {}", indexName);
+          } else {
+            LOG.warn(
+                "Failed to detach ISM policy from index: {}. Status: {}",
+                indexName,
+                putResponse.getStatusLine().getStatusCode());
+          }
+        } catch (ResponseException e) {
+          if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+            LOG.warn("Index {} does not exist. Skipping.", indexName);
+          } else {
+            LOG.error("Failed to detach ISM policy from index: {}", indexName, e);
+          }
+        } catch (Exception e) {
+          LOG.error("Error detaching ISM policy from index: {}", indexName, e);
+        }
+      }
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        LOG.warn("No indices found matching pattern '{}'. Skipping.", indexPattern);
+      } else {
+        LOG.error("Failed to get indices matching pattern: {}", indexPattern, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Error detaching ISM policy from indexes matching pattern: {}", indexPattern, e);
+      throw e;
+    }
   }
 }

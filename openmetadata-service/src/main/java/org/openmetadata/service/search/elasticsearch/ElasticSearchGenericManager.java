@@ -134,6 +134,45 @@ public class ElasticSearchGenericManager implements GenericClient {
 
   @Override
   public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
-    throw new UnsupportedOperationException("Not implemented yet");
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot detach ILM policy from indexes.");
+      return;
+    }
+    try {
+      var getIndexResponse = client.indices().get(g -> g.index(indexPattern));
+
+      if (getIndexResponse.result().isEmpty()) {
+        LOG.warn("No indices found matching pattern: {}", indexPattern);
+        return;
+      }
+
+      for (String indexName : getIndexResponse.result().keySet()) {
+        try {
+          client
+              .indices()
+              .putSettings(
+                  s -> s.index(indexName).settings(idx -> idx.lifecycle(l -> l.name(null))));
+          LOG.info("Detached ILM policy from index: {}", indexName);
+        } catch (ElasticsearchException e) {
+          if (e.status() == 404) {
+            LOG.warn("Index {} does not exist. Skipping.", indexName);
+          } else {
+            LOG.error("Failed to detach ILM policy from index: {}", indexName, e);
+          }
+        } catch (Exception e) {
+          LOG.error("Error detaching ILM policy from index: {}", indexName, e);
+        }
+      }
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        LOG.warn("No indices found matching pattern '{}'. Skipping.", indexPattern);
+      } else {
+        LOG.error("Failed to get indices matching pattern: {}", indexPattern, e);
+        throw e;
+      }
+    } catch (Exception e) {
+      LOG.error("Error detaching ILM policy from indexes matching pattern: {}", indexPattern, e);
+      throw e;
+    }
   }
 }
