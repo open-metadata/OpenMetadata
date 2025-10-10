@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
   BIG_ENTITY_DELETE_TIMEOUT,
@@ -41,31 +42,13 @@ import { sidebarClick } from './sidebar';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
-  dataTestId = 'loader'
+  dataTestId = 'loader',
+  timeout = 5000
 ) => {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const allLoaders = page.locator(`[data-testid="${dataTestId}"]`);
-    const count = await allLoaders.count();
-
-    let allLoadersGone = true;
-
-    for (let i = 0; i < count; i++) {
-      const loader = allLoaders.nth(i);
-      try {
-        if (await loader.isVisible()) {
-          await loader.waitFor({ state: 'detached', timeout: 1000 });
-          allLoadersGone = false;
-        }
-      } catch {
-        // Do nothing
-      }
-    }
-
-    if (allLoadersGone) {
-      break;
-    }
-    await page.waitForTimeout(100); // slight buffer before next retry
-  }
+  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
+    state: 'detached',
+    timeout,
+  });
 };
 
 export const visitEntityPage = async (data: {
@@ -1894,7 +1877,9 @@ export const getTextFromHtmlString = (description?: string): string => {
     return '';
   }
 
-  return description.replace(/<[^>]*>/g, '').trim();
+  const dom = new JSDOM(description);
+
+  return dom.window.document.body.textContent?.trim() ?? '';
 };
 
 export const getFirstRowColumnLink = (page: Page) => {
