@@ -442,9 +442,7 @@ const UserListPageV1 = () => {
   );
 
   if (
-    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(
-      tab as GlobalSettingOptions
-    )
+    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(tab)
   ) {
     // This component is not accessible for the given tab
     return <Navigate to={ROUTES.NOT_FOUND} />;
