@@ -21,7 +21,7 @@ import {
   SelectFieldSettings,
 } from '@react-awesome-query-builder/antd';
 import { get, sortBy, toLower } from 'lodash';
-import { TEXT_FIELD_OPERATORS } from '../constants/AdvancedSearch.constants';
+import { TEXT_FIELD_DESCRIPTION_OPERATORS } from '../constants/AdvancedSearch.constants';
 import { PAGE_SIZE_BASE } from '../constants/constants';
 import {
   COMMON_ENTITY_FIELDS_KEYS,
@@ -208,7 +208,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.ALL,
             entityField: EntityFields.SERVICE_NAME,
-            isCaseInsensitive: true,
+            sourceFields: 'service.name',
           }),
           useAsyncSearch: true,
         },
@@ -217,9 +217,9 @@ class JSONLogicSearchClassBase {
         label: t('label.owner-plural'),
         type: '!group',
         mode: 'some',
-        defaultField: 'fullyQualifiedName',
+        defaultField: EntityFields.FULLY_QUALIFIED_NAME,
         subfields: {
-          fullyQualifiedName: {
+          [EntityFields.FULLY_QUALIFIED_NAME]: {
             label: 'Owners',
             type: 'select',
             mainWidgetProps: this.mainWidgetProps,
@@ -228,6 +228,11 @@ class JSONLogicSearchClassBase {
               asyncFetch: advancedSearchClassBase.autocomplete({
                 searchIndex: [SearchIndex.USER, SearchIndex.TEAM],
                 entityField: EntityFields.DISPLAY_NAME_KEYWORD,
+                sourceFields: 'displayName,fullyQualifiedName',
+                sourceFieldOptionType: {
+                  label: 'displayName',
+                  value: 'fullyQualifiedName',
+                },
               }),
               useAsyncSearch: true,
             },
@@ -268,8 +273,9 @@ class JSONLogicSearchClassBase {
       [EntityReferenceFields.DESCRIPTION]: {
         label: t('label.description'),
         type: 'text',
+        defaultOperator: 'like',
         mainWidgetProps: this.mainWidgetProps,
-        operators: TEXT_FIELD_OPERATORS,
+        operators: TEXT_FIELD_DESCRIPTION_OPERATORS,
       },
       [EntityReferenceFields.TAG]: {
         label: t('label.tag-plural'),
@@ -352,7 +358,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.TABLE,
             entityField: EntityFields.DATABASE_NAME,
-            isCaseInsensitive: true,
+            sourceFields: 'database.name',
           }),
           useAsyncSearch: true,
         },
@@ -367,7 +373,7 @@ class JSONLogicSearchClassBase {
           asyncFetch: advancedSearchClassBase.autocomplete({
             searchIndex: SearchIndex.TABLE,
             entityField: EntityFields.DATABASE_SCHEMA_NAME,
-            isCaseInsensitive: true,
+            sourceFields: 'databaseSchema.name',
           }),
           useAsyncSearch: true,
         },

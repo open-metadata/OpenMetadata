@@ -58,6 +58,8 @@ import { settingClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 const adminUser = new UserClass();
+const user = new UserClass();
+
 const testPersona = base.extend<{ page: Page }>({
   page: async ({ browser }, use) => {
     const adminPage = await browser.newPage();
@@ -69,7 +71,8 @@ const testPersona = base.extend<{ page: Page }>({
 
 test.describe('Data Contracts', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { afterAction, page } = await performAdminLogin(browser);
+    const { apiContext, afterAction, page } = await performAdminLogin(browser);
+    await user.create(apiContext);
     if (!process.env.PLAYWRIGHT_IS_OSS) {
       // Todo: Remove this patch once the issue is fixed #19140
       await resetTokenFromBotPage(page, 'testsuite-bot');
@@ -181,7 +184,7 @@ test.describe('Data Contracts', () => {
       await selectOption(
         page,
         ruleLocator.locator('.rule--value .ant-select'),
-        'admin',
+        user.responseData.displayName,
         true
       );
       await page.getByRole('button', { name: 'Add New Rule' }).click();
@@ -275,7 +278,7 @@ test.describe('Data Contracts', () => {
 
       await addOwner({
         page,
-        owner: 'admin',
+        owner: user.responseData.displayName,
         type: 'Users',
         endpoint: EntityTypeEndpoint.Table,
         dataTestId: 'data-assets-header',
