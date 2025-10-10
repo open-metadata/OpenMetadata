@@ -18,6 +18,7 @@ import {
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
+import { TeamClass } from '../../support/team/TeamClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { selectOption } from '../../utils/advancedSearch';
@@ -41,12 +42,126 @@ import { test } from '../fixtures/pages';
 test.describe('Data Contracts Semantics Rule Owner', () => {
   const user = new UserClass();
   const user2 = new UserClass();
+  const team = new TeamClass();
+  const team2 = new TeamClass();
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
     await user2.create(apiContext);
     await afterAction();
+  });
+
+  test('Validate Owner Rule Is', async ({ page, browser }) => {
+    test.slow();
+
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const table = new TableClass();
+    await table.create(apiContext);
+    await team.create(apiContext);
+    await team2.create(apiContext);
+
+    await afterAction();
+
+    await test.step(
+      'Open contract section and start adding contract',
+      async () => {
+        await redirectToHomePage(page);
+        await table.visitEntityPage(page);
+
+        await addOwner({
+          page,
+          owner: team.responseData.displayName,
+          type: 'Teams',
+          endpoint: EntityTypeEndpoint.Table,
+          dataTestId: 'data-assets-header',
+        });
+
+        await performInitialStepForRules(page);
+      }
+    );
+
+    await test.step(
+      'Owner with is condition should passed with same team owner',
+      async () => {
+        await page.getByRole('tab', { name: 'Semantics' }).click();
+
+        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+        await page.fill(
+          '#semantics_0_description',
+          DATA_CONTRACT_SEMANTICS1.description
+        );
+
+        const ruleLocator = page.locator('.group').nth(0);
+        await selectOption(
+          page,
+          ruleLocator.locator('.group--field .ant-select'),
+          'Owners',
+          true
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--operator .ant-select'),
+          DATA_CONTRACT_SEMANTIC_OPERATIONS.is
+        );
+        await selectOption(
+          page,
+          ruleLocator.locator('.rule--value .ant-select'),
+          team.responseData.displayName,
+          true
+        );
+
+        // save and trigger contract validation
+        await saveAndTriggerDataContractValidation(page, true);
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Passed');
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).not.toBeVisible();
+      }
+    );
+
+    await test.step(
+      'Owner with is condition should failed with different owner',
+      async () => {
+        await updateOwner({
+          page,
+          owner: team2.responseData.displayName,
+          type: 'Teams',
+          endpoint: EntityTypeEndpoint.Table,
+          dataTestId: 'data-assets-header',
+        });
+
+        await page.getByTestId('manage-contract-actions').click();
+
+        await page.waitForSelector('.contract-action-dropdown', {
+          state: 'visible',
+        });
+
+        const runNowResponse = page.waitForResponse(
+          '/api/v1/dataContracts/*/validate'
+        );
+        await page.getByTestId('contract-run-now-button').click();
+        await runNowResponse;
+
+        await page.reload();
+
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(
+          page.getByTestId('contract-status-card-item-semantics-status')
+        ).toContainText('Failed');
+
+        await expect(
+          page.getByTestId('data-contract-latest-result-btn')
+        ).toContainText('Contract Failed');
+      }
+    );
   });
 
   test('Validate Owner Rule Is_Not', async ({ page, browser }) => {
@@ -101,7 +216,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         await selectOption(
           page,
           ruleLocator.locator('.rule--value .ant-select'),
-          user.responseData.name,
+          user.responseData.displayName,
           true
         );
 
@@ -217,7 +332,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         await selectOption(
           page,
           ruleLocator.locator('.rule--value .ant-select'),
-          user.responseData.name,
+          user.responseData.displayName,
           true
         );
 
@@ -333,7 +448,7 @@ test.describe('Data Contracts Semantics Rule Owner', () => {
         await selectOption(
           page,
           ruleLocator.locator('.rule--value .ant-select'),
-          user.responseData.name,
+          user.responseData.displayName,
           true
         );
 
