@@ -43,7 +43,6 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
     - Examples:
       - MysqlKafkaV2.ecommerce.orders -> database=ecommerce, table=orders
       - PostgresKafkaCDC.public.orders -> database=public, table=orders
-      - earnin.bank.dev.bankfeed.outbox -> database=bankfeed, table=outbox (with server-name=earnin.bank.dev)
 
     Args:
         topic_name: The Kafka topic name
