@@ -29,7 +29,6 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  repeatEach: 10,
   /* Retry on CI only */
   retries: process.env.CI ? 1 : 0,
   /* Opt out of parallel tests on CI. */
@@ -73,7 +72,6 @@ export default defineConfig({
       dependencies: ['setup'],
       grepInvert: /data-insight/,
       testIgnore: ['**/nightly/**'],
-      testMatch: ['**/CustomizeDetailPage.spec.ts', '**/PersonaFlow.spec.ts'],
     },
     {
       name: 'data-insight-application',
