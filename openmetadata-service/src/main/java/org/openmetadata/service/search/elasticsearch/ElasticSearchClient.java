@@ -20,12 +20,13 @@ import static org.openmetadata.service.search.elasticsearch.ElasticSearchEntitie
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
+import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
-import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
-import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.delete.DeleteRequest;
@@ -34,7 +35,6 @@ import es.org.elasticsearch.action.get.GetResponse;
 import es.org.elasticsearch.action.index.IndexRequest;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
-import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
@@ -43,13 +43,9 @@ import es.org.elasticsearch.client.RestClient;
 import es.org.elasticsearch.client.RestClientBuilder;
 import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.client.RestHighLevelClientBuilder;
-import es.org.elasticsearch.client.indices.CreateIndexRequest;
-import es.org.elasticsearch.client.indices.CreateIndexResponse;
 import es.org.elasticsearch.client.indices.DeleteDataStreamRequest;
-import es.org.elasticsearch.client.indices.GetIndexRequest;
 import es.org.elasticsearch.client.indices.GetMappingsRequest;
 import es.org.elasticsearch.client.indices.GetMappingsResponse;
-import es.org.elasticsearch.client.indices.PutMappingRequest;
 import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.ParsingException;
@@ -122,11 +118,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.Header;
+import org.apache.http.HttpHeaders;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
@@ -206,15 +205,21 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Getter
   protected final RestHighLevelClient client;
 
+  // New Java API client support for migration
+  @Getter protected final ElasticsearchClient newClient;
+
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
 
   private final boolean isClientAvailable;
 
+  private final boolean isNewClientAvailable;
+
   private final String clusterAlias;
 
   private final ESLineageGraphBuilder lineageGraphBuilder;
   private final ESEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
+  private final ElasticSearchIndexManager indexManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -234,17 +239,29 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
               Stream.of("schemaDefinition", "customMetrics", "embedding"))
           .toList();
 
+  private static final Header[] defaultHeaders =
+      new Header[] {
+        new BasicHeader(
+            HttpHeaders.ACCEPT, "application/vnd.elasticsearch+json; compatible-with=7"),
+        new BasicHeader(
+            HttpHeaders.CONTENT_TYPE, "application/vnd.elasticsearch+json; compatible-with=7")
+      };
+
   // Add this field to the class
   private NLQService nlqService;
 
   public ElasticSearchClient(ElasticSearchConfiguration config) {
-    this.client = createElasticSearchClient(config);
+    RestClient lowLevelClient = getLowLevelRestClient(config);
+    this.client = createElasticSearchLegacyClient(lowLevelClient);
+    this.newClient = createElasticSearchNewClient(lowLevelClient);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
+    isNewClientAvailable = newClient != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new ESLineageGraphBuilder(client);
     entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
+    indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     nlqService = null;
   }
 
@@ -254,234 +271,89 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     this.nlqService = nlqService;
   }
 
+  private ElasticsearchClient createElasticSearchNewClient(RestClient lowLevelClient) {
+    try {
+      // Create transport and new client
+      RestClientTransport transport =
+          new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+      ElasticsearchClient newClient = new ElasticsearchClient(transport);
+
+      LOG.info("Successfully initialized new Elasticsearch Java API client");
+      return newClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize new Elasticsearch client", e);
+      return null;
+    }
+  }
+
   @Override
   public boolean isClientAvailable() {
     return isClientAvailable;
   }
 
   @Override
+  public boolean isNewClientAvailable() {
+    return isNewClientAvailable;
+  }
+
+  @Override
   public boolean indexExists(String indexName) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(indexName);
-      gRequest.local(false);
-      return client.indices().exists(gRequest, RequestOptions.DEFAULT);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to check if index %s exists due to", indexName), e);
-      return false;
-    }
+    return indexManager.indexExists(indexName);
   }
 
   @Override
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
-    if (Boolean.TRUE.equals(isClientAvailable)) {
-      try {
-        CreateIndexRequest request =
-            new CreateIndexRequest(indexMapping.getIndexName(clusterAlias));
-        request.source(indexMappingContent, XContentType.JSON);
-        CreateIndexResponse createIndexResponse =
-            client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.debug(
-            "{} Created {}",
-            indexMapping.getIndexName(clusterAlias),
-            createIndexResponse.isAcknowledged());
-        createAliases(indexMapping);
-      } catch (Exception e) {
-        LOG.error(
-            String.format(
-                "Failed to create index for %s due to", indexMapping.getIndexName(clusterAlias)),
-            e);
-      }
-    } else {
-      LOG.error(
-          "Failed to create Elastic Search index as client is not property configured, Please check your OpenMetadata configuration");
-    }
+    indexManager.createIndex(indexMapping, indexMappingContent);
   }
 
   @Override
-  public void addIndexAlias(IndexMapping indexMapping, String... aliasName) {
-    try {
-      IndicesAliasesRequest.AliasActions aliasAction =
-          IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexName(clusterAlias))
-              .aliases(aliasName);
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-    } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
-          e);
-    }
+  public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
+    indexManager.addIndexAlias(indexMapping, aliasNames);
   }
 
   @Override
   public void createAliases(IndexMapping indexMapping) {
-    try {
-      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
-      aliases.add(indexMapping.getAlias(clusterAlias));
-      addIndexAlias(indexMapping, aliases.toArray(new String[0]));
-    } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
-          e);
-    }
+    indexManager.createAliases(indexMapping);
   }
 
   @Override
   public void createIndex(String indexName, String indexMappingContent) {
-    if (!isClientAvailable) {
-      LOG.error(
-          "Failed to create Elastic Search index as client is not property configured, Please check your OpenMetadata configuration");
-      return;
-    }
-    try {
-      CreateIndexRequest request = new CreateIndexRequest(indexName);
-      request.source(indexMappingContent, XContentType.JSON);
-      client.indices().create(request, RequestOptions.DEFAULT);
-      LOG.debug("Created staged index {}", indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to create staged index %s due to", indexName), e);
-    }
+    indexManager.createIndex(indexName, indexMappingContent);
   }
 
   @Override
   public void deleteIndex(String indexName) {
-    if (!isClientAvailable) {
-      return;
-    }
-    try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexName);
-      client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug("Deleted index {}", indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to delete index %s due to", indexName), e);
-    }
+    indexManager.deleteIndex(indexName);
   }
 
   @Override
   public Set<String> getAliases(String indexName) {
-    Set<String> aliases = new HashSet<>();
-    if (!isClientAvailable) {
-      return aliases;
-    }
-    try {
-      Request request = new Request("GET", String.format("/%s/_alias", indexName));
-      es.org.elasticsearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
-      JsonNode root = JsonUtils.readTree(responseBody);
-      JsonNode indexNode = root.get(indexName);
-      if (indexNode != null && indexNode.has("aliases")) {
-        JsonNode aliasesNode = indexNode.get("aliases");
-        aliasesNode.fieldNames().forEachRemaining(aliases::add);
-      }
-    } catch (Exception e) {
-      LOG.warn(String.format("Failed to retrieve aliases for index %s", indexName), e);
-    }
-    return aliases;
+    return indexManager.getAliases(indexName);
   }
 
   @Override
   public void addAliases(String indexName, Set<String> aliases) {
-    if (!isClientAvailable || nullOrEmpty(aliases)) {
-      return;
-    }
-    try {
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      for (String alias : aliases) {
-        aliasesRequest.addAliasAction(
-            IndicesAliasesRequest.AliasActions.add().index(indexName).alias(alias));
-      }
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-      LOG.debug("Added aliases {} to index {}", aliases, indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to add aliases %s to index %s", aliases, indexName), e);
-    }
+    indexManager.addAliases(indexName, aliases);
   }
 
   @Override
   public void removeAliases(String indexName, Set<String> aliases) {
-    if (!isClientAvailable || nullOrEmpty(aliases)) {
-      return;
-    }
-    try {
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      for (String alias : aliases) {
-        aliasesRequest.addAliasAction(
-            IndicesAliasesRequest.AliasActions.remove().index(indexName).alias(alias));
-      }
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-      LOG.debug("Removed aliases {} from index {}", aliases, indexName);
-    } catch (Exception e) {
-      if (e instanceof ResponseException responseException
-          && responseException.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.debug(
-            "Aliases {} not present on index {} while attempting removal (ignored).",
-            aliases,
-            indexName);
-        return;
-      }
-      LOG.error(String.format("Failed to remove aliases %s from index %s", aliases, indexName), e);
-    }
+    indexManager.removeAliases(indexName, aliases);
   }
 
   @Override
   public Set<String> getIndicesByAlias(String aliasName) {
-    Set<String> indices = new HashSet<>();
-    if (!isClientAvailable || aliasName == null || aliasName.isBlank()) {
-      return indices;
-    }
-    try {
-      Request request = new Request("GET", String.format("/_alias/%s", aliasName));
-      es.org.elasticsearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
-      JsonNode root = JsonUtils.readTree(responseBody);
-      root.fieldNames().forEachRemaining(indices::add);
-    } catch (ResponseException ex) {
-      if (ex.getResponse() != null && ex.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.debug("Alias '{}' not found while resolving indices.", aliasName);
-      } else {
-        LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), ex);
-      }
-    } catch (Exception e) {
-      LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), e);
-    }
-    return indices;
+    return indexManager.getIndicesByAlias(aliasName);
   }
 
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
-    try {
-      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName(clusterAlias));
-      JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
-      request.source(JsonUtils.getMap(readProperties));
-      AcknowledgedResponse putMappingResponse =
-          client.indices().putMapping(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
-    } catch (Exception e) {
-      LOG.warn(
-          String.format(
-              "Failed to Update Elastic Search index %s", indexMapping.getIndexName(clusterAlias)));
-    }
+    indexManager.updateIndex(indexMapping, indexMappingContent);
   }
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
-    try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName(clusterAlias));
-      AcknowledgedResponse deleteIndexResponse =
-          client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Deleted {}",
-          indexMapping.getIndexName(clusterAlias),
-          deleteIndexResponse.isAcknowledged());
-    } catch (Exception e) {
-      LOG.error("Failed to delete Elastic Search indexes due to", e);
-    }
+    indexManager.deleteIndex(indexMapping);
   }
 
   @Override
@@ -2513,7 +2385,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  public RestHighLevelClient createElasticSearchClient(ElasticSearchConfiguration esConfig) {
+  public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
         RestClientBuilder restClientBuilder =
@@ -2548,14 +2420,36 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
         restClientBuilder.setCompressionEnabled(true);
-        return new RestHighLevelClientBuilder(restClientBuilder.build())
-            .setApiCompatibilityMode(true)
-            .build();
+
+        // Build client without default headers first to check version
+        RestClient tempClient = restClientBuilder.build();
+        boolean isElasticsearch7 = isElasticsearch7Version(tempClient);
+        tempClient.close();
+
+        // Only set default headers for ES 7.x server
+        if (isElasticsearch7) {
+          restClientBuilder.setDefaultHeaders(defaultHeaders);
+        }
+
+        return restClientBuilder.build();
       } catch (Exception e) {
-        LOG.error("Failed to create elastic search client ", e);
+        LOG.error("Failed to create low level rest client ", e);
         return null;
       }
     } else {
+      LOG.error("Failed to create low level rest client as esConfig is null");
+      return null;
+    }
+  }
+
+  public RestHighLevelClient createElasticSearchLegacyClient(RestClient lowLevelClient) {
+    try {
+      RestHighLevelClientBuilder restHighLevelClientBuilder =
+          new RestHighLevelClientBuilder(lowLevelClient).setApiCompatibilityMode(true);
+      LOG.info("Successfully initialized legacy Elasticsearch Java API client");
+      return restHighLevelClientBuilder.build();
+    } catch (Exception e) {
+      LOG.error("Failed to initialize legacy Elasticsearch client", e);
       return null;
     }
   }
@@ -3106,6 +3000,23 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       return entityRelationshipGraphBuilder.getUpstreamEntityRelationship(
           entityRelationshipRequest);
     }
+  }
+
+  private boolean isElasticsearch7Version(RestClient restClient) {
+    try {
+      Request request = new Request("GET", "/");
+      es.org.elasticsearch.client.Response response = restClient.performRequest(request);
+      String responseBody = EntityUtils.toString(response.getEntity());
+      JsonNode jsonNode = JsonUtils.readTree(responseBody);
+      JsonNode versionNode = jsonNode.get("version");
+      if (versionNode != null && versionNode.get("number") != null) {
+        String version = versionNode.get("number").asText();
+        return version.startsWith("7.");
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to detect Elasticsearch version, assuming non-7.x", e);
+    }
+    return false;
   }
 
   @Override
