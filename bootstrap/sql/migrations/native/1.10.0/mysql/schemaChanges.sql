@@ -85,3 +85,57 @@ CREATE TABLE IF NOT EXISTS recognizer_feedback_entity (
 
 ALTER TABLE tag_usage
 ADD COLUMN reason TEXT;
+
+-- Create credentials_entity table for centralized credential management
+CREATE TABLE IF NOT EXISTS credentials_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.id'))) STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.name'))) VIRTUAL NOT NULL,
+    fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.updatedBy'))) VIRTUAL NOT NULL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(json, '$.deleted')) VIRTUAL,
+    credentialType VARCHAR(50) GENERATED ALWAYS AS (json_unquote(json_extract(json, '$.credentialType'))) VIRTUAL NOT NULL,
+    serviceTypes JSON GENERATED ALWAYS AS (json_extract(json, '$.serviceTypes')) VIRTUAL,
+    isOAuth TINYINT(1) GENERATED ALWAYS AS (json_extract(json, '$.isOAuth')) VIRTUAL,
+    requiresUserAuthentication TINYINT(1) GENERATED ALWAYS AS (json_extract(json, '$.requiresUserAuthentication')) VIRTUAL,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY fqnHash (fqnHash),
+    INDEX idx_credentials_name (name),
+    INDEX idx_credentials_type (credentialType),
+    INDEX idx_credentials_oauth (isOAuth),
+    INDEX idx_credentials_user_auth (requiresUserAuthentication),
+    INDEX idx_credentials_updated (updatedAt),
+    INDEX idx_credentials_deleted (deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Create oauth_token_entity table for per-user OAuth token management
+CREATE TABLE IF NOT EXISTS oauth_token_entity (
+    id VARCHAR(36) NOT NULL,
+    userId VARCHAR(36) NOT NULL,
+    credentialsId VARCHAR(36) NOT NULL,
+    accessToken TEXT NOT NULL,
+    refreshToken TEXT,
+    tokenType VARCHAR(50) DEFAULT 'Bearer',
+    expiresAt BIGINT UNSIGNED,
+    scopes JSON,
+    status VARCHAR(20) DEFAULT 'Active',
+    lastRefreshedAt BIGINT UNSIGNED,
+    refreshFailureCount INT DEFAULT 0,
+    refreshFailureReason TEXT,
+    createdAt BIGINT UNSIGNED NOT NULL,
+    updatedAt BIGINT UNSIGNED NOT NULL,
+    version DOUBLE DEFAULT 1.0,
+    deleted TINYINT(1) DEFAULT FALSE,
+
+    PRIMARY KEY (id),
+    UNIQUE KEY unique_user_credential (userId, credentialsId),
+    INDEX idx_token_user (userId),
+    INDEX idx_token_credentials (credentialsId),
+    INDEX idx_token_expiry (expiresAt),
+    INDEX idx_token_status (status),
+    INDEX idx_token_created (createdAt),
+    FOREIGN KEY fk_oauth_token_user (userId) REFERENCES user_entity(id) ON DELETE CASCADE,
+    FOREIGN KEY fk_oauth_token_credentials (credentialsId) REFERENCES credentials_entity(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
