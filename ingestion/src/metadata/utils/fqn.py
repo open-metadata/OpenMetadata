@@ -915,7 +915,8 @@ def prefix_entity_for_wildcard_search(entity_type: Type[T], fqn: str) -> str:
     parts = split(fqn)
     if len(parts) > slots:
         raise FQNBuildingException(
-            f"FQN {fqn} has too many parts ({len(parts)}) for entity type {entity_type.__name__} (expected {slots} or fewer)"
+            f"FQN {fqn} has too many parts ({len(parts)})"
+            f"for entity type {entity_type.__name__} (expected {slots} or fewer)"
         )
 
     # Add wildcards for missing parent levels
