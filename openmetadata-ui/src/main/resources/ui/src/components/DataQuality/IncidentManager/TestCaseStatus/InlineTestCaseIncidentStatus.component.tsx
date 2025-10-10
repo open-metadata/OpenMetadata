@@ -13,10 +13,10 @@
 
 import {
   ArrowBack as ArrowBackIcon,
-  KeyboardArrowDown as ArrowDownIcon,
-  KeyboardArrowUp as ArrowUpIcon,
   Check as CheckIcon,
   Close as CloseIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  KeyboardArrowUp as ArrowUpIcon,
 } from '@mui/icons-material';
 import {
   Box,
@@ -514,7 +514,7 @@ const InlineTestCaseIncidentStatus = ({
             ) : userOptions.length === 0 ? (
               <Box sx={{ p: 2, textAlign: 'center' }}>
                 <Typography color="text.secondary" variant="body2">
-                  {t('message.no-users-found')}
+                  {t('message.no-username-available', { user: '' })}
                 </Typography>
               </Box>
             ) : (
