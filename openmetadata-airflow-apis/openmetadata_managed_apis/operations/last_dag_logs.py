@@ -106,11 +106,14 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 
     # Try to use file streaming for better performance
     try:
-        from airflow.configuration import (
-            conf,  # pylint: disable=import-outside-toplevel
+
+        from airflow.configuration import (  # pylint: disable=import-outside-toplevel
+            conf,
         )
 
         base_log_folder = conf.get("logging", "base_log_folder")
+        # dag_id and task_id are already sanitized at route level
+        # Only dots are replaced for Airflow log path compatibility
         dag_id_safe = dag_id.replace(".", DOT_STR)
         task_id_safe = task_id.replace(".", DOT_STR)
 
@@ -165,13 +168,13 @@ def _last_dag_logs_fallback(
 ) -> Response:
     """
     Fallback to reading entire log file into memory (old behavior).
-        :param dag_id: DAG to look for
-        :param task_id: Task to fetch logs from
-        :param after: log stream cursor
-        :param task_instance: Task instance to fetch logs from
-        :param task_log_reader: TaskLogReader instance
-        :param try_number: Task attempt number
-        :return: API Response
+    :param dag_id: DAG to look for
+    :param task_id: Task to fetch logs from
+    :param after: log stream cursor
+    :param task_instance: Task instance to fetch logs from
+    :param task_log_reader: TaskLogReader instance
+    :param try_number: Task attempt number
+    :return: API Response
     """
     raw_logs_str = "".join(
         list(
