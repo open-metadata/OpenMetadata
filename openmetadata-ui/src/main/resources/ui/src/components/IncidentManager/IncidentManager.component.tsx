@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Col, Row, Select, Skeleton, Space } from 'antd';
+import { Box, Skeleton, Stack, useTheme } from '@mui/material';
+import { Form, Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -95,6 +96,7 @@ const IncidentManager = ({
   const location = useCustomLocation();
   const navigate = useNavigate();
   const { activeDomain } = useDomainStore();
+  const theme = useTheme();
 
   const searchParams = useMemo(() => {
     const param = location.search;
@@ -467,7 +469,7 @@ const IncidentManager = ({
         width: 120,
         render: (_, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
-            return <Skeleton.Input size="small" />;
+            return <Skeleton height={24} variant="rectangular" width={100} />;
           }
           const hasPermission = testCasePermissions.find(
             (item) =>
@@ -477,6 +479,7 @@ const IncidentManager = ({
 
           return (
             <TestCaseIncidentManagerStatus
+              isInline
               data={record}
               hasPermission={hasPermission?.EditAll && !tableDetails?.deleted}
               onSubmit={handleStatusSubmit}
@@ -491,7 +494,7 @@ const IncidentManager = ({
         width: 120,
         render: (value: Severities, record: TestCaseResolutionStatus) => {
           if (isPermissionLoading) {
-            return <Skeleton.Input size="small" />;
+            return <Skeleton height={24} variant="rectangular" width={100} />;
           }
 
           const hasPermission = testCasePermissions.find(
@@ -546,36 +549,25 @@ const IncidentManager = ({
   }
 
   return (
-    <Row gutter={[0, 16]}>
-      <Col className="d-flex justify-between" span={24}>
-        <Space>
-          <Assignees
-            allowClear
-            isSingleSelect
-            showArrow
-            className="w-min-10"
-            options={users.options}
-            placeholder={t('label.assignee')}
-            value={users.selected}
-            onChange={handleAssigneeChange}
-            onSearch={(query) => fetchUserFilterOptions(query)}
-          />
-          <Select
-            allowClear
-            className="w-min-10"
-            data-testid="status-select"
-            placeholder={t('label.status')}
-            value={filters.testCaseResolutionStatusType}
-            onChange={(value) =>
-              setFilters((pre) => ({
-                ...pre,
-                testCaseResolutionStatusType: value,
-              }))
-            }>
-            {Object.values(TestCaseResolutionStatusTypes).map((value) => (
-              <Select.Option key={value}>{startCase(value)}</Select.Option>
-            ))}
-          </Select>
+    <Stack
+      sx={{
+        border: `1px solid ${theme.palette.grey[300]}`,
+        borderRadius: '10px',
+      }}>
+      <Box
+        className="new-form-style"
+        sx={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          p: 4,
+          gap: 5,
+        }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          spacing={5}
+          width="100%">
           <AsyncSelect
             allowClear
             showArrow
@@ -593,45 +585,79 @@ const IncidentManager = ({
               }))
             }
           />
-        </Space>
-        <DatePickerMenu
-          showSelectedCustomRange
-          defaultDateRange={defaultRange}
-          handleDateRangeChange={handleDateRangeChange}
-        />
-      </Col>
-
-      <Col span={24}>
-        <Table
-          columns={columns}
-          containerClassName="test-case-table-container"
-          data-testid="test-case-incident-manager-table"
-          dataSource={testCaseListData.data}
-          loading={testCaseListData.isLoading}
-          {...(pagingData && showPagination
-            ? {
-                customPaginationProps: {
-                  ...pagingData,
-                  showPagination,
-                },
-              }
-            : {})}
-          locale={{
-            emptyText: (
-              <FilterTablePlaceHolder
-                placeholderText={t('message.no-incident-found')}
+          <Box display="flex" gap={5}>
+            <Form.Item className="m-b-0" label={t('label.assignee')}>
+              <Assignees
+                allowClear
+                isSingleSelect
+                showArrow
+                className="w-min-10"
+                options={users.options}
+                placeholder={t('label.assignee')}
+                value={users.selected}
+                onChange={handleAssigneeChange}
+                onSearch={(query) => fetchUserFilterOptions(query)}
               />
-            ),
-          }}
-          pagination={false}
-          rowKey="id"
-          scroll={{
-            x: '100%',
-          }}
-          size="small"
-        />
-      </Col>
-    </Row>
+            </Form.Item>
+            <Form.Item className="m-b-0" label={t('label.status')}>
+              <Select
+                allowClear
+                className="w-min-10"
+                data-testid="status-select"
+                placeholder={t('label.status')}
+                value={filters.testCaseResolutionStatusType}
+                onChange={(value) =>
+                  setFilters((pre) => ({
+                    ...pre,
+                    testCaseResolutionStatusType: value,
+                  }))
+                }>
+                {Object.values(TestCaseResolutionStatusTypes).map((value) => (
+                  <Select.Option key={value}>{startCase(value)}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+          </Box>
+        </Stack>
+        {true && (
+          <DatePickerMenu
+            showSelectedCustomRange
+            defaultDateRange={defaultRange}
+            handleDateRangeChange={handleDateRangeChange}
+            size="small"
+          />
+        )}
+      </Box>
+
+      <Table
+        columns={columns}
+        containerClassName="test-case-table-container custom-card-with-table"
+        data-testid="test-case-incident-manager-table"
+        dataSource={testCaseListData.data}
+        loading={testCaseListData.isLoading}
+        {...(pagingData && showPagination
+          ? {
+              customPaginationProps: {
+                ...pagingData,
+                showPagination,
+              },
+            }
+          : {})}
+        locale={{
+          emptyText: (
+            <FilterTablePlaceHolder
+              placeholderText={t('message.no-incident-found')}
+            />
+          ),
+        }}
+        pagination={false}
+        rowKey="id"
+        scroll={{
+          x: '100%',
+        }}
+        size="small"
+      />
+    </Stack>
   );
 };
 
