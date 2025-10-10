@@ -1,4 +1,4 @@
-#  Copyright 2022 Collate
+#  Copyright 2025 Collate
 #  Licensed under the Collate Community License, Version 1.0 (the "License");
 #  you may not use this file except in compliance with the License.
 #  You may obtain a copy of the License at
@@ -12,13 +12,17 @@
 Module containing the logic to retrieve all logs from the tasks of a last DAG run
 """
 import os
-from functools import lru_cache
+from functools import lru_cache, partial
+from io import StringIO
 from typing import List, Optional, Tuple
 
 from airflow.models import DagModel, TaskInstance
 from airflow.utils.log.log_reader import TaskLogReader
 from flask import Response
 from openmetadata_managed_apis.api.response import ApiResponse
+from openmetadata_managed_apis.utils.logger import operations_logger
+
+logger = operations_logger()
 
 LOG_METADATA = {
     "download_logs": False,
@@ -27,18 +31,17 @@ CHUNK_SIZE = 2_000_000
 
 
 @lru_cache(maxsize=10)
-def get_log_file_info(dag_id: str, task_id: str, try_number: int, log_file_path: str, mtime: float) -> Tuple[int, int]:
-    """Get total size and number of chunks for a log file.
-
-    Args:
-        dag_id: DAG identifier
-        task_id: Task identifier
-        try_number: Task attempt number
-        log_file_path: Path to log file
-        mtime: File modification time (used as cache key)
-
-    Returns:
-        Tuple of (file_size_bytes, total_chunks)
+def get_log_file_info(
+    dag_id: str, task_id: str, try_number: int, log_file_path: str, mtime: float
+) -> Tuple[int, int]:
+    """
+        Get total size and number of chunks for a log file.
+        :param dag_id: DAG identifier
+        :param task_id: Task identifier
+        :param try_number: Task attempt number
+        :param log_file_path: Path to log file
+        :param mtime: File modification time (used as cache key)
+        :return: Tuple of (file_size_bytes, total_chunks)
     """
     file_size = os.path.getsize(log_file_path)
     total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
@@ -46,38 +49,32 @@ def get_log_file_info(dag_id: str, task_id: str, try_number: int, log_file_path:
 
 
 def read_log_chunk_from_file(file_path: str, chunk_index: int) -> Optional[str]:
-    """Read a specific chunk from a log file without loading entire file.
-
-    Args:
-        file_path: Path to the log file
-        chunk_index: 0-based chunk index to read
-
-    Returns:
-        Log chunk content or None if error
+    """
+        Read a specific chunk from a log file without loading entire file.
+        :param file_path: Path to the log file
+        :param chunk_index: 0-based chunk index to read
+        :return: Log chunk content or None if error
     """
     try:
         offset = chunk_index * CHUNK_SIZE
-        with open(file_path, 'r', encoding='utf-8', errors='replace') as f:
+        with open(file_path, "r", encoding="utf-8", errors="replace") as f:
             f.seek(offset)
             chunk = f.read(CHUNK_SIZE)
         return chunk
-    except Exception:
+    except Exception as exc:
+        logger.warning(f"Failed to read log chunk from {file_path}: {exc}")
         return None
 
 
 def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Response:
-    """Validate that the DAG is registered by Airflow and have at least one Run.
-
-    If exists, returns all logs for each task instance of the last DAG run.
-    Uses file streaming to avoid loading entire log file into memory.
-
-    Args:
-        dag_id (str): DAG to look for
-        task_id (str): Task to fetch logs from
-        after (int): log stream cursor
-
-    Return:
-        Response with log and pagination
+    """
+        Validate that the DAG is registered by Airflow and have at least one Run.
+        If exists, returns all logs for each task instance of the last DAG run.
+        Uses file streaming to avoid loading entire log file into memory.
+        :param dag_id: DAG to look for
+        :param task_id: Task to fetch logs from
+        :param after: log stream cursor
+        :return: Response with log and pagination
     """
     dag_model = DagModel.get_dagmodel(dag_id=dag_id)
 
@@ -103,35 +100,32 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
             break
 
     if not target_task_instance:
-        return ApiResponse.bad_request(
-            f"Task {task_id} not found in DAG {dag_id}."
-        )
+        return ApiResponse.bad_request(f"Task {task_id} not found in DAG {dag_id}.")
 
     try_number = target_task_instance._try_number  # pylint: disable=protected-access
 
     task_log_reader = TaskLogReader()
     if not task_log_reader.supports_read:
-        return ApiResponse.server_error(
-            "Task Log Reader does not support read logs."
-        )
+        return ApiResponse.server_error("Task Log Reader does not support read logs.")
 
     # Try to use file streaming for better performance
     try:
         from airflow.configuration import conf
 
-        base_log_folder = conf.get('logging', 'base_log_folder')
-        dag_id_safe = dag_id.replace('.', '_DOT_')
-        task_id_safe = task_id.replace('.', '_DOT_')
+        base_log_folder = conf.get("logging", "base_log_folder")
+        dag_id_safe = dag_id.replace(".", "_DOT_")
+        task_id_safe = task_id.replace(".", "_DOT_")
 
         log_relative_path = f"dag_id={dag_id_safe}/run_id={last_dag_run.run_id}/task_id={task_id_safe}/attempt={try_number}.log"
         log_file_path = os.path.join(base_log_folder, log_relative_path)
 
         if os.path.exists(log_file_path):
             stat_info = os.stat(log_file_path)
-            file_size = stat_info.st_size
             file_mtime = stat_info.st_mtime
 
-            _, total_chunks = get_log_file_info(dag_id, task_id, try_number, log_file_path, file_mtime)
+            _, total_chunks = get_log_file_info(
+                dag_id, task_id, try_number, log_file_path, file_mtime
+            )
 
             after_idx = int(after) if after is not None else 0
 
@@ -147,23 +141,42 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
                     {
                         task_id: chunk_content,
                         "total": total_chunks,
-                        **({"after": after_idx + 1} if after_idx < total_chunks - 1 else {}),
+                        **(
+                            {"after": after_idx + 1}
+                            if after_idx < total_chunks - 1
+                            else {}
+                        ),
                     }
                 )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(
+            f"File streaming failed for DAG {dag_id}, falling back to TaskLogReader: {exc}"
+        )
 
     # Fallback to TaskLogReader if streaming fails
-    return _last_dag_logs_fallback(dag_id, task_id, after, target_task_instance, task_log_reader, try_number)
+    return _last_dag_logs_fallback(
+        dag_id, task_id, after, target_task_instance, task_log_reader, try_number
+    )
 
 
-def _last_dag_logs_fallback(dag_id: str, task_id: str, after: Optional[int],
-                             task_instance: TaskInstance, task_log_reader: TaskLogReader,
-                             try_number: int) -> Response:
-    """Fallback to reading entire log file into memory (old behavior)."""
-    from functools import partial
-    from io import StringIO
-
+def _last_dag_logs_fallback(
+    dag_id: str,
+    task_id: str,
+    after: Optional[int],
+    task_instance: TaskInstance,
+    task_log_reader: TaskLogReader,
+    try_number: int,
+) -> Response:
+    """
+        Fallback to reading entire log file into memory (old behavior).
+        :param dag_id: DAG to look for
+        :param task_id: Task to fetch logs from
+        :param after: log stream cursor
+        :param task_instance: Task instance to fetch logs from
+        :param task_log_reader: TaskLogReader instance
+        :param try_number: Task attempt number
+        :return: API Response
+    """
     raw_logs_str = "".join(
         list(
             task_log_reader.read_log_stream(
