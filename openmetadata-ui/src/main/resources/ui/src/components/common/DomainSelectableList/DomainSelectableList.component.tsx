@@ -66,6 +66,7 @@ const DomainSelectableList = ({
   selectedDomain,
   showAllDomains = false,
   wrapInButton = true,
+  overlayClassName,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -94,7 +95,13 @@ const DomainSelectableList = ({
       if (multiple) {
         await onUpdate(domains);
       } else {
-        await onUpdate(domains[0]);
+        // Handle empty selection case for single domain
+        if (domains.length > 0) {
+          await onUpdate(domains[0]);
+        } else {
+          // Pass undefined for empty selection in single domain mode
+          await onUpdate(undefined as any);
+        }
       }
 
       setPopupVisible(false);
@@ -128,7 +135,7 @@ const DomainSelectableList = ({
         }
         getPopupContainer={getVisiblePopupContainer}
         open={popupVisible}
-        overlayClassName="domain-select-popover w-400"
+        overlayClassName={`domain-select-popover w-400 ${overlayClassName}`}
         placement="bottomRight"
         showArrow={false}
         trigger="click"
