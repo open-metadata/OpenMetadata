@@ -1053,13 +1053,13 @@ test.describe.serial('User Profile Persona Interactions', () => {
 
       // Select multiple personas - try test IDs first, fallback to role selectors
       const persona1OptionTestId = adminPage.getByTestId(
-        `${persona1.data.displayName}-option`
+        `${persona1.responseData.displayName}-option`
       );
 
       await persona1OptionTestId.click();
 
       const persona2OptionTestId = adminPage.getByTestId(
-        `${persona2.data.displayName}-option`
+        `${persona2.responseData.displayName}-option`
       );
 
       await persona2OptionTestId.click();
