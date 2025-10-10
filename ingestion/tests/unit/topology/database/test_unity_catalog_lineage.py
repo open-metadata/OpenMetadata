@@ -339,6 +339,92 @@ class TestUnityCatalogLineage(TestCase):
         "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
     )
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
+    def test_handle_external_location_lineage_with_trailing_slash(
+        self, mock_metadata, mock_test_connection
+    ):
+        """Test _handle_external_location_lineage strips trailing slash from storage location"""
+        mock_test_connection.return_value = None
+
+        file_info = FileInfo(
+            path="s3://test-bucket/data/file.parquet",
+            storage_location="s3://test-bucket/data/",
+            securable_type="EXTERNAL_LOCATION",
+        )
+
+        table_entity = Table(
+            id=uuid4(),
+            name=EntityName(root="test_table"),
+            columns=[],
+        )
+
+        container_entity = Container(
+            id=uuid4(),
+            name=EntityName(root="test_container"),
+            service=EntityReference(id=uuid4(), type="storageService"),
+        )
+
+        mock_metadata.es_search_container_by_path.return_value = [container_entity]
+
+        lineage_source = UnitycatalogLineageSource(self.config, mock_metadata)
+
+        results = list(
+            lineage_source._handle_external_location_lineage(
+                file_info, table_entity, is_upstream=True
+            )
+        )
+
+        self.assertEqual(len(results), 1)
+        mock_metadata.es_search_container_by_path.assert_called_once_with(
+            full_path="s3://test-bucket/data", fields="dataModel"
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
+    )
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
+    def test_handle_external_location_lineage_without_trailing_slash(
+        self, mock_metadata, mock_test_connection
+    ):
+        """Test _handle_external_location_lineage handles path without trailing slash"""
+        mock_test_connection.return_value = None
+
+        file_info = FileInfo(
+            path="s3://test-bucket/data/file.parquet",
+            storage_location="s3://test-bucket/data",
+            securable_type="EXTERNAL_LOCATION",
+        )
+
+        table_entity = Table(
+            id=uuid4(),
+            name=EntityName(root="test_table"),
+            columns=[],
+        )
+
+        container_entity = Container(
+            id=uuid4(),
+            name=EntityName(root="test_container"),
+            service=EntityReference(id=uuid4(), type="storageService"),
+        )
+
+        mock_metadata.es_search_container_by_path.return_value = [container_entity]
+
+        lineage_source = UnitycatalogLineageSource(self.config, mock_metadata)
+
+        results = list(
+            lineage_source._handle_external_location_lineage(
+                file_info, table_entity, is_upstream=True
+            )
+        )
+
+        self.assertEqual(len(results), 1)
+        mock_metadata.es_search_container_by_path.assert_called_once_with(
+            full_path="s3://test-bucket/data", fields="dataModel"
+        )
+
+    @patch(
+        "metadata.ingestion.source.database.unitycatalog.lineage.UnitycatalogLineageSource.test_connection"
+    )
+    @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata")
     def test_handle_external_location_lineage_downstream(
         self, mock_metadata, mock_test_connection
     ):
