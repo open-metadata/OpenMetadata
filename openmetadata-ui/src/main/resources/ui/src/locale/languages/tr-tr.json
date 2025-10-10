@@ -2249,7 +2249,7 @@
     "metadata-agents-table-description": "Metadata Agent'ları, kaynak servislerden metadata çıkarmak için kullanılır.",
     "metadata-ingestion-description": "Seçilen servis türüne bağlı olarak, şema veya tablo (veritabanı), konu (mesajlaşma) veya kontrol paneli için filtre deseni ayrıntılarını girin. Filtre desenlerini dahil edebilir veya hariç tutabilirsiniz. Görünümleri dahil etmeyi, veri profilleyiciyi etkinleştirmeyi veya devre dışı bırakmayı ve gerektiğinde örnek veri almayı seçin.",
     "metric-configuration-description": "Metrik davranışını kontrol etmek için alanları özelleştirin. Gerektiğinde alanları ekleyebilir, kaldırabilir, gizleyebilir veya devre dışı bırakabilirsiniz.",
-    "metric-description": "Metriklerle veri varlıklarınızın sağlığını izleyin.",
+    "metric-description": "Kuruluşunuz genelinde standartlaştırılmış metrikleri tanımlayın ve kataloglayın.",
     "minimum-value-error": "Minimum değer maksimum değerden küçük olmalıdır.",
     "minute": "Dakika",
     "missing-config-value": "Eksik yapılandırma değeri: {{field}}",
