@@ -11,34 +11,55 @@
  *  limitations under the License.
  */
 import { Box } from '@mui/material';
+import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 
 interface CoverImageProps {
   imageUrl?: string;
-  position?: string;
+  position?: { x?: number; y?: number };
 }
 
-export const CoverImage = ({
-  imageUrl,
-  position = 'center',
-}: CoverImageProps) => {
+export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
+  // Get authenticated image hook from ImageClassBase (paid version override)
+  const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
+
+  // Always call unconditionally to avoid React Hook Rules violation
+  const authenticatedResult = authenticatedImageUrl?.(imageUrl ?? '');
+  const imageSrc = authenticatedResult?.imageSrc ?? imageUrl ?? '';
+
   return (
     <Box
       sx={{
         height: '131px',
-        ...(imageUrl
-          ? {
-              backgroundImage: `url(${imageUrl})`,
-              backgroundPosition: position,
-              backgroundSize: 'cover',
-              backgroundRepeat: 'no-repeat',
-            }
-          : {
-              background:
-                'linear-gradient(271.49deg, #00D2FF -11.47%, #03A0FF 59.48%, #016AFB 115.84%)',
-            }),
         borderRadius: 1.5,
         margin: '-1px -1px -1px 0',
-      }}
-    />
+        overflow: 'hidden',
+        position: 'relative',
+      }}>
+      {imageSrc ? (
+        <Box
+          alt="Cover"
+          component="img"
+          src={imageSrc}
+          sx={{
+            width: '100%',
+            height: 'auto',
+            minHeight: 131,
+            objectFit: 'cover',
+            objectPosition: 'center top',
+            transform: position?.y ? `translateY(${position.y}px)` : 'none',
+            display: 'block',
+          }}
+        />
+      ) : (
+        <Box
+          sx={{
+            width: '100%',
+            height: '100%',
+            background:
+              'linear-gradient(271.49deg, #00D2FF -11.47%, #03A0FF 59.48%, #016AFB 115.84%)',
+          }}
+        />
+      )}
+    </Box>
   );
 };

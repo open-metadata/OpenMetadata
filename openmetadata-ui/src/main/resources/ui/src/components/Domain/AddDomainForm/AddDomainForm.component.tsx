@@ -15,9 +15,11 @@ import { Button, Col, Form, FormProps, Row, Space } from 'antd';
 import { omit } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { EntityType } from '../../../enums/entity.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import {
   CreateDomain,
@@ -65,7 +67,46 @@ const AddDomainForm = ({
 
   const selectedColor = Form.useWatch('color', form);
 
+  // Check if upload functionality is available
+  const { onImageUpload } =
+    imageClassBase.getBlockEditorAttachmentProps() ?? {};
+  const isCoverImageUploadAvailable = !!onImageUpload;
+
+  // Cover image upload function using ImageClassBase
+  const handleCoverImageUpload = async (file: File): Promise<string> => {
+    if (!onImageUpload) {
+      throw new Error('Upload functionality is not configured');
+    }
+
+    // Temporary: Use temp FQN for testing cover image upload during domain creation
+    const tempFqn = `temp_domain_${Date.now()}`;
+    const url = await onImageUpload(file, EntityType.DOMAIN, tempFqn);
+
+    return url;
+  };
+
   // Separate fields for custom layout
+  const coverImageField: FieldProp | null = isCoverImageUploadAvailable
+    ? {
+        name: 'coverImage',
+        id: 'root/coverImage',
+        label: t('label.cover-image'),
+        muiLabel: t('label.cover-image'),
+        required: false,
+        type: FieldTypes.COVER_IMAGE_UPLOAD_MUI,
+        props: {
+          'data-testid': 'cover-image',
+          maxSizeMB: 5,
+          maxDimensions: { width: 800, height: 400 },
+          onUpload: handleCoverImageUpload,
+        },
+        formItemProps: {
+          valuePropName: 'value',
+          trigger: 'onChange',
+        },
+      }
+    : null;
+
   const iconField: FieldProp = {
     name: 'iconURL',
     id: 'root/iconURL',
@@ -303,6 +344,12 @@ const AddDomainForm = ({
     const style = {
       color: formData.color,
       iconURL: formData.iconURL,
+      ...(formData.coverImage?.url && {
+        coverImage: formData.coverImage.url,
+        ...(formData.coverImage.position?.y !== undefined && {
+          coverImagePosition: formData.coverImage.position.y,
+        }),
+      }),
     };
 
     // Build the data object
@@ -344,6 +391,9 @@ const AddDomainForm = ({
       form={form}
       layout="vertical"
       onFinish={handleFormSubmit}>
+      {/* Cover Image */}
+      {coverImageField && <Box sx={{ mb: 2 }}>{getField(coverImageField)}</Box>}
+
       {/* Icon and Color row */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2 }}>
         <Box>{getField(iconField)}</Box>
