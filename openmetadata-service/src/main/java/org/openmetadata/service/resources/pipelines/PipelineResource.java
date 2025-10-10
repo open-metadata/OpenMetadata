@@ -651,45 +651,27 @@ public class PipelineResource extends EntityResource<Pipeline, PipelineRepositor
   @Operation(
       operationId = "getPipelineMetrics",
       summary = "Get aggregated pipeline metrics",
-      description =
-          "Get aggregated metrics about pipelines from Elasticsearch. Returns default values if ES is unavailable.",
+      description = "Get aggregated metrics about pipelines from Elasticsearch.",
       responses = {
         @ApiResponse(
             responseCode = "200",
-            description = "Pipeline metrics (may include default values if ES unavailable)",
+            description = "Pipeline metrics",
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = PipelineMetrics.class))),
-        @ApiResponse(responseCode = "503", description = "Service temporarily unavailable")
+                    schema = @Schema(implementation = PipelineMetrics.class)))
       })
   public Response getPipelineMetrics(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(description = "Use database fallback if ES unavailable")
-          @QueryParam("allowFallback")
-          @DefaultValue("true")
-          boolean allowFallback) {
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
 
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
 
     try {
       authorizer.authorize(securityContext, operationContext, getResourceContextByName(""));
-      PipelineMetrics metrics = repository.getPipelineMetrics(allowFallback);
+      PipelineMetrics metrics = repository.getPipelineMetrics();
       return Response.ok(metrics).build();
     } catch (Exception e) {
-      // Error logging removed due to access restrictions
-
-      if (!allowFallback) {
-        return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-            .entity(
-                new PipelineMetrics()
-                    .withDataAvailable(false)
-                    .withErrorMessage("Metrics service temporarily unavailable"))
-            .build();
-      }
-
       PipelineMetrics emptyMetrics =
           new PipelineMetrics()
               .withTotalPipelines(0)

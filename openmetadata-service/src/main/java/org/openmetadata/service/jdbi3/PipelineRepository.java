@@ -1129,22 +1129,12 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
   }
 
-  public PipelineMetrics getPipelineMetrics(boolean allowFallback) {
+  public PipelineMetrics getPipelineMetrics() {
     try {
       return getPipelineMetricsFromES();
     } catch (Exception e) {
       LOG.warn("Failed to get metrics from Elasticsearch: {}", e.getMessage());
-
-      if (allowFallback) {
-        try {
-          return getPipelineMetricsFromDB();
-        } catch (Exception dbException) {
-          LOG.error("Database fallback also failed: {}", dbException.getMessage());
-          return createEmptyMetrics("Both ES and DB queries failed");
-        }
-      }
-
-      return createEmptyMetrics("Elasticsearch unavailable");
+      return createEmptyMetrics("Elasticsearch unavailable: " + e.getMessage());
     }
   }
 
@@ -1361,61 +1351,6 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
     }
 
     metrics.setServiceBreakdown(serviceBreakdowns);
-  }
-
-  private PipelineMetrics getPipelineMetricsFromDB() {
-    PipelineMetrics metrics = new PipelineMetrics();
-    metrics.setDataAvailable(false);
-
-    try {
-      ListFilter filter = new ListFilter(Include.NON_DELETED);
-      int totalCount = daoCollection.pipelineDAO().listCount(filter);
-      metrics.setTotalPipelines(totalCount);
-
-      List<Pipeline> samples = listAfter(null, Fields.EMPTY_FIELDS, filter, 100, null).getData();
-
-      if (!nullOrEmpty(samples)) {
-        Set<String> services = new HashSet<>();
-        int active = 0, failed = 0, successful = 0;
-
-        for (Pipeline pipeline : samples) {
-          if (pipeline.getService() != null) {
-            services.add(pipeline.getService().getName());
-          }
-
-          if (pipeline.getState() != null && "Active".equals(pipeline.getState().toString())) {
-            active++;
-          }
-
-          if (pipeline.getPipelineStatus() != null
-              && pipeline.getPipelineStatus().getExecutionStatus() != null) {
-            String status = pipeline.getPipelineStatus().getExecutionStatus().toString();
-            if ("Failed".equals(status)) {
-              failed++;
-            } else if ("Successful".equals(status)) {
-              successful++;
-            }
-          }
-        }
-
-        metrics.setServiceCount(services.size());
-
-        if (samples.size() > 0) {
-          double ratio = (double) totalCount / samples.size();
-          metrics.setActivePipelines((int) (active * ratio));
-          metrics.setFailedPipelines((int) (failed * ratio));
-          metrics.setSuccessfulPipelines((int) (successful * ratio));
-        }
-      }
-
-      metrics.setErrorMessage("Using database fallback - limited metrics available");
-
-    } catch (Exception e) {
-      LOG.error("Database fallback failed: {}", e.getMessage());
-      metrics.setErrorMessage("Database query failed: " + e.getMessage());
-    }
-
-    return metrics;
   }
 
   private PipelineMetrics createEmptyMetrics(String errorMessage) {
