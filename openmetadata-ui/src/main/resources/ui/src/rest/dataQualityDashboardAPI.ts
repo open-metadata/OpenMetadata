@@ -139,6 +139,9 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
+  // NOTE: testCaseResolutionStatus index only includes testCase.tags, not testCase.tier
+  // Tier filtering is not supported for incident metrics due to backend index limitations
+  // See TestCaseResolutionStatusIndex.java line 35-48 for index structure
   if (filters?.tags || filters?.tier) {
     mustFilter.push(
       buildMustEsFilterForTags(
@@ -181,6 +184,9 @@ export const fetchIncidentTimeMetrics = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
+  // NOTE: testCaseResolutionStatus index only includes testCase.tags, not testCase.tier
+  // Tier filtering is not supported for incident metrics due to backend index limitations
+  // See TestCaseResolutionStatusIndex.java line 35-48 for index structure
   if (filters?.tags || filters?.tier) {
     mustFilter.push(
       buildMustEsFilterForTags(
@@ -232,13 +238,22 @@ export const fetchTestCaseStatusMetricsByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  // Tags are nested in testCase.tags array
+  if (filters?.tags) {
+    mustFilter.push(buildMustEsFilterForTags(filters.tags, true));
+  }
+  // Tier is a separate field in testCase.tier, not part of tags array
+  if (filters?.tier) {
+    mustFilter.push({
+      bool: {
+        should: filters.tier.map((tierTag) => ({
+          term: {
+            'testCase.tier.tagFQN': tierTag,
+          },
+        })),
+        minimum_should_match: 1,
+      },
+    });
   }
   if (filters?.entityFQN) {
     mustFilter.push({
