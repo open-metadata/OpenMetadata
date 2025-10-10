@@ -41,6 +41,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -125,6 +126,13 @@ class MlflowSource(MlModelServiceSource):
             f"#/models/{model.name}"
         )
 
+        # Extract datasets from MLflow run
+        (
+            training_datasets,
+            validation_datasets,
+            test_datasets,
+        ) = self._get_datasets_from_run(run, model.name)
+
         mlmodel_request = CreateMlModelRequest(
             name=EntityName(model.name),
             description=Markdown(model.description) if model.description else None,
@@ -134,6 +142,9 @@ class MlflowSource(MlModelServiceSource):
                 run.data, latest_version.run_id, model.name
             ),
             mlStore=self._get_ml_store(latest_version),
+            trainingDatasets=training_datasets,
+            validationDatasets=validation_datasets,
+            testDatasets=test_datasets,
             service=FullyQualifiedEntityName(self.context.get().mlmodel_service),
             sourceUrl=SourceUrl(source_url),
         )
@@ -231,3 +242,211 @@ class MlflowSource(MlModelServiceSource):
                 self.status.warning(model_name, reason)
 
         return None
+
+    def _find_entity_by_uri(
+        self, uri: str, dataset_name: Optional[str] = None
+    ) -> Optional[EntityReference]:
+        """
+        Search for a table or container entity in OpenMetadata that matches the dataset URI.
+        Supports S3, GCS, file paths, and other storage URIs.
+        Returns None if no entity is found, allowing ingestion to continue.
+        """
+        try:
+            # Try to extract meaningful search terms from the URI
+            search_terms = []
+
+            # Handle different URI formats
+            if uri and uri.startswith(("s3://", "gs://", "hdfs://", "file://")):
+                # Extract path components
+                path = uri.split("//", 1)[-1]
+                # Get bucket/container name and file path
+                parts = path.split("/")
+                if parts:
+                    search_terms.append(parts[0])  # bucket/container name
+                    if len(parts) > 1:
+                        search_terms.append(parts[-1])  # file name
+            elif dataset_name:
+                search_terms.append(dataset_name)
+
+            # Try to find both table and container entities
+            for entity_type in ["table", "container"]:
+                # Try searching with URI-based terms
+                for search_term in search_terms:
+                    if not search_term:
+                        continue
+
+                    try:
+                        # Search by sourceUrl, location, or FQN
+                        search_query = f'(sourceUrl:"{search_term}*" OR location:"{search_term}*" OR {search_term})'
+                        search_results = self.metadata.es_search_from_fqn(
+                            entity_type=entity_type,
+                            fqn_search_string=search_query,
+                        )
+
+                        if search_results and search_results[0]:
+                            entity = search_results[0]
+                            logger.info(
+                                f"Found {entity_type} entity for URI {uri}: {entity.fullyQualifiedName.root}"
+                            )
+                            return EntityReference(
+                                id=entity.id,
+                                name=entity.name.root,
+                                fullyQualifiedName=entity.fullyQualifiedName.root,
+                                type=entity_type,
+                            )
+                    except Exception as search_err:
+                        logger.debug(
+                            f"Search failed for {entity_type} with term {search_term}: {search_err}"
+                        )
+
+                # If dataset_name provided, try exact name search
+                if dataset_name:
+                    try:
+                        search_results = self.metadata.es_search_from_fqn(
+                            entity_type=entity_type,
+                            fqn_search_string=dataset_name,
+                        )
+
+                        if search_results and search_results[0]:
+                            entity = search_results[0]
+                            logger.info(
+                                f"Found {entity_type} entity by name for {dataset_name}: {entity.fullyQualifiedName.root}"
+                            )
+                            return EntityReference(
+                                id=entity.id,
+                                name=entity.name.root,
+                                fullyQualifiedName=entity.fullyQualifiedName.root,
+                                type=entity_type,
+                            )
+                    except Exception as search_err:
+                        logger.debug(
+                            f"Search by name failed for {entity_type}: {search_err}"
+                        )
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.debug(f"Error finding entity for URI {uri}: {err}")
+
+        logger.info(
+            f"No table or container entity found in OpenMetadata for URI: {uri}"
+        )
+        return None
+
+    def _get_datasets_from_run(
+        self, run, model_name: str
+    ) -> tuple[
+        Optional[List[EntityReference]],
+        Optional[List[EntityReference]],
+        Optional[List[EntityReference]],
+    ]:
+        """
+        Extract training, validation, and test datasets from an MLflow run.
+        MLflow logs datasets using mlflow.log_input() with context labels.
+        Returns tuple of (training_datasets, validation_datasets, test_datasets).
+        Only includes datasets that exist as table entities in OpenMetadata.
+        """
+        try:
+            training_datasets = []
+            validation_datasets = []
+            test_datasets = []
+
+            # MLflow 2.0+ provides dataset tracking through inputs
+            if hasattr(run, "inputs") and run.inputs:
+                for dataset_input in run.inputs.dataset_inputs:
+                    # Get the dataset name and context
+                    dataset_name = (
+                        dataset_input.dataset.name
+                        if hasattr(dataset_input.dataset, "name")
+                        else None
+                    )
+                    dataset_source = (
+                        dataset_input.dataset.source
+                        if hasattr(dataset_input.dataset, "source")
+                        else None
+                    )
+
+                    # Context labels like "training", "validation", "test", "evaluation"
+                    context_tags = (
+                        dataset_input.tags if hasattr(dataset_input, "tags") else []
+                    )
+
+                    if not dataset_name and not dataset_source:
+                        continue
+
+                    # Search for existing table or container entity
+                    dataset_ref = self._find_entity_by_uri(
+                        dataset_source or dataset_name, dataset_name
+                    )
+
+                    if not dataset_ref:
+                        logger.debug(
+                            f"No table entity found in OpenMetadata for dataset: {dataset_name or dataset_source} (model: {model_name})"
+                        )
+                        continue
+
+                    # Map based on context tags
+                    context_str = " ".join(str(tag).lower() for tag in context_tags)
+
+                    if "training" in context_str or "train" in context_str:
+                        training_datasets.append(dataset_ref)
+                    elif "validation" in context_str or "val" in context_str:
+                        validation_datasets.append(dataset_ref)
+                    elif (
+                        "test" in context_str
+                        or "evaluation" in context_str
+                        or "eval" in context_str
+                    ):
+                        test_datasets.append(dataset_ref)
+                    else:
+                        # If no clear context, check dataset name
+                        name_lower = (dataset_name or dataset_source or "").lower()
+                        if "train" in name_lower:
+                            training_datasets.append(dataset_ref)
+                        elif "val" in name_lower:
+                            validation_datasets.append(dataset_ref)
+                        elif "test" in name_lower:
+                            test_datasets.append(dataset_ref)
+                        else:
+                            # Default to training if ambiguous
+                            logger.debug(
+                                f"Ambiguous dataset context for {dataset_name or dataset_source} in model {model_name}, defaulting to training"
+                            )
+                            training_datasets.append(dataset_ref)
+
+            # Also check run tags for dataset information (legacy approach)
+            if run.data.tags:
+                for tag_key, tag_value in run.data.tags.items():
+                    if any(
+                        keyword in tag_key.lower()
+                        for keyword in ["dataset", "data_path", "data_uri"]
+                    ):
+                        context_lower = tag_key.lower()
+
+                        # Search for the table or container entity
+                        dataset_ref = self._find_entity_by_uri(tag_value)
+
+                        if not dataset_ref:
+                            logger.debug(
+                                f"No table entity found for tag {tag_key}={tag_value} (model: {model_name})"
+                            )
+                            continue
+
+                        if "train" in context_lower:
+                            training_datasets.append(dataset_ref)
+                        elif "val" in context_lower or "validation" in context_lower:
+                            validation_datasets.append(dataset_ref)
+                        elif "test" in context_lower:
+                            test_datasets.append(dataset_ref)
+
+            return (
+                training_datasets if training_datasets else None,
+                validation_datasets if validation_datasets else None,
+                test_datasets if test_datasets else None,
+            )
+
+        except Exception as err:
+            logger.debug(traceback.format_exc())
+            logger.warning(
+                f"Error extracting datasets from MLflow run for model {model_name}: {err}"
+            )
+            return None, None, None
