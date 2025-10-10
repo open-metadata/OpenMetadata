@@ -11,7 +11,7 @@ public class WorkflowFailureListener implements FlowableEventListener {
   @Override
   public void onEvent(FlowableEvent event) {
     if (FlowableEngineEventType.JOB_EXECUTION_FAILURE.equals(event.getType())) {
-      LOG.error("Workflow Failed: " + event);
+      LOG.error("[WorkflowFailure] JOB_EXECUTION_FAILURE: {}", event);
     }
   }
 
