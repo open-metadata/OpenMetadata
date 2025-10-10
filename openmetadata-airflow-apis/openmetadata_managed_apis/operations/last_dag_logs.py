@@ -28,20 +28,16 @@ LOG_METADATA = {
     "download_logs": False,
 }
 CHUNK_SIZE = 2_000_000
+DOT_STR = "_DOT_"
 
 
 @lru_cache(maxsize=10)
-def get_log_file_info(
-    dag_id: str, task_id: str, try_number: int, log_file_path: str, mtime: float
-) -> Tuple[int, int]:
+def get_log_file_info(log_file_path: str, mtime: int) -> Tuple[int, int]:
     """
     Get total size and number of chunks for a log file.
-        :param dag_id: DAG identifier
-        :param task_id: Task identifier
-        :param try_number: Task attempt number
-        :param log_file_path: Path to log file
-        :param mtime: File modification time (used as cache key)
-        :return: Tuple of (file_size_bytes, total_chunks)
+    :param log_file_path: Path to log file
+    :param mtime: File modification time in seconds (used as cache key)
+    :return: Tuple of (file_size_bytes, total_chunks)
     """
     file_size = os.path.getsize(log_file_path)
     total_chunks = (file_size + CHUNK_SIZE - 1) // CHUNK_SIZE
@@ -50,10 +46,10 @@ def get_log_file_info(
 
 def read_log_chunk_from_file(file_path: str, chunk_index: int) -> Optional[str]:
     """
-        Read a specific chunk from a log file without loading entire file.
-        :param file_path: Path to the log file
-        :param chunk_index: 0-based chunk index to read
-        :return: Log chunk content or None if error
+    Read a specific chunk from a log file without loading entire file.
+    :param file_path: Path to the log file
+    :param chunk_index: 0-based chunk index to read
+    :return: Log chunk content or None if error
     """
     try:
         offset = chunk_index * CHUNK_SIZE
@@ -110,22 +106,22 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
 
     # Try to use file streaming for better performance
     try:
-        from airflow.configuration import conf
+        from airflow.configuration import (
+            conf,  # pylint: disable=import-outside-toplevel
+        )
 
         base_log_folder = conf.get("logging", "base_log_folder")
-        dag_id_safe = dag_id.replace(".", "_DOT_")
-        task_id_safe = task_id.replace(".", "_DOT_")
+        dag_id_safe = dag_id.replace(".", DOT_STR)
+        task_id_safe = task_id.replace(".", DOT_STR)
 
         log_relative_path = f"dag_id={dag_id_safe}/run_id={last_dag_run.run_id}/task_id={task_id_safe}/attempt={try_number}.log"
         log_file_path = os.path.join(base_log_folder, log_relative_path)
 
         if os.path.exists(log_file_path):
             stat_info = os.stat(log_file_path)
-            file_mtime = stat_info.st_mtime
+            file_mtime = int(stat_info.st_mtime)
 
-            _, total_chunks = get_log_file_info(
-                dag_id, task_id, try_number, log_file_path, file_mtime
-            )
+            _, total_chunks = get_log_file_info(log_file_path, file_mtime)
 
             after_idx = int(after) if after is not None else 0
 
