@@ -24,7 +24,7 @@ import type { ButtonProps } from "@mui/material";
 import { Box, ThemeProvider, Typography } from "@mui/material";
 import type { Meta } from "@storybook/react";
 import { createMuiTheme } from "../../theme/createMuiTheme";
-import { Button } from "./Button.component";
+import { Button } from "@mui/material";
 
 type ButtonVariants = "contained" | "outlined" | "text";
 type CustomButtonArgs = ButtonProps & {
