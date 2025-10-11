@@ -36,7 +36,7 @@ import {
   EntityReferenceFields,
 } from '../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../enums/search.enum';
-import { searchData } from '../rest/miscAPI';
+import { searchQuery } from '../rest/searchAPI';
 import { getTags } from '../rest/tagAPI';
 import advancedSearchClassBase from './AdvancedSearchClassBase';
 import { t } from './i18next/LocalUtil';
@@ -484,7 +484,7 @@ class JSONLogicSearchClassBase {
     searchIndex: SearchIndex | SearchIndex[];
     fieldName: string;
     fieldLabel: string;
-    queryFilter?: string;
+    queryFilter?: Record<string, unknown>;
   }) => SelectFieldSettings['asyncFetch'] = ({
     searchIndex,
     fieldName,
@@ -492,19 +492,14 @@ class JSONLogicSearchClassBase {
     queryFilter,
   }) => {
     return (search) => {
-      return searchData(
-        Array.isArray(search) ? search.join(',') : search ?? '',
-        1,
-        PAGE_SIZE_BASE,
-        queryFilter ?? '',
-        '',
-        '',
-        searchIndex ?? SearchIndex.DATA_ASSET,
-        false,
-        false,
-        true
-      ).then((response) => {
-        const data = response.data.hits.hits;
+      return searchQuery({
+        query: Array.isArray(search) ? search.join(',') : search ?? '',
+        pageNumber: 1,
+        pageSize: PAGE_SIZE_BASE,
+        queryFilter,
+        searchIndex: searchIndex ?? SearchIndex.DATA_ASSET,
+      }).then((response) => {
+        const data = response.hits.hits;
 
         return {
           values: data.map((item) => ({

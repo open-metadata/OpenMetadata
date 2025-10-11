@@ -76,7 +76,7 @@ import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { Style } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
@@ -85,10 +85,6 @@ import {
   getClassificationDetailsPath,
   getClassificationTagPath,
 } from '../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../utils/StringsUtils';
 import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
@@ -344,19 +340,16 @@ const TagPage = () => {
 
   const fetchClassificationTagAssets = async () => {
     try {
-      const encodedFqn = getEncodedFqn(escapeESReservedCharacters(tagFqn));
-      const res = await searchData(
-        '',
-        1,
-        0,
-        getTagAssetsQueryFilter(encodedFqn),
-        '',
-        '',
-        SearchIndex.ALL
-      );
+      const res = await searchQuery({
+        query: '',
+        pageNumber: 1,
+        pageSize: 0,
+        queryFilter: getTagAssetsQueryFilter(tagFqn),
+        searchIndex: SearchIndex.ALL,
+      });
 
-      setAssetCount(res.data.hits.total.value ?? 0);
-      if (res.data.hits.total.value === 0) {
+      setAssetCount(res.hits.total.value ?? 0);
+      if (res.hits.total.value === 0) {
         setPreviewAsset(undefined);
       }
     } catch (error) {
