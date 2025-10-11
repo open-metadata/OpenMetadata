@@ -223,6 +223,7 @@ class CommonDbSourceService(
             description=description,
             sourceUrl=source_url,
             tags=self.get_database_tag_labels(database_name=database_name),
+            owners=self.get_database_owner_ref(database_name),
         )
 
         yield Either(right=database_request)
@@ -278,6 +279,7 @@ class CommonDbSourceService(
             description=description,
             sourceUrl=source_url,
             tags=self.get_schema_tag_labels(schema_name=schema_name),
+            owners=self.get_schema_owner_ref(schema_name),
         )
 
         yield Either(right=schema_request)
