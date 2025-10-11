@@ -108,14 +108,14 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
     children: [
       {
         key: ROUTES.DOMAIN,
-        title: 'label.domain',
+        title: 'label.domain-plural',
         redirect_url: ROUTES.DOMAIN,
         icon: DomainsIcon,
         dataTestId: `app-bar-item-${SidebarItem.DOMAIN}`,
       },
       {
         key: ROUTES.DATA_PRODUCT,
-        title: 'label.data-product',
+        title: 'label.data-product-plural',
         redirect_url: ROUTES.DATA_PRODUCT,
         icon: DataProductIcon,
         dataTestId: `app-bar-item-${SidebarItem.DATA_PRODUCT}`,

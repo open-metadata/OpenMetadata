@@ -51,6 +51,7 @@ export enum FieldTypes {
   DOMAIN_SELECT = 'domain_select',
   DOMAIN_SELECT_MUI = 'domain_select_mui',
   ICON_PICKER_MUI = 'icon_picker_mui',
+  COVER_IMAGE_UPLOAD_MUI = 'cover_image_upload_mui',
   CRON_EDITOR = 'cron_editor',
   TREE_ASYNC_SELECT_LIST = 'tree_async_select_list',
 }

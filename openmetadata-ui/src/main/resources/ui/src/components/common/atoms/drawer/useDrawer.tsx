@@ -25,6 +25,7 @@ export interface DrawerConfig {
   children?: ReactNode;
   defaultOpen?: boolean;
   zIndex?: number;
+  testId?: string;
 }
 
 /**
@@ -122,13 +123,21 @@ export const useDrawer = (config: DrawerConfig = {}) => {
     () => (
       <Drawer
         anchor={config.anchor || 'right'}
+        data-testid={config.testId}
         open={open}
         sx={getDrawerSx}
         onClose={handleClose}>
         {config.children}
       </Drawer>
     ),
-    [open, config.anchor, config.children, getDrawerSx, handleClose]
+    [
+      open,
+      config.anchor,
+      config.children,
+      config.testId,
+      getDrawerSx,
+      handleClose,
+    ]
   );
 
   return {

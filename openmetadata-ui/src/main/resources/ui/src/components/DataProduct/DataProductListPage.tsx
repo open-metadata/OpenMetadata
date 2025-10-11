@@ -150,8 +150,7 @@ const DataProductListPage = () => {
 
   // Composable hooks for each UI component
   const { breadcrumbs } = useBreadcrumbs({
-    entityLabelKey: 'label.data-product',
-    basePath: '/dataProduct',
+    items: [{ name: t('label.data-product-plural'), url: '/dataProduct' }],
   });
 
   const { pageHeader } = usePageHeader({

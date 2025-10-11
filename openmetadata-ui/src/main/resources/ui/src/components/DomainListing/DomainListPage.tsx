@@ -149,8 +149,7 @@ const DomainListPage = () => {
 
   // Composable hooks for each UI component
   const { breadcrumbs } = useBreadcrumbs({
-    entityLabelKey: 'label.domain',
-    basePath: '/domain',
+    items: [{ name: t('label.domain-plural'), url: '/domain' }],
   });
 
   const { pageHeader } = usePageHeader({
