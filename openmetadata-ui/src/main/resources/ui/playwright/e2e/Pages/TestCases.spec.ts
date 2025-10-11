@@ -75,6 +75,13 @@ test('Table difference test case', async ({ page }) => {
       );
       await page.getByTestId('tableDiff').click();
       await tableListSearchResponse;
+
+      const table2KeyColumnsInput = page.locator(
+        '#testCaseFormV1_params_table2\\.keyColumns_0_value'
+      );
+
+      await expect(table2KeyColumnsInput).toBeDisabled();
+
       await page.click('#testCaseFormV1_params_table2');
       await page.waitForSelector(`[data-id="tableDiff"]`, {
         state: 'visible',
@@ -107,6 +114,15 @@ test('Table difference test case', async ({ page }) => {
         table1.entity?.columns[0].name
       );
       await page.getByTitle(table1.entity?.columns[0].name).click();
+
+      await page.fill(
+        '#testCaseFormV1_params_table2\\.keyColumns_0_value',
+        table2.entity?.columns[0].name
+      );
+      await page.getByTitle(table2.entity?.columns[0].name).click();
+
+      await expect(table2KeyColumnsInput).not.toBeDisabled();
+
       await page.fill('#testCaseFormV1_params_threshold', testCase.threshold);
       await page.fill(
         '#testCaseFormV1_params_useColumns_0_value',
@@ -160,6 +176,16 @@ test('Table difference test case', async ({ page }) => {
 
       await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
         `Edit ${testCase.name}`
+      );
+
+      // Verify table2.keyColumns is enabled and populated in edit mode
+      const table2KeyColumnsEditInput = page.locator(
+        '#tableTestForm_params_table2\\.keyColumns_0_value'
+      );
+
+      await expect(table2KeyColumnsEditInput).not.toBeDisabled();
+      await expect(table2KeyColumnsEditInput).toHaveValue(
+        table2.entity?.columns[0].name
       );
 
       await page
