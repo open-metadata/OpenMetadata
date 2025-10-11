@@ -16,7 +16,11 @@ from typing import Callable
 
 from flask import Blueprint, Response, request
 from openmetadata_managed_apis.api.response import ApiResponse
-from openmetadata_managed_apis.api.utils import get_arg_dag_id, get_request_arg
+from openmetadata_managed_apis.api.utils import (
+    get_arg_dag_id,
+    get_request_arg,
+    sanitize_task_id,
+)
 from openmetadata_managed_apis.operations.last_dag_logs import last_dag_logs
 from openmetadata_managed_apis.utils.logger import routes_logger
 
@@ -45,7 +49,8 @@ def get_fn(blueprint: Blueprint) -> Callable:
         """
 
         dag_id = get_arg_dag_id()
-        task_id = get_request_arg(request, "task_id")
+        raw_task_id = get_request_arg(request, "task_id")
+        task_id = sanitize_task_id(raw_task_id)
         after = get_request_arg(request, "after", raise_missing=False)
 
         try:
