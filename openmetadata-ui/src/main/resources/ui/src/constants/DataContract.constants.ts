@@ -49,8 +49,6 @@ export const DATA_ASSET_RULE_FIELDS_NOT_TO_RENDER = [
 ];
 
 export const SEMANTIC_OPERATORS = [
-  'select_any_in',
-  'select_not_any_in',
   'is_null',
   'is_not_null',
   'array_contains',
