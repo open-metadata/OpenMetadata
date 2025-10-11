@@ -27,5 +27,5 @@ export type SelectServiceTypeProps = {
 export type ConfigureServiceProps = {
   serviceName: string;
   onBack: () => void;
-  onNext: (data: Pick<ServiceConfig, 'name' | 'description'>) => void;
+  onNext: (data: Pick<ServiceConfig, 'name' | 'description' | 'logoUrl'>) => void;
 };

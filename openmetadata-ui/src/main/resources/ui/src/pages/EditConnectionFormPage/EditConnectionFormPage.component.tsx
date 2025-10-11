@@ -217,7 +217,7 @@ function EditConnectionFormPage() {
       <TitleBreadcrumb titleLinks={slashedBreadcrumb} />
       <div className="m-t-md">
         <Space className="p-b-xs">
-          {getServiceLogo(serviceDetails?.serviceType ?? '', 'h-6')}{' '}
+          {getServiceLogo(serviceDetails?.serviceType ?? '', 'h-6', serviceDetails)}{' '}
           <Typography className="text-base" data-testid="header">
             {t('message.edit-service-entity-connection', {
               entity: serviceFQN,

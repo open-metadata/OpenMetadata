@@ -239,7 +239,7 @@ const AddServicePage = () => {
         <div data-testid="add-new-service-container">
           {serviceConfig.serviceType ? (
             <Space className="p-b-xs">
-              {getServiceLogo(serviceConfig.serviceType || '', 'h-6')}{' '}
+              {getServiceLogo(serviceConfig.serviceType || '', 'h-6', serviceConfig)}{' '}
               <Typography className="text-base" data-testid="header">
                 {`${serviceConfig.serviceType} ${t('label.service')}`}
               </Typography>

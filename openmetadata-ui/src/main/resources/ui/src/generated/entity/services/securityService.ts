@@ -65,6 +65,11 @@ export interface SecurityService {
      */
     ingestionRunner?: EntityReference;
     /**
+     * URL to the logo image for this service. Primarily used for custom service types to
+     * provide a visual identifier.
+     */
+    logoUrl?: string;
+    /**
      * Name that identifies this security service.
      */
     name: string;

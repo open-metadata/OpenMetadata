@@ -61,10 +61,28 @@ const ConfigureService = ({
         initialValue: '',
       },
     },
+    {
+      name: 'logoUrl',
+      required: false,
+      label: t('label.service-logo-url'),
+      id: 'root/logoUrl',
+      type: FieldTypes.TEXT,
+      props: {
+        'data-testid': 'logo-url',
+        placeholder: t('message.enter-service-logo-url'),
+      },
+      formItemProps: {
+        help: t('message.service-logo-url-help'),
+      },
+    },
   ];
 
   const handleSubmit: FormProps['onFinish'] = (data) => {
-    onNext({ name: data.name, description: data.description ?? '' });
+    onNext({ 
+      name: data.name, 
+      description: data.description ?? '',
+      logoUrl: data.logoUrl ?? ''
+    });
   };
 
   return (
