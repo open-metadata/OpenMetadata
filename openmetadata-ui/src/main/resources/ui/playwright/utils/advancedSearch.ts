@@ -195,7 +195,6 @@ export const selectOption = async (
     const combobox = dropdownLocator.getByRole('combobox');
     await combobox.clear();
     await combobox.fill(optionTitle);
-
     await page.waitForSelector('.ant-select-item-empty', {
       state: 'detached',
     });

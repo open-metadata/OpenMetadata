@@ -128,6 +128,29 @@ class OMetaTestSuiteTest(TestCase):
             test_case_fqn="sample_data.ecommerce_db.shopify.dim_address.testCaseForIntegration",
         )
 
+        # Create test case with special characters in FQN to test URL encoding
+        cls.metadata.create_or_update(
+            CreateTestCaseRequest(
+                name=TestCaseEntityName("testCase:With/Special&Characters"),
+                entityLink=EntityLink(
+                    "<#E::table::sample_data.ecommerce_db.shopify.dim_address>"
+                ),
+                testDefinition=cls.test_definition.fullyQualifiedName,
+                parameterValues=[TestCaseParameterValue(name="foo", value="20")],
+            )
+        )
+
+        cls.metadata.add_test_case_results(
+            test_results=TestCaseResult(
+                timestamp=datetime_to_ts(datetime.now(timezone.utc)),
+                testCaseStatus=TestCaseStatus.Success,
+                result="Test Case with special chars Success",
+                sampleData=None,
+                testResultValue=[TestResultValue(name="foo", value="20")],
+            ),
+            test_case_fqn="sample_data.ecommerce_db.shopify.dim_address.testCase:With/Special&Characters",
+        )
+
     def test_get_or_create_test_suite(self):
         """test we get a test suite object"""
         test_suite = self.metadata.get_or_create_test_suite(
@@ -186,6 +209,22 @@ class OMetaTestSuiteTest(TestCase):
         )
 
         assert res
+
+    def test_get_test_case_results_with_special_characters(self):
+        """test get test case results with special characters in FQN (: / &)"""
+        # This test validates that URL encoding works correctly for FQNs with special chars
+        res = self.metadata.get_test_case_results(
+            "sample_data.ecommerce_db.shopify.dim_address.testCase:With/Special&Characters",
+            get_beginning_of_day_timestamp_mill(),
+            get_end_of_day_timestamp_mill(),
+        )
+
+        assert (
+            res is not None
+        ), "Should fetch results for test case with special characters"
+        assert len(res) > 0, "Should have at least one result"
+        assert res[0].result == "Test Case with special chars Success"
+        assert res[0].testCaseStatus == TestCaseStatus.Success
 
     @classmethod
     def tearDownClass(cls) -> None:
