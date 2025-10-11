@@ -105,10 +105,13 @@ class KafkaconnectSource(PipelineServiceSource):
     Pipeline metadata from Kafka Connect
     """
 
-    def __init__(self, config, metadata):
+    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__(config, metadata)
         # Track lineage results for summary reporting
         self.lineage_results = []
+        # Cache services for hostname matching (lazy loaded)
+        self._database_services_cache = None
+        self._messaging_services_cache = None
 
     @classmethod
     def create(
@@ -121,6 +124,30 @@ class KafkaconnectSource(PipelineServiceSource):
                 f"Expected KafkaConnectConnection, but got {connection}"
             )
         return cls(config, metadata)
+
+    @property
+    def database_services(self) -> List[DatabaseService]:
+        """Lazily load and cache database services for hostname matching"""
+        if self._database_services_cache is None:
+            self._database_services_cache = list(
+                self.metadata.list_all_entities(entity=DatabaseService, limit=100)
+            )
+            logger.debug(
+                f"Cached {len(self._database_services_cache)} database services for hostname matching"
+            )
+        return self._database_services_cache
+
+    @property
+    def messaging_services(self) -> List[MessagingService]:
+        """Lazily load and cache messaging services for broker matching"""
+        if self._messaging_services_cache is None:
+            self._messaging_services_cache = list(
+                self.metadata.list_all_entities(entity=MessagingService, limit=100)
+            )
+            logger.debug(
+                f"Cached {len(self._messaging_services_cache)} messaging services for broker matching"
+            )
+        return self._messaging_services_cache
 
     def _extract_hostname(self, host_string: str) -> str:
         """
@@ -159,10 +186,8 @@ class KafkaconnectSource(PipelineServiceSource):
             Service name if found, None otherwise
         """
         try:
-            # List all database services (using list_all_entities for proper pagination)
-            all_services = list(
-                self.metadata.list_all_entities(entity=DatabaseService, limit=100)
-            )
+            # Use cached database services
+            all_services = self.database_services
 
             # Filter by serviceType first to reduce the search space
             filtered_services = [
@@ -232,10 +257,8 @@ class KafkaconnectSource(PipelineServiceSource):
             Service name if found, None otherwise
         """
         try:
-            # List all messaging services (using list_all_entities for proper pagination)
-            all_services = list(
-                self.metadata.list_all_entities(entity=MessagingService, limit=100)
-            )
+            # Use cached messaging services
+            all_services = self.messaging_services
 
             logger.debug(f"Searching for messaging service matching brokers: {brokers}")
 
@@ -893,6 +916,89 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return None
 
+    def _search_topics_by_prefix(
+        self, database_server_name: str, messaging_service_name: Optional[str] = None
+    ) -> List[KafkaConnectTopics]:
+        """
+        Search for topics in the messaging service that match the database.server.name prefix.
+
+        This is a fallback when table.include.list is not configured in the connector.
+        It relies on topics being already ingested in the messaging service.
+
+        Args:
+            database_server_name: The database.server.name prefix to search for
+            messaging_service_name: Optional messaging service name to narrow search
+
+        Returns:
+            List of KafkaConnectTopics that match the prefix
+        """
+        topics_found = []
+
+        try:
+            if not database_server_name:
+                return topics_found
+
+            logger.info(
+                f"Searching messaging service for topics with prefix: {database_server_name}"
+            )
+
+            # Search for topics matching the prefix
+            # Use wildcard pattern: <service>."<prefix>.*"
+            search_pattern = f"{database_server_name}.*"
+
+            if messaging_service_name:
+                # Search in specific messaging service
+                from metadata.utils import fqn as fqn_utils
+
+                search_fqn = f"{fqn_utils.quote_name(messaging_service_name)}.{fqn_utils.quote_name(search_pattern)}"
+                logger.debug(f"Searching for topics with FQN pattern: {search_fqn}")
+
+                # Get all topics from the messaging service
+                from metadata.generated.schema.entity.data.topic import Topic
+
+                topics = list(
+                    self.metadata.list_all_entities(
+                        entity=Topic,
+                        params={"service": messaging_service_name},
+                    )
+                )
+
+                # Filter topics that start with the database_server_name prefix
+                for topic in topics:
+                    topic_name = str(
+                        topic.name.root if hasattr(topic.name, "root") else topic.name
+                    )
+                    if topic_name.startswith(database_server_name + "."):
+                        # Build full FQN for this topic
+                        topic_fqn = (
+                            topic.fullyQualifiedName.root
+                            if hasattr(topic.fullyQualifiedName, "root")
+                            else topic.fullyQualifiedName
+                        )
+                        topics_found.append(
+                            KafkaConnectTopics(name=topic_name, fqn=topic_fqn)
+                        )
+                        logger.debug(
+                            f"Found matching topic: {topic_name} (FQN: {topic_fqn})"
+                        )
+
+            if topics_found:
+                logger.info(
+                    f"Found {len(topics_found)} topics matching prefix '{database_server_name}' "
+                    f"in messaging service"
+                )
+            else:
+                logger.warning(
+                    f"No topics found matching prefix '{database_server_name}'. "
+                    f"Ensure the messaging service has ingested topics before running Kafka Connect ingestion."
+                )
+
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Unable to search topics by prefix: {exc}")
+
+        return topics_found
+
     def _parse_cdc_topics_from_config(
         self, pipeline_details: KafkaConnectPipelineDetails, database_server_name: str
     ) -> List[KafkaConnectTopics]:
@@ -1015,10 +1121,22 @@ class KafkaconnectSource(PipelineServiceSource):
                 and database_server_name
                 and pipeline_details.conn_type == ConnectorType.SOURCE.value
             ):
+                # Try to parse topics from table.include.list first
                 topics_to_process = self._parse_cdc_topics_from_config(
                     pipeline_details=pipeline_details,
                     database_server_name=database_server_name,
                 )
+
+                # If table.include.list is not available, fallback to searching topics by prefix
+                # This requires topics to be already ingested in the messaging service
+                if not topics_to_process and effective_messaging_service:
+                    logger.info(
+                        f"Falling back to searching topics by prefix in messaging service '{effective_messaging_service}'"
+                    )
+                    topics_to_process = self._search_topics_by_prefix(
+                        database_server_name=database_server_name,
+                        messaging_service_name=effective_messaging_service,
+                    )
 
             for topic in topics_to_process:
                 topic_entity = None
@@ -1799,5 +1917,4 @@ class KafkaconnectSource(PipelineServiceSource):
         Called at the end of the ingestion workflow to cleanup and print summary
         """
         self.print_lineage_summary()
-        if hasattr(super(), "close"):
-            super().close()
+        super().close()

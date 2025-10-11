@@ -62,9 +62,10 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
     # This handles server names with dots like "collate.ecommerce.dev"
     if database_server_name:
         # Check if topic starts with the server name prefix
-        if topic_name.startswith(database_server_name + "."):
+        server_prefix = database_server_name + "."
+        if topic_name.startswith(server_prefix):
             # Strip the server name prefix to get schema.table or just table
-            remaining = topic_name[len(database_server_name) + 1 :]
+            remaining = topic_name[len(server_prefix) :]
             remaining_parts = remaining.split(".")
 
             if len(remaining_parts) == 2:
