@@ -424,7 +424,13 @@ class KafkaconnectSource(PipelineServiceSource):
                             return dataset_entity
 
                     # Priority 2: Use configured dbServiceNames
-                    if self.source_config.lineageInformation.dbServiceNames:
+                    if (
+                        hasattr(self.source_config, "lineageInformation")
+                        and hasattr(
+                            self.source_config.lineageInformation, "dbServiceNames"
+                        )
+                        and self.source_config.lineageInformation.dbServiceNames
+                    ):
                         for (
                             dbservicename
                         ) in self.source_config.lineageInformation.dbServiceNames:
@@ -465,7 +471,13 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 if dataset_details.dataset_type == Container:
                     # If storageServiceNames is configured, use it to build FQN directly
-                    if self.source_config.lineageInformation.storageServiceNames:
+                    if (
+                        hasattr(self.source_config, "lineageInformation")
+                        and hasattr(
+                            self.source_config.lineageInformation, "storageServiceNames"
+                        )
+                        and self.source_config.lineageInformation.storageServiceNames
+                    ):
                         for (
                             storageservicename
                         ) in self.source_config.lineageInformation.storageServiceNames:
@@ -914,7 +926,11 @@ class KafkaconnectSource(PipelineServiceSource):
                     break
 
             if not table_include_list:
-                logger.debug("No table.include.list found in CDC connector config")
+                logger.warning(
+                    f"⚠️  CDC connector '{pipeline_details.name}' is missing table.include.list or table.whitelist.\n"
+                    f"   Without this configuration, lineage cannot be created automatically.\n"
+                    f'   Add to connector config: "table.include.list": "schema1.table1,schema2.table2"\n'
+                )
                 return topics_found
 
             # Parse table list (format: "schema1.table1,schema2.table2")
@@ -953,8 +969,10 @@ class KafkaconnectSource(PipelineServiceSource):
             )
 
             # Use matched service if found, otherwise fall back to configured name
-            effective_messaging_service = (
-                messaging_service_name or self.service_connection.messagingServiceName
+            effective_messaging_service = messaging_service_name or (
+                self.service_connection.messagingServiceName
+                if hasattr(self.service_connection, "messagingServiceName")
+                else None
             )
 
             if effective_messaging_service:
@@ -1108,9 +1126,10 @@ class KafkaconnectSource(PipelineServiceSource):
                                 f"Searching for table with pattern: {search_pattern} "
                                 f"(service={db_service_name}, schema={topic_info['database']}, table={topic_info['table']})"
                             )
-                            current_dataset_entity = self.metadata.search_in_any_service(
-                                entity_type=Table,
-                                fqn_search_string=search_pattern
+                            current_dataset_entity = (
+                                self.metadata.search_in_any_service(
+                                    entity_type=Table, fqn_search_string=search_pattern
+                                )
                             )
                             if current_dataset_entity:
                                 logger.info(
@@ -1123,6 +1142,10 @@ class KafkaconnectSource(PipelineServiceSource):
 
                         if (
                             not current_dataset_entity
+                            and hasattr(self.source_config, "lineageInformation")
+                            and hasattr(
+                                self.source_config.lineageInformation, "dbServiceNames"
+                            )
                             and self.source_config.lineageInformation.dbServiceNames
                         ):
                             # Try configured database services with wildcard search
@@ -1137,9 +1160,11 @@ class KafkaconnectSource(PipelineServiceSource):
                                 logger.info(
                                     f"Searching for table with pattern: {search_pattern}"
                                 )
-                                current_dataset_entity = self.metadata.search_in_any_service(
-                                    entity_type=Table,
-                                    fqn_search_string=search_pattern
+                                current_dataset_entity = (
+                                    self.metadata.search_in_any_service(
+                                        entity_type=Table,
+                                        fqn_search_string=search_pattern,
+                                    )
                                 )
                                 if current_dataset_entity:
                                     logger.info(
