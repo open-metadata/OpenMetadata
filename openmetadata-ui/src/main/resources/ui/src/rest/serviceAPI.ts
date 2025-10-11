@@ -185,6 +185,8 @@ export const searchService = async ({
   limit = PAGE_SIZE,
   filters,
   deleted = false,
+  trackTotalHits = false,
+  wildcard = true,
 }: {
   search?: string;
   searchIndex: SearchIndex | SearchIndex[];
@@ -192,6 +194,8 @@ export const searchService = async ({
   currentPage?: number;
   filters?: string;
   deleted?: boolean;
+  trackTotalHits?: boolean;
+  wildcard?: boolean;
 }) => {
   const response = await searchData(
     search ?? WILD_CARD_CHAR,
@@ -201,7 +205,9 @@ export const searchService = async ({
     '',
     '',
     searchIndex,
-    deleted
+    deleted,
+    trackTotalHits,
+    wildcard
   );
 
   return response.data;
