@@ -523,27 +523,6 @@ public class EntityFieldUtils {
   }
 
   /**
-   * Parse field-based edits from "FieldName: value\nAnotherField: value2" format
-   * and apply them to the entity.
-   */
-  public static void applyFieldBasedEdits(
-      EntityInterface entity, String entityType, String user, String editedValue) {
-    String[] lines = editedValue.split("\n");
-    for (String line : lines) {
-      line = line.trim();
-      if (line.contains(":")) {
-        String[] parts = line.split(":", 2);
-        if (parts.length == 2) {
-          String fieldName = parts[0].trim();
-          String fieldValue = parts[1].trim();
-          // Apply each field without patching (will be patched once at the end)
-          setEntityField(entity, entityType, user, fieldName, fieldValue, false);
-        }
-      }
-    }
-  }
-
-  /**
    * Sets the status field on various entity types using appropriate enum values.
    * Handles both legacy 'status' field and new 'entityStatus' field.
    */
