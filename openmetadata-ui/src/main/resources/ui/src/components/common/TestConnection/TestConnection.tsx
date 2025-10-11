@@ -33,11 +33,13 @@ import {
 } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
+import { ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
   Workflow,
   WorkflowStatus,
+  WorkflowType,
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
@@ -50,9 +52,9 @@ import {
 } from '../../../rest/workflowAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   getServiceType,
+  getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
@@ -71,6 +73,7 @@ const TestConnection: FC<TestConnectionProps> = ({
   shouldValidateForm = true,
   showDetails = true,
   hostIp,
+  extraInfo,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -278,13 +281,17 @@ const TestConnection: FC<TestConnectionProps> = ({
     } = {};
 
     try {
-      const createWorkflowData: CreateWorkflow =
-        serviceUtilClassBase.getAddWorkflowData(
-          connectionType,
+      const createWorkflowData: CreateWorkflow = {
+        name: getTestConnectionName(connectionType),
+        workflowType: WorkflowType.TestConnection,
+        request: {
+          connection: { config: updatedFormData as ConfigObject },
           serviceType,
+          connectionType,
           serviceName,
-          updatedFormData
-        );
+          ingestionRunner: extraInfo,
+        },
+      };
 
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
