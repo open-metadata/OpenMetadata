@@ -74,7 +74,7 @@ export const visitEntityPage = async (data: {
   const waitForSearchResponse = page.waitForResponse(
     '/api/v1/search/query?q=*index=dataAsset*'
   );
-  await page.getByTestId('searchBox').fill(searchTerm);
+  await page.getByTestId('searchBox').fill(encodeURIComponent(searchTerm));
   await waitForSearchResponse;
 
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
