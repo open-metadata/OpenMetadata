@@ -471,6 +471,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testDefinition.getTestPlatforms(),
         testDefinition);
     validateColumnTestCase(entityLink, testDefinition.getEntityType());
+    validateDimensionColumns(test, entityLink);
   }
 
   /*
@@ -618,6 +619,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (entityLink.getArrayFieldName() != null) {
         Table table = Entity.getEntity(entityLink, "columns", ALL);
         validateColumn(table, entityLink.getArrayFieldName());
+      }
+    }
+  }
+
+  private void validateDimensionColumns(TestCase test, EntityLink entityLink) {
+    if (test.getDimensionColumns() != null && !test.getDimensionColumns().isEmpty()) {
+      // Get the table referenced by the entityLink to validate dimension columns exist
+      Table table = Entity.getEntity(entityLink, "columns", ALL);
+
+      // Validate each dimension column exists in the table
+      for (String dimensionColumn : test.getDimensionColumns()) {
+        validateColumn(table, dimensionColumn);
       }
     }
   }
