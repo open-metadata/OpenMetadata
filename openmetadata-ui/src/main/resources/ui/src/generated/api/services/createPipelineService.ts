@@ -74,6 +74,8 @@ export interface PipelineConnection {
  *
  * Glue Pipeline Connection Config
  *
+ * AWS Kinesis Firehose Pipeline Connection Config
+ *
  * Airbyte Metadata Database Connection Config
  *
  * Fivetran Metadata Database Connection Config
@@ -996,6 +998,7 @@ export enum PipelineServiceType {
     Flink = "Flink",
     GluePipeline = "GluePipeline",
     KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",

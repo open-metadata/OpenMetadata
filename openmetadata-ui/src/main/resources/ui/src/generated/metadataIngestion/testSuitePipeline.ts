@@ -260,6 +260,8 @@ export interface ServiceConnection {
  *
  * Glue Pipeline Connection Config
  *
+ * AWS Kinesis Firehose Pipeline Connection Config
+ *
  * Airbyte Metadata Database Connection Config
  *
  * Fivetran Metadata Database Connection Config
@@ -4137,6 +4139,7 @@ export enum ConfigType {
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
+    KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
     MariaDB = "MariaDB",
