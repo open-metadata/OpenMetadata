@@ -107,7 +107,7 @@ def configure(
             if not resolved_server_url:
                 raise ValueError(
                     "Server URL must be provided via 'host'/'server_url' parameter or "
-                    "'OPENMETADATA_HOST'/'OPENMETADATA_SERVER_URL' environment variable"
+                    + "'OPENMETADATA_HOST'/'OPENMETADATA_SERVER_URL' environment variable"
                 )
 
             config_obj = OpenMetadataConfig(
