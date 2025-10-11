@@ -33,6 +33,7 @@ import dbt from '../assets/img/service-icon-dbt.png';
 import deltalake from '../assets/img/service-icon-delta-lake.png';
 import domo from '../assets/img/service-icon-domo.png';
 import doris from '../assets/img/service-icon-doris.png';
+import starrocks from '../assets/img/service-icon-starrocks.png';
 import druid from '../assets/img/service-icon-druid.png';
 import dynamodb from '../assets/img/service-icon-dynamodb.png';
 import exasol from '../assets/img/service-icon-exasol.png';
@@ -161,6 +162,7 @@ export const DATABRICK = databrick;
 export const UNITYCATALOG = unitycatalog;
 export const IBMDB2 = ibmdb2;
 export const DORIS = doris;
+export const STARROCKS = starrocks;
 export const DRUID = druid;
 export const DYNAMODB = dynamodb;
 export const SIGMA = sigma;
@@ -470,23 +472,23 @@ export const BETA_SERVICES = [
 ];
 
 export const TEST_CONNECTION_INITIAL_MESSAGE = i18n.t(
-  'message.test-your-connection-before-creating-service'
+    'message.test-your-connection-before-creating-service'
 );
 
 export const TEST_CONNECTION_SUCCESS_MESSAGE = i18n.t(
-  'message.connection-test-successful'
+    'message.connection-test-successful'
 );
 
 export const TEST_CONNECTION_FAILURE_MESSAGE = i18n.t(
-  'message.connection-test-failed'
+    'message.connection-test-failed'
 );
 
 export const TEST_CONNECTION_TESTING_MESSAGE = i18n.t(
-  'message.testing-your-connection-may-take-two-minutes'
+    'message.testing-your-connection-may-take-two-minutes'
 );
 
 export const TEST_CONNECTION_WARNING_MESSAGE = i18n.t(
-  'message.connection-test-warning'
+    'message.connection-test-warning'
 );
 
 export const ADVANCED_PROPERTIES = [
