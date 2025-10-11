@@ -16,6 +16,6 @@ export interface ProfilerStateWrapperProps {
   isLoading: boolean;
   children: React.ReactNode;
   title: string;
-  profilerLatestValueProps: ProfilerLatestValueProps;
+  profilerLatestValueProps?: ProfilerLatestValueProps;
   dataTestId?: string;
 }

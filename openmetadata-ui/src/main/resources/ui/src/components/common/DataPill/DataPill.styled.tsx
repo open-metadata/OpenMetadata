@@ -11,22 +11,14 @@
  *  limitations under the License.
  */
 
-import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import { Box, styled } from '@mui/material';
 
-export interface SeverityFormProps {
-  onSubmit?: (severity?: Severities) => Promise<void>;
-}
-
-export interface SeverityProps extends SeverityFormProps {
-  severity?: Severities;
-  hasPermission?: boolean;
-  newLook?: boolean;
-  headerName?: string;
-  isInline?: boolean;
-}
-
-export interface SeverityModalProps {
-  initialSeverity?: Severities;
-  onCancel: () => void;
-  onSubmit: (severity: Severities) => Promise<void>;
-}
+export const DataPill = styled(Box)(({ theme }) => ({
+  backgroundColor: theme.palette.grey[100],
+  color: theme.palette.grey[900],
+  borderRadius: '6px',
+  padding: '6px 12px',
+  fontSize: theme.typography.pxToRem(14),
+  fontWeight: theme.typography.fontWeightBold,
+  display: 'inline-block',
+}));

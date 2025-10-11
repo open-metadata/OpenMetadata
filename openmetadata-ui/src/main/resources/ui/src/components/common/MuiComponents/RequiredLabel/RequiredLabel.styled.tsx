@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,22 +11,11 @@
  *  limitations under the License.
  */
 
-import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
+import { Typography, styled } from '@mui/material';
 
-export interface SeverityFormProps {
-  onSubmit?: (severity?: Severities) => Promise<void>;
-}
-
-export interface SeverityProps extends SeverityFormProps {
-  severity?: Severities;
-  hasPermission?: boolean;
-  newLook?: boolean;
-  headerName?: string;
-  isInline?: boolean;
-}
-
-export interface SeverityModalProps {
-  initialSeverity?: Severities;
-  onCancel: () => void;
-  onSubmit: (severity: Severities) => Promise<void>;
-}
+export const RequiredLabel = styled(Typography)(({ theme }) => ({
+  fontSize: 13,
+  fontWeight: 500,
+  color: theme.palette.grey[800],
+  '&::after': { content: '" *"', color: theme.palette.error.main },
+}));
