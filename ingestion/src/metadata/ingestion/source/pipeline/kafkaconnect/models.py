@@ -42,6 +42,9 @@ class KafkaConnectTasks(BaseModel):
 
 class KafkaConnectTopics(BaseModel):
     name: str = Field(..., description="Name of the topic (e.g., random-source-avro)")
+    fqn: Optional[str] = Field(
+        default=None, description="Fully qualified name of the topic in OpenMetadata"
+    )
 
 
 class KafkaConnectColumnMapping(BaseModel):
