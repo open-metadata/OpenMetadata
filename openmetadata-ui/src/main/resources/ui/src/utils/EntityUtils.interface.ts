@@ -84,6 +84,7 @@ export enum FormattedDatabaseServiceType {
   DeltaLake = 'DeltaLake',
   DomoDatabase = 'Domo Database',
   Doris = 'Doris',
+  StarRocks = 'StarRocks',
   Druid = 'Druid',
   DynamoDB = 'Dynamo DB',
   Exasol = 'Exasol',

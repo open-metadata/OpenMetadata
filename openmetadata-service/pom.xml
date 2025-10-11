@@ -1304,6 +1304,35 @@
           </execution>
         </executions>
       </plugin>
+
+      <!-- MQ新增：复制 openmetadata-spec 的 json/schema 资源到当前项目 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-resources-plugin</artifactId>
+        <version>3.3.0</version>
+        <executions>
+          <execution>
+            <id>copy-openmetadata-spec-json-resources</id>
+            <phase>process-resources</phase>
+            <goals>
+              <goal>copy-resources</goal>
+            </goals>
+            <configuration>
+              <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+              <resources>
+                <resource>
+                  <directory>${project.parent.basedir}/openmetadata-spec/target/classes</directory>
+                  <includes>
+                    <include>json/schema/**/*</include>
+                  </includes>
+                  <filtering>false</filtering>
+                </resource>
+              </resources>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+
       <plugin>
         <groupId>com.theoryinpractise</groupId>
         <artifactId>googleformatter-maven-plugin</artifactId>
