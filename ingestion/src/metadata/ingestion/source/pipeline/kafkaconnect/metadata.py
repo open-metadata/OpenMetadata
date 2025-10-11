@@ -1379,6 +1379,11 @@ class KafkaconnectSource(PipelineServiceSource):
                         )
 
                     if current_dataset_entity is None and topic_entity is None:
+                        expected_fqn_display = (
+                            expected_topic_fqn
+                            or f'<messaging-service>."{topic.name}" (messaging service not configured)'
+                        )
+
                         logger.warning(
                             f"❌ MISSING BOTH SOURCE AND SINK:\n"
                             f"   • Table: NOT FOUND (searched for table related to topic '{topic.name}')\n"
@@ -1387,7 +1392,7 @@ class KafkaconnectSource(PipelineServiceSource):
                             f"💡 ACTION REQUIRED:\n"
                             f"   1. Ensure the topic is ingested in OpenMetadata:\n"
                             f"      - Topic name: {topic.name}\n"
-                            f"      - Expected FQN: {expected_topic_fqn or f'<messaging-service>.\"{topic.name}\" (messaging service not configured)'}\n"
+                            f"      - Expected FQN: {expected_fqn_display}\n"
                             f"      - Messaging service: {effective_messaging_service or 'NOT CONFIGURED - will search all services'}\n"
                             f"      - Run messaging service metadata ingestion if needed\n"
                             f"   2. Ensure the source table exists in OpenMetadata:\n"
@@ -1459,6 +1464,10 @@ class KafkaconnectSource(PipelineServiceSource):
                             table_schema = "UNKNOWN"
                             table_name = "UNKNOWN"
 
+                        expected_topic_fqn_display = (
+                            expected_topic_fqn or f'<messaging-service>."{topic.name}"'
+                        )
+
                         logger.warning(
                             f"❌ MISSING SINK (Topic):\n"
                             f"   • Table: FOUND ✓\n"
@@ -1469,12 +1478,12 @@ class KafkaconnectSource(PipelineServiceSource):
                             f"      - Table: {table_name}\n"
                             f"   • Topic: NOT FOUND\n"
                             f"      - Searched for: {topic.name}\n"
-                            f"      - Expected FQN: {expected_topic_fqn or f'<messaging-service>.\"{topic.name}\"'}\n"
+                            f"      - Expected FQN: {expected_topic_fqn_display}\n"
                             f"\n"
                             f"💡 ACTION REQUIRED:\n"
                             f"   1. Ensure the topic is ingested in OpenMetadata:\n"
                             f"      - Topic name in Kafka: {topic.name}\n"
-                            f"      - Expected FQN in OM: {expected_topic_fqn or f'<messaging-service>.\"{topic.name}\"'}\n"
+                            f"      - Expected FQN in OM: {expected_topic_fqn_display}\n"
                             f"      - Messaging service: {effective_messaging_service or 'NOT CONFIGURED - will search all services'}\n"
                             f"      - Note: Topics with dots (.) in the name are quoted in FQN\n"
                             f"   2. Run messaging service metadata ingestion:\n"
