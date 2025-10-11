@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import okhttp3.HttpUrl;
+import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.AllModels;
 import org.openmetadata.sdk.models.ListParams;
@@ -54,6 +55,18 @@ public abstract class EntityServiceBase<T> {
   public T get(String id, String fields) throws OpenMetadataException {
     RequestOptions options = RequestOptions.builder().queryParam("fields", fields).build();
     return httpClient.execute(HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), options);
+  }
+
+  public T get(String id, String fields, String include) throws OpenMetadataException {
+    RequestOptions.Builder optionsBuilder = RequestOptions.builder();
+    if (fields != null) {
+      optionsBuilder.queryParam("fields", fields);
+    }
+    if (include != null) {
+      optionsBuilder.queryParam("include", include);
+    }
+    return httpClient.execute(
+        HttpMethod.GET, basePath + "/" + id, null, getEntityClass(), optionsBuilder.build());
   }
 
   public T getByName(String name) throws OpenMetadataException {
@@ -330,6 +343,84 @@ public abstract class EntityServiceBase<T> {
             .build();
     String path = basePath + "/name/" + name + "/importAsync";
     return httpClient.executeForString(HttpMethod.PUT, path, csvData, options);
+  }
+
+  /**
+   * Get the version history for an entity.
+   * Returns EntityHistory containing list of all versions.
+   *
+   * @param id Entity ID
+   * @return EntityHistory with list of versions
+   * @throws OpenMetadataException if request fails
+   */
+  public EntityHistory getVersionList(UUID id) throws OpenMetadataException {
+    return getVersionList(id.toString());
+  }
+
+  /**
+   * Get the version history for an entity.
+   * Returns EntityHistory containing list of all versions.
+   *
+   * @param id Entity ID as string
+   * @return EntityHistory with list of versions
+   * @throws OpenMetadataException if request fails
+   */
+  public EntityHistory getVersionList(String id) throws OpenMetadataException {
+    String path = basePath + "/" + id + "/versions";
+    return httpClient.execute(HttpMethod.GET, path, null, EntityHistory.class);
+  }
+
+  /**
+   * Get a specific version of an entity.
+   *
+   * @param id Entity ID
+   * @param version Version number (e.g., 0.1, 0.2, 1.0)
+   * @return Entity at the specified version
+   * @throws OpenMetadataException if request fails
+   */
+  public T getVersion(UUID id, Double version) throws OpenMetadataException {
+    return getVersion(id.toString(), version);
+  }
+
+  /**
+   * Get a specific version of an entity.
+   *
+   * @param id Entity ID as string
+   * @param version Version number (e.g., 0.1, 0.2, 1.0)
+   * @return Entity at the specified version
+   * @throws OpenMetadataException if request fails
+   */
+  public T getVersion(String id, Double version) throws OpenMetadataException {
+    String path = basePath + "/" + id + "/versions/" + version.toString();
+    return httpClient.execute(HttpMethod.GET, path, null, getEntityClass());
+  }
+
+  /**
+   * Get a specific version of an entity with specific fields.
+   *
+   * @param id Entity ID
+   * @param version Version number (e.g., 0.1, 0.2, 1.0)
+   * @param fields Comma-separated list of fields to include
+   * @return Entity at the specified version with requested fields
+   * @throws OpenMetadataException if request fails
+   */
+  public T getVersion(UUID id, Double version, String fields) throws OpenMetadataException {
+    return getVersion(id.toString(), version, fields);
+  }
+
+  /**
+   * Get a specific version of an entity with specific fields.
+   *
+   * @param id Entity ID as string
+   * @param version Version number (e.g., 0.1, 0.2, 1.0)
+   * @param fields Comma-separated list of fields to include
+   * @return Entity at the specified version with requested fields
+   * @throws OpenMetadataException if request fails
+   */
+  public T getVersion(String id, Double version, String fields) throws OpenMetadataException {
+    String path = basePath + "/" + id + "/versions/" + version.toString();
+    RequestOptions options = RequestOptions.builder().queryParam("fields", fields).build();
+    return httpClient.execute(HttpMethod.GET, path, null, getEntityClass(), options);
   }
 
   protected abstract Class<T> getEntityClass();

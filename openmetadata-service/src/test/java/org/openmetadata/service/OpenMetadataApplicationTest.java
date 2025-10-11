@@ -56,7 +56,6 @@ import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.jetbrains.annotations.NotNull;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.TestInstance;
@@ -66,6 +65,7 @@ import org.openmetadata.schema.type.IndexMappingLanguage;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -82,7 +82,6 @@ import org.openmetadata.service.resources.events.WebhookCallbackResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
-import org.openmetadata.service.config.CacheConfiguration;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.MySQLContainer;
@@ -150,142 +149,143 @@ public abstract class OpenMetadataApplicationTest {
         }
         return;
       }
-    String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
-    String jdbcContainerImage = System.getProperty("jdbcContainerImage");
-    String elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
-    if (CommonUtil.nullOrEmpty(jdbcContainerClassName)) {
-      jdbcContainerClassName = JDBC_CONTAINER_CLASS_NAME;
-    }
-    if (CommonUtil.nullOrEmpty(jdbcContainerImage)) {
-      jdbcContainerImage = JDBC_CONTAINER_IMAGE;
-    }
-    if (CommonUtil.nullOrEmpty(elasticSearchContainerImage)) {
-      elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
-    }
-    OpenMetadataApplicationConfig config = readTestAppConfig(CONFIG_PATH);
-    // The system properties are provided by maven-surefire for testing with mysql and postgres
-    LOG.info(
-        "Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
-
-    JdbcDatabaseContainer<?> sqlContainer =
-        (JdbcDatabaseContainer<?>)
-            Class.forName(jdbcContainerClassName)
-                .getConstructor(String.class)
-                .newInstance(jdbcContainerImage);
-    // Tune DB container behavior per engine
-    if (sqlContainer instanceof MySQLContainer) {
-      // Mitigate AIO failures on some CI kernels and speed up startup
-      ((MySQLContainer<?>) sqlContainer)
-          .withCommand(
-              "--innodb_use_native_aio=0",
-              "--default-authentication-plugin=mysql_native_password",
-              "--skip-log-bin");
-    }
-    sqlContainer.withReuse(false);
-    sqlContainer.withStartupTimeoutSeconds(240);
-    sqlContainer.withConnectTimeoutSeconds(240);
-    sqlContainer.withPassword("password");
-    sqlContainer.withUsername("username");
-    sqlContainer.start();
-    SQL_CONTAINER = sqlContainer;
-
-    // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
-    DataSourceFactory dataSourceFactory = new DataSourceFactory();
-    dataSourceFactory.setUrl(sqlContainer.getJdbcUrl());
-    dataSourceFactory.setUser(sqlContainer.getUsername());
-    dataSourceFactory.setPassword(sqlContainer.getPassword());
-    dataSourceFactory.setDriverClass(sqlContainer.getDriverClassName());
-    config.setDataSourceFactory(dataSourceFactory);
-
-    final String flyWayMigrationScriptsLocation =
-        ResourceHelpers.resourceFilePath(
-            "db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
-    final String nativeMigrationScriptsLocation =
-        ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
-
-    // Extension Config
-    String extensionMigrationScripsLocation = "";
-    try {
-      extensionMigrationScripsLocation =
-          ResourceHelpers.resourceFilePath("extension/sql/migrations/");
-      // Set directly on config
-      if (config.getMigrationConfiguration() != null) {
-        config.getMigrationConfiguration().setExtensionPath(extensionMigrationScripsLocation);
+      String jdbcContainerClassName = System.getProperty("jdbcContainerClassName");
+      String jdbcContainerImage = System.getProperty("jdbcContainerImage");
+      String elasticSearchContainerImage = System.getProperty("elasticSearchContainerClassName");
+      if (CommonUtil.nullOrEmpty(jdbcContainerClassName)) {
+        jdbcContainerClassName = JDBC_CONTAINER_CLASS_NAME;
       }
-    } catch (Exception ex) {
-      LOG.info("Extension migrations not found");
-    }
-    Flyway flyway =
-        Flyway.configure()
-            .dataSource(
-                sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
-            .table("DATABASE_CHANGE_LOG")
-            .locations("filesystem:" + flyWayMigrationScriptsLocation)
-            .sqlMigrationPrefix("v")
-            .cleanDisabled(false)
-            .load();
-    flyway.clean();
-    flyway.migrate();
+      if (CommonUtil.nullOrEmpty(jdbcContainerImage)) {
+        jdbcContainerImage = JDBC_CONTAINER_IMAGE;
+      }
+      if (CommonUtil.nullOrEmpty(elasticSearchContainerImage)) {
+        elasticSearchContainerImage = ELASTIC_SEARCH_CONTAINER_IMAGE;
+      }
+      OpenMetadataApplicationConfig config = readTestAppConfig(CONFIG_PATH);
+      // The system properties are provided by maven-surefire for testing with mysql and postgres
+      LOG.info(
+          "Using test container class {} and image {}", jdbcContainerClassName, jdbcContainerImage);
 
-    ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
-    ELASTIC_SEARCH_CONTAINER.withPassword("password");
-    ELASTIC_SEARCH_CONTAINER.withEnv("discovery.type", "single-node");
-    ELASTIC_SEARCH_CONTAINER.withEnv("xpack.security.enabled", "false");
-    ELASTIC_SEARCH_CONTAINER.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
-    ELASTIC_SEARCH_CONTAINER.withReuse(false);
-    ELASTIC_SEARCH_CONTAINER.withStartupAttempts(3);
-    ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
-        new LogMessageWaitStrategy()
-            .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
-            .withStartupTimeout(Duration.ofMinutes(5)));
-    ELASTIC_SEARCH_CONTAINER.start();
-    String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
-    HOST = parts[0];
-    PORT = parts[1];
-    // Apply ES and DB directly to config (avoid Dropwizard ConfigOverride varargs bugs)
-    config.setElasticSearchConfiguration(getEsConfig());
-    applyDatabaseConfig(config, sqlContainer);
+      JdbcDatabaseContainer<?> sqlContainer =
+          (JdbcDatabaseContainer<?>)
+              Class.forName(jdbcContainerClassName)
+                  .getConstructor(String.class)
+                  .newInstance(jdbcContainerImage);
+      // Tune DB container behavior per engine
+      if (sqlContainer instanceof MySQLContainer) {
+        // Mitigate AIO failures on some CI kernels and speed up startup
+        ((MySQLContainer<?>) sqlContainer)
+            .withCommand(
+                "--innodb_use_native_aio=0",
+                "--default-authentication-plugin=mysql_native_password",
+                "--skip-log-bin");
+      }
+      sqlContainer.withReuse(false);
+      sqlContainer.withStartupTimeoutSeconds(240);
+      sqlContainer.withConnectTimeoutSeconds(240);
+      sqlContainer.withPassword("password");
+      sqlContainer.withUsername("username");
+      sqlContainer.start();
+      SQL_CONTAINER = sqlContainer;
 
-    // Init IndexMapping class
-    IndexMappingLoader.init(getEsConfig());
+      // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
+      DataSourceFactory dataSourceFactory = new DataSourceFactory();
+      dataSourceFactory.setUrl(sqlContainer.getJdbcUrl());
+      dataSourceFactory.setUser(sqlContainer.getUsername());
+      dataSourceFactory.setPassword(sqlContainer.getPassword());
+      dataSourceFactory.setDriverClass(sqlContainer.getDriverClassName());
+      config.setDataSourceFactory(dataSourceFactory);
 
-    // Migration paths directly on config
-    if (config.getMigrationConfiguration() != null) {
-      config.getMigrationConfiguration().setFlywayPath(flyWayMigrationScriptsLocation);
-      config.getMigrationConfiguration().setNativePath(nativeMigrationScriptsLocation);
-    }
+      final String flyWayMigrationScriptsLocation =
+          ResourceHelpers.resourceFilePath(
+              "db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
+      final String nativeMigrationScriptsLocation =
+          ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
 
-    // Redis cache configuration (start container if enabled via system properties)
-    setupRedisIfEnabled();
+      // Extension Config
+      String extensionMigrationScripsLocation = "";
+      try {
+        extensionMigrationScripsLocation =
+            ResourceHelpers.resourceFilePath("extension/sql/migrations/");
+        // Set directly on config
+        if (config.getMigrationConfiguration() != null) {
+          config.getMigrationConfiguration().setExtensionPath(extensionMigrationScripsLocation);
+        }
+      } catch (Exception ex) {
+        LOG.info("Extension migrations not found");
+      }
+      Flyway flyway =
+          Flyway.configure()
+              .dataSource(
+                  sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
+              .table("DATABASE_CHANGE_LOG")
+              .locations("filesystem:" + flyWayMigrationScriptsLocation)
+              .sqlMigrationPrefix("v")
+              .cleanDisabled(false)
+              .load();
+      flyway.clean();
+      flyway.migrate();
 
-    // RDF configuration (if enabled by system properties)
-    setupRdfIfEnabled();
+      ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
+      ELASTIC_SEARCH_CONTAINER.withPassword("password");
+      ELASTIC_SEARCH_CONTAINER.withEnv("discovery.type", "single-node");
+      ELASTIC_SEARCH_CONTAINER.withEnv("xpack.security.enabled", "false");
+      ELASTIC_SEARCH_CONTAINER.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
+      ELASTIC_SEARCH_CONTAINER.withReuse(false);
+      ELASTIC_SEARCH_CONTAINER.withStartupAttempts(3);
+      ELASTIC_SEARCH_CONTAINER.setWaitStrategy(
+          new LogMessageWaitStrategy()
+              .withRegEx(".*(\"message\":\\s?\"started[\\s?|\"].*|] started\n$)")
+              .withStartupTimeout(Duration.ofMinutes(5)));
+      ELASTIC_SEARCH_CONTAINER.start();
+      String[] parts = ELASTIC_SEARCH_CONTAINER.getHttpHostAddress().split(":");
+      HOST = parts[0];
+      PORT = parts[1];
+      // Apply ES and DB directly to config (avoid Dropwizard ConfigOverride varargs bugs)
+      config.setElasticSearchConfiguration(getEsConfig());
+      applyDatabaseConfig(config, sqlContainer);
 
-    // If a Redis container is present (either started here via sysprops or by a subclass),
-    // write cache settings into the config directly now
-    applyRedisConfigIfPresent(config);
+      // Init IndexMapping class
+      IndexMappingLoader.init(getEsConfig());
 
-    // If an RDF container is present, write settings directly into config
-    applyRdfConfigIfPresent(config);
+      // Migration paths directly on config
+      if (config.getMigrationConfiguration() != null) {
+        config.getMigrationConfiguration().setFlywayPath(flyWayMigrationScriptsLocation);
+        config.getMigrationConfiguration().setNativePath(nativeMigrationScriptsLocation);
+      }
 
-    // Build app extension from an already materialized configuration object
-    APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, config);
-    // Run System Migrations
-    jdbi =
-        Jdbi.create(
-            sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
-    jdbi.installPlugin(new SqlObjectPlugin());
-    jdbi.getConfig(SqlObjects.class)
-        .setSqlLocator(new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
-    // jdbi.setSqlLogger(new DebugSqlLogger());
-    validateAndRunSystemDataMigrations(
-        jdbi,
-        config,
-        ConnectionType.from(sqlContainer.getDriverClassName()),
-        nativeMigrationScriptsLocation,
-        extensionMigrationScripsLocation,
-        false);
-    createIndices();
+      // Redis cache configuration (start container if enabled via system properties)
+      setupRedisIfEnabled();
+
+      // RDF configuration (if enabled by system properties)
+      setupRdfIfEnabled();
+
+      // If a Redis container is present (either started here via sysprops or by a subclass),
+      // write cache settings into the config directly now
+      applyRedisConfigIfPresent(config);
+
+      // If an RDF container is present, write settings directly into config
+      applyRdfConfigIfPresent(config);
+
+      // Build app extension from an already materialized configuration object
+      APP = new DropwizardAppExtension<>(OpenMetadataApplication.class, config);
+      // Run System Migrations
+      jdbi =
+          Jdbi.create(
+              sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword());
+      jdbi.installPlugin(new SqlObjectPlugin());
+      jdbi.getConfig(SqlObjects.class)
+          .setSqlLocator(
+              new ConnectionAwareAnnotationSqlLocator(sqlContainer.getDriverClassName()));
+      // jdbi.setSqlLogger(new DebugSqlLogger());
+      validateAndRunSystemDataMigrations(
+          jdbi,
+          config,
+          ConnectionType.from(sqlContainer.getDriverClassName()),
+          nativeMigrationScriptsLocation,
+          extensionMigrationScripsLocation,
+          false);
+      createIndices();
       try {
         APP.before();
         createClient();
@@ -425,8 +425,7 @@ public abstract class OpenMetadataApplicationTest {
   }
 
   @NotNull
-  protected DropwizardAppExtension<OpenMetadataApplicationConfig> getApp(
-      ConfigOverride[] ignored) {
+  protected DropwizardAppExtension<OpenMetadataApplicationConfig> getApp(ConfigOverride[] ignored) {
     // Unused with direct-config path but kept for compatibility if overridden elsewhere
     return new DropwizardAppExtension<>(OpenMetadataApplication.class, CONFIG_PATH);
   }
@@ -645,11 +644,12 @@ public abstract class OpenMetadataApplicationTest {
       config.getRdfConfiguration().setEnabled(true);
       config
           .getRdfConfiguration()
-          .setStorageType(org.openmetadata.schema.api.configuration.rdf.RdfConfiguration.StorageType.FUSEKI);
+          .setStorageType(
+              org.openmetadata.schema.api.configuration.rdf.RdfConfiguration.StorageType.FUSEKI);
       config
           .getRdfConfiguration()
-          .setRemoteEndpoint(java.net.URI.create(
-              String.format("http://%s:%d/openmetadata", rdfHost, rdfPort)));
+          .setRemoteEndpoint(
+              java.net.URI.create(String.format("http://%s:%d/openmetadata", rdfHost, rdfPort)));
       config.getRdfConfiguration().setUsername("admin");
       config.getRdfConfiguration().setPassword("test-admin");
       config.getRdfConfiguration().setBaseUri(java.net.URI.create("https://open-metadata.org/"));

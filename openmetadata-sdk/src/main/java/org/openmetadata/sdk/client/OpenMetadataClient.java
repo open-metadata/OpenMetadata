@@ -30,6 +30,7 @@ import org.openmetadata.sdk.services.databases.DatabaseService;
 import org.openmetadata.sdk.services.databases.StoredProcedureService;
 import org.openmetadata.sdk.services.domains.DataProductService;
 import org.openmetadata.sdk.services.domains.DomainService;
+import org.openmetadata.sdk.services.events.ChangeEventService;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.sdk.services.glossary.GlossaryService;
 import org.openmetadata.sdk.services.glossary.GlossaryTermService;
@@ -109,6 +110,7 @@ public class OpenMetadataClient {
   private final DomainService domains;
 
   // Events
+  private final ChangeEventService changeEvents;
   private final EventSubscriptionService eventSubscriptions;
 
   // Tests
@@ -188,6 +190,7 @@ public class OpenMetadataClient {
     this.domains = new DomainService(httpClient);
 
     // Initialize event services
+    this.changeEvents = new ChangeEventService(httpClient);
     this.eventSubscriptions = new EventSubscriptionService(httpClient);
 
     // Initialize test services
@@ -348,7 +351,11 @@ public class OpenMetadataClient {
     return domains;
   }
 
-  // Event Service Getter
+  // Event Service Getters
+  public ChangeEventService changeEvents() {
+    return changeEvents;
+  }
+
   public EventSubscriptionService eventSubscriptions() {
     return eventSubscriptions;
   }

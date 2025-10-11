@@ -6,21 +6,38 @@ import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.fluent.DatabaseServices;
 
 public class SdkClients {
+
+  private static final String BASE_URL =
+      System.getProperty(
+          "IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
+
   public static OpenMetadataClient adminClient() {
-    String baseUrl =
-        System.getProperty("IT_BASE_URL", System.getenv().getOrDefault("IT_BASE_URL", "http://localhost:8585"));
-    String token =
-        JwtAuthProvider.tokenFor(
-            "admin@open-metadata.org", "admin@open-metadata.org", new String[] {"admin"}, 3600);
+    return createClient(
+        "admin@open-metadata.org", "admin@open-metadata.org", new String[] {"admin"});
+  }
+
+  public static OpenMetadataClient testUserClient() {
+    return createClient("test@open-metadata.org", "test@open-metadata.org", new String[] {});
+  }
+
+  public static OpenMetadataClient botClient() {
+    return createClient(
+        "ingestion-bot@open-metadata.org", "ingestion-bot@open-metadata.org", new String[] {"bot"});
+  }
+
+  public static OpenMetadataClient createClient(String subject, String email, String[] roles) {
+    String token = JwtAuthProvider.tokenFor(subject, email, roles, 3600);
     OpenMetadataConfig cfg =
         OpenMetadataConfig.builder()
-            .serverUrl(baseUrl)
+            .serverUrl(BASE_URL)
             .accessToken(token)
-            .header("X-Auth-Params-Email", "admin@open-metadata.org")
+            .header("X-Auth-Params-Email", email)
             .build();
     OpenMetadataClient client = new OpenMetadataClient(cfg);
-    // Set default client for fluent APIs used in factories
-    DatabaseServices.setDefaultClient(client);
+    // Set default client for fluent APIs used in factories (only for admin)
+    if (email.equals("admin@open-metadata.org")) {
+      DatabaseServices.setDefaultClient(client);
+    }
     return client;
   }
 }

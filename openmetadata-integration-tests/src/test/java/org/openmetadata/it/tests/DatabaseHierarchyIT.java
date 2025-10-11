@@ -2,21 +2,20 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.DatabaseTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.it.factories.DatabaseServiceTestFactory;
-import org.openmetadata.it.factories.DatabaseTestFactory;
-import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
-import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 
 @ExtendWith(TestNamespaceExtension.class)
 public class DatabaseHierarchyIT {

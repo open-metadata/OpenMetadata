@@ -9,8 +9,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 
 public class TableTestFactory {
-  public static Table createSimple(
-      OpenMetadataClient client, TestNamespace ns, String schemaFqn) {
+  public static Table createSimple(OpenMetadataClient client, TestNamespace ns, String schemaFqn) {
     String name = ns.prefix("table");
     CreateTable req = new CreateTable();
     req.setName(name);

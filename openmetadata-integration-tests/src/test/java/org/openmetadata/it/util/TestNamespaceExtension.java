@@ -6,7 +6,8 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
-public class TestNamespaceExtension implements BeforeAllCallback, BeforeEachCallback, ParameterResolver {
+public class TestNamespaceExtension
+    implements BeforeAllCallback, BeforeEachCallback, ParameterResolver {
   private TestNamespace ns;
 
   @Override
@@ -22,13 +23,14 @@ public class TestNamespaceExtension implements BeforeAllCallback, BeforeEachCall
   }
 
   @Override
-  public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+  public boolean supportsParameter(
+      ParameterContext parameterContext, ExtensionContext extensionContext) {
     return parameterContext.getParameter().getType().equals(TestNamespace.class);
   }
 
   @Override
-  public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext) {
+  public Object resolveParameter(
+      ParameterContext parameterContext, ExtensionContext extensionContext) {
     return ns;
   }
 }
-
