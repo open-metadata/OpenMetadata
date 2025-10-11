@@ -328,8 +328,23 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
  */
 export const parseBucketsData = (
   buckets: Array<any>,
-  sourceFields?: string
+  sourceFields?: string,
+  sourceFieldOptionType?: {
+    label: string;
+    value: string;
+  }
 ) => {
+  if (sourceFieldOptionType) {
+    return buckets.map((bucket) => {
+      const data = bucket['top_hits#top']?.hits?.hits?.[0]?._source;
+
+      return {
+        title: data[sourceFieldOptionType.label],
+        value: data[sourceFieldOptionType.value],
+      };
+    });
+  }
+
   return buckets.map((bucket) => {
     const actualValue = sourceFields
       ? sourceFields
