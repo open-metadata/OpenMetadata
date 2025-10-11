@@ -25,7 +25,14 @@ test.describe('API docs should work properly', () => {
     await page.locator('[data-testid="help-icon"]').click();
     await page.getByRole('link', { name: 'API', exact: true }).click();
 
-    await page.getByTestId('loader').waitFor({ state: 'detached' });
+    await page.waitForLoadState('networkidle');
+    await page
+      .getByTestId('fluid-container')
+      .getByTestId('loader')
+      .waitFor({ state: 'detached' });
+    await page.waitForSelector('[data-content-id="overview"]', {
+      state: 'visible',
+    });
 
     await expect(
       page.getByRole('link', {
