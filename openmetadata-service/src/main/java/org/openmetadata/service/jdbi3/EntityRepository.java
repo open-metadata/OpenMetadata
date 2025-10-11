@@ -4064,7 +4064,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Record changes for audit trail
-      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+      recordListChange(
+          fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
       updatedTags.sort(compareTagLabel);
     }
 
