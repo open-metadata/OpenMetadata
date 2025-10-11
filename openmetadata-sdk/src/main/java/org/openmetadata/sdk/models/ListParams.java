@@ -60,8 +60,21 @@ public class ListParams {
   }
 
   public Map<String, String> toQueryParams() {
-    Map<String, String> params = new HashMap<>(queryParams);
-    params.putAll(filters);
+    Map<String, String> params = new HashMap<>();
+
+    // Add queryParams, filtering out null values
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      if (entry.getValue() != null) {
+        params.put(entry.getKey(), entry.getValue());
+      }
+    }
+
+    // Add filters, filtering out null values
+    for (Map.Entry<String, String> entry : filters.entrySet()) {
+      if (entry.getValue() != null) {
+        params.put(entry.getKey(), entry.getValue());
+      }
+    }
 
     if (limit != null) {
       params.put("limit", limit.toString());
