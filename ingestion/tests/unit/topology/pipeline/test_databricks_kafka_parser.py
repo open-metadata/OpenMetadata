@@ -16,6 +16,7 @@ Unit tests for Databricks Kafka parser
 import unittest
 
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+    extract_dlt_table_names,
     extract_kafka_sources,
     get_pipeline_libraries,
 )
@@ -374,6 +375,216 @@ class TestPipelineLibraries(unittest.TestCase):
         libraries = get_pipeline_libraries(pipeline_config)
         self.assertEqual(len(libraries), 1)
         self.assertEqual(libraries[0], "/nb")
+
+
+class TestDLTTableExtraction(unittest.TestCase):
+    """Test cases for DLT table name extraction"""
+
+    def test_literal_table_name(self):
+        """Test DLT table with literal string name"""
+        source_code = """
+        import dlt
+
+        @dlt.table(name="user_events_bronze")
+        def bronze_events():
+            return spark.readStream.format("kafka").load()
+        """
+        table_names = extract_dlt_table_names(source_code)
+        self.assertEqual(len(table_names), 1)
+        self.assertEqual(table_names[0], "user_events_bronze")
+
+    def test_table_name_with_comment(self):
+        """Test DLT table decorator with comment parameter"""
+        source_code = """
+        @dlt.table(
+            name="my_table",
+            comment="This is a test table"
+        )
+        def my_function():
+            return df
+        """
+        table_names = extract_dlt_table_names(source_code)
+        self.assertEqual(len(table_names), 1)
+        self.assertEqual(table_names[0], "my_table")
+
+    def test_multiple_dlt_tables(self):
+        """Test multiple DLT table decorators"""
+        source_code = """
+        @dlt.table(name="bronze_table")
+        def bronze():
+            return spark.readStream.format("kafka").load()
+
+        @dlt.table(name="silver_table")
+        def silver():
+            return dlt.read("bronze_table")
+        """
+        table_names = extract_dlt_table_names(source_code)
+        self.assertEqual(len(table_names), 2)
+        self.assertIn("bronze_table", table_names)
+        self.assertIn("silver_table", table_names)
+
+    def test_function_name_pattern(self):
+        """Test DLT table with function call for name"""
+        source_code = """
+        entity_name = "moneyRequest"
+
+        @dlt.table(name=materializer.generate_event_log_table_name())
+        def event_log():
+            return df
+        """
+        table_names = extract_dlt_table_names(source_code)
+        # Should infer from entity_name variable
+        self.assertEqual(len(table_names), 1)
+        self.assertEqual(table_names[0], "moneyRequest")
+
+    def test_no_name_parameter(self):
+        """Test DLT table decorator without name parameter"""
+        source_code = """
+        @dlt.table(comment="No name specified")
+        def my_function():
+            return df
+        """
+        table_names = extract_dlt_table_names(source_code)
+        # Should return empty list when no name found
+        self.assertEqual(len(table_names), 0)
+
+    def test_mixed_case_decorator(self):
+        """Test case insensitive DLT decorator"""
+        source_code = """
+        @DLT.TABLE(name="CasedTable")
+        def func():
+            return df
+        """
+        table_names = extract_dlt_table_names(source_code)
+        self.assertEqual(len(table_names), 1)
+        self.assertEqual(table_names[0], "CasedTable")
+
+    def test_empty_source_code(self):
+        """Test empty source code"""
+        table_names = extract_dlt_table_names("")
+        self.assertEqual(len(table_names), 0)
+
+    def test_null_source_code(self):
+        """Test None source code doesn't crash"""
+        table_names = extract_dlt_table_names(None)
+        self.assertEqual(len(table_names), 0)
+
+
+class TestKafkaFallbackPatterns(unittest.TestCase):
+    """Test cases for Kafka fallback extraction patterns"""
+
+    def test_topic_variable_fallback(self):
+        """Test fallback to topic_name variable when no explicit Kafka pattern"""
+        source_code = """
+        topic_name = "dev.ern.cashout.moneyRequest_v1"
+        entity_name = "moneyRequest"
+
+        # Kafka reading is abstracted in helper class
+        materializer = KafkaMaterializer(topic_name, entity_name)
+        """
+        configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(configs[0].topics, ["dev.ern.cashout.moneyRequest_v1"])
+        self.assertIsNone(configs[0].bootstrap_servers)
+
+    def test_subject_variable_fallback(self):
+        """Test fallback to subject_name variable"""
+        source_code = """
+        subject_name = "user-events"
+        # Using helper class
+        """
+        configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(configs[0].topics, ["user-events"])
+
+    def test_stream_variable_fallback(self):
+        """Test fallback to stream variable"""
+        source_code = """
+        stream_topic = "payment-stream"
+        """
+        configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(configs[0].topics, ["payment-stream"])
+
+    def test_topic_with_dots(self):
+        """Test topic names with dots (namespace pattern)"""
+        source_code = """
+        df = spark.readStream.format("kafka") \\
+            .option("subscribe", "pre-prod.earnin.customer-experience.messages") \\
+            .load()
+        """
+        configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(
+            configs[0].topics, ["pre-prod.earnin.customer-experience.messages"]
+        )
+
+    def test_multiple_topic_variables(self):
+        """Test multiple topic variables"""
+        source_code = """
+        topic_name = "events_v1"
+        stream_topic = "metrics_v1"
+        """
+        configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(configs), 1)
+        # Should find both topics
+        self.assertEqual(len(configs[0].topics), 2)
+        self.assertIn("events_v1", configs[0].topics)
+        self.assertIn("metrics_v1", configs[0].topics)
+
+    def test_no_fallback_when_explicit_kafka(self):
+        """Test that fallback is not used when explicit Kafka pattern exists"""
+        source_code = """
+        topic_name = "fallback_topic"
+
+        df = spark.readStream.format("kafka") \\
+            .option("subscribe", "explicit_topic") \\
+            .load()
+        """
+        configs = extract_kafka_sources(source_code)
+        # Should find the explicit Kafka source, not the fallback
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(configs[0].topics, ["explicit_topic"])
+
+    def test_lowercase_variables(self):
+        """Test lowercase variable names are captured"""
+        source_code = """
+        topic_name = "lowercase_topic"
+        TOPIC_NAME = "uppercase_topic"
+        """
+        configs = extract_kafka_sources(source_code)
+        # Should find both
+        self.assertEqual(len(configs), 1)
+        self.assertEqual(len(configs[0].topics), 2)
+
+    def test_real_world_abstracted_pattern(self):
+        """Test real-world pattern with abstracted Kafka reading"""
+        source_code = """
+        import dlt
+        from shared.materializers import KafkaMaterializer
+
+        topic_name = "dev.ern.cashout.moneyRequest_v1"
+        entity_name = "moneyRequest"
+
+        materializer = KafkaMaterializer(
+            topic_name=topic_name,
+            entity_name=entity_name,
+            spark=spark
+        )
+
+        @dlt.table(name=materializer.generate_event_log_table_name())
+        def event_log():
+            return materializer.read_stream()
+        """
+        # Test Kafka extraction
+        kafka_configs = extract_kafka_sources(source_code)
+        self.assertEqual(len(kafka_configs), 1)
+        self.assertEqual(kafka_configs[0].topics, ["dev.ern.cashout.moneyRequest_v1"])
+
+        # Test DLT table extraction
+        table_names = extract_dlt_table_names(source_code)
+        self.assertEqual(len(table_names), 1)
+        self.assertEqual(table_names[0], "moneyRequest")
 
 
 if __name__ == "__main__":
