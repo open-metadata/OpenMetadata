@@ -59,7 +59,7 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
         return {}
 
     # If database_server_name is provided, check if topic starts with it
-    # This handles server names with dots like "earnin.bank.dev"
+    # This handles server names with dots like "collate.ecommerce.dev"
     if database_server_name:
         # Check if topic starts with the server name prefix
         if topic_name.startswith(database_server_name + "."):
