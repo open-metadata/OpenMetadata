@@ -490,7 +490,7 @@ class EntityUtilClassBase {
     }
   }
 
-  public getEntityFloatingButton(_: EntityType): FC | null {
+  public getEntityFloatingButton(): FC | null {
     return null;
   }
 

@@ -33,7 +33,14 @@ import { DataInsightTabs } from '../interface/data-insight.interface';
 import { createIconWithStroke } from '../utils/IconUtils';
 import { PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
-const DataProductIcon = createIconWithStroke(Cube01, 1.2);
+const DataProductIcon = createIconWithStroke(
+  Cube01 as React.ComponentType<{
+    size?: number;
+    strokeWidth?: number;
+    style?: React.CSSProperties;
+  }>,
+  1.2
+);
 
 export const SIDEBAR_NESTED_KEYS = {
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,

@@ -179,7 +179,9 @@ export const renderIcon = (
  * @param entityType - The type of entity
  * @returns The icon component
  */
-export const getDefaultIconForEntityType = (entityType?: string) => {
+export const getDefaultIconForEntityType = (
+  entityType?: string
+): ComponentType<any> => {
   if (entityType === 'dataProduct') {
     return Cube01;
   }

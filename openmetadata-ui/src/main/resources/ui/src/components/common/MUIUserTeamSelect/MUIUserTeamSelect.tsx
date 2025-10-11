@@ -14,7 +14,14 @@
 import { Autocomplete, Box, Chip, TextField, useTheme } from '@mui/material';
 import { XClose } from '@untitledui/icons';
 import { debounce } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  FC,
+  SyntheticEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
@@ -112,7 +119,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       users.map((user) => ({
         label: getEntityName(user),
         value: user.id,
-        entity: user,
+        entity: user as unknown as EntityReference,
         isTeam: false,
       }))
     );
@@ -144,7 +151,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
       teams.map((team) => ({
         label: getEntityName(team),
         value: team.id,
-        entity: team,
+        entity: team as unknown as EntityReference,
         isTeam: true,
       }))
     );
@@ -190,7 +197,7 @@ const MUIUserTeamSelect: FC<MUIUserTeamSelectProps> = ({
   }, [open]);
 
   const handleChange = (
-    _event: any,
+    _event: SyntheticEvent<Element, Event>,
     newValue: string | OptionType | (string | OptionType)[] | null
   ) => {
     if (!onChange) {

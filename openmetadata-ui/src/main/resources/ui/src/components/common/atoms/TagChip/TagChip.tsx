@@ -18,7 +18,7 @@ import { FC, ReactElement } from 'react';
 export interface TagChipProps extends Omit<MuiChipProps, 'variant' | 'color'> {
   label: string;
   icon?: ReactElement;
-  onDelete?: () => void;
+  onDelete?: (e: Event) => void;
   size?: 'small' | 'medium' | 'large';
   variant?: 'filled' | 'outlined' | 'blueGray';
   tagColor?: string; // For the colored bar indicator

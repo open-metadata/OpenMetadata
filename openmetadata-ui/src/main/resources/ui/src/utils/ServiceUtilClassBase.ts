@@ -305,7 +305,7 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceExtraInfo(_data?: ServicesType): any {
+  public getServiceExtraInfo() {
     return null;
   }
 
@@ -845,6 +845,7 @@ class ServiceUtilClassBase {
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
+    void _;
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,
       PlatformInsightsWidget,

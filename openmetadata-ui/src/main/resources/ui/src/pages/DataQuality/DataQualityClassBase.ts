@@ -79,9 +79,7 @@ class DataQualityClassBase {
     return DataQualityPageTabs.TEST_CASES;
   }
 
-  public getExportDataQualityDashboardButton(
-    _activeTab: DataQualityPageTabs
-  ): React.ReactNode {
+  public getExportDataQualityDashboardButton(): React.ReactNode {
     return null;
   }
 }

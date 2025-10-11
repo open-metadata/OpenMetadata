@@ -130,7 +130,7 @@ const BulkEntityImportPage = () => {
         entityType,
         fqn
       );
-      setEntity(response);
+      setEntity(response as DataAssetsHeaderProps['dataAsset']);
     } catch {
       // not show error here
     }
