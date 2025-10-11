@@ -29,7 +29,8 @@ import {
   toastNotification,
 } from '../../utils/common';
 import {
-  createColumnRowDetails,
+  createColumnRowDetailsWithDot,
+  createColumnRowDetailsWithEncloseDot,
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
@@ -99,12 +100,12 @@ const tableDetails2 = {
 };
 
 const columnDetails1 = {
-  ...createColumnRowDetails(),
+  ...createColumnRowDetailsWithDot(),
   glossary: glossaryDetails,
 };
 
 const columnDetails2 = {
-  ...createColumnRowDetails(),
+  ...createColumnRowDetailsWithEncloseDot(),
   glossary: glossaryDetails,
 };
 
@@ -841,7 +842,6 @@ test.describe('Bulk Import Export', () => {
       }
     );
 
-    await tableEntity.delete(apiContext);
     await afterAction();
   });
 
