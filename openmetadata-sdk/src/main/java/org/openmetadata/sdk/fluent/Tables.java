@@ -467,6 +467,7 @@ public final class Tables {
   public static final String SET = ColumnDataType.SET.value();
   public static final String GEOGRAPHY = ColumnDataType.GEOGRAPHY.value();
   public static final String HEIRARCHY = ColumnDataType.HEIRARCHY.value();
+  public static final String HIERARCHYID = ColumnDataType.HIERARCHYID.value();
   public static final String ENUM = ColumnDataType.ENUM.value();
   public static final String JSON = ColumnDataType.JSON.value();
   public static final String UUID = ColumnDataType.UUID.value();

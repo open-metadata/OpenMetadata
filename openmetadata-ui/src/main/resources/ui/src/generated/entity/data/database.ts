@@ -195,6 +195,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -608,6 +612,7 @@ export enum DatabaseServiceType {
     Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",

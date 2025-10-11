@@ -20,6 +20,10 @@ export interface Domain {
      */
     assets?: EntityReference[];
     /**
+     * Count of data assets that are part of this domain (including inherited from sub-domains).
+     */
+    assetsCount?: number;
+    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -280,6 +284,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

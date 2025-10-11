@@ -15,6 +15,10 @@
  */
 export interface CreateSpreadsheet {
     /**
+     * Spreadsheet creation timestamp
+     */
+    createdTime?: number;
+    /**
      * List of fully qualified names of data products this entity is part of.
      */
     dataProducts?: string[];
@@ -50,6 +54,10 @@ export interface CreateSpreadsheet {
      * MIME type of the spreadsheet file
      */
     mimeType?: SpreadsheetMIMEType;
+    /**
+     * Last modification timestamp
+     */
+    modifiedTime?: number;
     /**
      * Name that identifies this spreadsheet.
      */
@@ -238,6 +246,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

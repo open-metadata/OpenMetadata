@@ -83,7 +83,7 @@
         }
       }
     },
-    "dataConsumers": {
+    "policy": {
       "type": "object",
       "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
       "properties": {
@@ -121,12 +121,12 @@
           "title": "Data Classification",
           "description": "Expected data classification (e.g. Confidential, PII, etc.)"
         },
-        "consumers": {
+        "policies": {
           "type": "array",
           "title": "Data Consumers",
           "description": "Intended consumers of the data (e.g. internal teams, external partners, etc.)",
           "items": {
-              "$ref": "#/definitions/dataConsumers"
+              "$ref": "#/definitions/policy"
           }
         }
       }
@@ -160,6 +160,50 @@
           "type": "string",
           "description": "Time of day by which data is expected to be available (e.g. \"09:00 UTC\")"
         },
+        "timezone": {
+          "type": "string",
+          "title": "Timezone",
+          "description": "Timezone for the availability time. UTC by default.",
+          "enum": [
+            "GMT-11:00 (Pacific/Niue)",
+            "GMT-10:00 (Pacific/Honolulu)",
+            "GMT-09:30 (Pacific/Marquesas)",
+            "GMT-09:00 (America/Anchorage)",
+            "GMT-08:00 (America/Los Angeles)",
+            "GMT-07:00 (America/Denver)",
+            "GMT-06:00 (America/Chicago)",
+            "GMT-05:00 (America/New York)",
+            "GMT-04:00 (America/Santiago)",
+            "GMT-03:00 (America/Sao Paulo)",
+            "GMT-02:30 (Atlantic/Newfoundland)",
+            "GMT-02:00 (Atlantic/South_Georgia)",
+            "GMT-01:00 (Atlantic/Azores)",
+            "GMT+00:00 (Europe/London)",
+            "GMT+01:00 (Europe/Paris)",
+            "GMT+02:00 (Europe/Athens)",
+            "GMT+03:00 (Europe/Moscow)",
+            "GMT+03:00 (Asia/Iran)",
+            "GMT+04:00 (Asia/Dubai)",
+            "GMT+04:30 (Asia/Afghanistan)",
+            "GMT+05:00 (Asia/Karachi)",
+            "GMT+05:30 (Asia/Kolkata)",
+            "GMT+05:45 (Asia/Nepal)",
+            "GMT+06:00 (Asia/Dhaka)",
+            "GMT+06:00 (Asia/Myanmar)",
+            "GMT+07:00 (Asia/Bangkok)",
+            "GMT+08:00 (Asia/Shanghai)",
+            "GMT+08:45 (Australia/Australian Central Western Standard Time)",
+            "GMT+09:00 (Asia/Tokyo)",
+            "GMT+09:00 (Australia/Adelaide)",
+            "GMT+10:00 (Australia/Sydney)",
+            "GMT+10:30 (Australia/Lord Howe)",
+            "GMT+11:00 (Pacific/Norfolk)",
+            "GMT+12:00 (Pacific/Auckland)",
+            "GMT+13:00 (Pacific/Tongatapu)",
+            "GMT+14:00 (Pacific/Kiritimati)"
+          ],
+          "default": "GMT+00:00 (Europe/London)"
+        },
         "retention": {
           "type": "object",
           "title": "Data Retention Period",
@@ -169,6 +213,11 @@
           },
           "description": "How long the data is retained (if relevant)",
           "required": ["period", "unit"]
+        },
+        "columnName": {
+          "type": "string",
+          "title": "Column Name",
+          "description": "Column that represents the refresh time of the data (if applicable)"
         }
       }
     }

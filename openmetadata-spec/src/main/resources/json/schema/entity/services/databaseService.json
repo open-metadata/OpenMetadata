@@ -21,6 +21,7 @@
         "Redshift",
         "Snowflake",
         "Postgres",
+        "Timescale",
         "Mssql",
         "Oracle",
         "Athena",
@@ -83,6 +84,9 @@
         },
         {
           "name": "Postgres"
+        },
+        {
+          "name": "Timescale"
         },
         {
           "name": "Mssql"
@@ -281,6 +285,9 @@
             },
             {
               "$ref": "./connections/database/postgresConnection.json"
+            },
+            {
+              "$ref": "./connections/database/timescaleConnection.json"
             },
             {
               "$ref": "./connections/database/prestoConnection.json"
