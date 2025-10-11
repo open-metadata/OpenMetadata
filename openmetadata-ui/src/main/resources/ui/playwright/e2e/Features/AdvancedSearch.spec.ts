@@ -27,7 +27,6 @@ import {
   verifyAllConditions,
 } from '../../utils/advancedSearch';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
-import { assignTier } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
 const creationConfig: EntityDataClassCreationConfig = {
@@ -51,12 +50,12 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
   // use the admin user to login
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
-  let searchCriteria: Record<string, any> = {};
+  let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { page, apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await createNewPage(browser);
     await EntityDataClass.preRequisitesForTests(apiContext, creationConfig);
     await user.create(apiContext);
     glossaryEntity = new Glossary(undefined, [
@@ -73,8 +72,7 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await glossaryTermEntity.create(apiContext);
     await table.create(apiContext);
 
-    // Add Owner & Tag to the table
-    await EntityDataClass.table1.visitEntityPage(page);
+    // Add Owner & Tag and domain to the table
     await EntityDataClass.table1.patch({
       apiContext,
       patchData: [
@@ -106,7 +104,23 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
     });
 
-    await EntityDataClass.table2.visitEntityPage(page);
+    // Add data product to the table 1
+    await EntityDataClass.table1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataProducts/0',
+          value: {
+            id: EntityDataClass.dataProduct1.responseData.id,
+            type: 'dataProduct',
+            name: EntityDataClass.dataProduct1.responseData.name,
+            displayName: EntityDataClass.dataProduct1.responseData.displayName,
+          },
+        },
+      ],
+    });
+
     await EntityDataClass.table2.patch({
       apiContext,
       patchData: [
@@ -138,21 +152,56 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
       ],
     });
 
+    // Add data product to the table 2
+    await EntityDataClass.table2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/dataProducts/0',
+          value: {
+            id: EntityDataClass.dataProduct3.responseData.id,
+            type: 'dataProduct',
+            name: EntityDataClass.dataProduct3.responseData.name,
+            displayName: EntityDataClass.dataProduct3.responseData.displayName,
+          },
+        },
+      ],
+    });
+
     // Add Tier To the topic 1
-    await EntityDataClass.topic1.visitEntityPage(page);
-    await assignTier(
-      page,
-      COMMON_TIER_TAG[0].name,
-      EntityDataClass.topic1.endpoint
-    );
+    await EntityDataClass.topic1.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: COMMON_TIER_TAG[0].name,
+            tagFQN: COMMON_TIER_TAG[0].fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
 
     // Add Tier To the topic 2
-    await EntityDataClass.topic2.visitEntityPage(page);
-    await assignTier(
-      page,
-      COMMON_TIER_TAG[1].name,
-      EntityDataClass.topic2.endpoint
-    );
+    await EntityDataClass.topic2.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/tags/0',
+          value: {
+            name: COMMON_TIER_TAG[1].name,
+            tagFQN: COMMON_TIER_TAG[1].fullyQualifiedName,
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        },
+      ],
+    });
 
     // Update Search Criteria here
     searchCriteria = {
@@ -233,25 +282,18 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dashboardDataModel1.entity.project,
         EntityDataClass.dashboardDataModel2.entity.project,
       ],
-      status: ['Approved', 'In Review'],
+      entityStatus: ['Approved', 'In Review'],
       tableType: [table.entity.tableType, 'MaterializedView'],
       'charts.displayName.keyword': [
         EntityDataClass.dashboard1.charts.displayName,
         EntityDataClass.dashboard2.charts.displayName,
       ],
+      'dataProducts.displayName.keyword': [
+        EntityDataClass.dataProduct1.data.displayName,
+        EntityDataClass.dataProduct3.data.displayName,
+      ],
     };
 
-    await afterAction();
-  });
-
-  test.afterAll('Cleanup', async ({ browser }) => {
-    test.slow(true);
-
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
-    await glossaryEntity.delete(apiContext);
-    await user.delete(apiContext);
-    await table.delete(apiContext);
     await afterAction();
   });
 

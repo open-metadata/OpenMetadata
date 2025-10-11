@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * Remove Tags Action Type
+ * Remove Classification Tags Action Type
  */
 export interface RemoveTagsAction {
     /**
@@ -28,7 +28,7 @@ export interface RemoveTagsAction {
      */
     labels?: LabelElement[];
     /**
-     * Tags to remove
+     * Classification Tags to remove (source must be 'Classification')
      */
     tags?: TagLabel[];
     /**
@@ -74,6 +74,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -137,7 +141,7 @@ export interface Style {
 /**
  * Application Type
  *
- * Remove Tags Action Type.
+ * Remove Classification Tags Action Type.
  */
 export enum RemoveTagsActionType {
     RemoveTagsAction = "RemoveTagsAction",

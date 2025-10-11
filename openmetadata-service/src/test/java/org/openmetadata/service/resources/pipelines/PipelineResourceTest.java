@@ -26,14 +26,10 @@ import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.CHANGE_CONSOLIDATED;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
-import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
 import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response;
@@ -54,7 +50,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -71,6 +66,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.Task;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.rdf.RdfUtils;
@@ -79,7 +75,6 @@ import org.openmetadata.service.resources.pipelines.PipelineResource.PipelineLis
 import org.openmetadata.service.resources.services.PipelineServiceResourceTest;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RdfTestUtils;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
@@ -940,7 +935,6 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     RdfTestUtils.verifyEntityNotInRdf(pipeline.getFullyQualifiedName());
   }
 
-  @Order(1)
   @Test
   void test_paginationFetchesTagsAtBothEntityAndFieldLevels(TestInfo test) throws IOException {
     // Use existing tags that are already set up in the test environment
@@ -976,15 +970,15 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     }
 
     // Test pagination with fields=tags (should fetch pipeline-level tags only)
-    WebTarget target =
-        getResource("pipelines").queryParam("fields", "tags").queryParam("limit", "50");
+    WebTarget target = getResource("pipelines").queryParam("fields", "tags");
 
-    PipelineList pipelineList = TestUtils.get(target, PipelineList.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(pipelineList.getData());
+    List<Pipeline> pipelineList =
+        TestUtils.getAllPages(target, PipelineList.class, "after", "limit", 50, ADMIN_AUTH_HEADERS);
+    assertListNotEmpty(pipelineList);
 
     // Verify at least one of our created pipelines is in the response
     List<Pipeline> ourPipelines =
-        pipelineList.getData().stream()
+        pipelineList.stream()
             .filter(p -> createdPipelines.stream().anyMatch(cp -> cp.getId().equals(p.getId())))
             .collect(Collectors.toList());
 
@@ -1010,16 +1004,17 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
     }
 
     // Test pagination with fields=tasks,tags (should fetch both pipeline and task tags)
-    target = getResource("pipelines").queryParam("fields", "tasks,tags").queryParam("limit", "50");
+    target = getResource("pipelines").queryParam("fields", "tasks,tags");
 
-    pipelineList = TestUtils.get(target, PipelineList.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(pipelineList.getData());
+    pipelineList =
+        TestUtils.getAllPages(target, PipelineList.class, "after", "limit", 50, ADMIN_AUTH_HEADERS);
+    assertListNotEmpty(pipelineList);
 
     // Verify at least one of our created pipelines is in the response
     ourPipelines =
-        pipelineList.getData().stream()
+        pipelineList.stream()
             .filter(p -> createdPipelines.stream().anyMatch(cp -> cp.getId().equals(p.getId())))
-            .collect(Collectors.toList());
+            .toList();
 
     assertFalse(
         ourPipelines.isEmpty(), "Should find at least one of our created pipelines in pagination");

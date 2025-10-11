@@ -105,6 +105,7 @@ class CDATAKeys(Enum):
     BASE_MEASURES = "baseMeasures"
     MEASURE = "measure"
     MEASURE_MAPPING = "measureMapping"
+    CALCULATED_MEASURES = "calculatedMeasures"
     PRIVATE_MEASURE_GROUP = "privateMeasureGroup"
     LOGICAL_MODEL = "logicalModel"
     DATA_SOURCES = "dataSources"
@@ -135,6 +136,9 @@ class DataSourceMapping(BaseModel):
     ]
     parents: Annotated[
         List[ParentSource], Field(..., description="Parent Sources for a target col")
+    ]
+    formula: Annotated[
+        Optional[str], Field(None, description="Formula used to derive the column")
     ]
 
 
@@ -336,46 +340,12 @@ class ParsedLineage(BaseModel):
                 )
 
 
-def _get_column_datasources(
-    entry: ET.Element, datasource_map: Optional[DataSourceMap] = None
-) -> Set[DataSource]:
-    """Read a DataSource from the CDATA XML"""
-    if (
-        datasource_map
-        and entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value) in datasource_map
-    ):
-        # If the datasource is in the map, we'll traverse all intermediate logical
-        # datasources until we arrive to a table or view.
-        # Note that we can have multiple sources for a single column, e.g., columns
-        # coming from a JOIN
-        return set(
-            _traverse_ds(
-                current_column=entry.get(CDATAKeys.COLUMN_NAME.value),
-                ds_origin_list=[],
-                current_ds=datasource_map[
-                    entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value)
-                ],
-                datasource_map=datasource_map,
-            )
-        )
-
-    # If we don't have any logical sources (projections, aggregations, etc.) We'll stick to
-    # a single table origin
-    return {
-        DataSource(
-            name=entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value),
-            location=entry.get(CDATAKeys.SCHEMA_NAME.value),
-            source_type=ViewType.DATA_BASE_TABLE,
-        )
-    }
-
-
 def _get_column_datasources_with_names(
     entry: ET.Element, datasource_map: Optional[DataSourceMap] = None
-) -> List[Tuple[DataSource, str]]:
+) -> List[Tuple[DataSource, str, Optional[str]]]:
     """
     Get the DataSource and the actual source column name after traversal.
-    Returns a list of tuples (DataSource, column_name).
+    Returns a list of tuples (DataSource, column_name, formula).
     """
     if (
         datasource_map
@@ -387,6 +357,8 @@ def _get_column_datasources_with_names(
             ds_origin_list=[],
             current_ds=datasource_map[entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value)],
             datasource_map=datasource_map,
+            formula=None,
+            _visited=set(),
         )
         return ds_col_pairs
 
@@ -399,69 +371,38 @@ def _get_column_datasources_with_names(
                 source_type=ViewType.DATA_BASE_TABLE,
             ),
             entry.get(CDATAKeys.COLUMN_NAME.value),
+            None,  # No formula for direct table sources
         )
     ]
 
 
-def _traverse_ds(
-    current_column: str,
-    ds_origin_list: List[DataSource],
-    current_ds: DataSource,
-    datasource_map: Optional[DataSourceMap],
-) -> List[DataSource]:
-    """
-    Traverse the ds dict jumping from target -> source columns and getting the right parent.
-    We keep inspecting current datasources and will append to the origin list the ones
-    that are not LOGICAL
-    """
-    if current_ds.source_type != ViewType.LOGICAL:
-        ds_origin_list.append(current_ds)
-
-    else:
-        # Based on our current column, find the parents from the mappings in the current_ds
-        current_ds_mapping: Optional[DataSourceMapping] = current_ds.mapping.get(
-            current_column
-        )
-
-        if current_ds_mapping:
-            for parent in current_ds_mapping.parents:
-                parent_ds = datasource_map.get(parent.parent)
-                if not parent_ds:
-                    raise CDATAParsingError(
-                        f"Can't find parent [{parent.parent}] for column [{current_column}]"
-                    )
-
-                # Traverse from the source column in the parent mapping
-                _traverse_ds(
-                    current_column=parent.source,
-                    ds_origin_list=ds_origin_list,
-                    current_ds=parent_ds,
-                    datasource_map=datasource_map,
-                )
-        else:
-            logger.info(
-                f"Can't find mapping for column [{current_column}] in [{current_ds}]. "
-                f"We still have to implement `calculatedViewAttributes`."
-            )
-
-    return ds_origin_list
-
-
 def _traverse_ds_with_columns(
     current_column: str,
-    ds_origin_list: List[Tuple[DataSource, str]],
+    ds_origin_list: List[Tuple[DataSource, str, Optional[str]]],
     current_ds: DataSource,
     datasource_map: Optional[DataSourceMap],
-) -> List[Tuple[DataSource, str]]:
+    formula: Optional[str] = None,
+    _visited: Optional[set] = set(),
+) -> List[Tuple[DataSource, str, Optional[str]]]:
     """
     Traverse the ds dict jumping from target -> source columns and getting the right parent.
     We keep inspecting current datasources and will append to the origin list the ones
-    that are not LOGICAL, along with the final column name.
-    Returns a list of tuples (DataSource, column_name).
+    that are not LOGICAL, along with the final column name and formula.
+    Returns a list of tuples (DataSource, column_name, formula).
     """
+    # Create visit key for this node
+    visit_key = (current_ds.name, current_column)
+
+    # Check if we've already processed this node
+    if visit_key in _visited:
+        return ds_origin_list
+
+    # Add to visited set
+    _visited.add(visit_key)
+
     if current_ds.source_type != ViewType.LOGICAL:
-        # This is a final datasource, append it with the current column name
-        ds_origin_list.append((current_ds, current_column))
+        # This is a final datasource, append it with the current column name and formula
+        ds_origin_list.append((current_ds, current_column, formula))
 
     else:
         # Based on our current column, find the parents from the mappings in the current_ds
@@ -470,6 +411,10 @@ def _traverse_ds_with_columns(
         )
 
         if current_ds_mapping:
+            # Use this layer's formula if we don't have one yet
+            if current_ds_mapping.formula and not formula:
+                formula = current_ds_mapping.formula
+
             for parent in current_ds_mapping.parents:
                 parent_ds = datasource_map.get(parent.parent)
                 if not parent_ds:
@@ -484,15 +429,43 @@ def _traverse_ds_with_columns(
                     ds_origin_list=ds_origin_list,
                     current_ds=parent_ds,
                     datasource_map=datasource_map,
+                    formula=formula,
+                    _visited=_visited,
                 )
         else:
-            # Current column not in mapping. This can happen for calculated view attributes
             logger.info(
                 f"Can't find mapping for column [{current_column}] in [{current_ds}]. "
-                f"We still have to implement `calculatedViewAttributes`."
+                f"This might be a constant or derived column."
             )
 
     return ds_origin_list
+
+
+def _get_formula_from_logical_mapping(
+    entry: Optional[ET.Element], datasource_map: Optional[DataSourceMap]
+) -> Optional[str]:
+    """Extract formula from logical datasource mapping if it exists."""
+    if not entry or not datasource_map:
+        return None
+
+    column_object_name = entry.get(CDATAKeys.COLUMN_OBJECT_NAME.value)
+    column_name = entry.get(CDATAKeys.COLUMN_NAME.value)
+
+    if not column_object_name or not column_name:
+        return None
+
+    datasource = datasource_map.get(column_object_name)
+    if not datasource:
+        return None
+
+    if datasource.source_type != ViewType.LOGICAL or not datasource.mapping:
+        return None
+
+    mapping = datasource.mapping.get(column_name)
+    if not mapping:
+        return None
+
+    return mapping.formula
 
 
 def _read_attributes(
@@ -506,8 +479,9 @@ def _read_attributes(
 
     for attribute in attribute_list.findall(CDATAKeys.ATTRIBUTE.value, ns):
         key_mapping = attribute.find(CDATAKeys.KEY_MAPPING.value, ns)
+        target_name = attribute.get(CDATAKeys.ID.value)
 
-        # Get the actual source datasources and their column names
+        # Get the actual source datasources, column names, and formulas
         data_sources_with_columns = _get_column_datasources_with_names(
             entry=key_mapping, datasource_map=datasource_map
         )
@@ -517,7 +491,8 @@ def _read_attributes(
                 ColumnMapping(
                     data_source=ds_info[0],  # The datasource
                     sources=[ds_info[1]],  # The actual source column name
-                    target=attribute.get(CDATAKeys.ID.value),
+                    target=target_name,
+                    formula=ds_info[2],  # Formula from traversal (if any)
                 )
                 for ds_info in data_sources_with_columns
             ]
@@ -541,16 +516,39 @@ def _read_calculated_attributes(
         return lineage
 
     for calculated_attr in calculated_attrs.findall(key.value, ns):
-        formula = (
-            calculated_attr.find(CDATAKeys.KEY_CALCULATION.value, ns)
-            .find(CDATAKeys.FORMULA.value, ns)
-            .text
-        )
-        lineage += _explode_formula(
-            target=calculated_attr.get(CDATAKeys.ID.value),
-            formula=formula,
-            base_lineage=base_lineage,
-        )
+        key_calc = calculated_attr.find(CDATAKeys.KEY_CALCULATION.value, ns)
+        if key_calc is not None:
+            formula_elem = key_calc.find(CDATAKeys.FORMULA.value, ns)
+            if formula_elem is not None and formula_elem.text:
+                lineage += _explode_formula(
+                    target=calculated_attr.get(CDATAKeys.ID.value),
+                    formula=formula_elem.text,
+                    base_lineage=base_lineage,
+                )
+
+    return lineage
+
+
+def _read_calculated_measures(
+    tree: ET.Element,
+    ns: dict,
+    base_lineage: ParsedLineage,
+) -> ParsedLineage:
+    """Compute the lineage based on the calculated measures"""
+    lineage = ParsedLineage()
+
+    calculated_measures = tree.find(CDATAKeys.CALCULATED_MEASURES.value, ns)
+    if not calculated_measures:
+        return lineage
+
+    for measure in calculated_measures.findall(CDATAKeys.MEASURE.value, ns):
+        formula_elem = measure.find(CDATAKeys.FORMULA.value, ns)
+        if formula_elem is not None and formula_elem.text:
+            lineage += _explode_formula(
+                target=measure.get(CDATAKeys.ID.value),
+                formula=formula_elem.text,
+                base_lineage=base_lineage,
+            )
 
     return lineage
 
@@ -573,8 +571,9 @@ def _read_base_measures(
 
     for measure in base_measures.findall(CDATAKeys.MEASURE.value, ns):
         measure_mapping = measure.find(CDATAKeys.MEASURE_MAPPING.value, ns)
+        target_name = measure.get(CDATAKeys.ID.value)
 
-        # Get the actual source datasources and their column names
+        # Get the actual source datasources, column names, and formulas
         data_sources_with_columns = _get_column_datasources_with_names(
             entry=measure_mapping, datasource_map=datasource_map
         )
@@ -584,7 +583,8 @@ def _read_base_measures(
                 ColumnMapping(
                     data_source=ds_info[0],  # The datasource
                     sources=[ds_info[1]],  # The actual source column name
-                    target=measure.get(CDATAKeys.ID.value),
+                    target=target_name,
+                    formula=ds_info[2],  # Formula from traversal (if any)
                 )
                 for ds_info in data_sources_with_columns
             ]
@@ -605,10 +605,16 @@ def _explode_formula(
     Returns:
         Parsed Lineage from the formula
     """
-    column_ds = {
-        match.group(1): base_lineage.find_target(match.group(1)).data_source
-        for match in FORMULA_PATTERN.finditer(formula)
-    }
+    column_ds = {}
+    for match in FORMULA_PATTERN.finditer(formula):
+        col_name = match.group(1)
+        mapping = base_lineage.find_target(col_name)
+        if mapping:
+            column_ds[col_name] = mapping.data_source
+
+    # If no columns found in base_lineage, it might be a constant formula
+    if not column_ds:
+        return ParsedLineage()
 
     # Group every datasource (key) with a list of the involved columns (values)
     ds_columns = defaultdict(list)
@@ -694,17 +700,42 @@ def _(cdata: str) -> ParsedLineage:
     attribute_lineage = _read_attributes(
         tree=logical_model, ns=ns, datasource_map=datasource_map
     )
-    calculated_attrs_lineage = _read_calculated_attributes(
-        tree=tree,
-        ns=ns,
-        base_lineage=attribute_lineage,
-        key=CalculatedAttrKey.CALCULATED_VIEW_ATTRIBUTE,
-    )
+
     base_measure_lineage = _read_base_measures(
         tree=logical_model, ns=ns, datasource_map=datasource_map
     )
 
-    return attribute_lineage + calculated_attrs_lineage + base_measure_lineage
+    # Combine base attributes and measures for calculated columns
+    combined_base_lineage = attribute_lineage + base_measure_lineage
+
+    # Read calculated attributes from calculationViews (if they exist)
+    cv_calculated_attrs_lineage = _read_calculated_attributes(
+        tree=tree,
+        ns=ns,
+        base_lineage=combined_base_lineage,
+        key=CalculatedAttrKey.CALCULATED_VIEW_ATTRIBUTE,
+    )
+
+    # Read calculated attributes from logical model
+    logical_calculated_attrs_lineage = _read_calculated_attributes(
+        tree=logical_model,
+        ns=ns,
+        base_lineage=combined_base_lineage,
+        key=CalculatedAttrKey.CALCULATED_ATTRIBUTE,
+    )
+
+    # Read calculated measures from logical model
+    calculated_measures_lineage = _read_calculated_measures(
+        tree=logical_model, ns=ns, base_lineage=combined_base_lineage
+    )
+
+    return (
+        attribute_lineage
+        + cv_calculated_attrs_lineage
+        + logical_calculated_attrs_lineage
+        + base_measure_lineage
+        + calculated_measures_lineage
+    )
 
 
 def _parse_cv_data_sources(tree: ET.Element, ns: dict) -> DataSourceMap:
@@ -812,11 +843,13 @@ def _build_mappings(calculation_view: ET.Element, ns: dict) -> List[DataSourceMa
     """
 
     input_mappings = _build_input_mappings(calculation_view=calculation_view, ns=ns)
-    # calculated_view_attrs = _build_cv_attributes(
-    #     calculation_view=calculation_view, ns=ns, input_mappings=input_mappings
-    # )
+    calculated_view_attrs = _build_cv_attributes(
+        calculation_view=calculation_view, ns=ns, input_mappings=input_mappings
+    )
 
-    return input_mappings
+    # Combine input mappings and calculated view attributes
+    all_mappings = input_mappings + calculated_view_attrs
+    return all_mappings
 
 
 def _build_input_mappings(
@@ -875,6 +908,8 @@ def _build_cv_attributes(
     if view_attrs is None:
         return mappings
 
+    cv_id = calculation_view.get(CDATAKeys.ID.value)
+
     for view_attr in view_attrs.findall(CDATAKeys.CALCULATION_VIEW_ATTRIBUTE.value, ns):
         formula = (
             view_attr.find(CDATAKeys.FORMULA.value, ns).text
@@ -886,25 +921,28 @@ def _build_cv_attributes(
             continue
 
         involved_columns = FORMULA_PATTERN.findall(formula)
+        # For calculated columns, all source columns should come from the same calculation view
+        # where the formula is defined
+        parents = []
         for col in involved_columns:
-            # Find the mapping for the involved column
-            mapping = next(
-                (mapping for mapping in input_mappings if mapping.target == col), None
-            )
-            if not mapping:
-                logger.debug(
-                    f"Can't find mapping for column [{col}] in [{input_mappings}]"
+            # The source columns for the formula are in the same calculation view
+            parents.append(
+                ParentSource(
+                    source=col,
+                    parent=cv_id,  # The parent is the current calculation view
                 )
-                continue
+            )
 
+        if parents:
             mappings.append(
                 DataSourceMapping(
                     target=view_attr.get(CDATAKeys.ID.value),
-                    parents=mapping.parents,
+                    parents=parents,
+                    formula=formula,
                 )
             )
 
-    return _group_mappings(mappings)
+    return mappings
 
 
 def _group_mappings(mappings: List[DataSourceMapping]) -> List[DataSourceMapping]:

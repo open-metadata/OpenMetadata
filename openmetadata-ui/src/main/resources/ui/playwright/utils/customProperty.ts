@@ -570,7 +570,7 @@ export const addCustomPropertiesForEntity = async ({
 }: {
   page: Page;
   propertyName: string;
-  customPropertyData: { description: string };
+  customPropertyData: { description: string; entityApiType: string };
   customType: string;
   enumConfig?: { values: string[]; multiSelect: boolean };
   formatConfig?: string;
@@ -579,6 +579,20 @@ export const addCustomPropertiesForEntity = async ({
 }) => {
   // Add Custom property for selected entity
   await page.click('[data-testid="add-field-button"]');
+
+  // Assert that breadcrumb has correct link for the entity type
+  // The second breadcrumb item should be "Custom Attributes" with the correct entity type in URL
+  const customAttributesBreadcrumb = page.locator(
+    '[data-testid="breadcrumb-link"]:nth-child(2) a'
+  );
+
+  if (customPropertyData.entityApiType) {
+    // Verify that the Custom Attributes breadcrumb link contains the correct entity type
+    await expect(customAttributesBreadcrumb).toHaveAttribute(
+      'href',
+      `/settings/customProperties/${customPropertyData.entityApiType}`
+    );
+  }
 
   // Trigger validation
   await page.click('[data-testid="create-button"]');
@@ -835,19 +849,22 @@ export const verifyCustomPropertyInAdvancedSearch = async (
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    'Custom Properties'
+    'Custom Properties',
+    true
   );
 
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    entityType
+    entityType,
+    true
   );
 
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    propertyName
+    propertyName,
+    true
   );
 
   await page.getByTestId('cancel-btn').click();

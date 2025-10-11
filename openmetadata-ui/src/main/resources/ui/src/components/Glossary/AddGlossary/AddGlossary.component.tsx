@@ -25,7 +25,11 @@ import {
   FormItemLayout,
   HelperTextType,
 } from '../../../interface/FormUtils.interface';
-import { generateFormFields, getField } from '../../../utils/formUtils';
+import {
+  generateFormFields,
+  getField,
+  getPopupContainer,
+} from '../../../utils/formUtils';
 
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { EntityType } from '../../../enums/entity.enum';
@@ -202,6 +206,10 @@ const AddGlossary = ({
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-owner"
@@ -227,7 +235,10 @@ const AddGlossary = ({
     type: FieldTypes.USER_TEAM_SELECT,
     props: {
       hasPermission: true,
-      popoverProps: { placement: 'topLeft' },
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-reviewers"
@@ -254,7 +265,13 @@ const AddGlossary = ({
     label: t('label.domain-plural'),
     type: FieldTypes.DOMAIN_SELECT,
     props: {
-      selectedDomain: activeDomainEntityRef,
+      selectedDomain: activeDomainEntityRef
+        ? [activeDomainEntityRef]
+        : undefined,
+      popoverProps: {
+        placement: 'topLeft',
+        getPopupContainer: getPopupContainer,
+      },
       children: (
         <Button
           data-testid="add-domain"
@@ -269,7 +286,7 @@ const AddGlossary = ({
     formItemProps: {
       valuePropName: 'selectedDomain',
       trigger: 'onUpdate',
-      initialValue: activeDomainEntityRef,
+      initialValue: activeDomainEntityRef ? [activeDomainEntityRef] : undefined,
     },
   };
 

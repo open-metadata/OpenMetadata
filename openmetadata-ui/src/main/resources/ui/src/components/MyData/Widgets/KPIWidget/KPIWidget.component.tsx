@@ -247,7 +247,7 @@ const KPIWidget = ({
         actionButtonLink={ROUTES.KPI_LIST}
         actionButtonText={t('label.set-up-kpi')}
         description={t('message.no-kpi')}
-        icon={<KPINoDataPlaceholder height={SIZE.LARGE} width={SIZE.LARGE} />}
+        icon={<KPINoDataPlaceholder height={SIZE.MEDIUM} width={SIZE.MEDIUM} />}
         title={t('label.no-kpis-yet')}
       />
     ),

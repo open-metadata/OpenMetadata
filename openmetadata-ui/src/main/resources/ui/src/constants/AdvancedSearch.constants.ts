@@ -47,7 +47,7 @@ export const COMMON_DROPDOWN_ITEMS = [
 export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: t('label.data-asset-plural'),
-    key: EntityFields.ENTITY_TYPE,
+    key: EntityFields.ENTITY_TYPE_KEYWORD,
   },
   {
     label: t('label.domain-plural'),
@@ -295,6 +295,13 @@ export const LINEAGE_DROPDOWN_ITEMS = [
 export const TEXT_FIELD_OPERATORS = [
   'equal',
   'not_equal',
+  'like',
+  'not_like',
+  'is_null',
+  'is_not_null',
+];
+
+export const TEXT_FIELD_DESCRIPTION_OPERATORS = [
   'like',
   'not_like',
   'is_null',

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page, test as base } from '@playwright/test';
+import { COMMON_TIER_TAG } from '../../constant/common';
 import { BIG_ENTITY_DELETE_TIMEOUT } from '../../constant/delete';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { EntityDataClassCreationConfig } from '../../support/entity/EntityDataClass.interface';
@@ -19,14 +20,12 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   descriptionBoxReadOnly,
+  getApiContext,
   redirectToHomePage,
+  reloadAndWaitForNetworkIdle,
   toastNotification,
 } from '../../utils/common';
-import {
-  addMultiOwner,
-  assignTier,
-  getEntityDataTypeDisplayPatch,
-} from '../../utils/entity';
+import { getEntityDataTypeDisplayPatch } from '../../utils/entity';
 
 const entityCreationConfig: EntityDataClassCreationConfig = {
   apiEndpoint: true,
@@ -40,6 +39,10 @@ const entityCreationConfig: EntityDataClassCreationConfig = {
   searchIndex: true,
   dashboardDataModel: true,
   entityDetails: true,
+  directory: true,
+  file: true,
+  spreadsheet: true,
+  worksheet: true,
 };
 
 const entities = [
@@ -53,6 +56,10 @@ const entities = [
   EntityDataClass.container1,
   EntityDataClass.searchIndex1,
   EntityDataClass.dashboardDataModel1,
+  EntityDataClass.directory1,
+  EntityDataClass.file1,
+  EntityDataClass.spreadsheet1,
+  EntityDataClass.worksheet1,
 ];
 
 // use the admin user to login
@@ -158,6 +165,7 @@ test.describe('Entity Version pages', () => {
     test(`${entity.getType()}`, async ({ page }) => {
       test.slow();
 
+      const { apiContext } = await getApiContext(page);
       await entity.visitEntityPage(page);
 
       await page.waitForLoadState('networkidle');
@@ -199,16 +207,23 @@ test.describe('Entity Version pages', () => {
 
       await test.step('should show owner changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
-        const OWNER1 = EntityDataClass.user1.getUserName();
+        const OWNER1 = EntityDataClass.user1.responseData;
 
-        await addMultiOwner({
-          page,
-          ownerNames: [OWNER1],
-          activatorBtnDataTestId: 'edit-owner',
-          resultTestId: 'data-assets-header',
-          endpoint: entity.endpoint,
-          type: 'Users',
+        await entity.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/owners/0',
+              value: {
+                id: OWNER1.id,
+                type: 'user',
+              },
+            },
+          ],
         });
+
+        await reloadAndWaitForNetworkIdle(page);
 
         const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();
@@ -260,7 +275,23 @@ test.describe('Entity Version pages', () => {
       await test.step('should show tier changes', async () => {
         await page.locator('[data-testid="version-button"]').click();
 
-        await assignTier(page, 'Tier1', entity.endpoint);
+        await entity.patch({
+          apiContext,
+          patchData: [
+            {
+              op: 'add',
+              path: '/tags/0',
+              value: {
+                name: COMMON_TIER_TAG[0].name,
+                tagFQN: COMMON_TIER_TAG[0].fullyQualifiedName,
+                labelType: 'Manual',
+                state: 'Confirmed',
+              },
+            },
+          ],
+        });
+
+        await reloadAndWaitForNetworkIdle(page);
 
         const versionDetailResponse = page.waitForResponse(`**/versions/0.3`);
         await page.locator('[data-testid="version-button"]').click();

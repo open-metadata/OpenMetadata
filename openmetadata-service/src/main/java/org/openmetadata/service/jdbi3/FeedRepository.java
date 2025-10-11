@@ -81,6 +81,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.ThreadType;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -88,6 +89,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.formatter.decorators.FeedMessageDecorator;
 import org.openmetadata.service.formatter.decorators.MessageDecorator;
 import org.openmetadata.service.formatter.util.FeedMessage;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.feeds.FeedResource;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.feeds.MessageParser;
@@ -100,7 +102,6 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
-import org.openmetadata.service.util.ResultList;
 
 /*
  * Feed relationships:
@@ -208,7 +209,7 @@ public class FeedRepository {
   public abstract static class TaskWorkflow {
     protected final ThreadContext threadContext;
 
-    TaskWorkflow(ThreadContext threadContext) {
+    public TaskWorkflow(ThreadContext threadContext) {
       this.threadContext = threadContext;
     }
 
@@ -216,6 +217,18 @@ public class FeedRepository {
 
     @SuppressWarnings("unused")
     protected void closeTask(String user, CloseTask closeTask) {}
+
+    /**
+     * Check if this task supports multi-approval.
+     * ALL workflows support multi-approval by default after the upgrade.
+     * Only legacy workflows (deployed before multi-approval feature) return false.
+     */
+    public boolean supportsMultiApproval() {
+      // Check if this workflow was deployed with multi-approval support
+      // by checking if the task has approval threshold variables
+      return WorkflowHandler.getInstance()
+          .hasMultiApprovalSupport(threadContext.getThread().getId());
+    }
 
     protected final TaskType getTaskType() {
       return threadContext.getThread().getTask().getType();
@@ -384,6 +397,21 @@ public class FeedRepository {
     EntityInterface aboutEntity = threadContext.getAboutEntity();
     String origJson = JsonUtils.pojoToJson(aboutEntity);
     EntityInterface updatedEntity = taskWorkflow.performTask(user, resolveTask);
+
+    // For tasks that support multi-approval, check if the task is actually completed
+    if (taskWorkflow.supportsMultiApproval()) {
+      // Check if the workflow task is still open
+      UUID taskId = threadContext.getThread().getId();
+      boolean isTaskStillOpen = WorkflowHandler.getInstance().isTaskStillOpen(taskId);
+
+      if (isTaskStillOpen) {
+        // Task is still open, waiting for more approvals
+        // Don't close the task or apply patches yet
+        return;
+      }
+    }
+
+    // Task is completed, apply the changes
     String updatedEntityJson = JsonUtils.pojoToJson(updatedEntity);
     JsonPatch patch = JsonUtils.getJsonPatch(origJson, updatedEntityJson);
     EntityRepository<?> repository = threadContext.getEntityRepository();

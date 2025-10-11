@@ -130,13 +130,22 @@ export class DatabaseSchemaClass extends EntityClass {
       false
     );
 
+    await page.waitForLoadState('networkidle');
+
+    // Wait for the database to be visible before clicking
+    await page.getByTestId(this.database.name).waitFor({ state: 'visible' });
+
     const databaseResponse = page.waitForResponse(
       `/api/v1/databases/name/*${this.database.name}?**`
     );
     await page.getByTestId(this.database.name).click();
     await databaseResponse;
+
+    // Wait for database schema to be visible
+    await page.getByTestId(this.entity.name).waitFor({ state: 'visible' });
+
     const databaseSchemaResponse = page.waitForResponse(
-      `/api/v1/databaseSchemas/name/*${this.entity}?*`
+      `/api/v1/databaseSchemas/name/*${this.entity.name}?*`
     );
     await page.getByTestId(this.entity.name).click();
     await databaseSchemaResponse;

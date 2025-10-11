@@ -12,12 +12,11 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { clickOutside } from './common';
-import { getEncodedFqn } from './entity';
+import { escapeESReservedCharacters, getEncodedFqn } from './entity';
 
 type EntityFields = {
   id: string;
   name: string;
-  localSearch: boolean;
   skipConditions?: string[];
 };
 
@@ -25,114 +24,96 @@ export const FIELDS: EntityFields[] = [
   {
     id: 'Owners',
     name: 'owners.displayName.keyword',
-    localSearch: false,
   },
   {
     id: 'Tags',
     name: 'tags.tagFQN',
-    localSearch: false,
   },
   {
     id: 'Tier',
     name: 'tier.tagFQN',
-    localSearch: true,
   },
   {
     id: 'Service',
     name: 'service.displayName.keyword',
-    localSearch: false,
   },
   {
     id: 'Database',
     name: 'database.displayName.keyword',
-    localSearch: false,
   },
   {
     id: 'Database Schema',
     name: 'databaseSchema.displayName.keyword',
-    localSearch: false,
   },
   {
     id: 'Column',
     name: 'columns.name.keyword',
-    localSearch: false,
   },
   {
     id: 'Display Name',
     name: 'displayName.keyword',
-    localSearch: false,
     skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for display name
   },
   {
     id: 'Service Type',
     name: 'serviceType',
-    localSearch: false,
   },
   {
     id: 'Schema Field',
     name: 'messageSchema.schemaFields.name.keyword',
-    localSearch: false,
   },
   {
     id: 'Container Column',
     name: 'dataModel.columns.name.keyword',
-    localSearch: false,
   },
   {
     id: 'Data Model Type',
     name: 'dataModelType',
-    localSearch: false,
   },
   {
     id: 'Field',
     name: 'fields.name.keyword',
-    localSearch: false,
   },
   {
     id: 'Task',
     name: 'tasks.displayName.keyword',
-    localSearch: false,
   },
   {
     id: 'Domains',
     name: 'domains.displayName.keyword',
-    localSearch: false,
   },
   {
     id: 'Name',
     name: 'name.keyword',
-    localSearch: false,
     skipConditions: ['isNull', 'isNotNull'], // Null and isNotNull conditions are not present for name
   },
   {
     id: 'Project',
     name: 'project.keyword',
-    localSearch: false,
   },
   {
     id: 'Status',
-    name: 'status',
-    localSearch: false,
+    name: 'entityStatus',
   },
   {
     id: 'Table Type',
     name: 'tableType',
-    localSearch: false,
   },
   {
     id: 'Chart',
     name: 'charts.displayName.keyword',
-    localSearch: false,
   },
   {
     id: 'Response Schema Field',
     name: 'responseSchema.schemaFields.name.keyword',
-    localSearch: false,
   },
   {
     id: 'Request Schema Field',
     name: 'requestSchema.schemaFields.name.keyword',
-    localSearch: false,
+  },
+  {
+    id: 'Data Product',
+    name: 'dataProducts.displayName.keyword',
   },
 ];
 
@@ -197,14 +178,41 @@ export const showAdvancedSearchDialog = async (page: Page) => {
 export const selectOption = async (
   page: Page,
   dropdownLocator: Locator,
-  optionTitle: string
+  optionTitle: string,
+  isSearchable = false
 ) => {
-  await dropdownLocator.click();
-  await page.keyboard.type(optionTitle);
+  if (isSearchable) {
+    // Force click on the selector to ensure it opens even if there's an existing selection
+    await dropdownLocator
+      .locator('.ant-select-selector')
+      .click({ force: true });
+
+    await page.waitForSelector('.ant-select-item-empty', {
+      state: 'detached',
+    });
+
+    // Clear any existing input and type the new value
+    const combobox = dropdownLocator.getByRole('combobox');
+    await combobox.clear();
+    await combobox.fill(optionTitle);
+    await page.waitForSelector('.ant-select-item-empty', {
+      state: 'detached',
+    });
+  } else {
+    await dropdownLocator.click();
+  }
+
+  await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
+
   await page.waitForSelector(`.ant-select-dropdown:visible`, {
     state: 'visible',
   });
-  await page.click(`.ant-select-dropdown:visible [title="${optionTitle}"]`);
+
+  const optionLocator = page
+    .locator(`.ant-select-dropdown:visible [title="${optionTitle}"]`)
+    .first();
+  await optionLocator.waitFor({ state: 'visible' });
+  await optionLocator.click();
 };
 
 export const fillRule = async (
@@ -227,7 +235,8 @@ export const fillRule = async (
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    field.id
+    field.id,
+    true
   );
 
   // Perform click on operator
@@ -241,9 +250,7 @@ export const fillRule = async (
     const inputElement = ruleLocator.locator(
       '.rule--widget--TEXT input[type="text"]'
     );
-    const searchData = field.localSearch
-      ? searchCriteria
-      : searchCriteria.toLowerCase();
+    const searchData = searchCriteria.toLowerCase();
 
     if (await inputElement.isVisible()) {
       await inputElement.fill(searchData);
@@ -251,21 +258,22 @@ export const fillRule = async (
       const dropdownInput = ruleLocator.locator(
         '.widget--widget > .ant-select > .ant-select-selector input'
       );
-      let aggregateRes;
 
-      if (!field.localSearch) {
-        aggregateRes = page.waitForResponse('/api/v1/search/aggregate?*');
-      }
+      const aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
 
       await dropdownInput.click();
-      if (aggregateRes) {
-        await aggregateRes;
-      }
+
+      await aggregateRes1;
+
+      const aggregateRes2 = page.waitForResponse(
+        `/api/v1/search/aggregate?*${getEncodedFqn(
+          escapeESReservedCharacters(searchData)
+        )}*`
+      );
+
       await dropdownInput.fill(searchData);
 
-      if (aggregateRes) {
-        await aggregateRes;
-      }
+      await aggregateRes2;
 
       await page
         .locator(`.ant-select-dropdown:visible [title="${searchData}"]`)
@@ -290,9 +298,7 @@ export const checkMustPaths = async (
     index: number;
   }
 ) => {
-  const searchData = field.localSearch
-    ? searchCriteria
-    : searchCriteria.toLowerCase();
+  const searchData = searchCriteria.toLowerCase();
 
   await fillRule(page, {
     condition,
@@ -302,7 +308,10 @@ export const checkMustPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
+    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+      searchData,
+      true
+    )}*`
   );
   await page.getByTestId('apply-btn').click();
 
@@ -333,9 +342,7 @@ export const checkMustNotPaths = async (
     index: number;
   }
 ) => {
-  const searchData = field.localSearch
-    ? searchCriteria
-    : searchCriteria.toLowerCase();
+  const searchData = searchCriteria.toLowerCase();
 
   await fillRule(page, {
     condition,
@@ -345,7 +352,10 @@ export const checkMustNotPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
+    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+      searchData,
+      true
+    )}*`
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -385,7 +395,7 @@ export const checkNullPaths = async (
   });
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
+    '/api/v1/search/query?*index=dataAsset&from=0&size=15*"exists"*'
   );
   await page.getByTestId('apply-btn').click();
   const res = await searchRes;
@@ -528,7 +538,10 @@ export const checkAddRuleOrGroupWithOperator = async (
   }
 
   const searchRes = page.waitForResponse(
-    '/api/v1/search/query?*index=dataAsset&from=0&size=15*'
+    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+      searchCriteria1.toLowerCase(),
+      true
+    )}*${getEncodedFqn(searchCriteria2.toLowerCase(), true)}*`
   );
   await page.getByTestId('apply-btn').click();
 
@@ -595,7 +608,8 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await selectOption(
     page,
     ruleLocator.locator('.rule--field .ant-select'),
-    'Database'
+    'Database',
+    true
   );
   await selectOption(
     page,
@@ -614,4 +628,32 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   await page.waitForTimeout(1000);
 
   await expect(dropdownText).not.toContainText('Loading...');
+};
+
+export const getFieldsSuggestionSearchText = (
+  fieldLabel: string,
+  data: Record<string, string>
+) => {
+  switch (fieldLabel) {
+    case 'Database':
+      return data.database;
+    case 'Database Schema':
+      return data.databaseSchema;
+    case 'API Collection':
+      return data.apiCollection;
+    case 'Glossary':
+      return data.glossary;
+    case 'Domains':
+      return data.domains;
+    case 'Data Product':
+      return data.dataProduct;
+    case 'Tags':
+      return data.tag;
+    case 'Certification':
+      return data.certification;
+    case 'Tier':
+      return data.tier;
+    default:
+      return '';
+  }
 };

@@ -21,6 +21,9 @@ from sqlalchemy.orm import declarative_base
 
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
+    PersonalAccessToken,
+)
 from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
     UnityCatalogConnection,
 )
@@ -67,13 +70,13 @@ class UnityCatalogSamplerTest(TestCase):
 
         self.unity_catalog_conn = UnityCatalogConnection(
             hostPort="localhost:443",
-            token="test_token",
+            authType=PersonalAccessToken(token="test_token"),
             httpPath="/sql/1.0/warehouses/test",
             catalog="test_catalog",
         )
 
     @patch(
-        "metadata.sampler.sqlalchemy.unitycatalog.sampler.SQASampler.build_table_orm"
+        "metadata.sampler.sqlalchemy.unitycatalog.sampler.UnityCatalogSamplerInterface.build_table_orm"
     )
     def test_handle_array_column(self, mock_build_table_orm):
         """Test array column detection"""

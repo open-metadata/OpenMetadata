@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /**
- * Apply Tags to the selected assets.
+ * Apply Classification Tags to the selected assets.
  */
 export interface AddTagsAction {
     /**
@@ -25,7 +25,7 @@ export interface AddTagsAction {
      */
     overwriteMetadata?: boolean;
     /**
-     * Tags to apply
+     * Classification Tags to apply (source must be 'Classification')
      */
     tags: TagLabel[];
     /**
@@ -62,6 +62,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

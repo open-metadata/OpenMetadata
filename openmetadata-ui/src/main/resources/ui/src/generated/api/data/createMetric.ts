@@ -15,6 +15,10 @@
  */
 export interface CreateMetric {
     /**
+     * Custom unit of measurement when unitOfMeasurement is OTHER.
+     */
+    customUnitOfMeasurement?: string;
+    /**
      * List of fully qualified names of data products this entity is part of.
      */
     dataProducts?: string[];
@@ -58,6 +62,10 @@ export interface CreateMetric {
      * Other array of related metric fully qualified names that are related to this Metric.
      */
     relatedMetrics?: string[];
+    /**
+     * Reviewers of this metric
+     */
+    reviewers?: EntityReference[];
     /**
      * Tags for this metric
      */
@@ -214,6 +222,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -282,6 +294,7 @@ export enum UnitOfMeasurement {
     Count = "COUNT",
     Dollars = "DOLLARS",
     Events = "EVENTS",
+    Other = "OTHER",
     Percentage = "PERCENTAGE",
     Requests = "REQUESTS",
     Size = "SIZE",

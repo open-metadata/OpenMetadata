@@ -70,6 +70,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CollectionDAO.UsageDAO;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -214,7 +215,16 @@ public final class EntityUtil {
     }
     List<EntityReference> refs = new ArrayList<>();
     for (EntityRelationshipRecord ref : list) {
-      refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+      try {
+        refs.add(Entity.getEntityReferenceById(ref.getType(), ref.getId(), ALL));
+      } catch (EntityNotFoundException e) {
+        // Skip deleted entities - the relationship exists but the entity was deleted
+        LOG.info(
+            "Skipping deleted entity reference: {} {} - {}",
+            ref.getType(),
+            ref.getId(),
+            e.getMessage());
+      }
     }
     refs.sort(compareEntityReference);
     return refs;
@@ -230,6 +240,10 @@ public final class EntityUtil {
     String entityType = entityLink.getEntityType();
     String fqn = entityLink.getEntityFQN();
     return Entity.getEntityReferenceByName(entityType, fqn, ALL);
+  }
+
+  public static String buildEntityLink(String entityType, String fullyQualifiedName) {
+    return String.format("<#E::%s::%s>", entityType, fullyQualifiedName);
   }
 
   public static UsageDetails getLatestUsage(UsageDAO usageDAO, UUID entityId) {
@@ -698,6 +712,33 @@ public final class EntityUtil {
     return refs;
   }
 
+  public static String getFilteredFields(String entityType, String fields) {
+    // Helper method to filter fields based on what the entity supports
+    if (fields == null || fields.isEmpty() || entityType == null) {
+      return fields;
+    }
+
+    EntityRepository<?> repository = Entity.getEntityRepository(entityType);
+    Set<String> allowed = new HashSet<>(repository.getAllowedFields());
+
+    // Always allow these common fields
+    allowed.add("owners");
+    allowed.add("tags");
+    allowed.add("domains");
+
+    // Filter the requested fields to only include those supported by the entity's allowed list
+    String[] requestedFields = fields.split(",");
+    List<String> validFields = new ArrayList<>();
+    for (String field : requestedFields) {
+      field = field.trim();
+      if (allowed.contains(field)) {
+        validFields.add(field);
+      }
+    }
+
+    return String.join(",", validFields);
+  }
+
   public static void validateProfileSample(String profileSampleType, double profileSampleValue) {
     if (profileSampleType.equals("PERCENTAGE")
         && (profileSampleValue < 0 || profileSampleValue > 100.0)) {
@@ -804,6 +845,7 @@ public final class EntityUtil {
       if (!nullOrEmpty(subjectContext.getUserDomains())) {
         filter.addQueryParam(
             "domainId", getCommaSeparatedIdsFromRefs(subjectContext.getUserDomains()));
+        filter.addQueryParam("domainAccessControl", "true");
       } else {
         filter.addQueryParam("domainId", NULL_PARAM);
         filter.addQueryParam("entityType", entityType);

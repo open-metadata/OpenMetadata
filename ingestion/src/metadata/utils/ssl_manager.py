@@ -37,6 +37,9 @@ from metadata.generated.schema.entity.services.connections.database.dorisConnect
 from metadata.generated.schema.entity.services.connections.database.greenplumConnection import (
     GreenplumConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.hiveConnection import (
+    HiveConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mongoDBConnection import (
     MongoDBConnection,
 )
@@ -221,11 +224,17 @@ class SSLManager:
                 "ssl.key.location": getattr(self, "key_consumer_config", None),
                 "ssl.certificate.location": getattr(self, "cert_consumer_config", None),
             }
-        connection.schemaRegistryConfig["ssl.ca.location"] = self.ca_file_path
-        connection.schemaRegistryConfig["ssl.key.location"] = self.key_file_path
-        connection.schemaRegistryConfig[
-            "ssl.certificate.location"
-        ] = self.cert_file_path
+        if connection.schemaRegistrySSL:
+            connection.schemaRegistryConfig["ssl.ca.location"] = getattr(
+                self, "ca_schema_registry", None
+            )
+
+            connection.schemaRegistryConfig["ssl.key.location"] = getattr(
+                self, "key_schema_registry", None
+            )
+            connection.schemaRegistryConfig["ssl.certificate.location"] = getattr(
+                self, "cert_schema_registry", None
+            )
         return connection
 
     @setup_ssl.register(CassandraConnection)
@@ -245,6 +254,25 @@ class SSLManager:
             connection.connectionArguments or init_empty_connection_arguments()
         )
         connection.connectionArguments.root["ssl_context"] = ssl_context
+        return connection
+
+    @setup_ssl.register(HiveConnection)
+    def _(self, connection):
+        connection = cast(HiveConnection, connection)
+
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+
+        # Add certificate paths if available (following MySQL pattern)
+        ssl_args = connection.connectionArguments.root.get("ssl", {})
+        if self.ca_file_path:
+            ssl_args["ssl_ca"] = self.ca_file_path
+        if self.cert_file_path:
+            ssl_args["ssl_cert"] = self.cert_file_path
+        if self.key_file_path:
+            ssl_args["ssl_key"] = self.key_file_path
+        connection.connectionArguments.root["ssl"] = ssl_args
+
         return connection
 
 
@@ -372,6 +400,25 @@ def _(connection):
         return SSLManager(
             ca=ssl.root.caCertificate, cert=ssl.root.sslCertificate, key=ssl.root.sslKey
         )
+    return None
+
+
+@check_ssl_and_init.register(HiveConnection)
+def _(connection):
+    service_connection = cast(HiveConnection, connection)
+    if hasattr(service_connection, "useSSL") and service_connection.useSSL:
+        # Check if SSL config is provided in sslConfig (following MySQL pattern)
+        if hasattr(service_connection, "sslConfig") and service_connection.sslConfig:
+            if (
+                service_connection.sslConfig.root.caCertificate
+                or service_connection.sslConfig.root.sslCertificate
+                or service_connection.sslConfig.root.sslKey
+            ):
+                return SSLManager(
+                    ca=service_connection.sslConfig.root.caCertificate,
+                    cert=service_connection.sslConfig.root.sslCertificate,
+                    key=service_connection.sslConfig.root.sslKey,
+                )
     return None
 
 

@@ -22,6 +22,10 @@ import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.TEAM;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 
@@ -31,25 +35,39 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.feed.CloseTask;
+import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskStatus;
+import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
+import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.domains.DataProductResource;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.rules.RuleEngine;
+import org.openmetadata.service.rules.RuleValidationException;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LineageUtil;
@@ -214,34 +232,88 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     BulkOperationResult result =
         new BulkOperationResult().withStatus(ApiStatus.SUCCESS).withDryRun(false);
     List<BulkResponse> success = new ArrayList<>();
+    List<BulkResponse> failed = new ArrayList<>();
 
-    EntityUtil.populateEntityReferences(request.getAssets());
+    ArrayList<EntityReference> assets = new ArrayList<>(listOrEmpty(request.getAssets()));
+    EntityUtil.populateEntityReferences(assets);
 
-    for (EntityReference ref : request.getAssets()) {
-      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+    // Get the data product reference for validation
+    DataProduct dataProduct = find(entityId, ALL);
+    EntityReference dataProductRef = dataProduct.getEntityReference();
 
-      removeCrossDomainDataProducts(ref, relationship);
-
-      if (isAdd) {
-        addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
-      } else {
-        deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
-      }
-
-      success.add(new BulkResponse().withRequest(ref));
-      result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
-
-      searchRepository.updateEntity(ref);
+    // Group assets by type for efficient fetching
+    Map<String, List<EntityReference>> assetsByType = new HashMap<>();
+    for (EntityReference asset : assets) {
+      assetsByType.computeIfAbsent(asset.getType(), k -> new ArrayList<>()).add(asset);
     }
 
-    result.withSuccessRequest(success);
+    // Fetch all asset entities grouped by type for validation
+    Map<UUID, EntityInterface> assetEntitiesMap = new HashMap<>();
+    if (isAdd && !assets.isEmpty()) {
+      for (Map.Entry<String, List<EntityReference>> entry : assetsByType.entrySet()) {
+        List<EntityInterface> entitiesOfType =
+            Entity.getEntities(entry.getValue(), "domains,dataProducts", ALL);
+        for (int i = 0; i < entitiesOfType.size(); i++) {
+          assetEntitiesMap.put(entry.getValue().get(i).getId(), entitiesOfType.get(i));
+        }
+      }
+    }
 
-    // Create a Change Event on successful addition/removal of assets
-    if (result.getStatus().equals(ApiStatus.SUCCESS)) {
+    for (EntityReference ref : assets) {
+      result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
+
+      try {
+        if (isAdd) {
+          EntityInterface assetEntity = assetEntitiesMap.get(ref.getId());
+          if (assetEntity == null) {
+            throw new IllegalStateException("Asset entity not found for ID: " + ref.getId());
+          }
+          validateAssetDataProductAssignment(assetEntity, dataProductRef);
+          addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+        } else {
+          deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
+        }
+
+        success.add(new BulkResponse().withRequest(ref));
+        result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
+
+        searchRepository.updateEntity(ref);
+      } catch (RuleValidationException e) {
+        LOG.warn(
+            "Validation failed for asset {} in bulk operation: {}", ref.getId(), e.getMessage());
+        failed.add(new BulkResponse().withRequest(ref).withMessage(e.getMessage()));
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+        result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+      } catch (Exception e) {
+        LOG.error(
+            "Unexpected error during bulk operation for asset {}: {}",
+            ref.getId(),
+            e.getMessage(),
+            e);
+        failed.add(
+            new BulkResponse().withRequest(ref).withMessage("Internal error: " + e.getMessage()));
+        result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+        result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+      }
+    }
+
+    result.withSuccessRequest(success).withFailedRequest(failed);
+
+    // If all operations failed, mark as failure
+    if (success.isEmpty() && !failed.isEmpty()) {
+      result.setStatus(ApiStatus.FAILURE);
+    }
+
+    // Create a Change Event on successful operations
+    if (!success.isEmpty()) {
       EntityInterface entityInterface = Entity.getEntity(fromEntity, entityId, "id", ALL);
+      List<EntityReference> successfulAssets = new ArrayList<>();
+      for (BulkResponse response : success) {
+        successfulAssets.add((EntityReference) response.getRequest());
+      }
       ChangeDescription change =
           addBulkAddRemoveChangeDescription(
-              entityInterface.getVersion(), isAdd, request.getAssets(), null);
+              entityInterface.getVersion(), isAdd, successfulAssets, null);
       ChangeEvent changeEvent =
           getChangeEvent(entityInterface, change, fromEntity, entityInterface.getVersion());
       Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
@@ -250,50 +322,39 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return result;
   }
 
-  private void removeCrossDomainDataProducts(EntityReference ref, Relationship relationship) {
-    EntityReference domain =
-        getFromEntityRef(ref.getId(), ref.getType(), relationship, DOMAIN, false);
-    List<EntityReference> dataProducts = getDataProducts(ref.getId(), ref.getType());
+  /**
+   * Validates that an asset can be assigned to a data product according to configured rules.
+   * This method leverages the RuleEngine to validate domain matching rules that are enabled.
+   *
+   * @param assetEntity The asset entity interface (pre-fetched with domains,dataProducts)
+   * @param dataProductRef The data product entity reference
+   * @throws RuleValidationException if validation fails
+   */
+  private void validateAssetDataProductAssignment(
+      EntityInterface assetEntity, EntityReference dataProductRef) {
+    try {
 
-    if (!dataProducts.isEmpty() && domain != null) {
-      // Map dataProduct -> domain
-      Map<UUID, UUID> associatedDomains =
-          daoCollection
-              .relationshipDAO()
-              .findFromBatch(
-                  dataProducts.stream()
-                      .map(dp -> dp.getId().toString())
-                      .collect(Collectors.toList()),
-                  relationship.ordinal(),
-                  DOMAIN)
-              .stream()
-              .collect(
-                  Collectors.toMap(
-                      rec -> UUID.fromString(rec.getToId()),
-                      rec -> UUID.fromString(rec.getFromId())));
+      List<EntityReference> currentDataProducts = listOrEmpty(assetEntity.getDataProducts());
+      List<EntityReference> updatedDataProducts = new ArrayList<>(currentDataProducts);
+      updatedDataProducts.add(dataProductRef);
 
-      List<EntityReference> dataProductsToDelete =
-          dataProducts.stream()
-              .filter(
-                  dataProduct -> {
-                    UUID associatedDomainId = associatedDomains.get(dataProduct.getId());
-                    return associatedDomainId != null && !associatedDomainId.equals(domain.getId());
-                  })
-              .collect(Collectors.toList());
+      assetEntity.setDataProducts(updatedDataProducts);
+      RuleEngine.getInstance().evaluate(assetEntity, true, false);
 
-      if (!dataProductsToDelete.isEmpty()) {
-        daoCollection
-            .relationshipDAO()
-            .bulkRemoveFromRelationship(
-                dataProductsToDelete.stream()
-                    .map(EntityReference::getId)
-                    .collect(Collectors.toList()),
-                ref.getId(),
-                DATA_PRODUCT,
-                ref.getType(),
-                relationship.ordinal());
-        LineageUtil.removeDataProductsLineage(ref.getId(), ref.getType(), dataProductsToDelete);
-      }
+    } catch (RuleValidationException e) {
+      // Re-throw validation exceptions with context about the bulk operation
+      throw new RuleValidationException(
+          String.format(
+              "Cannot assign asset '%s' (type: %s) to data product '%s': %s",
+              assetEntity.getName(),
+              assetEntity.getEntityReference().getType(),
+              dataProductRef.getName(),
+              e.getMessage()));
+    } catch (Exception e) {
+      LOG.warn(
+          "Error during asset data product validation for asset {}: {}",
+          assetEntity.getId(),
+          e.getMessage());
     }
   }
 
@@ -306,6 +367,26 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   protected void postUpdate(DataProduct original, DataProduct updated) {
     super.postUpdate(original, updated);
+    if (original.getEntityStatus() == EntityStatus.IN_REVIEW) {
+      if (updated.getEntityStatus() == EntityStatus.APPROVED) {
+        closeApprovalTask(updated, "Approved the data product");
+      } else if (updated.getEntityStatus() == EntityStatus.REJECTED) {
+        closeApprovalTask(updated, "Rejected the data product");
+      }
+    }
+
+    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
+    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
+    // will be a Task created.
+    // This if handles this case scenario, by guaranteeing that we are any Approval Task if the
+    // Data Product goes back to DRAFT.
+    if (updated.getEntityStatus() == EntityStatus.DRAFT) {
+      try {
+        closeApprovalTask(updated, "Closed due to data product going back to DRAFT.");
+      } catch (EntityNotFoundException ignored) {
+      } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+
     Map<String, EntityReference> assetsMap = new HashMap<>();
     listOrEmpty(original.getAssets())
         .forEach(asset -> assetsMap.put(asset.getId().toString(), asset));
@@ -416,5 +497,92 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
 
     return expertsMap;
+  }
+
+  @Override
+  public TaskWorkflow getTaskWorkflow(ThreadContext threadContext) {
+    validateTaskThread(threadContext);
+    TaskType taskType = threadContext.getThread().getTask().getType();
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    } else if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    } else if (!EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+    return super.getTaskWorkflow(threadContext);
+  }
+
+  public static class ApprovalTaskWorkflow extends TaskWorkflow {
+    ApprovalTaskWorkflow(ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      DataProduct dataProduct = (DataProduct) threadContext.getAboutEntity();
+      DataProductRepository.checkUpdatedByReviewer(dataProduct, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.resolveTask(
+          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      return dataProduct;
+    }
+  }
+
+  @Override
+  protected void preDelete(DataProduct entity, String deletedBy) {
+    // A data product in `Draft` state can only be deleted by the reviewers
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
+  public static void checkUpdatedByReviewer(DataProduct dataProduct, String updatedBy) {
+    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+    List<EntityReference> reviewers = dataProduct.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      // Updating user must be one of the reviewers
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
+      }
+    }
+  }
+
+  private void closeApprovalTask(DataProduct entity, String comment) {
+    EntityLink about = new EntityLink(DATA_PRODUCT, entity.getFullyQualifiedName());
+    FeedRepository feedRepository = Entity.getFeedRepository();
+
+    // Try to close ChangeReview task first (higher priority)
+    // Try to close RequestApproval task
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    } catch (EntityNotFoundException ex) {
+      LOG.info("No approval task found for data product {}", entity.getFullyQualifiedName());
+    }
   }
 }

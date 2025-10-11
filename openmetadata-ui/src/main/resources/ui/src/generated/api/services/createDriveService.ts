@@ -32,6 +32,10 @@ export interface CreateDriveService {
      */
     domains?: string[];
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline.
+     */
+    ingestionRunner?: EntityReference;
+    /**
      * Name that identifies this drive service.
      */
     name: string;
@@ -75,11 +79,19 @@ export interface Connection {
      */
     delegatedEmail?: string;
     /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
      * Specific shared drive ID to connect to
      *
      * SharePoint drive ID. If not provided, default document library will be used
      */
     driveId?: string;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
     /**
      * Extract metadata only for Google Sheets files
      */
@@ -87,12 +99,20 @@ export interface Connection {
     /**
      * Include shared/team drives in metadata extraction
      */
-    includeTeamDrives?:          boolean;
+    includeTeamDrives?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?:   FilterPattern;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
      */
     type?: DriveServiceType;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
     /**
      * Application (client) ID from Azure Active Directory
      */
@@ -113,6 +133,7 @@ export interface Connection {
      * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
+    [property: string]: any;
 }
 
 /**
@@ -235,6 +256,28 @@ export interface GCPImpersonateServiceAccountValues {
 }
 
 /**
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only fetch entities that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
+ */
+export interface FilterPattern {
+    /**
+     * List of strings/regex patterns to match and exclude only database entities that match.
+     */
+    excludes?: string[];
+    /**
+     * List of strings/regex patterns to match and include only database entities that match.
+     */
+    includes?: string[];
+}
+
+/**
  * Service Type
  *
  * Google Drive service type
@@ -254,14 +297,16 @@ export enum DriveServiceType {
 }
 
 /**
- * Owners of this Drive service.
+ * The ingestion agent responsible for executing the ingestion pipeline.
  *
- * This schema defines the EntityReferenceList type used for referencing an entity.
+ * This schema defines the EntityReference type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * This schema defines the EntityReference type used for referencing an entity.
+ * Owners of this Drive service.
+ *
+ * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
@@ -337,6 +382,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

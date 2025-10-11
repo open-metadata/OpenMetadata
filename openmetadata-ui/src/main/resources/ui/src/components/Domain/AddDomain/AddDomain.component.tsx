@@ -12,6 +12,7 @@
  */
 import { Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
+import { useSnackbar } from 'notistack';
 import { Fragment, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -23,8 +24,8 @@ import { withPageLayout } from '../../../hoc/withPageLayout';
 import { useDomainStore } from '../../../hooks/useDomainStore';
 import { addDomains, getDomainList } from '../../../rest/domainAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { showNotistackError } from '../../../utils/NotistackUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
@@ -34,6 +35,7 @@ import './add-domain.less';
 const AddDomain = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { enqueueSnackbar } = useSnackbar();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { updateDomainLoading, updateDomains } = useDomainStore();
 
@@ -82,7 +84,8 @@ const AddDomain = () => {
         refreshDomains();
         goToDomain(res.fullyQualifiedName ?? '');
       } catch (error) {
-        showErrorToast(
+        showNotistackError(
+          enqueueSnackbar,
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
             ? t('server.entity-already-exist', {
                 entity: t('label.domain'),
@@ -92,7 +95,8 @@ const AddDomain = () => {
             : (error as AxiosError),
           t('server.add-entity-error', {
             entity: t('label.domain-lowercase'),
-          })
+          }),
+          { vertical: 'top', horizontal: 'center' }
         );
       } finally {
         setIsLoading(false);

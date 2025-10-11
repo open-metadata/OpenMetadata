@@ -46,10 +46,17 @@
             "$ref": "../../entity/data/table.json#/definitions/column"
           },
           "default": null
+        },
+        "depth": {
+          "title": "Depth",
+          "description": "Depth level in the storage path hierarchy where data files reside.",
+          "type": "integer",
+          "default": 0
         }
       },
       "required": [
-        "containerName" ,"dataPath"
+        "containerName",
+        "dataPath"
       ]
     }
   },
@@ -63,6 +70,8 @@
       "default": null
     }
   },
-  "required": ["entries"],
+  "required": [
+    "entries"
+  ],
   "additionalProperties": false
 }

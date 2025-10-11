@@ -53,7 +53,7 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL || 'http://localhost:8585',
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     /* Screenshot on failure. */
     screenshot: 'only-on-failure',
   },
@@ -64,11 +64,6 @@ export default defineConfig({
     {
       name: 'setup',
       testMatch: '**/*.setup.ts',
-      teardown: 'restore-policies',
-    },
-    {
-      name: 'restore-policies',
-      testMatch: '**/auth.teardown.ts',
     },
     {
       name: 'chromium',
