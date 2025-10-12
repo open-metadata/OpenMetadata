@@ -82,19 +82,25 @@ export class StoredProcedureClass extends EntityClass {
         data: this.service,
       }
     );
+    const service = await serviceResponse.json();
+
     const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: this.database,
+      data: { ...this.database, service: service.fullyQualifiedName },
     });
+    const database = await databaseResponse.json();
+
     const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: this.schema,
+      data: { ...this.schema, database: database.fullyQualifiedName },
     });
+    const schema = await schemaResponse.json();
+
     const entityResponse = await apiContext.post('/api/v1/storedProcedures', {
-      data: this.entity,
+      data: {
+        ...this.entity,
+        databaseSchema: schema.fullyQualifiedName,
+      },
     });
 
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const schema = await schemaResponse.json();
     const entity = await entityResponse.json();
 
     this.serviceResponseData = service;

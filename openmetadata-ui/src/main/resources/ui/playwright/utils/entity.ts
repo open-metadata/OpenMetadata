@@ -553,7 +553,7 @@ export const updateDescriptionForChildren = async (
   entityEndpoint: string
 ) => {
   await page
-    .locator(`[${rowSelector}="${rowId}"]`)
+    .locator(`[${rowSelector}='${rowId}']`)
     .getByTestId('edit-button')
     .click();
 
@@ -578,11 +578,11 @@ export const updateDescriptionForChildren = async (
 
   isEmpty(description)
     ? await expect(
-        page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
+        page.locator(`[${rowSelector}='${rowId}']`).getByTestId('description')
       ).toContainText('No Description')
     : await expect(
         page
-          .locator(`[${rowSelector}="${rowId}"]`)
+          .locator(`[${rowSelector}='${rowId}']`)
           .getByTestId('viewer-container')
           .getByRole('paragraph')
       ).toContainText(description);
@@ -657,7 +657,7 @@ export const assignTagToChildren = async ({
   entityEndpoint: string;
 }) => {
   await page
-    .locator(`[${rowSelector}="${rowId}"]`)
+    .locator(`[${rowSelector}='${rowId}']`)
     .getByTestId('tags-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -694,7 +694,7 @@ export const assignTagToChildren = async ({
 
   await expect(
     page
-      .locator(`[${rowSelector}="${rowId}"]`)
+      .locator(`[${rowSelector}='${rowId}']`)
       .getByTestId('tags-container')
       .getByTestId(`tag-${tag}`)
   ).toBeVisible();
@@ -752,7 +752,7 @@ export const removeTagsFromChildren = async ({
 }) => {
   for (const tag of tags) {
     await page
-      .locator(`[${rowSelector}="${rowId}"]`)
+      .locator(`[${rowSelector}='${rowId}']`)
       .getByTestId('tags-container')
       .getByTestId('edit-button')
       .click();
@@ -785,7 +785,7 @@ export const removeTagsFromChildren = async ({
 
     await expect(
       page
-        .locator(`[${rowSelector}="${rowId}"]`)
+        .locator(`[${rowSelector}='${rowId}']`)
         .getByTestId('tags-container')
         .getByTestId(`tag-${tag}`)
     ).not.toBeVisible();
@@ -862,7 +862,7 @@ export const assignGlossaryTermToChildren = async ({
   entityEndpoint: string;
 }) => {
   await page
-    .locator(`[${rowSelector}="${rowId}"]`)
+    .locator(`[${rowSelector}='${rowId}']`)
     .getByTestId('glossary-container')
     .getByTestId(action === 'Add' ? 'add-tag' : 'edit-button')
     .click();
@@ -904,7 +904,7 @@ export const assignGlossaryTermToChildren = async ({
 
   await expect(
     page
-      .locator(`[${rowSelector}="${rowId}"]`)
+      .locator(`[${rowSelector}='${rowId}']`)
       .getByTestId('glossary-container')
       .getByTestId(`tag-${glossaryTerm.fullyQualifiedName}`)
   ).toBeVisible();
@@ -971,7 +971,7 @@ export const removeGlossaryTermFromChildren = async ({
 }) => {
   for (const tag of glossaryTerms) {
     await page
-      .locator(`[${rowSelector}="${rowId}"]`)
+      .locator(`[${rowSelector}='${rowId}']`)
       .getByTestId('glossary-container')
       .getByTestId('edit-button')
       .click();
@@ -1006,7 +1006,7 @@ export const removeGlossaryTermFromChildren = async ({
 
     expect(
       page
-        .locator(`[${rowSelector}="${rowId}"]`)
+        .locator(`[${rowSelector}='${rowId}']`)
         .getByTestId('glossary-container')
         .getByTestId(`tag-${tag.fullyQualifiedName}`)
     ).not.toBeVisible();
@@ -1372,7 +1372,7 @@ export const updateDisplayNameForEntityChildren = async (
   rowSelector = 'data-row-key'
 ) => {
   await page
-    .locator(`[${rowSelector}="${rowId}"]`)
+    .locator(`[${rowSelector}='${rowId}']`)
     .getByTestId('edit-displayName-button')
     .click();
 
@@ -1398,13 +1398,13 @@ export const updateDisplayNameForEntityChildren = async (
   if (displayName.newDisplayName === '') {
     await expect(
       page
-        .locator(`[${rowSelector}="${rowId}"]`)
+        .locator(`[${rowSelector}='${rowId}']`)
         .getByTestId('column-display-name')
     ).not.toBeAttached();
   } else {
     await expect(
       page
-        .locator(`[${rowSelector}="${rowId}"]`)
+        .locator(`[${rowSelector}='${rowId}']`)
         .getByTestId('column-display-name')
     ).toHaveText(displayName.newDisplayName);
   }
@@ -1417,7 +1417,7 @@ export const removeDisplayNameForEntityChildren = async (
   rowSelector = 'data-row-key'
 ) => {
   await page
-    .locator(`[${rowSelector}="${rowId}"]`)
+    .locator(`[${rowSelector}='${rowId}']`)
     .getByTestId('edit-displayName-button')
     .click();
 
@@ -1446,7 +1446,7 @@ export const removeDisplayNameForEntityChildren = async (
 
   await expect(
     page
-      .locator(`[${rowSelector}="${rowId}"]`)
+      .locator(`[${rowSelector}='${rowId}']`)
       .getByTestId('column-display-name')
   ).not.toBeVisible();
 };

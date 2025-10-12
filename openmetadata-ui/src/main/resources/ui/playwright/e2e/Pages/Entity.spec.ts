@@ -311,7 +311,7 @@ entities.forEach((EntityClass) => {
         const isMlModel = entity.type === 'MlModel';
         // Tag Selector
         await page
-          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .locator(`[${rowSelector}='${entity.childrenSelectorId ?? ''}']`)
           .getByTestId('tags-container')
           .getByTestId('add-tag')
           .click();
@@ -324,11 +324,11 @@ entities.forEach((EntityClass) => {
         // Glossary Selector
         await page
           .locator(
-            `[${rowSelector}="${
+            `[${rowSelector}='${
               isMlModel
                 ? entity.childrenSelectorId2
                 : entity.childrenSelectorId ?? ''
-            }"]`
+            }']`
           )
           .getByTestId('glossary-container')
           .getByTestId('add-tag')
@@ -341,7 +341,7 @@ entities.forEach((EntityClass) => {
 
         // Re-check Tag Selector
         await page
-          .locator(`[${rowSelector}="${entity.childrenSelectorId ?? ''}"]`)
+          .locator(`[${rowSelector}='${entity.childrenSelectorId ?? ''}']`)
           .getByTestId('tags-container')
           .getByTestId('add-tag')
           .click();
@@ -621,7 +621,6 @@ entities.forEach((EntityClass) => {
       test.slow();
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.delete(apiContext);
       await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
@@ -657,13 +656,4 @@ entities.forEach((EntityClass) => {
       );
     });
   });
-});
-
-test.afterAll('Cleanup', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-  await adminUser.delete(apiContext);
-  await dataConsumerUser.delete(apiContext);
-  await user.delete(apiContext);
-  await tableEntity.delete(apiContext);
-  await afterAction();
 });

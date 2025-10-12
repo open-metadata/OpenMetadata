@@ -395,7 +395,7 @@ export class EntityClass {
     });
 
     await page
-      .locator(`[${rowSelector}="${rowId}"]`)
+      .locator(`[${rowSelector}='${rowId}']`)
       .getByTestId('tags-container')
       .getByTestId('add-tag')
       .isVisible();
@@ -467,7 +467,7 @@ export class EntityClass {
     });
 
     await page
-      .locator(`[${rowSelector}="${rowId}"]`)
+      .locator(`[${rowSelector}='${rowId}']`)
       .getByTestId('glossary-container')
       .getByTestId('add-tag')
       .isVisible();

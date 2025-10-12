@@ -144,7 +144,7 @@ export class TableClass extends EntityClass {
     description: 'description',
     columns: this.children,
     tableType: 'SecureView',
-    databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
+    databaseSchema: `"${this.service.name}"."${this.database.name}"."${this.schema.name}"`,
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;

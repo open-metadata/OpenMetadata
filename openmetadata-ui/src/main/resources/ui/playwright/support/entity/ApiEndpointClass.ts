@@ -178,8 +178,10 @@ export class ApiEndpointClass extends EntityClass {
       }
     );
 
+    const apiCollection = await apiCollectionResponse.json();
+
     const entityResponse = await apiContext.post('/api/v1/apiEndpoints', {
-      data: this.entity,
+      data: { ...this.entity, apiCollection: apiCollection.fullyQualifiedName },
     });
 
     this.serviceResponseData = await serviceResponse.json();

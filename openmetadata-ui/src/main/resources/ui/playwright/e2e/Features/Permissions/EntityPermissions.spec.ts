@@ -95,12 +95,6 @@ Object.entries(entityConfig).forEach(([, config]) => {
       await afterAction();
     });
 
-    test.afterAll('Cleanup entity', async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
-      await entity.delete(apiContext);
-      await afterAction();
-    });
-
     // Allow permissions tests
     test.describe('Allow permissions', () => {
       test.beforeAll('Initialize allow permissions', async ({ browser }) => {
