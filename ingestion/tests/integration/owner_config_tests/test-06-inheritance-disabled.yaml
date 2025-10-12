@@ -1,0 +1,62 @@
+# ============================================
+# Test Case 06: Inheritance Disabled
+# ============================================
+# Test Scenario: Test inheritance disabled (enableInheritance: false)
+# Expected Results:
+#   - finance_db → "finance-team"
+#   - accounting schema → "data-platform-team" (DEFAULT, not inherited from database)
+#   - revenue table → "data-platform-team" (DEFAULT, not inherited from schema)
+#   - treasury schema → "treasury-team" (own config)
+#   - expenses table → "expense-team" (own config)
+#
+# This test validates that when inheritance is disabled:
+#   Priority: Specific Config > Default (skip inheritance)
+
+source:
+  type: postgres
+  serviceName: postgres-test-06-inheritance-off
+  serviceConnection:
+    config:
+      type: Postgres
+      username: admin
+      authType:
+        password: admin123
+      hostPort: localhost:5433
+      database: finance_db
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      
+      # Owner Configuration - Test inheritance disabled
+      ownerConfig:
+        default: "data-platform-team"
+        enableInheritance: false  # Explicitly disable inheritance
+        
+        database:
+          "finance_db": "finance-team"
+        
+        databaseSchema:
+          # accounting schema has NO config - should use DEFAULT (not inherited)
+          "finance_db.treasury": "treasury-team"
+        
+        table:
+          # revenue table has NO config - should use DEFAULT (not inherited)
+          "finance_db.accounting.expenses": "expense-team"
+      
+      includeTables: true
+      includeViews: true
+      markDeletedTables: true
+      useFqnForFiltering: true
+      overrideMetadata: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "YOUR_JWT_TOKEN_HERE"

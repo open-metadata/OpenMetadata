@@ -1,0 +1,63 @@
+# ============================================
+# Test Case 04: Owner Type Validation
+# ============================================
+# Test Scenario: Test validation of owner type constraints
+# Expected Behavior:
+#   Case 1: Multiple teams (INVALID)
+#     - finance_db: Log WARNING "Only ONE team allowed", use first team or fallback to default
+#   
+#   Case 2: Mixed users and team (INVALID)
+#     - revenue: Log WARNING "Cannot mix users and teams", fallback to inherited/default
+#   
+#   Case 3: Single team as string (VALID)
+#     - expenses: Works normally (single team is valid)
+
+source:
+  type: postgres
+  serviceName: postgres-test-04-validation
+  serviceConnection:
+    config:
+      type: Postgres
+      username: admin
+      authType:
+        password: admin123
+      hostPort: localhost:5433
+      database: finance_db
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      
+      # Owner Configuration - Validation test cases
+      ownerConfig:
+        default: "data-platform-team"
+        
+        database:
+          # Case 1: Multiple teams (INVALID - should log WARNING)
+          "finance_db": ["finance-team", "audit-team", "compliance-team"]
+        
+        table:
+          # Case 2: Mixed users and team (INVALID - should log WARNING)
+          "finance_db.accounting.revenue": ["alice", "bob", "finance-team"]
+          
+          # Case 3: Single team as string (VALID)
+          "finance_db.accounting.expenses": "expense-team"
+        
+        enableInheritance: true
+      
+      includeTables: true
+      includeViews: true
+      markDeletedTables: true
+      useFqnForFiltering: true
+      overrideMetadata: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "YOUR_JWT_TOKEN_HERE"

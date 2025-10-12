@@ -7,7 +7,7 @@ configuration following the topology structure (service -> database -> schema ->
 """
 
 import traceback
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -24,9 +24,9 @@ class OwnerResolver:
     {
         "default": "fallback-owner",  # Default owner for all entities
         "service": "service-owner",   # Optional
-        "database": "db-owner" | {"db1": "owner1", "db2": "owner2"},
-        "schema": "schema-owner" | {"schema1": "owner1"},
-        "table": "table-owner" | {"table1": "owner1"},
+        "database": "db-owner" | {"db1": "owner1", "db2": "owner2"} | {"db3": ["owner1", "owner2"]},
+        "databaseSchema": "schema-owner" | {"schema1": "owner1"} | {"schema2": ["owner1", "owner2"]},
+        "table": "table-owner" | {"table1": "owner1"} | {"table2": ["owner1", "owner2"]},
         "enableInheritance": true  # Default true
     }
 
@@ -59,7 +59,7 @@ class OwnerResolver:
         Resolve owner for an entity based on configuration
 
         Args:
-            entity_type: Type of entity ("database", "schema", "table")
+            entity_type: Type of entity ("database", "databaseSchema", "table")
             entity_name: Name or FQN of the entity
             parent_owner: Owner inherited from parent entity
 
@@ -82,30 +82,30 @@ class OwnerResolver:
             if level_config:
                 # If it's a dict, try exact matching
                 if isinstance(level_config, dict):
-                    # First try full name matching
+                    # First try full name matching (FQN)
                     if entity_name in level_config:
-                        owner_name = level_config[entity_name]
-                        owner_ref = self._get_owner_ref(owner_name)
+                        owner_names = level_config[entity_name]
+                        owner_ref = self._get_owner_refs(owner_names)
                         if owner_ref:
                             logger.debug(
-                                f"Using specific {entity_type} owner for '{entity_name}': {owner_name}"
+                                f"Matched owner for '{entity_name}' using FQN: {owner_names}"
                             )
                             return owner_ref
 
-                    # Try matching with only the last part of the name (e.g., "sales_db.public.orders" matches "orders")
+                    # Fallback to simple name matching
                     simple_name = entity_name.split(".")[-1]
                     if simple_name != entity_name and simple_name in level_config:
-                        owner_name = level_config[simple_name]
-                        owner_ref = self._get_owner_ref(owner_name)
+                        owner_names = level_config[simple_name]
+                        owner_ref = self._get_owner_refs(owner_names)
                         if owner_ref:
-                            logger.debug(
-                                f"Using specific {entity_type} owner for '{simple_name}': {owner_name}"
+                            logger.info(
+                                f"FQN match failed for '{entity_name}', matched using simple name '{simple_name}': {owner_names}"
                             )
                             return owner_ref
 
                 # If it's a string, use it directly
                 elif isinstance(level_config, str):
-                    owner_ref = self._get_owner_ref(level_config)
+                    owner_ref = self._get_owner_refs(level_config)
                     if owner_ref:
                         logger.debug(
                             f"Using {entity_type} level owner for '{entity_name}': {level_config}"
@@ -114,7 +114,7 @@ class OwnerResolver:
 
             # 2. If inheritance is enabled, use parent owner
             if self.enable_inheritance and parent_owner:
-                owner_ref = self._get_owner_ref(parent_owner)
+                owner_ref = self._get_owner_refs(parent_owner)
                 if owner_ref:
                     logger.debug(
                         f"Using inherited owner for '{entity_name}': {parent_owner}"
@@ -124,7 +124,7 @@ class OwnerResolver:
             # 3. Use default owner
             default_owner = self.config.get("default")
             if default_owner:
-                owner_ref = self._get_owner_ref(default_owner)
+                owner_ref = self._get_owner_refs(default_owner)
                 if owner_ref:
                     logger.debug(
                         f"Using default owner for '{entity_name}': {default_owner}"
@@ -139,41 +139,91 @@ class OwnerResolver:
 
         return None
 
-    def _get_owner_ref(self, owner_name: str) -> Optional[EntityReferenceList]:
+    def _get_owner_refs(
+        self, owner_names: Union[str, List[str]]
+    ) -> Optional[EntityReferenceList]:
         """
-        Get owner reference from OpenMetadata
+        Get owner references from OpenMetadata (supports single or multiple owners)
+
+        Business Rules:
+        - Multiple users are allowed
+        - Only ONE team is allowed
+        - Users and teams are mutually exclusive
 
         Args:
-            owner_name: User or team name/email
+            owner_names: Single owner name or list of owner names (user/team name or email)
 
         Returns:
-            EntityReferenceList or None if not found
+            EntityReferenceList with all found owners, or None if none found
         """
-        try:
-            if not owner_name:
-                return None
+        if isinstance(owner_names, str):
+            owner_names = [owner_names]
 
-            # Try to get owner by name (handles both users and teams)
-            owner_ref = self.metadata.get_reference_by_name(
-                name=owner_name, is_owner=True
-            )
+        if not owner_names:
+            return None
 
-            if owner_ref:
-                return owner_ref
+        all_owners = []
+        owner_types = set()  # Track types: 'user' or 'team'
 
-            # Try by email if name lookup failed and it looks like an email
-            if "@" in owner_name:
-                owner_ref = self.metadata.get_reference_by_email(owner_name)
+        for owner_name in owner_names:
+            try:
+                if not owner_name:
+                    continue
+
+                owner_ref = self.metadata.get_reference_by_name(
+                    name=owner_name, is_owner=True
+                )
+
                 if owner_ref:
-                    return owner_ref
+                    if owner_ref.root:
+                        owner_entity = owner_ref.root[0]
+                        all_owners.append(owner_entity)
+                        owner_types.add(owner_entity.type)
+                        logger.debug(
+                            f"Found owner: {owner_name} (type: {owner_entity.type})"
+                        )
+                    continue
 
-            logger.warning(f"Could not find owner: {owner_name}")
+                if "@" in owner_name:
+                    owner_ref = self.metadata.get_reference_by_email(owner_name)
+                    if owner_ref:
+                        if owner_ref.root:
+                            owner_entity = owner_ref.root[0]
+                            all_owners.append(owner_entity)
+                            owner_types.add(owner_entity.type)
+                            logger.debug(
+                                f"Found owner by email: {owner_name} (type: {owner_entity.type})"
+                            )
+                        continue
 
-        except Exception as exc:
-            logger.debug(f"Error getting owner reference for '{owner_name}': {exc}")
-            logger.debug(traceback.format_exc())
+                logger.warning(f"Could not find owner: {owner_name}")
 
-        return None
+            except Exception as exc:
+                logger.warning(
+                    f"Error getting owner reference for '{owner_name}': {exc}"
+                )
+                logger.debug(traceback.format_exc())
+
+        if not all_owners:
+            return None
+
+        # VALIDATION 1: Cannot mix users and teams
+        if len(owner_types) > 1:
+            logger.warning(
+                f"VALIDATION ERROR: Cannot mix users and teams in owner list. "
+                f"Found types: {owner_types}. Skipping this owner configuration."
+            )
+            return None
+
+        # VALIDATION 2: Only one team allowed
+        if "team" in owner_types and len(all_owners) > 1:
+            logger.warning(
+                f"VALIDATION ERROR: Only ONE team allowed as owner, but got {len(all_owners)} teams. "
+                f"Using only the first team: {all_owners[0].name}"
+            )
+            return EntityReferenceList(root=[all_owners[0]])
+
+        return EntityReferenceList(root=all_owners)
 
 
 def get_owner_from_config(

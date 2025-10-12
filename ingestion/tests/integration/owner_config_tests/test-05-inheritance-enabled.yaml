@@ -1,0 +1,62 @@
+# ============================================
+# Test Case 05: Inheritance Enabled
+# ============================================
+# Test Scenario: Test inheritance mechanism (enableInheritance: true)
+# Expected Results (CRITICAL for Bug 2 verification):
+#   - finance_db → "finance-team"
+#   - accounting schema → "finance-team" (INHERITED from database, NOT default)
+#   - revenue table → "finance-team" (INHERITED from accounting schema, NOT default)
+#   - treasury schema → "treasury-team" (own config)
+#   - expenses table → "expense-team" (own config)
+#
+# This test validates that inheritance works correctly:
+#   Priority: Specific Config > Inherited Owner > Default
+
+source:
+  type: postgres
+  serviceName: postgres-test-05-inheritance-on
+  serviceConnection:
+    config:
+      type: Postgres
+      username: admin
+      authType:
+        password: admin123
+      hostPort: localhost:5433
+      database: finance_db
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      
+      # Owner Configuration - Test inheritance enabled
+      ownerConfig:
+        default: "data-platform-team"
+        enableInheritance: true  # Enable inheritance
+        
+        database:
+          "finance_db": "finance-team"
+        
+        databaseSchema:
+          # accounting schema has NO config - should INHERIT from database
+          "finance_db.treasury": "treasury-team"
+        
+        table:
+          # revenue table has NO config - should INHERIT from schema
+          "finance_db.accounting.expenses": "expense-team"
+      
+      includeTables: true
+      includeViews: true
+      markDeletedTables: true
+      useFqnForFiltering: true
+      overrideMetadata: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "YOUR_JWT_TOKEN_HERE"

@@ -633,7 +633,6 @@ class DatabaseServiceSource(
             EntityReferenceList with owner or None
         """
         try:
-            # Get parent (database) owner for inheritance
             parent_owner = None
             database_entity = getattr(self.context.get(), "database_entity", None)
             if database_entity:
@@ -641,10 +640,8 @@ class DatabaseServiceSource(
                 if db_owners and db_owners.root:
                     parent_owner = db_owners.root[0].name
 
-            # Build FQN for more precise matching
             schema_fqn = f"{self.context.get().database}.{schema_name}"
 
-            # Priority 1: Use ownerConfig if configured
             if (
                 hasattr(self.source_config, "ownerConfig")
                 and self.source_config.ownerConfig
@@ -653,23 +650,11 @@ class DatabaseServiceSource(
                     metadata=self.metadata,
                     owner_config=self.source_config.ownerConfig,
                     entity_type="databaseSchema",
-                    entity_name=schema_fqn,  # Use FQN for matching
+                    entity_name=schema_fqn,
                     parent_owner=parent_owner,
                 )
                 if owner_ref:
                     return owner_ref
-
-                # Also try simple name if FQN didn't match
-                if schema_fqn != schema_name:
-                    owner_ref = get_owner_from_config(
-                        metadata=self.metadata,
-                        owner_config=self.source_config.ownerConfig,
-                        entity_type="databaseSchema",
-                        entity_name=schema_name,
-                        parent_owner=parent_owner,
-                    )
-                    if owner_ref:
-                        return owner_ref
 
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -693,7 +678,6 @@ class DatabaseServiceSource(
             EntityReferenceList with owner or None
         """
         try:
-            # Get parent (schema) owner for inheritance
             parent_owner = None
             database_schema_entity = getattr(
                 self.context.get(), "database_schema_entity", None
@@ -703,48 +687,22 @@ class DatabaseServiceSource(
                 if schema_owners and schema_owners.root:
                     parent_owner = schema_owners.root[0].name
 
-            # Build FQN for more precise matching
             table_fqn = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
 
-            # Priority 1: Use ownerConfig if configured
             if (
                 hasattr(self.source_config, "ownerConfig")
                 and self.source_config.ownerConfig
             ):
-                logger.debug(
-                    f"Trying ownerConfig for table '{table_name}', FQN: '{table_fqn}'"
-                )
-                logger.debug(f"Owner config: {self.source_config.ownerConfig}")
                 owner_ref = get_owner_from_config(
                     metadata=self.metadata,
                     owner_config=self.source_config.ownerConfig,
                     entity_type="table",
-                    entity_name=table_fqn,  # Use FQN for matching
+                    entity_name=table_fqn,
                     parent_owner=parent_owner,
                 )
                 if owner_ref:
-                    logger.debug(f"Found owner from FQN match: {owner_ref}")
                     return owner_ref
 
-                # Also try simple name if FQN didn't match
-                if table_fqn != table_name:
-                    logger.debug(
-                        f"FQN match failed, trying simple name: '{table_name}'"
-                    )
-                    owner_ref = get_owner_from_config(
-                        metadata=self.metadata,
-                        owner_config=self.source_config.ownerConfig,
-                        entity_type="table",
-                        entity_name=table_name,
-                        parent_owner=parent_owner,
-                    )
-                    if owner_ref:
-                        logger.debug(f"Found owner from simple name match: {owner_ref}")
-                        return owner_ref
-
-                logger.debug(f"No owner found for table '{table_name}'")
-
-            # Priority 2: Extract owner from source system (if includeOwners enabled)
             if self.source_config.includeOwners and hasattr(
                 self.inspector, "get_table_owner"
             ):

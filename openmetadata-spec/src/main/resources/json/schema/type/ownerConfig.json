@@ -16,61 +16,103 @@
       "type": "string"
     },
     "database": {
-      "description": "Owner for database entities. Can be a single owner or a map of database names to owners",
+      "description": "Owner for database entities. Can be a single owner or a map of database names to owner(s). Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
       "oneOf": [
         {
           "type": "string",
-          "description": "Single owner for all databases"
+          "description": "Single owner (user or team) for all databases"
         },
         {
           "type": "object",
-          "description": "Map of database names to their owners",
+          "description": "Map of database names to their owner(s)",
           "additionalProperties": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Single owner (user or team)"
+              },
+              {
+                "type": "array",
+                "description": "Multiple owners (must be all users OR single team, cannot mix)",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            ]
           },
           "examples": [{
             "sales_db": "sales-team",
-            "analytics_db": "analytics-team"
+            "analytics_db": "analytics-team",
+            "shared_db": ["alice", "bob", "charlie"]
           }]
         }
       ]
     },
     "databaseSchema": {
-      "description": "Owner for schema entities. Can be a single owner or a map of schema FQNs to owners",
+      "description": "Owner for schema entities. Can be a single owner or a map of schema FQNs to owner(s). Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
       "oneOf": [
         {
           "type": "string",
-          "description": "Single owner for all schemas"
+          "description": "Single owner (user or team) for all schemas"
         },
         {
           "type": "object",
-          "description": "Map of schema names/FQNs to their owners",
+          "description": "Map of schema names/FQNs to their owner(s)",
           "additionalProperties": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Single owner (user or team)"
+              },
+              {
+                "type": "array",
+                "description": "Multiple owners (must be all users OR single team, cannot mix)",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            ]
           },
           "examples": [{
             "public": "public-schema-team",
-            "analytics_db.analytics_schema": "analytics-team"
+            "analytics_db.analytics_schema": "analytics-team",
+            "shared_schema": ["alice", "bob"]
           }]
         }
       ]
     },
     "table": {
-      "description": "Owner for table entities. Can be a single owner or a map of table FQNs to owners",
+      "description": "Owner for table entities. Can be a single owner or a map of table FQNs to owner(s). Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
       "oneOf": [
         {
           "type": "string",
-          "description": "Single owner for all tables"
+          "description": "Single owner (user or team) for all tables"
         },
         {
           "type": "object",
-          "description": "Map of table names/FQNs to their owners",
+          "description": "Map of table names/FQNs to their owner(s)",
           "additionalProperties": {
-            "type": "string"
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Single owner (user or team)"
+              },
+              {
+                "type": "array",
+                "description": "Multiple owners (must be all users OR single team, cannot mix)",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            ]
           },
           "examples": [{
             "customers": "customer-data-team",
-            "sales_db.public.orders": "sales-team"
+            "sales_db.public.orders": "sales-team",
+            "shared_orders": ["alice", "bob", "charlie"]
           }]
         }
       ]
@@ -102,6 +144,15 @@
       "databaseSchema": {
         "public": "public-team",
         "analytics_db.reporting": "reporting-team"
+      },
+      "enableInheritance": true
+    },
+    {
+      "default": "data-team",
+      "table": {
+        "customers": "customer-team",
+        "orders": ["alice", "bob"],
+        "sales_db.public.shared_data": ["charlie", "david", "emma"]
       },
       "enableInheritance": true
     }

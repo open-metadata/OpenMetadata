@@ -1,0 +1,59 @@
+# ============================================
+# Test Case 01: Basic Configuration
+# ============================================
+# Test Scenario: Basic owner assignment at all levels
+# Expected Results:
+#   - finance_db database → "finance-team"
+#   - marketing_db database → "marketing-team"
+#   - accounting schema → "accounting-team"
+#   - revenue table → "revenue-team"
+#   - Other entities → "data-platform-team" (default)
+
+source:
+  type: postgres
+  serviceName: postgres-test-01-basic
+  serviceConnection:
+    config:
+      type: Postgres
+      username: admin
+      authType:
+        password: admin123
+      hostPort: localhost:5433
+      database: finance_db
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      
+      # Owner Configuration - Basic hierarchical setup
+      ownerConfig:
+        default: "data-platform-team"
+        
+        database:
+          "finance_db": "finance-team"
+          "marketing_db": "marketing-team"
+        
+        databaseSchema:
+          "finance_db.accounting": "accounting-team"
+        
+        table:
+          "finance_db.accounting.revenue": "revenue-team"
+        
+        enableInheritance: true
+      
+      includeTables: true
+      includeViews: true
+      markDeletedTables: true
+      useFqnForFiltering: true
+      overrideMetadata: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "YOUR_JWT_TOKEN_HERE"
