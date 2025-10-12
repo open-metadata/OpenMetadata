@@ -120,11 +120,25 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
         log_relative_path = f"dag_id={dag_id_safe}/run_id={last_dag_run.run_id}/task_id={task_id_safe}/attempt={try_number}.log"
         log_file_path = os.path.join(base_log_folder, log_relative_path)
 
-        if os.path.exists(log_file_path):
-            stat_info = os.stat(log_file_path)
+        # Security: Validate the resolved path stays within base_log_folder
+        # to prevent directory traversal attacks. This provides defense-in-depth
+        # even though dag_id and task_id are already sanitized at the route level.
+        log_file_path_real = os.path.realpath(log_file_path)
+        base_log_folder_real = os.path.realpath(base_log_folder)
+
+        if not log_file_path_real.startswith(base_log_folder_real + os.sep):
+            logger.warning(
+                f"Path traversal attempt detected: {log_file_path} is outside {base_log_folder}"
+            )
+            return ApiResponse.bad_request(
+                f"Invalid log path for DAG {dag_id} and Task {task_id}."
+            )
+
+        if os.path.exists(log_file_path_real):
+            stat_info = os.stat(log_file_path_real)
             file_mtime = int(stat_info.st_mtime)
 
-            _, total_chunks = get_log_file_info(log_file_path, file_mtime)
+            _, total_chunks = get_log_file_info(log_file_path_real, file_mtime)
 
             after_idx = int(after) if after is not None else 0
 
@@ -133,7 +147,7 @@ def last_dag_logs(dag_id: str, task_id: str, after: Optional[int] = None) -> Res
                     f"After index {after} is out of bounds. Total pagination is {total_chunks} for DAG {dag_id} and Task {task_id}."
                 )
 
-            chunk_content = read_log_chunk_from_file(log_file_path, after_idx)
+            chunk_content = read_log_chunk_from_file(log_file_path_real, after_idx)
 
             if chunk_content is not None:
                 return ApiResponse.success(

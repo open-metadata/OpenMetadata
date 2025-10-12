@@ -51,6 +51,13 @@ def get_fn(blueprint: Blueprint) -> Callable:
         dag_id = get_arg_dag_id()
         raw_task_id = get_request_arg(request, "task_id")
         task_id = sanitize_task_id(raw_task_id)
+
+        if task_id is None:
+            return ApiResponse.error(
+                status=ApiResponse.STATUS_BAD_REQUEST,
+                error="Invalid or missing task_id parameter",
+            )
+
         after = get_request_arg(request, "after", raise_missing=False)
 
         try:
