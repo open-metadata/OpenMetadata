@@ -63,7 +63,7 @@ class GrafanaTarget(BaseModel):
     rawSql: Optional[str] = None
     query: Optional[str] = None
     expr: Optional[str] = None  # For Prometheus queries
-    format: Optional[Any] = None
+    format: Optional[str] = None
     hide: Optional[bool] = False
 
 
