@@ -1244,9 +1244,11 @@ class KafkaconnectSource(PipelineServiceSource):
                                 f"Searching for table with pattern: {search_pattern} "
                                 f"(service={db_service_name}, schema={topic_info['database']}, table={topic_info['table']})"
                             )
-                            current_dataset_entity = self.metadata.get_by_name(
-                                entity=Table, fqn=search_pattern
-                                    entity_type=Table, fqn_search_string=search_pattern
+
+                            current_dataset_entity = (
+                                self.metadata.search_in_any_service(
+                                    entity_type=Table,
+                                    fqn_search_string=search_pattern,
                                 )
                             )
                             if current_dataset_entity:
@@ -1278,8 +1280,9 @@ class KafkaconnectSource(PipelineServiceSource):
                                 logger.info(
                                     f"Searching for table with pattern: {search_pattern}"
                                 )
-                                current_dataset_entity = self.metadata.get_by_name(
-                                    entity=Table, fqn=search_pattern
+
+                                current_dataset_entity = (
+                                    self.metadata.search_in_any_service(
                                         entity_type=Table,
                                         fqn_search_string=search_pattern,
                                     )
