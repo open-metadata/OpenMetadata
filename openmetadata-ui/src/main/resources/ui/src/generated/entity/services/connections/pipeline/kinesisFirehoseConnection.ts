@@ -16,6 +16,11 @@
 export interface KinesisFirehoseConnection {
     awsConfig: AWSCredentials;
     /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     */
+    messagingServiceName?: string;
+    /**
      * Regex exclude pipelines.
      */
     pipelineFilterPattern?:      FilterPattern;

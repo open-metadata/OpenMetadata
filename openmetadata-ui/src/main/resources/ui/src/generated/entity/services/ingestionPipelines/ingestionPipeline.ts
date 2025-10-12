@@ -4320,6 +4320,9 @@ export interface ConfigObject {
     /**
      * service type of the messaging source
      *
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
      * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
      * e.g. local_kafka
      */

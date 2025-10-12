@@ -159,6 +159,14 @@ export interface ConfigObject {
     packageConnection?: S3Connection | string;
     awsConfig?:         AWSCredentials;
     /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     */
+    messagingServiceName?: string;
+    /**
      * Airbyte API version.
      */
     apiVersion?: string;
@@ -291,11 +299,6 @@ export interface ConfigObject {
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
-    /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     */
-    messagingServiceName?: string;
     /**
      * ID of your DBT cloud account
      */
