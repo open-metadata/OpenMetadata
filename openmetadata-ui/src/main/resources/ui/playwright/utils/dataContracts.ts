@@ -13,9 +13,11 @@
 import { expect, Page } from '@playwright/test';
 import {
   DataContractSecuritySlaData,
+  DATA_CONTRACT_DETAILS,
   DATA_CONTRACT_SECURITY_CONSUMER_DETAILS,
 } from '../constant/dataContracts';
 import { SidebarItem } from '../constant/sidebar';
+import { TableClass } from '../support/entity/TableClass';
 import { getApiContext } from './common';
 import { sidebarClick } from './sidebar';
 
@@ -124,7 +126,9 @@ export const waitForDataContractExecution = async (
 export const saveSecurityAndSLADetails = async (
   page: Page,
   data: DataContractSecuritySlaData,
-  addAnotherConsumer?: boolean
+  tableData: TableClass,
+  addAnotherConsumer?: boolean,
+  isUpdate?: boolean
 ) => {
   await page.getByRole('tab', { name: 'Security' }).click();
 
@@ -132,7 +136,7 @@ export const saveSecurityAndSLADetails = async (
     .getByTestId('data-classification-input')
     .fill(data.dataClassificationName);
 
-  await expect(page.getByTestId('add-consumer-button')).toBeDisabled();
+  await expect(page.getByTestId('add-policy-button')).toBeDisabled();
 
   await page
     .getByTestId('access-policy-input-0')
@@ -146,8 +150,9 @@ export const saveSecurityAndSLADetails = async (
   // Add Column Information
   for (const filter of data.consumers.row_filters) {
     await page
-      .getByTestId(`columnName-input-0-${filter.index}`)
-      .fill(filter.column_name);
+      .locator(`#columnName-input-0-${filter.index}`)
+      .fill(tableData.columnsName[filter.index]);
+    await page.locator(`#columnName-input-0-${filter.index}`).press('Enter');
 
     for (const value of filter.values) {
       await page.locator(`#values-0-${filter.index}`).fill(value);
@@ -159,15 +164,15 @@ export const saveSecurityAndSLADetails = async (
     }
   }
 
-  await page.getByTestId('save-consumer-button').click();
+  await page.getByTestId('save-policy-button').click();
 
-  await expect(page.getByTestId('add-consumer-button')).not.toBeDisabled();
-  await expect(page.getByTestId('edit-consumer-0')).toBeVisible();
-  await expect(page.getByTestId('delete-consumer-0')).toBeVisible();
+  await expect(page.getByTestId('add-policy-button')).not.toBeDisabled();
+  await expect(page.getByTestId('edit-policy-0')).toBeVisible();
+  await expect(page.getByTestId('delete-policy-0')).toBeVisible();
   await expect(page.getByText(data.consumers.accessPolicyName)).toBeVisible();
 
   if (addAnotherConsumer) {
-    await page.getByTestId('add-consumer-button').click();
+    await page.getByTestId('add-policy-button').click();
 
     await page
       .getByTestId('access-policy-input-1')
@@ -181,8 +186,9 @@ export const saveSecurityAndSLADetails = async (
     // Add Column Information
     for (const filter of DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.row_filters) {
       await page
-        .getByTestId(`columnName-input-1-${filter.index}`)
-        .fill(filter.column_name);
+        .locator(`#columnName-input-1-${filter.index}`)
+        .fill(tableData.columnsName[1]);
+      await page.locator(`#columnName-input-1-${filter.index}`).press('Enter');
 
       for (const value of filter.values) {
         await page.locator(`#values-1-${filter.index}`).fill(value);
@@ -194,13 +200,13 @@ export const saveSecurityAndSLADetails = async (
       }
     }
 
-    await page.getByTestId('save-consumer-button').click();
+    await page.getByTestId('save-policy-button').click();
 
     await expect(
       page.getByText(DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.accessPolicyName)
     ).toBeVisible();
 
-    await page.getByTestId('edit-consumer-1').click();
+    await page.getByTestId('edit-policy-1').click();
 
     // identities value check
     await expect(
@@ -209,9 +215,9 @@ export const saveSecurityAndSLADetails = async (
       )
     ).toBeVisible();
 
-    await page.getByTestId('cancel-consumer-button').click();
+    await page.getByTestId('cancel-policy-button').click();
 
-    await page.getByTestId('delete-consumer-1').click();
+    await page.getByTestId('delete-policy-1').click();
 
     await expect(
       page.getByText(DATA_CONTRACT_SECURITY_CONSUMER_DETAILS.accessPolicyName)
@@ -240,6 +246,9 @@ export const saveSecurityAndSLADetails = async (
 
   await page.locator('.ant-picker-ok .ant-btn').click();
 
+  await page.locator('#timezone').fill(data.timezone);
+  await page.locator('#timezone').press('Enter');
+
   await page.getByTestId('refresh-frequency-unit-select').click();
   await page
     .locator(
@@ -257,6 +266,11 @@ export const saveSecurityAndSLADetails = async (
     .locator(`.retention-unit-select [title=${data.retentionUnitSelect}]`)
     .click();
 
+  await page
+    .locator('#columnName-select')
+    .fill(tableData.columnsName[isUpdate ? 1 : 0]);
+  await page.locator('#columnName-select').press('Enter');
+
   await expect(page.getByTestId('save-contract-btn')).not.toBeDisabled();
 
   const saveContractResponse = page.waitForResponse('/api/v1/dataContracts/*');
@@ -271,11 +285,13 @@ export const saveSecurityAndSLADetails = async (
 
 export const validateSecurityAndSLADetails = async (
   page: Page,
-  data: DataContractSecuritySlaData
+  data: DataContractSecuritySlaData,
+  table: TableClass,
+  isUpdate?: boolean
 ) => {
   await page.getByRole('tab', { name: 'Security' }).click();
 
-  await expect(page.getByTestId('add-consumer-button')).toBeDisabled();
+  await expect(page.getByTestId('add-policy-button')).toBeDisabled();
   await expect(page.getByTestId('data-classification-input')).toHaveValue(
     data.dataClassificationName
   );
@@ -292,8 +308,10 @@ export const validateSecurityAndSLADetails = async (
   //   Verify Consumer information
   for (const filter of data.consumers.row_filters) {
     await expect(
-      page.getByTestId(`columnName-input-0-${filter.index}`)
-    ).toHaveValue(filter.column_name);
+      page
+        .getByTestId(`columnName-input-0-${filter.index}`)
+        .getByText(table.columnsName[filter.index])
+    ).toBeVisible();
 
     await expect(page.getByText(filter.values.join(''))).toBeVisible();
   }
@@ -314,6 +332,14 @@ export const validateSecurityAndSLADetails = async (
 
   await expect(page.getByTestId('availability')).toHaveValue(data.availability);
 
+  await expect(page.getByText(data.timezone)).toBeVisible();
+
+  await expect(
+    page
+      .getByTestId('columnName-select')
+      .getByText(table.columnsName[isUpdate ? 1 : 0])
+  ).toBeVisible();
+
   await expect(page.getByTestId('refresh-frequency-unit-select')).toContainText(
     data.refreshFrequencyUnitSelect
   );
@@ -325,4 +351,20 @@ export const validateSecurityAndSLADetails = async (
   await expect(page.getByTestId('retention-unit-select')).toContainText(
     data.retentionUnitSelect
   );
+};
+
+export const performInitialStepForRules = async (page: Page) => {
+  await page.click('[data-testid="contract"]');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+  await expect(page.getByTestId('add-contract-button')).toBeVisible();
+
+  await page.getByTestId('add-contract-button').click();
+
+  await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+  await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 };

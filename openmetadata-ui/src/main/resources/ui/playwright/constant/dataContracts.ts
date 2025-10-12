@@ -74,6 +74,25 @@ export const DATA_CONTRACT_CONTAIN_SEMANTICS = {
   ],
 };
 
+export const DATA_CONTRACT_NOT_CONTAIN_SEMANTICS = {
+  name: `data_contract_container_semantic_${uuid()}`,
+  description: 'new data contract semantic contains description ',
+  rules: [
+    {
+      field: 'Tier',
+      operator: 'Not Contains',
+    },
+    {
+      field: 'Tags',
+      operator: 'Not Contains',
+    },
+    {
+      field: 'Glossary Term',
+      operator: 'Not Contains',
+    },
+  ],
+};
+
 export interface DataContractSecuritySlaData {
   consumers: {
     accessPolicyName: string;
@@ -92,6 +111,7 @@ export interface DataContractSecuritySlaData {
   refreshFrequencyUnitSelect: string;
   maxLatencyUnitSelect: string;
   retentionUnitSelect: string;
+  timezone: string;
 }
 
 export const DATA_CONTRACT_SECURITY_DETAILS_1: DataContractSecuritySlaData = {
@@ -115,7 +135,8 @@ export const DATA_CONTRACT_SECURITY_DETAILS_1: DataContractSecuritySlaData = {
   refreshFrequencyIntervalInput: '10',
   maxLatencyValueInput: '20',
   retentionPeriodInput: '30',
-  availability: '12:15 UTC',
+  availability: '12:15',
+  timezone: 'GMT+09:00 (Asia/Tokyo)',
   refreshFrequencyUnitSelect: 'Day',
   maxLatencyUnitSelect: 'Hour',
   retentionUnitSelect: 'Week',
@@ -142,7 +163,8 @@ export const DATA_CONTRACT_SECURITY_DETAILS_2: DataContractSecuritySlaData = {
   refreshFrequencyIntervalInput: '50',
   maxLatencyValueInput: '60',
   retentionPeriodInput: '70',
-  availability: '05:34 UTC',
+  availability: '05:34',
+  timezone: 'GMT+02:00 (Europe/Athens)',
   refreshFrequencyUnitSelect: 'Hour',
   maxLatencyUnitSelect: 'Minute',
   retentionUnitSelect: 'Year',
@@ -182,4 +204,15 @@ export const DATA_CONTRACT_SECURITY_CONSUMER_DETAILS = {
       values: ['column_value_3', 'column_value_4'],
     },
   ],
+};
+
+export const DATA_CONTRACT_SEMANTIC_OPERATIONS = {
+  is: 'Is',
+  is_not: 'Is Not',
+  any_in: 'Any in',
+  not_in: 'Not in',
+  is_set: 'Is Set',
+  is_not_set: 'Is Not Set',
+  contains: 'Contains',
+  not_contains: 'Not contains',
 };

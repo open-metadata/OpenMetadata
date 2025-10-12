@@ -38,6 +38,14 @@ const DomainRouter = withSuspenseFallback(
     () => import(/* webpackChunkName: "DomainRouter" */ './DomainRouter')
   )
 );
+const DataProductListPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        /* webpackChunkName: "DataProductListPage" */ '../DataProduct/DataProductListPage'
+      )
+  )
+);
 const SettingsRouter = withSuspenseFallback(
   React.lazy(
     () => import(/* webpackChunkName: "SettingsRouter" */ './SettingsRouter')
@@ -284,7 +292,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   // Get all plugin routes that should be in AUTHENTICATED_ROUTE position
   const pluginRoutes = useMemo(() => {
-    return plugins.flatMap((plugin) => {
+    return plugins?.flatMap((plugin) => {
       const routes = plugin.getRoutes?.() || [];
 
       // Filter routes that don't have position or have AUTHENTICATED_ROUTE position
@@ -723,6 +731,10 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
       <Route element={<SettingsRouter />} path="/settings/*" />
       <Route element={<DomainRouter />} path="/domain/*" />
+      <Route
+        element={<DataProductListPage pageTitle={t('label.data-product')} />}
+        path={ROUTES.DATA_PRODUCT}
+      />
       <Route element={<MetricListPage />} path={ROUTES.METRICS} />
       <Route
         element={

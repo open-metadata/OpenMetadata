@@ -222,6 +222,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
@@ -593,6 +594,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -660,6 +665,7 @@ export enum FileFormat {
     CSV = "csv",
     Gz = "gz",
     JSON = "json",
+    Mf4 = "MF4",
     Parquet = "parquet",
     Tsv = "tsv",
     Zip = "zip",
