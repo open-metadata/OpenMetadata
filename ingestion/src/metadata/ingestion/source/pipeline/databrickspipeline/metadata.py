@@ -209,38 +209,25 @@ class DatabrickspipelineSource(PipelineServiceSource):
 
     def get_tasks(self, pipeline_details: DataBrickPipelineDetails) -> List[Task]:
         try:
-            if not pipeline_details.job_id:
-                return []
+            if not pipeline_details.settings or not pipeline_details.settings.tasks:
+                return None
 
-            task_list = []
-            for run in self.client.get_job_runs(job_id=pipeline_details.job_id) or []:
-                run = DBRun(**run)
-                task_list.extend(
-                    [
-                        Task(
-                            name=str(task.name),
-                            taskType=(
-                                pipeline_details.settings.task_type
-                                if pipeline_details.settings
-                                else None
-                            ),
-                            sourceUrl=(
-                                SourceUrl(run.run_page_url)
-                                if run.run_page_url
-                                else None
-                            ),
-                            description=(
-                                Markdown(task.description) if task.description else None
-                            ),
-                            downstreamTasks=[
-                                depend_task.name
-                                for depend_task in task.depends_on or []
-                            ],
-                        )
-                        for task in run.tasks or []
-                    ]
+            job_url = f"https://{self.service_connection.hostPort}/#job/{pipeline_details.job_id}"
+
+            return [
+                Task(
+                    name=str(task.name),
+                    taskType=pipeline_details.settings.task_type,
+                    sourceUrl=SourceUrl(job_url),
+                    description=(
+                        Markdown(task.description) if task.description else None
+                    ),
+                    downstreamTasks=[
+                        depend_task.name for depend_task in task.depends_on or []
+                    ],
                 )
-            return task_list
+                for task in pipeline_details.settings.tasks
+            ]
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to get tasks list due to : {exc}")
