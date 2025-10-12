@@ -703,6 +703,7 @@ export enum PipelineServiceType {
     Flink = "Flink",
     GluePipeline = "GluePipeline",
     KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",

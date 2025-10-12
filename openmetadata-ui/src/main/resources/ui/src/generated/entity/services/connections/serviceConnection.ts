@@ -218,6 +218,8 @@ export interface ServiceConnectionClass {
  *
  * Glue Pipeline Connection Config
  *
+ * AWS Kinesis Firehose Pipeline Connection Config
+ *
  * Airbyte Metadata Database Connection Config
  *
  * Fivetran Metadata Database Connection Config
@@ -1610,6 +1612,9 @@ export interface ConfigObject {
     entity_type?: string;
     /**
      * service type of the messaging source
+     *
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
      *
      * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
      * e.g. local_kafka
@@ -4114,6 +4119,7 @@ export enum ConfigType {
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
+    KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
     MariaDB = "MariaDB",
