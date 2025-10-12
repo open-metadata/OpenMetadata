@@ -633,12 +633,8 @@ class DatabaseServiceSource(
             EntityReferenceList with owner or None
         """
         try:
-            parent_owner = None
-            database_entity = getattr(self.context.get(), "database_entity", None)
-            if database_entity:
-                db_owners = database_entity.owners
-                if db_owners and db_owners.root:
-                    parent_owner = db_owners.root[0].name
+            # Read database_owner directly from context
+            parent_owner = getattr(self.context.get(), "database_owner", None)
 
             schema_fqn = f"{self.context.get().database}.{schema_name}"
 
@@ -678,14 +674,10 @@ class DatabaseServiceSource(
             EntityReferenceList with owner or None
         """
         try:
-            parent_owner = None
-            database_schema_entity = getattr(
-                self.context.get(), "database_schema_entity", None
-            )
-            if database_schema_entity:
-                schema_owners = database_schema_entity.owners
-                if schema_owners and schema_owners.root:
-                    parent_owner = schema_owners.root[0].name
+            # Prioritize schema_owner, fallback to database_owner for inheritance
+            parent_owner = getattr(self.context.get(), "schema_owner", None)
+            if not parent_owner:
+                parent_owner = getattr(self.context.get(), "database_owner", None)
 
             table_fqn = f"{self.context.get().database}.{self.context.get().database_schema}.{table_name}"
 

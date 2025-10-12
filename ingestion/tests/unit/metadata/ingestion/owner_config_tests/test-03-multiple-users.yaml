@@ -1,17 +1,17 @@
 # ============================================
-# Test Case 01: Basic Configuration
+# Test Case 03: Multiple Users Valid
 # ============================================
-# Test Scenario: Basic owner assignment at all levels
+# Test Scenario: Test multiple users as owners (valid scenario)
 # Expected Results:
-#   - finance_db database → "finance-team"
-#   - marketing_db database → "marketing-team"
-#   - accounting schema → "accounting-team"
-#   - revenue table → "revenue-team"
-#   - Other entities → "data-platform-team" (default)
+#   - finance_db → 2 owners (alice, bob) - both must be type="user"
+#   - finance_db.accounting.revenue → 3 owners (charlie, david, emma) - all type="user"
+#   - finance_db.accounting.expenses → 1 owner (frank) - type="user"
+#
+# Note: This test validates that multiple USERS can be assigned as owners
 
 source:
   type: postgres
-  serviceName: postgres-test-01-basic
+  serviceName: postgres-test-03-multiple-users
   serviceConnection:
     config:
       type: Postgres
@@ -24,19 +24,16 @@ source:
     config:
       type: DatabaseMetadata
       
-      # Owner Configuration - Basic hierarchical setup
+      # Owner Configuration - Multiple users (valid)
       ownerConfig:
         default: "data-platform-team"
         
         database:
-          "finance_db": "finance-team"
-          "marketing_db": "marketing-team"
-        
-        databaseSchema:
-          "finance_db.accounting": "accounting-team"
+          "finance_db": ["alice", "bob"]  # 2 users
         
         table:
-          "finance_db.accounting.revenue": "revenue-team"
+          "finance_db.accounting.revenue": ["charlie", "david", "emma"]  # 3 users
+          "finance_db.accounting.expenses": ["frank"]  # 1 user in array (should work)
         
         enableInheritance: true
       

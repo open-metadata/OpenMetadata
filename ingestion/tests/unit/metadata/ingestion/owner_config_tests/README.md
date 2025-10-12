@@ -11,8 +11,7 @@ The Owner Configuration feature allows you to automatically assign owners to met
 3. [Resolution Priority](#resolution-priority)
 4. [Feature Details](#feature-details)
 5. [Test Suite](#test-suite)
-6. [Implementation Details](#implementation-details)
-7. [Examples](#examples)
+6. [Examples](#examples)
 
 ---
 
@@ -301,12 +300,11 @@ This test suite validates all owner configuration features with 8 focused test s
 | 02 | FQN Matching | FQN exact match vs simple name fallback |
 | 03 | Multiple Users | Multiple users as owners (valid) |
 | 04 | Validation Errors | Owner type constraint violations |
-| 05 | Inheritance Enabled | Inheritance mechanism ⭐ |
+| 05 | Inheritance Enabled | Inheritance mechanism |
 | 06 | Inheritance Disabled | Disabled inheritance behavior |
 | 07 | Partial Success | Resilience to missing owners |
 | 08 | Complex Mixed | All features combined |
 
-⭐ = Critical test for bug verification
 
 ### Quick Start
 
@@ -314,7 +312,7 @@ For step-by-step setup and running tests, see **[QUICK-START.md](QUICK-START.md)
 
 **TL;DR**: Use the provided setup script to create all test entities:
 ```bash
-cd ingestion/tests/integration/owner_config_tests
+cd ingestion/tests/unit/metadata/ingestion/owner_config_tests
 export OPENMETADATA_JWT_TOKEN="your_token"
 ./setup-test-entities.sh
 ```
@@ -332,113 +330,6 @@ export OPENMETADATA_JWT_TOKEN="your_token"
 **Total**: 2 databases, 4 schemas, 11 tables, 2 views
 
 ---
-
-## Implementation Details
-
-### Code Location
-
-**Core Logic**: `ingestion/src/metadata/utils/owner_utils.py`
-
-#### Key Classes and Methods
-
-**`OwnerResolver` class**:
-- `__init__(metadata, owner_config)` - Initialize with OpenMetadata client and config
-- `resolve_owner(entity_type, entity_name, parent_owner)` - Main resolution logic
-- `_get_owner_refs(owner_names)` - Owner lookup and validation
-
-#### Resolution Logic Flow
-
-```python
-def resolve_owner(entity_type, entity_name, parent_owner):
-    # 1. Check specific configuration (FQN match)
-    if entity_name in level_config:
-        return get_owner_refs(level_config[entity_name])
-    
-    # 2. Check specific configuration (simple name match)
-    simple_name = entity_name.split(".")[-1]
-    if simple_name in level_config:
-        logger.info("FQN match failed, using simple name")
-        return get_owner_refs(level_config[simple_name])
-    
-    # 3. Check level string configuration
-    if isinstance(level_config, str):
-        return get_owner_refs(level_config)
-    
-    # 4. Try inheritance
-    if enable_inheritance and parent_owner:
-        logger.debug("Using inherited owner")
-        return get_owner_refs(parent_owner)
-    
-    # 5. Use default
-    if default_owner:
-        logger.debug("Using default owner")
-        return get_owner_refs(default_owner)
-    
-    return None
-```
-
-#### Validation Logic
-
-```python
-def _get_owner_refs(owner_names):
-    all_owners = []
-    owner_types = set()  # Track 'user' or 'team'
-    
-    # Collect all owners and their types
-    for name in owner_names:
-        owner = lookup_owner(name)
-        all_owners.append(owner)
-        owner_types.add(owner.type)
-    
-    # VALIDATION 1: Cannot mix users and teams
-    if len(owner_types) > 1:
-        logger.warning("Cannot mix users and teams")
-        return None
-    
-    # VALIDATION 2: Only one team allowed
-    if "team" in owner_types and len(all_owners) > 1:
-        logger.warning("Only ONE team allowed, using first")
-        return [all_owners[0]]
-    
-    return all_owners
-```
-
-### JSON Schema Location
-
-**Schema Definition**: `openmetadata-spec/src/main/resources/json/schema/type/ownerConfig.json`
-
-Key properties:
-- `default` (string): Fallback owner
-- `database`, `databaseSchema`, `table` (string | object): Level configurations
-- `enableInheritance` (boolean): Enable/disable inheritance
-
-### Logging Levels
-
-**DEBUG**: Normal operation details
-```
-Resolving owner for table 'revenue'
-Found owner: alice (type: user)
-Using inherited owner: finance-team
-```
-
-**INFO**: Notable events (simple name fallback)
-```
-FQN match failed for 'finance_db.treasury', matched using simple name 'treasury'
-```
-
-**WARNING**: Validation failures, missing owners
-```
-VALIDATION ERROR: Only ONE team allowed as owner, but got 3 teams
-Could not find owner: nonexistent-user-1
-```
-
-**ERROR**: Critical failures
-```
-Error resolving owner for table 'revenue': <exception details>
-```
-
----
-
 ## Examples
 
 ### Example 1: Simple Default Owner

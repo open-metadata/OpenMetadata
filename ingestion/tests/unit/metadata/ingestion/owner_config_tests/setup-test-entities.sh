@@ -140,25 +140,26 @@ echo ""
 echo "Creating test teams..."
 echo "----------------------------------------"
 
-declare -A teams=(
-    ["data-platform-team"]="Data Platform|Manages data platform infrastructure"
-    ["finance-team"]="Finance|Finance department team"
-    ["marketing-team"]="Marketing|Marketing department team"
-    ["accounting-team"]="Accounting|Accounting team within finance"
-    ["treasury-team"]="Treasury|Treasury team within finance"
-    ["expense-team"]="Expense|Expense management team"
-    ["revenue-team"]="Revenue|Revenue management team"
-    ["investment-team"]="Investment|Investment management team"
-    ["treasury-ops-team"]="Treasury Operations|Treasury operations team"
-    ["audit-team"]="Audit|Audit and compliance team"
-    ["compliance-team"]="Compliance|Compliance team"
+# Team data: name|display_name|description
+teams=(
+    "data-platform-team|Data Platform|Manages data platform infrastructure"
+    "finance-team|Finance|Finance department team"
+    "marketing-team|Marketing|Marketing department team"
+    "accounting-team|Accounting|Accounting team within finance"
+    "treasury-team|Treasury|Treasury team within finance"
+    "expense-team|Expense|Expense management team"
+    "revenue-team|Revenue|Revenue management team"
+    "investment-team|Investment|Investment management team"
+    "treasury-ops-team|Treasury Operations|Treasury operations team"
+    "audit-team|Audit|Audit and compliance team"
+    "compliance-team|Compliance|Compliance team"
 )
 
 team_success=0
 team_total=${#teams[@]}
 
-for team_name in "${!teams[@]}"; do
-    IFS='|' read -r display_name description <<< "${teams[$team_name]}"
+for team_data in "${teams[@]}"; do
+    IFS='|' read -r team_name display_name description <<< "$team_data"
     if create_team "$team_name" "$display_name" "$description"; then
         ((team_success++))
     fi
@@ -181,7 +182,7 @@ if [ $user_success -eq $user_total ] && [ $team_success -eq $team_total ]; then
     echo ""
     echo "Next steps:"
     echo "  1. Update JWT tokens in test YAML files"
-    echo "  2. Run tests: cd /workspace/ingestion && metadata ingest -c tests/integration/owner_config_tests/test-05-inheritance-enabled.yaml"
+    echo "  2. Run tests: cd /workspace/ingestion && metadata ingest -c tests/unit/metadata/ingestion/owner_config_tests/test-05-inheritance-enabled.yaml"
     exit 0
 else
     echo ""

@@ -225,6 +225,14 @@ class CommonDbSourceService(
             tags=self.get_database_tag_labels(database_name=database_name),
             owners=self.get_database_owner_ref(database_name),
         )
+        # Store database owner in context for schema/table inheritance
+        database_owner_ref = self.get_database_owner_ref(database_name)
+        if database_owner_ref and database_owner_ref.root:
+            database_owner_name = database_owner_ref.root[0].name
+            self.context.get().upsert("database_owner", database_owner_name)
+        else:
+            # Clear context to avoid residual owner from previous database
+            self.context.get().upsert("database_owner", None)
 
         yield Either(right=database_request)
         self.register_record_database_request(database_request=database_request)
@@ -281,6 +289,14 @@ class CommonDbSourceService(
             tags=self.get_schema_tag_labels(schema_name=schema_name),
             owners=self.get_schema_owner_ref(schema_name),
         )
+        # Store schema owner in context for table inheritance
+        schema_owner_ref = self.get_schema_owner_ref(schema_name)
+        if schema_owner_ref and schema_owner_ref.root:
+            schema_owner_name = schema_owner_ref.root[0].name
+            self.context.get().upsert("schema_owner", schema_owner_name)
+        else:
+            # Clear schema_owner if not present, tables will inherit from database_owner
+            self.context.get().upsert("schema_owner", None)
 
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
