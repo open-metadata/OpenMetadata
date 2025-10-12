@@ -753,6 +753,8 @@ export interface RequestConnection {
  *
  * Glue Pipeline Connection Config
  *
+ * AWS Kinesis Firehose Pipeline Connection Config
+ *
  * Airbyte Metadata Database Connection Config
  *
  * Fivetran Metadata Database Connection Config
@@ -1985,6 +1987,16 @@ export interface ConfigObject {
      */
     packageConnection?: S3Connection | string;
     /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     *
+     * service type of the messaging source
+     */
+    messagingServiceName?: string[] | string;
+    /**
      * Fivetran API Secret.
      */
     apiSecret?: string;
@@ -2042,13 +2054,6 @@ export interface ConfigObject {
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
-    /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     *
-     * service type of the messaging source
-     */
-    messagingServiceName?: string[] | string;
     /**
      * ID of your DBT cloud account
      */
@@ -4324,6 +4329,7 @@ export enum ConfigType {
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
+    KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
     MariaDB = "MariaDB",
