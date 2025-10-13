@@ -649,7 +649,7 @@ class DatabaseServiceSource(
                     entity_name=schema_fqn,
                     parent_owner=parent_owner,
                 )
-                if owner_ref:
+                if owner_ref and owner_ref.root:
                     return owner_ref
 
         except Exception as exc:
@@ -692,7 +692,7 @@ class DatabaseServiceSource(
                     entity_name=table_fqn,
                     parent_owner=parent_owner,
                 )
-                if owner_ref:
+                if owner_ref and owner_ref.root:
                     return owner_ref
 
             if self.source_config.includeOwners and hasattr(

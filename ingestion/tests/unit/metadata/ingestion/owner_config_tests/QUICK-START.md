@@ -17,7 +17,11 @@ This guide helps you quickly set up and run the owner configuration tests.
 ## Step 1: Start PostgreSQL Test Database
 
 ```bash
-cd /workspace/ingestion/tests/unit/metadata/ingestion/owner_config_tests
+# Navigate to OpenMetadata root directory first
+cd ~/path/to/OpenMetadata
+
+# Then navigate to test directory
+cd ingestion/tests/unit/metadata/ingestion/owner_config_tests
 docker-compose up -d
 ```
 
@@ -42,18 +46,12 @@ docker ps | grep postgres
 ### Option A: Using Setup Script (Easiest ⭐)
 
 ```bash
-cd /workspace/ingestion/tests/unit/metadata/ingestion/owner_config_tests
-
-# Method 1: Set environment variable
+# From OpenMetadata root directory
+cd ingestion/tests/unit/metadata/ingestion/owner_config_tests
+# Set your JWT token
 export OPENMETADATA_JWT_TOKEN="your_jwt_token_here"
 ./setup-test-entities.sh
-
-# Method 2: Pass as argument
-./setup-test-entities.sh "your_jwt_token_here"
 ```
-
-**Note**: Script is compatible with bash 3.2+ (macOS default version), no need to upgrade bash or install other shells.
-
 The script will automatically create:
 - **8 users**: alice, bob, charlie, david, emma, frank, marketing-user-1, marketing-user-2
 - **11 teams**: 
@@ -113,60 +111,12 @@ Users:  8/8
 Teams:  11/11
 
 ✅ All entities created successfully!
-
-Next steps:
-  1. Update JWT tokens in test YAML files
-  2. Run tests: cd /workspace/ingestion && metadata ingest -c tests/unit/metadata/ingestion/owner_config_tests/test-05-inheritance-enabled.yaml
 ```
-
-### Option B: Manual API Calls
-
-<details>
-<summary>Click to expand manual API commands</summary>
-
-```bash
-# Set your JWT token
-JWT_TOKEN="your_jwt_token_here"
-API_URL="http://localhost:8585/api/v1"
-
-# Create users
-for user in alice bob charlie david emma frank marketing-user-1 marketing-user-2; do
-  curl -X POST "${API_URL}/users" \
-    -H "Authorization: Bearer ${JWT_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\": \"${user}\", \"email\": \"${user}@example.com\"}"
-done
-
-# Create teams
-for team in data-platform-team finance-team marketing-team accounting-team treasury-team expense-team revenue-team investment-team treasury-ops-team audit-team compliance-team; do
-  curl -X POST "${API_URL}/teams" \
-    -H "Authorization: Bearer ${JWT_TOKEN}" \
-    -H "Content-Type: application/json" \
-    -d "{\"name\": \"${team}\", \"teamType\": \"Group\"}"
-done
-```
-</details>
-
-### Option C: Using OpenMetadata UI
+### Option B: Using OpenMetadata UI
 
 If you prefer UI, go to `http://localhost:8585`:
 1. **Settings → Users** - Create 8 users listed above
 2. **Settings → Teams** - Create 11 teams listed above
-
-### Verify Creation
-
-```bash
-API_URL="http://localhost:8585/api/v1"
-JWT_TOKEN="your_jwt_token_here"
-
-# List all users
-curl -X GET "${API_URL}/users?limit=20" \
-  -H "Authorization: Bearer ${JWT_TOKEN}" | jq '.data[] | {name: .name, email: .email}'
-
-# List all teams
-curl -X GET "${API_URL}/teams?limit=20" \
-  -H "Authorization: Bearer ${JWT_TOKEN}" | jq '.data[] | {name: .name, teamType: .teamType}'
-```
 
 ---
 ## Step 4: Update Test Configurations
@@ -174,19 +124,18 @@ curl -X GET "${API_URL}/teams?limit=20" \
 Edit the JWT token in test files:
 
 ```bash
-cd /workspace/ingestion/tests/unit/metadata/ingestion/owner_config_tests
+# From OpenMetadata root directory
+cd ingestion/tests/unit/metadata/ingestion/owner_config_tests
 
-# Replace JWT_TOKEN in all test files
+# Replace JWT_TOKEN in all test files (macOS)
 for test in test-*.yaml; do
   sed -i '' 's/YOUR_JWT_TOKEN_HERE/your_actual_jwt_token_here/g' "$test"
 done
 ```
-
 Or manually edit each file and replace:
 ```yaml
 jwtToken: "YOUR_JWT_TOKEN_HERE"
 ```
-
 ---
 
 ## Step 5: Prepare Environment
@@ -196,8 +145,8 @@ Before running tests, set up your Python environment:
 ### Activate Virtual Environment
 
 ```bash
-# Navigate to OpenMetadata workspace root
-cd ~/workspace/OpenMetadata
+# Navigate to OpenMetadata root directory
+cd ~/path/to/OpenMetadata
 
 # Activate the virtual environment
 source env/bin/activate
@@ -220,17 +169,16 @@ pip install -e '.[postgres]'
 
 ## Step 6: Run Tests
 
-**Important**: All commands assume you're in the workspace root directory (`/workspace/OpenMetadata`).
+**Important**: All commands assume you're in the **OpenMetadata root directory**.
 
 ### Run a Single Test
 
 Here's how to run one test to verify everything is working:
 
 ```bash
-# Run Test 05 (Inheritance test - most critical)
+# From OpenMetadata root directory, run Test 05 (Inheritance test)
 metadata ingest -c ingestion/tests/unit/metadata/ingestion/owner_config_tests/test-05-inheritance-enabled.yaml
 ```
-
 **What to look for:**
 - ✅ Should complete without errors
 - ✅ Child entities inherit parent owner (NOT default owner)
@@ -238,6 +186,7 @@ metadata ingest -c ingestion/tests/unit/metadata/ingestion/owner_config_tests/te
 
 **Run with verbose logging** (for debugging):
 ```bash
+# From OpenMetadata root directory
 metadata ingest -c ingestion/tests/unit/metadata/ingestion/owner_config_tests/test-05-inheritance-enabled.yaml --log-level DEBUG
 ```
 
@@ -252,8 +201,8 @@ Use the provided script to run all 8 tests automatically:
 # cd /workspace/OpenMetadata
 # source env/bin/activate
 
-# Run the test script
-cd ./ingestion/tests/unit/metadata/ingestion/owner_config_tests
+# Navigate to test directory and run the script
+cd ingestion/tests/unit/metadata/ingestion/owner_config_tests
 ./run-all-tests.sh
 ```
 
@@ -353,8 +302,8 @@ Please check the results on the OpenMetaData web interface to see if it is consi
 When done testing:
 
 ```bash
-# Stop and remove PostgreSQL
-cd /workspace/ingestion/tests/unit/metadata/ingestion/owner_config_tests
+# Stop and remove PostgreSQL (from OpenMetadata root directory)
+cd ingestion/tests/unit/metadata/ingestion/owner_config_tests
 docker-compose down -v
 
 # Remove test entities from OpenMetadata (optional)

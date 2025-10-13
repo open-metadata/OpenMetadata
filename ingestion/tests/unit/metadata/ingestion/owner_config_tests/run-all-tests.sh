@@ -24,9 +24,9 @@ if [[ ! -f "$SCRIPT_DIR/setup-test-entities.sh" ]]; then
     exit 1
 fi
 
-# Navigate to workspace root (6 levels up from owner_config_tests)
-# owner_config_tests -> ingestion -> metadata -> unit -> tests -> ingestion -> OpenMetadata
-cd "$SCRIPT_DIR/../../../../.."
+# Navigate to OpenMetadata root (6 levels up from owner_config_tests)
+# Path: owner_config_tests -> ingestion -> metadata -> unit -> tests -> ingestion -> OpenMetadata
+cd "$SCRIPT_DIR/../../../../../.."
 WORKSPACE_ROOT="$(pwd)"
 
 echo "=========================================="
