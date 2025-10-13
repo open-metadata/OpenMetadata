@@ -154,16 +154,15 @@ source env/bin/activate
 
 ### Install Dependencies
 
-If `metadata` command is not found:
-
 ```bash
+cd ~/path/to/OpenMetadata
+make install-dev
+make generate
+
 cd ~/workspace/OpenMetadata/ingestion
 
 # Install OpenMetadata ingestion package
-pip install -e .
-
-# Or install with specific connectors
-pip install -e '.[postgres]'
+pip install -e . --force-reinstall --no-deps
 ```
 ---
 
@@ -183,13 +182,6 @@ metadata ingest -c ingestion/tests/unit/metadata/ingestion/owner_config_tests/te
 - ✅ Should complete without errors
 - ✅ Child entities inherit parent owner (NOT default owner)
 - ✅ Check OpenMetadata UI: `finance_db.accounting.revenue` should have owner "finance-team"
-
-**Run with verbose logging** (for debugging):
-```bash
-# From OpenMetadata root directory
-metadata ingest -c ingestion/tests/unit/metadata/ingestion/owner_config_tests/test-05-inheritance-enabled.yaml --log-level DEBUG
-```
-
 ---
 
 ### Run All Tests (Using Script)
@@ -236,15 +228,12 @@ Failed: 0
 **Test Files (in order):**
 1. test-01-basic-owner-config.yaml - Basic configuration
 2. test-02-fqn-matching.yaml - FQN matching
-3. test-03-multiple-users.yaml - Multiple users ⭐
-4. test-04-validation-errors.yaml - Validation errors ⭐
-5. test-05-inheritance-enabled.yaml - Inheritance enabled ⭐
-6. test-06-inheritance-disabled.yaml - Inheritance disabled ⭐
+3. test-03-multiple-users.yaml - Multiple users 
+4. test-04-validation-errors.yaml - Validation errors 
+5. test-05-inheritance-enabled.yaml - Inheritance enabled 
+6. test-06-inheritance-disabled.yaml - Inheritance disabled 
 7. test-07-partial-success.yaml - Partial success
 8. test-08-integration-test.yaml - Integration test
-
-**Critical tests** (⭐) verify the two main bug fixes.
-
 ---
 
 ## Step 7: Verify Results
