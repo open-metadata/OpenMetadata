@@ -101,7 +101,7 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.MLMODEL]: PageType.MlModel,
   [EntityType.DASHBOARD_DATA_MODEL]: PageType.DashboardDataModel,
   [EntityType.DOMAIN]: PageType.Domain,
-  [EntityType.DATA_PRODUCT]: PageType.Domain,
+  [EntityType.DATA_PRODUCT]: PageType.DataProduct,
   [EntityType.GLOSSARY]: PageType.Glossary,
   [EntityType.GLOSSARY_TERM]: PageType.GlossaryTerm,
   [EntityType.CONTAINER]: PageType.Container,

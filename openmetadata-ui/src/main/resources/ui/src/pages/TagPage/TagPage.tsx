@@ -493,15 +493,15 @@ const TagPage = () => {
             </Col>
             <Col span={6}>
               <div className="d-flex flex-column gap-5">
-                 <DomainLabelV2
-                    multiple
-                    showDomainHeading
-                    hasPermission={editDomainPermission}
-                  />
-                  <OwnerLabelV2
-                    dataTestId="tag-owner-name"
-                    hasPermission={editOwnerPermission}
-                  />
+                <DomainLabelV2
+                  multiple
+                  showDomainHeading
+                  hasPermission={editDomainPermission}
+                />
+                <OwnerLabelV2
+                  dataTestId="tag-owner-name"
+                  hasPermission={editOwnerPermission}
+                />
               </div>
             </Col>
           </Row>

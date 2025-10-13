@@ -113,7 +113,7 @@ const DataProductsDetailsPage = ({
   const [showActions, setShowActions] = useState(false);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
   const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
-    PageType.Domain
+    PageType.DataProduct
   );
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
@@ -450,7 +450,7 @@ const DataProductsDetailsPage = ({
       checkIfExpandViewSupported(
         tabs[0],
         activeTab as EntityTabs,
-        PageType.Domain
+        PageType.DataProduct
       ),
     [tabs[0], activeTab]
   );

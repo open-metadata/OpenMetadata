@@ -182,7 +182,7 @@ class DataProductClassBase {
     }
   }
 
-  public getDummyData(): Partial<DataProduct> {
+  public getDummyData(): DataProduct {
     return {
       id: 'dummy-data-product',
       name: 'Sample Data Product',
@@ -194,7 +194,8 @@ class DataProductClassBase {
       updatedBy: 'admin',
       owners: [],
       domains: [],
-    };
+      href: '',
+    } as DataProduct;
   }
 }
 
