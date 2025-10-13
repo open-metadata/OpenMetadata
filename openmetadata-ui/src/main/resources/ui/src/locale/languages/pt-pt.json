@@ -2123,6 +2123,7 @@
     "enter-your-registered-email": "Insira seu -mail registado para receber o link de redefinição de senha",
     "entity-already-exists": "{{entity}} já existe.",
     "entity-are-not-available": "{{entity}} não estão disponíveis",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "Personalize a página de detalhes do {{entity}} com widgets e separadores mais úteis para o seu caso de utilização.",
     "entity-delimiters-not-allowed": "Nomes com delimitadores não são permitidos",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",

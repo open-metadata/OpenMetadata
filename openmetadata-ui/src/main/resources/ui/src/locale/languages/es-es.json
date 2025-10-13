@@ -2123,6 +2123,7 @@
     "enter-your-registered-email": "Ingrese su correo electrónico registrado para recibir el enlace de restablecimiento de contraseña",
     "entity-already-exists": "{{entity}} ya existe.",
     "entity-are-not-available": "{{entity}} no están disponibles",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "Personalice la página de detalles de {{entity}} con widgets y pestañas que sean más útiles para su caso de uso.",
     "entity-delimiters-not-allowed": "No se permiten nombres con delimitadores",
     "entity-details-updated": "Detalles de {{entityType}} {{fqn}} actualizados exitosamente",

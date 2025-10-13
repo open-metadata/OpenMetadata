@@ -2123,6 +2123,7 @@
     "enter-your-registered-email": "Şifre sıfırlama bağlantısı almak için kayıtlı e-postanızı girin",
     "entity-already-exists": "{{entity}} zaten mevcut.",
     "entity-are-not-available": "{{entity}} mevcut değil",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "{{entity}} detay sayfasını, kullanım durumunuz için daha faydalı olan widget ve sekme seçeneklerinizle özelleştirin.",
     "entity-delimiters-not-allowed": "Sınırlayıcı içeren adlara izin verilmez",
     "entity-details-updated": "{{entityType}} {{fqn}} detayları başarıyla güncellendi",

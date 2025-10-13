@@ -2123,6 +2123,7 @@
     "enter-your-registered-email": "輸入您註冊的電子郵件以取得密碼重設連結。",
     "entity-already-exists": "{{entity}} 已存在。",
     "entity-are-not-available": "{{entity}} 不可用",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "根據您的使用案例，使用您選擇的小工具和分頁自訂 {{entity}} 詳細頁面，使其更有用。",
     "entity-delimiters-not-allowed": "不允許使用帶有分隔符號的名稱",
     "entity-details-updated": "{{entityType}} {{fqn}} 詳細資料更新成功",

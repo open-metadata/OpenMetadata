@@ -11,29 +11,18 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Paper,
-  TableContainer,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
-import { AxiosError } from 'axios';
 import { useSnackbar } from 'notistack';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ERROR_MESSAGE } from '../../constants/constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
+import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
-import { addDomains } from '../../rest/domainAPI';
-import { getIsErrorMatch } from '../../utils/CommonUtils';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-} from '../../utils/NotistackUtils';
+import { addDomains, patchDomains } from '../../rest/domainAPI';
+import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useDomainFilters } from '../common/atoms/domain/ui/useDomainFilters';
@@ -95,44 +84,21 @@ const DomainListPage = () => {
         onSubmit={async (formData: CreateDomain | CreateDataProduct) => {
           setIsLoading(true);
           try {
-            await addDomains(formData as CreateDomain);
-            showNotistackSuccess(
+            await createEntityWithCoverImage({
+              formData: formData as CreateDomain,
+              entityType: EntityType.DOMAIN,
+              entityLabel: t('label.domain'),
+              entityPluralLabel: 'domains',
+              createEntity: addDomains,
+              patchEntity: patchDomains,
+              onSuccess: () => {
+                closeDrawer();
+                domainListing.refetch();
+              },
               enqueueSnackbar,
-              <Typography sx={{ fontWeight: 600 }} variant="body2">
-                {t('server.create-entity-success', {
-                  entity: t('label.domain'),
-                })}
-              </Typography>,
-              closeSnackbar
-            );
-            // Close drawer only on successful creation
-            closeDrawer();
-            domainListing.refetch();
-          } catch (error) {
-            showNotistackError(
-              enqueueSnackbar,
-              getIsErrorMatch(
-                error as AxiosError,
-                ERROR_MESSAGE.alreadyExist
-              ) ? (
-                <Typography sx={{ fontWeight: 600 }} variant="body2">
-                  {t('server.entity-already-exist', {
-                    entity: t('label.domain'),
-                    entityPlural: 'domains',
-                    name: formData.name,
-                  })}
-                </Typography>
-              ) : (
-                (error as AxiosError)
-              ),
-              t('server.add-entity-error', {
-                entity: t('label.domain').toLowerCase(),
-              }),
-              { vertical: 'top', horizontal: 'center' },
-              closeSnackbar
-            );
-
-            throw error; // Re-throw to reject the promise
+              closeSnackbar,
+              t,
+            });
           } finally {
             setIsLoading(false);
           }

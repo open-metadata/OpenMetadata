@@ -2123,6 +2123,7 @@
     "enter-your-registered-email": "ایمیل ثبت‌شده خود را وارد کنید تا لینک بازنشانی رمز عبور را دریافت کنید.",
     "entity-already-exists": "{{entity}} از قبل موجود است.",
     "entity-are-not-available": "{{entity}} در دسترس نیست.",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "صفحه جزئیات {{entity}} را با انتخاب ویجت‌ها و تب‌هایی که برای مورد استفاده شما مفیدتر است، سفارشی کنید.",
     "entity-delimiters-not-allowed": "نام با جداکننده‌ها مجاز نیست.",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",

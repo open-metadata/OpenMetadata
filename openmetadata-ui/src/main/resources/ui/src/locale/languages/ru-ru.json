@@ -2123,6 +2123,7 @@
     "enter-your-registered-email": "Введите e-mail для сброса пароля",
     "entity-already-exists": "{{entity}} уже существует.",
     "entity-are-not-available": "{{entity}} недоступно",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "Настройте страницу объекта «{{entity}}» с помощью виджетов и вкладок",
     "entity-delimiters-not-allowed": "Имя с разделителями не допускается",
     "entity-details-updated": "Детали объекта «{{entityType}}» {{fqn}} обновлены",

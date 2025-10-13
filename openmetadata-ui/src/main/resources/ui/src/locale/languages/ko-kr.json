@@ -2123,6 +2123,7 @@
     "enter-your-registered-email": "비밀번호 재설정 링크를 받을 등록된 이메일을 입력하세요",
     "entity-already-exists": "{{entity}}이(가) 이미 존재합니다.",
     "entity-are-not-available": "{{entity}}을(를) 사용할 수 없습니다",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "위젯과 탭을 선택해 {{entity}} 상세 페이지를 사용 사례에 맞게 맞춤 설정하세요.",
     "entity-delimiters-not-allowed": "구분 기호가 있는 이름은 허용되지 않습니다",
     "entity-details-updated": "{{entityType}} {{fqn}} 세부 정보가 성공적으로 업데이트되었습니다",

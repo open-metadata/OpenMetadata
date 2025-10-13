@@ -2123,6 +2123,7 @@
     "enter-your-registered-email": "パスワードリセットリンクを受け取るには、登録済みのメールアドレスを入力してください",
     "entity-already-exists": "{{entity}} はすでに存在しています。",
     "entity-are-not-available": "{{entity}} は利用できません",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "{{entity}} 詳細ページをユースケースに合わせて、最適なウィジェットとタブでカスタマイズします。",
     "entity-delimiters-not-allowed": "名前に区切り記号は使用できません",
     "entity-details-updated": "{{entityType}} {{fqn}} の詳細が正常に更新されました",

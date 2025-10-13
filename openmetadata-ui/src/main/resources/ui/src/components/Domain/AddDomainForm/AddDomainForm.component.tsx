@@ -19,7 +19,6 @@ import imageClassBase from '../../../components/BlockEditor/Extensions/image/Ima
 import { NAME_FIELD_RULES } from '../../../constants/Form.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../enums/entity.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import {
   CreateDomain,
@@ -67,23 +66,10 @@ const AddDomainForm = ({
 
   const selectedColor = Form.useWatch('color', form);
 
-  // Check if upload functionality is available
+  // Check if upload functionality is available (for showing/hiding cover image field)
   const { onImageUpload } =
     imageClassBase.getBlockEditorAttachmentProps() ?? {};
   const isCoverImageUploadAvailable = !!onImageUpload;
-
-  // Cover image upload function using ImageClassBase
-  const handleCoverImageUpload = async (file: File): Promise<string> => {
-    if (!onImageUpload) {
-      throw new Error('Upload functionality is not configured');
-    }
-
-    // Temporary: Use temp FQN for testing cover image upload during domain creation
-    const tempFqn = `temp_domain_${Date.now()}`;
-    const url = await onImageUpload(file, EntityType.DOMAIN, tempFqn);
-
-    return url;
-  };
 
   // Separate fields for custom layout
   const coverImageField: FieldProp | null = isCoverImageUploadAvailable
@@ -98,7 +84,8 @@ const AddDomainForm = ({
           'data-testid': 'cover-image',
           maxSizeMB: 5,
           maxDimensions: { width: 800, height: 400 },
-          onUpload: handleCoverImageUpload,
+          // NO onUpload prop - this makes MUICoverImageUpload store file locally
+          // Parent component will handle upload after domain is created
         },
         formItemProps: {
           valuePropName: 'value',
@@ -339,17 +326,14 @@ const AddDomainForm = ({
       'color',
       'iconURL',
       'glossaryTerms'
+      // Keep 'coverImage' - parent will extract and remove it before API call
       // Don't exclude 'domains' - we need it for DataProducts
     );
     const style = {
       color: formData.color,
       iconURL: formData.iconURL,
-      ...(formData.coverImage?.url && {
-        coverImage: formData.coverImage.url,
-        ...(formData.coverImage.position?.y !== undefined && {
-          coverImagePosition: formData.coverImage.position.y,
-        }),
-      }),
+      // Don't include coverImage here - it's not uploaded yet
+      // Parent will add it to style after upload
     };
 
     // Build the data object

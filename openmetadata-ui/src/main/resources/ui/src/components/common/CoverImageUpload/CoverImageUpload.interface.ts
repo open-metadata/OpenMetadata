@@ -12,27 +12,47 @@
  */
 
 /**
- * Cover image value with optional positioning
- * @property url - The image URL
- * @property position - Optional positioning offset
- * @property position.y - Vertical offset in pixels using CSS translateY()
- *                        - 0 = top edge of image aligned with container top
- *                        - negative values = image moves up (shows bottom portion)
- *                        - positive values = image moves down (shows top portion)
- *                        - center = (minY + maxY) / 2 where minY = -(imageHeight - containerHeight)
+ * Position offset for cover image
+ * @property y - Vertical offset in pixels using CSS translateY()
+ *               - 0 = top edge of image aligned with container top
+ *               - negative values = image moves up (shows bottom portion)
+ *               - positive values = image moves down (shows top portion)
+ *               - center = (minY + maxY) / 2 where minY = -(imageHeight - containerHeight)
  */
-export interface CoverImageValue {
-  url: string;
-  position?: {
-    x?: number;
-    y?: number;
-  };
+export interface CoverImagePosition {
+  x?: number;
+  y?: number;
 }
+
+/**
+ * Cover image value with URL (already uploaded)
+ * @property url - The image URL from backend
+ * @property position - Optional positioning offset
+ */
+export interface CoverImageUrlValue {
+  url: string;
+  position?: CoverImagePosition;
+}
+
+/**
+ * Cover image value with File (not uploaded yet)
+ * @property file - The File object to be uploaded later
+ * @property position - Optional positioning offset
+ */
+export interface CoverImageFileValue {
+  file: File;
+  position?: CoverImagePosition;
+}
+
+/**
+ * Union type for cover image value - can be either File or URL
+ */
+export type CoverImageValue = CoverImageUrlValue | CoverImageFileValue;
 
 export interface MUICoverImageUploadProps {
   value?: CoverImageValue;
-  onChange?: (value: CoverImageValue) => void;
-  onUpload: (file: File) => Promise<string>;
+  onChange?: (value: CoverImageValue | undefined) => void;
+  onUpload?: (file: File) => Promise<string>; // Optional - if not provided, stores file locally
   label?: string;
   disabled?: boolean;
   error?: boolean;

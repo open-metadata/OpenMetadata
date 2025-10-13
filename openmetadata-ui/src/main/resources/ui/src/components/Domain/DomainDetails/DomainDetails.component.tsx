@@ -52,11 +52,15 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
-import { addDataProducts } from '../../../rest/dataProductAPI';
-import { addDomains } from '../../../rest/domainAPI';
+import {
+  addDataProducts,
+  patchDataProduct,
+} from '../../../rest/dataProductAPI';
+import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchData } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
@@ -71,10 +75,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-} from '../../../utils/NotistackUtils';
+import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -232,46 +233,24 @@ const DomainDetails = ({
             (formData as CreateDataProduct).domains = [
               domain.fullyQualifiedName ?? '',
             ];
-            await addDataProducts(formData as CreateDataProduct);
-            showNotistackSuccess(
-              enqueueSnackbar,
-              <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
-                {t('server.create-entity-success', {
-                  entity: t('label.data-product'),
-                })}
-              </MuiTypography>,
-              closeSnackbar
-            );
-            fetchDataProducts();
-            // Navigate to the data products tab
-            handleTabChange(EntityTabs.DATA_PRODUCTS);
-            onUpdate?.(domain);
-            closeDataProductDrawer();
-          } catch (error) {
-            showNotistackError(
-              enqueueSnackbar,
-              getIsErrorMatch(
-                error as AxiosError,
-                ERROR_MESSAGE.alreadyExist
-              ) ? (
-                <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
-                  {t('server.entity-already-exist', {
-                    entity: t('label.data-product'),
-                    entityPlural: 'data-products',
-                    name: formData.name,
-                  })}
-                </MuiTypography>
-              ) : (
-                (error as AxiosError)
-              ),
-              t('server.add-entity-error', {
-                entity: t('label.data-product').toLowerCase(),
-              }),
-              { vertical: 'top', horizontal: 'center' },
-              closeSnackbar
-            );
 
-            throw error; // Re-throw to reject the promise
+            await createEntityWithCoverImage({
+              formData: formData as CreateDataProduct,
+              entityType: EntityType.DATA_PRODUCT,
+              entityLabel: t('label.data-product'),
+              entityPluralLabel: 'data-products',
+              createEntity: addDataProducts,
+              patchEntity: patchDataProduct,
+              onSuccess: () => {
+                fetchDataProducts();
+                handleTabChange(EntityTabs.DATA_PRODUCTS);
+                onUpdate?.(domain);
+                closeDataProductDrawer();
+              },
+              enqueueSnackbar,
+              closeSnackbar,
+              t,
+            });
           } finally {
             setIsDataProductLoading(false);
           }
@@ -367,45 +346,23 @@ const DomainDetails = ({
           setIsSubDomainLoading(true);
           try {
             (formData as CreateDomain).parent = domain.fullyQualifiedName;
-            await addDomains(formData as CreateDomain);
-            showNotistackSuccess(
-              enqueueSnackbar,
-              <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
-                {t('server.create-entity-success', {
-                  entity: t('label.sub-domain'),
-                })}
-              </MuiTypography>,
-              closeSnackbar
-            );
-            fetchSubDomainsCount();
-            // Navigate to the subdomains tab
-            handleTabChange(EntityTabs.SUBDOMAINS);
-            closeSubDomainDrawer();
-          } catch (error) {
-            showNotistackError(
-              enqueueSnackbar,
-              getIsErrorMatch(
-                error as AxiosError,
-                ERROR_MESSAGE.alreadyExist
-              ) ? (
-                <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
-                  {t('server.entity-already-exist', {
-                    entity: t('label.sub-domain'),
-                    entityPlural: 'sub-domains',
-                    name: formData.name,
-                  })}
-                </MuiTypography>
-              ) : (
-                (error as AxiosError)
-              ),
-              t('server.add-entity-error', {
-                entity: t('label.sub-domain').toLowerCase(),
-              }),
-              { vertical: 'top', horizontal: 'center' },
-              closeSnackbar
-            );
 
-            throw error; // Re-throw to reject the promise
+            await createEntityWithCoverImage({
+              formData: formData as CreateDomain,
+              entityType: EntityType.DOMAIN,
+              entityLabel: t('label.sub-domain'),
+              entityPluralLabel: 'sub-domains',
+              createEntity: addDomains,
+              patchEntity: patchDomains,
+              onSuccess: () => {
+                fetchSubDomainsCount();
+                handleTabChange(EntityTabs.SUBDOMAINS);
+                closeSubDomainDrawer();
+              },
+              enqueueSnackbar,
+              closeSnackbar,
+              t,
+            });
           } finally {
             setIsSubDomainLoading(false);
           }
@@ -788,10 +745,16 @@ const DomainDetails = ({
           gap: 1.5,
         }}>
         <CoverImage
-          imageUrl={domain.style?.coverImage}
+          imageUrl={
+            (domain.style as Style & { coverImage?: string })?.coverImage
+          }
           position={
-            domain.style?.coverImagePosition !== undefined
-              ? { y: domain.style.coverImagePosition }
+            (domain.style as Style & { coverImagePosition?: number })
+              ?.coverImagePosition !== undefined
+              ? {
+                  y: (domain.style as Style & { coverImagePosition?: number })
+                    .coverImagePosition,
+                }
               : undefined
           }
         />

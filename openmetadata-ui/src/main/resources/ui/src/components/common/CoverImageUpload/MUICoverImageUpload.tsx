@@ -62,27 +62,79 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
 
-  // Get authenticated image hook from ImageClassBase (paid version override)
+  // Generate preview URL for display
+  const previewUrl = useMemo(() => {
+    if (!value) {
+      return '';
+    }
+
+    // If it's a file, create blob URL for preview
+    if ('file' in value && value.file) {
+      return URL.createObjectURL(value.file);
+    }
+
+    // If it's a URL, use it directly
+    if ('url' in value && value.url) {
+      return value.url;
+    }
+
+    return '';
+  }, [value]);
+
+  // Get authenticated image hook for backend URLs
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
 
-  // Always call unconditionally to avoid React Hook Rules violation
-  const authenticatedResult = authenticatedImageUrl?.(value?.url ?? '');
-  const imageSrc = authenticatedResult?.imageSrc ?? value?.url ?? '';
+  // For backend URLs, get authenticated blob URL
+  const hasBackendUrl = value && 'url' in value && value.url;
+  const authenticatedResult = authenticatedImageUrl?.(
+    hasBackendUrl ? value.url : ''
+  );
+  const authenticatedSrc = authenticatedResult?.imageSrc;
   const imageLoading = authenticatedResult?.isLoading ?? false;
 
-  // Check if image is ready to display (prevent 401 errors on authenticated URLs)
+  // Final image source: use authenticated if available, otherwise preview URL
+  const imageSrc = useMemo(() => {
+    // For backend attachment URLs, use authenticated blob if ready
+    if (
+      hasBackendUrl &&
+      value.url?.includes('/api/v1/attachments/') &&
+      authenticatedSrc
+    ) {
+      return authenticatedSrc;
+    }
+
+    // Otherwise use preview URL (blob for files, direct URL for others)
+    return previewUrl;
+  }, [hasBackendUrl, value, authenticatedSrc, previewUrl]);
+
+  // Check if image is ready to display
   const showImage = useMemo(() => {
     if (!imageSrc) {
       return false;
     }
-    // For authenticated URLs, only show when blob is ready
-    if (value?.url?.includes('/api/v1/attachments/')) {
+
+    // For local files (blob URLs), always show
+    if (value && 'file' in value) {
+      return imageSrc.startsWith('blob:');
+    }
+
+    // For backend URLs, only show when authenticated blob is ready
+    if (hasBackendUrl && value.url?.includes('/api/v1/attachments/')) {
       return imageSrc.startsWith('blob:');
     }
 
     // For regular URLs, show immediately
     return true;
-  }, [imageSrc, value?.url]);
+  }, [imageSrc, value, hasBackendUrl]);
+
+  // Cleanup blob URLs on unmount or when file changes
+  useEffect(() => {
+    return () => {
+      if (previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
 
   // Reset error state when image source changes
   useEffect(() => {
@@ -189,29 +241,38 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
         return;
       }
 
-      try {
-        setIsUploading(true);
-        setImageError(false);
+      if (onUpload) {
+        // Mode 1: Upload immediately (for editing existing entities)
+        try {
+          setIsUploading(true);
+          setImageError(false);
 
-        const url = await onUpload(file);
+          const url = await onUpload(file);
 
-        if (onChange) {
-          onChange({ url, position: undefined });
+          if (onChange) {
+            onChange({ url, position: value?.position });
+          }
+        } catch (error) {
+          showNotistackError(
+            enqueueSnackbar,
+            error as AxiosError,
+            t('label.failed-to-upload-file'),
+            { vertical: 'top', horizontal: 'center' }
+          );
+        } finally {
+          setIsUploading(false);
         }
-      } catch (error) {
-        showNotistackError(
-          enqueueSnackbar,
-          error as AxiosError,
-          t('label.failed-to-upload-file'),
-          { vertical: 'top', horizontal: 'center' }
-        );
-      } finally {
-        setIsUploading(false);
+      } else {
+        // Mode 2: Store file locally (for creating new entities)
+        if (onChange) {
+          onChange({ file, position: value?.position });
+        }
       }
     },
     [
       onUpload,
       onChange,
+      value?.position,
       validateFile,
       validateImageDimensions,
       t,
@@ -290,7 +351,8 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
 
   const handleRemoveClick = useCallback(() => {
     if (onChange) {
-      onChange({ url: '', position: undefined });
+      // Clear completely by setting undefined to show initial upload view
+      onChange(undefined);
     }
     setImageError(false);
     setImageNaturalHeight(0);
@@ -410,6 +472,28 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     setIsRepositionDragging(false);
   }, []);
 
+  // Save reposition - works for both file and URL modes
+  const handleSaveReposition = useCallback(() => {
+    if (onChange && value) {
+      const newPosition = { y: tempOffsetY };
+
+      if ('file' in value) {
+        // File mode: preserve file, update position
+        onChange({ file: value.file, position: newPosition });
+      } else if ('url' in value) {
+        // URL mode: preserve URL, update position
+        onChange({ url: value.url, position: newPosition });
+      }
+    }
+    setIsRepositioning(false);
+  }, [onChange, value, tempOffsetY]);
+
+  // Cancel reposition
+  const handleCancelReposition = useCallback(() => {
+    setTempOffsetY(value?.position?.y ?? 0);
+    setIsRepositioning(false);
+  }, [value]);
+
   // Keyboard support for repositioning
   const handleRepositionKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
@@ -432,22 +516,8 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
         handleSaveReposition();
       }
     },
-    [isRepositioning, getBounds]
+    [isRepositioning, getBounds, handleCancelReposition, handleSaveReposition]
   );
-
-  // Save reposition
-  const handleSaveReposition = useCallback(() => {
-    if (onChange && value) {
-      onChange({ ...value, position: { y: tempOffsetY } });
-    }
-    setIsRepositioning(false);
-  }, [onChange, value, tempOffsetY]);
-
-  // Cancel reposition
-  const handleCancelReposition = useCallback(() => {
-    setTempOffsetY(value?.position?.y ?? 0);
-    setIsRepositioning(false);
-  }, [value]);
 
   // Reset position to center
   const handleResetPosition = useCallback(() => {
@@ -473,6 +543,8 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
         window.removeEventListener('touchend', handleRepositionEnd);
       };
     }
+
+    return undefined;
   }, [
     isRepositionDragging,
     handleRepositionMouseMove,
@@ -496,7 +568,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
         onChange={handleFileSelect}
       />
 
-      {!value?.url ? (
+      {!value ? (
         <Box
           sx={{
             width: '100%',
@@ -876,7 +948,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                       color: theme.palette.primary?.main,
                     },
                   }}
-                  variant="contained"
                   onClick={(e) => {
                     e.stopPropagation();
                     handleRemoveClick();
