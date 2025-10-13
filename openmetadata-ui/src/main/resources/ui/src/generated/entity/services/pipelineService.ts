@@ -184,6 +184,8 @@ export interface PipelineConnection {
  *
  * Glue Pipeline Connection Config
  *
+ * AWS Kinesis Firehose Pipeline Connection Config
+ *
  * Airbyte Metadata Database Connection Config
  *
  * Fivetran Metadata Database Connection Config
@@ -266,6 +268,14 @@ export interface ConfigObject {
      */
     packageConnection?: S3Connection | string;
     awsConfig?:         AWSCredentials;
+    /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     */
+    messagingServiceName?: string;
     /**
      * Airbyte API version.
      */
@@ -399,11 +409,6 @@ export interface ConfigObject {
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
-    /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     */
-    messagingServiceName?: string;
     /**
      * ID of your DBT cloud account
      */
@@ -1108,6 +1113,7 @@ export enum PipelineServiceType {
     Flink = "Flink",
     GluePipeline = "GluePipeline",
     KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
@@ -1214,6 +1220,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

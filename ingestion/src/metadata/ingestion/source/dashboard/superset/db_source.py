@@ -111,6 +111,8 @@ class SupersetDBSource(SupersetSourceMixin):
         """
         Get List of all dashboards
         """
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
         query = (
             FETCH_DASHBOARDS
             if self.source_config.includeDraftDashboard

@@ -40,7 +40,6 @@
     "generate:app-docs": "node generateApplicationDocs.js"
   },
   "dependencies": {
-    "@openmetadata/ui-core-components": "link:../../../../../openmetadata-ui-core-components/src/main/resources/ui",
     "@analytics/session-utils": "^0.1.17",
     "@ant-design/icons": "^4.8.3",
     "@apidevtools/json-schema-ref-parser": "^9.0.9",
@@ -60,8 +59,10 @@
     "@mui/icons-material": "^7.3.1",
     "@mui/material": "^7.3.1",
     "@mui/x-date-pickers": "^8.11.0",
+    "@mui/x-tree-view": "^8.11.0",
     "@okta/okta-auth-js": "^7.11.3",
     "@okta/okta-react": "^6.4.3",
+    "@openmetadata/ui-core-components": "link:../../../../../openmetadata-ui-core-components/src/main/resources/ui",
     "@react-awesome-query-builder/antd": "^6.6.15",
     "@rjsf/core": "5.24.8",
     "@rjsf/utils": "5.24.8",
@@ -108,6 +109,7 @@
     "katex": "^0.16.21",
     "lodash": "^4.17.21",
     "luxon": "^3.2.1",
+    "notistack": "^3.0.2",
     "oidc-client": "^1.11.5",
     "process": "^0.11.10",
     "qs": "6.10.3",
@@ -255,6 +257,7 @@
     "serialize-javascript": "6.0.2",
     "dompurify": "3.2.4",
     "on-headers": "1.1.0",
-    "form-data": "3.0.4"
+    "form-data": "3.0.4",
+    "tar-fs": "2.1.4"
   }
 }

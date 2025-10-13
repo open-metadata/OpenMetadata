@@ -13,8 +13,11 @@
 
 package org.openmetadata.service.resources.events;
 
+import static jakarta.ws.rs.client.Entity.entity;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.CONFLICT;
+import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
+import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,24 +25,39 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 
+import jakarta.ws.rs.client.WebTarget;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.client.HttpResponseException;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.schema.api.events.CreateNotificationTemplate;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
+import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.NotificationTemplateRepository;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.util.TestUtils;
 
 @Slf4j
 public class NotificationTemplateResourceTest
@@ -55,12 +73,64 @@ public class NotificationTemplateResourceTest
     supportsFieldsQueryParam = false;
   }
 
+  @BeforeAll
+  public void setup(TestInfo test) throws IOException, URISyntaxException {
+    super.setup(test);
+    // Initial setup - seed data will be refreshed before each test
+  }
+
+  private void ensureCleanSystemTemplates() throws IOException {
+    // Clean up all system templates to prevent contamination
+    NotificationTemplateRepository repository =
+        (NotificationTemplateRepository) Entity.getEntityRepository(Entity.NOTIFICATION_TEMPLATE);
+
+    // List all system templates and delete them directly via DAO
+    Map<String, String> params = new HashMap<>();
+    params.put("provider", "system");
+    params.put("limit", "1000");
+    ResultList<NotificationTemplate> systemTemplates = listEntities(params, ADMIN_AUTH_HEADERS);
+
+    LOG.info(
+        "Before cleanup - found {} system templates: {}",
+        systemTemplates.getData().size(),
+        systemTemplates.getData().stream()
+            .map(NotificationTemplate::getName)
+            .collect(Collectors.toList()));
+
+    // Delete system templates directly through DAO to bypass all restrictions
+    for (NotificationTemplate template : systemTemplates.getData()) {
+      try {
+        // Use DAO directly to bypass all system template deletion restrictions
+        repository.getDao().delete(template.getId());
+        LOG.debug("Deleted system template via DAO: {}", template.getName());
+      } catch (Exception e) {
+        LOG.warn("Failed to delete system template: {}", template.getName(), e);
+      }
+    }
+
+    // Re-seed fresh system templates from scratch
+    LOG.info("Starting seed data loading...");
+    repository.initOrUpdateSeedDataFromResources();
+
+    // Verify what was loaded
+    ResultList<NotificationTemplate> afterSeed = listEntities(params, ADMIN_AUTH_HEADERS);
+    LOG.info(
+        "After seeding - found {} system templates: {}",
+        afterSeed.getData().size(),
+        afterSeed.getData().stream()
+            .map(NotificationTemplate::getName)
+            .collect(Collectors.toList()));
+
+    LOG.info("Cleaned and refreshed NotificationTemplate seed data for test isolation");
+  }
+
   @Override
   public CreateNotificationTemplate createRequest(String name) {
     return new CreateNotificationTemplate()
         .withName(name)
         .withDisplayName(name != null ? "Display " + name : null)
         .withDescription(name != null ? "Template for " + name : null)
+        .withTemplateSubject("Test Notification")
         .withTemplateBody("<div>{{entity.name}} has been updated by {{updatedBy}}</div>");
   }
 
@@ -72,6 +142,7 @@ public class NotificationTemplateResourceTest
     assertEquals(createRequest.getName(), template.getName());
     assertEquals(createRequest.getDisplayName(), template.getDisplayName());
     assertEquals(createRequest.getDescription(), template.getDescription());
+    assertEquals(createRequest.getTemplateSubject(), template.getTemplateSubject());
     assertEquals(createRequest.getTemplateBody(), template.getTemplateBody());
     assertNotNull(template.getVersion());
     assertNotNull(template.getUpdatedAt());
@@ -133,6 +204,41 @@ public class NotificationTemplateResourceTest
     return template;
   }
 
+  public final Response resetTemplate(UUID id, Map<String, String> authHeaders) {
+    WebTarget target = getResource(id).path("reset");
+    return SecurityUtil.addHeaders(target, authHeaders).put(null);
+  }
+
+  public final Response resetTemplateByName(String fqn, Map<String, String> authHeaders) {
+    WebTarget target = getResourceByName(fqn).path("reset");
+    return SecurityUtil.addHeaders(target, authHeaders).put(null);
+  }
+
+  private NotificationTemplate getSystemTemplate() {
+    try {
+      Map<String, String> params = new HashMap<>();
+      params.put("provider", "system");
+      params.put("limit", "1");
+      ResultList<NotificationTemplate> systemTemplates = listEntities(params, ADMIN_AUTH_HEADERS);
+
+      return systemTemplates.getData().stream().findFirst().orElse(null);
+    } catch (HttpResponseException e) {
+      return null;
+    }
+  }
+
+  public final NotificationTemplateValidationResponse validateTemplate(
+      NotificationTemplateValidationRequest request, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/validate");
+    return TestUtils.post(
+        target,
+        request,
+        NotificationTemplateValidationResponse.class,
+        OK.getStatusCode(),
+        authHeaders);
+  }
+
   @Test
   void post_validNotificationTemplate_200(TestInfo test) throws IOException {
     CreateNotificationTemplate create =
@@ -151,8 +257,10 @@ public class NotificationTemplateResourceTest
     CreateNotificationTemplate create =
         createRequest(getEntityName(test)).withTemplateBody("{{#if entity.name}} Missing end if");
 
-    assertResponse(
-        () -> createEntity(create, ADMIN_AUTH_HEADERS), BAD_REQUEST, "Invalid template syntax");
+    assertResponseContains(
+        () -> createEntity(create, ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Invalid template: Template body: Template validation failed");
   }
 
   @Test
@@ -210,7 +318,7 @@ public class NotificationTemplateResourceTest
         createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
 
     String invalidTemplateBody = "{{#each items}} Missing end each";
-    assertResponse(
+    assertResponseContains(
         () -> {
           String json =
               String.format(
@@ -219,7 +327,7 @@ public class NotificationTemplateResourceTest
           patchEntity(template.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
         },
         BAD_REQUEST,
-        "Invalid template syntax");
+        "Invalid template: Template body: Template validation failed");
   }
 
   @Test
@@ -349,5 +457,375 @@ public class NotificationTemplateResourceTest
         systemTemplates.getData().stream().anyMatch(t -> t.getId().equals(template1.getId())));
     assertFalse(
         systemTemplates.getData().stream().anyMatch(t -> t.getId().equals(template2.getId())));
+  }
+
+  @Test
+  void test_resetSystemTemplate_200(TestInfo test) throws IOException {
+    // Ensure clean system templates for this reset test
+    ensureCleanSystemTemplates();
+
+    // Get a system template
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found. Seed data should have been loaded.");
+
+    String originalBody = systemTemplate.getTemplateBody();
+    String originalDescription = systemTemplate.getDescription();
+    String originalDisplayName = systemTemplate.getDisplayName();
+
+    String newBody = "<div>Modified template: {{entity.name}}</div>";
+    String newDescription = "Modified description";
+    String newDisplayName = "Modified Display Name";
+
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s},"
+                + "{\"op\":\"replace\",\"path\":\"/description\",\"value\":%s},"
+                + "{\"op\":\"replace\",\"path\":\"/displayName\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody),
+            JsonUtils.pojoToJson(newDescription),
+            JsonUtils.pojoToJson(newDisplayName));
+
+    NotificationTemplate modifiedTemplate =
+        patchEntity(systemTemplate.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
+    assertEquals(newBody, modifiedTemplate.getTemplateBody());
+    assertEquals(newDescription, modifiedTemplate.getDescription());
+    assertEquals(newDisplayName, modifiedTemplate.getDisplayName());
+
+    Response response = resetTemplate(systemTemplate.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    NotificationTemplate resetTemplate = getEntity(systemTemplate.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(originalBody, resetTemplate.getTemplateBody());
+    assertEquals(originalDescription, resetTemplate.getDescription());
+    assertEquals(originalDisplayName, resetTemplate.getDisplayName());
+    assertEquals(ProviderType.SYSTEM, resetTemplate.getProvider());
+    assertNotNull(resetTemplate.getVersion());
+  }
+
+  @Test
+  void test_resetSystemTemplateByFQN_200(TestInfo test) throws IOException {
+    // Ensure clean system templates for this reset test
+    ensureCleanSystemTemplates();
+
+    // Get a system template
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found. Seed data should have been loaded.");
+
+    String originalBody = systemTemplate.getTemplateBody();
+    String newBody = "<div>FQN Modified template: {{entity.name}}</div>";
+
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    NotificationTemplate modifiedTemplate =
+        patchEntity(systemTemplate.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
+    assertEquals(newBody, modifiedTemplate.getTemplateBody());
+
+    Response response =
+        resetTemplateByName(systemTemplate.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(OK.getStatusCode(), response.getStatus());
+
+    NotificationTemplate resetTemplate = getEntity(systemTemplate.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(originalBody, resetTemplate.getTemplateBody());
+    assertEquals(ProviderType.SYSTEM, resetTemplate.getProvider());
+  }
+
+  @Test
+  void test_resetUserTemplate_400(TestInfo test) throws IOException {
+    CreateNotificationTemplate create = createRequest(getEntityName(test));
+    NotificationTemplate userTemplate = createEntity(create, ADMIN_AUTH_HEADERS);
+    assertEquals(ProviderType.USER, userTemplate.getProvider());
+
+    Response response = resetTemplate(userTemplate.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(BAD_REQUEST.getStatusCode(), response.getStatus());
+
+    String responseBody = response.readEntity(String.class);
+    assertTrue(
+        responseBody.contains(
+            "Cannot reset template: only SYSTEM templates can be reset to default"));
+  }
+
+  @Test
+  void test_resetNonExistentTemplate_404() {
+    UUID randomId = UUID.randomUUID();
+    Response response = resetTemplate(randomId, ADMIN_AUTH_HEADERS);
+    assertEquals(NOT_FOUND.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  void test_resetTemplateWithoutPermission_403() throws IOException {
+    // Ensure clean system templates for this reset test
+    ensureCleanSystemTemplates();
+
+    // Get a system template
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found. Seed data should have been loaded.");
+
+    Response response = resetTemplate(systemTemplate.getId(), TEST_AUTH_HEADERS);
+    assertEquals(FORBIDDEN.getStatusCode(), response.getStatus());
+  }
+
+  @Test
+  void test_seedDataLoaded() throws HttpResponseException {
+    // Verify that seed data templates are loaded (refreshed in @BeforeEach)
+    Map<String, String> params = new HashMap<>();
+    params.put("provider", "system");
+    params.put("limit", "100");
+    ResultList<NotificationTemplate> systemTemplates = listEntities(params, ADMIN_AUTH_HEADERS);
+
+    assertFalse(
+        systemTemplates.getData().isEmpty(),
+        "No SYSTEM templates found. Seed data should have been loaded.");
+
+    // Check for specific expected templates that should exist from seed data
+    String[] expectedTemplates = {
+      "system-notification-entity-created",
+      "system-notification-entity-updated",
+      "system-notification-entity-deleted",
+      "system-notification-entity-soft-deleted",
+      "system-notification-entity-default",
+      "system-notification-logical-test-case-added",
+      "system-notification-task-closed",
+      "system-notification-task-resolved"
+    };
+
+    Set<String> foundTemplateNames =
+        systemTemplates.getData().stream()
+            .map(NotificationTemplate::getName)
+            .collect(Collectors.toSet());
+
+    LOG.info(
+        "Found {} SYSTEM templates from seed data: {}",
+        systemTemplates.getData().size(),
+        foundTemplateNames);
+
+    // Verify all expected templates are present
+    for (String expectedTemplate : expectedTemplates) {
+      assertTrue(
+          foundTemplateNames.contains(expectedTemplate),
+          String.format(
+              "Expected seed template '%s' not found. Available templates: %s",
+              expectedTemplate, foundTemplateNames));
+    }
+
+    // Verify templates have correct provider type and required fields
+    for (NotificationTemplate template : systemTemplates.getData()) {
+      assertEquals(
+          ProviderType.SYSTEM,
+          template.getProvider(),
+          String.format("Template %s should have SYSTEM provider", template.getName()));
+      assertNotNull(
+          template.getTemplateBody(),
+          String.format("Template %s should have a templateBody", template.getName()));
+      assertNotNull(
+          template.getFullyQualifiedName(),
+          String.format("Template %s should have a fullyQualifiedName", template.getName()));
+      assertNotNull(
+          template.getDisplayName(),
+          String.format("Template %s should have a displayName", template.getName()));
+      assertNotNull(
+          template.getDescription(),
+          String.format("Template %s should have a description", template.getName()));
+    }
+  }
+
+  @Test
+  void testSystemTemplateVersioningFields() throws IOException {
+    // Ensure clean system templates for this test
+    ensureCleanSystemTemplates();
+
+    // Get first available system template
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found. Seed data should have been loaded.");
+
+    // Verify it's a system template with versioning fields initialized
+    assertEquals(ProviderType.SYSTEM, systemTemplate.getProvider());
+    assertFalse(
+        systemTemplate.getIsModifiedFromDefault(),
+        "Fresh template should not be marked as modified");
+  }
+
+  @Test
+  void testSystemTemplateModificationTracking() throws IOException {
+    // Ensure clean system templates for this test
+    ensureCleanSystemTemplates();
+
+    // Get first available system template
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found. Seed data should have been loaded.");
+    assertFalse(
+        systemTemplate.getIsModifiedFromDefault(),
+        "Fresh template should not be marked as modified");
+
+    // User modifies the template using PATCH (following existing test patterns)
+    String newBody = "<div>User modified template: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    NotificationTemplate modifiedTemplate =
+        patchEntity(systemTemplate.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
+
+    // Verify modification tracking
+    assertTrue(
+        modifiedTemplate.getIsModifiedFromDefault(),
+        "Template should be marked as modified after change");
+    assertEquals(newBody, modifiedTemplate.getTemplateBody());
+  }
+
+  @Test
+  void testResetSystemTemplateToDefault() throws IOException {
+    // Ensure clean system templates for this reset test
+    ensureCleanSystemTemplates();
+
+    // Get a system template
+    NotificationTemplate systemTemplate = getSystemTemplate();
+    assertNotNull(systemTemplate, "No SYSTEM templates found. Seed data should have been loaded.");
+
+    String originalBody = systemTemplate.getTemplateBody();
+    String originalSubject = systemTemplate.getTemplateSubject();
+    String originalDescription = systemTemplate.getDescription();
+    String originalDisplayName = systemTemplate.getDisplayName();
+
+    // Verify template starts unmodified
+    assertFalse(
+        systemTemplate.getIsModifiedFromDefault(),
+        "Fresh template should not be marked as modified");
+
+    // Modify the template using PATCH
+    String newBody = "<div>Modified template: {{entity.name}}</div>";
+    String json =
+        String.format(
+            "[{\"op\":\"replace\",\"path\":\"/templateBody\",\"value\":%s}]",
+            JsonUtils.pojoToJson(newBody));
+
+    NotificationTemplate modifiedTemplate =
+        patchEntity(systemTemplate.getId(), JsonUtils.readTree(json), ADMIN_AUTH_HEADERS);
+    assertEquals(newBody, modifiedTemplate.getTemplateBody());
+    assertTrue(
+        modifiedTemplate.getIsModifiedFromDefault(),
+        "Template should be marked as modified after change");
+
+    // Reset to default using the reset endpoint
+    Response resetResponse =
+        resetTemplateByName(systemTemplate.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(OK.getStatusCode(), resetResponse.getStatus());
+
+    // Verify reset worked - should match original seed data
+    NotificationTemplate resetResult = getEntity(systemTemplate.getId(), ADMIN_AUTH_HEADERS);
+    assertFalse(
+        resetResult.getIsModifiedFromDefault(),
+        "Template should not be marked as modified after reset");
+    assertEquals(originalBody, resetResult.getTemplateBody());
+    assertEquals(originalSubject, resetResult.getTemplateSubject());
+    assertEquals(originalDescription, resetResult.getDescription());
+    assertEquals(originalDisplayName, resetResult.getDisplayName());
+  }
+
+  @Test
+  void test_resetUserTemplateByFQN_400() throws IOException {
+    // Create a user template
+    CreateNotificationTemplate createTemplate = createRequest("test-user-template-for-reset");
+    NotificationTemplate created = createEntity(createTemplate, ADMIN_AUTH_HEADERS);
+    assertEquals(ProviderType.USER, created.getProvider());
+
+    // Attempt to reset user template should fail
+    Response resetResponse =
+        resetTemplateByName(created.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertEquals(BAD_REQUEST.getStatusCode(), resetResponse.getStatus());
+  }
+
+  @Test
+  void test_resetNonExistentTemplateByFQN_404() {
+    // Attempt to reset non-existent template
+    Response resetResponse = resetTemplateByName("non-existent-template", ADMIN_AUTH_HEADERS);
+    assertEquals(NOT_FOUND.getStatusCode(), resetResponse.getStatus());
+  }
+
+  @Test
+  void test_validateTemplate_200_validTemplateWithCustomHelpers() throws HttpResponseException {
+    // Test complex template with custom helpers that should validate successfully
+    String complexTemplate =
+        "{{#if entity.owner}}"
+            + "<p>Owner: {{entity.owner.name}}</p>"
+            + "{{else}}"
+            + "<p>No owner assigned</p>"
+            + "{{/if}}"
+            + "{{#each entity.tags as |tag|}}"
+            + "<span class='tag'>{{tag.tagFQN}}</span>"
+            + "{{/each}}"
+            + "{{joinList entity.columns 'name' ', '}}"
+            + "{{formatDate entity.updatedAt 'yyyy-MM-dd'}}";
+
+    NotificationTemplateValidationRequest request =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody(complexTemplate)
+            .withTemplateSubject(
+                "Entity {{entity.name}} Update - {{formatDate entity.updatedAt 'yyyy-MM-dd'}}");
+
+    NotificationTemplateValidationResponse validationResponse =
+        validateTemplate(request, ADMIN_AUTH_HEADERS);
+
+    assertNotNull(validationResponse.getTemplateBody());
+    assertTrue(validationResponse.getTemplateBody().getPassed());
+    assertNotNull(validationResponse.getTemplateSubject());
+    assertTrue(validationResponse.getTemplateSubject().getPassed());
+  }
+
+  @Test
+  void test_validateTemplate_200_invalidSyntax() throws HttpResponseException {
+    // Test invalid template syntax - should return 200 with validation errors
+    NotificationTemplateValidationRequest request =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody("{{#if entity.name}} Missing end if tag")
+            .withTemplateSubject("{{#each items}} Missing end each");
+
+    NotificationTemplateValidationResponse validationResponse =
+        validateTemplate(request, ADMIN_AUTH_HEADERS);
+
+    // Template body should fail validation
+    assertNotNull(validationResponse.getTemplateBody());
+    assertFalse(validationResponse.getTemplateBody().getPassed());
+    assertNotNull(validationResponse.getTemplateBody().getError());
+    assertTrue(
+        validationResponse.getTemplateBody().getError().contains("Template validation failed"));
+
+    // Template subject should also fail validation
+    assertNotNull(validationResponse.getTemplateSubject());
+    assertFalse(validationResponse.getTemplateSubject().getPassed());
+    assertNotNull(validationResponse.getTemplateSubject().getError());
+    assertTrue(
+        validationResponse.getTemplateSubject().getError().contains("Template validation failed"));
+  }
+
+  @Test
+  void test_validateTemplate_401_unauthorized() {
+    NotificationTemplateValidationRequest request =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody("{{entity.name}} template")
+            .withTemplateSubject("Valid Subject");
+
+    // Use empty headers (no authorization) - should fail with 401 Unauthorized
+    WebTarget target = getCollection().path("/validate");
+    Response response = target.request().post(entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(401, response.getStatus());
+  }
+
+  @Test
+  void test_validateTemplate_403_forbidden() {
+    NotificationTemplateValidationRequest request =
+        new NotificationTemplateValidationRequest()
+            .withTemplateBody("{{entity.name}} template")
+            .withTemplateSubject("Valid Subject");
+
+    // Use TEST_AUTH_HEADERS which typically has limited permissions
+    WebTarget target = getCollection().path("/validate");
+    Response response =
+        SecurityUtil.addHeaders(target, TEST_AUTH_HEADERS)
+            .post(entity(request, MediaType.APPLICATION_JSON));
+    assertEquals(FORBIDDEN.getStatusCode(), response.getStatus());
   }
 }
