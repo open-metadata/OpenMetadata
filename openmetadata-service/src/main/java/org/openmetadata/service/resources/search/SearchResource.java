@@ -72,9 +72,11 @@ import org.openmetadata.service.util.AsyncService;
 @Collection(name = "search")
 public class SearchResource {
   private final SearchRepository searchRepository;
+  private final Authorizer authorizer;
 
   public SearchResource(Authorizer authorizer) {
     this.searchRepository = Entity.getSearchRepository();
+    this.authorizer = authorizer;
   }
 
   @GET
@@ -649,7 +651,7 @@ public class SearchResource {
           @QueryParam("timeoutMinutes")
           int timeoutMinutes,
       @Valid List<EntityReference> entities) {
-
+    authorizer.authorizeAdmin(securityContext);
     final int maxEntitiesPerRequest = 500;
     final int maxTimeoutMinutes = 10;
 
