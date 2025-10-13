@@ -25,6 +25,7 @@ import TableTags from '../../../components/Database/TableTags/TableTags.componen
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { ROUTES } from '../../../constants/constants';
+import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -275,6 +276,7 @@ const MetricListPage = () => {
               emptyText: (
                 <ErrorPlaceHolder
                   className="p-y-md border-none"
+                  doc={METRICS_DOCS}
                   heading={t('label.metric')}
                   permission={permission.Create}
                   permissionValue={t('label.create-entity', {
