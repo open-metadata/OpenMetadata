@@ -168,8 +168,9 @@ class UnitycatalogLineageSource(Source):
                 logger.debug("No storage location found in fileInfo")
                 return
 
+            storage_location = file_info.storage_location.rstrip("/")
             location_entity = self.metadata.es_search_container_by_path(
-                full_path=file_info.storage_location, fields="dataModel"
+                full_path=storage_location, fields="dataModel"
             )
 
             if location_entity and location_entity[0]:
@@ -215,7 +216,7 @@ class UnitycatalogLineageSource(Source):
                     )
             else:
                 logger.debug(
-                    f"Unable to find container for external location: {file_info.storage_location}"
+                    f"Unable to find container for external location: {storage_location}"
                 )
         except Exception as exc:
             logger.debug(
