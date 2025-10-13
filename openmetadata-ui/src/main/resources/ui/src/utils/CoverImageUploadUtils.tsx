@@ -226,16 +226,18 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
           coverImageUrl,
           position?
         ): Promise<Awaited<TEntity>> => {
-          // Build updated entity with cover image
+          // Build updated entity with cover image as nested object (matches backend CoverImage interface)
           const entityRecord = entity as Record<string, unknown>;
           const updatedEntity = {
             ...entity,
             style: {
               ...(entityRecord.style as Record<string, unknown>),
-              coverImage: coverImageUrl,
-              ...(position !== undefined && {
-                coverImagePosition: position,
-              }),
+              coverImage: {
+                url: coverImageUrl,
+                ...(position !== undefined && {
+                  position: `${position}px`,
+                }),
+              },
             },
           };
           const jsonPatch = compare(entityRecord, updatedEntity);

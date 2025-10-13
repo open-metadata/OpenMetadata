@@ -556,10 +556,26 @@ const DataProductsDetailsPage = ({
           gap: 1.5,
         }}>
         <CoverImage
-          imageUrl={dataProduct.style?.coverImage}
+          imageUrl={
+            (dataProduct.style as Style & { coverImage?: { url?: string } })
+              ?.coverImage?.url
+          }
           position={
-            dataProduct.style?.coverImagePosition !== undefined
-              ? { y: dataProduct.style.coverImagePosition }
+            (
+              dataProduct.style as Style & {
+                coverImage?: { position?: string };
+              }
+            )?.coverImage?.position
+              ? {
+                  y: parseInt(
+                    (
+                      dataProduct.style as Style & {
+                        coverImage?: { position?: string };
+                      }
+                    ).coverImage!.position!,
+                    10
+                  ),
+                }
               : undefined
           }
         />
