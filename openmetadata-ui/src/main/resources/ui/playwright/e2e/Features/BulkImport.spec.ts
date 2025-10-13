@@ -30,7 +30,6 @@ import {
 } from '../../utils/common';
 import {
   createColumnRowDetails,
-  createColumnRowDetailsWithEncloseDot,
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
   createDatabaseSchemaRowDetails,
@@ -105,7 +104,7 @@ const columnDetails1 = {
 };
 
 const columnDetails2 = {
-  ...createColumnRowDetailsWithEncloseDot(),
+  ...createColumnRowDetails(),
   glossary: glossaryDetails,
 };
 
@@ -713,7 +712,7 @@ test.describe('Bulk Import Export', () => {
         await fillRecursiveColumnDetails(
           {
             ...columnDetails2,
-            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}."${columnDetails2.name}"`,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
           },
           page
         );
@@ -842,6 +841,7 @@ test.describe('Bulk Import Export', () => {
       }
     );
 
+    await tableEntity.delete(apiContext);
     await afterAction();
   });
 

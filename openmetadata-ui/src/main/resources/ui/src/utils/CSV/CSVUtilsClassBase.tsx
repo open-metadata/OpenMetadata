@@ -55,8 +55,6 @@ class CSVUtilsClassBase {
       'column.tags',
       'column.glossaryTerms',
       'storedProcedure.code',
-      'column.name*',
-      'name*',
     ];
   }
 
