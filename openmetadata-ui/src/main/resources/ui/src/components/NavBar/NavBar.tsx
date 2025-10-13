@@ -532,6 +532,7 @@ const NavBar = () => {
               className="cursor-pointer"
               dropdownRender={() => (
                 <NotificationBox
+                  activeTab={activeTab}
                   hasMentionNotification={hasMentionNotification}
                   hasTaskNotification={hasTaskNotification}
                   onMarkMentionsNotificationRead={
