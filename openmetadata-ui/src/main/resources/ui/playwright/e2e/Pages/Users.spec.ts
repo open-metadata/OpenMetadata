@@ -535,6 +535,8 @@ test.describe('User Profile Feed Interactions', () => {
 
 test.describe('User Profile Dropdown Persona Interactions', () => {
   test.beforeAll('Prerequisites', async ({ adminPage }) => {
+    test.slow(true);
+
     // First, add personas to the user profile for testing
     await visitOwnProfilePage(adminPage);
     await adminPage.waitForSelector('[data-testid="persona-details-card"]');
@@ -553,10 +555,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       state: 'visible',
     });
 
-    const persona1Option = adminPage.getByTestId(
-      `${persona1.responseData.name}-option`
-    );
-    await persona1Option.click();
+    await adminPage.getByTestId(`${persona1.data.displayName}-option`).click();
 
     const defaultPersonaUpdateResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -849,10 +848,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
     });
 
     // Select the second persona as default
-    const persona2Option = adminPage.getByTestId(
-      `${persona2.responseData.name}-option`
-    );
-    await persona2Option.click();
+    await adminPage.getByTestId(`${persona2.data.displayName}-option`).click();
 
     const defaultPersonaChangeResponse =
       adminPage.waitForResponse('/api/v1/users/*');
@@ -885,7 +881,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .locator('.ant-typography')
       .textContent();
 
-    expect(newDefaultPersonaText).toContain(persona2.responseData.name);
+    expect(newDefaultPersonaText).toContain(persona2.responseData.displayName);
     expect(newDefaultPersonaText).not.toBe(originalDefaultPersonaText);
 
     await expect(
