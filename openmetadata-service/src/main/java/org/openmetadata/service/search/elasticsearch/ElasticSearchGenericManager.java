@@ -7,7 +7,10 @@ import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.HealthStatus;
 import es.co.elastic.clients.elasticsearch.cluster.ClusterStatsResponse;
+import es.co.elastic.clients.elasticsearch.cluster.ComponentTemplateNode;
+import es.co.elastic.clients.elasticsearch.cluster.ComponentTemplateSummary;
 import es.co.elastic.clients.elasticsearch.cluster.GetClusterSettingsResponse;
+import es.co.elastic.clients.elasticsearch.cluster.GetComponentTemplateResponse;
 import es.co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import es.co.elastic.clients.elasticsearch.indices.Alias;
 import es.co.elastic.clients.elasticsearch.indices.AliasDefinition;
@@ -201,15 +204,17 @@ public class ElasticSearchGenericManager implements GenericClient {
       return;
     }
     try {
-      var getResponse = client.cluster().getComponentTemplate(g -> g.name(componentTemplateName));
+      GetComponentTemplateResponse getResponse =
+          client.cluster().getComponentTemplate(g -> g.name(componentTemplateName));
 
       if (getResponse.componentTemplates().isEmpty()) {
         LOG.warn("Component template {} does not exist. Skipping.", componentTemplateName);
         return;
       }
 
-      var componentTemplate = getResponse.componentTemplates().getFirst().componentTemplate();
-      var template = componentTemplate.template();
+      ComponentTemplateNode componentTemplate =
+          getResponse.componentTemplates().getFirst().componentTemplate();
+      ComponentTemplateSummary template = componentTemplate.template();
 
       if (template != null && template.settings() != null) {
         // Update the component template with ILM policy removed
@@ -220,8 +225,11 @@ public class ElasticSearchGenericManager implements GenericClient {
                     p.name(componentTemplateName)
                         .template(
                             t -> {
-                              // Copy all settings except lifecycle
-                              t.settings(s -> s.lifecycle(l -> l.name(null)));
+                              // Remove ILM by not including it
+                              t.settings(
+                                  s -> {
+                                    return s; // empty settings means no ILM
+                                  });
 
                               // Copy mappings if they exist
                               if (template.mappings() != null) {
