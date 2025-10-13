@@ -339,7 +339,7 @@ class JSONLogicSearchClassBase {
           },
         },
       },
-      [EntityReferenceFields.DATA_PRODUCT]: {
+      [EntityReferenceFields.DATA_PRODUCTS]: {
         label: t('label.data-product'),
         type: '!group',
         mode: 'some',

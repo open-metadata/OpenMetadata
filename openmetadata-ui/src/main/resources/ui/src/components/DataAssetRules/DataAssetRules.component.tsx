@@ -140,8 +140,8 @@ export const SemanticsRuleForm: React.FC<{
       [EntityReferenceFields.TAG]: fields[EntityReferenceFields.TAG],
       [EntityReferenceFields.TIER]: fields[EntityReferenceFields.TIER],
       [EntityReferenceFields.DOMAIN]: fields[EntityReferenceFields.DOMAIN],
-      [EntityReferenceFields.DATA_PRODUCT]:
-        fields[EntityReferenceFields.DATA_PRODUCT],
+      [EntityReferenceFields.DATA_PRODUCTS]:
+        fields[EntityReferenceFields.DATA_PRODUCTS],
     };
   }, []);
 
