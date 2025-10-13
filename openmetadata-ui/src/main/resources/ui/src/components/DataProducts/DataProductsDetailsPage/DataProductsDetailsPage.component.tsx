@@ -25,7 +25,7 @@ import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import { CustomizeEntityType } from '../../../constants/Customize.constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -39,11 +39,23 @@ import {
   DataProduct,
 } from '../../../generated/entity/domains/dataProduct';
 import { Operation } from '../../../generated/entity/policies/policy';
+import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
+import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
+import { FeedCounts } from '../../../interface/feed.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import { searchData } from '../../../rest/miscAPI';
-import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
+import {
+  getEntityDeleteMessage,
+  getFeedCounts,
+} from '../../../utils/CommonUtils';
+import {
+  checkIfExpandViewSupported,
+  getDetailsTabWithNewLabel,
+  getTabLabelMapFromTabs,
+} from '../../../utils/CustomizePage/CustomizePageUtils';
+import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
@@ -62,31 +74,22 @@ import {
 } from '../../../utils/StringsUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
+import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
+import Loader from '../../common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
-import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
-import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DomainTabs } from '../../Domain/DomainPage.interface';
-import DocumentationTab from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.component';
-import { DocumentationEntity } from '../../Domain/DomainTabs/DocumentationTab/DocumentationTab.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
-import EntitySummaryPanel from '../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
-import AssetsTabs, {
-  AssetsTabRef,
-} from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
+import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import './data-products-details-page.less';
-import {
-  DataProductsDetailsPageProps,
-  DataProductTabs,
-} from './DataProductsDetailsPage.interface';
+import { DataProductsDetailsPageProps } from './DataProductsDetailsPage.interface';
 
 const DataProductsDetailsPage = ({
   dataProduct,
@@ -108,6 +111,10 @@ const DataProductsDetailsPage = ({
   const [dataProductPermission, setDataProductPermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [showActions, setShowActions] = useState(false);
+  const [isTabExpanded, setIsTabExpanded] = useState(false);
+  const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
+    PageType.Domain
+  );
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [assetModalVisible, setAssetModelVisible] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
@@ -116,6 +123,21 @@ const DataProductsDetailsPage = ({
   const [previewAsset, setPreviewAsset] =
     useState<EntityDetailsObjectInterface>();
   const [assetCount, setAssetCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
+
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DATA_PRODUCT,
+      dataProduct.fullyQualifiedName ?? '',
+      handleFeedCount
+    );
+  };
 
   const breadcrumbs = useMemo(() => {
     if (!dataProduct.domains) {
@@ -376,125 +398,66 @@ const DataProductsDetailsPage = ({
     []
   );
 
-  const handelExtensionUpdate = useCallback(
-    async (updatedDataProduct: DataProduct) => {
-      await onUpdate({
-        ...dataProduct,
-        extension: updatedDataProduct.extension,
-      });
-    },
-    [onUpdate, dataProduct]
-  );
-
   const tabs = useMemo(() => {
-    return [
-      {
-        label: (
-          <TabsLabel
-            id={DataProductTabs.DOCUMENTATION}
-            name={t('label.documentation')}
-          />
-        ),
-        key: DataProductTabs.DOCUMENTATION,
-        children: (
-          <DocumentationTab
-            isVersionsView={isVersionsView}
-            type={DocumentationEntity.DATA_PRODUCT}
-          />
-        ),
-      },
-      ...(!isVersionsView
-        ? [
-            {
-              label: (
-                <TabsLabel
-                  count={assetCount ?? 0}
-                  id={DataProductTabs.ASSETS}
-                  isActive={activeTab === DataProductTabs.ASSETS}
-                  name={t('label.asset-plural')}
-                />
-              ),
-              key: DataProductTabs.ASSETS,
-              children: (
-                <ResizablePanels
-                  className="h-full domain-height-with-resizable-panel"
-                  firstPanel={{
-                    className: 'domain-resizable-panel-container',
-                    wrapInCard: false,
-                    children: (
-                      <AssetsTabs
-                        assetCount={assetCount}
-                        entityFqn={dataProduct.fullyQualifiedName}
-                        isSummaryPanelOpen={false}
-                        permissions={dataProductPermission}
-                        ref={assetTabRef}
-                        type={AssetsOfEntity.DATA_PRODUCT}
-                        onAddAsset={() => setAssetModelVisible(true)}
-                        onAssetClick={handleAssetClick}
-                        onRemoveAsset={handleAssetSave}
-                      />
-                    ),
-                    minWidth: 800,
-                    flex: 0.87,
-                  }}
-                  hideSecondPanel={!previewAsset}
-                  pageTitle={t('label.domain')}
-                  secondPanel={{
-                    wrapInCard: false,
-                    children: previewAsset && (
-                      <EntitySummaryPanel
-                        entityDetails={previewAsset}
-                        handleClosePanel={() => setPreviewAsset(undefined)}
-                      />
-                    ),
-                    minWidth: 400,
-                    flex: 0.13,
-                    className:
-                      'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
-                  }}
-                />
-              ),
-            },
-          ]
-        : []),
-      {
-        label: (
-          <TabsLabel
-            id={EntityTabs.CUSTOM_PROPERTIES}
-            name={t('label.custom-property-plural')}
-          />
-        ),
-        key: EntityTabs.CUSTOM_PROPERTIES,
-        children: (
-          <CustomPropertyTable<EntityType.DATA_PRODUCT>
-            entityType={EntityType.DATA_PRODUCT}
-            hasEditAccess={
-              getPrioritizedEditPermission(
-                dataProductPermission,
-                Operation.EditCustomFields
-              ) && !isVersionsView
-            }
-            hasPermission={dataProductPermission.ViewAll}
-            isVersionView={isVersionsView}
-          />
-        ),
-      },
-    ];
+    const tabLabelMap = getTabLabelMapFromTabs(customizedPage?.tabs);
+
+    const tabs = dataProductClassBase.getDataProductDetailPageTabs({
+      dataProduct,
+      isVersionsView,
+      dataProductPermission,
+      assetCount,
+      activeTab: activeTab as EntityTabs,
+      assetTabRef,
+      previewAsset,
+      setPreviewAsset,
+      setAssetModalVisible: setAssetModelVisible,
+      handleAssetClick,
+      handleAssetSave,
+      feedCount,
+      getEntityFeedCount,
+      labelMap: tabLabelMap,
+    });
+
+    return getDetailsTabWithNewLabel(
+      tabs,
+      customizedPage?.tabs,
+      EntityTabs.DOCUMENTATION
+    );
   }, [
+    customizedPage?.tabs,
+    dataProduct,
     dataProductPermission,
     previewAsset,
-    dataProduct,
-    isVersionsView,
+    handleAssetClick,
     handleAssetSave,
     assetCount,
     activeTab,
-    handelExtensionUpdate,
+    feedCount,
   ]);
 
   useEffect(() => {
     fetchDataProductPermission();
     fetchDataProductAssets();
+    getEntityFeedCount();
   }, [dataProductFqn]);
+
+  const toggleTabExpanded = () => {
+    setIsTabExpanded(!isTabExpanded);
+  };
+
+  const isExpandViewSupported = useMemo(
+    () =>
+      checkIfExpandViewSupported(
+        tabs[0],
+        activeTab as EntityTabs,
+        PageType.Domain
+      ),
+    [tabs[0], activeTab]
+  );
+
+  if (isCustomPageLoading) {
+    return <Loader />;
+  }
 
   return (
     <>
@@ -599,18 +562,31 @@ const DataProductsDetailsPage = ({
 
         <GenericProvider<DataProduct>
           currentVersionData={dataProduct}
+          customizedPage={customizedPage}
           data={dataProduct}
+          isTabExpanded={isTabExpanded}
           isVersionView={isVersionsView}
           permissions={dataProductPermission}
-          type={EntityType.DATA_PRODUCT as CustomizeEntityType}
+          type={EntityType.DATA_PRODUCT}
           onUpdate={onUpdate}>
-          <Col span={24}>
+          <Col className="data-product-details-page-tabs" span={24}>
             <Tabs
               destroyInactiveTabPane
               activeKey={activeTab ?? DomainTabs.DOCUMENTATION}
               className="tabs-new"
               data-testid="tabs"
               items={tabs}
+              tabBarExtraContent={
+                isExpandViewSupported && (
+                  <AlignRightIconButton
+                    className={isTabExpanded ? 'rotate-180' : ''}
+                    title={
+                      isTabExpanded ? t('label.collapse') : t('label.expand')
+                    }
+                    onClick={toggleTabExpanded}
+                  />
+                )
+              }
               onChange={handleTabChange}
             />
           </Col>
