@@ -476,6 +476,33 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     assertEquals(1, subDomainAssets.getData().size());
     assertEquals(1, subDomainAssets.getPaging().getTotal());
     assertTrue(subDomainAssets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    // Test bulk remove assets
+    bulkRemoveAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Verify table2 is removed from subdomain
+    subDomainAssets = getAssets(subDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, subDomainAssets.getData().size());
+    assertEquals(0, subDomainAssets.getPaging().getTotal());
+
+    // Verify parent domain now only has table1
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, assets.getData().size());
+    assertEquals(1, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertFalse(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+
+    // Remove table1 from parent domain
+    bulkRemoveAssets(
+        domain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // Verify domain has no assets
+    assets = getAssets(domain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, assets.getData().size());
+    assertEquals(0, assets.getPaging().getTotal());
   }
 
   @Test
@@ -518,6 +545,12 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
 
   private void bulkAddAssets(String domainName, BulkAssets request) throws HttpResponseException {
     WebTarget target = getResource("domains/" + domainName + "/assets/add");
+    TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private void bulkRemoveAssets(String domainName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getResource("domains/" + domainName + "/assets/remove");
     TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
   }
 
@@ -578,7 +611,7 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
     ResultList<EntityReference> page2 = getAssets(rootDomain.getId(), 1, 1, ADMIN_AUTH_HEADERS);
     assertEquals(2, page2.getPaging().getTotal());
     assertEquals(1, page2.getData().size());
-    assertNotEquals(page1.getData().get(0).getId(), page2.getData().get(0).getId());
+    assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
 
     bulkAddAssets(
         rootDomain.getFullyQualifiedName(),
@@ -587,6 +620,42 @@ public class DomainResourceTest extends EntityResourceTest<Domain, CreateDomain>
         getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
     assertEquals(3, allAssets.getPaging().getTotal());
     assertEquals(3, allAssets.getData().size());
+
+    // Test bulk remove assets
+    bulkRemoveAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table1.getEntityReference())));
+
+    // Verify table1 is removed
+    assets = getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, assets.getPaging().getTotal());
+    assertEquals(2, assets.getData().size());
+    assertFalse(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    // Test pagination after removal
+    page1 = getAssets(rootDomain.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getPaging().getTotal());
+    assertEquals(1, page1.getData().size());
+
+    page2 = getAssets(rootDomain.getId(), 1, 1, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page2.getPaging().getTotal());
+    assertEquals(1, page2.getData().size());
+    assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
+
+    // Remove remaining assets
+    bulkRemoveAssets(
+        rootDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table3.getEntityReference())));
+    bulkRemoveAssets(
+        subDomain.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(table2.getEntityReference())));
+
+    // Verify all assets are removed
+    assets = getAssets(rootDomain.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(0, assets.getPaging().getTotal());
+    assertEquals(0, assets.getData().size());
   }
 
   @Override

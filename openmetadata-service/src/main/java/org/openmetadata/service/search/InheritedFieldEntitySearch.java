@@ -180,8 +180,11 @@ public interface InheritedFieldEntitySearch {
       }
 
       public InheritedFieldQuery build() {
-        if (fieldPath == null || fieldValue == null) {
-          throw new IllegalArgumentException("fieldPath and fieldValue are required");
+        if (fieldPath == null) {
+          throw new IllegalArgumentException("fieldPath is required");
+        }
+        if (fieldValue == null && (fieldValues == null || fieldValues.isEmpty())) {
+          throw new IllegalArgumentException("Either fieldValue or fieldValues is required");
         }
         return new InheritedFieldQuery(this);
       }
@@ -193,18 +196,6 @@ public interface InheritedFieldEntitySearch {
           .fieldValue(domainFqn)
           .supportsHierarchy(true)
           .filterType(QueryFilterType.DOMAIN_ASSETS)
-          .includeDeleted(true)
-          .from(offset)
-          .size(limit)
-          .build();
-    }
-
-    public static InheritedFieldQuery forOwner(String ownerId, int offset, int limit) {
-      return builder()
-          .fieldPath("owners.id")
-          .fieldValue(ownerId)
-          .supportsHierarchy(false)
-          .filterType(QueryFilterType.OWNER_ASSETS)
           .includeDeleted(true)
           .from(offset)
           .size(limit)

@@ -4969,7 +4969,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return target;
   }
 
-  protected final ResultList<EntityReference> getAssets(
+  public final ResultList<EntityReference> getAssets(
       UUID id, int limit, int offset, Map<String, String> authHeaders)
       throws HttpResponseException {
     WebTarget target = getAssetsResource(id, limit, offset);

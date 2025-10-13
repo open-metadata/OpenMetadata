@@ -12,6 +12,7 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 
+import jakarta.ws.rs.client.WebTarget;
 import jakarta.ws.rs.core.Response.Status;
 import java.io.IOException;
 import java.util.HashMap;
@@ -654,58 +655,84 @@ public class DataProductResourceTest extends EntityResourceTest<DataProduct, Cre
       BulkAssets bulkAssets =
           new BulkAssets()
               .withAssets(List.of(table1.getEntityReference(), table2.getEntityReference()));
-      repository.bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets);
+      bulkAddAssets(dataProduct.getFullyQualifiedName(), bulkAssets);
 
-      jakarta.ws.rs.client.WebTarget target =
-          getCollection().path("/" + dataProduct.getId() + "/assets");
-      target = target.queryParam("limit", 10);
-      target = target.queryParam("offset", 0);
       ResultList<EntityReference> assets =
-          TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+          getAssets(dataProduct.getId(), 10, 0, ADMIN_AUTH_HEADERS);
 
       assertEquals(2, assets.getPaging().getTotal());
       assertEquals(2, assets.getData().size());
       assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
       assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
 
-      jakarta.ws.rs.client.WebTarget targetByName =
-          getCollection().path("/name/" + dataProduct.getFullyQualifiedName() + "/assets");
-      targetByName = targetByName.queryParam("limit", 10);
-      targetByName = targetByName.queryParam("offset", 0);
       ResultList<EntityReference> assetsByName =
-          TestUtils.get(targetByName, ResultList.class, ADMIN_AUTH_HEADERS);
+          getAssetsByName(dataProduct.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
       assertEquals(2, assetsByName.getPaging().getTotal());
       assertEquals(2, assetsByName.getData().size());
 
-      target = getCollection().path("/" + dataProduct.getId() + "/assets");
-      target = target.queryParam("limit", 1);
-      target = target.queryParam("offset", 0);
-      ResultList<EntityReference> page1 =
-          TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+      ResultList<EntityReference> page1 = getAssets(dataProduct.getId(), 1, 0, ADMIN_AUTH_HEADERS);
       assertEquals(2, page1.getPaging().getTotal());
       assertEquals(1, page1.getData().size());
 
-      target = getCollection().path("/" + dataProduct.getId() + "/assets");
-      target = target.queryParam("limit", 1);
-      target = target.queryParam("offset", 1);
-      ResultList<EntityReference> page2 =
-          TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+      ResultList<EntityReference> page2 = getAssets(dataProduct.getId(), 1, 1, ADMIN_AUTH_HEADERS);
       assertEquals(2, page2.getPaging().getTotal());
       assertEquals(1, page2.getData().size());
-      assertNotEquals(page1.getData().get(0).getId(), page2.getData().get(0).getId());
+      assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
 
       BulkAssets addTable3 = new BulkAssets().withAssets(List.of(table3.getEntityReference()));
-      repository.bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable3);
+      bulkAddAssets(dataProduct.getFullyQualifiedName(), addTable3);
 
-      target = getCollection().path("/" + dataProduct.getId() + "/assets");
-      target = target.queryParam("limit", 100);
-      target = target.queryParam("offset", 0);
       ResultList<EntityReference> allAssets =
-          TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+          getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
       assertEquals(3, allAssets.getPaging().getTotal());
       assertEquals(3, allAssets.getData().size());
+
+      // Test bulk remove assets
+      BulkAssets removeTable1 = new BulkAssets().withAssets(List.of(table1.getEntityReference()));
+      bulkRemoveAssets(dataProduct.getFullyQualifiedName(), removeTable1);
+
+      // Verify table1 is removed
+      assets = getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, assets.getPaging().getTotal());
+      assertEquals(2, assets.getData().size());
+      assertTrue(assets.getData().stream().noneMatch(a -> a.getId().equals(table1.getId())));
+      assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+      assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+      // Test pagination after removal
+      page1 = getAssets(dataProduct.getId(), 1, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(2, page1.getPaging().getTotal());
+      assertEquals(1, page1.getData().size());
+
+      page2 = getAssets(dataProduct.getId(), 1, 1, ADMIN_AUTH_HEADERS);
+      assertEquals(2, page2.getPaging().getTotal());
+      assertEquals(1, page2.getData().size());
+      assertNotEquals(page1.getData().getFirst().getId(), page2.getData().getFirst().getId());
+
+      // Remove remaining assets
+      BulkAssets removeRemaining =
+          new BulkAssets()
+              .withAssets(List.of(table2.getEntityReference(), table3.getEntityReference()));
+      bulkRemoveAssets(dataProduct.getFullyQualifiedName(), removeRemaining);
+
+      // Verify all assets are removed
+      assets = getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+      assertEquals(0, assets.getPaging().getTotal());
+      assertEquals(0, assets.getData().size());
     } finally {
       EntityResourceTest.toggleRule(domainValidationRule, true);
     }
+  }
+
+  private void bulkAddAssets(String dataProductName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + dataProductName + "/assets/add");
+    TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
+  }
+
+  private void bulkRemoveAssets(String dataProductName, BulkAssets request)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/" + dataProductName + "/assets/remove");
+    TestUtils.put(target, request, Status.OK, ADMIN_AUTH_HEADERS);
   }
 }

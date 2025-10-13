@@ -33,6 +33,7 @@ public class QueryFilterBuilder {
   private static final String MUST_NOT_KEY = "must_not";
   private static final String SHOULD_KEY = "should";
   private static final String TERM_KEY = "term";
+  private static final String MATCH_KEY = "match";
   private static final String PREFIX_KEY = "prefix";
   private static final String DELETED_KEY = "deleted";
   private static final String ENTITY_TYPE_KEY = "entityType";
@@ -65,7 +66,8 @@ public class QueryFilterBuilder {
     ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
-    addExactMatchCondition(mustArray, query.getFieldPath(), query.getFieldValue());
+    // owners.fullyQualifiedName is a text field, use match query for exact matching
+    addMatchCondition(mustArray, query.getFieldPath(), query.getFieldValue());
     addCommonFilters(mustArray, query);
 
     return serializeQuery(queryFilter);
@@ -105,6 +107,7 @@ public class QueryFilterBuilder {
     ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
     ArrayNode mustArray = boolNode.putArray(MUST_KEY);
 
+    // owners.id is a keyword field, use term query with OR condition
     addOrCondition(mustArray, query.getFieldPath(), query.getFieldValues());
     addCommonFilters(mustArray, query);
 
@@ -133,6 +136,12 @@ public class QueryFilterBuilder {
     ObjectNode termNode = MAPPER.createObjectNode();
     termNode.putObject(TERM_KEY).put(fieldPath, fieldValue);
     mustArray.add(termNode);
+  }
+
+  private static void addMatchCondition(ArrayNode mustArray, String fieldPath, String fieldValue) {
+    ObjectNode matchNode = MAPPER.createObjectNode();
+    matchNode.putObject(MATCH_KEY).put(fieldPath, fieldValue);
+    mustArray.add(matchNode);
   }
 
   private static void addOrCondition(

@@ -18,6 +18,7 @@ import static jakarta.ws.rs.core.Response.Status.FORBIDDEN;
 import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -81,11 +82,14 @@ import org.junit.jupiter.api.TestInfo;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.policies.accessControl.Rule.Effect;
@@ -111,6 +115,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.jdbi3.TeamRepository.TeamCsv;
 import org.openmetadata.service.resources.EntityResourceTest;
+import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
+import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.policies.PolicyResourceTest;
 import org.openmetadata.service.resources.teams.TeamResource.TeamHierarchyList;
 import org.openmetadata.service.resources.teams.TeamResource.TeamList;
@@ -1464,32 +1470,27 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
   void test_getTeamAssetsAPI(TestInfo test) throws IOException {
     Team team = createEntity(createRequest(test).withTeamType(GROUP), ADMIN_AUTH_HEADERS);
 
-    org.openmetadata.service.resources.databases.TableResourceTest tableTest =
-        new org.openmetadata.service.resources.databases.TableResourceTest();
-    org.openmetadata.schema.api.data.CreateTable createTable1 =
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateTable createTable1 =
         tableTest
             .createRequest(getEntityName(test, 1))
             .withOwners(List.of(team.getEntityReference()));
-    org.openmetadata.schema.entity.data.Table table1 =
-        tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+    Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
 
-    org.openmetadata.schema.api.data.CreateTable createTable2 =
+    CreateTable createTable2 =
         tableTest
             .createRequest(getEntityName(test, 2))
             .withOwners(List.of(team.getEntityReference()));
-    org.openmetadata.schema.entity.data.Table table2 =
-        tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+    Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
 
-    org.openmetadata.schema.api.data.CreateTable createTable3 =
+    CreateTable createTable3 =
         tableTest
             .createRequest(getEntityName(test, 3))
             .withOwners(List.of(team.getEntityReference()));
-    org.openmetadata.schema.entity.data.Table table3 =
-        tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+    Table table3 = tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
 
-    WebTarget target = getAssetsResource(team.getId(), 10, 0);
-    ResultList<EntityReference> assets =
-        TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    // Test getting assets by team ID
+    ResultList<EntityReference> assets = getAssets(team.getId(), 10, 0, ADMIN_AUTH_HEADERS);
 
     assertTrue(assets.getPaging().getTotal() >= 3);
     assertTrue(assets.getData().size() >= 3);
@@ -1497,25 +1498,61 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
     assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
 
-    WebTarget targetByName =
-        getCollection().path("/name/" + team.getFullyQualifiedName() + "/assets");
-    targetByName = targetByName.queryParam("limit", 10);
-    targetByName = targetByName.queryParam("offset", 0);
+    // Test getting assets by team name
     ResultList<EntityReference> assetsByName =
-        TestUtils.get(targetByName, ResultList.class, ADMIN_AUTH_HEADERS);
+        getAssetsByName(team.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
     assertTrue(assetsByName.getPaging().getTotal() >= 3);
     assertTrue(assetsByName.getData().size() >= 3);
 
-    target = getCollection().path("/" + team.getId() + "/assets");
-    target = target.queryParam("limit", 2);
-    target = target.queryParam("offset", 0);
-    ResultList<EntityReference> page1 = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    // Test pagination - page 1
+    ResultList<EntityReference> page1 = getAssets(team.getId(), 2, 0, ADMIN_AUTH_HEADERS);
     assertEquals(2, page1.getData().size());
 
-    target = getCollection().path("/" + team.getId() + "/assets");
-    target = target.queryParam("limit", 2);
-    target = target.queryParam("offset", 2);
-    ResultList<EntityReference> page2 = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
-    assertTrue(page2.getData().size() >= 1);
+    // Test pagination - page 2
+    ResultList<EntityReference> page2 = getAssets(team.getId(), 2, 2, ADMIN_AUTH_HEADERS);
+    assertFalse(page2.getData().isEmpty());
+  }
+
+  @Test
+  void test_teamAssetsAndAssetsCountWithAssetInheritance(TestInfo test) throws IOException {
+    // Tests assets API includes parent entity and all child entities when owner is assigned
+    // Create a new isolated team for this test to ensure no interference from other tests
+    CreateTeam createTeam =
+        createRequest(getEntityName(test) + "_" + UUID.randomUUID()).withTeamType(GROUP);
+    Team team = createEntity(createTeam, ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    TableResourceTest tableTest = new TableResourceTest();
+
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(getEntityName(test, 1)).withOwners(null), ADMIN_AUTH_HEADERS);
+
+    Table table1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 2))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(null),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 3))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(null),
+            ADMIN_AUTH_HEADERS);
+
+    String json = JsonUtils.pojoToJson(schema);
+    schema.withOwners(List.of(team.getEntityReference()));
+    schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(team.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3, assets.getData().size(), "Team should have 1 schema + 2 inherited tables from schema");
+    assertEquals(3, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(schema.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
   }
 }

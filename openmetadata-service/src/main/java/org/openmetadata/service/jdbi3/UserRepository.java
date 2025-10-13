@@ -649,7 +649,7 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   public ResultList<EntityReference> getUserAssetsByName(String userName, int limit, int offset) {
-    User user = getByName(null, userName, getFields("id,teams"));
+    User user = getByName(null, userName, getFields("id"));
     return getUserAssets(user.getId(), limit, offset);
   }
 
