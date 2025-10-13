@@ -192,8 +192,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     searchClient.createIndex(stagedIndexName, mappingContent);
 
     Set<String> existingAliases =
-        activeIndexName != null ? searchClient.getAliases(activeIndexName) : Set.of();
+        activeIndexName != null ? searchClient.getAliases(activeIndexName) : new HashSet<>();
 
+    // Add the default index
+    existingAliases.add(indexMapping.getAlias(clusterAlias));
+    existingAliases.add(indexMapping.getIndexName(clusterAlias));
     context.add(
         entityType,
         canonicalIndexName,

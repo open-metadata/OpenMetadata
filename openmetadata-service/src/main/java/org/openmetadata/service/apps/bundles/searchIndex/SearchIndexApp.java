@@ -268,16 +268,20 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void finalizeAllEntityReindex(boolean finalSuccess) {
-    recreateContext
-        .getEntities()
-        .forEach(
-            entityType -> {
-              try {
-                finalizeEntityReindex(entityType, finalSuccess);
-              } catch (Exception ex) {
-                LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
-              }
-            });
+    try {
+      recreateContext
+          .getEntities()
+          .forEach(
+              entityType -> {
+                try {
+                  finalizeEntityReindex(entityType, finalSuccess);
+                } catch (Exception ex) {
+                  LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+                }
+              });
+    } finally {
+      recreateContext = null;
+    }
   }
 
   private void setupEntities() {
@@ -418,8 +422,6 @@ public class SearchIndexApp extends AbstractNativeApplication {
       recreateIndexHandler.finalizeReindex(entityReindexContext, success);
     } catch (Exception ex) {
       LOG.error("Failed to finalize index recreation flow", ex);
-    } finally {
-      recreateContext = null;
     }
   }
 
