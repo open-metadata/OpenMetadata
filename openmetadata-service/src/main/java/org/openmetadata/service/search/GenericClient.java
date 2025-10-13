@@ -92,4 +92,12 @@ public interface GenericClient {
   default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
     // Default implementation does nothing as this is only needed for Elasticsearch
   }
+
+  /**
+   * Get the health status of the search cluster.
+   *
+   * @return SearchHealthStatus indicating whether the cluster is healthy or unhealthy
+   * @throws IOException if the operation fails
+   */
+  SearchHealthStatus getSearchHealthStatus() throws IOException;
 }

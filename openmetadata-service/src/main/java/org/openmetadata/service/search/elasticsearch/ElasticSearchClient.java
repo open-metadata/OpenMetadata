@@ -5,8 +5,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_HITS;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
@@ -23,8 +21,6 @@ import es.co.elastic.clients.elasticsearch.nodes.NodesStatsResponse;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import es.co.elastic.clients.transport.rest_client.RestClientTransport;
 import es.org.elasticsearch.ElasticsearchStatusException;
-import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
-import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
@@ -36,7 +32,6 @@ import es.org.elasticsearch.client.RestHighLevelClient;
 import es.org.elasticsearch.client.RestHighLevelClientBuilder;
 import es.org.elasticsearch.client.indices.GetMappingsRequest;
 import es.org.elasticsearch.client.indices.GetMappingsResponse;
-import es.org.elasticsearch.cluster.health.ClusterHealthStatus;
 import es.org.elasticsearch.cluster.metadata.MappingMetadata;
 import es.org.elasticsearch.common.ParsingException;
 import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
@@ -2207,14 +2202,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public SearchHealthStatus getSearchHealthStatus() throws IOException {
-    ClusterHealthRequest request = new ClusterHealthRequest();
-    ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
-    if (response.getStatus().equals(ClusterHealthStatus.GREEN)
-        || response.getStatus().equals(ClusterHealthStatus.YELLOW)) {
-      return new SearchHealthStatus(HEALTHY_STATUS);
-    } else {
-      return new SearchHealthStatus(UNHEALTHY_STATUS);
-    }
+    return genericManager.getSearchHealthStatus();
   }
 
   private void buildSearchRBACQuery(

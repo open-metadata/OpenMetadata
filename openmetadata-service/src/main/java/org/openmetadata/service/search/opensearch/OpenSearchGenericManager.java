@@ -1,5 +1,8 @@
 package org.openmetadata.service.search.opensearch;
 
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
+
 import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
@@ -9,15 +12,18 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
 import org.openmetadata.service.search.SearchClusterMetrics;
+import org.openmetadata.service.search.SearchHealthStatus;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.Response;
 import os.org.opensearch.client.ResponseException;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.HealthStatus;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import os.org.opensearch.client.opensearch.cluster.HealthResponse;
 import os.org.opensearch.client.opensearch.indices.DataStreamInfo;
 import os.org.opensearch.client.opensearch.indices.GetDataStreamResponse;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
@@ -330,6 +336,25 @@ public class OpenSearchGenericManager implements GenericClient {
     } catch (Exception e) {
       LOG.warn("Failed to extract maxContentLength from cluster settings: {}", e.getMessage());
       return null;
+    }
+  }
+
+  public SearchHealthStatus getSearchHealthStatus() throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot fetch cluster health.");
+      throw new IOException("OpenSearch client is not available");
+    }
+    try {
+      HealthResponse response = client.cluster().health();
+      HealthStatus status = response.status();
+      if (status == HealthStatus.Green || status == HealthStatus.Yellow) {
+        return new SearchHealthStatus(HEALTHY_STATUS);
+      } else {
+        return new SearchHealthStatus(UNHEALTHY_STATUS);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster health", e);
+      throw new IOException("Failed to fetch cluster health: " + e.getMessage());
     }
   }
 }

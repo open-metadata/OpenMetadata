@@ -7,8 +7,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
@@ -128,8 +126,6 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchStatusException;
-import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
-import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.search.SearchResponse;
@@ -148,7 +144,6 @@ import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
-import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.ParsingException;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
@@ -2379,14 +2374,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public SearchHealthStatus getSearchHealthStatus() throws IOException {
-    ClusterHealthRequest request = new ClusterHealthRequest();
-    ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
-    if (response.getStatus().equals(ClusterHealthStatus.GREEN)
-        || response.getStatus().equals(ClusterHealthStatus.YELLOW)) {
-      return new SearchHealthStatus(HEALTHY_STATUS);
-    } else {
-      return new SearchHealthStatus(UNHEALTHY_STATUS);
-    }
+    return genericManager.getSearchHealthStatus();
   }
 
   private OpenSearchSourceBuilderFactory getSearchBuilderFactory() {

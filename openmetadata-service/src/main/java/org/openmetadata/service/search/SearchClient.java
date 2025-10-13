@@ -561,8 +561,6 @@ public interface SearchClient<T>
 
   T getHighLevelClient();
 
-  SearchHealthStatus getSearchHealthStatus() throws IOException;
-
   QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
 
   SearchEntityRelationshipResult searchEntityRelationship(

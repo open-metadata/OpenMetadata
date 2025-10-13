@@ -1,9 +1,14 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
+import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
+
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.HealthStatus;
 import es.co.elastic.clients.elasticsearch.cluster.ClusterStatsResponse;
 import es.co.elastic.clients.elasticsearch.cluster.GetClusterSettingsResponse;
+import es.co.elastic.clients.elasticsearch.cluster.HealthResponse;
 import es.co.elastic.clients.elasticsearch.indices.Alias;
 import es.co.elastic.clients.elasticsearch.indices.AliasDefinition;
 import es.co.elastic.clients.elasticsearch.indices.DataStream;
@@ -21,6 +26,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.GenericClient;
 import org.openmetadata.service.search.SearchClusterMetrics;
+import org.openmetadata.service.search.SearchHealthStatus;
 
 @Slf4j
 public class ElasticSearchGenericManager implements GenericClient {
@@ -378,6 +384,25 @@ public class ElasticSearchGenericManager implements GenericClient {
     } catch (Exception e) {
       LOG.warn("Failed to extract maxContentLength from cluster settings: {}", e.getMessage());
       return null;
+    }
+  }
+
+  public SearchHealthStatus getSearchHealthStatus() throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot fetch cluster health.");
+      throw new IOException("ElasticSearch client is not available");
+    }
+    try {
+      HealthResponse response = client.cluster().health();
+      HealthStatus status = response.status();
+      if (status == HealthStatus.Green || status == HealthStatus.Yellow) {
+        return new SearchHealthStatus(HEALTHY_STATUS);
+      } else {
+        return new SearchHealthStatus(UNHEALTHY_STATUS);
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to fetch cluster health", e);
+      throw new IOException("Failed to fetch cluster health: " + e.getMessage());
     }
   }
 }
