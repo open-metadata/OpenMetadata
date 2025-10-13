@@ -53,7 +53,7 @@ class OwnerResolver:
         self,
         entity_type: str,
         entity_name: str,
-        parent_owner: Optional[str] = None,
+        parent_owner: Optional[Union[str, List[str]]] = None,
     ) -> Optional[EntityReferenceList]:
         """
         Resolve owner for an entity based on configuration
@@ -231,7 +231,7 @@ def get_owner_from_config(
     owner_config: Optional[Union[str, Dict]],
     entity_type: str,
     entity_name: str,
-    parent_owner: Optional[str] = None,
+    parent_owner: Optional[Union[str, List[str]]] = None,
 ) -> Optional[EntityReferenceList]:
     """
     Convenience function to resolve owner from configuration

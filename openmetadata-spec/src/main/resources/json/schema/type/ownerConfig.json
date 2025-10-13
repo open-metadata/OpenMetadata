@@ -5,6 +5,25 @@
   "description": "Configuration for assigning owners to ingested entities following topology hierarchy with inheritance support",
   "javaType": "org.openmetadata.schema.type.OwnerConfig",
   "type": "object",
+  "definitions": {
+    "ownerValue": {
+      "description": "Single owner or list of owners. Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
+      "anyOf": [
+        {
+          "type": "string",
+          "description": "Single owner (user or team name/email)"
+        },
+        {
+          "type": "array",
+          "description": "Multiple owners (must be all users OR single team, cannot mix)",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      ]
+    }
+  },
   "properties": {
     "default": {
       "description": "Default owner applied to all entities when no specific owner is configured (user or team name/email)",
@@ -16,8 +35,8 @@
       "type": "string"
     },
     "database": {
-      "description": "Owner for database entities. Can be a single owner or a map of database names to owner(s). Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
-      "oneOf": [
+      "description": "Owner for database entities. Can be a single owner for all databases, or a map of database names to owner(s).",
+      "anyOf": [
         {
           "type": "string",
           "description": "Single owner (user or team) for all databases"
@@ -26,20 +45,7 @@
           "type": "object",
           "description": "Map of database names to their owner(s)",
           "additionalProperties": {
-            "oneOf": [
-              {
-                "type": "string",
-                "description": "Single owner (user or team)"
-              },
-              {
-                "type": "array",
-                "description": "Multiple owners (must be all users OR single team, cannot mix)",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1
-              }
-            ]
+            "$ref": "#/definitions/ownerValue"
           },
           "examples": [{
             "sales_db": "sales-team",
@@ -50,8 +56,8 @@
       ]
     },
     "databaseSchema": {
-      "description": "Owner for schema entities. Can be a single owner or a map of schema FQNs to owner(s). Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
-      "oneOf": [
+      "description": "Owner for schema entities. Can be a single owner for all schemas, or a map of schema FQNs to owner(s).",
+      "anyOf": [
         {
           "type": "string",
           "description": "Single owner (user or team) for all schemas"
@@ -60,20 +66,7 @@
           "type": "object",
           "description": "Map of schema names/FQNs to their owner(s)",
           "additionalProperties": {
-            "oneOf": [
-              {
-                "type": "string",
-                "description": "Single owner (user or team)"
-              },
-              {
-                "type": "array",
-                "description": "Multiple owners (must be all users OR single team, cannot mix)",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1
-              }
-            ]
+            "$ref": "#/definitions/ownerValue"
           },
           "examples": [{
             "public": "public-schema-team",
@@ -84,8 +77,8 @@
       ]
     },
     "table": {
-      "description": "Owner for table entities. Can be a single owner or a map of table FQNs to owner(s). Business rules: multiple users allowed, only ONE team allowed, users and teams are mutually exclusive.",
-      "oneOf": [
+      "description": "Owner for table entities. Can be a single owner for all tables, or a map of table FQNs to owner(s).",
+      "anyOf": [
         {
           "type": "string",
           "description": "Single owner (user or team) for all tables"
@@ -94,26 +87,8 @@
           "type": "object",
           "description": "Map of table names/FQNs to their owner(s)",
           "additionalProperties": {
-            "oneOf": [
-              {
-                "type": "string",
-                "description": "Single owner (user or team)"
-              },
-              {
-                "type": "array",
-                "description": "Multiple owners (must be all users OR single team, cannot mix)",
-                "items": {
-                  "type": "string"
-                },
-                "minItems": 1
-              }
-            ]
-          },
-          "examples": [{
-            "customers": "customer-data-team",
-            "sales_db.public.orders": "sales-team",
-            "shared_orders": ["alice", "bob", "charlie"]
-          }]
+            "$ref": "#/definitions/ownerValue"
+          }
         }
       ]
     },
