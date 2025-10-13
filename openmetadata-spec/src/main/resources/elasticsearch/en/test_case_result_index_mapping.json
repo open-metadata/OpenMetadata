@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "priority": 500
+    },
     "analysis": {
       "tokenizer": {
         "edge_ngram_tokenizer": {
@@ -496,6 +499,5 @@
         }
       }
     }
-  },
-  "priority": 500
+  }
 }

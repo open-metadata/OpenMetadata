@@ -505,6 +505,13 @@ export const createColumnRowDetails = () => {
   };
 };
 
+export const createColumnRowDetailsWithEncloseDot = () => {
+  return {
+    ...createColumnRowDetails(),
+    name: `"playwright.column ${uuid()}"`,
+  };
+};
+
 export const createStoredProcedureRowDetails = () => {
   return {
     name: `playwright,storedprocedure,${uuid()}`,
