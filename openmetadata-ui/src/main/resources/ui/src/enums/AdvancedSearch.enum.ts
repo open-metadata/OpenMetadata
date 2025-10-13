@@ -90,14 +90,6 @@ export enum EntityFields {
   SPREADSHEET = 'spreadsheet.displayName.keyword',
 }
 
-export const EntitySourceFields: Partial<Record<EntityFields, string[]>> = {
-  [EntityFields.SERVICE_NAME]: ['service.name'],
-  [EntityFields.DATABASE_SCHEMA_NAME]: ['databaseSchema.name'],
-  [EntityFields.DATABASE_NAME]: ['database.name'],
-  [EntityFields.COLUMN]: ['columns.name'],
-  [EntityFields.NAME_KEYWORD]: ['name'],
-};
-
 // This enum contains list of fields that are there in the object of the entity
 // For example, in Glossary object, there are fields like name, description, parent, etc.
 export enum EntityReferenceFields {
@@ -119,4 +111,6 @@ export enum EntityReferenceFields {
   UPDATED_BY = 'updatedBy',
   CHANGE_DESCRIPTION = 'changeDescription',
   DELETED = 'deleted',
+  UPDATED_AT = 'updatedAt',
+  VERSION = 'version',
 }

@@ -70,6 +70,13 @@
         "type": "string"
       },
       "default": []
+    },
+    "supportedEntities": {
+      "description": "PII (Personally Identifiable Information) tags for classification and detection of sensitive data",
+      "type": "array",
+      "items": {
+        "$ref": "piiEntity.json"
+      }
     }
   },
   "required": ["type", "name"],
