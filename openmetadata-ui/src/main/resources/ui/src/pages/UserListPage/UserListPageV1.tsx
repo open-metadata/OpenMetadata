@@ -14,7 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty, noop } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -216,11 +216,14 @@ const UserListPageV1 = () => {
     setFilters({ isDeleted: value || null, user: null });
   };
 
-  const handleSearch = (value: string) => {
-    handlePageChange(INITIAL_PAGING_VALUE);
+  const handleSearch = useCallback(
+    (value: string) => {
+      handlePageChange(INITIAL_PAGING_VALUE);
 
-    setFilters({ user: isEmpty(value) ? null : value });
-  };
+      setFilters({ user: isEmpty(value) ? null : value });
+    },
+    [handlePageChange, setFilters]
+  );
 
   useEffect(() => {
     // Perform reset
@@ -425,10 +428,21 @@ const UserListPageV1 = () => {
     emptyPlaceHolderText,
   ]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: `${t('label.search-for-type', {
+        type: t('label.user'),
+      })}...`,
+      searchValue: searchValue,
+      typingInterval: 400,
+      urlSearchKey: 'user',
+      onSearch: handleSearch,
+    }),
+    [searchValue, handleSearch]
+  );
+
   if (
-    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(
-      tab as GlobalSettingOptions
-    )
+    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(tab)
   ) {
     // This component is not accessible for the given tab
     return <Navigate to={ROUTES.NOT_FOUND} />;
@@ -497,15 +511,7 @@ const UserListPageV1 = () => {
             }}
             pagination={false}
             rowKey="id"
-            searchProps={{
-              placeholder: `${t('label.search-for-type', {
-                type: t('label.user'),
-              })}...`,
-              value: searchValue,
-              typingInterval: 400,
-              urlSearchKey: 'user',
-              onSearch: noop,
-            }}
+            searchProps={searchProps}
             size="small"
           />
         </Col>
