@@ -1,4 +1,16 @@
-import { expect, test } from '@playwright/test';
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { expect } from '@playwright/test';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -19,6 +31,7 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import { softDeleteEntity } from '../../utils/entity';
+import { test } from '../fixtures/pages';
 
 const domain = new Domain();
 const dataProduct = new DataProduct([domain]);
@@ -37,7 +50,7 @@ const entities = [
   ChartClass,
 ] as const;
 
-test.beforeAll('setup', async ({ browser }) => {
+test.beforeAll('setup test', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);
   await domain.create(apiContext);
   await dataProduct.create(apiContext);
@@ -45,18 +58,18 @@ test.beforeAll('setup', async ({ browser }) => {
   await afterAction();
 });
 
-test.beforeEach(async ({ page }) => {
-  await redirectToHomePage(page);
-});
-
 entities.forEach((EntityClass) => {
   const entity = new EntityClass();
 
   test.describe(entity.getType(), () => {
-    test.beforeAll('setup ' + entity.getType(), async ({ browser }) => {
+    test.beforeAll('setup  entity' + entity.getType(), async ({ browser }) => {
       const { afterAction, apiContext } = await performAdminLogin(browser);
       await entity.create(apiContext);
       await afterAction();
+    });
+
+    test.beforeEach(async ({ page }) => {
+      await redirectToHomePage(page);
     });
 
     test('Validate restore with Inherited domain and data products assigned', async ({
