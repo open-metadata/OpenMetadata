@@ -16,7 +16,18 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.classification.tag import Tag
+from metadata.generated.schema.entity.data.apiCollection import APICollection
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.database import Database
+from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.pipeline import Pipeline
+from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
+from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.ingestion.models.custom_basemodel_validation import (
     RESERVED_ARROW_KEYWORD,
@@ -288,3 +299,130 @@ class TestFqn(TestCase):
         )
         expected3 = f"bigquery.my-project.dataset.events_2024${RESERVED_QUOTE_KEYWORD}daily{RESERVED_QUOTE_KEYWORD}"
         self.assertEqual(result3, expected3)
+
+    def test_prefix_entity_for_wildcard_search(self):
+        """Test wildcard search prefix generation for all supported entity types"""
+
+        # Table (4 slots: service.database.schema.table)
+        # Full FQN - no wildcards needed
+        table_fqn = "my_service.my_db.my_schema.my_table"
+        result = fqn.prefix_entity_for_wildcard_search(Table, table_fqn)
+        self.assertEqual(result, "my_service.my_db.my_schema.my_table")
+
+        # Table with partial FQN - needs wildcards
+        table_fqn_partial = "my_schema.my_table"
+        result = fqn.prefix_entity_for_wildcard_search(Table, table_fqn_partial)
+        self.assertEqual(result, "*.*.my_schema.my_table")
+
+        # Table with just table name - needs all wildcards
+        table_fqn_minimal = "my_table"
+        result = fqn.prefix_entity_for_wildcard_search(Table, table_fqn_minimal)
+        self.assertEqual(result, "*.*.*.my_table")
+
+        # Table with quoted parts
+        table_fqn_quoted = '"my.schema".my_table'
+        result_quoted = fqn.prefix_entity_for_wildcard_search(Table, table_fqn_quoted)
+        self.assertEqual(result_quoted, '*.*."my.schema".my_table')
+
+        # DatabaseSchema (3 slots: service.database.schema)
+        schema_fqn = "public"
+        result = fqn.prefix_entity_for_wildcard_search(DatabaseSchema, schema_fqn)
+        self.assertEqual(result, "*.*.public")
+
+        schema_fqn_full = "postgres_service.analytics_db.public"
+        result = fqn.prefix_entity_for_wildcard_search(DatabaseSchema, schema_fqn_full)
+        self.assertEqual(result, "postgres_service.analytics_db.public")
+
+        # Database (2 slots: service.database)
+        database_fqn = "production_db"
+        result = fqn.prefix_entity_for_wildcard_search(Database, database_fqn)
+        self.assertEqual(result, "*.production_db")
+
+        database_fqn_full = "mysql_service.production_db"
+        result = fqn.prefix_entity_for_wildcard_search(Database, database_fqn_full)
+        self.assertEqual(result, "mysql_service.production_db")
+
+        # Dashboard (2 slots: service.dashboard)
+        dashboard_fqn = "sales_dashboard"
+        result = fqn.prefix_entity_for_wildcard_search(Dashboard, dashboard_fqn)
+        self.assertEqual(result, "*.sales_dashboard")
+
+        # APICollection (2 slots: service.collection)
+        api_collection_fqn = "users_api"
+        result = fqn.prefix_entity_for_wildcard_search(
+            APICollection, api_collection_fqn
+        )
+        self.assertEqual(result, "*.users_api")
+
+        # Chart (2 slots: service.chart)
+        chart_fqn = "revenue_chart"
+        result = fqn.prefix_entity_for_wildcard_search(Chart, chart_fqn)
+        self.assertEqual(result, "*.revenue_chart")
+
+        # MlModel (2 slots: service.model)
+        mlmodel_fqn = "fraud_detection_model"
+        result = fqn.prefix_entity_for_wildcard_search(MlModel, mlmodel_fqn)
+        self.assertEqual(result, "*.fraud_detection_model")
+
+        # Topic (2 slots: service.topic)
+        topic_fqn = "potato"
+        result = fqn.prefix_entity_for_wildcard_search(Topic, topic_fqn)
+        self.assertEqual(result, "*.potato")
+
+        topic_fqn_full = "kafka.user_events"
+        result = fqn.prefix_entity_for_wildcard_search(Topic, topic_fqn_full)
+        self.assertEqual(result, "kafka.user_events")
+
+        # SearchIndex (2 slots: service.index)
+        search_index_fqn = "product_index"
+        result = fqn.prefix_entity_for_wildcard_search(SearchIndex, search_index_fqn)
+        self.assertEqual(result, "*.product_index")
+
+        # Tag (2 slots: classification.tag)
+        tag_fqn = "Sensitive"
+        result = fqn.prefix_entity_for_wildcard_search(Tag, tag_fqn)
+        self.assertEqual(result, "*.Sensitive")
+
+        tag_fqn_full = "PII.Sensitive"
+        result = fqn.prefix_entity_for_wildcard_search(Tag, tag_fqn_full)
+        self.assertEqual(result, "PII.Sensitive")
+
+        # DataModel (2 slots: service.model)
+        data_model_fqn = "customer_model"
+        result = fqn.prefix_entity_for_wildcard_search(DataModel, data_model_fqn)
+        self.assertEqual(result, "*.customer_model")
+
+        # StoredProcedure (4 slots: service.database.schema.procedure)
+        stored_proc_fqn = "calculate_revenue"
+        result = fqn.prefix_entity_for_wildcard_search(StoredProcedure, stored_proc_fqn)
+        self.assertEqual(result, "*.*.*.calculate_revenue")
+
+        stored_proc_fqn_partial = "public.calculate_revenue"
+        result = fqn.prefix_entity_for_wildcard_search(
+            StoredProcedure, stored_proc_fqn_partial
+        )
+        self.assertEqual(result, "*.*.public.calculate_revenue")
+
+        stored_proc_fqn_full = "oracle.sales_db.public.calculate_revenue"
+        result = fqn.prefix_entity_for_wildcard_search(
+            StoredProcedure, stored_proc_fqn_full
+        )
+        self.assertEqual(result, "oracle.sales_db.public.calculate_revenue")
+
+        # Pipeline (2 slots: service.pipeline)
+        pipeline_fqn = "daily_ingestion"
+        result = fqn.prefix_entity_for_wildcard_search(Pipeline, pipeline_fqn)
+        self.assertEqual(result, "*.daily_ingestion")
+
+        # Test error cases
+        # FQN with too many parts
+        with pytest.raises(fqn.FQNBuildingException) as exc:
+            fqn.prefix_entity_for_wildcard_search(
+                Table, "service.db.schema.table.extra"
+            )
+        assert "has too many parts" in str(exc.value)
+
+        # Test unsupported entity type (Column doesn't have slots defined)
+        with pytest.raises(fqn.FQNBuildingException) as exc:
+            fqn.prefix_entity_for_wildcard_search(Column, "column")
+        assert "not supported for wildcard search" in str(exc.value)

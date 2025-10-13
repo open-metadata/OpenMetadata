@@ -342,7 +342,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
           const testCaseEditPermission =
             isEditAllowed || testCasePermission?.EditAll;
-          const testCaseDeletePermission = testCasePermission?.Delete;
+          const testCaseDeletePermission =
+            removeFromTestSuite?.isAllowed || testCasePermission?.Delete;
 
           const deleteBtnTooltip = removeFromTestSuite
             ? t('label.remove')
