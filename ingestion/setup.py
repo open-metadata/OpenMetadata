@@ -40,7 +40,7 @@ VERSIONS = {
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
-    "numpy": "numpy<=2.2.6",
+    "numpy": "numpy<2",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
@@ -69,7 +69,7 @@ VERSIONS = {
     "pyathena": "pyathena~=3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
-    "asammdf": "asammdf~=8.6.10",
+    "asammdf": "asammdf~=7.4.5",
 }
 
 COMMONS = {
