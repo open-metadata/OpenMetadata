@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        py-version: ['3.9']
+        py-version: ['3.12']
         e2e-test: ['mysql', '{connector}']
 ```
 

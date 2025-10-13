@@ -254,4 +254,220 @@ describe('parseBucketsData', () => {
       { value: 'key4', title: 'key4' },
     ]);
   });
+
+  describe('with sourceFieldOptionType parameter', () => {
+    it('should extract label and value from sourceFieldOptionType mapping', () => {
+      const buckets = [
+        {
+          key: 'bucket1',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    displayName: 'User 1',
+                    fullyQualifiedName: 'user1@domain.com',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          key: 'bucket2',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    displayName: 'User 2',
+                    fullyQualifiedName: 'user2@domain.com',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      const result = parseBucketsData(buckets, undefined, {
+        label: 'displayName',
+        value: 'fullyQualifiedName',
+      });
+
+      expect(result).toEqual([
+        { title: 'User 1', value: 'user1@domain.com' },
+        { title: 'User 2', value: 'user2@domain.com' },
+      ]);
+    });
+
+    it('should handle missing label field in sourceFieldOptionType', () => {
+      const buckets = [
+        {
+          key: 'bucket1',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    fullyQualifiedName: 'user1@domain.com',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      const result = parseBucketsData(buckets, undefined, {
+        label: 'displayName',
+        value: 'fullyQualifiedName',
+      });
+
+      expect(result).toEqual([{ title: undefined, value: 'user1@domain.com' }]);
+    });
+
+    it('should handle missing value field in sourceFieldOptionType', () => {
+      const buckets = [
+        {
+          key: 'bucket1',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    displayName: 'User 1',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      const result = parseBucketsData(buckets, undefined, {
+        label: 'displayName',
+        value: 'fullyQualifiedName',
+      });
+
+      expect(result).toEqual([{ title: 'User 1', value: undefined }]);
+    });
+
+    it('should handle empty _source in sourceFieldOptionType', () => {
+      const buckets = [
+        {
+          key: 'bucket1',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {},
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      const result = parseBucketsData(buckets, undefined, {
+        label: 'displayName',
+        value: 'fullyQualifiedName',
+      });
+
+      expect(result).toEqual([{ title: undefined, value: undefined }]);
+    });
+
+    it('should prioritize sourceFieldOptionType over sourceFields', () => {
+      const buckets = [
+        {
+          key: 'bucket1',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    displayName: 'Display Name',
+                    fullyQualifiedName: 'fqn@domain.com',
+                    nested: {
+                      field: 'nested value',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      const result = parseBucketsData(buckets, 'nested.field', {
+        label: 'displayName',
+        value: 'fullyQualifiedName',
+      });
+
+      expect(result).toEqual([
+        { title: 'Display Name', value: 'fqn@domain.com' },
+      ]);
+    });
+
+    it('should handle multiple buckets with different source data', () => {
+      const buckets = [
+        {
+          key: 'bucket1',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    displayName: 'Team A',
+                    fullyQualifiedName: 'team_a',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          key: 'bucket2',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    displayName: 'Team B',
+                    fullyQualifiedName: 'team_b',
+                  },
+                },
+              ],
+            },
+          },
+        },
+        {
+          key: 'bucket3',
+          'top_hits#top': {
+            hits: {
+              hits: [
+                {
+                  _source: {
+                    displayName: 'Team C',
+                    fullyQualifiedName: 'team_c',
+                  },
+                },
+              ],
+            },
+          },
+        },
+      ];
+
+      const result = parseBucketsData(buckets, undefined, {
+        label: 'displayName',
+        value: 'fullyQualifiedName',
+      });
+
+      expect(result).toEqual([
+        { title: 'Team A', value: 'team_a' },
+        { title: 'Team B', value: 'team_b' },
+        { title: 'Team C', value: 'team_c' },
+      ]);
+    });
+  });
 });
