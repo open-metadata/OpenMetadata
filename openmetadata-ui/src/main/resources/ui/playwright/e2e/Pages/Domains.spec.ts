@@ -239,7 +239,7 @@ test.describe('Domains', () => {
       ).toBeVisible();
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toContainText(dataProduct1.data.displayName, { timeout: 15000 });
+      ).toContainText(dataProduct1.data.displayName);
 
       await sidebarClick(page, SidebarItem.DATA_PRODUCT);
       await selectDataProduct(page, dataProduct1.data);
@@ -299,7 +299,6 @@ test.describe('Domains', () => {
     await redirectToHomePage(page);
     await followingSearchResponse;
 
-    await page.reload();
     await page.waitForLoadState('networkidle');
 
     // Check that the followed domain is shown in the following widget
@@ -308,7 +307,7 @@ test.describe('Domains', () => {
     ).toBeVisible();
     await expect(
       page.locator('[data-testid="following-widget"]')
-    ).toContainText(domain.data.displayName, { timeout: 15000 });
+    ).toContainText(domain.data.displayName);
 
     await sidebarClick(page, SidebarItem.DOMAIN);
     await selectDomain(page, domain.data);
@@ -492,7 +491,7 @@ test.describe('Domains', () => {
       ).toBeVisible();
       await expect(
         page.locator('[data-testid="following-widget"]')
-      ).toContainText(subDomain.data.displayName, { timeout: 15000 });
+      ).toContainText(subDomain.data.displayName);
 
       const subDomainRes = page.waitForResponse('/api/v1/domains/name/*');
       await page

@@ -358,14 +358,14 @@ export const parseBucketsData = (
  * @returns Query filter object for searchQuery API
  */
 export const getTermQuery = (
-  terms: Record<string, string | string[] | number>,
+  terms: Record<string, string | string[] | number | boolean>,
   queryType: 'must' | 'must_not' | 'should' | 'should_not' = 'must',
   minimumShouldMatch?: number,
   options?: {
     wildcardTerms?: Record<string, string>;
     wildcardShouldQueries?: Record<string, string>;
-    mustNotTerms?: Record<string, string | string[] | number>;
-    matchTerms?: Record<string, string | number>;
+    mustNotTerms?: Record<string, string | string[] | number | boolean>;
+    matchTerms?: Record<string, string | number | boolean>;
     wildcardMustNotQueries?: Record<string, string | string[]>;
   }
 ) => {
