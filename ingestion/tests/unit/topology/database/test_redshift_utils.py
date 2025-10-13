@@ -31,17 +31,20 @@ class TestRedshiftUtils(unittest.TestCase):
 
     def test_view_definition_with_create_view(self):
         """Test that view definition with CREATE VIEW is not modified"""
-        self.mock_view.view_definition = "CREATE VIEW test_schema.test_view AS SELECT * FROM table1"
+        self.mock_view.view_definition = (
+            "CREATE VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
 
         result = get_view_definition(
             self.mock_self,
             self.mock_connection,
             "test_view",
-            schema="test_schema"
+            schema="test_schema",
         )
 
-        self.assertIn("CREATE VIEW", result)
-        self.assertNotIn("CREATE VIEW test_schema.test_view AS CREATE VIEW", result)
+        self.assertEqual(
+            result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
 
     def test_view_definition_without_create_view(self):
         """Test that view definition without CREATE VIEW gets it prepended"""
@@ -51,10 +54,12 @@ class TestRedshiftUtils(unittest.TestCase):
             self.mock_self,
             self.mock_connection,
             "test_view",
-            schema="test_schema"
+            schema="test_schema",
         )
 
-        self.assertTrue(result.startswith("CREATE VIEW test_schema.test_view AS"))
+        self.assertEqual(
+            result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1"
+        )
 
     def test_view_definition_with_sql_comment_before_create(self):
         """Test view definition with SQL comment before CREATE VIEW (expected scenario)"""
@@ -64,11 +69,13 @@ class TestRedshiftUtils(unittest.TestCase):
             self.mock_self,
             self.mock_connection,
             "test_view",
-            schema="test_schema"
+            schema="test_schema",
         )
 
-        self.assertIn("CREATE VIEW", result)
-        self.assertNotIn("CREATE VIEW test_schema.test_view AS CREATE VIEW", result)
+        self.assertEqual(
+            result,
+            "/* some comment */\n\tCREATE VIEW test_schema.test_view AS SELECT * FROM table1",
+        )
 
     def test_view_definition_removes_schema_binding(self):
         """Test that WITH NO SCHEMA BINDING is removed"""
@@ -78,10 +85,12 @@ class TestRedshiftUtils(unittest.TestCase):
             self.mock_self,
             self.mock_connection,
             "test_view",
-            schema="test_schema"
+            schema="test_schema",
         )
 
-        self.assertNotIn("WITH NO SCHEMA BINDING", result.upper())
+        self.assertEqual(
+            result, "CREATE VIEW test_schema.test_view AS SELECT * FROM table1 "
+        )
 
 
 if __name__ == "__main__":
