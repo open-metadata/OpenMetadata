@@ -213,3 +213,35 @@ class OMetaUserMixin:
                 ]
             )
         return None
+
+    def get_user_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
+        """
+        Get paginated list of assets for a user
+
+        Args:
+            name: Name of the user
+            limit: Maximum number of assets to return (default 10, max 1000)
+            offset: Offset from which to start returning results (default 0)
+
+        Returns:
+            API response as a dictionary containing paginated assets
+        """
+        path = f"/users/name/{name}/assets"
+        params = {"limit": limit, "offset": offset}
+        return self.client.get(path, params)
+
+    def get_team_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
+        """
+        Get paginated list of assets for a team
+
+        Args:
+            name: Name of the team
+            limit: Maximum number of assets to return (default 10, max 1000)
+            offset: Offset from which to start returning results (default 0)
+
+        Returns:
+            API response as a dictionary containing paginated assets
+        """
+        path = f"/teams/name/{name}/assets"
+        params = {"limit": limit, "offset": offset}
+        return self.client.get(path, params)

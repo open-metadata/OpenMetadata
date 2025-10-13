@@ -57,6 +57,40 @@ class OMetaDomainMixin:
         """
         return self._handle_data_product_assets(name, assets, "remove")
 
+    def get_data_product_assets(
+        self, name: str, limit: int = 10, offset: int = 0
+    ) -> Dict:
+        """
+        Get paginated list of assets for a data product
+
+        Args:
+            name: Name of the data product
+            limit: Maximum number of assets to return (default 10, max 1000)
+            offset: Offset from which to start returning results (default 0)
+
+        Returns:
+            API response as a dictionary containing paginated assets
+        """
+        path = f"/dataProducts/name/{name}/assets"
+        params = {"limit": limit, "offset": offset}
+        return self.client.get(path, params)
+
+    def get_domain_assets(self, name: str, limit: int = 10, offset: int = 0) -> Dict:
+        """
+        Get paginated list of assets for a domain
+
+        Args:
+            name: Name of the domain
+            limit: Maximum number of assets to return (default 10, max 1000)
+            offset: Offset from which to start returning results (default 0)
+
+        Returns:
+            API response as a dictionary containing paginated assets
+        """
+        path = f"/domains/name/{name}/assets"
+        params = {"limit": limit, "offset": offset}
+        return self.client.get(path, params)
+
     def _handle_data_product_assets(
         self,
         name: str,

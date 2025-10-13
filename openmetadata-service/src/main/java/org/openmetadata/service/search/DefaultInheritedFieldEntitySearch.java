@@ -104,25 +104,11 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
               query.getSortField(),
               query.getSortOrder());
 
-      LOG.info(
-          "Executing inherited field search query: index={}, from={}, size={}, queryFilter={}, sortField={}, sortOrder={}, includeFields={}",
-          searchRequest.getIndex(),
-          searchRequest.getFrom(),
-          searchRequest.getSize(),
-          searchRequest.getQueryFilter(),
-          searchRequest.getSortFieldParam(),
-          searchRequest.getSortOrder(),
-          searchRequest.getIncludeSourceFields());
-
       Response response = searchRepository.search(searchRequest, null);
       String responseBody = extractResponseBody(response);
       JsonNode searchResponse = JsonUtils.readTree(responseBody);
 
       int totalCount = extractTotalCountFromSearchResponse(searchResponse);
-      LOG.info(
-          "Inherited field search query returned: totalCount={}, responseStatus={}",
-          totalCount,
-          response.getStatus());
 
       if (totalCount == 0) {
         return new InheritedFieldResult(Collections.emptyList(), 0);
@@ -130,12 +116,11 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
 
       // Extract entities from response
       List<EntityReference> results = extractEntityReferencesFromSearchResponse(searchResponse);
-      LOG.info("Extracted {} entity references from search response", results.size());
 
       return new InheritedFieldResult(results, totalCount);
 
     } catch (Exception e) {
-      LOG.debug("Failed to fetch entities for inherited field, using fallback", e);
+      LOG.info("Failed to fetch entities for inherited field, using fallback", e);
       return fallback.get();
     }
   }
@@ -153,21 +138,15 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
           buildSearchRequest(
               0, 0, queryFilter, false, null, DEFAULT_SORT_FIELD, DEFAULT_SORT_ORDER);
 
-      LOG.info(
-          "Executing inherited field count query: index={}, queryFilter={}",
-          searchRequest.getIndex(),
-          searchRequest.getQueryFilter());
-
       Response response = searchRepository.search(searchRequest, null);
 
       String responseBody = extractResponseBody(response);
       JsonNode searchResponse = JsonUtils.readTree(responseBody);
       int count = extractTotalCountFromSearchResponse(searchResponse);
-      LOG.info("Inherited field count query returned: count={}", count);
       return count;
 
     } catch (Exception e) {
-      LOG.debug("Failed to get count for inherited field, using fallback", e);
+      LOG.info("Failed to get count for inherited field, using fallback", e);
       return fallback.get();
     }
   }
