@@ -145,13 +145,22 @@ export const getDomainPath = (fqn?: string) => {
   return path;
 };
 
-export const getDomainDetailsPath = (fqn: string, tab?: string) => {
+export const getDomainDetailsPath = (
+  fqn: string,
+  tab?: string,
+  subTab = 'all'
+) => {
   let path = tab ? ROUTES.DOMAIN_DETAILS_WITH_TAB : ROUTES.DOMAIN_DETAILS;
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
+
+  if (tab === EntityTabs.ACTIVITY_FEED) {
+    path = ROUTES.DOMAIN_DETAILS_WITH_SUBTAB;
+    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  }
 
   if (tab) {
     path = path.replace(PLACEHOLDER_ROUTE_TAB, tab);
   }
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, getEncodedFqn(fqn));
 
   return path;
 };
