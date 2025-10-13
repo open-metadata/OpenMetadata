@@ -27,7 +27,9 @@ import { DashboardClass } from './DashboardClass';
 import { DashboardDataModelClass } from './DashboardDataModelClass';
 import { DatabaseClass } from './DatabaseClass';
 import { DatabaseSchemaClass } from './DatabaseSchemaClass';
+import { DirectoryClass } from './DirectoryClass';
 import { EntityDataClassCreationConfig } from './EntityDataClass.interface';
+import { FileClass } from './FileClass';
 import { MetricClass } from './MetricClass';
 import { MlModelClass } from './MlModelClass';
 import { PipelineClass } from './PipelineClass';
@@ -35,14 +37,17 @@ import { SearchIndexClass } from './SearchIndexClass';
 import { ApiServiceClass } from './service/ApiServiceClass';
 import { DashboardServiceClass } from './service/DashboardServiceClass';
 import { DatabaseServiceClass } from './service/DatabaseServiceClass';
+import { DriveServiceClass } from './service/DriveServiceClass';
 import { MessagingServiceClass } from './service/MessagingServiceClass';
 import { MlmodelServiceClass } from './service/MlmodelServiceClass';
 import { PipelineServiceClass } from './service/PipelineServiceClass';
 import { SearchIndexServiceClass } from './service/SearchIndexServiceClass';
 import { StorageServiceClass } from './service/StorageServiceClass';
+import { SpreadsheetClass } from './SpreadsheetClass';
 import { StoredProcedureClass } from './StoredProcedureClass';
 import { TableClass } from './TableClass';
 import { TopicClass } from './TopicClass';
+import { WorksheetClass } from './WorksheetClass';
 
 export class EntityDataClass {
   static readonly domain1 = new Domain();
@@ -61,6 +66,9 @@ export class EntityDataClass {
   });
   static readonly certificationTag2 = new TagClass({
     classification: 'Certification',
+  });
+  static readonly tierTag1 = new TagClass({
+    classification: 'Tier',
   });
   static readonly classification1 = new ClassificationClass({
     provider: 'system',
@@ -101,11 +109,20 @@ export class EntityDataClass {
   static readonly pipelineService = new PipelineServiceClass();
   static readonly searchIndexService = new SearchIndexServiceClass();
   static readonly storageService = new StorageServiceClass();
+  static readonly driveService = new DriveServiceClass();
   static readonly dataProduct1 = new DataProduct([this.domain1]);
   static readonly dataProduct2 = new DataProduct([this.domain1]);
   static readonly dataProduct3 = new DataProduct([this.domain2]);
   static readonly metric1 = new MetricClass();
   static readonly chart1 = new ChartClass();
+  static readonly directory1 = new DirectoryClass();
+  static readonly directory2 = new DirectoryClass();
+  static readonly file1 = new FileClass();
+  static readonly file2 = new FileClass();
+  static readonly spreadsheet1 = new SpreadsheetClass();
+  static readonly spreadsheet2 = new SpreadsheetClass();
+  static readonly worksheet1 = new WorksheetClass();
+  static readonly worksheet2 = new WorksheetClass();
 
   static async preRequisitesForTests(
     apiContext: APIRequestContext,
@@ -128,6 +145,7 @@ export class EntityDataClass {
             this.team2.create(apiContext),
             this.certificationTag1.create(apiContext),
             this.certificationTag2.create(apiContext),
+            this.tierTag1.create(apiContext),
             this.classification1.create(apiContext),
           ]
         : [];
@@ -212,6 +230,25 @@ export class EntityDataClass {
     if (creationConfig?.all || creationConfig?.chart) {
       promises.push(this.chart1.create(apiContext));
     }
+    if (creationConfig?.all || creationConfig?.driveService) {
+      promises.push(this.driveService.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.directory) {
+      promises.push(this.directory1.create(apiContext));
+      promises.push(this.directory2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.file) {
+      promises.push(this.file1.create(apiContext));
+      promises.push(this.file2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.spreadsheet) {
+      promises.push(this.spreadsheet1.create(apiContext));
+      promises.push(this.spreadsheet2.create(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.worksheet) {
+      promises.push(this.worksheet1.create(apiContext));
+      promises.push(this.worksheet2.create(apiContext));
+    }
 
     await Promise.allSettled(promises);
 
@@ -248,6 +285,7 @@ export class EntityDataClass {
             this.team2.delete(apiContext),
             this.certificationTag1.delete(apiContext),
             this.certificationTag2.delete(apiContext),
+            this.tierTag1.delete(apiContext),
             this.classification1.delete(apiContext),
             this.tag1.delete(apiContext),
             this.dataProduct1.delete(apiContext),
@@ -335,6 +373,25 @@ export class EntityDataClass {
     }
     if (creationConfig?.all || creationConfig?.chart) {
       promises.push(this.chart1.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.driveService) {
+      promises.push(this.driveService.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.directory) {
+      promises.push(this.directory1.delete(apiContext));
+      promises.push(this.directory2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.file) {
+      promises.push(this.file1.delete(apiContext));
+      promises.push(this.file2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.spreadsheet) {
+      promises.push(this.spreadsheet1.delete(apiContext));
+      promises.push(this.spreadsheet2.delete(apiContext));
+    }
+    if (creationConfig?.all || creationConfig?.worksheet) {
+      promises.push(this.worksheet1.delete(apiContext));
+      promises.push(this.worksheet2.delete(apiContext));
     }
 
     return await Promise.allSettled(promises);

@@ -19,6 +19,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
 import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
+import { ReactComponent as TermsIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
@@ -44,6 +45,7 @@ import { ContractSchemaFormTab } from '../ContractSchemaFormTab/ContractScehmaFo
 import { ContractSecurityFormTab } from '../ContractSecurityFormTab/ContractSecurityFormTab';
 import { ContractSemanticFormTab } from '../ContractSemanticFormTab/ContractSemanticFormTab';
 import { ContractSLAFormTab } from '../ContractSLAFormTab/ContractSLAFormTab';
+import ContractTermsOfService from '../ContractTermOfService/ContractTermsOfService.component';
 import './add-data-contract.less';
 
 export interface FormStepProps {
@@ -77,18 +79,33 @@ const AddDataContract: React.FC<{
     setActiveTab(key);
   }, []);
 
-  const { validSemantics, isSaveDisabled } = useMemo(() => {
+  const { validSemantics, validSecurity, isSaveDisabled } = useMemo(() => {
     const validSemantics = formValues.semantics?.filter(
       (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
     );
 
+    const validSecurity = formValues.security
+      ? {
+          ...formValues.security,
+          policies: formValues.security.policies?.map((policy) => ({
+            ...policy,
+            rowFilters: policy.rowFilters?.filter(
+              (filter) =>
+                !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
+            ),
+          })),
+        }
+      : undefined;
+
     return {
       validSemantics,
+      validSecurity,
       isSaveDisabled: isEmpty(
         compare(contract ?? {}, {
           ...contract,
           ...formValues,
           semantics: validSemantics,
+          security: validSecurity,
         })
       ),
     };
@@ -105,6 +122,7 @@ const AddDataContract: React.FC<{
             ...contract,
             ...formValues,
             semantics: validSemantics,
+            security: validSecurity,
             displayName: formValues.name,
           })
         );
@@ -117,6 +135,7 @@ const AddDataContract: React.FC<{
             type: EntityType.TABLE,
           },
           semantics: validSemantics,
+          security: validSecurity,
           entityStatus: EntityStatus.Approved,
         });
       }
@@ -128,7 +147,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues, table?.id, validSemantics]);
+  }, [contract, formValues, table?.id, validSemantics, validSecurity]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {
@@ -158,9 +177,28 @@ const AddDataContract: React.FC<{
         children: (
           <ContractDetailFormTab
             initialValues={contract}
-            nextLabel={t('label.schema')}
+            nextLabel={t('label.terms-of-service')}
             onChange={onFormChange}
             onNext={onNext}
+          />
+        ),
+      },
+      {
+        label: (
+          <div className="d-flex items-center">
+            <TermsIcon className="contract-tab-icon" />
+            <span>{t('label.terms-of-service')}</span>
+          </div>
+        ),
+        key: EDataContractTab.TERMS_OF_SERVICE.toString(),
+        children: (
+          <ContractTermsOfService
+            initialValues={contract}
+            nextLabel={t('label.schema')}
+            prevLabel={t('label.contract-detail-plural')}
+            onChange={onFormChange}
+            onNext={onNext}
+            onPrev={onPrev}
           />
         ),
       },
@@ -175,7 +213,7 @@ const AddDataContract: React.FC<{
         children: (
           <ContractSchemaFormTab
             nextLabel={t('label.semantic-plural')}
-            prevLabel={t('label.contract-detail-plural')}
+            prevLabel={t('label.terms-of-service')}
             selectedSchema={contract?.schema ?? []}
             onChange={onFormChange}
             onNext={onNext}

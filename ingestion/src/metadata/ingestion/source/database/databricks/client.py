@@ -11,6 +11,7 @@
 """
 Client to interact with databricks apis
 """
+import base64
 import json
 import traceback
 from datetime import timedelta
@@ -61,23 +62,30 @@ class DatabricksClient:
     ):
         self.config = config
         base_url, *_ = self.config.hostPort.split(":")
-        auth_token = self.config.token.get_secret_value()
         self.base_url = f"https://{base_url}{API_VERSION}"
         self.base_query_url = f"{self.base_url}{QUERIES_PATH}"
         self.base_job_url = f"https://{base_url}{JOB_API_VERSION}/jobs"
         self.jobs_list_url = f"{self.base_job_url}/list"
         self.jobs_run_list_url = f"{self.base_job_url}/runs/list"
         self.headers = {
-            "Authorization": f"Bearer {auth_token}",
+            **self._get_auth_header(),
             "Content-Type": "application/json",
         }
         self.api_timeout = self.config.connectionTimeout or 120
+        self._job_table_lineage_executed: bool = False
         self.job_table_lineage: dict[str, list[dict[str, str]]] = {}
+        self._job_column_lineage_executed: bool = False
         self.job_column_lineage: dict[
             str, dict[Tuple[str, str], list[Tuple[str, str]]]
         ] = {}
         self.engine = engine
         self.client = requests
+
+    def _get_auth_header(self) -> dict[str, str]:
+        """
+        Method to get auth header
+        """
+        return {"Authorization": f"Bearer {self.config.token.get_secret_value()}"}
 
     def test_query_api_access(self) -> None:
         res = self.client.get(
@@ -193,7 +201,6 @@ class DatabricksClient:
         """
         Method returns List all the created jobs in a Databricks Workspace
         """
-        self.cache_lineage()
         try:
             iteration_count = 1
             data = {"limit": PAGE_SIZE, "expand_tasks": True, "offset": 0}
@@ -266,6 +273,10 @@ class DatabricksClient:
         Method returns table lineage for a job by the specified job_id
         """
         try:
+            if not self._job_table_lineage_executed:
+                logger.debug("Executing cache_lineage...")
+                self.cache_lineage()
+
             return self.job_table_lineage.get(str(job_id))
         except Exception as exc:
             logger.debug(
@@ -281,6 +292,10 @@ class DatabricksClient:
         Method returns column lineage for a job by the specified job_id and table key
         """
         try:
+            if not self._job_column_lineage_executed:
+                logger.debug("Job column lineage not found. Executing cache_lineage...")
+                self.cache_lineage()
+
             return self.job_column_lineage.get(str(job_id), {}).get(TableKey)
         except Exception as exc:
             logger.debug(
@@ -325,6 +340,7 @@ class DatabricksClient:
                         f"Error parsing row: {row} due to {traceback.format_exc()}"
                     )
                     continue
+        self._job_table_lineage_executed = True
 
         # Not every job has column lineage, so we need to check if the job exists in the column_lineage table
         # we will cache the column lineage for jobs that have column lineage
@@ -355,3 +371,124 @@ class DatabricksClient:
                         f"Error parsing row: {row} due to {traceback.format_exc()}"
                     )
                     continue
+        self._job_column_lineage_executed = True
+        logger.debug("Table and column lineage caching completed.")
+
+    def get_pipeline_details(self, pipeline_id: str) -> Optional[dict]:
+        """
+        Get DLT pipeline configuration including libraries and notebooks
+        """
+        try:
+            url = f"{self.base_url}/pipelines/{pipeline_id}"
+            response = self.client.get(
+                url,
+                headers=self.headers,
+                timeout=self.api_timeout,
+            )
+            if response.status_code == 200:
+                return response.json()
+            logger.warning(
+                f"Failed to get pipeline details for {pipeline_id}: {response.status_code}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error getting pipeline details for {pipeline_id}: {exc}")
+        return None
+
+    def list_pipelines(self) -> Iterable[dict]:
+        """
+        List all DLT (Delta Live Tables) pipelines in the workspace
+        Uses the Pipelines API (/api/2.0/pipelines)
+        """
+        try:
+            url = f"{self.base_url}/pipelines"
+            params = {"max_results": PAGE_SIZE}
+
+            response = self.client.get(
+                url,
+                params=params,
+                headers=self.headers,
+                timeout=self.api_timeout,
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                pipelines = data.get("statuses", [])
+                logger.info(f"Found {len(pipelines)} DLT pipelines")
+                yield from pipelines
+
+                # Handle pagination if there's a next_page_token
+                while data.get("next_page_token"):
+                    params["page_token"] = data["next_page_token"]
+                    response = self.client.get(
+                        url,
+                        params=params,
+                        headers=self.headers,
+                        timeout=self.api_timeout,
+                    )
+                    if response.status_code == 200:
+                        data = response.json()
+                        yield from data.get("statuses", [])
+                    else:
+                        break
+            else:
+                logger.warning(
+                    f"Failed to list pipelines: {response.status_code} - {response.text}"
+                )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error listing DLT pipelines: {exc}")
+
+    def list_workspace_objects(self, path: str) -> List[dict]:
+        """
+        List objects in a Databricks workspace directory
+        """
+        try:
+            url = f"{self.base_url}/workspace/list"
+            params = {"path": path}
+
+            response = self.client.get(
+                url,
+                params=params,
+                headers=self.headers,
+                timeout=self.api_timeout,
+            )
+
+            if response.status_code == 200:
+                return response.json().get("objects", [])
+            else:
+                logger.warning(
+                    f"Failed to list workspace directory {path}: {response.text}"
+                )
+                return []
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error listing workspace directory {path}: {exc}")
+            return []
+
+    def export_notebook_source(self, notebook_path: str) -> Optional[str]:
+        """
+        Export notebook source code from Databricks workspace
+        """
+        try:
+            url = f"{self.base_url}/workspace/export"
+            params = {"path": notebook_path, "format": "SOURCE"}
+
+            response = self.client.get(
+                url,
+                params=params,
+                headers=self.headers,
+                timeout=self.api_timeout,
+            )
+
+            if response.status_code == 200:
+                content = response.json().get("content")
+                if content:
+                    return base64.b64decode(content).decode("utf-8")
+            logger.warning(
+                f"Failed to export notebook {notebook_path}: {response.status_code}"
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Error exporting notebook {notebook_path}: {exc}")
+        return None

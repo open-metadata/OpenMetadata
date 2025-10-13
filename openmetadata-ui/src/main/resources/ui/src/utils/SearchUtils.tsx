@@ -189,6 +189,26 @@ export const getGroupLabel = (index: string) => {
       GroupIcon = MetricIcon;
 
       break;
+    case SearchIndex.DIRECTORY_SEARCH_INDEX:
+      label = i18next.t('label.directory-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.FILE_SEARCH_INDEX:
+      label = i18next.t('label.file-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.SPREADSHEET_SEARCH_INDEX:
+      label = i18next.t('label.spreadsheet-plural');
+      GroupIcon = MetricIcon;
+
+      break;
+    case SearchIndex.WORKSHEET_SEARCH_INDEX:
+      label = i18next.t('label.worksheet-plural');
+      GroupIcon = MetricIcon;
+
+      break;
 
     default: {
       const { label: indexLabel, GroupIcon: IndexIcon } =
@@ -308,8 +328,23 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
  */
 export const parseBucketsData = (
   buckets: Array<any>,
-  sourceFields?: string
+  sourceFields?: string,
+  sourceFieldOptionType?: {
+    label: string;
+    value: string;
+  }
 ) => {
+  if (sourceFieldOptionType) {
+    return buckets.map((bucket) => {
+      const data = bucket['top_hits#top']?.hits?.hits?.[0]?._source;
+
+      return {
+        title: data[sourceFieldOptionType.label],
+        value: data[sourceFieldOptionType.value],
+      };
+    });
+  }
+
   return buckets.map((bucket) => {
     const actualValue = sourceFields
       ? sourceFields

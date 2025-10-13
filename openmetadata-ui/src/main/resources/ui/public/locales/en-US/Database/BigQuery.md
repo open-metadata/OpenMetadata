@@ -73,6 +73,12 @@ Credentials Type is the type of the account, for a service account the value of 
 $$
 
 $$section
+### Include Policy Tags $(id="includePolicyTags")
+
+Enable this to ingest BigQuery policy tags. Make sure the `Include Tags` option is enabled in the ingestion agent. If Include Policy Tags is disabled, the agent will only ingest labels according to the Include Tags setting.
+$$
+
+$$section
 ### Billing Project ID $(id="billingProjectId")
 
 A billing project ID is a unique string used to identify and authorize your project for billing in Google Cloud.

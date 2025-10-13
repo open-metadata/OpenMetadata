@@ -38,6 +38,7 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
@@ -100,11 +101,15 @@ import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
@@ -147,7 +152,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -431,7 +436,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
@@ -497,7 +502,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getInstance()
+                .getCurrentAuthConfig()
+                .getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -586,7 +593,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       CollectionRegistry.initialize();
 
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
       if (!authProvider.equals(AuthProvider.BASIC)) {
@@ -1410,6 +1417,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Drop data streams and data quality indexes created by DataInsightsApp
       dropDataInsightsIndexes();
 
+      // Drop orphaned rebuild indexes from zero-downtime reindexing
+      dropRebuildIndexes();
+
       LOG.info("All indexes dropped successfully.");
       return 0;
     } catch (Exception e) {
@@ -1437,6 +1447,149 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } catch (Exception e) {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
       LOG.debug("Data Insights index cleanup error details: ", e);
+    }
+  }
+
+  private void dropRebuildIndexes() {
+    try {
+      LOG.info("Dropping orphaned rebuild indexes from zero-downtime reindexing...");
+
+      Set<String> allIndices = getAllIndices();
+      List<String> rebuildIndices =
+          allIndices.stream()
+              .filter(index -> index.contains("_rebuild_"))
+              .collect(Collectors.toList());
+
+      if (rebuildIndices.isEmpty()) {
+        LOG.info("No rebuild indexes found to delete.");
+        return;
+      }
+
+      LOG.info("Found {} rebuild indexes to delete: {}", rebuildIndices.size(), rebuildIndices);
+
+      for (String index : rebuildIndices) {
+        try {
+          searchRepository.getSearchClient().deleteIndex(index);
+          LOG.info("Deleted rebuild index: {}", index);
+        } catch (Exception ex) {
+          LOG.warn("Failed to delete rebuild index {}: {}", index, ex.getMessage());
+        }
+      }
+
+      LOG.info("Rebuild index cleanup completed.");
+    } catch (Exception e) {
+      LOG.warn("Failed to drop rebuild indexes: {}", e.getMessage());
+      LOG.debug("Rebuild index cleanup error details: ", e);
+    }
+  }
+
+  private Set<String> getAllIndices() {
+    Set<String> indices = new HashSet<>();
+    try {
+      SearchClient<?> searchClient = searchRepository.getSearchClient();
+
+      if (searchClient instanceof ElasticSearchClient) {
+        es.org.elasticsearch.client.Request request =
+            new es.org.elasticsearch.client.Request("GET", "/_cat/indices?format=json");
+        es.org.elasticsearch.client.RestClient lowLevelClient =
+            (es.org.elasticsearch.client.RestClient) searchClient.getLowLevelClient();
+        es.org.elasticsearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      } else if (searchClient instanceof OpenSearchClient) {
+        os.org.opensearch.client.Request request =
+            new os.org.opensearch.client.Request("GET", "/_cat/indices?format=json");
+        os.org.opensearch.client.RestClient lowLevelClient =
+            (os.org.opensearch.client.RestClient) searchClient.getLowLevelClient();
+        os.org.opensearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve all indices", e);
+    }
+    return indices;
+  }
+
+  @Command(
+      name = "remove-security-config",
+      description =
+          "Remove security configuration (authentication and authorization) from the database. "
+              + "WARNING: This will delete all authentication and authorization settings!")
+  public Integer removeSecurityConfig(
+      @Option(
+              names = {"--force"},
+              description = "Force removal without confirmation prompt.",
+              defaultValue = "false")
+          boolean force) {
+    try {
+      if (!force) {
+        LOG.warn(
+            "WARNING: This will remove all authentication and authorization configuration from the database!");
+        LOG.warn("This includes authenticationConfiguration and authorizerConfiguration settings.");
+        LOG.info("Use --force to skip this confirmation.");
+
+        Scanner scanner = new Scanner(System.in);
+        LOG.info("Enter 'DELETE' to confirm removal of security configuration: ");
+        String input = scanner.next();
+        if (!input.equals("DELETE")) {
+          LOG.info("Operation cancelled.");
+          return 0;
+        }
+      }
+
+      LOG.info("Removing security configuration from database...");
+      parseConfig();
+
+      SystemRepository systemRepository = Entity.getSystemRepository();
+
+      // Remove authentication configuration
+      try {
+        Settings authenticationSettings =
+            systemRepository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+        if (authenticationSettings != null) {
+          systemRepository.deleteSettings(SettingsType.AUTHENTICATION_CONFIGURATION);
+          LOG.info("Removed authenticationConfiguration from database.");
+        } else {
+          LOG.info("No authenticationConfiguration found in database.");
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to remove authenticationConfiguration: {}", e.getMessage());
+      }
+
+      // Remove authorizer configuration
+      try {
+        Settings authorizerSettings =
+            systemRepository.getConfigWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
+        if (authorizerSettings != null) {
+          systemRepository.deleteSettings(SettingsType.AUTHORIZER_CONFIGURATION);
+          LOG.info("Removed authorizerConfiguration from database.");
+        } else {
+          LOG.info("No authorizerConfiguration found in database.");
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to remove authorizerConfiguration: {}", e.getMessage());
+      }
+
+      LOG.info("Security configuration removal completed.");
+      LOG.info(
+          "Note: You will need to restart the OpenMetadata service for changes to take effect.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to remove security configuration due to ", e);
+      return 1;
     }
   }
 
