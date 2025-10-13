@@ -1,0 +1,59 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/llm/huggingFaceConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "HuggingFaceConnection",
+  "description": "HuggingFace LLM Service Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.llm.HuggingFaceConnection",
+  "definitions": {
+    "huggingFaceType": {
+      "description": "Service type",
+      "type": "string",
+      "enum": ["HuggingFace"],
+      "default": "HuggingFace"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/huggingFaceType",
+      "default": "HuggingFace"
+    },
+    "apiKey": {
+      "title": "API Token",
+      "description": "HuggingFace API Token",
+      "type": "string",
+      "format": "password"
+    },
+    "baseURL": {
+      "title": "Base URL",
+      "description": "Optional custom base URL (for HuggingFace Inference Endpoints)",
+      "type": "string",
+      "default": "https://api-inference.huggingface.co"
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Request timeout in seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for failed requests",
+      "type": "integer",
+      "default": 3
+    },
+    "modelFilterPattern": {
+      "description": "Regex to only fetch models with names matching the pattern",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Model Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["apiKey"]
+}

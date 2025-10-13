@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/llm/customLLMConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomLLMConnection",
+  "description": "Custom LLM Service Connection Config for self-hosted or custom LLM providers",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.llm.CustomLLMConnection",
+  "definitions": {
+    "customLLMType": {
+      "description": "Service type",
+      "type": "string",
+      "enum": ["CustomLLM"],
+      "default": "CustomLLM"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/customLLMType",
+      "default": "CustomLLM"
+    },
+    "baseURL": {
+      "title": "Base URL",
+      "description": "Base URL for the custom LLM API endpoint",
+      "type": "string"
+    },
+    "apiKey": {
+      "title": "API Key",
+      "description": "Optional API Key for authentication",
+      "type": "string",
+      "format": "password"
+    },
+    "authType": {
+      "title": "Authentication Type",
+      "description": "Type of authentication",
+      "type": "string",
+      "enum": ["None", "APIKey", "Bearer", "BasicAuth", "Custom"],
+      "default": "APIKey"
+    },
+    "headers": {
+      "title": "Custom Headers",
+      "description": "Additional custom headers for API requests",
+      "type": "object",
+      "additionalProperties": {"type": "string"}
+    },
+    "timeout": {
+      "title": "Timeout",
+      "description": "Request timeout in seconds",
+      "type": "integer",
+      "default": 60
+    },
+    "maxRetries": {
+      "title": "Max Retries",
+      "description": "Maximum number of retries for failed requests",
+      "type": "integer",
+      "default": 3
+    },
+    "verifySsl": {
+      "title": "Verify SSL",
+      "description": "Whether to verify SSL certificates",
+      "type": "boolean",
+      "default": true
+    },
+    "modelFilterPattern": {
+      "description": "Regex to only fetch models with names matching the pattern",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Model Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["baseURL"]
+}

@@ -1,0 +1,332 @@
+{
+  "$id": "https://open-metadata.org/schema/type/aiCompliance.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AICompliance",
+  "description": "Reusable AI compliance and regulatory framework assessments. Can be applied to AI Applications, LLM Models, MCP Servers, and other AI entities.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.AICompliance",
+  "definitions": {
+    "complianceFramework": {
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.ComplianceFramework",
+      "description": "Type of AI compliance framework",
+      "enum": [
+        "EU_AI_Act",
+        "Singapore_Model_AI_Governance",
+        "Canada_AIDA",
+        "US_AI_Bill_of_Rights",
+        "NIST_AI_RMF",
+        "ISO_IEC_42001",
+        "UK_AI_Regulation",
+        "China_AI_Regulations",
+        "Custom"
+      ],
+      "javaEnums": [
+        {"name": "EU_AI_Act"},
+        {"name": "Singapore_Model_AI_Governance"},
+        {"name": "Canada_AIDA"},
+        {"name": "US_AI_Bill_of_Rights"},
+        {"name": "NIST_AI_RMF"},
+        {"name": "ISO_IEC_42001"},
+        {"name": "UK_AI_Regulation"},
+        {"name": "China_AI_Regulations"},
+        {"name": "Custom"}
+      ]
+    },
+    "euAIActCompliance": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.EUAIActCompliance",
+      "description": "EU AI Act compliance assessment (Regulation EU 2024/1689)",
+      "additionalProperties": false,
+      "properties": {
+        "riskClassification": {
+          "type": "string",
+          "description": "Risk classification under EU AI Act",
+          "enum": ["Minimal", "Limited", "High", "Unacceptable"]
+        },
+        "riskRationale": {
+          "type": "string",
+          "description": "Rationale for the risk classification"
+        },
+        "prohibitedPractices": {
+          "type": "object",
+          "description": "Article 5 prohibited AI practices assessment",
+          "properties": {
+            "subliminalManipulativeTechniques": {
+              "type": "boolean",
+              "description": "Art 5(1)(a): Subliminal techniques beyond person's consciousness"
+            },
+            "exploitationOfVulnerabilities": {
+              "type": "boolean",
+              "description": "Art 5(1)(b): Exploitation of vulnerabilities due to age, disability, or social/economic situation"
+            },
+            "socialScoringSystem": {
+              "type": "boolean",
+              "description": "Art 5(1)(c): Social scoring by public authorities"
+            },
+            "riskAssessmentCriminalOffences": {
+              "type": "boolean",
+              "description": "Art 5(1)(d): Risk assessment based solely on profiling for predicting criminal offences"
+            },
+            "facialRecognitionDatabaseCreation": {
+              "type": "boolean",
+              "description": "Art 5(1)(e): Untargeted scraping of facial images for facial recognition databases"
+            },
+            "emotionInferenceWorkplaceEducation": {
+              "type": "boolean",
+              "description": "Art 5(1)(f): Emotion recognition in workplace and education"
+            },
+            "biometricCategorisation": {
+              "type": "boolean",
+              "description": "Art 5(1)(g): Biometric categorisation inferring sensitive attributes"
+            },
+            "realTimeBiometricIdentification": {
+              "type": "boolean",
+              "description": "Art 5(1)(h): Real-time remote biometric identification in public spaces by law enforcement"
+            }
+          }
+        },
+        "highRiskSystems": {
+          "type": "object",
+          "description": "Article 6 high-risk AI systems assessment",
+          "properties": {
+            "criticalInfrastructure": {
+              "type": "boolean",
+              "description": "Annex III(1): Critical infrastructure (transport, water, gas, electricity, etc.)"
+            },
+            "educationVocationalTraining": {
+              "type": "boolean",
+              "description": "Annex III(3): Education and vocational training"
+            },
+            "employment": {
+              "type": "boolean",
+              "description": "Annex III(4): Employment, workers management, and access to self-employment"
+            },
+            "essentialPrivateServices": {
+              "type": "boolean",
+              "description": "Annex III(5): Access to essential private services (credit, insurance, etc.)"
+            },
+            "essentialPublicServices": {
+              "type": "boolean",
+              "description": "Annex III(6): Law enforcement"
+            },
+            "lawEnforcement": {
+              "type": "boolean",
+              "description": "Annex III(6): Law enforcement purposes"
+            },
+            "migrationAsylumBorderControl": {
+              "type": "boolean",
+              "description": "Annex III(7): Migration, asylum, and border control management"
+            },
+            "administrationOfJustice": {
+              "type": "boolean",
+              "description": "Annex III(8): Administration of justice and democratic processes"
+            }
+          }
+        },
+        "conformityAssessment": {
+          "type": "object",
+          "description": "Conformity assessment status",
+          "properties": {
+            "assessmentRequired": {
+              "type": "boolean",
+              "description": "Whether conformity assessment is required"
+            },
+            "assessmentType": {
+              "type": "string",
+              "description": "Type of conformity assessment",
+              "enum": ["Internal", "ThirdParty", "NotRequired"]
+            },
+            "assessmentBody": {
+              "type": "string",
+              "description": "Name of notified body performing assessment"
+            },
+            "certificateNumber": {
+              "type": "string",
+              "description": "Certificate number if issued"
+            },
+            "validUntil": {
+              "$ref": "basic.json#/definitions/timestamp",
+              "description": "Certificate validity date"
+            }
+          }
+        },
+        "transparencyObligations": {
+          "type": "object",
+          "description": "Article 50 transparency obligations",
+          "properties": {
+            "usersInformed": {
+              "type": "boolean",
+              "description": "Users are informed they are interacting with AI"
+            },
+            "deepfakeLabeling": {
+              "type": "boolean",
+              "description": "AI-generated content is appropriately labeled"
+            },
+            "emotionRecognitionDisclosure": {
+              "type": "boolean",
+              "description": "Emotion recognition or biometric categorization disclosed"
+            }
+          }
+        }
+      }
+    },
+    "ethicalAIAssessment": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.EthicalAIAssessment",
+      "description": "Ethical AI framework assessment covering privacy, fairness, transparency, accountability, and environmental impact",
+      "additionalProperties": false,
+      "properties": {
+        "privacyLevel": {
+          "type": "string",
+          "description": "Level of privacy-sensitive data accessed",
+          "enum": ["Public", "Sensitive", "PersonalData"]
+        },
+        "fairnessRisk": {
+          "type": "string",
+          "description": "Risk level for fairness and discrimination",
+          "enum": ["Low", "Medium", "High"]
+        },
+        "biasMitigationCoverage": {
+          "type": "string",
+          "description": "Coverage of bias mitigation measures",
+          "enum": ["None", "Partial", "Full"]
+        },
+        "reliabilitySafetyRisk": {
+          "type": "string",
+          "description": "Risk level for reliability and safety",
+          "enum": ["Low", "Moderate", "High"]
+        },
+        "transparencyLevel": {
+          "type": "string",
+          "description": "Level of transparency in AI operations",
+          "enum": ["None", "Partial", "FullDisclosure"]
+        },
+        "accountabilityMeasures": {
+          "type": "object",
+          "description": "Accountability measures in place",
+          "properties": {
+            "hasOwner": {
+              "type": "boolean",
+              "description": "Has designated owner responsible for AI system"
+            },
+            "subjectToHumanOversight": {
+              "type": "boolean",
+              "description": "Subject to human oversight and intervention"
+            },
+            "auditTrailEnabled": {
+              "type": "boolean",
+              "description": "Comprehensive audit trail enabled"
+            }
+          }
+        },
+        "environmentalConsciousness": {
+          "type": "string",
+          "description": "Environmental impact risk level (carbon footprint, energy consumption)",
+          "enum": ["LowRisk", "MediumRisk", "HighRisk"]
+        }
+      }
+    },
+    "aiComplianceRecord": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.AIComplianceRecord",
+      "description": "Single compliance record for a specific framework",
+      "additionalProperties": false,
+      "properties": {
+        "framework": {
+          "$ref": "#/definitions/complianceFramework"
+        },
+        "assessedBy": {
+          "type": "string",
+          "description": "Person or team who performed the assessment"
+        },
+        "assessedAt": {
+          "$ref": "basic.json#/definitions/timestamp",
+          "description": "When the assessment was performed"
+        },
+        "nextReviewDate": {
+          "$ref": "basic.json#/definitions/timestamp",
+          "description": "When the next compliance review is due"
+        },
+        "status": {
+          "type": "string",
+          "description": "Compliance status",
+          "enum": ["Compliant", "PartiallyCompliant", "NonCompliant", "UnderReview", "NotApplicable"]
+        },
+        "euAIAct": {
+          "$ref": "#/definitions/euAIActCompliance",
+          "description": "EU AI Act specific assessment (only when framework is EU_AI_Act)"
+        },
+        "ethicalAssessment": {
+          "$ref": "#/definitions/ethicalAIAssessment",
+          "description": "Ethical AI assessment applicable to most frameworks"
+        },
+        "scopeAndDeployment": {
+          "type": "object",
+          "description": "Deployment scope relevant to compliance jurisdiction",
+          "properties": {
+            "scope": {
+              "type": "string",
+              "description": "Scope of AI usage",
+              "enum": ["Internal", "External", "Both"]
+            },
+            "deploymentRegions": {
+              "type": "array",
+              "description": "Geographic regions where deployed (relevant for jurisdiction)",
+              "items": {"type": "string"}
+            },
+            "affectedUserCount": {
+              "type": "integer",
+              "description": "Estimated number of affected users"
+            }
+          }
+        },
+        "verification": {
+          "type": "object",
+          "description": "Verification and certification status",
+          "properties": {
+            "isVerified": {
+              "type": "boolean",
+              "description": "Whether compliance has been verified"
+            },
+            "verifiedBy": {
+              "type": "string",
+              "description": "Verifier (internal auditor, external body, etc.)"
+            },
+            "verifiedAt": {
+              "$ref": "basic.json#/definitions/timestamp",
+              "description": "Timestamp of verification"
+            },
+            "verificationNotes": {
+              "type": "string",
+              "description": "Notes from verification process"
+            },
+            "certificateUrl": {
+              "type": "string",
+              "description": "URL to certificate or compliance documentation"
+            }
+          }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes and findings from compliance assessment"
+        },
+        "remediationRequired": {
+          "type": "array",
+          "description": "List of remediation actions required for compliance",
+          "items": {"type": "string"}
+        }
+      },
+      "required": ["framework", "status"]
+    }
+  },
+  "properties": {
+    "complianceRecords": {
+      "description": "List of compliance assessments for different frameworks",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/aiComplianceRecord"
+      }
+    }
+  }
+}

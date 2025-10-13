@@ -16,7 +16,8 @@
     "Storage",
     "Search",
     "Api",
-    "Security"
+    "Security",
+    "LLM"
   ],
   "additionalProperties": false
 }

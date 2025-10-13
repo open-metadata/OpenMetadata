@@ -433,6 +433,24 @@ public interface CollectionDAO {
   @CreateSqlObject
   RecognizerFeedbackDAO recognizerFeedbackDAO();
 
+  @CreateSqlObject
+  AIApplicationDAO aiApplicationDAO();
+
+  @CreateSqlObject
+  LLMModelDAO llmModelDAO();
+
+  @CreateSqlObject
+  PromptTemplateDAO promptTemplateDAO();
+
+  @CreateSqlObject
+  AgentExecutionDAO agentExecutionDAO();
+
+  @CreateSqlObject
+  AIGovernancePolicyDAO aiGovernancePolicyDAO();
+
+  @CreateSqlObject
+  LLMServiceDAO llmServiceDAO();
+
   interface DashboardDAO extends EntityDAO<Dashboard> {
     @Override
     default String getTableName() {
@@ -7652,5 +7670,98 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM recognizer_feedback_entity WHERE id = :id")
     void delete(@BindUUID("id") UUID id);
+  }
+
+  interface AIApplicationDAO extends EntityDAO<org.openmetadata.schema.entity.ai.AIApplication> {
+    @Override
+    default String getTableName() {
+      return "ai_application_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIApplication> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIApplication.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface LLMModelDAO extends EntityDAO<org.openmetadata.schema.entity.ai.LLMModel> {
+    @Override
+    default String getTableName() {
+      return "llm_model_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.LLMModel> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.LLMModel.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface PromptTemplateDAO extends EntityDAO<org.openmetadata.schema.entity.ai.PromptTemplate> {
+    @Override
+    default String getTableName() {
+      return "prompt_template_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.PromptTemplate> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.PromptTemplate.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AgentExecutionDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "application_execution_entity";
+    }
+  }
+
+  interface AIGovernancePolicyDAO
+      extends EntityDAO<org.openmetadata.schema.entity.ai.AIGovernancePolicy> {
+    @Override
+    default String getTableName() {
+      return "ai_governance_policy_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIGovernancePolicy> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIGovernancePolicy.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface LLMServiceDAO extends EntityDAO<org.openmetadata.schema.entity.services.LLMService> {
+    @Override
+    default String getTableName() {
+      return "llm_service_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.services.LLMService> getEntityClass() {
+      return org.openmetadata.schema.entity.services.LLMService.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "nameHash";
+    }
   }
 }

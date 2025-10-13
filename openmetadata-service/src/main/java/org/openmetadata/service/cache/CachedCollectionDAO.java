@@ -315,6 +315,36 @@ public class CachedCollectionDAO implements CollectionDAO {
   }
 
   @Override
+  public LLMServiceDAO llmServiceDAO() {
+    return delegate.llmServiceDAO();
+  }
+
+  @Override
+  public LLMModelDAO llmModelDAO() {
+    return delegate.llmModelDAO();
+  }
+
+  @Override
+  public AIApplicationDAO aiApplicationDAO() {
+    return delegate.aiApplicationDAO();
+  }
+
+  @Override
+  public PromptTemplateDAO promptTemplateDAO() {
+    return delegate.promptTemplateDAO();
+  }
+
+  @Override
+  public AIGovernancePolicyDAO aiGovernancePolicyDAO() {
+    return delegate.aiGovernancePolicyDAO();
+  }
+
+  @Override
+  public AgentExecutionDAO agentExecutionDAO() {
+    return delegate.agentExecutionDAO();
+  }
+
+  @Override
   public DashboardServiceDAO dashboardServiceDAO() {
     return delegate.dashboardServiceDAO();
   }
