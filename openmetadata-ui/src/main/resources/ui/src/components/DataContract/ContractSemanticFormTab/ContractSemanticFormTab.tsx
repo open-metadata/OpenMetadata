@@ -316,7 +316,7 @@ export const ContractSemanticFormTab: React.FC<{
                               fields={queryBuilderFields}
                               getQueryActions={handleAddQueryBuilderRule}
                               key={field.name}
-                              label="Rule"
+                              label={t('label.rule')}
                               outputType={SearchOutputType.JSONLogic}
                               tree={
                                 editFieldData?.jsonTree

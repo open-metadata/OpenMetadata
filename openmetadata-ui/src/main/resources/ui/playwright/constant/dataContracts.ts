@@ -213,6 +213,10 @@ export const DATA_CONTRACT_SEMANTIC_OPERATIONS = {
   not_in: 'Not in',
   is_set: 'Is Set',
   is_not_set: 'Is Not Set',
+  less: '<',
+  greater: '>',
+  less_equal: '<=',
+  greater_equal: '>=',
   contains: 'Contains',
   not_contains: 'Not contains',
 };

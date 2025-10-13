@@ -17,7 +17,7 @@ import { ReactComponent as ContractFailedIcon } from '../../assets/svg/ic-contra
 import { ReactComponent as ContractRunningIcon } from '../../assets/svg/ic-contract-running.svg';
 import { StatusType } from '../../components/common/StatusBadge/StatusBadge.interface';
 import { DataContractProcessedResultCharts } from '../../components/DataContract/ContractExecutionChart/ContractExecutionChart.interface';
-import { SEMANTIC_OPERATORS } from '../../constants/DataContract.constants';
+import { SEMANTIC_TAG_OPERATORS } from '../../constants/DataContract.constants';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { TestCaseType } from '../../enums/TestSuite.enum';
@@ -149,7 +149,7 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.TAG,
@@ -176,7 +176,7 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.searchAutocomplete({
             searchIndex: SearchIndex.GLOSSARY_TERM,
@@ -201,7 +201,7 @@ export const getSematicRuleFields = () => {
         type: 'multiselect',
         defaultOperator: 'array_contains',
         mainWidgetProps: jsonLogicSearchClassBase.mainWidgetProps,
-        operators: SEMANTIC_OPERATORS,
+        operators: SEMANTIC_TAG_OPERATORS,
         fieldSettings: {
           asyncFetch: jsonLogicSearchClassBase.autoCompleteTier,
           useAsyncSearch: true,
@@ -212,6 +212,8 @@ export const getSematicRuleFields = () => {
   };
 
   delete allFields[EntityReferenceFields.EXTENSION];
+  delete allFields[EntityReferenceFields.SERVICE];
+  delete allFields[EntityReferenceFields.NAME];
 
   allFields[EntityReferenceFields.TAG] = tagField;
   allFields[EntityReferenceFields.GLOSSARY_TERM] = glossaryTermField;
