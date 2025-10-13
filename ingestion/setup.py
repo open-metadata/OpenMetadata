@@ -33,14 +33,14 @@ VERSIONS = {
     "grpc-tools": "grpcio-tools>=1.47.2",
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
-    "pandas": "pandas~=2.0.3",
+    "pandas": "pandas~=2.2.2",
     "pyarrow": "pyarrow~=16.0",
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc>=4.0.35,<5",
-    "numpy": "numpy<2",
+    "numpy": "numpy<=2.2.6",
     "scikit-learn": "scikit-learn~=1.0",  # Python 3.7 only goes up to 1.0.2
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
@@ -69,7 +69,7 @@ VERSIONS = {
     "pyathena": "pyathena~=3.0",
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
-    "asammdf": "asammdf~=7.4.5",
+    "asammdf": "asammdf~=8.6.10",
 }
 
 COMMONS = {
@@ -397,7 +397,7 @@ test_unit = {
 
 test = {
     # Install Airflow as it's not part of `all` plugin
-    "opentelemetry-exporter-otlp==1.27.0",
+    "opentelemetry-exporter-otlp==1.37.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
