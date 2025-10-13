@@ -17,8 +17,9 @@ import {
   Menu,
   MenuItem,
   Typography as MuiTypography,
+  Skeleton,
 } from '@mui/material';
-import { Skeleton, Typography } from 'antd';
+import { Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
@@ -190,7 +191,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.status'),
         dataIndex: 'testCaseResult',
         key: 'status',
-        width: 120,
+        width: 80,
         render: (result: TestCaseResult, record) => {
           return result?.testCaseStatus ? (
             <StatusBadge
@@ -240,7 +241,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 300,
+        width: 200,
         sorter: true,
         sortDirections: ['ascend', 'descend'],
         render: (name: string, record) => {
@@ -267,7 +268,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               title: t('label.table'),
               dataIndex: 'entityLink',
               key: 'table',
-              width: 200,
+              width: 150,
               render: (entityLink: string) => {
                 const tableFqn = getEntityFQN(entityLink);
 
@@ -307,7 +308,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.column'),
         dataIndex: 'entityLink',
         key: 'column',
-        width: 120,
+        width: 80,
         render: (entityLink) => {
           const isColumn = entityLink.includes('::columns::');
           if (isColumn) {
@@ -345,7 +346,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.incident'),
         dataIndex: 'testCaseResult',
         key: 'incident',
-        width: 120,
+        width: 80,
         render: (_, record) => {
           const testCaseResult = testCaseStatus.find(
             (status) =>
@@ -354,7 +355,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           );
 
           if (isStatusLoading) {
-            return <Skeleton.Input size="small" />;
+            return <Skeleton height={30} width={60} />;
           }
 
           if (!testCaseResult) {
@@ -386,7 +387,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         fixed: 'right',
         render: (_, record) => {
           if (isPermissionLoading) {
-            return <Skeleton.Input size="small" />;
+            return <Skeleton height={30} width={30} />;
           }
 
           const testCasePermission = testCasePermissions.find(

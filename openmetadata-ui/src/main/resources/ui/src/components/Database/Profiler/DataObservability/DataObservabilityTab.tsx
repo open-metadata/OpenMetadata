@@ -120,7 +120,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
               }
               sx={{
                 color: theme.palette.primary.main,
-                fontWeight: theme.typography.fontWeightBold,
+                fontWeight: 600,
                 fontSize: theme.typography.fontSize,
                 '&:hover': {
                   color: theme.palette.primary.main,

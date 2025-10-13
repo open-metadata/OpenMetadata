@@ -56,7 +56,7 @@ const ProfilerLatestValue = ({
               sx={{
                 color: theme.palette.grey[700],
                 fontSize: theme.typography.pxToRem(11),
-                fontWeight: theme.typography.fontWeightBold,
+                fontWeight: 600,
                 borderLeft: `4px solid ${info.color}`,
                 paddingLeft: '8px',
                 lineHeight: '12px',

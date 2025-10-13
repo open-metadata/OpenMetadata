@@ -84,7 +84,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
           sx={{
             fontSize: '16px',
             color: theme.palette.grey[900],
-            fontWeight: theme.typography.fontWeightBold,
+            fontWeight: 600,
             mb: 3,
           }}
           variant="h6">

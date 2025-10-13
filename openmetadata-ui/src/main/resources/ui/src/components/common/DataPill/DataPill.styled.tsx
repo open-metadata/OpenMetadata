@@ -19,6 +19,6 @@ export const DataPill = styled(Box)(({ theme }) => ({
   borderRadius: '6px',
   padding: '6px 12px',
   fontSize: theme.typography.pxToRem(14),
-  fontWeight: theme.typography.fontWeightBold,
+  fontWeight: 600,
   display: 'inline-block',
 }));
