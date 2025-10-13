@@ -79,7 +79,10 @@ class DataQualityClassBase {
     return DataQualityPageTabs.TEST_CASES;
   }
 
-  public getExportDataQualityDashboardButton(): React.ReactNode {
+  public getExportDataQualityDashboardButton(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _activeTab: DataQualityPageTabs
+  ): React.ReactNode {
     return null;
   }
 }

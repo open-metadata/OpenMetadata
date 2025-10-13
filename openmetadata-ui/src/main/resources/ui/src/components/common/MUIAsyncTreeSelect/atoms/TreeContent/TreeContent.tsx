@@ -41,10 +41,12 @@ const TreeContent: FC<TreeContentProps> = ({
   children,
   selectedItems = null,
   expandedItems,
+  focusedItem,
   apiRef,
   loadingMessage,
   noDataMessage,
   onNodeToggle,
+  onFocusedItemChange,
   onItemClick,
 }) => {
   const { t } = useTranslation();
@@ -86,6 +88,7 @@ const TreeContent: FC<TreeContentProps> = ({
     <SimpleTreeView
       apiRef={apiRef}
       expandedItems={expandedItems}
+      focusedItem={focusedItem}
       selectedItems={selectedItems}
       slots={{
         collapseIcon: ExpandMoreIcon,
@@ -127,6 +130,7 @@ const TreeContent: FC<TreeContentProps> = ({
         },
       }}
       onExpandedItemsChange={onNodeToggle}
+      onFocusedItemChange={onFocusedItemChange}
       onItemClick={onItemClick}>
       {children}
     </SimpleTreeView>

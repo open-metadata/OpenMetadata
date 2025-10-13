@@ -1408,8 +1408,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   const extraInfoData = useMemo(() => {
-    return serviceUtilClassBase.getServiceExtraInfo();
-  }, []);
+    return serviceUtilClassBase.getServiceExtraInfo(serviceDetails);
+  }, [serviceDetails]);
 
   const testConnectionTab = useMemo(() => {
     return (

@@ -108,8 +108,8 @@ const DataQualityPage = () => {
   }, []);
 
   const exportDataQualityDashboardButton = useMemo(
-    () => DataQualityClassBase.getExportDataQualityDashboardButton(),
-    []
+    () => DataQualityClassBase.getExportDataQualityDashboardButton(activeTab),
+    [activeTab]
   );
 
   const handleTabChange = (activeKey: string) => {

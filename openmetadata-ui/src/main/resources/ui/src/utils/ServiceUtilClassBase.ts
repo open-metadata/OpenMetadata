@@ -305,7 +305,8 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceExtraInfo() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public getServiceExtraInfo(_data?: ServicesType) {
     return null;
   }
 
@@ -844,8 +845,8 @@ class ServiceUtilClassBase {
     return getDriveConfig(type);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getInsightsTabWidgets(_: ServiceTypes) {
-    void _;
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,
       PlatformInsightsWidget,

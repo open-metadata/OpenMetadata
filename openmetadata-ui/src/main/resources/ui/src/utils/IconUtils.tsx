@@ -181,7 +181,7 @@ export const renderIcon = (
  */
 export const getDefaultIconForEntityType = (
   entityType?: string
-): ComponentType<any> => {
+): typeof Cube01 | typeof Globe01 => {
   if (entityType === 'dataProduct') {
     return Cube01;
   }
