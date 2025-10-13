@@ -69,7 +69,7 @@ class DefaultInheritedFieldEntitySearchTest {
   @SuppressWarnings("resource")
   void shouldPaginateCorrectlyForLargeDataAssets() throws Exception {
     // Given: A domain with 2500 assets requiring 3 batches (1000 + 1000 + 500)
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain("LargeDomain");
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain("LargeDomain", 0, 2500);
 
     Response batch1 = mockESResponse(2500, 1000, 0);
     Response batch2 = mockESResponse(2500, 1000, 1000);
@@ -119,7 +119,7 @@ class DefaultInheritedFieldEntitySearchTest {
     // Given: Search throws exception
     when(searchRepository.search(any(), isNull())).thenThrow(new RuntimeException("ES down"));
 
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain("TestDomain");
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain("TestDomain", 0, 100);
 
     // When: Fetching entities with fallback (empty list, count 0)
     InheritedFieldResult result =
@@ -138,7 +138,7 @@ class DefaultInheritedFieldEntitySearchTest {
     Response esResponse = mockESResponse(250, 0); // 0 entities in response body (count-only query)
     when(searchRepository.search(any(), isNull())).thenReturn(esResponse);
 
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain("CountTestDomain");
+    InheritedFieldQuery query = InheritedFieldQuery.forDomain("CountTestDomain", 0, 100);
 
     // When: Getting count
     Integer count = inheritedFieldSearch.getCountForField(query, () -> 0);

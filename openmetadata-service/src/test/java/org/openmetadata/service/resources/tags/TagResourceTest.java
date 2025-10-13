@@ -75,6 +75,7 @@ import org.openmetadata.service.resources.domains.DomainResourceTest;
 import org.openmetadata.service.resources.tags.TagResource.TagList;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.TestUtils.UpdateType;
 
 /** Tests not covered here: Classification and Tag usage counts are covered in TableResourceTest */
@@ -1235,5 +1236,66 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         parentWithoutFields.getClassification().getId(),
         "Parent tag classification should match");
     assertNull(parentWithoutFields.getParent(), "Parent tag should not have a parent");
+  }
+
+  @Test
+  void test_getTagAssetsAPI(TestInfo test) throws IOException {
+    Classification classification = createClassification(getEntityName(test) + "_Classification");
+    Tag tag = createTag(getEntityName(test), classification.getName(), null);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateTable createTable1 =
+        tableTest
+            .createRequest(getEntityName(test, 1))
+            .withTags(List.of(new TagLabel().withTagFQN(tag.getFullyQualifiedName())));
+    org.openmetadata.schema.entity.data.Table table1 =
+        tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest
+            .createRequest(getEntityName(test, 2))
+            .withTags(List.of(new TagLabel().withTagFQN(tag.getFullyQualifiedName())));
+    org.openmetadata.schema.entity.data.Table table2 =
+        tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        tableTest
+            .createRequest(getEntityName(test, 3))
+            .withTags(List.of(new TagLabel().withTagFQN(tag.getFullyQualifiedName())));
+    org.openmetadata.schema.entity.data.Table table3 =
+        tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    jakarta.ws.rs.client.WebTarget target = getCollection().path("/" + tag.getId() + "/assets");
+    target = target.queryParam("limit", 10);
+    target = target.queryParam("offset", 0);
+    ResultList<EntityReference> assets =
+        TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    jakarta.ws.rs.client.WebTarget targetByName =
+        getCollection().path("/name/" + tag.getFullyQualifiedName() + "/assets");
+    targetByName = targetByName.queryParam("limit", 10);
+    targetByName = targetByName.queryParam("offset", 0);
+    ResultList<EntityReference> assetsByName =
+        TestUtils.get(targetByName, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    target = getCollection().path("/" + tag.getId() + "/assets");
+    target = target.queryParam("limit", 2);
+    target = target.queryParam("offset", 0);
+    ResultList<EntityReference> page1 = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    target = getCollection().path("/" + tag.getId() + "/assets");
+    target = target.queryParam("limit", 2);
+    target = target.queryParam("offset", 2);
+    ResultList<EntityReference> page2 = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertTrue(page2.getData().size() >= 1);
   }
 }

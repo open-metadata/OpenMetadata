@@ -19,6 +19,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
@@ -98,6 +99,18 @@ public class QueryFilterBuilder {
     return serializeQuery(queryFilter);
   }
 
+  public static String buildUserAssetsFilter(InheritedFieldQuery query) {
+    ObjectNode queryFilter = MAPPER.createObjectNode();
+    ObjectNode queryNode = queryFilter.putObject(QUERY_KEY);
+    ObjectNode boolNode = queryNode.putObject(BOOL_KEY);
+    ArrayNode mustArray = boolNode.putArray(MUST_KEY);
+
+    addOrCondition(mustArray, query.getFieldPath(), query.getFieldValues());
+    addCommonFilters(mustArray, query);
+
+    return serializeQuery(queryFilter);
+  }
+
   private static void addHierarchyCondition(
       ArrayNode mustArray, String fieldPath, String fieldValue) {
     ObjectNode fieldCondition = MAPPER.createObjectNode();
@@ -120,6 +133,21 @@ public class QueryFilterBuilder {
     ObjectNode termNode = MAPPER.createObjectNode();
     termNode.putObject(TERM_KEY).put(fieldPath, fieldValue);
     mustArray.add(termNode);
+  }
+
+  private static void addOrCondition(
+      ArrayNode mustArray, String fieldPath, List<String> fieldValues) {
+    ObjectNode orCondition = MAPPER.createObjectNode();
+    ObjectNode innerBool = orCondition.putObject(BOOL_KEY);
+    ArrayNode shouldArray = innerBool.putArray(SHOULD_KEY);
+
+    for (String value : fieldValues) {
+      ObjectNode termNode = MAPPER.createObjectNode();
+      termNode.putObject(TERM_KEY).put(fieldPath, value);
+      shouldArray.add(termNode);
+    }
+
+    mustArray.add(orCondition);
   }
 
   private static void addCommonFilters(ArrayNode mustArray, InheritedFieldQuery query) {

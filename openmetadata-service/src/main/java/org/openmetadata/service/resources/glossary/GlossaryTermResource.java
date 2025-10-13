@@ -784,6 +784,88 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     return Response.ok().entity(repository.bulkRemoveGlossaryToAssets(id, request)).build();
   }
 
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listGlossaryTermAssets",
+      summary = "List assets tagged with this glossary term",
+      description =
+          "Get a paginated list of assets that have this glossary term applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {id} is not found")
+      })
+  public Response listGlossaryTermAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("100")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getGlossaryTermAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/assets")
+  @Operation(
+      operationId = "listGlossaryTermAssetsByName",
+      summary = "List assets tagged with this glossary term by fully qualified name",
+      description =
+          "Get a paginated list of assets that have this glossary term applied. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(
+            responseCode = "404",
+            description = "Glossary term for instance {fqn} is not found")
+      })
+  public Response listGlossaryTermAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the glossary term",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("100")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getGlossaryTermAssetsByName(fqn, limit, offset)).build();
+  }
+
   @PUT
   @Path("/{id}/moveAsync")
   @Operation(

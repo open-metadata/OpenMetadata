@@ -3266,4 +3266,62 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
                         getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
                         entityLink));
   }
+
+  @Test
+  void test_getGlossaryTermAssetsAPI(TestInfo test) throws IOException {
+    Glossary glossary = createGlossary(test, null, emptyList());
+    CreateGlossaryTerm createTerm = createRequest(getEntityName(test), "", "", null);
+    createTerm.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    TagLabel termLabel = EntityUtil.toTagLabel(term);
+    CreateTable createTable1 =
+        tableTest.createRequest(getEntityName(test, 1)).withTags(List.of(termLabel));
+    org.openmetadata.schema.entity.data.Table table1 =
+        tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest.createRequest(getEntityName(test, 2)).withTags(List.of(termLabel));
+    org.openmetadata.schema.entity.data.Table table2 =
+        tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        tableTest.createRequest(getEntityName(test, 3)).withTags(List.of(termLabel));
+    org.openmetadata.schema.entity.data.Table table3 =
+        tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    jakarta.ws.rs.client.WebTarget target = getCollection().path("/" + term.getId() + "/assets");
+    target = target.queryParam("limit", 10);
+    target = target.queryParam("offset", 0);
+    ResultList<EntityReference> assets =
+        TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    jakarta.ws.rs.client.WebTarget targetByName =
+        getCollection().path("/name/" + term.getFullyQualifiedName() + "/assets");
+    targetByName = targetByName.queryParam("limit", 10);
+    targetByName = targetByName.queryParam("offset", 0);
+    ResultList<EntityReference> assetsByName =
+        TestUtils.get(targetByName, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    target = getCollection().path("/" + term.getId() + "/assets");
+    target = target.queryParam("limit", 2);
+    target = target.queryParam("offset", 0);
+    ResultList<EntityReference> page1 = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    target = getCollection().path("/" + term.getId() + "/assets");
+    target = target.queryParam("limit", 2);
+    target = target.queryParam("offset", 2);
+    ResultList<EntityReference> page2 = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertTrue(page2.getData().size() >= 1);
+  }
 }

@@ -14,6 +14,8 @@
 package org.openmetadata.service.search;
 
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_FIELD;
+import static org.openmetadata.service.search.SearchConstants.DEFAULT_SORT_ORDER;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -85,48 +87,52 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       }
 
       String queryFilter = getQueryFilter(query);
-      int currentFrom = query.getFrom();
+      int offset = query.getFrom();
+      int limit = query.getSize();
 
-      // Get total count from first batch response instead of separate count query
-      int batchSize = MAX_PAGE_SIZE;
+      // True pagination - cap limit at MAX_PAGE_SIZE for performance
+      // This ensures we never fetch more than 1000 records in a single request
+      int effectiveLimit = Math.min(limit, MAX_PAGE_SIZE);
+
       SearchRequest searchRequest =
-          buildSearchRequest(currentFrom, batchSize, queryFilter, true, ENTITY_REFERENCE_FIELDS);
+          buildSearchRequest(
+              offset,
+              effectiveLimit,
+              queryFilter,
+              true,
+              ENTITY_REFERENCE_FIELDS,
+              query.getSortField(),
+              query.getSortOrder());
+
+      LOG.info(
+          "Executing inherited field search query: index={}, from={}, size={}, queryFilter={}, sortField={}, sortOrder={}, includeFields={}",
+          searchRequest.getIndex(),
+          searchRequest.getFrom(),
+          searchRequest.getSize(),
+          searchRequest.getQueryFilter(),
+          searchRequest.getSortFieldParam(),
+          searchRequest.getSortOrder(),
+          searchRequest.getIncludeSourceFields());
 
       Response response = searchRepository.search(searchRequest, null);
       String responseBody = extractResponseBody(response);
       JsonNode searchResponse = JsonUtils.readTree(responseBody);
 
       int totalCount = extractTotalCountFromSearchResponse(searchResponse);
+      LOG.info(
+          "Inherited field search query returned: totalCount={}, responseStatus={}",
+          totalCount,
+          response.getStatus());
 
       if (totalCount == 0) {
         return new InheritedFieldResult(Collections.emptyList(), 0);
       }
 
-      List<EntityReference> batchEntities =
-          extractEntityReferencesFromSearchResponse(searchResponse);
-      List<EntityReference> allEntities = new ArrayList<>(batchEntities);
-      currentFrom += batchSize;
+      // Extract entities from response
+      List<EntityReference> results = extractEntityReferencesFromSearchResponse(searchResponse);
+      LOG.info("Extracted {} entity references from search response", results.size());
 
-      while (allEntities.size() < totalCount) {
-        batchSize = Math.min(MAX_PAGE_SIZE, totalCount - allEntities.size());
-
-        searchRequest =
-            buildSearchRequest(currentFrom, batchSize, queryFilter, true, ENTITY_REFERENCE_FIELDS);
-
-        response = searchRepository.search(searchRequest, null);
-        responseBody = extractResponseBody(response);
-        searchResponse = JsonUtils.readTree(responseBody);
-
-        batchEntities = extractEntityReferencesFromSearchResponse(searchResponse);
-        if (batchEntities.isEmpty()) {
-          break;
-        }
-
-        allEntities.addAll(batchEntities);
-        currentFrom += batchSize;
-      }
-
-      return new InheritedFieldResult(allEntities, totalCount);
+      return new InheritedFieldResult(results, totalCount);
 
     } catch (Exception e) {
       LOG.debug("Failed to fetch entities for inherited field, using fallback", e);
@@ -142,13 +148,23 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       }
 
       String queryFilter = getQueryFilter(query);
-      SearchRequest searchRequest = buildSearchRequest(0, 0, queryFilter, false, null);
+      // For count queries, sorting doesn't matter - using defaults
+      SearchRequest searchRequest =
+          buildSearchRequest(
+              0, 0, queryFilter, false, null, DEFAULT_SORT_FIELD, DEFAULT_SORT_ORDER);
+
+      LOG.info(
+          "Executing inherited field count query: index={}, queryFilter={}",
+          searchRequest.getIndex(),
+          searchRequest.getQueryFilter());
 
       Response response = searchRepository.search(searchRequest, null);
 
       String responseBody = extractResponseBody(response);
       JsonNode searchResponse = JsonUtils.readTree(responseBody);
-      return extractTotalCountFromSearchResponse(searchResponse);
+      int count = extractTotalCountFromSearchResponse(searchResponse);
+      LOG.info("Inherited field count query returned: count={}", count);
+      return count;
 
     } catch (Exception e) {
       LOG.debug("Failed to get count for inherited field, using fallback", e);
@@ -161,6 +177,7 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
       case DOMAIN_ASSETS -> QueryFilterBuilder.buildDomainAssetsFilter(query);
       case OWNER_ASSETS -> QueryFilterBuilder.buildOwnerAssetsFilter(query);
       case TAG_ASSETS -> QueryFilterBuilder.buildTagAssetsFilter(query);
+      case USER_ASSETS -> QueryFilterBuilder.buildUserAssetsFilter(query);
       case GENERIC -> QueryFilterBuilder.buildGenericFilter(query);
     };
   }
@@ -230,7 +247,13 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
   }
 
   private SearchRequest buildSearchRequest(
-      int from, int size, String queryFilter, boolean fetchSource, List<String> includeFields) {
+      int from,
+      int size,
+      String queryFilter,
+      boolean fetchSource,
+      List<String> includeFields,
+      String sortField,
+      String sortOrder) {
     SearchRequest searchRequest = new SearchRequest();
     searchRequest.setIndex(searchRepository.getIndexOrAliasName(GLOBAL_SEARCH_ALIAS));
     searchRequest.setQuery(EMPTY_QUERY);
@@ -239,6 +262,10 @@ public class DefaultInheritedFieldEntitySearch implements InheritedFieldEntitySe
     searchRequest.setQueryFilter(queryFilter);
     searchRequest.setTrackTotalHits(true);
     searchRequest.setFetchSource(fetchSource);
+
+    // Use provided sorting or default to _score desc
+    searchRequest.setSortFieldParam(sortField != null ? sortField : DEFAULT_SORT_FIELD);
+    searchRequest.setSortOrder(sortOrder != null ? sortOrder : DEFAULT_SORT_ORDER);
 
     if (includeFields != null && !includeFields.isEmpty()) {
       searchRequest.setIncludeSourceFields(includeFields);

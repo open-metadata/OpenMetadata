@@ -81,7 +81,9 @@
     },
     "assets": {
       "description": "Data assets collection that is part of this domain.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref" : "../../type/entityReferenceList.json",
+      "deprecated": true,
+      "$comment": "@deprecated Use GET /v1/domains/{id}/assets API endpoint for paginated access to domain assets"
     },
     "assetsCount": {
       "description": "Count of data assets that are part of this domain (including inherited from sub-domains).",

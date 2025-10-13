@@ -1459,4 +1459,63 @@ public class TeamResourceTest extends EntityResourceTest<Team, CreateTeam> {
       }
     }
   }
+
+  @Test
+  void test_getTeamAssetsAPI(TestInfo test) throws IOException {
+    Team team = createEntity(createRequest(test).withTeamType(GROUP), ADMIN_AUTH_HEADERS);
+
+    org.openmetadata.service.resources.databases.TableResourceTest tableTest =
+        new org.openmetadata.service.resources.databases.TableResourceTest();
+    org.openmetadata.schema.api.data.CreateTable createTable1 =
+        tableTest
+            .createRequest(getEntityName(test, 1))
+            .withOwners(List.of(team.getEntityReference()));
+    org.openmetadata.schema.entity.data.Table table1 =
+        tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    org.openmetadata.schema.api.data.CreateTable createTable2 =
+        tableTest
+            .createRequest(getEntityName(test, 2))
+            .withOwners(List.of(team.getEntityReference()));
+    org.openmetadata.schema.entity.data.Table table2 =
+        tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    org.openmetadata.schema.api.data.CreateTable createTable3 =
+        tableTest
+            .createRequest(getEntityName(test, 3))
+            .withOwners(List.of(team.getEntityReference()));
+    org.openmetadata.schema.entity.data.Table table3 =
+        tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    WebTarget target = getAssetsResource(team.getId(), 10, 0);
+    ResultList<EntityReference> assets =
+        TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    WebTarget targetByName =
+        getCollection().path("/name/" + team.getFullyQualifiedName() + "/assets");
+    targetByName = targetByName.queryParam("limit", 10);
+    targetByName = targetByName.queryParam("offset", 0);
+    ResultList<EntityReference> assetsByName =
+        TestUtils.get(targetByName, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    target = getCollection().path("/" + team.getId() + "/assets");
+    target = target.queryParam("limit", 2);
+    target = target.queryParam("offset", 0);
+    ResultList<EntityReference> page1 = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    target = getCollection().path("/" + team.getId() + "/assets");
+    target = target.queryParam("limit", 2);
+    target = target.queryParam("offset", 2);
+    ResultList<EntityReference> page2 = TestUtils.get(target, ResultList.class, ADMIN_AUTH_HEADERS);
+    assertTrue(page2.getData().size() >= 1);
+  }
 }
