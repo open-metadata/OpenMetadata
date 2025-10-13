@@ -29,7 +29,7 @@ import {
   toastNotification,
 } from '../../utils/common';
 import {
-  createColumnRowDetailsWithDot,
+  createColumnRowDetails,
   createColumnRowDetailsWithEncloseDot,
   createCustomPropertiesForEntity,
   createDatabaseRowDetails,
@@ -100,7 +100,7 @@ const tableDetails2 = {
 };
 
 const columnDetails1 = {
-  ...createColumnRowDetailsWithDot(),
+  ...createColumnRowDetails(),
   glossary: glossaryDetails,
 };
 

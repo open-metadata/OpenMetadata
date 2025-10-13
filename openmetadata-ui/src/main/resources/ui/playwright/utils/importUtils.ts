@@ -505,12 +505,6 @@ export const createColumnRowDetails = () => {
   };
 };
 
-export const createColumnRowDetailsWithDot = () => {
-  return {
-    ...createColumnRowDetails(),
-    name: `playwright.column ${uuid()}`,
-  };
-};
 export const createColumnRowDetailsWithEncloseDot = () => {
   return {
     ...createColumnRowDetails(),

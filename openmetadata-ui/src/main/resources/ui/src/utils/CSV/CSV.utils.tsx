@@ -180,12 +180,6 @@ export const getCSVStringFromColumnsAndDataSource = (
         const value = get(row, col.key ?? '', '');
         const colName = col.key ?? '';
         if (
-          (colName === 'column.name*' || colName === 'name*') &&
-          value.includes('.') &&
-          !value.includes('"')
-        ) {
-          return `"""${value}"""`; // Enclosing for value, escape and csv
-        } else if (
           csvUtilsClassBase
             .columnsWithMultipleValuesEscapeNeeded()
             .includes(colName)
