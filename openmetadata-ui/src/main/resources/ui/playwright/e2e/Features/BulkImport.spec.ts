@@ -713,7 +713,7 @@ test.describe('Bulk Import Export', () => {
         await fillRecursiveColumnDetails(
           {
             ...columnDetails2,
-            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}.${columnDetails2.name}`,
+            fullyQualifiedName: `${dbSchemaEntity.entityResponseData.fullyQualifiedName}.${tableDetails2.name}."${columnDetails2.name}"`,
           },
           page
         );
