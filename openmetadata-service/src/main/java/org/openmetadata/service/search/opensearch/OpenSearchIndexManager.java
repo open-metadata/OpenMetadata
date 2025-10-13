@@ -413,4 +413,25 @@ public class OpenSearchIndexManager implements IndexManagementClient {
     }
     return indices;
   }
+
+  @Override
+  public Set<String> listIndicesByPrefix(String prefix) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot list indices by prefix.");
+      return indices;
+    }
+    try {
+      String pattern = prefix + "*";
+      GetAliasRequest request = GetAliasRequest.of(g -> g.index(pattern));
+      GetAliasResponse response = client.indices().getAlias(request);
+
+      indices.addAll(response.result().keySet());
+
+      LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
+    } catch (Exception e) {
+      LOG.error("Failed to list indices by prefix {} due to", prefix, e);
+    }
+    return indices;
+  }
 }
