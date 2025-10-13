@@ -70,6 +70,7 @@ VERSIONS = {
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
+    "kafka-connect": "kafka-connect-py==0.10.11",
 }
 
 COMMONS = {
@@ -292,7 +293,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
-    "kafkaconnect": {"kafka-connect-py==0.10.11"},
+    "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -463,6 +464,7 @@ test = {
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     *plugins["exasol"],
     VERSIONS["opensearch"],
+    VERSIONS["kafka-connect"],
 }
 
 if sys.version_info >= (3, 9):
