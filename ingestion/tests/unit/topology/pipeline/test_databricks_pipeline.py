@@ -148,24 +148,24 @@ EXPECTED_CREATED_PIPELINES = CreatePipelineRequest(
     description="This job contain multiple tasks that are required to produce the weekly shark sightings report.",
     tasks=[
         Task(
-            name="Orders_Ingest",
-            description="Ingests order data",
-            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-            downstreamTasks=[],
-            taskType="SINGLE_TASK",
-        ),
-        Task(
-            name="Match",
-            description="Matches orders with user sessions",
-            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
-            downstreamTasks=["Orders_Ingested", "Sessionize"],
-            taskType="SINGLE_TASK",
-        ),
-        Task(
             name="Sessionize",
             description="Extracts session data from events",
-            sourceUrl="https://my-workspace.cloud.databricks.com/#job/11223344/run/123",
+            sourceUrl="https://localhost:443/#job/11223344",
             downstreamTasks=[],
+            taskType="SINGLE_TASK",
+        ),
+        Task(
+            name="Orders_Ingest",
+            description="Ingests order data",
+            sourceUrl="https://localhost:443/#job/11223344",
+            downstreamTasks=[],
+            taskType="SINGLE_TASK",
+        ),
+        Task(
+            name="Matched_Changed",
+            description="Matches orders with user sessions",
+            sourceUrl="https://localhost:443/#job/11223344",
+            downstreamTasks=["Orders_Ingest", "Sessionize", "Sessionize_duplicated"],
             taskType="SINGLE_TASK",
         ),
     ],
@@ -279,11 +279,7 @@ class DatabricksPipelineTests(TestCase):
         results = list(self.databricks.get_pipelines_list())
         self.assertEqual(PIPELINE_LIST, results)
 
-    @patch(
-        "metadata.ingestion.source.database.databricks.client.DatabricksClient.get_job_runs"
-    )
-    def test_yield_pipeline(self, get_job_runs):
-        get_job_runs.return_value = mock_run_data
+    def test_yield_pipeline(self):
         pipelines = list(self.databricks.yield_pipeline(PIPELINE_LIST[0]))[0].right
         self.assertEqual(pipelines, EXPECTED_CREATED_PIPELINES)
 

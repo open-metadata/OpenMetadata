@@ -27,15 +27,26 @@ KAFKA_STREAM_PATTERN = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
-# Pattern to extract variable assignments like: TOPIC = "tracker-events"
+# Pattern to extract variable assignments like: TOPIC = "tracker-events" or topic_name = "events"
 VARIABLE_ASSIGNMENT_PATTERN = re.compile(
-    r'^\s*([A-Z_][A-Z0-9_]*)\s*=\s*["\']([^"\']+)["\']\s*$',
+    r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*["\']([^"\']+)["\']\s*$',
     re.MULTILINE,
 )
 
-# Pattern to extract DLT table decorators: @dlt.table(name="table_name", ...)
+# Pattern to extract DLT table decorators: @dlt.table(name="table_name", ...) or @dlt.table(name=func())
 DLT_TABLE_PATTERN = re.compile(
+    r"@dlt\.table\s*\(",
+    re.IGNORECASE,
+)
+
+# Pattern to extract table name from decorator - supports both literals and function calls
+DLT_TABLE_NAME_LITERAL = re.compile(
     r'@dlt\.table\s*\(\s*(?:.*?name\s*=\s*["\']([^"\']+)["\'])?',
+    re.DOTALL | re.IGNORECASE,
+)
+
+DLT_TABLE_NAME_FUNCTION = re.compile(
+    r"@dlt\.table\s*\(\s*(?:.*?name\s*=\s*([a-zA-Z_][a-zA-Z0-9_\.]+)\s*\([^)]*\))?",
     re.DOTALL | re.IGNORECASE,
 )
 
@@ -84,6 +95,9 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
     - TOPIC = "events"
     - .option("subscribe", TOPIC)
 
+    Fallback for abstracted patterns:
+    - topic_name = "my-topic"  (when Kafka reading is in helper class)
+
     Returns empty list if parsing fails or no sources found
     """
     kafka_configs = []
@@ -96,8 +110,11 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
         # Extract variable assignments for resolution
         variables = _extract_variables(source_code)
 
+        # Try to find explicit Kafka streaming patterns
+        found_explicit_kafka = False
         for match in KAFKA_STREAM_PATTERN.finditer(source_code):
             try:
+                found_explicit_kafka = True
                 config_block = match.group(1)
 
                 bootstrap_servers = _extract_option(
@@ -133,6 +150,32 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:
             except Exception as exc:
                 logger.warning(f"Failed to parse individual Kafka config block: {exc}")
                 continue
+
+        # Fallback: If no explicit Kafka pattern found, look for topic_name variable
+        # This handles cases where Kafka reading is abstracted in a helper class
+        if not found_explicit_kafka and variables:
+            topic_candidates = []
+            for var_name, var_value in variables.items():
+                # Look for variables that likely contain topic names
+                if any(
+                    keyword in var_name.lower()
+                    for keyword in ["topic", "subject", "stream"]
+                ):
+                    topic_candidates.append(var_value)
+                    logger.debug(
+                        f"Found potential topic from variable {var_name}: {var_value}"
+                    )
+
+            if topic_candidates:
+                kafka_config = KafkaSourceConfig(
+                    bootstrap_servers=None,  # Not available in abstracted pattern
+                    topics=topic_candidates,
+                    group_id_prefix=None,
+                )
+                kafka_configs.append(kafka_config)
+                logger.debug(
+                    f"Extracted Kafka config from variables: topics={topic_candidates}"
+                )
 
     except Exception as exc:
         logger.warning(f"Error parsing Kafka sources from code: {exc}")
@@ -190,6 +233,7 @@ def extract_dlt_table_names(source_code: str) -> List[str]:
     Parses patterns like:
     - @dlt.table(name="user_events_bronze_pl", ...)
     - @dlt.table(comment="...", name="my_table")
+    - @dlt.table(name=generate_table_name())  (function call - infer from pattern)
 
     Returns list of table names found in decorators
     """
@@ -200,16 +244,76 @@ def extract_dlt_table_names(source_code: str) -> List[str]:
             logger.debug("Empty or None source code provided")
             return table_names
 
-        for match in DLT_TABLE_PATTERN.finditer(source_code):
+        # First try to extract literal string table names
+        for match in DLT_TABLE_NAME_LITERAL.finditer(source_code):
             table_name = match.group(1)
             if table_name:
                 table_names.append(table_name)
-                logger.debug(f"Found DLT table: {table_name}")
+                logger.debug(f"Found DLT table (literal): {table_name}")
+
+        # If no literal names found, try function call pattern
+        if not table_names:
+            for match in DLT_TABLE_NAME_FUNCTION.finditer(source_code):
+                function_call = match.group(1)
+                if function_call:
+                    # Extract table name hint from function name
+                    # e.g., generate_event_log_table_name() -> event_log
+                    inferred_name = _infer_table_name_from_function(
+                        function_call, source_code
+                    )
+                    if inferred_name:
+                        table_names.append(inferred_name)
+                        logger.debug(
+                            f"Found DLT table (inferred from {function_call}): {inferred_name}"
+                        )
 
     except Exception as exc:
         logger.warning(f"Error parsing DLT table names from code: {exc}")
 
     return table_names
+
+
+def _infer_table_name_from_function(
+    function_call: str, source_code: str
+) -> Optional[str]:
+    """
+    Infer table name from function call pattern
+
+    Strategies:
+    1. Look for entity_name variable and use it to build table name
+    2. Extract keywords from function name (e.g., "event_log" from "generate_event_log_table_name")
+    """
+    try:
+        # Extract variables to find entity_name or similar
+        variables = _extract_variables(source_code)
+
+        # Strategy 1: Use entity_name variable if present
+        entity_name = (
+            variables.get("entity_name")
+            or variables.get("entity")
+            or variables.get("table_name")
+        )
+        if entity_name:
+            logger.debug(
+                f"Inferred table name from entity_name variable: {entity_name}"
+            )
+            return entity_name
+
+        # Strategy 2: Extract from function name (e.g., "event_log" from "generate_event_log_table_name")
+        # Common patterns: generate_X_table_name, create_X_table, build_X_dataframe
+        match = re.search(
+            r"(?:generate|create|build)_([a-z_]+?)(?:_table|_dataframe)",
+            function_call.lower(),
+        )
+        if match:
+            inferred = match.group(1)
+            logger.debug(f"Inferred table name from function pattern: {inferred}")
+            return inferred
+
+    except Exception as exc:
+        logger.debug(f"Could not infer table name from function {function_call}: {exc}")
+
+    return None
 
 
 def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:

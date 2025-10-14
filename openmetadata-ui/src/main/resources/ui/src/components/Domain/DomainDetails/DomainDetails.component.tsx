@@ -57,7 +57,6 @@ import {
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
-import { searchData } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
@@ -85,6 +84,7 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -413,19 +413,19 @@ const DomainDetails = ({
   const fetchSubDomainsCount = useCallback(async () => {
     if (!isVersionsView) {
       try {
-        const res = await searchData(
-          '',
-          0,
-          0,
-          `(parent.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DOMAIN,
-          false,
-          true
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'parent.fullyQualifiedName.keyword':
+              domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DOMAIN,
+          trackTotalHits: true,
+        });
 
-        const totalCount = res.data.hits.total.value ?? 0;
+        const totalCount = res.hits.total.value ?? 0;
         setSubDomainsCount(totalCount);
       } catch (error) {
         setSubDomainsCount(0);
@@ -490,17 +490,17 @@ const DomainDetails = ({
   const fetchDataProducts = async () => {
     if (!isVersionsView) {
       try {
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(domains.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DATA_PRODUCT
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
 
-        setDataProductsCount(res.data.hits.total.value ?? 0);
+        setDataProductsCount(res.hits.total.value ?? 0);
       } catch (error) {
         setDataProductsCount(0);
         showNotistackError(

@@ -43,12 +43,12 @@ import { sidebarClick } from './sidebar';
 export const waitForAllLoadersToDisappear = async (
   page: Page,
   dataTestId = 'loader',
-  timeout = 5000
+  timeout = 30000
 ) => {
-  await page.waitForSelector(`[data-testid="${dataTestId}"]`, {
-    state: 'detached',
-    timeout,
-  });
+  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
+
+  // Wait for the loader elements count to become 0
+  await expect(loaders).toHaveCount(0, { timeout });
 };
 
 export const visitEntityPage = async (data: {
@@ -103,7 +103,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -162,7 +162,7 @@ export const addOwnerWithoutValidation = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
