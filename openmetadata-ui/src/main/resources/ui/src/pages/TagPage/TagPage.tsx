@@ -53,6 +53,7 @@ import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelection
 import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
+import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -81,12 +82,14 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
+import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { Style } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { searchData } from '../../rest/miscAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
@@ -621,6 +624,43 @@ const TagPage = () => {
     return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
   }, [tagItem]);
 
+  const badge = useMemo(() => {
+    const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
+      EntityType.TAG
+    );
+    const entityStatus =
+      'entityStatus' in tagItem
+        ? tagItem.entityStatus
+        : EntityStatus.Unprocessed;
+
+    const statusBadge =
+      shouldShowStatus && entityStatus ? (
+        <EntityStatusBadge showDivider={false} status={entityStatus} />
+      ) : null;
+
+    const disabledBadge = tagItem.disabled ? (
+      <>
+        <Divider className="m-x-xs h-6" type="vertical" />
+        <StatusBadge
+          dataTestId="disabled"
+          label={t('label.disabled')}
+          status={StatusType.Stopped}
+        />
+      </>
+    ) : null;
+
+    if (!statusBadge && !disabledBadge) {
+      return null;
+    }
+
+    return (
+      <Space>
+        {statusBadge}
+        {disabledBadge}
+      </Space>
+    );
+  }, [tagItem]);
+
   useEffect(() => {
     getTagData();
     fetchClassificationTagAssets();
@@ -660,18 +700,7 @@ const TagPage = () => {
             gutter={[0, 12]}>
             <Col className="p-x-md" flex="1">
               <EntityHeader
-                badge={
-                  tagItem.disabled && (
-                    <Space>
-                      <Divider className="m-x-xs h-6" type="vertical" />
-                      <StatusBadge
-                        dataTestId="disabled"
-                        label={t('label.disabled')}
-                        status={StatusType.Stopped}
-                      />
-                    </Space>
-                  )
-                }
+                badge={badge}
                 breadcrumb={breadcrumb}
                 entityData={tagItem}
                 entityType={EntityType.TAG}

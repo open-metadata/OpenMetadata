@@ -39,6 +39,7 @@ import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
+import { EntityStatusBadge } from '../../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { AssetsTabRef } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
@@ -55,6 +56,7 @@ import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
 import { CreateDomain } from '../../../generated/api/domains/createDomain';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { ChangeDescription } from '../../../generated/entity/type';
@@ -79,6 +81,7 @@ import {
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
 } from '../../../utils/DomainUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
@@ -774,6 +777,18 @@ const DomainDetailsPage = ({
     );
   }, [domain, isSubDomain]);
 
+  const statusBadge = useMemo(() => {
+    const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
+      EntityType.DOMAIN
+    );
+    const entityStatus =
+      'entityStatus' in domain ? domain.entityStatus : EntityStatus.Unprocessed;
+
+    return shouldShowStatus && entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={entityStatus} />
+    ) : null;
+  }, [domain]);
+
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
   };
@@ -794,6 +809,7 @@ const DomainDetailsPage = ({
         gutter={[0, 12]}>
         <Col flex="auto">
           <EntityHeader
+            badge={statusBadge}
             breadcrumb={breadcrumbs}
             entityData={{ ...domain, displayName, name }}
             entityType={EntityType.DOMAIN}

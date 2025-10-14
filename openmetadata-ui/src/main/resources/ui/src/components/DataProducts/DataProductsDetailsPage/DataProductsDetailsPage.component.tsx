@@ -34,6 +34,7 @@ import {
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   ChangeDescription,
   DataProduct,
@@ -57,6 +58,7 @@ import {
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
@@ -82,6 +84,7 @@ import { GenericProvider } from '../../Customization/GenericProvider/GenericProv
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DomainTabs } from '../../Domain/DomainPage.interface';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
@@ -455,6 +458,20 @@ const DataProductsDetailsPage = ({
     [tabs[0], activeTab]
   );
 
+  const statusBadge = useMemo(() => {
+    const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
+      EntityType.DATA_PRODUCT
+    );
+    const entityStatus =
+      'entityStatus' in dataProduct
+        ? dataProduct.entityStatus
+        : EntityStatus.Unprocessed;
+
+    return shouldShowStatus && entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={entityStatus} />
+    ) : null;
+  }, [dataProduct]);
+
   if (isCustomPageLoading) {
     return <Loader />;
   }
@@ -467,6 +484,7 @@ const DataProductsDetailsPage = ({
         gutter={[0, 12]}>
         <Col className="p-x-md" flex="auto">
           <EntityHeader
+            badge={statusBadge}
             breadcrumb={breadcrumbs}
             entityData={{ ...dataProduct, displayName, name }}
             entityType={EntityType.DATA_PRODUCT}
