@@ -110,7 +110,7 @@ export const downloadContractYamlFile = (contract: DataContract) => {
   element.click();
 
   URL.revokeObjectURL(element.href);
-  document.body.removeChild(element);
+  element.remove();
 };
 
 export const getDataContractStatusIcon = (status: ContractExecutionStatus) => {
@@ -300,14 +300,14 @@ export const generateMonthTickPositions = (
   const uniqueMonths = new Set();
   const tickPositions: string[] = [];
 
-  processedData.forEach((item) => {
+  for (const item of processedData) {
     const monthKey = new Date(item.displayTimestamp).toISOString().slice(0, 7); // YYYY-MM format
     if (!uniqueMonths.has(monthKey)) {
       uniqueMonths.add(monthKey);
       // Use the first occurrence of each month as the tick position
       tickPositions.push(item.name); // Use the unique name for the tick
     }
-  });
+  }
 
   return tickPositions;
 };

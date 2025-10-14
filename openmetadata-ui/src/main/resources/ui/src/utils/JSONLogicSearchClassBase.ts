@@ -578,9 +578,9 @@ class JSONLogicSearchClassBase {
       ),
     };
 
-    entitySearchIndex.forEach((index) => {
+    for (const index of entitySearchIndex) {
       configs = { ...configs, ...(configIndexMapping[index] ?? {}) };
-    });
+    }
 
     return configs;
   }

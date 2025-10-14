@@ -203,9 +203,7 @@ export const ContractSemanticFormTab: React.FC<{
           <Form.List name="semantics">
             {(fields, { add }) => {
               // Store the add function so it can be used outside
-              if (!addFunctionRef.current) {
-                addFunctionRef.current = add;
-              }
+              addFunctionRef.current ??= add;
 
               return fields.map((field) => {
                 return (

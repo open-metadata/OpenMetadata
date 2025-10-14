@@ -41,7 +41,7 @@ export const DATA_CONTRACT_SEMANTICS2 = {
   description: 'new data contract semantic description 2',
   rules: [
     {
-      field: 'Name',
+      field: 'Display Name',
       operator: 'Is Set',
     },
   ],

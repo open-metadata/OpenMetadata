@@ -272,7 +272,9 @@ export const useSemanticsRuleList = ({
   isLoading,
 }: {
   semanticsRules: SemanticsRule[];
-  onSemanticsRuleChange: (updatedSemanticsRules: SemanticsRule[]) => void;
+  onSemanticsRuleChange: (
+    updatedSemanticsRules: SemanticsRule[]
+  ) => Promise<void>;
   isSaveLoading?: boolean;
   isLoading?: boolean;
 }) => {
