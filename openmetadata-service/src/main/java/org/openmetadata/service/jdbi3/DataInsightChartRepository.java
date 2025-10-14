@@ -54,6 +54,9 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
           "MostActiveUsers",
           "MostViewedEntities");
 
+  public static final List<String> USES_OWNER_FIELD_FOR_TEAM_FILTER =
+      Arrays.asList("MostViewedEntities", "PageViewsByEntities");
+
   public static final List<String> SUPPORTS_TIER_FILTER =
       Arrays.asList(
           "TotalEntitiesByType",

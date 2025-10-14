@@ -2264,9 +2264,10 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       List<String> teamArray = Arrays.asList(team.split("\\s*,\\s*"));
 
       BoolQueryBuilder teamQueryFilter = QueryBuilders.boolQuery();
-      // For MostViewedEntities, filter by data.owner field instead of data.team
+      // Charts that use webAnalyticEntityViewReportData store owner in data.owner field
+      // Charts that use entityReportData store owner in data.team field
       String teamField =
-          "MostViewedEntities".equals(dataInsightChartName)
+          DataInsightChartRepository.USES_OWNER_FIELD_FOR_TEAM_FILTER.contains(dataInsightChartName)
               ? DataInsightChartRepository.DATA_OWNER
               : DataInsightChartRepository.DATA_TEAM;
       teamQueryFilter.should(QueryBuilders.termsQuery(teamField, teamArray));
