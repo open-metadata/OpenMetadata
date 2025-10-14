@@ -48,12 +48,13 @@ import { useAuth } from '../../hooks/authHooks';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useTableFilters } from '../../hooks/useTableFilters';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
@@ -137,26 +138,26 @@ const UserListPageV1 = () => {
     isAdmin = false,
     isDeleted = false
   ) => {
-    let filters = 'isAdmin:false isBot:false';
-    if (isAdmin) {
-      filters = 'isAdmin:true isBot:false';
-    }
-
     return new Promise<Array<User>>((resolve) => {
-      searchData(
-        text,
-        currentPage,
+      const searchText = text === WILD_CARD_CHAR ? text : `*${text}*`;
+
+      const queryFilter = getTermQuery({
+        isAdmin: String(isAdmin),
+        isBot: 'false',
+      });
+
+      searchQuery({
+        query: searchText,
+        pageNumber: currentPage,
         pageSize,
-        filters,
-        '',
-        '',
-        SearchIndex.USER,
-        isDeleted
-      )
+        queryFilter,
+        searchIndex: SearchIndex.USER,
+        includeDeleted: isDeleted,
+      })
         .then((res) => {
-          const data = res.data.hits.hits.map(({ _source }) => _source);
+          const data = res.hits.hits.map(({ _source }) => _source);
           handlePagingChange({
-            total: res.data.hits.total.value,
+            total: res.hits.total.value,
           });
           resolve(data);
         })
