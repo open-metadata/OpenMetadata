@@ -252,9 +252,6 @@ const AddDomainForm = ({
       multipleUser: true,
       multipleTeam: false,
       label: t('label.owner-plural'),
-      placeholder: t('label.select-field', {
-        field: t('label.user-or-team'),
-      }),
     },
     formItemProps: {
       valuePropName: 'value',
@@ -272,9 +269,6 @@ const AddDomainForm = ({
       userOnly: true,
       multipleUser: true,
       label: t('label.expert-plural'),
-      placeholder: t('label.select-field', {
-        field: t('label.user-plural'),
-      }),
     },
     formItemProps: {
       valuePropName: 'value',

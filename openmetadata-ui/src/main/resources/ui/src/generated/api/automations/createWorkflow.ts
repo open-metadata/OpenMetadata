@@ -226,6 +226,8 @@ export interface RequestConnection {
  *
  * Postgres Database Connection Config
  *
+ * TimescaleDB Database Connection Config
+ *
  * Presto Database Connection Config
  *
  * Redshift  Connection Config
@@ -337,6 +339,8 @@ export interface RequestConnection {
  *
  * Glue Pipeline Connection Config
  *
+ * AWS Kinesis Firehose Pipeline Connection Config
+ *
  * Airbyte Metadata Database Connection Config
  *
  * Fivetran Metadata Database Connection Config
@@ -437,11 +441,11 @@ export interface ConfigObject {
     /**
      * Generated Token to connect to OpenAPI Schema.
      *
-     * Generated Token to connect to Databricks.
-     *
      * token to connect to Qlik Cloud.
      *
      * To Connect to Dagster Cloud
+     *
+     * Generated Token to connect to Databricks.
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -525,6 +529,8 @@ export interface ConfigObject {
      * Host and port of the Oracle service.
      *
      * Host and port of the source service.
+     *
+     * Host and port of the TimescaleDB service.
      *
      * Host and port of the Presto service.
      *
@@ -728,6 +734,9 @@ export interface ConfigObject {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      *
+     * Ingest data from all databases in TimescaleDB. You can use databaseFilterPattern on top
+     * of this.
+     *
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
      *
@@ -839,6 +848,9 @@ export interface ConfigObject {
      * Username to connect to Postgres. This user should have privileges to read all the
      * metadata in Postgres.
      *
+     * Username to connect to TimescaleDB. This user should have privileges to read all the
+     * metadata in TimescaleDB.
+     *
      * Username to connect to Presto. This user should have privileges to read all the metadata
      * in Postgres.
      *
@@ -944,6 +956,18 @@ export interface ConfigObject {
      */
     secure?: boolean;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     *
+     * Types of methods used to authenticate to the tableau instance
+     *
+     * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -1026,16 +1050,6 @@ export interface ConfigObject {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Choose Auth Config Type.
-     *
-     * Types of methods used to authenticate to the tableau instance
-     *
-     * Types of methods used to authenticate to the alation instance
-     *
-     * Authentication type to connect to Apache Ranger.
-     */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -1055,6 +1069,8 @@ export interface ConfigObject {
     oracleConnectionType?: OracleConnectionType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
+     *
+     * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
     sslMode?:            SSLMode;
@@ -1597,6 +1613,16 @@ export interface ConfigObject {
      */
     packageConnection?: S3Connection | string;
     /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     *
+     * service type of the messaging source
+     */
+    messagingServiceName?: string[] | string;
+    /**
      * Fivetran API Secret.
      */
     apiSecret?: string;
@@ -1654,13 +1680,6 @@ export interface ConfigObject {
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
-    /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     *
-     * service type of the messaging source
-     */
-    messagingServiceName?: string[] | string;
     /**
      * ID of your DBT cloud account
      */
@@ -2071,6 +2090,16 @@ export enum AuthProvider {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -2103,7 +2132,34 @@ export enum AuthProvider {
  *
  * Configuration for connecting to Ranger Basic Auth.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
      *
@@ -3041,7 +3097,7 @@ export interface ConfigConnection {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -3112,7 +3168,7 @@ export interface ConfigConnection {
  *
  * Azure Database Connection Config
  */
-export interface ConnectionAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -3531,7 +3587,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -4179,6 +4235,7 @@ export enum ConfigType {
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
+    KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
     MariaDB = "MariaDB",
@@ -4233,6 +4290,7 @@ export enum ConfigType {
     Tableau = "Tableau",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",

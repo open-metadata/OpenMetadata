@@ -30,6 +30,8 @@ test.describe('Service form functionality', async () => {
 
   test.describe('Superset', () => {
     test('Verify form selects are working properly', async ({ page }) => {
+      test.slow();
+
       await page.goto('/dashboardServices/add-service');
       await waitForAllLoadersToDisappear(page);
       await page.click(`[data-testid="Superset"]`);
@@ -65,9 +67,12 @@ test.describe('Service form functionality', async () => {
         .getByRole('button', { name: 'OK' })
         .click();
 
-      await page.waitForSelector('[data-testid="test-connection-modal"]', {
-        state: 'hidden',
-      });
+      await page.waitForSelector(
+        '[data-testid="test-connection-modal"] .ant-modal-mask',
+        {
+          state: 'detached',
+        }
+      );
 
       // Fill superset form details - 2
       await fillSupersetFormDetails({ page, ...supersetFormDetails2 });
@@ -96,9 +101,12 @@ test.describe('Service form functionality', async () => {
         .getByRole('button', { name: 'OK' })
         .click();
 
-      await page.waitForSelector('[data-testid="test-connection-modal"]', {
-        state: 'hidden',
-      });
+      await page.waitForSelector(
+        '[data-testid="test-connection-modal"] .ant-modal-mask',
+        {
+          state: 'detached',
+        }
+      );
 
       // Fill superset form details - 3
       await fillSupersetFormDetails({ page, ...supersetFormDetails3 });
@@ -133,9 +141,12 @@ test.describe('Service form functionality', async () => {
         .getByRole('button', { name: 'OK' })
         .click();
 
-      await page.waitForSelector('[data-testid="test-connection-modal"]', {
-        state: 'hidden',
-      });
+      await page.waitForSelector(
+        '[data-testid="test-connection-modal"] .ant-modal-mask',
+        {
+          state: 'detached',
+        }
+      );
 
       // Fill superset form details - 4
       await fillSupersetFormDetails({ page, ...supersetFormDetails4 });

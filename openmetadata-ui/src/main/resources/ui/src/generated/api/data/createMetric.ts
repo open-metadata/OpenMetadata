@@ -63,6 +63,10 @@ export interface CreateMetric {
      */
     relatedMetrics?: string[];
     /**
+     * Reviewers of this metric
+     */
+    reviewers?: EntityReference[];
+    /**
      * Tags for this metric
      */
     tags?: TagLabel[];
