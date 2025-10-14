@@ -1488,6 +1488,11 @@ export enum ProviderType {
  */
 export interface ExecutorConfiguration {
     /**
+     * The interval in milliseconds to acquire async jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for new jobs.
+     */
+    asyncJobAcquisitionInterval?: number;
+    /**
      * Default worker Pool Size. The Workflow Executor by default has this amount of workers.
      */
     corePoolSize?: number;
@@ -1509,6 +1514,11 @@ export interface ExecutorConfiguration {
      * more.
      */
     tasksDuePerAcquisition?: number;
+    /**
+     * The interval in milliseconds to acquire timer jobs. Default: 60 seconds. This controls
+     * how often Flowable polls for scheduled jobs.
+     */
+    timerJobAcquisitionInterval?: number;
 }
 
 export interface GlobalSettings {
@@ -1848,6 +1858,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * Embedding generation using Deep Java Library (DJL)
+     */
+    djl?: Djl;
+    /**
      * The provider to use for generating vector embeddings (e.g., bedrock, openai).
      */
     embeddingProvider?: string;
@@ -1893,6 +1907,16 @@ export interface Bedrock {
      * Set to true to use IAM role based authentication instead of access/secret keys.
      */
     useIamRole?: boolean;
+}
+
+/**
+ * Embedding generation using Deep Java Library (DJL)
+ */
+export interface Djl {
+    /**
+     * DJL model name for embedding generation
+     */
+    embeddingModel?: string;
 }
 
 /**
