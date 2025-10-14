@@ -128,7 +128,8 @@ describe('CustomPropertiesSection', () => {
       expect(
         container.querySelector('.entity-summary-panel-tab-content')
       ).toBeInTheDocument();
-      expect(container.querySelector('.p-lg')).toBeInTheDocument();
+      expect(container.querySelector('.p-x-md')).toBeInTheDocument();
+      expect(container.querySelector('.p-t-md')).toBeInTheDocument();
     });
   });
 
@@ -179,7 +180,8 @@ describe('CustomPropertiesSection', () => {
       expect(
         container.querySelector('.entity-summary-panel-tab-content')
       ).toBeInTheDocument();
-      expect(container.querySelector('.p-lg')).toBeInTheDocument();
+      expect(container.querySelector('.text-center')).toBeInTheDocument();
+      expect(container.querySelector('.text-grey-muted')).toBeInTheDocument();
     });
   });
 
