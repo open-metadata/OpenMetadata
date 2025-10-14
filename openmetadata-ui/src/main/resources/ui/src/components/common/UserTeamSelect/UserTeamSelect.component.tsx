@@ -24,7 +24,7 @@ import {
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import {
   formatTeamsResponse,
   formatUsersResponse,
@@ -34,6 +34,7 @@ import {
   getEntityName,
   getEntityReferenceListFromEntities,
 } from '../../../utils/EntityUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import { UserTag } from '../UserTag/UserTag.component';
 import { UserTagSize } from '../UserTag/UserTag.interface';
 import './user-team-select.less';
@@ -88,22 +89,22 @@ export const UserTeamSelect = ({
   const fetchUserOptions = async (searchTerm: string, page = 1) => {
     setLoading(true);
     try {
-      const res = await searchData(
-        searchTerm,
-        page,
-        PAGE_SIZE_MEDIUM,
-        'isBot:false',
-        'displayName.keyword',
-        'asc',
-        SearchIndex.USER
-      );
+      const res = await searchQuery({
+        query: searchTerm,
+        pageNumber: page,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: getTermQuery({ isBot: 'false' }),
+        sortField: 'displayName.keyword',
+        sortOrder: 'asc',
+        searchIndex: SearchIndex.USER,
+      });
 
       const data = getEntityReferenceListFromEntities(
-        formatUsersResponse(res.data.hits.hits),
+        formatUsersResponse(res.hits.hits),
         EntityType.USER
       );
 
-      setCount((pre) => ({ ...pre, user: res.data.hits.total.value }));
+      setCount((pre) => ({ ...pre, user: res.hits.total.value }));
       setHasMoreUsers(data.length === PAGE_SIZE_MEDIUM);
 
       if (page === 1) {
@@ -123,22 +124,24 @@ export const UserTeamSelect = ({
   const fetchTeamOptions = async (searchTerm: string, page = 1) => {
     setLoading(true);
     try {
-      const res = await searchData(
-        searchTerm || '',
-        page,
-        PAGE_SIZE_MEDIUM,
-        'teamType:Group',
-        'displayName.keyword',
-        'asc',
-        SearchIndex.TEAM
-      );
+      const res = await searchQuery({
+        query: searchTerm || '',
+        pageNumber: page,
+        pageSize: PAGE_SIZE_MEDIUM,
+        queryFilter: getTermQuery({}, 'must', undefined, {
+          matchTerms: { teamType: 'Group' },
+        }),
+        sortField: 'displayName.keyword',
+        sortOrder: 'asc',
+        searchIndex: SearchIndex.TEAM,
+      });
 
       const data = getEntityReferenceListFromEntities(
-        formatTeamsResponse(res.data.hits.hits),
+        formatTeamsResponse(res.hits.hits),
         EntityType.TEAM
       );
 
-      setCount((pre) => ({ ...pre, team: res.data.hits.total.value }));
+      setCount((pre) => ({ ...pre, team: res.hits.total.value }));
       setHasMoreTeams(data.length === PAGE_SIZE_MEDIUM);
 
       if (page === 1) {
