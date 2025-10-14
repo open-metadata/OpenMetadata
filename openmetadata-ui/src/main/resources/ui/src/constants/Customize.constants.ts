@@ -60,6 +60,8 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.CONTRACT]: 'label.contract',
   [EntityTabs.DIRECTORIES]: 'label.directory-plural',
   [EntityTabs.WORKSHEETS]: 'label.worksheet-plural',
+  [EntityTabs.FILES]: 'label.file-plural',
+  [EntityTabs.SPREADSHEETS]: 'label.spreadsheet-plural',
 } as const;
 
 export type CustomizeEntityType =
@@ -67,6 +69,7 @@ export type CustomizeEntityType =
   | EntityType.DASHBOARD
   | EntityType.DATABASE
   | EntityType.DATABASE_SCHEMA
+  | EntityType.TAG
   | EntityType.TOPIC
   | EntityType.PIPELINE
   | EntityType.STORED_PROCEDURE
@@ -92,6 +95,7 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.DASHBOARD]: PageType.Dashboard,
   [EntityType.DATABASE]: PageType.Database,
   [EntityType.DATABASE_SCHEMA]: PageType.DatabaseSchema,
+  [EntityType.TAG]: PageType.Tag,
   [EntityType.TOPIC]: PageType.Topic,
   [EntityType.PIPELINE]: PageType.Pipeline,
   [EntityType.STORED_PROCEDURE]: PageType.StoredProcedure,

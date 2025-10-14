@@ -43,6 +43,7 @@ import searchIndexClassBase from '../SearchIndexDetailsClassBase';
 import spreadsheetClassBase from '../SpreadsheetClassBase';
 import storedProcedureClassBase from '../StoredProcedureClassBase';
 import tableClassBase from '../TableClassBase';
+import tagClassBase from '../TagClassBase';
 import topicClassBase from '../TopicClassBase';
 import worksheetClassBase from '../WorksheetClassBase';
 
@@ -195,6 +196,8 @@ export const getDefaultWidgetForTab = (pageType: PageType, tab: EntityTabs) => {
       return customizeGlossaryPageClassBase.getDefaultWidgetForTab(tab);
     case PageType.Table:
       return tableClassBase.getDefaultLayout(tab);
+    case PageType.Tag:
+      return tagClassBase.getDefaultLayout(tab);
     case PageType.Topic:
       return topicClassBase.getDefaultLayout(tab);
     case PageType.DashboardDataModel:
@@ -274,6 +277,8 @@ export const getCustomizableWidgetByPage = (
 
     case PageType.Table:
       return tableClassBase.getCommonWidgetList();
+    case PageType.Tag:
+      return tagClassBase.getCommonWidgetList();
     case PageType.Topic:
       return topicClassBase.getCommonWidgetList();
     case PageType.Dashboard:
@@ -324,6 +329,8 @@ export const getDummyDataByPage = (pageType: PageType) => {
   switch (pageType) {
     case PageType.Table:
       return tableClassBase.getDummyData();
+    case PageType.Tag:
+      return tagClassBase.getDummyData();
     case PageType.Topic:
       return topicClassBase.getDummyData();
     case PageType.StoredProcedure:
@@ -377,6 +384,8 @@ export const getWidgetsFromKey = (
   switch (pageType) {
     case PageType.Table:
       return tableClassBase.getWidgetsFromKey(widgetConfig);
+    case PageType.Tag:
+      return tagClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.Topic:
       return topicClassBase.getWidgetsFromKey(widgetConfig);
     case PageType.StoredProcedure:
@@ -430,6 +439,9 @@ export const getWidgetHeight = (pageType: PageType, widgetName: string) => {
   switch (pageType) {
     case PageType.Table:
       return tableClassBase.getWidgetHeight(widgetName);
+
+    case PageType.Tag:
+      return tagClassBase.getWidgetHeight(widgetName);
 
     case PageType.Topic:
       return topicClassBase.getWidgetHeight(widgetName);

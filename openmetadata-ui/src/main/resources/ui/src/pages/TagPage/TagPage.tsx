@@ -12,7 +12,6 @@
  */
 import {
   Button,
-  Card,
   Col,
   Divider,
   Dropdown,
@@ -39,7 +38,6 @@ import {
   ActivityFeedTabs,
 } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
-import DescriptionV1 from '../../components/common/EntityDescription/DescriptionV1';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
@@ -49,6 +47,7 @@ import { StatusType } from '../../components/common/StatusBadge/StatusBadge.inte
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
+import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
@@ -81,14 +80,15 @@ import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
+import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
+import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
 import { searchData } from '../../rest/miscAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
@@ -98,7 +98,6 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
-import tagClassBase from '../../utils/TagClassBase';
 import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
@@ -118,6 +117,9 @@ const TagPage = () => {
     tab?: string;
   }>();
   const { permissions, getEntityPermission } = usePermissionProvider();
+  const { customizedPage, isLoading: isCustomPageLoading } = useCustomPages(
+    PageType.Tag
+  );
   const [isLoading, setIsLoading] = useState(true);
   const [tagItem, setTagItem] = useState<Tag>();
   const [assetModalVisible, setAssetModalVisible] = useState(false);
@@ -168,31 +170,17 @@ const TagPage = () => {
     setFeedCount(data);
   }, []);
 
-  const {
-    editTagsPermission,
-    editDescriptionPermission,
-    editOwnerPermission,
-    editDomainPermission,
-  } = useMemo(() => {
+  const { editTagsPermission } = useMemo(() => {
     if (tagItem) {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
       return {
         editTagsPermission: isEditable && tagPermissions.EditAll,
-        editDescriptionPermission:
-          isEditable &&
-          (tagPermissions.EditDescription || tagPermissions.EditAll),
-        editOwnerPermission:
-          isEditable && (tagPermissions.EditAll || tagPermissions.EditOwners),
-        editDomainPermission: isEditable && tagPermissions.EditAll,
       };
     }
 
     return {
       editTagsPermission: false,
-      editDescriptionPermission: false,
-      editOwnerPermission: false,
-      editDomainPermission: false,
     };
   }, [tagPermissions, tagItem?.deleted]);
 
@@ -225,25 +213,6 @@ const TagPage = () => {
       setTagPermissions(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    }
-  };
-
-  const onDescriptionUpdate = async (updatedHTML?: string) => {
-    if (tagItem) {
-      if (tagItem.description !== updatedHTML) {
-        const updatedTableDetails = {
-          ...tagItem,
-          description: updatedHTML,
-        };
-        const jsonPatch = compare(tagItem, updatedTableDetails);
-        try {
-          const response = await patchTag(tagItem.id ?? '', jsonPatch);
-
-          setTagItem(response);
-        } catch (error) {
-          showErrorToast(error as AxiosError);
-        }
-      }
     }
   };
 
@@ -477,35 +446,15 @@ const TagPage = () => {
   ];
 
   const tabItems = useMemo(() => {
+    if (!tagItem) {
+      return [];
+    }
+
     const items = [
       {
         label: <TabsLabel id={TagTabs.OVERVIEW} name={t('label.overview')} />,
         key: 'overview',
-        children: (
-          <Row gutter={16}>
-            <Col span={18}>
-              <Card className="card-padding-md">
-                <DescriptionV1
-                  removeBlur
-                  wrapInCard
-                  description={tagItem?.description}
-                  entityName={getEntityName(tagItem)}
-                  entityType={EntityType.TAG}
-                  hasEditAccess={editDescriptionPermission}
-                  showActions={!tagItem?.deleted}
-                  showCommentsIcon={false}
-                  onDescriptionUpdate={onDescriptionUpdate}
-                />
-              </Card>
-            </Col>
-            <Col span={6}>
-              {tagClassBase.getRightPanelForOverviewTab({
-                editOwnerPermission,
-                editDomainPermission,
-              })}
-            </Col>
-          </Row>
-        ),
+        children: <GenericTab type={PageType.Tag} />,
       },
       {
         label: (
@@ -526,7 +475,7 @@ const TagPage = () => {
               children: (
                 <AssetsTabs
                   assetCount={assetCount}
-                  entityFqn={tagItem?.fullyQualifiedName ?? ''}
+                  entityFqn={tagItem.fullyQualifiedName ?? ''}
                   isSummaryPanelOpen={Boolean(previewAsset)}
                   permissions={
                     {
@@ -580,7 +529,7 @@ const TagPage = () => {
             entityType={EntityType.TAG}
             feedCount={feedCount}
             layoutType={ActivityFeedLayoutType.THREE_PANEL}
-            owners={tagItem?.owners}
+            owners={tagItem.owners}
             subTab={ActivityFeedTabs.ALL}
             onFeedUpdate={fetchFeedCount}
             onUpdateEntityDetails={getTagData}
@@ -600,7 +549,6 @@ const TagPage = () => {
     assetTabRef,
     handleAssetSave,
     editTagsPermission,
-    editDescriptionPermission,
   ]);
   const icon = useMemo(() => {
     if (tagItem?.style?.iconURL) {
@@ -622,6 +570,10 @@ const TagPage = () => {
   }, [tagItem]);
 
   const badge = useMemo(() => {
+    if (!tagItem) {
+      return null;
+    }
+
     const shouldShowStatus = entityUtilClassBase.shouldShowEntityStatus(
       EntityType.TAG
     );
@@ -670,7 +622,7 @@ const TagPage = () => {
     }
   }, [tagItem]);
 
-  if (isLoading) {
+  if (isLoading || isCustomPageLoading) {
     return <Loader />;
   }
 
@@ -754,6 +706,7 @@ const TagPage = () => {
         </Col>
 
         <GenericProvider<Tag>
+          customizedPage={customizedPage}
           data={tagItem as Tag}
           isVersionView={false}
           permissions={tagPermissions}
