@@ -422,8 +422,7 @@ public class TeamRepository extends EntityRepository<Team> {
       return new ResultList<>(new ArrayList<>(), null, null, 0);
     }
 
-    InheritedFieldQuery query =
-        InheritedFieldQuery.forTeam(team.getFullyQualifiedName(), offset, limit);
+    InheritedFieldQuery query = InheritedFieldQuery.forTeam(team.getId().toString(), offset, limit);
 
     InheritedFieldResult result =
         inheritedFieldEntitySearch.getEntitiesForField(

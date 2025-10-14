@@ -239,10 +239,10 @@ public interface InheritedFieldEntitySearch {
           .build();
     }
 
-    public static InheritedFieldQuery forTeam(String teamFqn, int offset, int limit) {
+    public static InheritedFieldQuery forTeam(String teamId, int offset, int limit) {
       return builder()
-          .fieldPath("owners.fullyQualifiedName")
-          .fieldValue(teamFqn)
+          .fieldPath("owners.id")
+          .fieldValue(teamId)
           .supportsHierarchy(false)
           .filterType(QueryFilterType.OWNER_ASSETS)
           .includeDeleted(true)
