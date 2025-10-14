@@ -980,7 +980,7 @@ class PowerbiSource(DashboardServiceSource):
             schema = self._parse_expression_regex_exp(schema_match, datamodel_entity)
             table = self._parse_expression_regex_exp(table_match, datamodel_entity)
             view = self._parse_expression_regex_exp(view_match, datamodel_entity)
-            if table or view:  # atlease table or view should be fetched
+            if table or view:  # at least table or view should be present
                 return [
                     {
                         "database": database,

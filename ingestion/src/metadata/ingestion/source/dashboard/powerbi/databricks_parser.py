@@ -21,8 +21,8 @@ def parse_databricks_native_query_source(source_expression: str) -> Optional[Lis
 
     if groups:
         details = groups.groupdict()
-        catalog_info = details.get("catalog_info", None)
-        catalog_parameters = details.get("catalog_parameters")
+        catalog_info = details.get("catalog_info", "")
+        catalog_parameters = details.get("catalog_parameters", "")
         catalog_info_match = re.match(r'.*Catalog\s*=\s*(?P<catalog>.*?)\s*,', catalog_info).groupdict()
         catalog = catalog_info_match.get("catalog", None)
         database_match = re.search(r'Name\s*=\s*(?P<database>.*?)\s*,\s*Kind\s*=\s*"Database"', catalog_parameters)
@@ -65,8 +65,7 @@ def parse_databricks_native_query_source(source_expression: str) -> Optional[Lis
             )
 
         except Exception as parser_exc:
-            logger.debug(f"LineageParser failed with error: {parser_exc}")
-            logger.debug(f"Failed query was: {parser_query[:200]}...")
+            logger.error(f"LineageParser failed parsing query with error {parser_query[:200]} ", exc_info=parser_exc)
             return None
 
         lineage_tables_list = []
