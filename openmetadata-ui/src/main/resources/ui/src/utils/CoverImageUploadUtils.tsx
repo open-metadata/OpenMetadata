@@ -33,7 +33,7 @@ export interface UploadCoverImageOptions<T> {
   createdEntity: T;
   entityType: EntityType;
   entityLabel: string;
-  onUpdate: (entity: T, coverImageUrl: string, position?: number) => Promise<T>;
+  onUpdate: (entity: T, coverImageUrl: string, position?: string) => Promise<T>;
   enqueueSnackbar: (
     message: React.ReactNode,
     options?: Record<string, unknown>
