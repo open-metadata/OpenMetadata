@@ -16,6 +16,7 @@ Unit tests for Databricks Kafka parser
 import unittest
 
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
+    extract_dlt_table_dependencies,
     extract_dlt_table_names,
     extract_kafka_sources,
     get_pipeline_libraries,
@@ -585,6 +586,162 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
         table_names = extract_dlt_table_names(source_code)
         self.assertEqual(len(table_names), 1)
         self.assertEqual(table_names[0], "moneyRequest")
+
+
+class TestDLTTableDependencies(unittest.TestCase):
+    """Test cases for DLT table dependency extraction"""
+
+    def test_bronze_silver_pattern(self):
+        """Test table dependency pattern with Kafka source and downstream table"""
+        source_code = """
+        import dlt
+        from pyspark.sql.functions import *
+
+        @dlt.table(name="orders_bronze")
+        def bronze():
+            return spark.readStream.format("kafka").option("subscribe", "orders").load()
+
+        @dlt.table(name="orders_silver")
+        def silver():
+            return dlt.read_stream("orders_bronze").select("*")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 2)
+
+        bronze = next(d for d in deps if d.table_name == "orders_bronze")
+        self.assertTrue(bronze.reads_from_kafka)
+        self.assertEqual(bronze.depends_on, [])
+
+        silver = next(d for d in deps if d.table_name == "orders_silver")
+        self.assertFalse(silver.reads_from_kafka)
+        self.assertEqual(silver.depends_on, ["orders_bronze"])
+
+    def test_kafka_view_bronze_silver(self):
+        """Test Kafka view with multi-tier table dependencies"""
+        source_code = """
+        import dlt
+
+        @dlt.view()
+        def kafka_source():
+            return spark.readStream.format("kafka").option("subscribe", "topic").load()
+
+        @dlt.table(name="bronze_table")
+        def bronze():
+            return dlt.read_stream("kafka_source")
+
+        @dlt.table(name="silver_table")
+        def silver():
+            return dlt.read_stream("bronze_table")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+
+        bronze = next((d for d in deps if d.table_name == "bronze_table"), None)
+        self.assertIsNotNone(bronze)
+        self.assertEqual(bronze.depends_on, ["kafka_source"])
+        self.assertFalse(bronze.reads_from_kafka)
+
+        silver = next((d for d in deps if d.table_name == "silver_table"), None)
+        self.assertIsNotNone(silver)
+        self.assertEqual(silver.depends_on, ["bronze_table"])
+        self.assertFalse(silver.reads_from_kafka)
+
+    def test_multiple_dependencies(self):
+        """Test table with multiple source dependencies"""
+        source_code = """
+        @dlt.table(name="source1")
+        def s1():
+            return spark.readStream.format("kafka").load()
+
+        @dlt.table(name="source2")
+        def s2():
+            return spark.readStream.format("kafka").load()
+
+        @dlt.table(name="merged")
+        def merge():
+            df1 = dlt.read_stream("source1")
+            df2 = dlt.read_stream("source2")
+            return df1.union(df2)
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+
+        merged = next((d for d in deps if d.table_name == "merged"), None)
+        self.assertIsNotNone(merged)
+        self.assertEqual(sorted(merged.depends_on), ["source1", "source2"])
+        self.assertFalse(merged.reads_from_kafka)
+
+    def test_no_dependencies(self):
+        """Test table with no dependencies (reads from file)"""
+        source_code = """
+        @dlt.table(name="static_data")
+        def static():
+            return spark.read.parquet("/path/to/data")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertEqual(deps[0].table_name, "static_data")
+        self.assertEqual(deps[0].depends_on, [])
+        self.assertFalse(deps[0].reads_from_kafka)
+
+    def test_function_name_as_table_name(self):
+        """Test using function name when no explicit name in decorator"""
+        source_code = """
+        @dlt.table()
+        def my_bronze_table():
+            return spark.readStream.format("kafka").load()
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertEqual(deps[0].table_name, "my_bronze_table")
+        self.assertTrue(deps[0].reads_from_kafka)
+
+    def test_empty_source_code(self):
+        """Test empty source code returns empty list"""
+        deps = extract_dlt_table_dependencies("")
+        self.assertEqual(len(deps), 0)
+
+    def test_real_world_pattern(self):
+        """Test the exact pattern from user's example"""
+        source_code = """
+import dlt
+from pyspark.sql.functions import *
+from pyspark.sql.types import *
+
+TOPIC = "orders"
+
+@dlt.view(comment="Kafka source")
+def kafka_orders_source():
+    return (
+        spark.readStream
+        .format("kafka")
+        .option("subscribe", TOPIC)
+        .load()
+    )
+
+@dlt.table(name="orders_bronze")
+def orders_bronze():
+    return dlt.read_stream("kafka_orders_source").select("*")
+
+@dlt.table(name="orders_silver")
+def orders_silver():
+    return dlt.read_stream("orders_bronze").select("*")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+
+        # Should find bronze and silver (kafka_orders_source is a view, not a table)
+        table_deps = [
+            d for d in deps if d.table_name in ["orders_bronze", "orders_silver"]
+        ]
+        self.assertEqual(len(table_deps), 2)
+
+        bronze = next((d for d in table_deps if d.table_name == "orders_bronze"), None)
+        self.assertIsNotNone(bronze)
+        self.assertEqual(bronze.depends_on, ["kafka_orders_source"])
+        self.assertFalse(bronze.reads_from_kafka)
+
+        silver = next((d for d in table_deps if d.table_name == "orders_silver"), None)
+        self.assertIsNotNone(silver)
+        self.assertEqual(silver.depends_on, ["orders_bronze"])
+        self.assertFalse(silver.reads_from_kafka)
 
 
 if __name__ == "__main__":

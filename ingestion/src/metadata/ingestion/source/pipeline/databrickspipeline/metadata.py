@@ -58,7 +58,7 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.databrickspipeline.kafka_parser import (
-    extract_dlt_table_names,
+    extract_dlt_table_dependencies,
     extract_kafka_sources,
 )
 from metadata.ingestion.source.pipeline.databrickspipeline.models import (
@@ -820,17 +820,22 @@ class DatabrickspipelineSource(PipelineServiceSource):
                     else:
                         logger.info(f"⊗ No Kafka sources found in notebook")
 
-                    # Extract DLT table names
-                    logger.info(f"⟳ Parsing DLT table names from notebook...")
-                    dlt_table_names = extract_dlt_table_names(source_code)
-                    if dlt_table_names:
+                    # Extract DLT table dependencies
+                    logger.info(f"⟳ Parsing DLT table dependencies from notebook...")
+                    dlt_dependencies = extract_dlt_table_dependencies(source_code)
+                    if dlt_dependencies:
                         logger.info(
-                            f"✓ Found {len(dlt_table_names)} DLT table(s): {dlt_table_names}"
+                            f"✓ Found {len(dlt_dependencies)} DLT table(s) with dependencies"
                         )
+                        for dep in dlt_dependencies:
+                            logger.info(
+                                f"   - {dep.table_name}: depends_on={dep.depends_on}, "
+                                f"reads_from_kafka={dep.reads_from_kafka}"
+                            )
                     else:
-                        logger.info(f"⊗ No DLT tables found in notebook")
+                        logger.info(f"⊗ No DLT table dependencies found in notebook")
 
-                    if not dlt_table_names or not kafka_sources:
+                    if not dlt_dependencies or not kafka_sources:
                         logger.warning(
                             f"⊗ Skipping lineage for this notebook - need both Kafka sources AND DLT tables"
                         )
@@ -838,7 +843,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
                             f"   Kafka sources: {len(kafka_sources) if kafka_sources else 0}"
                         )
                         logger.info(
-                            f"   DLT tables: {len(dlt_table_names) if dlt_table_names else 0}"
+                            f"   DLT tables: {len(dlt_dependencies) if dlt_dependencies else 0}"
                         )
                         continue
 
@@ -846,27 +851,28 @@ class DatabrickspipelineSource(PipelineServiceSource):
                         f"✓ Notebook has both Kafka sources and DLT tables - creating lineage..."
                     )
 
-                    # Create lineage for each Kafka topic -> DLT table
+                    # Create lineage edges based on dependencies
                     logger.info(f"\n⟳ Creating lineage edges...")
                     lineage_created = 0
+
+                    # Step 1: Create Kafka topic -> DLT table lineage
+                    # Build a map to identify which tables/views read from Kafka
+                    kafka_sources_map = {}
+                    for dep in dlt_dependencies:
+                        if dep.reads_from_kafka:
+                            kafka_sources_map[dep.table_name] = True
 
                     for kafka_config in kafka_sources:
                         for topic_name in kafka_config.topics:
                             try:
-                                logger.info(f"\n   🔍 Processing topic: {topic_name}")
-
-                                # Use smart discovery to find topic
                                 logger.info(
-                                    f"   ⟳ Searching for topic in OpenMetadata..."
+                                    f"\n   🔍 Processing Kafka topic: {topic_name}"
                                 )
-                                kafka_topic = self._find_kafka_topic(topic_name)
 
+                                kafka_topic = self._find_kafka_topic(topic_name)
                                 if not kafka_topic:
                                     logger.warning(
                                         f"   ✗ Kafka topic '{topic_name}' not found in OpenMetadata"
-                                    )
-                                    logger.info(
-                                        f"   💡 Make sure the topic is ingested from a messaging service"
                                     )
                                     continue
 
@@ -874,53 +880,131 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     f"   ✓ Topic found: {kafka_topic.fullyQualifiedName.root if hasattr(kafka_topic.fullyQualifiedName, 'root') else kafka_topic.fullyQualifiedName}"
                                 )
 
-                                # Create lineage to each DLT table in this notebook
-                                for table_name in dlt_table_names:
-                                    logger.info(
-                                        f"   🔍 Processing target table: {table_name}"
-                                    )
-                                    logger.info(
-                                        f"   ⟳ Searching in Databricks/Unity Catalog services..."
+                                # Find tables that read directly from Kafka OR from a Kafka source view
+                                for dep in dlt_dependencies:
+                                    is_kafka_consumer = dep.reads_from_kafka or any(
+                                        src in kafka_sources_map
+                                        for src in dep.depends_on
                                     )
 
-                                    # Use cached Databricks service lookup
-                                    target_table_entity = self._find_dlt_table(
-                                        table_name=table_name,
+                                    if is_kafka_consumer:
+                                        logger.info(
+                                            f"   🔍 Processing table: {dep.table_name}"
+                                        )
+
+                                        target_table = self._find_dlt_table(
+                                            table_name=dep.table_name,
+                                            catalog=target_catalog,
+                                            schema=target_schema,
+                                        )
+
+                                        if target_table:
+                                            table_fqn = (
+                                                target_table.fullyQualifiedName.root
+                                                if hasattr(
+                                                    target_table.fullyQualifiedName,
+                                                    "root",
+                                                )
+                                                else target_table.fullyQualifiedName
+                                            )
+                                            logger.info(
+                                                f"   ✅ Creating lineage: {topic_name} -> {table_fqn}"
+                                            )
+
+                                            yield Either(
+                                                right=AddLineageRequest(
+                                                    edge=EntitiesEdge(
+                                                        fromEntity=EntityReference(
+                                                            id=kafka_topic.id,
+                                                            type="topic",
+                                                        ),
+                                                        toEntity=EntityReference(
+                                                            id=target_table.id.root
+                                                            if hasattr(
+                                                                target_table.id, "root"
+                                                            )
+                                                            else target_table.id,
+                                                            type="table",
+                                                        ),
+                                                        lineageDetails=LineageDetails(
+                                                            pipeline=EntityReference(
+                                                                id=pipeline_entity.id.root,
+                                                                type="pipeline",
+                                                            ),
+                                                            source=LineageSource.PipelineLineage,
+                                                        ),
+                                                    )
+                                                )
+                                            )
+                                            lineage_created += 1
+                                        else:
+                                            logger.warning(
+                                                f"   ✗ Table '{dep.table_name}' not found"
+                                            )
+
+                            except Exception as exc:
+                                logger.error(
+                                    f"   ✗ Failed to process topic {topic_name}: {exc}"
+                                )
+                                logger.debug(traceback.format_exc())
+                                continue
+
+                    # Step 2: Create table-to-table lineage for downstream dependencies
+                    for dep in dlt_dependencies:
+                        if dep.depends_on:
+                            for source_table_name in dep.depends_on:
+                                try:
+                                    logger.info(
+                                        f"\n   🔍 Processing table dependency: {source_table_name} -> {dep.table_name}"
+                                    )
+
+                                    source_table = self._find_dlt_table(
+                                        table_name=source_table_name,
+                                        catalog=target_catalog,
+                                        schema=target_schema,
+                                    )
+                                    target_table = self._find_dlt_table(
+                                        table_name=dep.table_name,
                                         catalog=target_catalog,
                                         schema=target_schema,
                                     )
 
-                                    if target_table_entity:
-                                        table_fqn = (
-                                            target_table_entity.fullyQualifiedName.root
+                                    if source_table and target_table:
+                                        source_fqn = (
+                                            source_table.fullyQualifiedName.root
                                             if hasattr(
-                                                target_table_entity.fullyQualifiedName,
-                                                "root",
+                                                source_table.fullyQualifiedName, "root"
                                             )
-                                            else target_table_entity.fullyQualifiedName
+                                            else source_table.fullyQualifiedName
+                                        )
+                                        target_fqn = (
+                                            target_table.fullyQualifiedName.root
+                                            if hasattr(
+                                                target_table.fullyQualifiedName, "root"
+                                            )
+                                            else target_table.fullyQualifiedName
                                         )
                                         logger.info(
-                                            f"   ✓ Target table found: {table_fqn}"
+                                            f"   ✅ Creating lineage: {source_fqn} -> {target_fqn}"
                                         )
-                                        logger.info(
-                                            f"   ✅ Creating lineage: {topic_name} -> {table_fqn}"
-                                        )
-                                        logger.info(f"      Pipeline: {pipeline_id}")
 
                                         yield Either(
                                             right=AddLineageRequest(
                                                 edge=EntitiesEdge(
                                                     fromEntity=EntityReference(
-                                                        id=kafka_topic.id,
-                                                        type="topic",
+                                                        id=source_table.id.root
+                                                        if hasattr(
+                                                            source_table.id, "root"
+                                                        )
+                                                        else source_table.id,
+                                                        type="table",
                                                     ),
                                                     toEntity=EntityReference(
-                                                        id=target_table_entity.id.root
+                                                        id=target_table.id.root
                                                         if hasattr(
-                                                            target_table_entity.id,
-                                                            "root",
+                                                            target_table.id, "root"
                                                         )
-                                                        else target_table_entity.id,
+                                                        else target_table.id,
                                                         type="table",
                                                     ),
                                                     lineageDetails=LineageDetails(
@@ -935,22 +1019,21 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                         )
                                         lineage_created += 1
                                     else:
-                                        logger.warning(
-                                            f"   ✗ Target table '{table_name}' not found in OpenMetadata"
-                                        )
-                                        logger.info(
-                                            f"   💡 Expected location: {target_catalog}.{target_schema}.{table_name}"
-                                        )
-                                        logger.info(
-                                            f"   💡 Make sure the table is ingested from a Databricks/Unity Catalog database service"
-                                        )
+                                        if not source_table:
+                                            logger.warning(
+                                                f"   ✗ Source table '{source_table_name}' not found"
+                                            )
+                                        if not target_table:
+                                            logger.warning(
+                                                f"   ✗ Target table '{dep.table_name}' not found"
+                                            )
 
-                            except Exception as exc:
-                                logger.error(
-                                    f"   ✗ Failed to process topic {topic_name}: {exc}"
-                                )
-                                logger.debug(traceback.format_exc())
-                                continue
+                                except Exception as exc:
+                                    logger.error(
+                                        f"   ✗ Failed to process dependency {source_table_name} -> {dep.table_name}: {exc}"
+                                    )
+                                    logger.debug(traceback.format_exc())
+                                    continue
 
                     logger.info(
                         f"\n✓ Lineage edges created for this notebook: {lineage_created}"
