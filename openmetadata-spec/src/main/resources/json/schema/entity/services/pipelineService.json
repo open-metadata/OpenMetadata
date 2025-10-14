@@ -37,7 +37,8 @@
         "DataFactory",
         "Wherescape",
         "SSIS",
-        "Snowplow"
+        "Snowplow",
+        "Dataflow"
       ],
       "javaEnums": [
         {
@@ -102,6 +103,9 @@
         },
         {
           "name": "Snowplow"
+        },
+        {
+          "name": "Dataflow"
         }
       ]
     },
@@ -178,6 +182,9 @@
             },
             {
               "$ref": "./connections/pipeline/snowplowConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/dataflowConnection.json"
             }
           ]
         }
