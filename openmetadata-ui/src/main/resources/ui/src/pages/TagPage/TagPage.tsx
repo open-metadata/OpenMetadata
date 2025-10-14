@@ -50,8 +50,6 @@ import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
-import { DomainLabelV2 } from '../../components/DataAssets/DomainLabelV2/DomainLabelV2';
-import { OwnerLabelV2 } from '../../components/DataAssets/OwnerLabelV2/OwnerLabelV2';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import EntitySummaryPanel from '../../components/Explore/EntitySummaryPanel/EntitySummaryPanel.component';
@@ -100,6 +98,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringsUtils';
+import tagClassBase from '../../utils/TagClassBase';
 import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
@@ -189,7 +188,12 @@ const TagPage = () => {
       };
     }
 
-    return { editTagsPermission: false, editDescriptionPermission: false };
+    return {
+      editTagsPermission: false,
+      editDescriptionPermission: false,
+      editOwnerPermission: false,
+      editDomainPermission: false,
+    };
   }, [tagPermissions, tagItem?.deleted]);
 
   const editEntitiesTagPermission = useMemo(
@@ -495,17 +499,10 @@ const TagPage = () => {
               </Card>
             </Col>
             <Col span={6}>
-              <div className="d-flex flex-column gap-5">
-                <DomainLabelV2
-                  multiple
-                  showDomainHeading
-                  hasPermission={editDomainPermission}
-                />
-                <OwnerLabelV2
-                  dataTestId="tag-owner-name"
-                  hasPermission={editOwnerPermission}
-                />
-              </div>
+              {tagClassBase.getRightPanelForOverviewTab({
+                editOwnerPermission,
+                editDomainPermission,
+              })}
             </Col>
           </Row>
         ),
