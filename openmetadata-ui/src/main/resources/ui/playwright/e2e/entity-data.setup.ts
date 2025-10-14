@@ -21,6 +21,7 @@ setup('create entity data prerequisites', async ({ browser }) => {
 
   try {
     await EntityDataClass.preRequisitesForTests(apiContext, { all: true });
+    EntityDataClass.saveResponseData();
   } finally {
     await afterAction();
   }

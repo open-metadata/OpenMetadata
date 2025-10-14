@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import * as fs from 'fs';
+import * as path from 'path';
 import { getCIJobId, resetSeed } from '../../utils/common';
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
@@ -433,4 +435,122 @@ export class EntityDataClass {
 
     return await Promise.allSettled(promises);
   }
+
+  static saveResponseData() {
+    const responseData = {
+      domain1: this.domain1.responseData,
+      domain2: this.domain2.responseData,
+      glossary1: this.glossary1.responseData,
+      glossary2: this.glossary2.responseData,
+      glossaryTerm1: this.glossaryTerm1.responseData,
+      glossaryTerm2: this.glossaryTerm2.responseData,
+      user1: this.user1.responseData,
+      user2: this.user2.responseData,
+      user3: this.user3.responseData,
+      team1: this.team1.responseData,
+      team2: this.team2.responseData,
+      certificationTag1: this.certificationTag1.responseData,
+      certificationTag2: this.certificationTag2.responseData,
+      tierTag1: this.tierTag1.responseData,
+      classification1: this.classification1.responseData,
+      tag1: this.tag1.responseData,
+      dataProduct1: this.dataProduct1.responseData,
+      dataProduct2: this.dataProduct2.responseData,
+      dataProduct3: this.dataProduct3.responseData,
+    };
+
+    const filePath = path.join(
+      __dirname,
+      '..',
+      '..',
+      'output',
+      'entity-response-data.json'
+    );
+    const dir = path.dirname(filePath);
+
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+
+    fs.writeFileSync(filePath, JSON.stringify(responseData, null, 2));
+  }
+
+  static loadResponseData() {
+    try {
+      const filePath = path.join(
+        __dirname,
+        '..',
+        '..',
+        'output',
+        'entity-response-data.json'
+      );
+
+      if (fs.existsSync(filePath)) {
+        const responseData = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+
+        if (responseData.domain1) {
+          this.domain1.responseData = responseData.domain1;
+        }
+        if (responseData.domain2) {
+          this.domain2.responseData = responseData.domain2;
+        }
+        if (responseData.glossary1) {
+          this.glossary1.responseData = responseData.glossary1;
+        }
+        if (responseData.glossary2) {
+          this.glossary2.responseData = responseData.glossary2;
+        }
+        if (responseData.glossaryTerm1) {
+          this.glossaryTerm1.responseData = responseData.glossaryTerm1;
+        }
+        if (responseData.glossaryTerm2) {
+          this.glossaryTerm2.responseData = responseData.glossaryTerm2;
+        }
+        if (responseData.user1) {
+          this.user1.responseData = responseData.user1;
+        }
+        if (responseData.user2) {
+          this.user2.responseData = responseData.user2;
+        }
+        if (responseData.user3) {
+          this.user3.responseData = responseData.user3;
+        }
+        if (responseData.team1) {
+          this.team1.responseData = responseData.team1;
+        }
+        if (responseData.team2) {
+          this.team2.responseData = responseData.team2;
+        }
+        if (responseData.certificationTag1) {
+          this.certificationTag1.responseData = responseData.certificationTag1;
+        }
+        if (responseData.certificationTag2) {
+          this.certificationTag2.responseData = responseData.certificationTag2;
+        }
+        if (responseData.tierTag1) {
+          this.tierTag1.responseData = responseData.tierTag1;
+        }
+        if (responseData.classification1) {
+          this.classification1.responseData = responseData.classification1;
+        }
+        if (responseData.tag1) {
+          this.tag1.responseData = responseData.tag1;
+        }
+        if (responseData.dataProduct1) {
+          this.dataProduct1.responseData = responseData.dataProduct1;
+        }
+        if (responseData.dataProduct2) {
+          this.dataProduct2.responseData = responseData.dataProduct2;
+        }
+        if (responseData.dataProduct3) {
+          this.dataProduct3.responseData = responseData.dataProduct3;
+        }
+      }
+    } catch (error) {
+      // Silently fail if file doesn't exist or can't be read
+    }
+  }
 }
+
+// Load response data from file when the module is imported
+EntityDataClass.loadResponseData();
