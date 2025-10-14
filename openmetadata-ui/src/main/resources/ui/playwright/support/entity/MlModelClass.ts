@@ -24,39 +24,26 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class MlModelClass extends EntityClass {
-  private mlModelName = `pw-mlmodel-${uuid()}`;
-  service = {
-    name: `pw-ml-model-service-${uuid()}`,
-    serviceType: 'Mlflow',
+  private mlModelName: string;
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Mlflow',
-        trackingUri: 'Tracking URI',
-        registryUri: 'Registry URI',
-        supportsMetadataExtraction: true,
-      },
-    },
+        type: string;
+        trackingUri: string;
+        registryUri: string;
+        supportsMetadataExtraction: boolean;
+      };
+    };
   };
-
-  children = [
-    {
-      name: `sales-${uuid()}`,
-      dataType: 'numerical',
-      description: 'Sales amount',
-    },
-    {
-      name: 'persona',
-      dataType: 'categorical',
-      description: 'type of buyer',
-    },
-  ];
-
-  entity = {
-    name: this.mlModelName,
-    displayName: this.mlModelName,
-    service: this.service.name,
-    algorithm: 'Time Series',
-    mlFeatures: this.children,
+  children: Array<{ name: string; dataType: string; description: string }>;
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    algorithm: string;
+    mlFeatures: Array<{ name: string; dataType: string; description: string }>;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -65,13 +52,50 @@ export class MlModelClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.MlModel);
-    this.service.name = name ?? this.service.name;
     this.type = 'MlModel';
     this.childrenTabId = 'features';
-    this.childrenSelectorId = `feature-card-${this.children[0].name}`;
-    this.childrenSelectorId2 = `feature-card-${this.children[1].name}`;
     this.serviceCategory = SERVICE_TYPE.MLModels;
     this.serviceType = ServiceTypes.ML_MODEL_SERVICES;
+
+    const serviceName = name ?? `pw-ml-model-service-${uuid()}`;
+    this.mlModelName = `pw-mlmodel-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Mlflow',
+      connection: {
+        config: {
+          type: 'Mlflow',
+          trackingUri: 'Tracking URI',
+          registryUri: 'Registry URI',
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.children = [
+      {
+        name: `sales-${uuid()}`,
+        dataType: 'numerical',
+        description: 'Sales amount',
+      },
+      {
+        name: 'persona',
+        dataType: 'categorical',
+        description: 'type of buyer',
+      },
+    ];
+
+    this.entity = {
+      name: this.mlModelName,
+      displayName: this.mlModelName,
+      service: this.service.name,
+      algorithm: 'Time Series',
+      mlFeatures: this.children,
+    };
+
+    this.childrenSelectorId = `feature-card-${this.children[0].name}`;
+    this.childrenSelectorId2 = `feature-card-${this.children[1].name}`;
   }
 
   async create(apiContext: APIRequestContext) {

@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext } from '@playwright/test';
+import { getCIJobId, resetSeed } from '../../utils/common';
 import { DataProduct } from '../domain/DataProduct';
 import { Domain } from '../domain/Domain';
 import { Glossary } from '../glossary/Glossary';
@@ -49,6 +50,13 @@ import { TableClass } from './TableClass';
 import { TopicClass } from './TopicClass';
 import { WorksheetClass } from './WorksheetClass';
 
+// Reset seed before initializing entities to ensure deterministic data across all workers
+resetSeed();
+
+// Get unique identifier for this test execution (only used in CI to avoid conflicts)
+const JOB_ID = getCIJobId();
+const SUFFIX = JOB_ID ? `-${JOB_ID}` : ''; // Only add suffix in CI
+
 export class EntityDataClass {
   static readonly domain1 = new Domain();
   static readonly domain2 = new Domain();
@@ -56,11 +64,40 @@ export class EntityDataClass {
   static readonly glossary2 = new Glossary();
   static readonly glossaryTerm1 = new GlossaryTerm(this.glossary1);
   static readonly glossaryTerm2 = new GlossaryTerm(this.glossary2);
-  static readonly user1 = new UserClass();
-  static readonly user2 = new UserClass();
-  static readonly user3 = new UserClass();
-  static readonly team1 = new TeamClass();
-  static readonly team2 = new TeamClass();
+  static readonly user1 = new UserClass({
+    email: `pw.user.one${SUFFIX}@example.com`,
+    firstName: 'PWUser',
+    lastName: `One${SUFFIX}`,
+    password: 'User@OMD123',
+  });
+  static readonly user2 = new UserClass({
+    email: `pw.user.two${SUFFIX}@example.com`,
+    firstName: 'PWUser',
+    lastName: `Two${SUFFIX}`,
+    password: 'User@OMD123',
+  });
+  static readonly user3 = new UserClass({
+    email: `pw.user.three${SUFFIX}@example.com`,
+    firstName: 'PWUser',
+    lastName: `Three${SUFFIX}`,
+    password: 'User@OMD123',
+  });
+  static readonly team1 = new TeamClass({
+    name: `PW%team-1${SUFFIX}`,
+    displayName: `PW Team 1${SUFFIX}`,
+    description: 'playwright team 1 description',
+    teamType: 'Group',
+    users: [],
+    policies: [],
+  });
+  static readonly team2 = new TeamClass({
+    name: `PW%team-2${SUFFIX}`,
+    displayName: `PW Team 2${SUFFIX}`,
+    description: 'playwright team 2 description',
+    teamType: 'Group',
+    users: [],
+    policies: [],
+  });
   static readonly certificationTag1 = new TagClass({
     classification: 'Certification',
   });

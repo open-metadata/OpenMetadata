@@ -34,28 +34,29 @@ type ResponseDataType = {
 };
 
 export class DataProduct extends EntityClass {
-  id = uuid();
-  data: ResponseDataType = {
-    name: `PW%dataProduct.${this.id}`,
-    displayName: `PW Data Product ${this.id}`,
-    description: 'playwright data product description',
-    domains: ['PW%domain.1'],
-    // eslint-disable-next-line no-useless-escape
-    fullyQualifiedName: `\"PW%dataProduct.${this.id}\"`,
-  };
+  id: string;
+  data: ResponseDataType;
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
   constructor(domains: Domain[], name?: string, subDomains?: SubDomain[]) {
     super(EntityTypeEndpoint.DATA_PRODUCT);
-    this.data.domains = subDomains?.length
-      ? subDomains.map(
-          (subDomain) => subDomain.data.fullyQualifiedName ?? ''
-        ) ?? []
-      : domains.map((domain) => domain.data.fullyQualifiedName ?? '') ?? [];
-    this.data.name = name ?? this.data.name;
-    // eslint-disable-next-line no-useless-escape
-    this.data.fullyQualifiedName = `\"${this.data.name}\"`;
+
+    this.id = uuid();
+    const dataName = name ?? `PW%dataProduct.${this.id}`;
+
+    this.data = {
+      name: dataName,
+      displayName: `PW Data Product ${this.id}`,
+      description: 'playwright data product description',
+      domains: subDomains?.length
+        ? subDomains.map(
+            (subDomain) => subDomain.data.fullyQualifiedName ?? ''
+          ) ?? []
+        : domains.map((domain) => domain.data.fullyQualifiedName ?? '') ?? [],
+      // eslint-disable-next-line no-useless-escape
+      fullyQualifiedName: `\"${dataName}\"`,
+    };
   }
 
   async create(apiContext: APIRequestContext) {

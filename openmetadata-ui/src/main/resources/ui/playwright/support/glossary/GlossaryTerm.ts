@@ -22,32 +22,36 @@ import {
 } from './Glossary.interface';
 
 export class GlossaryTerm extends EntityClass {
-  randomName = getRandomLastName();
-  data: GlossaryTermData = {
-    name: `PW.${uuid()}%${this.randomName}`,
-    displayName: `PW ${uuid()}%${this.randomName}`,
-    description: 'A bank account number.',
-    mutuallyExclusive: false,
-    glossary: '',
-    synonyms: '',
-    fullyQualifiedName: '',
-    reviewers: [],
-  };
+  randomName: string;
+  data: GlossaryTermData;
 
   responseData: GlossaryTermResponseDataType =
     {} as GlossaryTermResponseDataType;
 
   constructor(glossary: Glossary, parent?: string, name?: string) {
     super(EntityTypeEndpoint.GlossaryTerm);
-    this.data.glossary = glossary.data.name;
+
+    this.randomName = getRandomLastName();
+    const id1 = uuid();
+    const id2 = uuid();
+
+    this.data = {
+      name: name ?? `PW.${id1}%${this.randomName}`,
+      displayName: name ?? `PW ${id2}%${this.randomName}`,
+      description: 'A bank account number.',
+      mutuallyExclusive: false,
+      glossary: glossary.data.name,
+      synonyms: '',
+      fullyQualifiedName: '',
+      reviewers: glossary.data.reviewers,
+    };
+
     if (parent) {
       this.data.parent = parent;
     }
+
     // eslint-disable-next-line no-useless-escape
     this.data.fullyQualifiedName = `\"${this.data.glossary}\".\"${this.data.name}\"`;
-    this.data.name = name ?? this.data.name;
-    this.data.displayName = name ?? this.data.displayName;
-    this.data.reviewers = glossary.data.reviewers;
   }
 
   async visitEntityPage(page: Page) {

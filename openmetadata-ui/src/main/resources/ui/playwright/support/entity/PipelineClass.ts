@@ -24,31 +24,26 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class PipelineClass extends EntityClass {
-  private pipelineName = `pw-pipeline-${uuid()}`;
-  service = {
-    name: `pw-pipeline-service-${uuid()}`,
-    serviceType: 'Dagster',
+  private pipelineName: string;
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Dagster',
-        host: 'admin',
-        token: 'admin',
-        timeout: '1000',
-        supportsMetadataExtraction: true,
-      },
-    },
+        type: string;
+        host: string;
+        token: string;
+        timeout: string;
+        supportsMetadataExtraction: boolean;
+      };
+    };
   };
-
-  children = [
-    { name: 'snowflake_task', displayName: 'Snowflake Task' },
-    { name: 'presto_task', displayName: 'Presto Task' },
-  ];
-
-  entity = {
-    name: this.pipelineName,
-    displayName: this.pipelineName,
-    service: this.service.name,
-    tasks: this.children,
+  children: Array<{ name: string; displayName: string }>;
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    tasks: Array<{ name: string; displayName: string }>;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -58,12 +53,41 @@ export class PipelineClass extends EntityClass {
 
   constructor(name?: string) {
     super(EntityTypeEndpoint.Pipeline);
-    this.service.name = name ?? this.service.name;
     this.type = 'Pipeline';
     this.childrenTabId = 'tasks';
-    this.childrenSelectorId = this.children[0].name;
     this.serviceCategory = SERVICE_TYPE.Pipeline;
     this.serviceType = ServiceTypes.PIPELINE_SERVICES;
+
+    const serviceName = name ?? `pw-pipeline-service-${uuid()}`;
+    this.pipelineName = `pw-pipeline-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Dagster',
+      connection: {
+        config: {
+          type: 'Dagster',
+          host: 'admin',
+          token: 'admin',
+          timeout: '1000',
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.children = [
+      { name: 'snowflake_task', displayName: 'Snowflake Task' },
+      { name: 'presto_task', displayName: 'Presto Task' },
+    ];
+
+    this.entity = {
+      name: this.pipelineName,
+      displayName: this.pipelineName,
+      service: this.service.name,
+      tasks: this.children,
+    };
+
+    this.childrenSelectorId = this.children[0].name;
   }
 
   async create(apiContext: APIRequestContext) {

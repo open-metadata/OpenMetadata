@@ -11,15 +11,92 @@
  *  limitations under the License.
  */
 import { Browser, expect, Locator, Page, request } from '@playwright/test';
-import { randomUUID } from 'crypto';
 import { SidebarItem } from '../constant/sidebar';
 import { adjectives, nouns } from '../constant/user';
 import { Domain } from '../support/domain/Domain';
 import { sidebarClick } from './sidebar';
 import { getToken as getTokenFromStorage } from './tokenStorage';
 
-export const uuid = () => randomUUID().split('-')[0];
-export const fullUuid = () => randomUUID();
+// Seeded random number generator for deterministic test data across workers
+class SeededRandom {
+  private seed: number;
+
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+
+  next() {
+    this.seed = (this.seed * 9301 + 49297) % 233280;
+
+    return this.seed / 233280;
+  }
+
+  uuid() {
+    const hex = '0123456789abcdef';
+    let result = '';
+    for (let i = 0; i < 8; i++) {
+      result += hex[Math.floor(this.next() * 16)];
+    }
+
+    return result;
+  }
+
+  fullUuid() {
+    const segments = [8, 4, 4, 4, 12];
+    const hex = '0123456789abcdef';
+
+    return segments
+      .map((length) => {
+        let segment = '';
+        for (let i = 0; i < length; i++) {
+          segment += hex[Math.floor(this.next() * 16)];
+        }
+
+        return segment;
+      })
+      .join('-');
+  }
+
+  reset(seed: number) {
+    this.seed = seed;
+  }
+}
+
+// Use environment variable or default seed for deterministic data generation
+// Include worker index and CI job index to ensure unique data across parallel executions
+const IS_CI = process.env.CI === 'true' || !!process.env.GITHUB_ACTIONS;
+const WORKER_INDEX = process.env.TEST_WORKER_INDEX || '0';
+// For GitHub Actions matrix jobs or parallel machines
+const CI_JOB_INDEX =
+  process.env.GITHUB_MATRIX_INDEX || process.env.CI_NODE_INDEX || '0';
+const RUN_ID = process.env.GITHUB_RUN_NUMBER || process.env.CI_RUN_ID || '';
+
+const BASE_SEED = process.env.PLAYWRIGHT_SEED
+  ? parseInt(process.env.PLAYWRIGHT_SEED, 10)
+  : 42;
+const SEED =
+  BASE_SEED +
+  parseInt(WORKER_INDEX, 10) * 10000 +
+  parseInt(CI_JOB_INDEX, 10) * 100000;
+const seededRandom = new SeededRandom(SEED);
+
+export const uuid = () => seededRandom.uuid();
+export const fullUuid = () => seededRandom.fullUuid();
+export const resetSeed = (seed: number = SEED) => seededRandom.reset(seed);
+
+export const getCIJobId = () => (IS_CI ? `${CI_JOB_INDEX}-${RUN_ID}` : '');
+
+// Generate a deterministic UUID based on a string key
+export const deterministicUuid = (key: string) => {
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = (hash << 5) - hash + key.charCodeAt(i);
+    hash = hash & hash;
+  }
+  const tempRandom = new SeededRandom(Math.abs(hash));
+
+  return tempRandom.uuid();
+};
 
 export const descriptionBox = '.om-block-editor[contenteditable="true"]';
 export const descriptionBoxReadOnly =
@@ -400,11 +477,11 @@ export const visitGlossaryPage = async (page: Page, glossaryName: string) => {
 
 export const getRandomFirstName = () => {
   return `${
-    adjectives[Math.floor(Math.random() * adjectives.length)]
+    adjectives[Math.floor(seededRandom.next() * adjectives.length)]
   }${uuid()}`;
 };
 export const getRandomLastName = () => {
-  return `${nouns[Math.floor(Math.random() * nouns.length)]}${uuid()}`;
+  return `${nouns[Math.floor(seededRandom.next() * nouns.length)]}${uuid()}`;
 };
 
 export const generateRandomUsername = (prefix = '') => {

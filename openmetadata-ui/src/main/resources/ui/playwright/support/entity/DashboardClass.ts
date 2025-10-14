@@ -24,65 +24,39 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class DashboardClass extends EntityClass {
-  private dashboardName = `pw-dashboard-${uuid()}`;
-  private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
-  private projectName = `pw-project-${uuid()}`;
-  service = {
-    name: `pw-dashboard-service-${uuid()}`,
-    serviceType: 'Superset',
+  private dashboardName: string;
+  private dashboardDataModelName: string;
+  private projectName: string;
+  service: {
+    name: string;
+    serviceType: string;
     connection: {
       config: {
-        type: 'Superset',
-        hostPort: 'http://localhost:8088',
+        type: string;
+        hostPort: string;
         connection: {
-          provider: 'ldap',
-          username: 'admin',
-          password: 'admin',
-        },
-        supportsMetadataExtraction: true,
-      },
-    },
+          provider: string;
+          username: string;
+          password: string;
+        };
+        supportsMetadataExtraction: boolean;
+      };
+    };
   };
-  charts = {
-    name: `pw-chart-${uuid()}`,
-    displayName: `PW Chart ${uuid()}`,
-    service: this.service.name,
+  charts: { name: string; displayName: string; service: string };
+  entity: {
+    name: string;
+    displayName: string;
+    service: string;
+    project: string;
   };
-  entity = {
-    name: this.dashboardName,
-    displayName: this.dashboardName,
-    service: this.service.name,
-    project: this.projectName,
-  };
-  children = [
-    {
-      name: 'merchant',
-      dataType: 'VARCHAR',
-      dataLength: 256,
-      dataTypeDisplay: 'varchar',
-      description: 'merchant',
-    },
-    {
-      name: 'notes',
-      dataType: 'VARCHAR',
-      dataLength: 256,
-      dataTypeDisplay: 'varchar',
-      description: 'merchant',
-    },
-    {
-      name: 'country_name',
-      dataType: 'VARCHAR',
-      dataLength: 256,
-      dataTypeDisplay: 'varchar',
-      description: 'Name of the country.',
-    },
-  ];
-  dataModel = {
-    name: this.dashboardDataModelName,
-    displayName: this.dashboardDataModelName,
-    service: this.service.name,
-    columns: this.children,
-    dataModelType: 'SupersetDataModel',
+  children: unknown[];
+  dataModel: {
+    name: string;
+    displayName: string;
+    service: string;
+    columns: unknown[];
+    dataModelType: string;
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
@@ -94,11 +68,77 @@ export class DashboardClass extends EntityClass {
 
   constructor(name?: string, dataModelType = 'SupersetDataModel') {
     super(EntityTypeEndpoint.Dashboard);
-    this.service.name = name ?? this.service.name;
     this.type = 'Dashboard';
     this.serviceCategory = SERVICE_TYPE.Dashboard;
     this.serviceType = ServiceTypes.DASHBOARD_SERVICES;
-    this.dataModel.dataModelType = dataModelType;
+
+    const serviceName = name ?? `pw-dashboard-service-${uuid()}`;
+    this.dashboardName = `pw-dashboard-${uuid()}`;
+    this.dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
+    this.projectName = `pw-project-${uuid()}`;
+
+    this.service = {
+      name: serviceName,
+      serviceType: 'Superset',
+      connection: {
+        config: {
+          type: 'Superset',
+          hostPort: 'http://localhost:8088',
+          connection: {
+            provider: 'ldap',
+            username: 'admin',
+            password: 'admin',
+          },
+          supportsMetadataExtraction: true,
+        },
+      },
+    };
+
+    this.charts = {
+      name: `pw-chart-${uuid()}`,
+      displayName: `PW Chart ${uuid()}`,
+      service: this.service.name,
+    };
+
+    this.entity = {
+      name: this.dashboardName,
+      displayName: this.dashboardName,
+      service: this.service.name,
+      project: this.projectName,
+    };
+
+    this.children = [
+      {
+        name: 'merchant',
+        dataType: 'VARCHAR',
+        dataLength: 256,
+        dataTypeDisplay: 'varchar',
+        description: 'merchant',
+      },
+      {
+        name: 'notes',
+        dataType: 'VARCHAR',
+        dataLength: 256,
+        dataTypeDisplay: 'varchar',
+        description: 'merchant',
+      },
+      {
+        name: 'country_name',
+        dataType: 'VARCHAR',
+        dataLength: 256,
+        dataTypeDisplay: 'varchar',
+        description: 'Name of the country.',
+      },
+    ];
+
+    this.dataModel = {
+      name: this.dashboardDataModelName,
+      displayName: this.dashboardDataModelName,
+      service: this.service.name,
+      columns: this.children,
+      dataModelType: dataModelType,
+    };
+
     this.childrenSelectorId = `${this.service.name}.${this.charts.name}`;
   }
 
