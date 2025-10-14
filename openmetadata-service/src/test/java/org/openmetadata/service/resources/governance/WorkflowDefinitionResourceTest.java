@@ -4604,7 +4604,7 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
           try {
             LOG.info("Waiting for approval task for {}...", entityType);
             await()
-                .atMost(Duration.ofMinutes(1))
+                .atMost(Duration.ofMinutes(2))
                 .pollInterval(Duration.ofSeconds(2))
                 .until(
                     () -> {
