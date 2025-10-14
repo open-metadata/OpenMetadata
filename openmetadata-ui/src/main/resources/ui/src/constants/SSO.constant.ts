@@ -131,18 +131,6 @@ export const AUTHORIZER_HIDDEN_FIELDS = {
     'ui:widget': 'hidden',
     'ui:hideError': true,
   },
-  allowedEmailRegistrationDomains: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
-  allowedDomains: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
-  useRolesFromProvider: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
 };
 
 // LDAP Configuration UI Schema
