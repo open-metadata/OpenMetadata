@@ -441,7 +441,9 @@ export const verifyDomainPropagation = async (
   domain: Domain['responseData'],
   childFqnSearchTerm: string
 ) => {
-  await page.getByTestId('searchBox').fill(childFqnSearchTerm);
+  await page
+    .getByTestId('searchBox')
+    .fill(encodeURIComponent(childFqnSearchTerm));
   await page.getByTestId('searchBox').press('Enter');
   await page.waitForSelector(`[data-testid*="table-data-card"]`);
 

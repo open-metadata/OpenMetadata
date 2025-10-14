@@ -24,8 +24,8 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class ApiEndpointClass extends EntityClass {
-  private serviceName = `pw-api-service-${uuid()}`;
-  private apiCollectionName = `pw-api-collection-${uuid()}`;
+  private serviceName = `pw.api%service-${uuid()}`;
+  private apiCollectionName = `pw.api%collection-${uuid()}`;
   service = {
     name: this.serviceName,
     displayName: this.serviceName,
@@ -44,7 +44,7 @@ export class ApiEndpointClass extends EntityClass {
     service: this.service.name,
   };
 
-  private apiEndpointName = `pw-api-endpoint-${uuid()}`;
+  private apiEndpointName = `pw.api%endpoint-${uuid()}`;
   private fqn = `${this.service.name}.${this.apiCollection.name}.${this.apiEndpointName}`;
 
   children = [
@@ -178,8 +178,10 @@ export class ApiEndpointClass extends EntityClass {
       }
     );
 
+    const apiCollection = await apiCollectionResponse.json();
+
     const entityResponse = await apiContext.post('/api/v1/apiEndpoints', {
-      data: this.entity,
+      data: { ...this.entity, apiCollection: apiCollection.fullyQualifiedName },
     });
 
     this.serviceResponseData = await serviceResponse.json();

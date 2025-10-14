@@ -25,7 +25,7 @@ import { EntityClass } from './EntityClass';
 
 export class StoredProcedureClass extends EntityClass {
   service = {
-    name: `pw-database-service-${uuid()}`,
+    name: `pw.database%service-${uuid()}`,
     serviceType: 'Mysql',
     connection: {
       config: {
@@ -44,15 +44,15 @@ export class StoredProcedureClass extends EntityClass {
     },
   };
   database = {
-    name: `pw-database-${uuid()}`,
+    name: `pw.database%${uuid()}`,
     service: this.service.name,
   };
   schema = {
-    name: `pw-database-schema-${uuid()}`,
+    name: `pw.database%schema-${uuid()}`,
     database: `${this.service.name}.${this.database.name}`,
   };
   entity = {
-    name: `pw-stored-procedure-${uuid()}`,
+    name: `pw.stored-procedure%${uuid()}`,
     databaseSchema: `${this.service.name}.${this.database.name}.${this.schema.name}`,
     storedProcedureCode: {
       code: 'CREATE OR REPLACE PROCEDURE output_message(message VARCHAR)\nRETURNS VARCHAR NOT NULL\nLANGUAGE SQL\nAS\n$$\nBEGIN\n  RETURN message;\nEND;\n$$\n;',
@@ -82,19 +82,25 @@ export class StoredProcedureClass extends EntityClass {
         data: this.service,
       }
     );
+    const service = await serviceResponse.json();
+
     const databaseResponse = await apiContext.post('/api/v1/databases', {
-      data: this.database,
+      data: { ...this.database, service: service.fullyQualifiedName },
     });
+    const database = await databaseResponse.json();
+
     const schemaResponse = await apiContext.post('/api/v1/databaseSchemas', {
-      data: this.schema,
+      data: { ...this.schema, database: database.fullyQualifiedName },
     });
+    const schema = await schemaResponse.json();
+
     const entityResponse = await apiContext.post('/api/v1/storedProcedures', {
-      data: this.entity,
+      data: {
+        ...this.entity,
+        databaseSchema: schema.fullyQualifiedName,
+      },
     });
 
-    const service = await serviceResponse.json();
-    const database = await databaseResponse.json();
-    const schema = await schemaResponse.json();
     const entity = await entityResponse.json();
 
     this.serviceResponseData = service;

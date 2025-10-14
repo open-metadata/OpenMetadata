@@ -133,7 +133,7 @@ for (const EntityClass of entities) {
           );
           await page
             .locator(
-              `[data-testid="lineage-node-${toNodeFqn}"] .entity-button-icon`
+              `[data-testid='lineage-node-${toNodeFqn}'] .entity-button-icon`
             )
             .click();
 
@@ -274,10 +274,10 @@ test('Verify column lineage between table and topic', async ({ browser }) => {
   await sidebarClick(page, SidebarItem.LINEAGE);
 
   const tableServiceNode = page.locator(
-    `[data-testid="lineage-node-${tableServiceFqn}"]`
+    `[data-testid='lineage-node-${tableServiceFqn}']`
   );
   const topicServiceNode = page.locator(
-    `[data-testid="lineage-node-${topicServiceFqn}"]`
+    `[data-testid='lineage-node-${topicServiceFqn}']`
   );
 
   await expect(tableServiceNode).toBeVisible();
@@ -483,7 +483,7 @@ test('Verify table search with special characters as handled', async ({
     const nodeFqn = get(table, 'entityResponseData.fullyQualifiedName');
     const dbFqn = get(table, 'entityResponseData.database.fullyQualifiedName');
     await page
-      .locator(`[data-testid="node-suggestion-${nodeFqn}"]`)
+      .locator(`[data-testid='node-suggestion-${nodeFqn}']`)
       .dispatchEvent('click');
 
     await page.waitForResponse('/api/v1/lineage/getLineage?*');
@@ -491,7 +491,7 @@ test('Verify table search with special characters as handled', async ({
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
     await expect(
-      page.locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+      page.locator(`[data-testid='lineage-node-${nodeFqn}']`)
     ).toBeVisible();
 
     await redirectToHomePage(page);
@@ -503,15 +503,15 @@ test('Verify table search with special characters as handled', async ({
       '[data-testid="search-entity-select"] .ant-select-selection-search-input',
       db
     );
-    await page.waitForSelector(`[data-testid="node-suggestion-${dbFqn}"]`);
+    await page.waitForSelector(`[data-testid='node-suggestion-${dbFqn}']`);
     await page
-      .locator(`[data-testid="node-suggestion-${dbFqn}"]`)
+      .locator(`[data-testid='node-suggestion-${dbFqn}']`)
       .dispatchEvent('click');
     await page.waitForResponse('/api/v1/lineage/getLineage?*');
 
     await expect(page.locator('[data-testid="lineage-details"]')).toBeVisible();
 
-    await page.locator(`[data-testid="lineage-node-${dbFqn}"]`).click();
+    await page.locator(`[data-testid='lineage-node-${dbFqn}']`).click();
 
     await expect(page.locator('.ant-drawer-wrapper-body')).toBeVisible();
   } finally {
@@ -521,153 +521,160 @@ test('Verify table search with special characters as handled', async ({
   }
 });
 
-test.fixme('Verify cycle lineage should be handled properly', async ({ browser }) => {
-  test.slow();
+test.fixme(
+  'Verify cycle lineage should be handled properly',
+  async ({ browser }) => {
+    test.slow();
 
-  const { page } = await createNewPage(browser);
-  const { apiContext, afterAction } = await getApiContext(page);
-  const table = new TableClass();
-  const topic = new TopicClass();
-  const dashboard = new DashboardClass();
+    const { page } = await createNewPage(browser);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const table = new TableClass();
+    const topic = new TopicClass();
+    const dashboard = new DashboardClass();
 
-  try {
-    await Promise.all([
-      table.create(apiContext),
-      topic.create(apiContext),
-      dashboard.create(apiContext),
-    ]);
+    try {
+      await Promise.all([
+        table.create(apiContext),
+        topic.create(apiContext),
+        dashboard.create(apiContext),
+      ]);
 
-    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
-    const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
-    const dashboardFqn = get(
-      dashboard,
-      'entityResponseData.fullyQualifiedName'
-    );
+      const tableFqn = get(table, 'entityResponseData.fullyQualifiedName');
+      const topicFqn = get(topic, 'entityResponseData.fullyQualifiedName');
+      const dashboardFqn = get(
+        dashboard,
+        'entityResponseData.fullyQualifiedName'
+      );
 
-    await redirectToHomePage(page);
-    await table.visitEntityPage(page);
-    await visitLineageTab(page);
-    await page.getByTestId('full-screen').click();
-    await editLineage(page);
-    await performZoomOut(page);
+      await redirectToHomePage(page);
+      await table.visitEntityPage(page);
+      await visitLineageTab(page);
+      await page.getByTestId('full-screen').click();
+      await editLineage(page);
+      await performZoomOut(page);
 
-    // connect table to topic
-    await connectEdgeBetweenNodes(page, table, topic);
-    await rearrangeNodes(page);
+      // connect table to topic
+      await connectEdgeBetweenNodes(page, table, topic);
+      await rearrangeNodes(page);
 
-    // connect topic to dashboard
-    await connectEdgeBetweenNodes(page, topic, dashboard);
-    await rearrangeNodes(page);
+      // connect topic to dashboard
+      await connectEdgeBetweenNodes(page, topic, dashboard);
+      await rearrangeNodes(page);
 
-    // connect dashboard to table
-    await connectEdgeBetweenNodes(page, dashboard, table);
-    await rearrangeNodes(page);
+      // connect dashboard to table
+      await connectEdgeBetweenNodes(page, dashboard, table);
+      await rearrangeNodes(page);
 
-    await page.reload();
-    await page.waitForLoadState('networkidle');
-    await performZoomOut(page);
+      await page.reload();
+      await page.waitForLoadState('networkidle');
+      await performZoomOut(page);
 
-    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
-    await expect(
-      page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).toBeVisible();
 
-    // Collapse the cycle dashboard lineage downstreamNodeHandler
-    await page
-      .getByTestId(`lineage-node-${dashboardFqn}`)
-      .getByTestId('downstream-collapse-handle')
-      .click();
+      // Collapse the cycle dashboard lineage downstreamNodeHandler
+      await page
+        .getByTestId(`lineage-node-${dashboardFqn}`)
+        .getByTestId('downstream-collapse-handle')
+        .click();
 
-    await expect(
-      page.getByTestId(`edge-${dashboardFqn}-${tableFqn}`)
-    ).not.toBeVisible();
+      await expect(
+        page.getByTestId(`edge-${dashboardFqn}-${tableFqn}`)
+      ).not.toBeVisible();
 
-    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
-    await expect(
-      page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).toBeVisible();
 
-    await expect(
-      page
-        .getByTestId(`lineage-node-${tableFqn}`)
+      await expect(
+        page
+          .getByTestId(`lineage-node-${tableFqn}`)
+          .getByTestId('upstream-collapse-handle')
+      ).not.toBeVisible();
+
+      await expect(
+        page
+          .getByTestId(`lineage-node-${dashboardFqn}`)
+          .getByTestId('plus-icon')
+      ).toBeVisible();
+
+      // Reclick the plus icon to expand the cycle dashboard lineage downstreamNodeHandler
+      const downstreamResponse = page.waitForResponse(
+        `/api/v1/lineage/getLineage/Downstream?fqn=${dashboardFqn}&type=dashboard**`
+      );
+      await page
+        .getByTestId(`lineage-node-${dashboardFqn}`)
+        .getByTestId('plus-icon')
+        .click();
+
+      await downstreamResponse;
+
+      await expect(
+        page
+          .getByTestId(`lineage-node-${tableFqn}`)
+          .getByTestId('upstream-collapse-handle')
+          .getByTestId('minus-icon')
+      ).toBeVisible();
+
+      // Click the Upstream Node to expand the cycle dashboard lineage
+      await page
+        .getByTestId(`lineage-node-${dashboardFqn}`)
         .getByTestId('upstream-collapse-handle')
-    ).not.toBeVisible();
+        .click();
 
-    await expect(
-      page.getByTestId(`lineage-node-${dashboardFqn}`).getByTestId('plus-icon')
-    ).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${topicFqn}`)
+      ).not.toBeVisible();
 
-    // Reclick the plus icon to expand the cycle dashboard lineage downstreamNodeHandler
-    const downstreamResponse = page.waitForResponse(
-      `/api/v1/lineage/getLineage/Downstream?fqn=${dashboardFqn}&type=dashboard**`
-    );
-    await page
-      .getByTestId(`lineage-node-${dashboardFqn}`)
-      .getByTestId('plus-icon')
-      .click();
+      await expect(
+        page
+          .getByTestId(`lineage-node-${dashboardFqn}`)
+          .getByTestId('plus-icon')
+      ).toBeVisible();
 
-    await downstreamResponse;
+      // Reclick the plus icon to expand the cycle dashboard lineage upstreamNodeHandler
+      const upStreamResponse2 = page.waitForResponse(
+        `/api/v1/lineage/getLineage/Upstream?fqn=${dashboardFqn}&type=dashboard**`
+      );
+      await page
+        .getByTestId(`lineage-node-${dashboardFqn}`)
+        .getByTestId('plus-icon')
+        .click();
+      await upStreamResponse2;
 
-    await expect(
-      page
-        .getByTestId(`lineage-node-${tableFqn}`)
-        .getByTestId('upstream-collapse-handle')
-        .getByTestId('minus-icon')
-    ).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
 
-    // Click the Upstream Node to expand the cycle dashboard lineage
-    await page
-      .getByTestId(`lineage-node-${dashboardFqn}`)
-      .getByTestId('upstream-collapse-handle')
-      .click();
+      // Collapse the Node from the Parent Cycle Node
+      await page
+        .getByTestId(`lineage-node-${topicFqn}`)
+        .getByTestId('downstream-collapse-handle')
+        .click();
 
-    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-    await expect(
-      page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).toBeVisible();
-    await expect(
-      page.getByTestId(`lineage-node-${topicFqn}`)
-    ).not.toBeVisible();
-
-    await expect(
-      page.getByTestId(`lineage-node-${dashboardFqn}`).getByTestId('plus-icon')
-    ).toBeVisible();
-
-    // Reclick the plus icon to expand the cycle dashboard lineage upstreamNodeHandler
-    const upStreamResponse2 = page.waitForResponse(
-      `/api/v1/lineage/getLineage/Upstream?fqn=${dashboardFqn}&type=dashboard**`
-    );
-    await page
-      .getByTestId(`lineage-node-${dashboardFqn}`)
-      .getByTestId('plus-icon')
-      .click();
-    await upStreamResponse2;
-
-    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-    await expect(
-      page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).toBeVisible();
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
-
-    // Collapse the Node from the Parent Cycle Node
-    await page
-      .getByTestId(`lineage-node-${topicFqn}`)
-      .getByTestId('downstream-collapse-handle')
-      .click();
-
-    await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
-    await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
-    await expect(
-      page.getByTestId(`lineage-node-${dashboardFqn}`)
-    ).not.toBeVisible();
-  } finally {
-    await Promise.all([
-      table.delete(apiContext),
-      topic.delete(apiContext),
-      dashboard.delete(apiContext),
-    ]);
-    await afterAction();
+      await expect(page.getByTestId(`lineage-node-${tableFqn}`)).toBeVisible();
+      await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
+      await expect(
+        page.getByTestId(`lineage-node-${dashboardFqn}`)
+      ).not.toBeVisible();
+    } finally {
+      await Promise.all([
+        table.delete(apiContext),
+        topic.delete(apiContext),
+        dashboard.delete(apiContext),
+      ]);
+      await afterAction();
+    }
   }
-});
+);

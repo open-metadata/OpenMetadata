@@ -167,10 +167,10 @@ export const dragConnection = async (
 
   const lineageRes = page.waitForResponse('/api/v1/lineage');
   await page
-    .locator(`[data-testid="${sourceId}"] ${selector}.react-flow__handle-right`)
+    .locator(`[data-testid='${sourceId}'] ${selector}.react-flow__handle-right`)
     .dispatchEvent('click');
   await page
-    .locator(`[data-testid="${targetId}"] ${selector}.react-flow__handle-left`)
+    .locator(`[data-testid='${targetId}'] ${selector}.react-flow__handle-left`)
     .dispatchEvent('click');
 
   await lineageRes;
@@ -203,12 +203,14 @@ export const connectEdgeBetweenNodes = async (
     `/api/v1/search/query?q=*&from=0&size=10&*`
   );
 
-  await page.locator('[data-testid="suggestion-node"] input').fill(toNodeName);
+  await page
+    .locator('[data-testid="suggestion-node"] input')
+    .fill(encodeURIComponent(toNodeName));
 
   await waitForSearchResponse;
 
   await page
-    .locator(`[data-testid="node-suggestion-${toNodeFqn}"]`)
+    .locator(`[data-testid='node-suggestion-${toNodeFqn}']`)
     .dispatchEvent('click');
 
   await dragConnection(
@@ -227,7 +229,7 @@ export const performExpand = async (
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const handleDirection = upstream ? 'left' : 'right';
   const expandBtn = page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`[data-testid='lineage-node-${nodeFqn}']`)
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('plus-icon');
 
@@ -248,7 +250,7 @@ export const performCollapse = async (
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const handleDirection = upstream ? 'left' : 'right';
   const collapseBtn = page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`[data-testid='lineage-node-${nodeFqn}']`)
     .locator(`.react-flow__handle-${handleDirection}`)
     .getByTestId('minus-icon');
 
@@ -257,7 +259,7 @@ export const performCollapse = async (
   for (const entity of hiddenEntity) {
     const hiddenNodeFqn = get(entity, 'entityResponseData.fullyQualifiedName');
     const hiddenNode = page.locator(
-      `[data-testid="lineage-node-${hiddenNodeFqn}"]`
+      `[data-testid='lineage-node-${hiddenNodeFqn}']`
     );
 
     await expect(hiddenNode).not.toBeVisible();
@@ -266,7 +268,7 @@ export const performCollapse = async (
 export const verifyNodePresent = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   const name = get(node, 'entityResponseData.name');
-  const lineageNode = page.locator(`[data-testid="lineage-node-${nodeFqn}"]`);
+  const lineageNode = page.locator(`[data-testid='lineage-node-${nodeFqn}']`);
 
   await expect(lineageNode).toBeVisible();
 
@@ -395,7 +397,7 @@ export const applyPipelineFromModal = async (
   );
 
   await page
-    .locator(`[data-testid="edge-${fromNodeFqn}-${toNodeFqn}"]`)
+    .locator(`[data-testid='edge-${fromNodeFqn}-${toNodeFqn}']`)
     .click({ force: true });
 
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
@@ -410,7 +412,7 @@ export const applyPipelineFromModal = async (
 
   await waitForSearchResponse;
 
-  await page.click(`[data-testid="pipeline-entry-${pipelineFqn}"]`);
+  await page.click(`[data-testid='pipeline-entry-${pipelineFqn}']`);
 
   const saveRes = page.waitForResponse('/api/v1/lineage');
   await page.click('[data-testid="save-button"]');
@@ -424,7 +426,7 @@ export const applyPipelineFromModal = async (
 export const deleteNode = async (page: Page, node: EntityClass) => {
   const nodeFqn = get(node, 'entityResponseData.fullyQualifiedName');
   await page
-    .locator(`[data-testid="lineage-node-${nodeFqn}"]`)
+    .locator(`[data-testid='lineage-node-${nodeFqn}']`)
     .dispatchEvent('click');
 
   const lineageRes = page.waitForResponse('/api/v1/lineage/**');

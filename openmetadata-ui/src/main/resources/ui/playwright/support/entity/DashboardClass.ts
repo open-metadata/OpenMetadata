@@ -24,11 +24,11 @@ import {
 import { EntityClass } from './EntityClass';
 
 export class DashboardClass extends EntityClass {
-  private dashboardName = `pw-dashboard-${uuid()}`;
-  private dashboardDataModelName = `pw-dashboard-data-model-${uuid()}`;
-  private projectName = `pw-project-${uuid()}`;
+  private dashboardName = `pw.dashboard%${uuid()}`;
+  private dashboardDataModelName = `pw.dashboard%data-model-${uuid()}`;
+  private projectName = `pw.project%${uuid()}`;
   service = {
-    name: `pw-dashboard-service-${uuid()}`,
+    name: `pw.dashboard%service-${uuid()}`,
     serviceType: 'Superset',
     connection: {
       config: {
@@ -109,14 +109,19 @@ export class DashboardClass extends EntityClass {
         data: this.service,
       }
     );
+    const service = await serviceResponse.json();
+
     const chartsResponse = await apiContext.post('/api/v1/charts', {
       data: this.charts,
     });
 
+    const chart = await chartsResponse.json();
+
     const entityResponse = await apiContext.post('/api/v1/dashboards', {
       data: {
         ...this.entity,
-        charts: [`${this.service.name}.${this.charts.name}`],
+        service: service.fullyQualifiedName,
+        charts: [chart.fullyQualifiedName],
       },
     });
     const dataModelResponse = await apiContext.post(
@@ -126,8 +131,8 @@ export class DashboardClass extends EntityClass {
       }
     );
 
-    this.serviceResponseData = await serviceResponse.json();
-    this.chartsResponseData = await chartsResponse.json();
+    this.serviceResponseData = service;
+    this.chartsResponseData = chart;
     this.dataModelResponseData = await dataModelResponse.json();
     this.entityResponseData = await entityResponse.json();
 
