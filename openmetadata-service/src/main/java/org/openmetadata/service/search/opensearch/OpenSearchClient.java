@@ -2264,8 +2264,12 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       List<String> teamArray = Arrays.asList(team.split("\\s*,\\s*"));
 
       BoolQueryBuilder teamQueryFilter = QueryBuilders.boolQuery();
-      teamQueryFilter.should(
-          QueryBuilders.termsQuery(DataInsightChartRepository.DATA_TEAM, teamArray));
+      // For MostViewedEntities, filter by data.owner field instead of data.team
+      String teamField =
+          "MostViewedEntities".equals(dataInsightChartName)
+              ? DataInsightChartRepository.DATA_OWNER
+              : DataInsightChartRepository.DATA_TEAM;
+      teamQueryFilter.should(QueryBuilders.termsQuery(teamField, teamArray));
       searchQueryFiler.must(teamQueryFilter);
     }
 

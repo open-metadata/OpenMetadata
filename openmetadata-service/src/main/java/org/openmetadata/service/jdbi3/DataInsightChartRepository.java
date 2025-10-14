@@ -51,7 +51,8 @@ public class DataInsightChartRepository extends EntityRepository<DataInsightChar
           "PercentageOfEntitiesWithDescriptionByType",
           "PercentageOfEntitiesWithOwnerByType",
           "DailyActiveUsers",
-          "MostActiveUsers");
+          "MostActiveUsers",
+          "MostViewedEntities");
 
   public static final List<String> SUPPORTS_TIER_FILTER =
       Arrays.asList(
