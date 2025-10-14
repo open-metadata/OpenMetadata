@@ -45,7 +45,12 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.utils import fqn
 
 
@@ -585,7 +590,14 @@ class TestOMetaGlossary:
                 id=dashboard.id,
                 name=dashboard.name,
                 service=dashboard.service,
-                tags=[TagLabel(tagFQN=glossary_term_1.fullyQualifiedName)],
+                tags=[
+                    TagLabel(
+                        tagFQN=glossary_term_1.fullyQualifiedName.root,
+                        source=TagSource.Glossary,
+                        labelType=LabelType.Manual,
+                        state=State.Confirmed,
+                    )
+                ],
             ),
         )
 

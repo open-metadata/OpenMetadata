@@ -253,5 +253,19 @@ class OMetaDomainTest(TestCase):
         # Get domain assets
         assets_response = self.metadata.get_domain_assets(domain.name.root, limit=100)
         self.assertGreaterEqual(len(assets_response["data"]), 1)
-        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
-        self.assertEqual(assets_response["data"][0]["type"], "dashboard")
+
+        # Check that our dashboard is in the assets list
+        dashboard_ids = [asset["id"] for asset in assets_response["data"]]
+        self.assertIn(str(self.dashboard.id.root), dashboard_ids)
+
+        # Verify the asset has correct type
+        dashboard_asset = next(
+            (
+                asset
+                for asset in assets_response["data"]
+                if asset["id"] == str(self.dashboard.id.root)
+            ),
+            None,
+        )
+        self.assertIsNotNone(dashboard_asset)
+        self.assertEqual(dashboard_asset["type"], "dashboard")

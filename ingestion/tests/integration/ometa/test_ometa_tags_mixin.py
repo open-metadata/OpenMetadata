@@ -32,7 +32,12 @@ from metadata.generated.schema.entity.services.dashboardService import (
 from metadata.generated.schema.security.client.openMetadataJWTClientConfig import (
     OpenMetadataJWTClientConfig,
 )
-from metadata.generated.schema.type.tagLabel import TagLabel
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 CLASSIFICATION_NAME = "TestTag"
@@ -203,7 +208,14 @@ class OMetaTagMixinPost(TestCase):
                 id=dashboard.id,
                 name=dashboard.name,
                 service=dashboard.service,
-                tags=[TagLabel(tagFQN=tag_fqn)],
+                tags=[
+                    TagLabel(
+                        tagFQN=tag_fqn,
+                        source=TagSource.Classification,
+                        labelType=LabelType.Manual,
+                        state=State.Confirmed,
+                    )
+                ],
             ),
         )
 
