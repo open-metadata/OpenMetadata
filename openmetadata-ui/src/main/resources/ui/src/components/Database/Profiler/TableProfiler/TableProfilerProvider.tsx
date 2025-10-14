@@ -14,7 +14,6 @@ import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateRangeObject } from 'Models';
-import Qs from 'qs';
 import {
   createContext,
   useCallback,
@@ -24,6 +23,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useParams } from 'react-router-dom';
 import { ReactComponent as AddItemIcon } from '../../../../assets/svg/add-item-icon.svg';
 import { ReactComponent as RedCircleIcon } from '../../../../assets/svg/red-circle-with-dash.svg';
 import { ReactComponent as SuccessTicketIcon } from '../../../../assets/svg/success-ticket-with-check.svg';
@@ -40,7 +40,6 @@ import { ProfileSampleType } from '../../../../generated/metadataIngestion/datab
 import { TestCase } from '../../../../generated/tests/testCase';
 import { Include } from '../../../../generated/type/include';
 import { usePaging } from '../../../../hooks/paging/usePaging';
-import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import { fetchTestCaseResultByTestSuiteId } from '../../../../rest/dataQualityDashboardAPI';
 import {
@@ -60,7 +59,7 @@ import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TestCaseFormV1 from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';
 import { TestLevel } from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
-import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerSettingsModal from './ProfilerSettingsModal/ProfilerSettingsModal';
 import {
   OverallTableSummaryType,
@@ -82,7 +81,7 @@ export const TableProfilerProvider = ({
   const { fqn: datasetFQN } = useFqn();
   const { isTourOpen } = useTourProvider();
   const testCasePaging = usePaging();
-  const location = useCustomLocation();
+  const { subTab } = useParams<{ subTab: ProfilerTabPath }>();
   // profiler has its own api but sent's the data in Table type
   const [tableProfiler, setTableProfiler] = useState<Table>();
   // customMetric is fetch from table api and has response type of Table
@@ -101,21 +100,14 @@ export const TableProfilerProvider = ({
 
   const isTableDeleted = useMemo(() => table?.deleted, [table]);
 
-  const {
-    activeTab = isTourOpen
-      ? TableProfilerTab.COLUMN_PROFILE
-      : TableProfilerTab.TABLE_PROFILE,
-  } = useMemo(() => {
-    const param = location.search;
-    const searchData = Qs.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
+  // Get activeTab from URL path (subTab param), fallback to default based on tour state
+  const activeTab = useMemo(() => {
+    const defaultTab = isTourOpen
+      ? ProfilerTabPath.COLUMN_PROFILE
+      : ProfilerTabPath.TABLE_PROFILE;
 
-    return searchData as {
-      activeTab: TableProfilerTab;
-      activeColumnFqn: string;
-    };
-  }, [location.search, isTourOpen]);
+    return subTab ?? defaultTab;
+  }, [subTab, isTourOpen]);
 
   const viewTest = useMemo(() => {
     return (
@@ -301,10 +293,9 @@ export const TableProfilerProvider = ({
       !isTableDeleted &&
       datasetFQN &&
       !isTourOpen &&
-      [
-        TableProfilerTab.TABLE_PROFILE,
-        TableProfilerTab.COLUMN_PROFILE,
-      ].includes(activeTab) &&
+      [ProfilerTabPath.TABLE_PROFILE, ProfilerTabPath.COLUMN_PROFILE].includes(
+        activeTab
+      ) &&
       isUndefined(tableProfiler);
 
     if (fetchProfiler) {
@@ -319,7 +310,7 @@ export const TableProfilerProvider = ({
 
   useEffect(() => {
     const fetchTest =
-      !isTourOpen && activeTab === TableProfilerTab.DATA_QUALITY && viewTest;
+      !isTourOpen && activeTab === ProfilerTabPath.DATA_QUALITY && viewTest;
 
     if (fetchTest) {
       fetchAllTests();

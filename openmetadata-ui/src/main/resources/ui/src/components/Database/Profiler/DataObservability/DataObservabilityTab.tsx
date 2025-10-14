@@ -14,12 +14,15 @@ import { Button, Stack, Tab, Tabs, useTheme } from '@mui/material';
 import { isEmpty } from 'lodash';
 import Qs from 'qs';
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as DropDownIcon } from '../../../../assets/svg/drop-down.svg';
 import { PAGE_HEADERS } from '../../../../constants/PageHeaders.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
+import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
-import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
+import { useFqn } from '../../../../hooks/useFqn';
+import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import profilerClassBase from '../TableProfiler/ProfilerClassBase';
 import { TableProfilerProps } from '../TableProfiler/TableProfiler.interface';
 import { TableProfilerProvider } from '../TableProfiler/TableProfilerProvider';
@@ -31,21 +34,20 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   const navigate = useNavigate();
   const location = useCustomLocation();
   const theme = useTheme();
+  const { fqn: tableFqn } = useFqn();
+  const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
+    useParams<{ subTab: ProfilerTabPath }>();
 
-  const {
-    activeTab = profilerClassBase.getDefaultTabKey(isTourOpen),
-    activeColumnFqn,
-  } = useMemo(() => {
+  const searchData = useMemo(() => {
     const param = location.search;
     const searchData = Qs.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
 
-    return searchData as {
-      activeTab: TableProfilerTab;
-      activeColumnFqn: string;
-    };
-  }, [location.search, isTourOpen]);
+    return searchData;
+  }, [location.search]);
+
+  const { activeColumnFqn } = searchData;
 
   const tabOptions = useMemo(() => {
     return profilerClassBase.getProfilerTabOptions();
@@ -59,8 +61,21 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
   }, [activeTab]);
 
   const handleTabChangeMUI = (_: React.SyntheticEvent, newValue: string) => {
+    const param = location.search;
+    const searchData = Qs.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
     navigate(
-      { search: Qs.stringify({ activeTab: newValue }) },
+      {
+        pathname: getEntityDetailsPath(
+          EntityType.TABLE,
+          tableFqn,
+          EntityTabs.PROFILER,
+          newValue as ProfilerTabPath
+        ),
+        search: Qs.stringify(searchData),
+      },
       {
         replace: true,
       }
@@ -127,13 +142,20 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                 },
               }}
               variant="text"
-              onClick={() =>
+              onClick={() => {
                 navigate({
+                  pathname: getEntityDetailsPath(
+                    EntityType.TABLE,
+                    tableFqn,
+                    EntityTabs.PROFILER,
+                    ProfilerTabPath.COLUMN_PROFILE
+                  ),
                   search: Qs.stringify({
-                    activeTab: TableProfilerTab.COLUMN_PROFILE,
+                    ...searchData,
+                    activeColumnFqn: undefined,
                   }),
-                })
-              }>
+                });
+              }}>
               {PAGE_HEADERS.COLUMN_PROFILE.header}
             </Button>
           )}

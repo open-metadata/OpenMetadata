@@ -14,7 +14,7 @@ import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/colu
 import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
 import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-incident-manager.svg';
 import { ReactComponent as TableProfilerIcon } from '../../../../assets/svg/table-profile.svg';
-import { TableProfilerTab } from '../ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';
 import IncidentsTab from './IncidentsTab/IncidentsTab.component';
 import { ProfilerClassBase } from './ProfilerClassBase';
@@ -31,10 +31,10 @@ describe('ProfilerClassBase', () => {
   describe('getProfilerTabs', () => {
     it('should return the correct profiler tabs', () => {
       const expectedTabs = {
-        [TableProfilerTab.DATA_QUALITY]: QualityTab,
-        [TableProfilerTab.COLUMN_PROFILE]: ColumnProfileTable,
-        [TableProfilerTab.TABLE_PROFILE]: TableProfilerChart,
-        [TableProfilerTab.INCIDENTS]: IncidentsTab,
+        [ProfilerTabPath.DATA_QUALITY]: QualityTab,
+        [ProfilerTabPath.COLUMN_PROFILE]: ColumnProfileTable,
+        [ProfilerTabPath.TABLE_PROFILE]: TableProfilerChart,
+        [ProfilerTabPath.INCIDENTS]: IncidentsTab,
       };
 
       const tabs = profilerClassBaseInstance.getProfilerTabs();
@@ -48,22 +48,22 @@ describe('ProfilerClassBase', () => {
       const expectedOptions = [
         {
           label: 'label.table-entity-text',
-          key: TableProfilerTab.TABLE_PROFILE,
+          key: ProfilerTabPath.TABLE_PROFILE,
           icon: TableProfilerIcon,
         },
         {
           label: 'label.column-entity',
-          key: TableProfilerTab.COLUMN_PROFILE,
+          key: ProfilerTabPath.COLUMN_PROFILE,
           icon: ColumnProfileIcon,
         },
         {
           label: 'label.data-entity',
-          key: TableProfilerTab.DATA_QUALITY,
+          key: ProfilerTabPath.DATA_QUALITY,
           icon: DataQualityIcon,
         },
         {
           label: 'label.incident-plural',
-          key: TableProfilerTab.INCIDENTS,
+          key: ProfilerTabPath.INCIDENTS,
           icon: IncidentIcon,
         },
       ];
@@ -77,7 +77,7 @@ describe('ProfilerClassBase', () => {
   describe('getDefaultTabKey', () => {
     it('should return the default tab key when tour is open', () => {
       const isTourOpen = true;
-      const expectedTabKey = TableProfilerTab.COLUMN_PROFILE;
+      const expectedTabKey = ProfilerTabPath.COLUMN_PROFILE;
 
       const tabKey = profilerClassBaseInstance.getDefaultTabKey(isTourOpen);
 
@@ -86,7 +86,7 @@ describe('ProfilerClassBase', () => {
 
     it('should return the default tab key when tour is not open', () => {
       const isTourOpen = false;
-      const expectedTabKey = TableProfilerTab.TABLE_PROFILE;
+      const expectedTabKey = ProfilerTabPath.TABLE_PROFILE;
 
       const tabKey = profilerClassBaseInstance.getDefaultTabKey(isTourOpen);
 

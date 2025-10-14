@@ -5,43 +5,51 @@ import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import { DEFAULT_RANGE_DATA } from '../../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
+import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { ProfilerDashboardType } from '../../../../../enums/table.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
-import { getAddCustomMetricPath } from '../../../../../utils/RouterUtils';
+import {
+  getAddCustomMetricPath,
+  getEntityDetailsPath,
+} from '../../../../../utils/RouterUtils';
 import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
-import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from '../../TableProfiler/ColumnPickerMenu';
 import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
 
 const TabFilters = () => {
   const { isTourOpen } = useTourProvider();
-  const { formType, activeColumnFqn, activeTab } = useMemo(() => {
+  const location = useCustomLocation();
+  const { subTab: activeTab = ProfilerTabPath.TABLE_PROFILE } =
+    useParams<{ subTab: ProfilerTabPath }>();
+
+  const { formType, activeColumnFqn } = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
 
     return {
-      ...searchData,
+      activeColumnFqn: searchData.activeColumnFqn as string,
       formType:
-        searchData?.activeTab === TableProfilerTab.COLUMN_PROFILE
+        activeTab === ProfilerTabPath.COLUMN_PROFILE
           ? TestLevel.COLUMN
           : TestLevel.TABLE,
     } as {
-      activeTab: TableProfilerTab;
       activeColumnFqn: string;
       formType: TestLevel | ProfilerDashboardType;
     };
-  }, [location.search, isTourOpen]);
+  }, [location.search, activeTab, isTourOpen]);
 
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
@@ -89,10 +97,25 @@ const TabFilters = () => {
     }
   };
 
-  const updateActiveColumnFqn = (key: string) =>
+  const updateActiveColumnFqn = (key: string) => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
     navigate({
-      search: QueryString.stringify({ activeColumnFqn: key, activeTab }),
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        datasetFQN,
+        EntityTabs.PROFILER,
+        activeTab
+      ),
+      search: QueryString.stringify({
+        ...searchData,
+        activeColumnFqn: key,
+      }),
     });
+  };
 
   return (
     <Stack
@@ -107,10 +130,9 @@ const TabFilters = () => {
           handleChange={updateActiveColumnFqn}
         />
       )}
-      {[
-        TableProfilerTab.COLUMN_PROFILE,
-        TableProfilerTab.DATA_QUALITY,
-      ].includes(activeTab) && isEmpty(activeColumnFqn) ? null : (
+      {[ProfilerTabPath.COLUMN_PROFILE, ProfilerTabPath.DATA_QUALITY].includes(
+        activeTab
+      ) && isEmpty(activeColumnFqn) ? null : (
         <DatePickerMenu
           showSelectedCustomRange
           defaultDateRange={dateRangeObject}

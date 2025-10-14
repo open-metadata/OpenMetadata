@@ -17,10 +17,14 @@ import { isEmpty, isUndefined, round } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { PAGE_SIZE_LARGE } from '../../../../../constants/constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
-import { TabSpecificField } from '../../../../../enums/entity.enum';
+import {
+  EntityTabs,
+  EntityType,
+  TabSpecificField,
+} from '../../../../../enums/entity.enum';
 import {
   Column,
   ColumnProfile,
@@ -39,6 +43,7 @@ import {
   getTableFQNFromColumnFQN,
 } from '../../../../../utils/CommonUtils';
 import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import {
   getTableExpandableConfig,
   pruneEmptyChildren,
@@ -48,7 +53,7 @@ import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/Filt
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import Table from '../../../../common/Table/Table';
-import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import NoProfilerBanner from '../NoProfilerBanner/NoProfilerBanner.component';
 import SingleColumnProfile from '../SingleColumnProfile';
 import { ModifiedColumn } from '../TableProfiler.interface';
@@ -60,6 +65,7 @@ const ColumnProfileTable = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn } = useFqn();
+  const { subTab: activeTab } = useParams<{ subTab: ProfilerTabPath }>();
   const tableFqn = useMemo(() => getTableFQNFromColumnFQN(fqn), [fqn]);
   const {
     isTestsLoading,
@@ -92,19 +98,31 @@ const ColumnProfileTable = () => {
     [tableProfiler, data]
   );
 
-  const { activeColumnFqn, activeTab } = useMemo(() => {
+  const searchData = useMemo(() => {
     const param = location.search;
     const searchData = Qs.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
 
-    return searchData as { activeColumnFqn: string; activeTab: string };
+    return searchData as { activeColumnFqn: string };
   }, [location.search]);
 
-  const updateActiveColumnFqn = (key: string) =>
+  const { activeColumnFqn } = searchData;
+
+  const updateActiveColumnFqn = (key: string) => {
     navigate({
-      search: Qs.stringify({ activeColumnFqn: key, activeTab }),
+      pathname: getEntityDetailsPath(
+        EntityType.TABLE,
+        tableFqn,
+        EntityTabs.PROFILER,
+        activeTab
+      ),
+      search: Qs.stringify({
+        ...searchData,
+        activeColumnFqn: key,
+      }),
     });
+  };
 
   const tableColumn: ColumnsType<ModifiedColumn> = useMemo(() => {
     return [
@@ -222,11 +240,12 @@ const ColumnProfileTable = () => {
           return (
             <Link
               data-testid={`${record.name}-test-success-count`}
-              to={{
-                search: Qs.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}>
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
               <Typography sx={{ color: theme.palette.success.main }}>
                 {testCounts?.success}
               </Typography>
@@ -252,11 +271,12 @@ const ColumnProfileTable = () => {
           return (
             <Link
               data-testid={`${record.name}-test-failed-count`}
-              to={{
-                search: Qs.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}>
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
               <Typography sx={{ color: theme.palette.error.main }}>
                 {testCounts?.failed}
               </Typography>
@@ -282,11 +302,12 @@ const ColumnProfileTable = () => {
           return (
             <Link
               data-testid={`${record.name}-test-aborted-count`}
-              to={{
-                search: Qs.stringify({
-                  activeTab: TableProfilerTab.DATA_QUALITY,
-                }),
-              }}>
+              to={getEntityDetailsPath(
+                EntityType.TABLE,
+                tableFqn,
+                EntityTabs.PROFILER,
+                ProfilerTabPath.DATA_QUALITY
+              )}>
               <Typography sx={{ color: theme.palette.warning.main }}>
                 {testCounts?.aborted}
               </Typography>

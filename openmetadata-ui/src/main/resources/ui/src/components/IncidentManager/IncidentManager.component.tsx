@@ -82,7 +82,7 @@ import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interfa
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import Table from '../common/Table/Table';
 import {
-  TableProfilerTab,
+  ProfilerTabPath,
   TestCasePermission,
 } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
 import Severity from '../DataQuality/IncidentManager/Severity/Severity.component';
@@ -437,16 +437,12 @@ const IncidentManager = ({
                 return (
                   <Link
                     data-testid="table-link"
-                    to={{
-                      pathname: getEntityDetailsPath(
-                        EntityType.TABLE,
-                        tableFqn,
-                        EntityTabs.PROFILER
-                      ),
-                      search: QueryString.stringify({
-                        activeTab: TableProfilerTab.DATA_QUALITY,
-                      }),
-                    }}
+                    to={getEntityDetailsPath(
+                      EntityType.TABLE,
+                      tableFqn,
+                      EntityTabs.PROFILER,
+                      ProfilerTabPath.DATA_QUALITY
+                    )}
                     onClick={(e) => e.stopPropagation()}>
                     {getNameFromFQN(tableFqn) ?? value.fullyQualifiedName}
                   </Link>

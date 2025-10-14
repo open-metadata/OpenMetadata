@@ -47,12 +47,13 @@ export interface ProfilerDetailsCardProps {
   chartType?: 'line' | 'area';
 }
 
-export enum TableProfilerTab {
-  COLUMN_PROFILE = 'Column Profile',
-  TABLE_PROFILE = 'Table Profile',
-  DATA_QUALITY = 'Data Quality',
-  OVERVIEW = 'Overview',
-  INCIDENTS = 'Incidents',
+// URL path segments for profiler navigation
+export enum ProfilerTabPath {
+  TABLE_PROFILE = 'table-profile',
+  COLUMN_PROFILE = 'column-profile',
+  DATA_QUALITY = 'data-quality',
+  INCIDENTS = 'incidents',
+  OVERVIEW = 'overview',
 }
 
 export interface DataQualityTabProps {

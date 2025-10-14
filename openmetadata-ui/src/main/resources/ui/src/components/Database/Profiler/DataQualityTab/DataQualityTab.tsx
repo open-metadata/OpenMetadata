@@ -26,7 +26,6 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isArray, isUndefined, sortBy, toLower } from 'lodash';
 import { PagingResponse } from 'Models';
-import QueryString from 'qs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -68,7 +67,7 @@ import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
   DataQualityTabProps,
-  TableProfilerTab,
+  ProfilerTabPath,
   TestCaseAction,
   TestCasePermission,
 } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -276,16 +275,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Link
                     className="break-word"
                     data-testid="table-link"
-                    to={{
-                      pathname: getEntityDetailsPath(
-                        EntityType.TABLE,
-                        tableFqn,
-                        EntityTabs.PROFILER
-                      ),
-                      search: QueryString.stringify({
-                        activeTab: TableProfilerTab.DATA_QUALITY,
-                      }),
-                    }}
+                    to={getEntityDetailsPath(
+                      EntityType.TABLE,
+                      tableFqn,
+                      EntityTabs.PROFILER,
+                      ProfilerTabPath.DATA_QUALITY
+                    )}
                     onClick={(e) => e.stopPropagation()}>
                     {tableFqn}
                   </Link>

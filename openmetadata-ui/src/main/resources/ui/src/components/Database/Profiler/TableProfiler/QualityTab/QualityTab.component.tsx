@@ -51,7 +51,7 @@ import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import TestSuitePipelineTab from '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
 import DataQualityTab from '../../DataQualityTab/DataQualityTab';
-import { TableProfilerTab } from '../../ProfilerDashboard/profilerDashboard.interface';
+import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
 
 export const QualityTab = () => {
@@ -98,7 +98,6 @@ export const QualityTab = () => {
     );
 
     return searchData as {
-      activeTab: TableProfilerTab;
       activeColumnFqn: string;
       qualityTab: string;
     };
@@ -211,12 +210,12 @@ export const QualityTab = () => {
           ...getBreadcrumbForTable(table),
           {
             name: getEntityName(table),
-            url:
-              getEntityDetailsPath(
-                EntityType.TABLE,
-                table.fullyQualifiedName ?? '',
-                EntityTabs.PROFILER
-              ) + `?activeTab=${TableProfilerTab.DATA_QUALITY}`,
+            url: getEntityDetailsPath(
+              EntityType.TABLE,
+              table.fullyQualifiedName ?? '',
+              EntityTabs.PROFILER,
+              ProfilerTabPath.DATA_QUALITY
+            ),
           },
         ]
       : undefined;
