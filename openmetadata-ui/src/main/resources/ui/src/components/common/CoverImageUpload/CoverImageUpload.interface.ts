@@ -12,16 +12,17 @@
  */
 
 /**
- * Position offset for cover image
- * @property y - Vertical offset in pixels using CSS translateY()
- *               - 0 = top edge of image aligned with container top
+ * Position offset for cover image using CSS percentage values
+ * @property x - Horizontal offset percentage (currently unused, reserved for future)
+ * @property y - Vertical offset percentage using CSS translateY()
+ *               - "0%" = top edge of image aligned with container top
  *               - negative values = image moves up (shows bottom portion)
  *               - positive values = image moves down (shows top portion)
- *               - center = (minY + maxY) / 2 where minY = -(imageHeight - containerHeight)
+ *               - Example: "-16%" moves image up by 16% of its height
  */
 export interface CoverImagePosition {
-  x?: number;
-  y?: number;
+  x?: string; // CSS percentage value like "0%" (currently unused)
+  y?: string; // CSS percentage value like "-16%"
 }
 
 /**

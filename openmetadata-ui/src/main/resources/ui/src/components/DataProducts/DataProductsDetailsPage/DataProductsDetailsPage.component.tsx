@@ -567,14 +567,11 @@ const DataProductsDetailsPage = ({
               }
             )?.coverImage?.position
               ? {
-                  y: parseInt(
-                    (
-                      dataProduct.style as Style & {
-                        coverImage?: { position?: string };
-                      }
-                    ).coverImage!.position!,
-                    10
-                  ),
+                  y: (
+                    dataProduct.style as Style & {
+                      coverImage?: { position?: string };
+                    }
+                  ).coverImage!.position!,
                 }
               : undefined
           }

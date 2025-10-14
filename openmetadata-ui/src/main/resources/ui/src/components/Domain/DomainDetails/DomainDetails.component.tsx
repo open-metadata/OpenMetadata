@@ -753,14 +753,11 @@ const DomainDetails = ({
             (domain.style as Style & { coverImage?: { position?: string } })
               ?.coverImage?.position
               ? {
-                  y: parseInt(
-                    (
-                      domain.style as Style & {
-                        coverImage?: { position?: string };
-                      }
-                    ).coverImage!.position!,
-                    10
-                  ),
+                  y: (
+                    domain.style as Style & {
+                      coverImage?: { position?: string };
+                    }
+                  ).coverImage!.position!,
                 }
               : undefined
           }

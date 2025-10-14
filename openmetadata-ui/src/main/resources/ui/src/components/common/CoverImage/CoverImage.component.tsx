@@ -15,7 +15,7 @@ import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
 
 interface CoverImageProps {
   imageUrl?: string;
-  position?: { x?: number; y?: number };
+  position?: { x?: string; y?: string }; // CSS percentage values like "-16%"
 }
 
 export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
@@ -56,7 +56,7 @@ export const CoverImage = ({ imageUrl, position }: CoverImageProps) => {
             minHeight: 131,
             objectFit: 'cover',
             objectPosition: 'center top',
-            transform: position?.y ? `translateY(${position.y}px)` : 'none',
+            transform: position?.y ? `translateY(${position.y})` : 'none',
             display: 'block',
           }}
         />

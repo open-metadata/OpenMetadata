@@ -413,8 +413,14 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
       return;
     }
     setIsRepositioning(true);
-    setTempOffsetY(value?.position?.y ?? 0);
-  }, [isImageRepositionable, value, enqueueSnackbar, t]);
+    // Convert percentage back to pixels for dragging
+    const scaledHeight = getScaledImageHeight();
+    const currentPercentage = value?.position?.y
+      ? parseFloat(value.position.y)
+      : 0;
+    const pixelOffset = (currentPercentage / 100) * scaledHeight;
+    setTempOffsetY(pixelOffset);
+  }, [isImageRepositionable, value, enqueueSnackbar, t, getScaledImageHeight]);
 
   // Mouse/Touch drag handlers for repositioning
   const dragStartYRef = useRef(0);
@@ -475,7 +481,10 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
   // Save reposition - works for both file and URL modes
   const handleSaveReposition = useCallback(() => {
     if (onChange && value) {
-      const newPosition = { y: tempOffsetY };
+      // Convert pixel offset to percentage of image height
+      const scaledHeight = getScaledImageHeight();
+      const percentage = (tempOffsetY / scaledHeight) * 100;
+      const newPosition = { y: `${percentage.toFixed(2)}%` };
 
       if ('file' in value) {
         // File mode: preserve file, update position
@@ -486,13 +495,19 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
       }
     }
     setIsRepositioning(false);
-  }, [onChange, value, tempOffsetY]);
+  }, [onChange, value, tempOffsetY, getScaledImageHeight]);
 
   // Cancel reposition
   const handleCancelReposition = useCallback(() => {
-    setTempOffsetY(value?.position?.y ?? 0);
+    // Convert percentage back to pixels
+    const scaledHeight = getScaledImageHeight();
+    const currentPercentage = value?.position?.y
+      ? parseFloat(value.position.y)
+      : 0;
+    const pixelOffset = (currentPercentage / 100) * scaledHeight;
+    setTempOffsetY(pixelOffset);
     setIsRepositioning(false);
-  }, [value]);
+  }, [value, getScaledImageHeight]);
 
   // Keyboard support for repositioning
   const handleRepositionKeyDown = useCallback(
@@ -738,7 +753,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                 transform: isRepositioning
                   ? `translateY(${tempOffsetY}px)`
                   : value?.position?.y
-                  ? `translateY(${value.position.y}px)`
+                  ? `translateY(${value.position.y})`
                   : 'none',
                 display: imageError ? 'none' : 'block',
                 cursor: isRepositioning ? 'ns-resize' : 'default',
