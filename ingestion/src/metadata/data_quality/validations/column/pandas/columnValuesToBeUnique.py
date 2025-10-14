@@ -14,7 +14,7 @@ Validator for column values to be unique test case
 """
 
 import logging
-from typing import Optional
+from typing import List, Optional
 
 import pandas as pd
 
@@ -85,12 +85,12 @@ class ColumnValuesToBeUniqueValidator(
         """Get unique count of values"""
         return self._run_results(metric, column)
 
-    def _execute_dimensional_query(
+    def _execute_dimensional_validation(
         self,
         column: SQALikeColumn,
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
-    ) -> list[DimensionResult]:
+    ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Args:

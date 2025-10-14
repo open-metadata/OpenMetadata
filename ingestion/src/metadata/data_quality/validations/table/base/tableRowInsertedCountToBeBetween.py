@@ -15,7 +15,7 @@ Validator for table row inserted count to be between test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, cast
+from typing import cast
 
 from metadata.data_quality.validations.base_test_handler import BaseTestValidator
 from metadata.generated.schema.tests.basic import (
@@ -23,7 +23,6 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
-from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -97,19 +96,6 @@ class BaseTableRowInsertedCountToBeBetweenValidator(BaseTestValidator):
             f"Found insertedRows={res} vs. the expected min={min_bound}, max={max_bound}.",
             [TestResultValue(name=ROW_COUNT, value=str(res))],
         )
-
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for this test
-
-        This method should implement the dimensional logic specific to each test type.
-        It will be called automatically by the template method when dimensionColumns
-        are configured in the test case.
-
-        Returns:
-            List[DimensionResult]: List of dimension-specific test results
-        """
-        # Default implementation returns empty list
-        return []
 
     @abstractmethod
     def _get_column_name(self):

@@ -51,7 +51,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
             count = self._run_results(Metrics.COUNT, column)
-            unique_count = self._get_unique_count(Metrics.DISTINCT_COUNT, column)
+            unique_count = self._get_unique_count(Metrics.UNIQUE_COUNT, column)
         except (ValueError, RuntimeError) as exc:
             msg = f"Error computing {self.test_case.fullyQualifiedName}: {exc}"  # type: ignore
             logger.debug(traceback.format_exc())
@@ -108,7 +108,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
                 try:
                     dimension_col = self._get_column_name(dimension_column)
 
-                    single_dimension_results = self._execute_dimensional_query(
+                    single_dimension_results = self._execute_dimensional_validation(
                         column, dimension_col, metrics_to_compute
                     )
 
@@ -163,7 +163,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         raise NotImplementedError
 
     @abstractmethod
-    def _execute_dimensional_query(
+    def _execute_dimensional_validation(
         self,
         column: Union[SQALikeColumn, Column],
         dimension_col: Union[SQALikeColumn, Column],

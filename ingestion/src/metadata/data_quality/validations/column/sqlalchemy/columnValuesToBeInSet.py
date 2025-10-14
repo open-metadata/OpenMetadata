@@ -17,12 +17,20 @@ from typing import Optional
 
 from sqlalchemy import Column, func, inspect
 
+from metadata.data_quality.validations.base_test_handler import (
+    DIMENSION_FAILED_COUNT_KEY,
+    DIMENSION_NULL_LABEL,
+    DIMENSION_TOTAL_COUNT_KEY,
+)
 from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
+    ALLOWED_VALUE_COUNT,
     BaseColumnValuesToBeInSetValidator,
 )
+from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
+from metadata.generated.schema.tests.basic import TestResultValue
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 
@@ -79,7 +87,7 @@ class ColumnValuesToBeInSetValidator(
         """
         return self._compute_row_count(self.runner, column)
 
-    def _execute_dimensional_query(
+    def _execute_dimensional_validation(
         self, column, dimension_col, metrics_to_compute, test_params
     ):
         """Execute dimensional query with impact scoring and Others aggregation
@@ -96,16 +104,6 @@ class ColumnValuesToBeInSetValidator(
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
-        from sqlalchemy import func
-
-        from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
-            ALLOWED_VALUE_COUNT,
-        )
-        from metadata.data_quality.validations.impact_score import (
-            DEFAULT_TOP_DIMENSIONS,
-        )
-        from metadata.generated.schema.tests.basic import TestResultValue
-
         dimension_results = []
 
         try:
@@ -118,11 +116,6 @@ class ColumnValuesToBeInSetValidator(
                 if metric_name == "count_in_set":
                     metric_instance.values = allowed_values
                 metric_expressions[metric_name] = metric_instance.fn()
-
-            from metadata.data_quality.validations.base_test_handler import (
-                DIMENSION_FAILED_COUNT_KEY,
-                DIMENSION_TOTAL_COUNT_KEY,
-            )
 
             if match_enum and "row_count" in metric_expressions:
                 # Enum mode: failed = total - matched
@@ -144,10 +137,6 @@ class ColumnValuesToBeInSetValidator(
             )
 
             for row in result_rows:
-                from metadata.data_quality.validations.base_test_handler import (
-                    DIMENSION_NULL_LABEL,
-                )
-
                 dimension_value = (
                     str(row["dimension_value"])
                     if row["dimension_value"] is not None

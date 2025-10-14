@@ -140,7 +140,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
                 try:
                     dimension_col = self._get_column_name(dimension_column)
 
-                    single_dimension_results = self._execute_dimensional_query(
+                    single_dimension_results = self._execute_dimensional_validation(
                         column, dimension_col, metrics_to_compute, test_params
                     )
 
@@ -160,7 +160,7 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             return []
 
     @abstractmethod
-    def _execute_dimensional_query(
+    def _execute_dimensional_validation(
         self, column, dimension_col, metrics_to_compute, test_params
     ):
         """Execute dimensional query for column values to be in set

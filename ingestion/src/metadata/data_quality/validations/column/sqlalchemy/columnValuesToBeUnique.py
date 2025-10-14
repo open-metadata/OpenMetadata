@@ -16,12 +16,18 @@ Validator for column values to be unique test case
 import logging
 from typing import List, Optional
 
-from sqlalchemy import Column, inspect, literal_column
+from sqlalchemy import Column, func, inspect, literal_column
 from sqlalchemy.exc import SQLAlchemyError
 
+from metadata.data_quality.validations.base_test_handler import (
+    DIMENSION_FAILED_COUNT_KEY,
+    DIMENSION_NULL_LABEL,
+    DIMENSION_TOTAL_COUNT_KEY,
+)
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
 )
+from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSIONS
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -108,7 +114,7 @@ class ColumnValuesToBeUniqueValidator(
 
         return self.value.get(metric.name)
 
-    def _execute_dimensional_query(
+    def _execute_dimensional_validation(
         self, column: Column, dimension_col: Column, metrics_to_compute: dict
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
@@ -124,12 +130,6 @@ class ColumnValuesToBeUniqueValidator(
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
         """
-        from sqlalchemy import func
-
-        from metadata.data_quality.validations.impact_score import (
-            DEFAULT_TOP_DIMENSIONS,
-        )
-
         dimension_results = []
 
         try:
@@ -151,11 +151,6 @@ class ColumnValuesToBeUniqueValidator(
                     )
                     continue
 
-            from metadata.data_quality.validations.base_test_handler import (
-                DIMENSION_FAILED_COUNT_KEY,
-                DIMENSION_TOTAL_COUNT_KEY,
-            )
-
             metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions["count"]
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
                 metric_expressions["count"] - metric_expressions["unique_count"]
@@ -166,10 +161,6 @@ class ColumnValuesToBeUniqueValidator(
             )
 
             for row in result_rows:
-                from metadata.data_quality.validations.base_test_handler import (
-                    DIMENSION_NULL_LABEL,
-                )
-
                 dimension_value = (
                     str(row["dimension_value"])
                     if row["dimension_value"] is not None

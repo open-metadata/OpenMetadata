@@ -27,7 +27,6 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
-from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.utils import entity_link
 from metadata.utils.logger import test_suite_logger
 
@@ -145,19 +144,6 @@ class BaseColumnValuesToBeAtExpectedLocationValidator(BaseTestValidator):
             min_bound=None,
             max_bound=None,
         )
-
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for this test
-
-        This method should implement the dimensional logic specific to each test type.
-        It will be called automatically by the template method when dimensionColumns
-        are configured in the test case.
-
-        Returns:
-            List[DimensionResult]: List of dimension-specific test results
-        """
-        # Default implementation returns empty list
-        return []
 
     @abstractmethod
     def _fetch_data(self, columns: List[str]):

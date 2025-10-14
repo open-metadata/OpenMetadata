@@ -15,7 +15,7 @@ Validator for column values to be not null test case
 
 import traceback
 from abc import abstractmethod
-from typing import List, Union
+from typing import Union
 
 from sqlalchemy import Column
 
@@ -25,7 +25,6 @@ from metadata.generated.schema.tests.basic import (
     TestCaseStatus,
     TestResultValue,
 )
-from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -74,19 +73,6 @@ class BaseColumnValuesToBeNotNullValidator(BaseTestValidator):
             row_count=row_count,
             failed_rows=res,
         )
-
-    def _run_dimensional_validation(self) -> List[DimensionResult]:
-        """Execute dimensional validation for this test
-
-        This method should implement the dimensional logic specific to each test type.
-        It will be called automatically by the template method when dimensionColumns
-        are configured in the test case.
-
-        Returns:
-            List[DimensionResult]: List of dimension-specific test results
-        """
-        # Default implementation returns empty list
-        return []
 
     @abstractmethod
     def _get_column_name(self):

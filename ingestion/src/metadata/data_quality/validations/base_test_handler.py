@@ -131,10 +131,6 @@ class BaseTestValidator(ABC):
                 else:
                     logger.debug("Dimensional validation completed with no results")
 
-            except NotImplementedError:
-                logger.debug(
-                    "Dimensional validation not yet implemented for this validator"
-                )
             except Exception as exc:
                 logger.warning(
                     f"Dimensional validation failed for {self.test_case.fullyQualifiedName}: {exc}"
@@ -155,7 +151,6 @@ class BaseTestValidator(ABC):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def _run_dimensional_validation(self) -> List[DimensionResult]:
         """Execute dimensional validation for this test
 
@@ -170,13 +165,10 @@ class BaseTestValidator(ABC):
         2. Run another query: GROUP BY age -> {"10": result3, "12": result4}
 
         Returns:
-            DimensionResultsDict: Dictionary structure:
-            {
-                "country": {"Spain": DimensionResult(...), "Argentina": DimensionResult(...)},
-                "age": {"10": DimensionResult(...), "12": DimensionResult(...)}
-            }
+            List[DimensionResult]: Empty list by default. Override in child classes
+                to implement dimensional validation support.
         """
-        raise NotImplementedError
+        return []
 
     @staticmethod
     def get_test_case_param_value(

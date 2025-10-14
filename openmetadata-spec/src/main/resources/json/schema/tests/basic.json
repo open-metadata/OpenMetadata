@@ -217,7 +217,7 @@
           "type": "string"
         },
         "value": {
-          "description": "Value for this dimension (e.g., 'address', 'US', 'gold')", 
+          "description": "Value for this dimension (e.g., 'address', 'US', 'gold')",
           "type": "string"
         }
       },
@@ -277,7 +277,7 @@
           "type": "integer"
         },
         "failedRows": {
-          "description": "Number of rows that failed for this dimension combination", 
+          "description": "Number of rows that failed for this dimension combination",
           "type": "integer"
         },
         "passedRowsPercentage": {

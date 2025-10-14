@@ -92,7 +92,7 @@ class ColumnValuesToBeInSetValidator(
         """
         return self._compute_row_count(self.runner, column)
 
-    def _execute_dimensional_query(
+    def _execute_dimensional_validation(
         self, column, dimension_col, metrics_to_compute, test_params
     ):
         """Execute dimensional query with impact scoring and Others aggregation for pandas
