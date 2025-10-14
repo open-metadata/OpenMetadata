@@ -17,6 +17,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
+import { addMentionCommentInFeed } from '../../utils/activityFeed';
 import { performAdminLogin } from '../../utils/admin';
 import { resetTokenFromBotPage } from '../../utils/bot';
 import {
@@ -25,7 +26,7 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../utils/common';
-import { addOwner } from '../../utils/entity';
+import { addOwner, waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   acknowledgeTask,
   assignIncident,
@@ -207,6 +208,28 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
       await updateAssignee;
     });
+
+    await test.step(
+      'Verify that notifications correctly display mentions for the incident manager',
+      async () => {
+        await addMentionCommentInFeed(page, 'admin', true);
+
+        await adminPage.waitForLoadState('networkidle');
+        await waitForAllLoadersToDisappear(adminPage);
+        await adminPage.getByRole('button', { name: 'Notifications' }).click();
+        await adminPage.getByText('Mentions').click();
+        await adminPage.waitForLoadState('networkidle');
+        await waitForAllLoadersToDisappear(adminPage);
+
+        await expect(
+          adminPage
+            .getByLabel('Mentions')
+            .getByTestId('notification-item-column_values_to_be_between')
+        ).toContainText(
+          'admin mentioned you on the testCase column_values_to_be_between'
+        );
+      }
+    );
 
     await test.step(
       "Re-assign incident from test case page's header",
