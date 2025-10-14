@@ -19,8 +19,13 @@ jest.mock('../../../rest/userAPI', () => ({
   getUsers: jest.fn().mockResolvedValue({ data: [], paging: { total: 5 } }),
 }));
 
-jest.mock('../../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockResolvedValue({ data: [], paging: { total: 5 } }),
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: [],
+      total: { value: 5 },
+    },
+  }),
 }));
 
 jest.mock('../SelectableList/SelectableList.component', () => ({

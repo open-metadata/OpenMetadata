@@ -207,9 +207,14 @@ export const selectDataProductFromTab = async (
   page: Page,
   dataProduct: DataProduct['data']
 ) => {
-  const dpRes = page.waitForResponse(
-    '/api/v1/search/query?*&from=0&size=50&index=data_product_search_index*'
-  );
+  const dpRes = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return (
+      url.includes('/api/v1/search/query') &&
+      url.includes('index=data_product_search_index')
+    );
+  });
   await page
     .locator('.domain-details-page-tabs')
     .getByText('Data Products')
