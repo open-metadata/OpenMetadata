@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { act } from 'react';
 import {
   getSystemProfileList,
   getTableProfilesList,
 } from '../../../../../rest/tableAPI';
+import '../../../../../test/unit/mocks/mui.mock';
 import TableProfilerChart from './TableProfilerChart';
 
 jest.mock('react-router-dom', () => ({
@@ -150,20 +152,17 @@ describe('TableProfilerChart component test', () => {
 
     render(<TableProfilerChart />);
 
-    expect(
-      await screen.findByTestId('table-profiler-chart-container')
-    ).toBeInTheDocument();
+    const containers = await screen.findAllByTestId(
+      'table-profiler-chart-container'
+    );
+
+    expect(containers.length).toBeGreaterThan(0);
     expect(await screen.findByTestId('row-metrics')).toBeInTheDocument();
     expect(await screen.findByTestId('operation-metrics')).toBeInTheDocument();
-    expect(
-      await screen.findByTestId('operation-date-metrics')
-    ).toBeInTheDocument();
-    expect(await screen.findAllByText('ProfilerLatestValue')).toHaveLength(2);
-    expect(
-      await screen.findByText('OperationDateBarChart')
-    ).toBeInTheDocument();
+    expect(await screen.findByText('ProfilerLatestValue')).toBeInTheDocument();
     expect(await screen.findByText('CustomBarChart')).toBeInTheDocument();
     expect(await screen.findByText('ProfilerDetailsCard')).toBeInTheDocument();
+    expect(await screen.findByText('CustomMetricGraphs')).toBeInTheDocument();
     expect(mockGetSystemProfileList.mock.instances).toHaveLength(1);
     expect(mockGetTableProfilesList.mock.instances).toHaveLength(1);
   });

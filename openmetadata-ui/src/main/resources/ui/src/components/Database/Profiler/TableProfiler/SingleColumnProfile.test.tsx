@@ -14,10 +14,12 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { DateRangeObject } from 'Models';
+import '../../../../../test/unit/mocks/mui.mock';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ColumnProfile } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
+import { DataType } from '../../../../generated/tests/testDefinition';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
@@ -52,6 +54,76 @@ jest.mock('../../../../utils/DocumentationLinksClassBase', () => ({
     DATA_QUALITY_PROFILER_WORKFLOW_DOCS: 'https://docs.example.com/profiler',
   }),
 }));
+
+jest.mock('recharts', () => ({
+  PieChart: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="pie-chart">{children}</div>
+  ),
+  Pie: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="pie">{children}</div>
+  ),
+  Cell: () => <div data-testid="cell" />,
+  Tooltip: () => <div data-testid="tooltip" />,
+}));
+
+jest.mock('../../../../utils/CommonUtils', () => ({
+  formatNumberWithComma: (value: number) => value.toString(),
+  Transi18next: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+}));
+
+jest.mock('../../../../utils/EntityUtils', () => ({
+  getEntityName: (entity: { name?: string }) => entity.name ?? '',
+}));
+
+jest.mock('../../../../utils/TableTags/TableTags.utils', () => ({
+  getFilterTags: () => ({ Classification: [], Glossary: [] }),
+}));
+
+jest.mock('../../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
+  return function MockRichTextEditorPreviewerV1() {
+    return <div data-testid="rich-text-previewer">Description</div>;
+  };
+});
+
+jest.mock('../../../Tag/TagsViewer/TagsViewer', () => {
+  return function MockTagsViewer() {
+    return <div data-testid="tags-viewer">Tags</div>;
+  };
+});
+
+jest.mock('../../../common/DataPill/DataPill.styled', () => ({
+  DataPill: ({ children }: { children: React.ReactNode }) => (
+    <span data-testid="data-pill">{children}</span>
+  ),
+}));
+
+jest.mock('./ColumnSummary', () => {
+  return function MockColumnSummary() {
+    return <div data-testid="column-summary">Column Summary</div>;
+  };
+});
+
+jest.mock('../ProfilerStateWrapper/ProfilerStateWrapper.component', () => {
+  return function MockProfilerStateWrapper(props: {
+    children: React.ReactNode;
+    title: string;
+    dataTestId?: string;
+    isLoading?: boolean;
+  }) {
+    return (
+      <div data-testid={props.dataTestId ?? 'profiler-state-wrapper'}>
+        <div data-testid={`${props.dataTestId}-title`}>{props.title}</div>
+        {props.isLoading ? (
+          <div data-testid="skeleton">Loading...</div>
+        ) : (
+          props.children
+        )}
+      </div>
+    );
+  };
+});
 
 jest.mock('../ProfilerDetailsCard/ProfilerDetailsCard', () => {
   return function MockProfilerDetailsCard(props: Record<string, unknown>) {
@@ -186,7 +258,15 @@ const mockTableDetails: Table = {
   id: 'table-id',
   name: 'test_table',
   fullyQualifiedName: 'db.schema.test_table',
-  columns: [],
+  columns: [
+    {
+      name: 'test_column',
+      dataType: 'INTEGER' as DataType,
+      fullyQualifiedName: 'db.schema.test_table.test_column',
+      description: 'Test column description',
+      tags: [],
+    },
+  ],
   customMetrics: [
     {
       id: 'metric-1',
@@ -234,6 +314,14 @@ const defaultTableProfilerContext = {
   },
   isTestCaseDrawerOpen: false,
   onTestCaseDrawerOpen: jest.fn(),
+  testCaseSummary: {
+    'db.schema.test_table.test_column': {
+      success: 5,
+      failed: 2,
+      aborted: 1,
+      total: 8,
+    },
+  },
 };
 
 const mockGetColumnProfilerList = getColumnProfilerList as jest.MockedFunction<
@@ -297,7 +385,7 @@ describe('SingleColumnProfile', () => {
         expect(screen.getByTestId('histogram-metrics')).toBeInTheDocument();
       });
 
-      expect(screen.getByTestId('data-distribution-title')).toBeInTheDocument();
+      expect(screen.getByTestId('histogram-metrics-title')).toBeInTheDocument();
       expect(
         screen.getByTestId('data-distribution-histogram')
       ).toBeInTheDocument();
@@ -313,7 +401,7 @@ describe('SingleColumnProfile', () => {
       });
 
       expect(
-        screen.getByTestId('cardinality-distribution-title')
+        screen.getByTestId('cardinality-distribution-metrics-title')
       ).toBeInTheDocument();
       expect(
         screen.getByTestId('cardinality-distribution-chart')
