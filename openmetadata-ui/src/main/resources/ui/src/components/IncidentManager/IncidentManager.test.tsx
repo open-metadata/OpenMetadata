@@ -13,10 +13,10 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import QueryString from 'qs';
 import { act } from 'react';
-import '../../../test/unit/mocks/mui.mock';
 import { Table } from '../../generated/entity/data/table';
 import { MOCK_PERMISSIONS } from '../../mocks/Glossary.mock';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
+import '../../test/unit/mocks/mui.mock';
 import IncidentManager from './IncidentManager.component';
 
 jest.mock('../common/NextPrevious/NextPrevious', () => {

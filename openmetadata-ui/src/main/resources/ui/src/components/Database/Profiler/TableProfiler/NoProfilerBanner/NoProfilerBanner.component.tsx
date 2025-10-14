@@ -48,8 +48,10 @@ const NoProfilerBanner = () => {
       </Grid>
 
       <Grid size={9}>
-        <p className="profiler-title">{t('message.no-profiler-title')}</p>
-        <p className="profiler-description">
+        <p className="profiler-title" data-testid="profiler-title">
+          {t('message.no-profiler-title')}
+        </p>
+        <p className="profiler-description" data-testid="profiler-description">
           {t('message.no-profiler-message')}
         </p>
       </Grid>

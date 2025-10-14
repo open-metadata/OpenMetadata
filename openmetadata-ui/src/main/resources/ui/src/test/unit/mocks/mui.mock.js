@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import React from 'react';
+window.React = React;
+
 /**
  * Global mock for Material-UI (MUI) components
  * This mock resolves Jest compatibility issues with MUI Grid v2 and theme context

@@ -14,13 +14,13 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
 import { DateRangeObject } from 'Models';
-import '../../../../../test/unit/mocks/mui.mock';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ColumnProfile } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { DataType } from '../../../../generated/tests/testDefinition';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
+import '../../../../test/unit/mocks/mui.mock';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';
