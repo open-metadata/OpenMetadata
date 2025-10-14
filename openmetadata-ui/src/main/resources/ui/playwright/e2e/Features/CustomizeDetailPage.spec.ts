@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,
@@ -32,7 +32,6 @@ import {
   checkDefaultStateForNavigationTree,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
@@ -147,10 +146,12 @@ test.describe('Persona customize UI tab', async () => {
     await redirectToHomePage(adminPage);
 
     // Navigate to persona page
+    const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-    await adminPage.waitForLoadState('networkidle');
-    await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
-    await adminPage.getByText(persona.responseData.displayName).click();
+    await personaListResponse;
+
+    // Need to find persona card and click as the list might get paginated
+    await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
   });
 
