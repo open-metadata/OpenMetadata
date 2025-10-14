@@ -35,7 +35,7 @@ VERSIONS = {
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.0.3",
     "pyarrow": "pyarrow~=16.0",
-    "pydantic": "pydantic~=2.0,>=2.7.0",
+    "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
@@ -70,6 +70,7 @@ VERSIONS = {
     "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
+    "kafka-connect": "kafka-connect-py==0.10.11",
 }
 
 COMMONS = {
@@ -293,7 +294,7 @@ plugins: Dict[str, Set[str]] = {
         "thrift-sasl~=0.4",
     },
     "kafka": {*COMMONS["kafka"]},
-    "kafkaconnect": {"kafka-connect-py==0.10.11"},
+    "kafkaconnect": {VERSIONS["kafka-connect"]},
     "kinesis": {VERSIONS["boto3"]},
     "looker": {
         VERSIONS["looker-sdk"],
@@ -464,6 +465,7 @@ test = {
     "faker==37.1.0",  # The version needs to be fixed to prevent flaky tests!
     *plugins["exasol"],
     VERSIONS["opensearch"],
+    VERSIONS["kafka-connect"],
 }
 
 if sys.version_info >= (3, 9):

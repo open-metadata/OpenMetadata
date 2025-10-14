@@ -55,6 +55,7 @@ import org.openmetadata.schema.type.FileType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.resources.services.drive.DriveServiceResource;
 import org.openmetadata.service.util.TestUtils;
 
 @Slf4j

@@ -69,6 +69,10 @@ export interface CreateDashboardDataModel {
      */
     sourceHash?: string;
     /**
+     * Dashboard URL suffix from its service.
+     */
+    sourceUrl?: string;
+    /**
      * In case the Data Model is based on a SQL query.
      */
     sql?: string;
@@ -190,6 +194,7 @@ export enum DataType {
     Geography = "GEOGRAPHY",
     Geometry = "GEOMETRY",
     Heirarchy = "HEIRARCHY",
+    Hierarchyid = "HIERARCHYID",
     Hll = "HLL",
     Hllsketch = "HLLSKETCH",
     Image = "IMAGE",
