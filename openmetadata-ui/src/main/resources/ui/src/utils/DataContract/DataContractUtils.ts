@@ -110,7 +110,7 @@ export const downloadContractYamlFile = (contract: DataContract) => {
   element.click();
 
   URL.revokeObjectURL(element.href);
-  element.remove();
+  document.body.removeChild(element);
 };
 
 export const getDataContractStatusIcon = (status: ContractExecutionStatus) => {
