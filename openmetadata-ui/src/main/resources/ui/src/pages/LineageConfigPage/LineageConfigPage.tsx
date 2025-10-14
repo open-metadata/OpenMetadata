@@ -26,6 +26,7 @@ import { OPEN_METADATA } from '../../constants/service-guide.constant';
 import {
   LineageLayer,
   LineageSettings,
+  PipelineViewMode,
 } from '../../generated/configuration/lineageSettings';
 import { Settings, SettingType } from '../../generated/settings/settings';
 import { withPageLayout } from '../../hoc/withPageLayout';
@@ -200,6 +201,21 @@ const LineageConfigPage = () => {
                         </Select.Option>
                         <Select.Option value={LineageLayer.DataObservability}>
                           {t('label.data-observability')}
+                        </Select.Option>
+                      </Select>
+                    </Form.Item>
+
+                    <Form.Item
+                      className="m-t-sm"
+                      id="root/pipelineViewMode"
+                      label={t('label.lineage-layer')}
+                      name="pipelineViewMode">
+                      <Select data-testid="field-pipeline-view-mode">
+                        <Select.Option value={PipelineViewMode.Edge}>
+                          {t('label.edge')}
+                        </Select.Option>
+                        <Select.Option value={PipelineViewMode.Node}>
+                          {t('label.node')}
                         </Select.Option>
                       </Select>
                     </Form.Item>

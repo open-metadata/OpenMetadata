@@ -86,6 +86,7 @@ import {
 } from '../enums/entity.enum';
 import { AddLineage, EntitiesEdge } from '../generated/api/lineage/addLineage';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
+import { PipelineViewMode } from '../generated/configuration/lineageSettings';
 import { APIEndpoint } from '../generated/entity/data/apiEndpoint';
 import { Container } from '../generated/entity/data/container';
 import { Dashboard } from '../generated/entity/data/dashboard';
@@ -1480,7 +1481,8 @@ const processPipelineEdge = (edge: EdgeDetails, pipelineNode: Pipeline) => {
 
 const processEdges = (
   edges: EdgeDetails[],
-  nodesArray: LineageEntityReference[]
+  nodesArray: LineageEntityReference[],
+  pipelineViewMode: PipelineViewMode
 ): EdgeDetails[] => {
   return edges.reduce<EdgeDetails[]>(
     (acc: EdgeDetails[], edge: EdgeDetails) => {
@@ -1493,10 +1495,11 @@ const processEdges = (
         (node) => node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName
       );
 
-      if (!pipelineNode) {
+      if (!pipelineNode || pipelineViewMode === PipelineViewMode.Node) {
         return [...acc, edge];
       }
 
+      // Process pipeline edge to create two edges
       const pipelineEdges = processPipelineEdge(
         edge,
         pipelineNode as unknown as Pipeline
@@ -1548,7 +1551,8 @@ const processPagination = (
 export const parseLineageData = (
   data: LineageData,
   entityFqn: string, // This contains fqn of node or entity that is being viewed in lineage page
-  rootFqn: string // This contains the fqn of the entity that is being viewed in lineage page
+  rootFqn: string, // This contains the fqn of the entity that is being viewed in lineage page,
+  pipelineViewMode: PipelineViewMode = PipelineViewMode.Node
 ): {
   nodes: LineageEntityReference[];
   edges: EdgeDetails[];
@@ -1566,7 +1570,7 @@ export const parseLineageData = (
     ...Object.values(downstreamEdges),
     ...Object.values(upstreamEdges),
   ];
-  const processedEdges = processEdges(allEdges, nodesArray);
+  const processedEdges = processEdges(allEdges, nodesArray, pipelineViewMode);
 
   // Handle pagination
   const { newNodes, newEdges } = processPagination(
