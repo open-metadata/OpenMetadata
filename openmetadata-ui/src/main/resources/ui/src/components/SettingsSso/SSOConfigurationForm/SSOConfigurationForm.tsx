@@ -29,15 +29,11 @@ import { useTranslation } from 'react-i18next';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
-  COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
-  COMMON_AUTH_FIELDS_TO_REMOVE,
   DEFAULT_AUTHORIZER_CLASS_NAME,
   DEFAULT_CALLBACK_URL,
   DEFAULT_CONTAINER_REQUEST_FILTER,
   getSSOUISchema,
   GOOGLE_SSO_DEFAULTS,
-  PROVIDERS_WITHOUT_BOT_PRINCIPALS,
-  PROVIDER_FIELD_MAPPINGS,
   SAML_SSO_DEFAULTS,
   VALIDATION_STATUS,
 } from '../../../constants/SSO.constant';
@@ -49,7 +45,6 @@ import authorizerConfigSchema from '../../../jsons/configuration/authorizerConfi
 import {
   applySecurityConfiguration,
   getSecurityConfiguration,
-  JsonPatchOperation,
   patchSecurityConfiguration,
   SecurityConfiguration,
   SecurityValidationResponse,
@@ -60,8 +55,13 @@ import {
   transformErrors,
 } from '../../../utils/formUtils';
 import {
+  cleanupProviderSpecificFields,
+  clearFieldError,
+  findChangedFields,
+  generatePatches,
   getProviderDisplayName,
   getProviderIcon,
+  parseValidationErrors,
 } from '../../../utils/SSOUtils';
 import {
   setOidcToken,
@@ -371,94 +371,9 @@ const SSOConfigurationFormRJSF = ({
     []
   );
 
-  const parseValidationErrors = useCallback(
-    (errors: Array<{ field: string; error: string }>): ErrorSchema => {
-      const errorSchema: ErrorSchema = {};
-
-      errors.forEach((error) => {
-        // Parse the field path to create nested error structure
-        // e.g., "authenticationConfiguration.oidcConfiguration.clientSecret" needs to become:
-        // { authenticationConfiguration: { oidcConfiguration: { clientSecret: { __errors: ["..."] } } } }
-
-        const pathParts = error.field.split('.');
-        let current: ErrorSchema = errorSchema;
-
-        // Navigate/create the nested structure
-        for (let i = 0; i < pathParts.length; i++) {
-          const part = pathParts[i];
-
-          if (i === pathParts.length - 1) {
-            // Last part - add the actual error
-            if (!current[part]) {
-              current[part] = {};
-            }
-            current[part].__errors = [error.error];
-          } else {
-            // Intermediate part - create nested object if needed
-            if (!current[part]) {
-              current[part] = {};
-            }
-            current = current[part] as ErrorSchema;
-          }
-        }
-      });
-
-      return errorSchema;
-    },
-    []
-  );
-
-  // Clear errors for a specific field path
-  const clearFieldError = useCallback((fieldPath: string) => {
-    if (
-      !fieldErrorsRef.current ||
-      Object.keys(fieldErrorsRef.current).length === 0
-    ) {
-      return;
-    }
-
-    // Parse the field path (e.g., "root/authenticationConfiguration/adminPrincipals")
-    const pathParts = fieldPath.replace(/^root\//, '').split('/');
-
-    let current = fieldErrorsRef.current;
-
-    // Navigate through the error structure
-    for (let i = 0; i < pathParts.length; i++) {
-      const part = pathParts[i];
-
-      if (!current[part]) {
-        // Path doesn't exist in errors, nothing to clear
-        return;
-      }
-
-      if (i === pathParts.length - 1) {
-        // We're at the target field, clear its errors
-        delete current[part];
-
-        // Clean up empty parent objects
-        let cleanupCurrent = fieldErrorsRef.current;
-        const cleanupParts = pathParts.slice(0, -1);
-
-        for (let j = 0; j < cleanupParts.length; j++) {
-          const cleanupPart = cleanupParts[j];
-          if (
-            cleanupCurrent[cleanupPart] &&
-            typeof cleanupCurrent[cleanupPart] === 'object'
-          ) {
-            const obj = cleanupCurrent[cleanupPart] as ErrorSchema;
-            if (Object.keys(obj).length === 0) {
-              delete cleanupCurrent[cleanupPart];
-
-              break;
-            }
-            cleanupCurrent = obj;
-          }
-        }
-      } else {
-        // Navigate deeper
-        current = current[part] as ErrorSchema;
-      }
-    }
+  // Wrapper for clearFieldError to work with useCallback and ref
+  const handleClearFieldError = useCallback((fieldPath: string) => {
+    clearFieldError(fieldErrorsRef, fieldPath);
   }, []);
 
   const handleValidationErrors = useCallback(
@@ -502,402 +417,6 @@ const SSOConfigurationFormRJSF = ({
     },
     [parseValidationErrors]
   );
-  const toRecord = (obj: unknown): Record<string, unknown> => {
-    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-      return obj as unknown as Record<string, unknown>;
-    }
-
-    return {};
-  };
-  // Clean up provider-specific fields based on selected provider
-  // Generate JSON Patch operations by comparing old and new data
-  const generatePatches = (
-    oldData: FormData | undefined,
-    newData: FormData | undefined
-  ): JsonPatchOperation[] => {
-    const patches: JsonPatchOperation[] = [];
-
-    if (!oldData || !newData) {
-      return patches;
-    }
-
-    const compareObjects = (
-      oldObj: Record<string, unknown>,
-      newObj: Record<string, unknown>,
-      basePath: string
-    ) => {
-      // Handle authentication configuration
-      if (basePath === '/authenticationConfiguration') {
-        // Compare top-level authentication fields
-        Object.keys(newObj).forEach((key) => {
-          if (
-            key === 'oidcConfiguration' ||
-            key === 'ldapConfiguration' ||
-            key === 'samlConfiguration'
-          ) {
-            // Handle nested configuration objects
-            const newNestedObj = newObj[key] as
-              | Record<string, unknown>
-              | undefined;
-            const oldNestedObj = oldObj[key] as
-              | Record<string, unknown>
-              | undefined;
-
-            if (newNestedObj && oldNestedObj) {
-              Object.keys(newNestedObj).forEach((nestedKey) => {
-                const oldValue = oldNestedObj[nestedKey];
-                const newValue = newNestedObj[nestedKey];
-
-                // Generate patch if values are different
-                const shouldPatch =
-                  JSON.stringify(oldValue) !== JSON.stringify(newValue);
-
-                if (shouldPatch) {
-                  patches.push({
-                    op: 'replace',
-                    path: `${basePath}/${key}/${nestedKey}`,
-                    value: newValue as
-                      | string
-                      | number
-                      | boolean
-                      | Record<string, unknown>
-                      | unknown[]
-                      | null,
-                  });
-                }
-              });
-            } else if (newNestedObj && !oldNestedObj) {
-              // Add new nested configuration
-              patches.push({
-                op: 'add',
-                path: `${basePath}/${key}`,
-                value: newNestedObj,
-              });
-            }
-          } else {
-            // Handle top-level fields
-            const oldValue = oldObj[key];
-            const newValue = newObj[key];
-
-            // Generate patch if values are different
-            const shouldPatch =
-              JSON.stringify(oldValue) !== JSON.stringify(newValue);
-
-            if (shouldPatch) {
-              patches.push({
-                op: 'replace',
-                path: `${basePath}/${key}`,
-                value: newValue as
-                  | string
-                  | number
-                  | boolean
-                  | Record<string, unknown>
-                  | unknown[]
-                  | null,
-              });
-            }
-          }
-        });
-      } else {
-        // Handle authorizer configuration - simple field comparison
-        Object.keys(newObj).forEach((key) => {
-          const oldValue = oldObj[key];
-          const newValue = newObj[key];
-
-          // Generate patch if values are different
-          const shouldPatch =
-            JSON.stringify(oldValue) !== JSON.stringify(newValue);
-
-          if (shouldPatch) {
-            patches.push({
-              op: 'replace',
-              path: `${basePath}/${key}`,
-              value: newValue as
-                | string
-                | number
-                | boolean
-                | Record<string, unknown>
-                | unknown[]
-                | null,
-            });
-          }
-        });
-      }
-    };
-
-    // Generate patches for authentication configuration
-    if (
-      oldData.authenticationConfiguration &&
-      newData.authenticationConfiguration
-    ) {
-      compareObjects(
-        toRecord(oldData.authenticationConfiguration as unknown),
-        toRecord(newData.authenticationConfiguration as unknown),
-        '/authenticationConfiguration'
-      );
-    }
-
-    // Generate patches for authorizer configuration
-    if (oldData.authorizerConfiguration && newData.authorizerConfiguration) {
-      compareObjects(
-        toRecord(oldData.authorizerConfiguration as unknown),
-        toRecord(newData.authorizerConfiguration as unknown),
-        '/authorizerConfiguration'
-      );
-    }
-
-    return patches;
-  };
-
-  const cleanupProviderSpecificFields = (
-    data: FormData | undefined,
-    provider: string
-  ): FormData | undefined => {
-    if (!data) {
-      return undefined;
-    }
-
-    const cleanedData = { ...data };
-
-    if (cleanedData.authenticationConfiguration) {
-      const authConfig = cleanedData.authenticationConfiguration;
-
-      // Remove common unwanted fields that might persist
-      COMMON_AUTH_FIELDS_TO_REMOVE.forEach(
-        (field) => delete authConfig[field as keyof AuthenticationConfiguration]
-      );
-
-      // Set clientType to Public for SAML and LDAP providers
-      if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
-        authConfig.clientType = ClientType.Public;
-      }
-
-      // Remove provider-specific configs that shouldn't be sent
-      const fieldsToRemove = PROVIDER_FIELD_MAPPINGS[provider] || [
-        'ldapConfiguration',
-        'samlConfiguration',
-        'oidcConfiguration',
-      ];
-
-      // Handle oidcConfiguration based on client type
-      if (authConfig.clientType === ClientType.Public) {
-        // For public clients, remove oidcConfiguration entirely
-        fieldsToRemove.forEach(
-          (field) =>
-            delete authConfig[field as keyof AuthenticationConfiguration]
-        );
-        // Also remove secret from root level for public clients
-        delete authConfig.secret;
-      } else {
-        // For confidential clients, keep oidcConfiguration but remove other provider configs
-        const fieldsToActuallyRemove = fieldsToRemove.filter(
-          (field) => field !== 'oidcConfiguration'
-        );
-        fieldsToActuallyRemove.forEach(
-          (field) =>
-            delete authConfig[field as keyof AuthenticationConfiguration]
-        );
-
-        // For confidential clients, populate clientId and callbackUrl from OIDC configuration
-        // since they are hidden in the UI but needed in the authentication object
-        if (
-          authConfig.clientType === ClientType.Confidential &&
-          authConfig.oidcConfiguration
-        ) {
-          const oidcConfig = authConfig.oidcConfiguration as Record<
-            string,
-            unknown
-          >;
-          if (typeof oidcConfig.id === 'string') {
-            authConfig.clientId = oidcConfig.id;
-          }
-          if (typeof oidcConfig.callbackUrl === 'string') {
-            authConfig.callbackUrl = oidcConfig.callbackUrl;
-          }
-          // Clean up serverUrl to ensure it doesn't contain /callback
-          if (typeof oidcConfig.serverUrl === 'string') {
-            const serverUrl = oidcConfig.serverUrl as string;
-            // Remove /callback or any path from serverUrl
-            oidcConfig.serverUrl = serverUrl.replace(/\/callback\/?$/, '');
-          }
-        }
-      }
-
-      // Ensure boolean fields are always included (only for relevant providers)
-      if (authConfig.enableSelfSignup === undefined) {
-        authConfig.enableSelfSignup = true;
-      }
-    }
-
-    if (cleanedData.authorizerConfiguration) {
-      const authorizerConfig = cleanedData.authorizerConfiguration;
-
-      // Remove common authorizer fields that shouldn't be sent
-      COMMON_AUTHORIZER_FIELDS_TO_REMOVE.forEach(
-        (field) =>
-          delete authorizerConfig[field as keyof AuthorizerConfiguration]
-      );
-
-      // Remove bot principals for providers that don't support them (only Azure and Okta should have botPrincipals)
-      if (PROVIDERS_WITHOUT_BOT_PRINCIPALS.includes(provider)) {
-        delete authorizerConfig.botPrincipals;
-      }
-
-      // Ensure boolean fields are always included (for all providers)
-      if (authorizerConfig.enforcePrincipalDomain === undefined) {
-        authorizerConfig.enforcePrincipalDomain = false;
-      }
-      if (authorizerConfig.enableSecureSocketConnection === undefined) {
-        authorizerConfig.enableSecureSocketConnection = false;
-      }
-
-      // Automatically set className and containerRequestFilter for all providers
-      authorizerConfig.className = DEFAULT_AUTHORIZER_CLASS_NAME;
-      authorizerConfig.containerRequestFilter =
-        DEFAULT_CONTAINER_REQUEST_FILTER;
-    }
-
-    // Provider-specific boolean field handling
-    if (cleanedData.authenticationConfiguration?.ldapConfiguration) {
-      const ldapConfig = cleanedData.authenticationConfiguration
-        .ldapConfiguration as Record<string, unknown>;
-
-      // LDAP-specific boolean fields
-      if (ldapConfig.isFullDn === undefined) {
-        ldapConfig.isFullDn = false;
-      }
-      if (ldapConfig.sslEnabled === undefined) {
-        ldapConfig.sslEnabled = false;
-      }
-
-      // Clean up trustStoreConfig based on truststoreFormat
-      if (ldapConfig.trustStoreConfig && ldapConfig.truststoreFormat) {
-        const trustStoreConfig = ldapConfig.trustStoreConfig as Record<
-          string,
-          unknown
-        >;
-        const truststoreFormat = ldapConfig.truststoreFormat as string;
-
-        // Create a new clean trustStoreConfig object
-        const cleanTrustStoreConfig: Record<string, unknown> = {};
-
-        // Only include the configuration that matches the selected format
-        if (
-          truststoreFormat === 'CustomTrustStore' &&
-          trustStoreConfig.customTrustManagerConfig
-        ) {
-          cleanTrustStoreConfig.customTrustManagerConfig =
-            trustStoreConfig.customTrustManagerConfig;
-        }
-        if (
-          truststoreFormat === 'HostName' &&
-          trustStoreConfig.hostNameConfig
-        ) {
-          cleanTrustStoreConfig.hostNameConfig =
-            trustStoreConfig.hostNameConfig;
-        }
-        if (
-          truststoreFormat === 'JVMDefault' &&
-          trustStoreConfig.jvmDefaultConfig
-        ) {
-          cleanTrustStoreConfig.jvmDefaultConfig =
-            trustStoreConfig.jvmDefaultConfig;
-        }
-        if (
-          truststoreFormat === 'TrustAll' &&
-          trustStoreConfig.trustAllConfig
-        ) {
-          cleanTrustStoreConfig.trustAllConfig =
-            trustStoreConfig.trustAllConfig;
-        }
-
-        // Replace the original trustStoreConfig with the clean one
-        ldapConfig.trustStoreConfig = cleanTrustStoreConfig;
-      }
-    }
-
-    if (cleanedData.authenticationConfiguration?.samlConfiguration) {
-      const samlConfig = cleanedData.authenticationConfiguration
-        .samlConfiguration as Record<string, unknown>;
-      const authConfig = cleanedData.authenticationConfiguration;
-
-      // SAML-specific boolean fields
-      if (samlConfig.debugMode === undefined) {
-        samlConfig.debugMode = false;
-      }
-
-      // Process certificates to fix escaping issues and handle authority/callback
-      if (samlConfig.idp && typeof samlConfig.idp === 'object') {
-        const idpConfig = samlConfig.idp as Record<string, unknown>;
-
-        // Copy IDP authorityUrl to root level authority
-        if (
-          idpConfig.authorityUrl &&
-          typeof idpConfig.authorityUrl === 'string'
-        ) {
-          authConfig.authority = idpConfig.authorityUrl as string;
-        }
-
-        if (
-          idpConfig.idpX509Certificate &&
-          typeof idpConfig.idpX509Certificate === 'string'
-        ) {
-          // Fix certificate escaping by replacing \\n with \n
-          idpConfig.idpX509Certificate = (
-            idpConfig.idpX509Certificate as string
-          ).replace(/\\n/g, '\n');
-        }
-      }
-
-      if (samlConfig.sp && typeof samlConfig.sp === 'object') {
-        const spConfig = samlConfig.sp as Record<string, unknown>;
-
-        // Copy SP callback to root level callbackUrl and ensure ACS matches callback
-        if (spConfig.callback && typeof spConfig.callback === 'string') {
-          authConfig.callbackUrl = spConfig.callback as string;
-          // Also ensure ACS has the same value as callback
-          spConfig.acs = spConfig.callback;
-        }
-        if (
-          spConfig.spX509Certificate &&
-          typeof spConfig.spX509Certificate === 'string'
-        ) {
-          // Fix certificate escaping by replacing \\n with \n
-          spConfig.spX509Certificate = (
-            spConfig.spX509Certificate as string
-          ).replace(/\\n/g, '\n');
-        }
-        if (
-          spConfig.spPrivateKey &&
-          typeof spConfig.spPrivateKey === 'string'
-        ) {
-          // Fix private key escaping by replacing \\n with \n
-          spConfig.spPrivateKey = (spConfig.spPrivateKey as string).replace(
-            /\\n/g,
-            '\n'
-          );
-        }
-      }
-
-      if (samlConfig.security) {
-        const securityConfig = samlConfig.security as Record<string, unknown>;
-        if (securityConfig.strictMode === undefined) {
-          securityConfig.strictMode = false;
-        }
-        if (securityConfig.wantAssertionsSigned === undefined) {
-          securityConfig.wantAssertionsSigned = false;
-        }
-        if (securityConfig.wantMessagesSigned === undefined) {
-          securityConfig.wantMessagesSigned = false;
-        }
-        if (securityConfig.sendSignedAuthRequest === undefined) {
-          securityConfig.sendSignedAuthRequest = false;
-        }
-      }
-    }
-
-    return cleanedData;
-  };
 
   const getProviderSpecificSchema = (
     provider: string | undefined,
@@ -1178,55 +697,6 @@ const SSOConfigurationFormRJSF = ({
     hideBorder,
   ]);
 
-  // Helper function to find changed fields between two objects
-  const findChangedFields = (
-    oldData: unknown,
-    newData: unknown,
-    path: string[] = []
-  ): string[] => {
-    const changedFields: string[] = [];
-
-    if (!oldData || !newData) {
-      return changedFields;
-    }
-
-    // Type guard to check if value is an object
-    const isObject = (val: unknown): val is Record<string, unknown> => {
-      return typeof val === 'object' && val !== null && !Array.isArray(val);
-    };
-
-    if (!isObject(oldData) || !isObject(newData)) {
-      return changedFields;
-    }
-
-    // Get all keys from both objects
-    const allKeys = new Set([
-      ...Object.keys(oldData || {}),
-      ...Object.keys(newData || {}),
-    ]);
-
-    for (const key of allKeys) {
-      const currentPath = [...path, key];
-      const oldValue = oldData[key];
-      const newValue = newData[key];
-
-      // Check if values are different
-      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-        // If the value is an object, recursively check for nested changes
-        if (isObject(newValue)) {
-          changedFields.push(
-            ...findChangedFields(oldValue, newValue, currentPath)
-          );
-        } else {
-          // Value has changed, add the field path
-          changedFields.push('root/' + currentPath.join('/'));
-        }
-      }
-    }
-
-    return changedFields;
-  };
-
   // Handle form data changes
   const handleOnChange = (e: IChangeEvent<FormData>) => {
     if (e.formData) {
@@ -1240,7 +710,7 @@ const SSOConfigurationFormRJSF = ({
       ) {
         const changedFields = findChangedFields(internalData, newFormData);
         changedFields.forEach((fieldPath) => {
-          clearFieldError(fieldPath);
+          handleClearFieldError(fieldPath);
         });
       }
 
@@ -1762,7 +1232,7 @@ const SSOConfigurationFormRJSF = ({
           customValidate={customValidate}
           fields={customFields}
           formContext={{
-            clearFieldError,
+            clearFieldError: handleClearFieldError,
           }}
           formData={internalData}
           idSeparator="/"

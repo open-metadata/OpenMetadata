@@ -17,7 +17,7 @@ import {
   getCallbackUrl,
   getDomainUrl,
   getServerUrl,
-} from '../utils/SSOUtils';
+} from '../utils/SSOURLUtils';
 
 // Default callback URL for SSO configuration
 export const DEFAULT_CALLBACK_URL = getCallbackUrl();
