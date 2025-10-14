@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -12,14 +12,22 @@
  */
 import { Divider, Space } from 'antd';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
-import { StatusClass } from '../../../utils/GlossaryUtils';
+import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 
-export const GlossaryStatusBadge = ({ status }: { status: EntityStatus }) => {
+export interface EntityStatusBadgeProps {
+  status: EntityStatus;
+  showDivider?: boolean;
+}
+
+export const EntityStatusBadge = ({
+  status,
+  showDivider = true,
+}: EntityStatusBadgeProps) => {
   return (
     <Space>
-      <Divider className="m-x-xs h-6" type="vertical" />
-      <StatusBadge label={status} status={StatusClass[status]} />
+      {showDivider && <Divider className="m-x-xs h-6" type="vertical" />}
+      <StatusBadge label={status} status={getEntityStatusClass(status)} />
     </Space>
   );
 };

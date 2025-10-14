@@ -576,6 +576,10 @@ class EntityUtilClassBase {
       serviceType
     );
   }
+
+  public shouldShowEntityStatus(entityType: string): boolean {
+    return true;
+  }
 }
 
 const entityUtilClassBase = new EntityUtilClassBase();
