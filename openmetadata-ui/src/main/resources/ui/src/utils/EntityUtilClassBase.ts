@@ -578,7 +578,7 @@ class EntityUtilClassBase {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  public shouldShowEntityStatus(_: string): boolean {
+  public shouldShowEntityStatus(entityType: string): boolean {
     return false;
   }
 }
