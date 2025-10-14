@@ -314,6 +314,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "href": {
         "type": "text"
       },

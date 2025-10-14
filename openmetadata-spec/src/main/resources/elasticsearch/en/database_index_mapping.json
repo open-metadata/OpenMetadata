@@ -375,6 +375,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "service": {
         "properties": {
           "id": {
