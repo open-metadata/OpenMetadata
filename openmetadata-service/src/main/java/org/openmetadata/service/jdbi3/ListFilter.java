@@ -61,6 +61,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
+    conditions.add(getEntityStatusCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -549,5 +550,19 @@ public class ListFilter extends Filter<ListFilter> {
     name = escapeApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
+  }
+
+  public String getEntityStatusCondition() {
+    String entityStatus = queryParams.get("entityStatus");
+    if (entityStatus == null) {
+      return "";
+    }
+
+    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
+      return String.format(
+          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) = '%s'", entityStatus);
+    } else {
+      return String.format("json->>'entityStatus' = '%s'", entityStatus);
+    }
   }
 }

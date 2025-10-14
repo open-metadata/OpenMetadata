@@ -16,6 +16,7 @@ import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -53,6 +54,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
       DataContractRepository repository =
           (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
       ListFilter filter = new ListFilter();
+      filter.addQueryParam("entityStatus", EntityStatus.APPROVED.toString());
 
       int limit = 100;
       String after = null;

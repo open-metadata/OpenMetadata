@@ -665,6 +665,24 @@ public class DataContractRepository extends EntityRepository<DataContract> {
   }
 
   public RestUtil.PutResponse<DataContractResult> validateContract(DataContract dataContract) {
+    // Skip validation for non-approved contracts
+    if (dataContract.getEntityStatus() != EntityStatus.APPROVED) {
+      LOG.debug(
+          "Skipping validation for non-approved data contract: {} with status: {}",
+          dataContract.getFullyQualifiedName(),
+          dataContract.getEntityStatus());
+
+      DataContractResult result =
+          new DataContractResult()
+              .withId(UUID.randomUUID())
+              .withDataContractFQN(dataContract.getFullyQualifiedName())
+              .withContractExecutionStatus(ContractExecutionStatus.Aborted)
+              .withResult("Validation skipped - contract not approved")
+              .withTimestamp(System.currentTimeMillis());
+
+      return new RestUtil.PutResponse<>(Response.Status.OK, result, ENTITY_UPDATED);
+    }
+
     // Check if there's a running validation and abort it before starting a new one
     abortRunningValidation(dataContract);
 

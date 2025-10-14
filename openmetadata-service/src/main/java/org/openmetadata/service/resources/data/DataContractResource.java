@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -63,6 +64,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
@@ -168,7 +170,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", format = "uuid"))
           @QueryParam("entity")
           UUID entityId) {
-    ListFilter filter = new ListFilter(include).addQueryParam("status", status);
+    ListFilter filter = new ListFilter(include).addQueryParam("entityStatus", status);
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
@@ -872,6 +874,12 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     ResourceContext<DataContract> resourceContext =
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (dataContract.getEntityStatus() != EntityStatus.APPROVED) {
+      throw BadRequestException.of(
+          String.format(
+              "Cannot validate non-approved data contract. Current status: %s. Only APPROVED contracts can be validated.",
+              dataContract.getEntityStatus()));
+    }
 
     RestUtil.PutResponse<DataContractResult> result = repository.validateContract(dataContract);
     return result.toResponse();
