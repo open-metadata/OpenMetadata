@@ -70,6 +70,8 @@ SUPPORTED_DIALECTS = [
     Dialects.Oracle,
     Dialects.Trino,
     SapHanaScheme.hana.value,
+    Dialects.Databricks,
+    Dialects.UnityCatalog,
 ]
 
 
@@ -274,6 +276,7 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         Returns:
             List[str]: A list of column names that have incomparable types
         """
+
         table1 = data_diff.connect_to_table(
             self.runtime_params.table1.serviceUrl,
             self.runtime_params.table1.path,
