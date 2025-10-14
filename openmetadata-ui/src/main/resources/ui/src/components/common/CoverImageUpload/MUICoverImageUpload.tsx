@@ -15,19 +15,21 @@ import {
   Box,
   Button,
   CircularProgress,
-  FormControl,
-  FormLabel,
   IconButton,
   Typography,
   useTheme,
 } from '@mui/material';
 import { RefreshCcw01, Trash01, UploadCloud01 } from '@untitledui/icons';
-import { AxiosError } from 'axios';
 import { useSnackbar } from 'notistack';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { showNotistackError } from '../../../utils/NotistackUtils';
 import imageClassBase from '../../BlockEditor/Extensions/image/ImageClassBase';
+import MUIFileUpload from '../FileUpload/MUIFileUpload';
+import {
+  FileUploadValue,
+  FileValidationResult,
+} from '../FileUpload/MUIFileUpload.interface';
 import { MUICoverImageUploadProps } from './CoverImageUpload.interface';
 
 const DEFAULT_MAX_SIZE_MB = 5;
@@ -54,26 +56,24 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
   const theme = useTheme();
   const { t } = useTranslation();
   const { enqueueSnackbar } = useSnackbar();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const dragCounterRef = useRef(0);
   const imageContainerRef = useRef<HTMLDivElement>(null);
 
-  const [isDragging, setIsDragging] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
   const [imageError, setImageError] = useState(false);
+  const [isRepositioning, setIsRepositioning] = useState(false);
+  const [isRepositionDragging, setIsRepositionDragging] = useState(false);
+  const [imageNaturalHeight, setImageNaturalHeight] = useState(0);
+  const [imageNaturalWidth, setImageNaturalWidth] = useState(0);
+  const [tempOffsetY, setTempOffsetY] = useState(0);
 
-  // Generate preview URL for display
   const previewUrl = useMemo(() => {
     if (!value) {
       return '';
     }
 
-    // If it's a file, create blob URL for preview
     if ('file' in value && value.file) {
       return URL.createObjectURL(value.file);
     }
 
-    // If it's a URL, use it directly
     if ('url' in value && value.url) {
       return value.url;
     }
@@ -81,10 +81,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     return '';
   }, [value]);
 
-  // Get authenticated image hook for backend URLs
   const authenticatedImageUrl = imageClassBase.getAuthenticatedImageUrl();
-
-  // For backend URLs, get authenticated blob URL
   const hasBackendUrl = value && 'url' in value && value.url;
   const authenticatedResult = authenticatedImageUrl?.(
     hasBackendUrl ? value.url : ''
@@ -92,9 +89,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
   const authenticatedSrc = authenticatedResult?.imageSrc;
   const imageLoading = authenticatedResult?.isLoading ?? false;
 
-  // Final image source: use authenticated if available, otherwise preview URL
   const imageSrc = useMemo(() => {
-    // For backend attachment URLs, use authenticated blob if ready
     if (
       hasBackendUrl &&
       value.url?.includes('/api/v1/attachments/') &&
@@ -103,31 +98,25 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
       return authenticatedSrc;
     }
 
-    // Otherwise use preview URL (blob for files, direct URL for others)
     return previewUrl;
   }, [hasBackendUrl, value, authenticatedSrc, previewUrl]);
 
-  // Check if image is ready to display
   const showImage = useMemo(() => {
     if (!imageSrc) {
       return false;
     }
 
-    // For local files (blob URLs), always show
     if (value && 'file' in value) {
       return imageSrc.startsWith('blob:');
     }
 
-    // For backend URLs, only show when authenticated blob is ready
     if (hasBackendUrl && value.url?.includes('/api/v1/attachments/')) {
       return imageSrc.startsWith('blob:');
     }
 
-    // For regular URLs, show immediately
     return true;
   }, [imageSrc, value, hasBackendUrl]);
 
-  // Cleanup blob URLs on unmount or when file changes
   useEffect(() => {
     return () => {
       if (previewUrl.startsWith('blob:')) {
@@ -136,48 +125,14 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     };
   }, [previewUrl]);
 
-  // Reset error state when image source changes
   useEffect(() => {
     if (imageSrc) {
       setImageError(false);
     }
   }, [imageSrc]);
 
-  // Reposition states
-  const [isRepositioning, setIsRepositioning] = useState(false);
-  const [isRepositionDragging, setIsRepositionDragging] = useState(false);
-  const [imageNaturalHeight, setImageNaturalHeight] = useState(0);
-  const [imageNaturalWidth, setImageNaturalWidth] = useState(0);
-  const [tempOffsetY, setTempOffsetY] = useState(0);
-
-  const validateFile = useCallback(
-    (file: File): { valid: boolean; error?: string } => {
-      if (!acceptedFormats.includes(file.type)) {
-        return {
-          valid: false,
-          error: t('message.invalid-file-format', {
-            formats: acceptedFormats
-              .map((f) => f.split('/')[1].toUpperCase())
-              .join(', '),
-          }),
-        };
-      }
-
-      const maxSizeBytes = maxSizeMB * 1024 * 1024;
-      if (file.size > maxSizeBytes) {
-        return {
-          valid: false,
-          error: t('message.file-size-exceeded', { size: `${maxSizeMB}MB` }),
-        };
-      }
-
-      return { valid: true };
-    },
-    [acceptedFormats, maxSizeMB, t]
-  );
-
   const validateImageDimensions = useCallback(
-    (file: File): Promise<{ valid: boolean; error?: string }> => {
+    (file: File): Promise<FileValidationResult> => {
       return new Promise((resolve) => {
         const img = new Image();
         const url = URL.createObjectURL(file);
@@ -215,151 +170,26 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     [maxDimensions, t]
   );
 
-  const handleFileUpload = useCallback(
-    async (file: File) => {
-      const fileValidation = validateFile(file);
-      if (!fileValidation.valid) {
-        showNotistackError(
-          enqueueSnackbar,
-          fileValidation.error ?? t('message.invalid-file'),
-          undefined,
-          { vertical: 'top', horizontal: 'center' }
-        );
+  const handleFileUploadChange = useCallback(
+    (newValue: FileUploadValue | undefined) => {
+      if (!newValue) {
+        onChange?.(undefined);
+        setImageError(false);
+        setImageNaturalHeight(0);
+        setImageNaturalWidth(0);
 
         return;
       }
 
-      const dimensionsValidation = await validateImageDimensions(file);
-      if (!dimensionsValidation.valid) {
-        showNotistackError(
-          enqueueSnackbar,
-          dimensionsValidation.error ?? t('message.invalid-dimensions'),
-          undefined,
-          { vertical: 'top', horizontal: 'center' }
-        );
-
-        return;
-      }
-
-      if (onUpload) {
-        // Mode 1: Upload immediately (for editing existing entities)
-        try {
-          setIsUploading(true);
-          setImageError(false);
-
-          const url = await onUpload(file);
-
-          if (onChange) {
-            onChange({ url, position: value?.position });
-          }
-        } catch (error) {
-          showNotistackError(
-            enqueueSnackbar,
-            error as AxiosError,
-            t('label.failed-to-upload-file'),
-            { vertical: 'top', horizontal: 'center' }
-          );
-        } finally {
-          setIsUploading(false);
-        }
-      } else {
-        // Mode 2: Store file locally (for creating new entities)
-        if (onChange) {
-          onChange({ file, position: value?.position });
-        }
+      if ('file' in newValue) {
+        onChange?.({ file: newValue.file, position: value?.position });
+      } else if ('url' in newValue) {
+        onChange?.({ url: newValue.url, position: value?.position });
       }
     },
-    [
-      onUpload,
-      onChange,
-      value?.position,
-      validateFile,
-      validateImageDimensions,
-      t,
-      enqueueSnackbar,
-    ]
+    [onChange, value?.position]
   );
 
-  const handleDragEnter = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!disabled && !isUploading) {
-        dragCounterRef.current++;
-        setIsDragging(true);
-      }
-    },
-    [disabled, isUploading]
-  );
-
-  const handleDragLeave = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (!disabled && !isUploading) {
-        dragCounterRef.current--;
-        if (dragCounterRef.current === 0) {
-          setIsDragging(false);
-        }
-      }
-    },
-    [disabled, isUploading]
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      dragCounterRef.current = 0;
-      setIsDragging(false);
-
-      if (disabled || isUploading) {
-        return;
-      }
-
-      const files = Array.from(e.dataTransfer.files);
-      if (files.length > 0) {
-        handleFileUpload(files[0]);
-      }
-    },
-    [disabled, isUploading, handleFileUpload]
-  );
-
-  const handleFileSelect = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = e.target.files;
-      if (files && files.length > 0) {
-        handleFileUpload(files[0]);
-      }
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    },
-    [handleFileUpload]
-  );
-
-  const handleUploadClick = useCallback(() => {
-    if (!disabled && !isUploading) {
-      fileInputRef.current?.click();
-    }
-  }, [disabled, isUploading]);
-
-  const handleRemoveClick = useCallback(() => {
-    if (onChange) {
-      // Clear completely by setting undefined to show initial upload view
-      onChange(undefined);
-    }
-    setImageError(false);
-    setImageNaturalHeight(0);
-    setImageNaturalWidth(0);
-  }, [onChange]);
-
-  // Calculate scaled image height based on container width
   const getScaledImageHeight = useCallback(() => {
     if (
       !imageContainerRef.current ||
@@ -373,7 +203,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     return (imageNaturalHeight / imageNaturalWidth) * containerWidth;
   }, [imageNaturalWidth, imageNaturalHeight]);
 
-  // Calculate bounds for repositioning
   const getBounds = useCallback(() => {
     const scaledHeight = getScaledImageHeight();
     const containerHeight = 103;
@@ -383,14 +212,12 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     return { minY, maxY };
   }, [getScaledImageHeight]);
 
-  // Check if image is repositionable
   const isImageRepositionable = useMemo(() => {
     const scaledHeight = getScaledImageHeight();
 
     return scaledHeight > 103;
   }, [getScaledImageHeight]);
 
-  // Handle image load to detect dimensions
   const handleImageLoad = useCallback(
     (e: React.SyntheticEvent<HTMLImageElement>) => {
       const img = e.currentTarget;
@@ -400,7 +227,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     []
   );
 
-  // Start reposition mode
   const handleRepositionClick = useCallback(() => {
     if (!isImageRepositionable) {
       showNotistackError(
@@ -413,7 +239,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
       return;
     }
     setIsRepositioning(true);
-    // Convert percentage back to pixels for dragging
     const scaledHeight = getScaledImageHeight();
     const currentPercentage = value?.position?.y
       ? parseFloat(value.position.y)
@@ -422,7 +247,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     setTempOffsetY(pixelOffset);
   }, [isImageRepositionable, value, enqueueSnackbar, t, getScaledImageHeight]);
 
-  // Mouse/Touch drag handlers for repositioning
   const dragStartYRef = useRef(0);
   const dragStartOffsetRef = useRef(0);
 
@@ -478,28 +302,22 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     setIsRepositionDragging(false);
   }, []);
 
-  // Save reposition - works for both file and URL modes
   const handleSaveReposition = useCallback(() => {
     if (onChange && value) {
-      // Convert pixel offset to percentage of image height
       const scaledHeight = getScaledImageHeight();
       const percentage = (tempOffsetY / scaledHeight) * 100;
       const newPosition = { y: `${percentage.toFixed(2)}%` };
 
       if ('file' in value) {
-        // File mode: preserve file, update position
         onChange({ file: value.file, position: newPosition });
       } else if ('url' in value) {
-        // URL mode: preserve URL, update position
         onChange({ url: value.url, position: newPosition });
       }
     }
     setIsRepositioning(false);
   }, [onChange, value, tempOffsetY, getScaledImageHeight]);
 
-  // Cancel reposition
   const handleCancelReposition = useCallback(() => {
-    // Convert percentage back to pixels
     const scaledHeight = getScaledImageHeight();
     const currentPercentage = value?.position?.y
       ? parseFloat(value.position.y)
@@ -509,7 +327,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     setIsRepositioning(false);
   }, [value, getScaledImageHeight]);
 
-  // Keyboard support for repositioning
   const handleRepositionKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (!isRepositioning) {
@@ -534,14 +351,12 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     [isRepositioning, getBounds, handleCancelReposition, handleSaveReposition]
   );
 
-  // Reset position to center
   const handleResetPosition = useCallback(() => {
     const { minY } = getBounds();
     const centerY = minY / 2;
     setTempOffsetY(centerY);
   }, [getBounds]);
 
-  // Add/remove event listeners for repositioning
   useEffect(() => {
     if (isRepositionDragging) {
       window.addEventListener('mousemove', handleRepositionMouseMove);
@@ -567,161 +382,13 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
     handleRepositionEnd,
   ]);
 
-  const formatAcceptedTypes = acceptedFormats
-    .map((format) => format.split('/')[1].toUpperCase())
-    .join(', ');
-
-  return (
-    <FormControl fullWidth component="fieldset" disabled={disabled}>
-      {label && <FormLabel error={error}>{label}</FormLabel>}
-
-      <input
-        hidden
-        accept={acceptedFormats.join(',')}
-        ref={fileInputRef}
-        type="file"
-        onChange={handleFileSelect}
-      />
-
-      {!value ? (
-        <Box
-          sx={{
-            width: '100%',
-            p: 0.5,
-            border: '1px solid',
-            borderColor: theme.palette.allShades?.blueGray?.[100],
-            borderRadius: 1,
-            backgroundColor: theme.palette.allShades?.gray?.[50],
-          }}>
-          <Box
-            aria-label={t('label.upload-cover-image')}
-            role="button"
-            sx={{
-              position: 'relative',
-              width: '100%',
-              height: 95,
-              minHeight: 95,
-              border: `1px solid ${
-                isDragging
-                  ? theme.palette.primary?.main
-                  : error
-                  ? theme.palette.error?.main
-                  : theme.palette.allShades?.gray?.[200]
-              }`,
-              borderRadius: '8px',
-              backgroundColor: isDragging
-                ? theme.palette.action?.hover
-                : theme.palette.background?.paper,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: 2,
-              gap: 1,
-              cursor: disabled || isUploading ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s ease',
-              opacity: disabled ? 0.5 : 1,
-            }}
-            tabIndex={disabled || isUploading ? -1 : 0}
-            onClick={handleUploadClick}
-            onDragEnter={handleDragEnter}
-            onDragLeave={handleDragLeave}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            onKeyDown={(e) => {
-              if (
-                (e.key === 'Enter' || e.key === ' ') &&
-                !disabled &&
-                !isUploading
-              ) {
-                e.preventDefault();
-                handleUploadClick();
-              }
-            }}>
-            {isUploading ? (
-              <Box
-                sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 2,
-                }}>
-                <CircularProgress size={40} />
-                <Typography
-                  sx={{ color: theme.palette.grey?.[600] }}
-                  variant="body2">
-                  {t('label.uploading')}
-                </Typography>
-              </Box>
-            ) : (
-              <>
-                <Box
-                  sx={{
-                    width: 26,
-                    height: 26,
-                    borderRadius: '4px',
-                    backgroundColor: theme.palette.background?.paper,
-                    border: '1px solid',
-                    borderColor: theme.palette.allShades?.blueGray?.[100],
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                  }}>
-                  <UploadCloud01
-                    style={{
-                      width: 14,
-                      height: 14,
-                      color: theme.palette.grey?.[600],
-                    }}
-                  />
-                </Box>
-
-                <Box sx={{ textAlign: 'center' }}>
-                  <Box>
-                    <Typography
-                      sx={{
-                        color: theme.palette.primary?.main,
-                        fontWeight: 500,
-                        display: 'inline',
-                        fontSize: '14px',
-                        lineHeight: '20px',
-                      }}
-                      variant="body2">
-                      {t('label.click-to-upload')}
-                    </Typography>
-                    <Typography
-                      sx={{
-                        color: theme.palette.grey?.[700],
-                        display: 'inline',
-                        ml: 0.5,
-                        fontSize: '14px',
-                        lineHeight: '20px',
-                      }}
-                      variant="body2">
-                      {t('label.or-drag-and-drop')}
-                    </Typography>
-                  </Box>
-
-                  <Typography
-                    sx={{
-                      color: theme.palette.grey?.[600],
-                      fontSize: '12px',
-                      lineHeight: '18px',
-                    }}
-                    variant="caption">
-                    {t('message.cover-image-format-dimensions', {
-                      formats: formatAcceptedTypes,
-                      width: maxDimensions.width,
-                      height: maxDimensions.height,
-                    })}
-                  </Typography>
-                </Box>
-              </>
-            )}
-          </Box>
-        </Box>
-      ) : (
+  const renderCoverImagePreview = useCallback(
+    (
+      _fileValue: FileUploadValue,
+      onRemove: () => void,
+      onReUpload: () => void
+    ) => {
+      return (
         <Box
           data-testid="cover-image-upload-preview-container"
           ref={imageContainerRef}
@@ -810,7 +477,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
             </Box>
           )}
 
-          {/* Reposition Mode Instruction */}
           {isRepositioning && (
             <Box
               sx={{
@@ -835,7 +501,6 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
             </Box>
           )}
 
-          {/* Buttons Overlay */}
           <Box
             sx={{
               position: 'absolute',
@@ -913,7 +578,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
               <>
                 <Button
                   color="secondary"
-                  disabled={disabled || isUploading}
+                  disabled={disabled}
                   size="small"
                   startIcon={<UploadCloud01 style={{ fontSize: 16 }} />}
                   sx={{
@@ -926,7 +591,7 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                   variant="contained"
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleUploadClick();
+                    onReUpload();
                   }}>
                   {t('label.upload')}
                 </Button>
@@ -965,47 +630,66 @@ const MUICoverImageUpload: FC<MUICoverImageUploadProps> = ({
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    handleRemoveClick();
+                    onRemove();
                   }}>
                   <Trash01 style={{ fontSize: 20 }} />
                 </IconButton>
               </>
             )}
           </Box>
-
-          {isUploading && (
-            <Box
-              sx={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                backgroundColor: 'rgba(255, 255, 255, 0.8)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}>
-              <CircularProgress />
-            </Box>
-          )}
         </Box>
-      )}
+      );
+    },
+    [
+      error,
+      theme,
+      isRepositioning,
+      handleRepositionKeyDown,
+      showImage,
+      imageSrc,
+      tempOffsetY,
+      value,
+      imageError,
+      isRepositionDragging,
+      imageLoading,
+      t,
+      handleImageLoad,
+      handleRepositionMouseDown,
+      handleRepositionTouchStart,
+      handleResetPosition,
+      handleSaveReposition,
+      handleCancelReposition,
+      disabled,
+      isImageRepositionable,
+      handleRepositionClick,
+    ]
+  );
 
-      {helperText && (
-        <Typography
-          sx={{
-            color: error
-              ? theme.palette.error?.main
-              : theme.palette.grey?.[600],
-            mt: 1,
-            display: 'block',
-          }}
-          variant="caption">
-          {helperText}
-        </Typography>
-      )}
-    </FormControl>
+  const formatAcceptedTypes = acceptedFormats
+    .map((format) => format.split('/')[1].toUpperCase())
+    .join(', ');
+
+  return (
+    <MUIFileUpload
+      acceptedFormats={acceptedFormats}
+      disabled={disabled}
+      error={error}
+      helperText={helperText}
+      label={label}
+      maxSizeMB={maxSizeMB}
+      renderPreview={renderCoverImagePreview}
+      showFileName={false}
+      uploadZoneHeight={97}
+      uploadZoneSubtext={t('message.cover-image-format-dimensions', {
+        formats: formatAcceptedTypes,
+        width: maxDimensions.width,
+        height: maxDimensions.height,
+      })}
+      validateFile={validateImageDimensions}
+      value={value}
+      onChange={handleFileUploadChange}
+      onUpload={onUpload}
+    />
   );
 };
 
