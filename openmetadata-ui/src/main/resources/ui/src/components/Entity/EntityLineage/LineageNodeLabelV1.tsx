@@ -11,17 +11,16 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
-import { Fragment, useMemo } from 'react';
+import { Box, Chip, IconButton } from '@mui/material';
+import { Col, Space, Typography } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as MappingIcon } from '../../../assets/svg/ic-share.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
-import {
-  getBreadcrumbsFromFqn,
-  getEntityName,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './lineage-node-label.less';
@@ -42,16 +41,15 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   }, [node]);
 
   return (
-    <Row className="items-center" wrap={false}>
+    <Col className="items-center entity-label-container">
       <Col className="d-flex items-center" flex="auto">
         <div className="d-flex entity-button-icon m-r-xs">
           {getServiceIcon(node)}
         </div>
         <Space align="start" direction="vertical" size={0}>
           <Typography.Text
-            className="m-b-0 d-block text-left text-grey-muted w-54"
-            data-testid="entity-header-name"
-            ellipsis={{ tooltip: true }}>
+            className="m-b-0 d-flex text-left text-grey-muted w-54 entity-header-name"
+            data-testid="entity-header-name">
             {node.name}
           </Typography.Text>
           <Typography.Text
@@ -74,39 +72,47 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
           </div>
         )}
       </Col>
-    </Row>
+    </Col>
+  );
+};
+
+const EntityFooter = ({
+  node,
+}: Pick<LineageNodeLabelProps, 'node'> & {
+  node: LineageNodeLabelProps['node'] & { columnNames?: string[] };
+}) => {
+  const { t } = useTranslation();
+
+  const columnsCount = node.columnNames?.length ?? 0;
+  const columnsInfoDropdownLabel = `${columnsCount} ${t(
+    columnsCount === 1 ? 'label.column' : 'label.column-plural'
+  )}`;
+
+  return (
+    <Box className="m-t-xs flex justify-between">
+      <Chip
+        className="columns-info-dropdown-label"
+        label={columnsInfoDropdownLabel}
+        size="medium"
+        sx={{
+          border: 'none',
+          background: 'rgb(214, 232, 253)',
+          color: 'rgb(45, 91, 203)',
+        }}
+      />
+      <IconButton className="btn-show-mapping-columns" size="small">
+        <MappingIcon />
+      </IconButton>
+    </Box>
   );
 };
 
 const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
-  const { t } = useTranslation();
-  const breadcrumbs = getBreadcrumbsFromFqn(node.fullyQualifiedName ?? '');
-
   return (
-    <div className="custom-node-label-container">
-      <div className="w-full m-0 p-x-md p-y-xs">
-        {breadcrumbs.length > 0 && (
-          <div className="d-flex gap-2 items-center m-b-xs lineage-breadcrumb">
-            {breadcrumbs.map((breadcrumb, index) => (
-              <Fragment key={breadcrumb.name}>
-                <Typography.Text
-                  className="text-grey-muted lineage-breadcrumb-item"
-                  ellipsis={{ tooltip: true }}>
-                  {breadcrumb.name}
-                </Typography.Text>
-                {index !== breadcrumbs.length - 1 && (
-                  <Typography.Text className="text-xss">
-                    {t('label.slash-symbol')}
-                  </Typography.Text>
-                )}
-              </Fragment>
-            ))}
-          </div>
-        )}
-
-        <EntityLabel node={node} />
-      </div>
-    </div>
+    <Box className="custom-node-label-container m-0 p-x-md p-y-xs">
+      <EntityLabel node={node} />
+      <EntityFooter node={node} />
+    </Box>
   );
 };
 

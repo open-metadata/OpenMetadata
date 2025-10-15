@@ -168,7 +168,10 @@
   }
 
   .label-container {
-    background: @primary-1;
+    background: #f1f8fe;
+    .entity-label-container::after {
+      background: #d6e8fd;
+    }
   }
 
   .column-container {
@@ -259,7 +262,6 @@
   border-radius: 50% !important;
   border-color: @lineage-border !important;
   background: @white !important;
-  top: 43px !important; // Need to show handles on top half
 
   svg {
     color: @text-grey-muted;
