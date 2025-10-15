@@ -465,6 +465,49 @@ export class EntityDataClass {
       dataProduct1: this.dataProduct1.responseData,
       dataProduct2: this.dataProduct2.responseData,
       dataProduct3: this.dataProduct3.responseData,
+      table1: this.table1.get(),
+      table2: this.table2.get(),
+      topic1: this.topic1.get(),
+      topic2: this.topic2.get(),
+      dashboard1: this.dashboard1.get(),
+      dashboard2: this.dashboard2.get(),
+      mlModel1: this.mlModel1.get(),
+      mlModel2: this.mlModel2.get(),
+      pipeline1: this.pipeline1.get(),
+      pipeline2: this.pipeline2.get(),
+      dashboardDataModel1: this.dashboardDataModel1.get(),
+      dashboardDataModel2: this.dashboardDataModel2.get(),
+      apiCollection1: this.apiCollection1.get(),
+      apiCollection2: this.apiCollection2.get(),
+      apiEndpoint1: this.apiEndpoint1.get(),
+      apiEndpoint2: this.apiEndpoint2.get(),
+      storedProcedure1: this.storedProcedure1.get(),
+      storedProcedure2: this.storedProcedure2.get(),
+      searchIndex1: this.searchIndex1.get(),
+      searchIndex2: this.searchIndex2.get(),
+      container1: this.container1.get(),
+      container2: this.container2.get(),
+      databaseService: this.databaseService.get(),
+      database: this.database.get(),
+      databaseSchema: this.databaseSchema.get(),
+      apiService: this.apiService.get(),
+      dashboardService: this.dashboardService.get(),
+      messagingService: this.messagingService.get(),
+      mlmodelService: this.mlmodelService.get(),
+      pipelineService: this.pipelineService.get(),
+      searchIndexService: this.searchIndexService.get(),
+      storageService: this.storageService.get(),
+      driveService: this.driveService.get(),
+      metric1: this.metric1.get(),
+      chart1: this.chart1.get(),
+      directory1: this.directory1.get(),
+      directory2: this.directory2.get(),
+      file1: this.file1.get(),
+      file2: this.file2.get(),
+      spreadsheet1: this.spreadsheet1.get(),
+      spreadsheet2: this.spreadsheet2.get(),
+      worksheet1: this.worksheet1.get(),
+      worksheet2: this.worksheet2.get(),
     };
 
     const filePath = path.join(
@@ -552,6 +595,144 @@ export class EntityDataClass {
         }
         if (responseData.dataProduct3) {
           this.dataProduct3.responseData = responseData.dataProduct3;
+        }
+        if (responseData.table1) {
+          this.table1.set(responseData.table1);
+        }
+        if (responseData.table2) {
+          this.table2.set(responseData.table2);
+        }
+        if (responseData.topic1) {
+          this.topic1.entityResponseData = responseData.topic1;
+        }
+        if (responseData.topic2) {
+          this.topic2.entityResponseData = responseData.topic2;
+        }
+        if (responseData.dashboard1) {
+          this.dashboard1.entityResponseData = responseData.dashboard1;
+        }
+        if (responseData.dashboard2) {
+          this.dashboard2.entityResponseData = responseData.dashboard2;
+        }
+        if (responseData.mlModel1) {
+          this.mlModel1.entityResponseData = responseData.mlModel1;
+        }
+        if (responseData.mlModel2) {
+          this.mlModel2.entityResponseData = responseData.mlModel2;
+        }
+        if (responseData.pipeline1) {
+          this.pipeline1.entityResponseData = responseData.pipeline1;
+        }
+        if (responseData.pipeline2) {
+          this.pipeline2.entityResponseData = responseData.pipeline2;
+        }
+        if (responseData.dashboardDataModel1) {
+          this.dashboardDataModel1.entityResponseData =
+            responseData.dashboardDataModel1;
+        }
+        if (responseData.dashboardDataModel2) {
+          this.dashboardDataModel2.entityResponseData =
+            responseData.dashboardDataModel2;
+        }
+        if (responseData.apiCollection1) {
+          this.apiCollection1.entityResponseData = responseData.apiCollection1;
+        }
+        if (responseData.apiCollection2) {
+          this.apiCollection2.entityResponseData = responseData.apiCollection2;
+        }
+        if (responseData.apiEndpoint1) {
+          this.apiEndpoint1.entityResponseData = responseData.apiEndpoint1;
+        }
+        if (responseData.apiEndpoint2) {
+          this.apiEndpoint2.entityResponseData = responseData.apiEndpoint2;
+        }
+        if (responseData.storedProcedure1) {
+          this.storedProcedure1.entityResponseData =
+            responseData.storedProcedure1;
+        }
+        if (responseData.storedProcedure2) {
+          this.storedProcedure2.entityResponseData =
+            responseData.storedProcedure2;
+        }
+        if (responseData.searchIndex1) {
+          this.searchIndex1.entityResponseData = responseData.searchIndex1;
+        }
+        if (responseData.searchIndex2) {
+          this.searchIndex2.entityResponseData = responseData.searchIndex2;
+        }
+        if (responseData.container1) {
+          this.container1.entityResponseData = responseData.container1;
+        }
+        if (responseData.container2) {
+          this.container2.entityResponseData = responseData.container2;
+        }
+        if (responseData.databaseService) {
+          this.databaseService.entityResponseData =
+            responseData.databaseService;
+        }
+        if (responseData.database) {
+          this.database.entityResponseData = responseData.database;
+        }
+        if (responseData.databaseSchema) {
+          this.databaseSchema.entityResponseData = responseData.databaseSchema;
+        }
+        if (responseData.apiService) {
+          this.apiService.entityResponseData = responseData.apiService;
+        }
+        if (responseData.dashboardService) {
+          this.dashboardService.entityResponseData =
+            responseData.dashboardService;
+        }
+        if (responseData.messagingService) {
+          this.messagingService.entityResponseData =
+            responseData.messagingService;
+        }
+        if (responseData.mlmodelService) {
+          this.mlmodelService.entityResponseData = responseData.mlmodelService;
+        }
+        if (responseData.pipelineService) {
+          this.pipelineService.entityResponseData =
+            responseData.pipelineService;
+        }
+        if (responseData.searchIndexService) {
+          this.searchIndexService.entityResponseData =
+            responseData.searchIndexService;
+        }
+        if (responseData.storageService) {
+          this.storageService.entityResponseData = responseData.storageService;
+        }
+        if (responseData.driveService) {
+          this.driveService.entityResponseData = responseData.driveService;
+        }
+        if (responseData.metric1) {
+          this.metric1.entityResponseData = responseData.metric1;
+        }
+        if (responseData.chart1) {
+          this.chart1.entityResponseData = responseData.chart1;
+        }
+        if (responseData.directory1) {
+          this.directory1.entityResponseData = responseData.directory1;
+        }
+        if (responseData.directory2) {
+          this.directory2.entityResponseData = responseData.directory2;
+        }
+        if (responseData.file1) {
+          this.file1.entityResponseData = responseData.file1;
+        }
+        if (responseData.file2) {
+          this.file2.entityResponseData = responseData.file2;
+        }
+        if (responseData.spreadsheet1) {
+          this.spreadsheet1.entityResponseData = responseData.spreadsheet1;
+        }
+        if (responseData.spreadsheet2) {
+          this.spreadsheet2.entityResponseData = responseData.spreadsheet2;
+        }
+        if (responseData.worksheet1) {
+          this.worksheet1.entityResponseData = responseData.worksheet1;
+        }
+        if (responseData.worksheet2) {
+          this.worksheet2.entityResponseData = responseData.worksheet2;
         }
       }
     } catch (error) {

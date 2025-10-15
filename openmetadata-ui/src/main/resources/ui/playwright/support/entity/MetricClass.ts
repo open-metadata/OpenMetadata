@@ -73,6 +73,10 @@ export class MetricClass extends EntityClass {
     };
   }
 
+  public set(data: { entity: ResponseDataType }): void {
+    this.entityResponseData = data.entity;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,

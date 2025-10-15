@@ -285,6 +285,18 @@ export class TableClass extends EntityClass {
     };
   }
 
+  set(entityData: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    database: ResponseDataWithServiceType;
+    schema: ResponseDataWithServiceType;
+  }) {
+    this.serviceResponseData = entityData.service;
+    this.databaseResponseData = entityData.database;
+    this.schemaResponseData = entityData.schema;
+    this.entityResponseData = entityData.entity;
+  }
+
   async visitEntityPage(page: Page, searchTerm?: string) {
     await visitEntityPage({
       page,

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test from '@playwright/test';
+
 import { COMMON_TIER_TAG } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
@@ -18,6 +18,7 @@ import { TableClass } from '../../support/entity/TableClass';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
 import { UserClass } from '../../support/user/UserClass';
+import { performAdminLogin } from '../../utils/admin';
 import {
   FIELDS,
   OPERATOR,
@@ -25,23 +26,21 @@ import {
   runRuleGroupTestsWithNonExistingValue,
   verifyAllConditions,
 } from '../../utils/advancedSearch';
-import { createNewPage, redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage } from '../../utils/common';
 import { sidebarClick } from '../../utils/sidebar';
+import { test } from '../fixtures/pages';
 
 const user = new UserClass();
 const table = new TableClass(undefined, 'Regular');
 let glossaryEntity: Glossary;
 
 test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
-  // use the admin user to login
-  test.use({ storageState: 'playwright/.auth/admin.json' });
-
   let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
     test.slow(true);
 
-    const { apiContext, afterAction } = await createNewPage(browser);
+    const { apiContext, afterAction } = await performAdminLogin(browser);
     await user.create(apiContext);
     glossaryEntity = new Glossary(undefined, [
       {
@@ -278,13 +277,6 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dataProduct3.data.displayName,
       ],
     };
-
-    await afterAction();
-  });
-
-  test.afterAll(async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
-    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
 
     await afterAction();
   });

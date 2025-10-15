@@ -141,6 +141,14 @@ export class PipelineClass extends EntityClass {
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+  }
+
   async createIngestionPipeline(apiContext: APIRequestContext, name?: string) {
     const ingestionPipelineResponse = await apiContext.post(
       '/api/v1/services/ingestionPipelines',

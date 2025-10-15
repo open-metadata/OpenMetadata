@@ -286,6 +286,16 @@ export class ApiEndpointClass extends EntityClass {
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    apiCollection: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.apiCollectionResponseData = data.apiCollection;
+  }
+
   async visitEntityPage(page: Page) {
     await visitEntityPage({
       page,

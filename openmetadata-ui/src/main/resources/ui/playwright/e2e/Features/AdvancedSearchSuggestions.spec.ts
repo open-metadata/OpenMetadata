@@ -47,13 +47,6 @@ test.describe('Advanced Search Suggestions', () => {
     };
   });
 
-  test.afterAll(async ({ browser }) => {
-    const { afterAction, apiContext } = await performAdminLogin(browser);
-    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
-
-    await afterAction();
-  });
-
   ADVANCED_SEARCH_SUGGESTION_FIELDS.forEach((field) => {
     test(`Verify suggestions for ${field.label} field`, async ({ page }) => {
       await redirectToHomePage(page);
