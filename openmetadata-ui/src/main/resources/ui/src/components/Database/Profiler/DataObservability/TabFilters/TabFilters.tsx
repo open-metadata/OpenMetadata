@@ -11,7 +11,16 @@
  *  limitations under the License.
  */
 import { KeyboardArrowDown } from '@mui/icons-material';
-import { Button, Menu, MenuItem, Stack, Tooltip } from '@mui/material';
+import {
+  Box,
+  Button,
+  Menu,
+  MenuItem,
+  Stack,
+  Tooltip,
+  Typography,
+  useTheme,
+} from '@mui/material';
 import { isEmpty, isEqual } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
@@ -32,7 +41,7 @@ import {
   getAddCustomMetricPath,
   getEntityDetailsPath,
 } from '../../../../../utils/RouterUtils';
-import DatePickerMenu from '../../../../common/DatePickerMenu/DatePickerMenu.component';
+import MuiDatePickerMenu from '../../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
 import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
@@ -42,6 +51,7 @@ import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
 const TabFilters = () => {
   const { isTourOpen } = useTourProvider();
   const location = useCustomLocation();
+  const theme = useTheme();
   const { subTab: activeTab = ProfilerTabPath.TABLE_PROFILE } =
     useParams<{ subTab: ProfilerTabPath }>();
 
@@ -136,21 +146,41 @@ const TabFilters = () => {
       justifyContent="flex-end"
       spacing={5}>
       {!isEmpty(activeColumnFqn) && (
-        <ColumnPickerMenu
-          activeColumnFqn={activeColumnFqn}
-          columns={table?.columns || []}
-          handleChange={updateActiveColumnFqn}
-        />
+        <Box alignItems="center" display="flex" gap={2}>
+          <Typography
+            sx={{
+              color: theme.palette.grey[900],
+              fontSize: theme.typography.pxToRem(13),
+              fontWeight: 500,
+            }}>
+            {`${t('label.column')}:`}
+          </Typography>
+          <ColumnPickerMenu
+            activeColumnFqn={activeColumnFqn}
+            columns={table?.columns || []}
+            handleChange={updateActiveColumnFqn}
+          />
+        </Box>
       )}
+
       {[ProfilerTabPath.COLUMN_PROFILE, ProfilerTabPath.DATA_QUALITY].includes(
         activeTab
       ) && isEmpty(activeColumnFqn) ? null : (
-        <DatePickerMenu
-          showSelectedCustomRange
-          defaultDateRange={dateRangeObject}
-          handleDateRangeChange={handleDateRangeChange}
-          size="small"
-        />
+        <Box alignItems="center" display="flex" gap={2}>
+          <Typography
+            sx={{
+              color: theme.palette.grey[900],
+              fontSize: theme.typography.pxToRem(13),
+              fontWeight: 500,
+            }}>
+            {`${t('label.date')}:`}
+          </Typography>
+          <MuiDatePickerMenu
+            defaultDateRange={dateRangeObject}
+            handleDateRangeChange={handleDateRangeChange}
+            size="small"
+          />
+        </Box>
       )}
 
       {editDataProfile && !isTableDeleted && (
