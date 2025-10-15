@@ -26,7 +26,7 @@ import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
-import org.openmetadata.service.migration.utils.v1100.MigrationUtil;
+import org.openmetadata.service.migration.utils.v1110.MigrationUtil;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class FlywayMigrationIntegrationTest extends OpenMetadataApplicationTest {

@@ -1,8 +1,5 @@
 package org.openmetadata.service.migration.utils.v1110;
 
-import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
-import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
-
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -11,6 +8,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 public class MigrationUtil {
 
   private final ConnectionType connectionType;
+  public static final String FLYWAY_TABLE_NAME = "DATABASE_CHANGE_LOG";
 
   public MigrationUtil(ConnectionType connectionType) {
     this.connectionType = connectionType;
