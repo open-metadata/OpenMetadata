@@ -132,11 +132,11 @@ export const setServiceSchemaCount = (
   Promise.allSettled(promises)
     .then((results) => {
       let count = 0;
-      results.forEach((result) => {
+      for (const result of results) {
         if (result.status === PROMISE_STATE.FULFILLED) {
           count += result.value?.paging?.total || 0;
         }
-      });
+      }
       callback(count);
     })
     .catch((err: AxiosError) => showErrorToast(err));
@@ -153,11 +153,11 @@ export const setServiceTableCount = (
   Promise.allSettled(promises)
     .then((results) => {
       let count = 0;
-      results.forEach((result) => {
+      for (const result of results) {
         if (result.status === PROMISE_STATE.FULFILLED) {
           count += result.value?.paging?.total || 0;
         }
-      });
+      }
       callback(count);
     })
     .catch((err: AxiosError) => showErrorToast(err));
@@ -611,7 +611,6 @@ export const searchServiceByExactName = async (
       hits: { hits },
     } = await searchService({
       search: name,
-      wildcard: false,
       searchIndex: getSearchIndexFromService(serviceName),
     });
 
