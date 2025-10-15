@@ -1,7 +1,7 @@
 name: TypeScript Type Generation
 
 on:
-  pull_request_target:
+  pull_request:
     types: [opened, synchronize, reopened, labeled, ready_for_review]
     paths:
       - "openmetadata-spec/src/main/resources/json/schema/**"
@@ -31,28 +31,21 @@ jobs:
         run: |
           if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
             echo "is_fork=true" >> $GITHUB_OUTPUT
-            # 输出Fork仓库地址和分支名（用于调试）
             echo "fork_repo=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_OUTPUT
             echo "fork_branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
           else
             echo "is_fork=false" >> $GITHUB_OUTPUT
           fi
 
-      # 关键修改：手动初始化仓库并拉取Fork分支
-      - name: Manual git clone and fetch
+      - name: Checkout from fork (if applicable)
         if: steps.check-fork.outputs.is_fork == 'true'
-        run: |
-          # 初始化空仓库
-          git init
-          # 添加Fork仓库作为远程
-          git remote add fork https://github.com/${{ steps.check-fork.outputs.fork_repo }}.git
-          # 拉取目标分支（深度设为0，获取完整历史）
-          git fetch fork ${{ steps.check-fork.outputs.fork_branch }} --depth=0
-          # 切换到该分支
-          git checkout ${{ steps.check-fork.outputs.fork_branch }}
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ steps.check-fork.outputs.fork_repo }}
+          ref: ${{ steps.check-fork.outputs.fork_branch }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      # 非Fork情况仍使用常规checkout（保持兼容）
-      - name: Checkout repository (non-fork)
+      - name: Checkout from main repo (non-fork)
         if: steps.check-fork.outputs.is_fork == 'false'
         uses: actions/checkout@v4
         with:
@@ -74,7 +67,6 @@ jobs:
           ln -sf ../../../../../node_modules .
           ./json2ts-generate-all.sh -l true
 
-      # 后续步骤保持不变...
       - name: Check for changes
         id: git-check
         run: |
@@ -86,7 +78,7 @@ jobs:
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
 
-      - name: Commit and push changes
+      - name: Commit and push changes (main repo only)
         if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'false'
         id: commit-changes
         run: |
@@ -95,16 +87,16 @@ jobs:
           git push --force-with-lease
           echo "committed=true" >> $GITHUB_OUTPUT
 
-      - name: Create PR comment about auto-update
-        if: steps.commit-changes.outputs.committed == 'true' && steps.check-fork.outputs.is_fork == 'false' && github.event_name == 'pull_request_target'
+      - name: Create PR comment (auto-update, main repo only)
+        if: steps.commit-changes.outputs.committed == 'true' && steps.check-fork.outputs.is_fork == 'false' && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
           body: |
             **TypeScript types have been updated based on the JSON schema changes in the PR**
 
-      - name: Create PR comment about forked repository
-        if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'true' && github.event_name == 'pull_request_target'
+      - name: Create PR comment (forked repo notice)
+        if: steps.git-check.outputs.changes == 'true' && steps.check-fork.outputs.is_fork == 'true' && github.event_name == 'pull_request'
         uses: peter-evans/create-or-update-comment@v1
         with:
           issue-number: ${{ github.event.pull_request.number }}
@@ -117,4 +109,3 @@ jobs:
             ```bash
             cd openmetadata-ui/src/main/resources/ui
             ./json2ts-generate-all.sh -l true
-            ```
