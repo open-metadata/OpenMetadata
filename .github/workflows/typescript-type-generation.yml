@@ -38,8 +38,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          repository: baopuzi/OpenMetadata # 关键修改：指定从 PR 的源仓库（ Fork 仓库）拉取
-          ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
+          #repository: baopuzi/OpenMetadata # 关键修改：指定从 PR 的源仓库（ Fork 仓库）拉取
+          #ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
+          #token: ${{ secrets.GITHUB_TOKEN }}
+          # 硬编码 Fork 仓库地址（替换为你的 Fork 仓库名）
+          repository: baopuzi/OpenMetadata
+          # 硬编码目标分支
+          ref: feature/add_starrocks_connector
+          # 仍使用内置 GITHUB_TOKEN（主仓库令牌，用于拉取公开 Fork 仓库的代码）
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
