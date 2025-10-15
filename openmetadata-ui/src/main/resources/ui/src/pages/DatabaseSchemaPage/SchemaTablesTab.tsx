@@ -15,6 +15,7 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
+import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -28,6 +29,7 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
+  PAGE_SIZE,
 } from '../../constants/constants';
 import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
@@ -38,6 +40,7 @@ import {
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
+import { SearchIndex } from '../../enums/search.enum';
 import { DatabaseSchema } from '../../generated/entity/data/databaseSchema';
 import { Table } from '../../generated/entity/data/table';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
@@ -45,11 +48,13 @@ import { Include } from '../../generated/type/include';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useFqn } from '../../hooks/useFqn';
 import { useTableFilters } from '../../hooks/useTableFilters';
+import { searchQuery } from '../../rest/searchAPI';
 import {
   getTableList,
   patchTableDetails,
   TableListParams,
 } from '../../rest/tableAPI';
+import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -86,6 +91,7 @@ function SchemaTablesTab({
   const { filters: tableFilters, setFilters } = useTableFilters(
     INITIAL_TABLE_FILTERS
   );
+  const { showDeletedTables: showDeletedSchemas } = tableFilters;
 
   const {
     paging,
@@ -115,6 +121,36 @@ function SchemaTablesTab({
     [databaseSchemaPermission]
   );
 
+  const searchSchema = async (
+    searchValue: string,
+    pageNumber = INITIAL_PAGING_VALUE
+  ) => {
+    setTableDataLoading(true);
+    try {
+      const response = await searchQuery({
+        query: '',
+        pageNumber,
+        pageSize: PAGE_SIZE,
+        queryFilter: buildSchemaQueryFilter(
+          'databaseSchema.fullyQualifiedName',
+          decodedDatabaseSchemaFQN,
+          searchValue
+        ),
+        searchIndex: SearchIndex.TABLE,
+        includeDeleted: showDeletedSchemas,
+        trackTotalHits: true,
+      });
+      const data = response.hits.hits.map((schema) => schema._source);
+      const total = response.hits.total.value;
+      setTableData(data);
+      handlePagingChange({ total });
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setTableDataLoading(false);
+    }
+  };
+
   const handleDisplayNameUpdate = useCallback(
     async (data: EntityName, id?: string) => {
       try {
@@ -141,10 +177,7 @@ function SchemaTablesTab({
 
   const handleShowDeletedTables = (value: boolean) => {
     setFilters({ showDeletedTables: value });
-    handlePageChange(INITIAL_PAGING_VALUE, {
-      cursorType: null,
-      cursorValue: undefined,
-    });
+    handlePageChange(INITIAL_PAGING_VALUE);
   };
 
   const getSchemaTables = useCallback(
@@ -156,9 +189,7 @@ function SchemaTablesTab({
           fields: commonTableFields,
           databaseSchema: decodedDatabaseSchemaFQN,
           limit: pageSize,
-          include: tableFilters.showDeletedTables
-            ? Include.Deleted
-            : Include.NonDeleted,
+          include: showDeletedSchemas ? Include.Deleted : Include.NonDeleted,
         });
         setTableData(res.data);
         handlePagingChange(res.paging);
@@ -168,8 +199,17 @@ function SchemaTablesTab({
         setTableDataLoading(false);
       }
     },
-    [decodedDatabaseSchemaFQN, tableFilters.showDeletedTables, pageSize]
+    [decodedDatabaseSchemaFQN, showDeletedSchemas, pageSize]
   );
+
+  const onSchemaSearch = (value: string) => {
+    setFilters({ schema: isEmpty(value) ? undefined : value });
+    if (value) {
+      searchSchema(value);
+    } else {
+      getSchemaTables();
+    }
+  };
 
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
@@ -260,7 +300,7 @@ function SchemaTablesTab({
       }
     }
   }, [
-    tableFilters.showDeletedTables,
+    showDeletedSchemas,
     decodedDatabaseSchemaFQN,
     viewDatabaseSchemaPermission,
     pageSize,
@@ -269,10 +309,9 @@ function SchemaTablesTab({
 
   useEffect(() => {
     setFilters({
-      showDeletedTables:
-        tableFilters.showDeletedTables ?? databaseSchemaDetails.deleted,
+      showDeletedTables: showDeletedSchemas ?? databaseSchemaDetails.deleted,
     });
-  }, [databaseSchemaDetails.deleted, tableFilters.showDeletedTables]);
+  }, [databaseSchemaDetails.deleted, showDeletedSchemas]);
 
   return (
     <TableAntd
@@ -294,7 +333,7 @@ function SchemaTablesTab({
           <>
             <span>
               <Switch
-                checked={tableFilters.showDeletedTables}
+                checked={showDeletedSchemas}
                 data-testid="show-deleted"
                 onClick={handleShowDeletedTables}
               />
@@ -322,6 +361,13 @@ function SchemaTablesTab({
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}
+      searchProps={{
+        placeholder: t('label.search-for-type', {
+          type: t('label.table'),
+        }),
+        typingInterval: 500,
+        onSearch: onSchemaSearch,
+      }}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />
