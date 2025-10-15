@@ -94,11 +94,6 @@ const EntityFooter = ({
         className="columns-info-dropdown-label"
         label={columnsInfoDropdownLabel}
         size="medium"
-        sx={{
-          border: 'none',
-          background: 'rgb(214, 232, 253)',
-          color: 'rgb(45, 91, 203)',
-        }}
       />
       <IconButton className="btn-show-mapping-columns" size="small">
         <MappingIcon />
