@@ -29,6 +29,7 @@ import { DataContractResult } from '../../generated/entity/datacontract/dataCont
 import { formatMonth } from '../date-time/DateTimeUtils';
 import i18n, { t } from '../i18next/LocalUtil';
 import jsonLogicSearchClassBase from '../JSONLogicSearchClassBase';
+import { getTermQuery } from '../SearchUtils';
 
 export const getContractStatusLabelBasedOnFailedResult = (failed?: number) => {
   return failed === 0 ? t('label.passed') : t('label.failed');
@@ -155,8 +156,11 @@ export const getSematicRuleFields = () => {
             searchIndex: SearchIndex.TAG,
             fieldName: 'fullyQualifiedName',
             fieldLabel: 'name',
-            queryFilter:
-              'NOT fullyQualifiedName:Certification.* AND NOT fullyQualifiedName:Tier.*',
+            queryFilter: getTermQuery({}, 'must_not', undefined, {
+              wildcardMustNotQueries: {
+                fullyQualifiedName: ['Certification.*', 'Tier.*'],
+              },
+            }),
           }),
           useAsyncSearch: true,
         },

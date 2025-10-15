@@ -104,6 +104,10 @@ export interface DashboardDataModel {
      */
     sourceHash?: string;
     /**
+     * Dashboard Data Model URL suffix from its service.
+     */
+    sourceUrl?: string;
+    /**
      * In case the Data Model is based on a SQL query.
      */
     sql?: string;
@@ -846,6 +850,7 @@ export enum DashboardServiceType {
     CustomDashboard = "CustomDashboard",
     DomoDashboard = "DomoDashboard",
     Grafana = "Grafana",
+    Hex = "Hex",
     Lightdash = "Lightdash",
     Looker = "Looker",
     Metabase = "Metabase",
