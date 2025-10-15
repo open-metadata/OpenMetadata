@@ -24,26 +24,31 @@ import {
 export class GlossaryTerm extends EntityClass {
   randomName: string;
   data: GlossaryTermData;
+  glossary: Glossary;
+  createGlossary = true;
 
   responseData: GlossaryTermResponseDataType =
     {} as GlossaryTermResponseDataType;
 
-  constructor(glossary: Glossary, parent?: string, name?: string) {
+  constructor(glossary?: Glossary, parent?: string, name?: string) {
     super(EntityTypeEndpoint.GlossaryTerm);
 
     this.randomName = getRandomLastName();
     const id1 = uuid();
     const id2 = uuid();
 
+    this.glossary = glossary ?? new Glossary();
+    this.createGlossary = !glossary;
+
     this.data = {
       name: name ?? `PW.${id1}%${this.randomName}`,
       displayName: name ?? `PW ${id2}%${this.randomName}`,
       description: 'A bank account number.',
       mutuallyExclusive: false,
-      glossary: glossary.data.name,
+      glossary: this.glossary.data.name,
       synonyms: '',
       fullyQualifiedName: '',
-      reviewers: glossary.data.reviewers,
+      reviewers: this.glossary.data.reviewers,
     };
 
     if (parent) {
@@ -85,6 +90,10 @@ export class GlossaryTerm extends EntityClass {
   }
 
   async create(apiContext: APIRequestContext) {
+    if (this.createGlossary) {
+      await this.glossary.create(apiContext);
+    }
+
     const apiData = omit(this.data, [
       'fullyQualifiedName',
       'synonyms',
