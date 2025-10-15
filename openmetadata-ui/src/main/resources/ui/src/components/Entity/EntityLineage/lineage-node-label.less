@@ -28,9 +28,6 @@
         text-overflow: ellipsis;
       }
     }
-    .btn-show-mapping-columns {
-      border: 1px solid @grey-300;
-    }
   }
 }
 
@@ -53,17 +50,34 @@
   margin: @size-xxs @size-xs;
 }
 
-.MuiChip-root.columns-info-dropdown-label {
+.entity-footer .columns-info-dropdown-label {
   border: none;
   background-color: @primary-1;
   color: @blue-7;
+  cursor: pointer;
+  border-radius: 16px;
+  text-transform: none;
+  padding: 0px @size-xs 0 @size-sm;
+  min-width: fit-content;
+  box-shadow: none;
+  font-weight: 500;
 }
 
-.columns-info-dropdown-label::after {
+.entity-footer .columns-info-dropdown-label:hover {
+  background-color: @primary-1;
+  color: @blue-7;
+  box-shadow: none;
+}
+
+.entity-footer .columns-info-dropdown-label::after {
   content: '';
   width: @size-sm;
   height: @size-sm;
   margin-left: @size-xxs;
   background: no-repeat center / contain
     url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%233062d4' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+}
+
+.entity-footer svg {
+  cursor: pointer;
 }

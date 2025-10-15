@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Chip, IconButton } from '@mui/material';
+import { Box, Button } from '@mui/material';
 import { Col, Space, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as MappingIcon } from '../../../assets/svg/ic-share.svg';
+import { ReactComponent as MappingIcon } from '../../../assets/svg/node-mapping.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -88,16 +88,23 @@ const EntityFooter = ({
     columnsCount === 1 ? 'label.column' : 'label.column-plural'
   )}`;
 
+  const handleClickColumnInfoDropdown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleClickNodeMapping = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
   return (
-    <Box className="m-t-xs flex justify-between">
-      <Chip
+    <Box className="m-t-xs flex justify-between entity-footer">
+      <Button
         className="columns-info-dropdown-label"
-        label={columnsInfoDropdownLabel}
-        size="medium"
-      />
-      <IconButton className="btn-show-mapping-columns" size="small">
-        <MappingIcon />
-      </IconButton>
+        variant="outlined"
+        onClick={handleClickColumnInfoDropdown}>
+        {columnsInfoDropdownLabel}
+      </Button>
+      <MappingIcon onClick={handleClickNodeMapping} />
     </Box>
   );
 };
