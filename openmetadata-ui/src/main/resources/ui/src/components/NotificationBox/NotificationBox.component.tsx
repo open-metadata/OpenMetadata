@@ -109,8 +109,8 @@ const NotificationBox = ({
   }, [notifications]);
 
   const getNotificationData = (
-    threadType: ThreadType | undefined,
-    feedFilter: FeedFilter
+    feedFilter: FeedFilter,
+    threadType?: ThreadType
   ) => {
     setIsLoading(true);
     getFeedsWithFilter(currentUser?.id, feedFilter, undefined, threadType)
@@ -135,7 +135,7 @@ const NotificationBox = ({
       onTabChange(key);
       const { threadType, feedFilter } = getFilters(key as ThreadType);
 
-      getNotificationData(threadType, feedFilter);
+      getNotificationData(feedFilter, threadType);
 
       setViewAllPath(
         getUserPath(
@@ -159,7 +159,7 @@ const NotificationBox = ({
   );
 
   useEffect(() => {
-    getNotificationData(ThreadType.Task, FeedFilter.ASSIGNED_TO);
+    getNotificationData(FeedFilter.ASSIGNED_TO, ThreadType.Task);
   }, []);
 
   const getTabTitle = (name: string, key: string) => {
