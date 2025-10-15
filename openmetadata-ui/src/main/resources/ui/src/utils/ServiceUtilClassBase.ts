@@ -63,6 +63,7 @@ import {
   GOOGLE_DRIVE,
   GRAFANA,
   GREENPLUM,
+  HEX,
   HIVE,
   IBMDB2,
   ICEBERGE,
@@ -530,6 +531,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Tableau:
         return TABLEAU;
+
+      case this.DashboardServiceTypeSmallCase.Hex:
+        return HEX;
 
       case this.DashboardServiceTypeSmallCase.Redash:
         return REDASH;
