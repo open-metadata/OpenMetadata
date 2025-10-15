@@ -69,7 +69,6 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
-import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
 import org.openmetadata.schema.entity.data.EntityHierarchy;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
@@ -90,7 +89,6 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
-import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
@@ -109,9 +107,6 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorFactory;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDynamicChartAggregatorInterface;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchLineChartAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostActiveUsersAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
@@ -137,14 +132,11 @@ import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
-import os.org.opensearch.client.indices.GetMappingsRequest;
-import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
-import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.ParsingException;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
 import os.org.opensearch.common.lucene.search.function.FieldValueFactorFunction;
@@ -206,6 +198,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final OpenSearchIndexManager indexManager;
   private final OpenSearchEntityManager entityManager;
   private final OpenSearchGenericManager genericManager;
+  private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -250,6 +243,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
+    dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
@@ -2015,32 +2009,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public List<Map<String, String>> fetchDIChartFields() {
-    List<Map<String, String>> fields = new ArrayList<>();
-    for (String type : DataInsightSystemChartRepository.dataAssetTypes) {
-      // This function is being used for creating custom charts in Data Insights
-      try {
-        GetMappingsRequest request =
-            new GetMappingsRequest()
-                .indices(
-                    DataInsightSystemChartRepository.getDataInsightsIndexPrefix()
-                        + "-"
-                        + type.toLowerCase());
-
-        // Execute request
-        GetMappingsResponse response = client.indices().getMapping(request, RequestOptions.DEFAULT);
-
-        // Get mappings for the index
-        for (Map.Entry<String, MappingMetadata> entry : response.mappings().entrySet()) {
-          // Get fields for the index
-          Map<String, Object> indexFields = entry.getValue().sourceAsMap();
-          getFieldNames((Map<String, Object>) indexFields.get("properties"), "", fields, type);
-        }
-      } catch (Exception exception) {
-        LOG.error(exception.getMessage());
-      }
-    }
-    return fields;
+  public List<Map<String, String>> fetchDIChartFields() throws IOException {
+    return dataInsightAggregatorManager.fetchDIChartFields();
   }
 
   void getFieldNames(
@@ -2080,22 +2050,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
+  @Override
   public DataInsightCustomChartResultList buildDIChart(
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
-    OpenSearchDynamicChartAggregatorInterface aggregator =
-        OpenSearchDynamicChartAggregatorFactory.getAggregator(diChart);
-    if (aggregator != null) {
-      List<FormulaHolder> formulas = new ArrayList<>();
-      Map<String, OpenSearchLineChartAggregator.MetricFormulaHolder> metricFormulaHolder =
-          new HashMap<>();
-      os.org.opensearch.action.search.SearchRequest searchRequest =
-          aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
-      SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-      return aggregator.processSearchResponse(
-          diChart, searchResponse, formulas, metricFormulaHolder);
-    }
-    return null;
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
   private static AggregationBuilder buildQueryAggregation(
