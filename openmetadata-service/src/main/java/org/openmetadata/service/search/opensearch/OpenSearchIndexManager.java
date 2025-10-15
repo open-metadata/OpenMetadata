@@ -176,21 +176,19 @@ public class OpenSearchIndexManager implements IndexManagementClient {
         if (!filtersNode.isMissingNode() && filtersNode.isObject()) {
           ObjectNode filtersObj = (ObjectNode) filtersNode;
 
-          // Check if om_stemmer exists and has "name": "kstem"
+          // Transform stemmer configuration from Elasticsearch to OpenSearch format
           JsonNode omStemmerNode = filtersObj.path("om_stemmer");
           if (!omStemmerNode.isMissingNode() && omStemmerNode.has("type")) {
             String type = omStemmerNode.get("type").asText();
             if ("stemmer".equals(type) && omStemmerNode.has("name")) {
               String name = omStemmerNode.get("name").asText();
-              if ("kstem".equals(name)) {
-                // Create a new stemmer configuration for OpenSearch
-                ObjectNode newStemmerNode = JsonUtils.getObjectMapper().createObjectNode();
-                newStemmerNode.put("type", "stemmer");
-                newStemmerNode.put("language", "kstem");
+              // OpenSearch uses "language" instead of "name" for stemmer configuration
+              ObjectNode newStemmerNode = JsonUtils.getObjectMapper().createObjectNode();
+              newStemmerNode.put("type", "stemmer");
+              newStemmerNode.put("language", name);
 
-                // Replace the om_stemmer configuration
-                filtersObj.set("om_stemmer", newStemmerNode);
-              }
+              // Replace the om_stemmer configuration
+              filtersObj.set("om_stemmer", newStemmerNode);
             }
           } else {
             LOG.debug("No om_stemmer filter found in settings");
