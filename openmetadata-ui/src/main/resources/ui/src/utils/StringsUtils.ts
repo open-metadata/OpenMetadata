@@ -258,7 +258,7 @@ export const formatJsonString = (jsonString: string, indent = '') => {
 
 export const replaceCallback = (character: string) => {
   // Generate a random number between 0 and 15
-  const randomNumber = (Math.random() * 16) | 0;
+  const randomNumber = crypto.getRandomValues(new Uint8Array(1))[0] & 0xf;
 
   // If the character in the UUID template is 'x', use the random number.
   // Otherwise, use the random number ANDed with 0x3 (which gives a number between 0 and 3) ORed with 0x8
