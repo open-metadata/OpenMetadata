@@ -1341,7 +1341,8 @@ export const createInactiveAnnouncement = async (
 export const updateDisplayNameForEntity = async (
   page: Page,
   displayName: string,
-  endPoint: string
+  endPoint: string,
+  isRemoved?: boolean
 ) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="rename-button"]');
@@ -1359,9 +1360,15 @@ export const updateDisplayNameForEntity = async (
   await page.click('[data-testid="save-button"]');
   await updateNameResponse;
 
-  await expect(
-    page.locator('[data-testid="entity-header-display-name"]')
-  ).toHaveText(displayName);
+  if (isRemoved) {
+    await expect(
+      page.locator('[data-testid="entity-header-display-name"]')
+    ).not.toBeVisible();
+  } else {
+    await expect(
+      page.locator('[data-testid="entity-header-display-name"]')
+    ).toHaveText(displayName);
+  }
 };
 
 export const updateDisplayNameForEntityChildren = async (
