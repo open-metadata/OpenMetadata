@@ -30,10 +30,12 @@
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
+    <module>openmetadata-sdk</module>
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
     <module>openmetadata-mcp</module>
+    <module>openmetadata-ui-core-components</module>
     <module>openmetadata-ui</module>
     <module>openmetadata-dist</module>
     <module>openmetadata-clients</module>
@@ -104,7 +106,6 @@
     <mysql.connector.version>9.3.0</mysql.connector.version>
     <postgres.connector.version>42.7.7</postgres.connector.version>
     <jsonschema2pojo.version>1.2.2</jsonschema2pojo.version>
-    <commons-lang.version>2.6</commons-lang.version>
     <lombok.version>1.18.36</lombok.version>
     <tomcat-jdbc.version>11.0.5</tomcat-jdbc.version>
     <elasticsearch.version>7.17.25</elasticsearch.version>
@@ -112,10 +113,11 @@
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.1.14</spring.version>
+    <spring.version>6.2.11</spring.version>
     <log4j.version>2.21.0</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>4.0.14</dropwizard-health.version>
+    <handlebars.version>4.5.0</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
 
@@ -158,10 +160,16 @@
     <mcp-sdk.version>0.11.2</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
     <flyway.version>9.22.3</flyway.version>
+    <angus-mail.version>2.0.4</angus-mail.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.eclipse.angus</groupId>
+        <artifactId>angus-mail</artifactId>
+        <version>${angus-mail.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
@@ -593,6 +601,11 @@
       <artifactId>json-patch</artifactId>
       <version>${json-patch.version}</version>
     </dependency>
+    <dependency>
+      <groupId>com.github.jknack</groupId>
+      <artifactId>handlebars</artifactId>
+      <version>${handlebars.version}</version>
+    </dependency>
       <dependency>
         <groupId>com.microsoft.azure</groupId>
         <artifactId>msal4j</artifactId>
@@ -612,7 +625,7 @@
       <dependency>
         <groupId>io.netty</groupId>
         <artifactId>netty-bom</artifactId>
-        <version>4.1.118.Final</version>
+        <version>4.1.125.Final</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -954,7 +967,18 @@
           <version>${maven-surefire.version}</version>
           <configuration>
             <includes>
+              <include>org.openmetadata.service.apps.*.java</include>
+              <include>org.openmetadata.service.cache.*.java</include>
+              <include>org.openmetadata.service.events.*.java</include>
+              <include>org.openmetadata.service.governance.*.java</include>
+              <include>org.openmetadata.service.jdbi3.*.java</include>
+              <include>org.openmetadata.service.monitoring.*.java</include>
+              <include>org.openmetadata.service.pipelineService.*.java</include>
               <include>org.openmetadata.service.resources.**.*.java</include>
+              <include>org.openmetadata.service.rules.*.java</include>
+              <include>org.openmetadata.service.search.*.java</include>
+              <include>org.openmetadata.service.secrets.*.java</include>
+              <include>org.openmetadata.service.security.*.java</include>
               <include>org.openmetadata.service.util.*.java</include>
               <include>org.openmetadata.service.EnumBackwardCompatibilityTest</include>
             </includes>

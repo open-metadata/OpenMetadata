@@ -91,7 +91,8 @@ const TagsContainerV2 = ({
   const [internalIsEditTags, setInternalIsEditTags] = useState(false);
 
   const { isEditTags, dropdownKey } = useMemo(() => {
-    const dropdownKey = `${columnData?.fqn ?? entityFqn}-${tagType}`;
+    const columnDifferentiator = columnData?.fqn || columnData?.name;
+    const dropdownKey = `${columnDifferentiator ?? entityFqn}-${tagType}`;
 
     return {
       dropdownKey,

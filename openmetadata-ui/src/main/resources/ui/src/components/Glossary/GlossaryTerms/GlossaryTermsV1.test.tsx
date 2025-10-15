@@ -49,10 +49,13 @@ jest.mock(
   })
 );
 
-jest.mock('../../../rest/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: MOCK_ASSETS_DATA.data?.hits?.hits || [],
+      total: { value: MOCK_ASSETS_DATA.data?.hits?.total?.value || 0 },
+    },
+  }),
 }));
 
 jest.mock('./tabs/AssetsTabs.component', () =>
@@ -120,7 +123,7 @@ jest.mock('../../Customization/GenericProvider/GenericProvider', () => {
 });
 
 jest.mock('../../../utils/TableColumn.util', () => ({
-  ownerTableObject: jest.fn().mockReturnValue({}),
+  ownerTableObject: jest.fn().mockReturnValue([{}]),
 }));
 
 describe('Test Glossary-term component', () => {

@@ -105,6 +105,11 @@ export interface App {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
+     * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
+     * at runtime based on the Ingestion Agent of the service.
+     */
+    ingestionRunner?: EntityReference;
+    /**
      * Name of the Application.
      */
     name:                          string;
@@ -153,6 +158,10 @@ export interface App {
      * Support Email for the application
      */
     supportEmail?: string;
+    /**
+     * If the app support execution through the external runner.
+     */
+    supportsIngestionRunner?: boolean;
     /**
      * If the app run can be interrupted as part of the execution.
      */
@@ -547,6 +556,9 @@ export interface Action {
  * the relationship of a table `belongs to a` database.
  *
  * Bot User Associated with this application.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
+ * at runtime based on the Ingestion Agent of the service.
  */
 export interface EntityReference {
     /**
@@ -646,6 +658,9 @@ export enum MetadataAttribute {
  * the relationship of a table `belongs to a` database.
  *
  * Bot User Associated with this application.
+ *
+ * The ingestion agent responsible for executing the ingestion pipeline. It will be defined
+ * at runtime based on the Ingestion Agent of the service.
  */
 export interface TagLabel {
     /**
@@ -680,6 +695,10 @@ export interface TagLabel {
      * Name of the entity instance.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -759,9 +778,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -794,6 +835,10 @@ export interface TierElement {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

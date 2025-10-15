@@ -96,7 +96,7 @@ export const visitUserProfilePage = async (page: Page, userName: string) => {
     }
   );
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**AND%20isAdmin:false%20isBot:false&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   const loader = page.waitForSelector(
     '[data-testid="user-list-v1-component"] [data-testid="loader"]',
@@ -116,7 +116,7 @@ export const softDeleteUserProfilePage = async (
   displayName: string
 ) => {
   const userResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.getByTestId('searchbar').fill(userName);
   await userResponse;
@@ -317,7 +317,7 @@ export const softDeleteUser = async (
   await page.waitForSelector('[data-testid="loader"]', { state: 'hidden' });
 
   const searchResponse = page.waitForResponse(
-    '/api/v1/search/query?q=**&from=0&size=*&index=*'
+    '/api/v1/search/query?q=*&index=*&from=0&size=*'
   );
   await page.fill('[data-testid="searchbar"]', username);
   await searchResponse;
@@ -588,6 +588,16 @@ export const checkStewardServicesPermissions = async (page: Page) => {
   await page.getByTestId('drop-down-menu').getByTestId('loader').waitFor({
     state: 'detached',
   });
+
+  const dataAssetDropdownRequest = page.waitForResponse(
+    '/api/v1/search/aggregate?index=dataAsset&field=entityType.keyword*'
+  );
+
+  await page
+    .getByTestId('drop-down-menu')
+    .getByTestId('search-input')
+    .fill('table');
+  await dataAssetDropdownRequest;
 
   await page.locator('[data-testid="table-checkbox"]').scrollIntoViewIfNeeded();
   await page.click('[data-testid="table-checkbox"]');

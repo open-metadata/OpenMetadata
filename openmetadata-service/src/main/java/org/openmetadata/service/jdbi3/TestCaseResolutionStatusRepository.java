@@ -14,6 +14,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -58,6 +59,11 @@ public class TestCaseResolutionStatusRepository
         Entity.getCollectionDAO().testCaseResolutionStatusTimeSeriesDao(),
         TestCaseResolutionStatus.class,
         Entity.TEST_CASE_RESOLUTION_STATUS);
+  }
+
+  @Override
+  protected List<String> getExcludeSearchFields() {
+    return List.of("@timestamp", "domains", "testCase", "testSuite", "fqnParts");
   }
 
   public ResultList<TestCaseResolutionStatus> listTestCaseResolutionStatusesForStateId(
@@ -106,6 +112,8 @@ public class TestCaseResolutionStatusRepository
     validatePatchFields(updated, original);
 
     timeSeriesDao.update(JsonUtils.pojoToJson(updated), id);
+    setInheritedFields(updated);
+    postUpdate(updated);
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
   }
 
@@ -312,6 +320,15 @@ public class TestCaseResolutionStatusRepository
     MessageParser.EntityLink entityLink =
         new MessageParser.EntityLink(
             Entity.TEST_CASE, incidentStatus.getTestCaseReference().getFullyQualifiedName());
+
+    // Fetch the TestCase to get its domains
+    TestCase testCase =
+        Entity.getEntity(
+            Entity.TEST_CASE,
+            incidentStatus.getTestCaseReference().getId(),
+            "domains",
+            Include.ALL);
+
     Thread thread =
         new Thread()
             .withId(UUID.randomUUID())
@@ -323,6 +340,14 @@ public class TestCaseResolutionStatusRepository
             .withTask(taskDetails)
             .withUpdatedBy(incidentStatus.getUpdatedBy().getName())
             .withUpdatedAt(System.currentTimeMillis());
+
+    // Inherit domains from the test case
+    if (testCase.getDomains() != null && !testCase.getDomains().isEmpty()) {
+      List<UUID> domainIds =
+          testCase.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList());
+      thread.withDomains(domainIds);
+    }
+
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
 
@@ -382,6 +407,7 @@ public class TestCaseResolutionStatusRepository
               """
               + condition;
     }
+
     return condition;
   }
 

@@ -1,6 +1,9 @@
 from metadata.data_quality.interface.sqlalchemy.unity_catalog.test_suite_interface import (
     UnityCatalogTestSuiteInterface,
 )
+from metadata.ingestion.source.database.unitycatalog.data_diff.data_diff import (
+    UnityCatalogTableParameter,
+)
 from metadata.ingestion.source.database.unitycatalog.lineage import (
     UnitycatalogLineageSource,
 )
@@ -23,4 +26,5 @@ ServiceSpec = DefaultDatabaseSpec(
     profiler_class=UnityCatalogProfilerInterface,
     test_suite_class=UnityCatalogTestSuiteInterface,
     sampler_class=UnityCatalogSamplerInterface,
+    data_diff=UnityCatalogTableParameter,
 )

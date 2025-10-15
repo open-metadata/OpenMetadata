@@ -152,7 +152,9 @@ test('Search Index Application', async ({ page }) => {
     await clickOutside(page);
     await page.locator('[for="root/searchIndexMappingLanguage"]').click();
 
-    await page.getByTestId('select-widget').click();
+    await page
+      .getByTestId('select-widget-root/searchIndexMappingLanguage')
+      .click();
 
     await expect(page.getByTestId('select-option-JP')).toBeVisible();
 
@@ -185,14 +187,43 @@ test('Search Index Application', async ({ page }) => {
   });
 
   await test.step('Install application', async () => {
+    // Verify response status code
+    const getMarketPlaceResponse = page.waitForResponse(
+      '/api/v1/apps/marketplace?limit=15'
+    );
     await page.click('[data-testid="add-application"]');
 
-    // Verify response status code
-    const getMarketPlaceResponse = await page.waitForResponse(
-      '/api/v1/apps/marketplace?limit=*'
-    );
+    const response = await getMarketPlaceResponse;
 
-    expect(getMarketPlaceResponse.status()).toBe(200);
+    expect(response.status()).toBe(200);
+
+    // Check if search-indexing-application-card is visible, if not paginate through pages
+    let cardFound = await page
+      .locator('[data-testid="search-indexing-application-card"]')
+      .isVisible();
+
+    while (!cardFound) {
+      const nextButton = page.locator('[data-testid="next"]');
+      const isNextButtonDisabled = await nextButton.isDisabled();
+
+      if (isNextButtonDisabled) {
+        throw new Error(
+          'search-indexing-application-card not found in marketplace and next button is disabled'
+        );
+      }
+
+      // Click next page and wait for response
+      const nextPageResponse = page.waitForResponse(
+        '/api/v1/apps/marketplace*'
+      );
+      await nextButton.click();
+      await nextPageResponse;
+
+      // Check if card is now visible
+      cardFound = await page
+        .locator('[data-testid="search-indexing-application-card"]')
+        .isVisible();
+    }
 
     await page.click(
       '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'

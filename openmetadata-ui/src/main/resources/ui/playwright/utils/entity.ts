@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
+import { JSDOM } from 'jsdom';
 import { isEmpty, lowerCase } from 'lodash';
 import {
   BIG_ENTITY_DELETE_TIMEOUT,
@@ -26,6 +27,7 @@ import { TagClass } from '../support/tag/TagClass';
 import {
   clickOutside,
   descriptionBox,
+  readElementInListWithScroll,
   redirectToHomePage,
   toastNotification,
   uuid,
@@ -40,31 +42,13 @@ import { sidebarClick } from './sidebar';
 
 export const waitForAllLoadersToDisappear = async (
   page: Page,
-  dataTestId = 'loader'
+  dataTestId = 'loader',
+  timeout = 30000
 ) => {
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const allLoaders = page.locator(`[data-testid="${dataTestId}"]`);
-    const count = await allLoaders.count();
+  const loaders = page.locator(`[data-testid="${dataTestId}"]`);
 
-    let allLoadersGone = true;
-
-    for (let i = 0; i < count; i++) {
-      const loader = allLoaders.nth(i);
-      try {
-        if (await loader.isVisible()) {
-          await loader.waitFor({ state: 'detached', timeout: 1000 });
-          allLoadersGone = false;
-        }
-      } catch {
-        // Do nothing
-      }
-    }
-
-    if (allLoadersGone) {
-      break;
-    }
-    await page.waitForTimeout(100); // slight buffer before next retry
-  }
+  // Wait for the loader elements count to become 0
+  await expect(loaders).toHaveCount(0, { timeout });
 };
 
 export const visitEntityPage = async (data: {
@@ -119,7 +103,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -162,6 +146,51 @@ export const addOwner = async ({
   await expect(
     page.getByTestId(dataTestId ?? 'owner-link').getByTestId(`${owner}`)
   ).toBeVisible();
+};
+
+export const addOwnerWithoutValidation = async ({
+  page,
+  owner,
+  type = 'Users',
+  initiatorId = 'edit-owner',
+}: {
+  page: Page;
+  owner: string;
+  type?: 'Teams' | 'Users';
+  initiatorId?: string;
+}) => {
+  await page.getByTestId(initiatorId).click();
+  if (type === 'Users') {
+    const userListResponse = page.waitForResponse(
+      '/api/v1/search/query?q=&index=user_search_index&*'
+    );
+    await page.getByRole('tab', { name: type }).click();
+    await userListResponse;
+  }
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  const ownerSearchBar = await page
+    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
+    .isVisible();
+
+  if (!ownerSearchBar) {
+    await page.getByRole('tab', { name: type }).click();
+  }
+
+  const searchUser = page.waitForResponse(
+    `/api/v1/search/query?q=*${encodeURIComponent(owner)}*`
+  );
+  await page
+    .getByTestId(`owner-select-${lowerCase(type)}-search-bar`)
+    .fill(owner);
+  await searchUser;
+
+  if (type === 'Teams') {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+  } else {
+    await page.getByRole('listitem', { name: owner, exact: true }).click();
+    await page.getByTestId('selectable-list-update-btn').click();
+  }
 };
 
 export const updateOwner = async ({
@@ -433,7 +462,7 @@ export const removeTier = async (page: Page, endpoint: string) => {
   await patchRequest;
   await clickOutside(page);
 
-  await expect(page.getByTestId('Tier')).toContainText('No Tier');
+  await expect(page.getByTestId('Tier')).toContainText('--');
 };
 
 export const assignCertification = async (
@@ -441,8 +470,24 @@ export const assignCertification = async (
   certification: TagClass,
   endpoint: string
 ) => {
+  const certificationResponse = page.waitForResponse(
+    '/api/v1/tags?parent=Certification&limit=50'
+  );
   await page.getByTestId('edit-certification').click();
+  await certificationResponse;
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
+  await readElementInListWithScroll(
+    page,
+    page.getByTestId(
+      `radio-btn-${certification.responseData.fullyQualifiedName}`
+    ),
+    page.locator('[data-testid="certification-cards"] .ant-radio-group')
+  );
+
   await page
     .getByTestId(`radio-btn-${certification.responseData.fullyQualifiedName}`)
     .click();
@@ -458,15 +503,16 @@ export const assignCertification = async (
 
 export const removeCertification = async (page: Page, endpoint: string) => {
   await page.getByTestId('edit-certification').click();
+  await page.waitForSelector('.certification-card-popover', {
+    state: 'visible',
+  });
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
   const patchRequest = page.waitForResponse(`/api/v1/${endpoint}/*`);
   await page.getByTestId('clear-certification').click();
   await patchRequest;
   await clickOutside(page);
 
-  await expect(page.getByTestId('certification-label')).toContainText(
-    'No Certification'
-  );
+  await expect(page.getByTestId('certification-label')).toContainText('--');
 };
 
 export const updateDescription = async (
@@ -1831,7 +1877,9 @@ export const getTextFromHtmlString = (description?: string): string => {
     return '';
   }
 
-  return description.replace(/<[^>]*>/g, '').trim();
+  const dom = new JSDOM(description);
+
+  return dom.window.document.body.textContent?.trim() ?? '';
 };
 
 export const getFirstRowColumnLink = (page: Page) => {
@@ -1876,7 +1924,15 @@ export const checkExploreSearchFilter = async (
   entity?: EntityClass
 ) => {
   await sidebarClick(page, SidebarItem.EXPLORE);
-  await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  if (filterKey === 'tier.tagFQN') {
+    const tierList = page.waitForResponse(
+      `/api/v1/search/aggregate?index=dataAsset&field=tier.tagFQN**`
+    );
+    await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+    await tierList;
+  } else {
+    await page.click(`[data-testid="search-dropdown-${filterLabel}"]`);
+  }
   await searchAndClickOnOption(
     page,
     {

@@ -125,6 +125,21 @@ class KafkaSourceSSLTest(TestCase):
             kafka_source_with_ssl.service_connection.schemaRegistrySSL.root.sslCertificate.get_secret_value(),
             "sslCertificateData",
         )
+        self.assertIsNotNone(
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.ca.location"
+            ),
+        )
+        self.assertIsNotNone(
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.key.location"
+            ),
+        )
+        self.assertIsNotNone(
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get(
+                "ssl.certificate.location"
+            ),
+        )
 
 
 class CassandraSourceSSLTest(TestCase):

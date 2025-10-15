@@ -168,7 +168,8 @@ test.describe('Data Insight Page', { tag: '@data-insight' }, () => {
       'api/v1/kpi?fields=dataInsightChart'
     );
 
-    await redirectToHomePage(page);
+    // Pass false to skip waiting for network idle, allowing us to catch the KPI API response
+    await redirectToHomePage(page, false);
 
     await kpiResponse;
 

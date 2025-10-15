@@ -178,6 +178,8 @@ export interface TestServiceConnectionRequest {
  * search Connection.
  *
  * Security Connection.
+ *
+ * Drive Connection.
  */
 export interface RequestConnection {
     config?: ConfigObject;
@@ -223,6 +225,8 @@ export interface RequestConnection {
  * Oracle Database Connection Config
  *
  * Postgres Database Connection Config
+ *
+ * TimescaleDB Database Connection Config
  *
  * Presto Database Connection Config
  *
@@ -318,6 +322,8 @@ export interface RequestConnection {
  *
  * Grafana Connection Config
  *
+ * Hex Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -334,6 +340,8 @@ export interface RequestConnection {
  * SSIS Metadata Database Connection Config
  *
  * Glue Pipeline Connection Config
+ *
+ * AWS Kinesis Firehose Pipeline Connection Config
  *
  * Airbyte Metadata Database Connection Config
  *
@@ -408,6 +416,12 @@ export interface RequestConnection {
  * yet.
  *
  * Apache Ranger Connection Config
+ *
+ * Google Drive Connection Config
+ *
+ * SharePoint Connection Config
+ *
+ * Custom Drive Connection to build a source that is not supported.
  */
 export interface ConfigObject {
     /**
@@ -429,11 +443,13 @@ export interface ConfigObject {
     /**
      * Generated Token to connect to OpenAPI Schema.
      *
-     * Generated Token to connect to Databricks.
-     *
      * token to connect to Qlik Cloud.
      *
+     * Hex API token for authentication. Can be personal or workspace token.
+     *
      * To Connect to Dagster Cloud
+     *
+     * Generated Token to connect to Databricks.
      *
      * Generated Token to connect to DBTCloud.
      *
@@ -481,6 +497,8 @@ export interface ConfigObject {
      * GCP Credentials
      *
      * Azure Credentials
+     *
+     * GCP Credentials for Google Drive API
      */
     credentials?: GCPCredentials;
     /**
@@ -515,6 +533,8 @@ export interface ConfigObject {
      * Host and port of the Oracle service.
      *
      * Host and port of the source service.
+     *
+     * Host and port of the TimescaleDB service.
      *
      * Host and port of the Presto service.
      *
@@ -576,6 +596,8 @@ export interface ConfigObject {
      *
      * URL to the Grafana instance.
      *
+     * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
+     *
      * Pipeline Service Management/UI URI.
      *
      * Pipeline Service Management/UI URL.
@@ -601,7 +623,11 @@ export interface ConfigObject {
      *
      * Apache Ranger Admin URL.
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -714,6 +740,9 @@ export interface ConfigObject {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      *
+     * Ingest data from all databases in TimescaleDB. You can use databaseFilterPattern on top
+     * of this.
+     *
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
      *
@@ -777,7 +806,7 @@ export interface ConfigObject {
      *
      * Password to connect to ServiceNow.
      *
-     * Password to connect to Metabase.
+     * Password to connect to Metabase. Required for basic authentication.
      *
      * Password to connect to PowerBI report server.
      *
@@ -824,6 +853,9 @@ export interface ConfigObject {
      *
      * Username to connect to Postgres. This user should have privileges to read all the
      * metadata in Postgres.
+     *
+     * Username to connect to TimescaleDB. This user should have privileges to read all the
+     * metadata in TimescaleDB.
      *
      * Username to connect to Presto. This user should have privileges to read all the metadata
      * in Postgres.
@@ -883,8 +915,7 @@ export interface ConfigObject {
      * Username to connect to ServiceNow. This user should have read access to sys_db_object and
      * sys_dictionary tables.
      *
-     * Username to connect to Metabase. This user should have privileges to read all the
-     * metadata in Metabase.
+     * Username to connect to Metabase. Required for basic authentication.
      *
      * Username to connect to PowerBI report server.
      *
@@ -930,6 +961,18 @@ export interface ConfigObject {
      * Establish secure connection with clickhouse
      */
     secure?: boolean;
+    /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     *
+     * Types of methods used to authenticate to the tableau instance
+     *
+     * Types of methods used to authenticate to the alation instance
+     *
+     * Authentication type to connect to Apache Ranger.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
     /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
@@ -1013,16 +1056,6 @@ export interface ConfigObject {
      */
     authMechanism?: AuthMechanismEnum;
     /**
-     * Choose Auth Config Type.
-     *
-     * Types of methods used to authenticate to the tableau instance
-     *
-     * Types of methods used to authenticate to the alation instance
-     *
-     * Authentication type to connect to Apache Ranger.
-     */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
      * Use slow logs to extract lineage.
      */
     useSlowLogs?: boolean;
@@ -1042,6 +1075,8 @@ export interface ConfigObject {
     oracleConnectionType?: OracleConnectionType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
+     *
+     * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
     sslMode?:            SSLMode;
@@ -1169,6 +1204,8 @@ export interface ConfigObject {
      * client_id for PowerBI.
      *
      * client_id for Sigma.
+     *
+     * Application (client) ID from Azure Active Directory
      */
     clientId?: string;
     /**
@@ -1257,6 +1294,9 @@ export interface ConfigObject {
     /**
      * API key to authenticate with the SAP ERP APIs.
      *
+     * API token to connect to Metabase. Use this instead of username/password for token-based
+     * authentication.
+     *
      * API key of the redash instance to access.
      *
      * The personal access token you can generate in the Lightdash app under the user settings
@@ -1296,12 +1336,16 @@ export interface ConfigObject {
      * clientSecret for PowerBI.
      *
      * clientSecret for Sigma.
+     *
+     * Application (client) secret from Azure Active Directory
      */
     clientSecret?: string;
     /**
      * Azure Directory (tenant) ID for service principal authentication.
      *
      * Tenant ID for PowerBI.
+     *
+     * Directory (tenant) ID from Azure Active Directory
      */
     tenantId?: string;
     /**
@@ -1402,6 +1446,8 @@ export interface ConfigObject {
     proxyURL?: string;
     /**
      * Tableau Site Name.
+     *
+     * SharePoint site name
      */
     siteName?: string;
     /**
@@ -1489,6 +1535,16 @@ export interface ConfigObject {
      */
     pageSize?: number;
     /**
+     * Whether to import Hex project categories as OpenMetadata tags
+     *
+     * Include Tags for Indexing
+     */
+    includeTags?: boolean;
+    /**
+     * Type of token to use for authentication
+     */
+    tokenType?: TokenType;
+    /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
      */
@@ -1573,6 +1629,16 @@ export interface ConfigObject {
      */
     packageConnection?: S3Connection | string;
     /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     *
+     * service type of the messaging source
+     */
+    messagingServiceName?: string[] | string;
+    /**
      * Fivetran API Secret.
      */
     apiSecret?: string;
@@ -1630,13 +1696,6 @@ export interface ConfigObject {
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
-    /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     *
-     * service type of the messaging source
-     */
-    messagingServiceName?: string[] | string;
     /**
      * ID of your DBT cloud account
      */
@@ -1790,10 +1849,6 @@ export interface ConfigObject {
      */
     includeTables?: boolean;
     /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
-    /**
      * Include Teams for Indexing
      */
     includeTeams?: boolean;
@@ -1892,6 +1947,44 @@ export interface ConfigObject {
      * Regex to only fetch search indexes that matches the pattern.
      */
     searchIndexFilterPattern?: FilterPattern;
+    /**
+     * Email to impersonate using domain-wide delegation
+     */
+    delegatedEmail?: string;
+    /**
+     * Regex to only include/exclude directories that matches the pattern.
+     */
+    directoryFilterPattern?: FilterPattern;
+    /**
+     * Specific shared drive ID to connect to
+     *
+     * SharePoint drive ID. If not provided, default document library will be used
+     */
+    driveId?: string;
+    /**
+     * Regex to only include/exclude files that matches the pattern.
+     */
+    fileFilterPattern?: FilterPattern;
+    /**
+     * Extract metadata only for Google Sheets files
+     */
+    includeGoogleSheets?: boolean;
+    /**
+     * Include shared/team drives in metadata extraction
+     */
+    includeTeamDrives?: boolean;
+    /**
+     * Regex to only include/exclude spreadsheets that matches the pattern.
+     */
+    spreadsheetFilterPattern?: FilterPattern;
+    /**
+     * Regex to only include/exclude worksheets that matches the pattern.
+     */
+    worksheetFilterPattern?: FilterPattern;
+    /**
+     * SharePoint site URL
+     */
+    siteUrl?: string;
     [property: string]: any;
 }
 
@@ -1943,6 +2036,14 @@ export interface UsernamePasswordAuthentication {
  * Regex to only fetch MlModels with names matching the pattern.
  *
  * Regex to only fetch search indexes that matches the pattern.
+ *
+ * Regex to only include/exclude directories that matches the pattern.
+ *
+ * Regex to only include/exclude files that matches the pattern.
+ *
+ * Regex to only include/exclude spreadsheets that matches the pattern.
+ *
+ * Regex to only include/exclude worksheets that matches the pattern.
  */
 export interface FilterPattern {
     /**
@@ -2001,6 +2102,16 @@ export enum AuthProvider {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -2033,7 +2144,34 @@ export enum AuthProvider {
  *
  * Configuration for connecting to Ranger Basic Auth.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
      *
@@ -2683,6 +2821,8 @@ export interface ConfigSourceConnection {
  *
  * GCP credentials configs.
  *
+ * GCP Credentials for Google Drive API
+ *
  * AWS credentials configs.
  */
 export interface SecurityConfigClass {
@@ -2969,7 +3109,7 @@ export interface ConfigConnection {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -3040,7 +3180,7 @@ export interface ConfigConnection {
  *
  * Azure Database Connection Config
  */
-export interface ConnectionAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -3225,6 +3365,8 @@ export enum InitialConsumerOffsets {
  * GCP Credentials
  *
  * GCP credentials configs.
+ *
+ * GCP Credentials for Google Drive API
  *
  * Azure Cloud Credentials
  *
@@ -3457,7 +3599,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: ConnectionAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -3962,6 +4104,14 @@ export enum TransactionMode {
 }
 
 /**
+ * Type of token to use for authentication
+ */
+export enum TokenType {
+    Personal = "personal",
+    Workspace = "workspace",
+}
+
+/**
  * REST API Type
  *
  * REST API type
@@ -4043,6 +4193,12 @@ export enum TransactionMode {
  * Custom search service type
  *
  * Apache Ranger service type
+ *
+ * Google Drive service type
+ *
+ * SharePoint service type
+ *
+ * Custom Drive service type
  */
 export enum ConfigType {
     Adls = "ADLS",
@@ -4062,6 +4218,7 @@ export enum ConfigType {
     Couchbase = "Couchbase",
     CustomDashboard = "CustomDashboard",
     CustomDatabase = "CustomDatabase",
+    CustomDrive = "CustomDrive",
     CustomMessaging = "CustomMessaging",
     CustomMlModel = "CustomMlModel",
     CustomPipeline = "CustomPipeline",
@@ -4089,14 +4246,17 @@ export enum ConfigType {
     Gcs = "GCS",
     Glue = "Glue",
     GluePipeline = "GluePipeline",
+    GoogleDrive = "GoogleDrive",
     Grafana = "Grafana",
     Greenplum = "Greenplum",
+    Hex = "Hex",
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
     Kafka = "Kafka",
     KafkaConnect = "KafkaConnect",
     Kinesis = "Kinesis",
+    KinesisFirehose = "KinesisFirehose",
     Lightdash = "Lightdash",
     Looker = "Looker",
     MariaDB = "MariaDB",
@@ -4135,6 +4295,7 @@ export enum ConfigType {
     SapERP = "SapErp",
     SapHana = "SapHana",
     ServiceNow = "ServiceNow",
+    SharePoint = "SharePoint",
     Sigma = "Sigma",
     SingleStore = "SingleStore",
     Sklearn = "Sklearn",
@@ -4150,6 +4311,7 @@ export enum ConfigType {
     Tableau = "Tableau",
     Teradata = "Teradata",
     ThoughtSpot = "ThoughtSpot",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     VertexAI = "VertexAI",
@@ -4249,6 +4411,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -4303,9 +4469,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -4458,6 +4646,7 @@ export enum WorkflowStatus {
  * This enum defines the type for which this workflow applies to.
  */
 export enum WorkflowType {
+    QueryRunner = "QUERY_RUNNER",
     ReverseIngestion = "REVERSE_INGESTION",
     TestConnection = "TEST_CONNECTION",
     TestSparkEngineConnection = "TEST_SPARK_ENGINE_CONNECTION",

@@ -17,7 +17,11 @@ export const searchServiceFromSettingPage = async (
   page: Page,
   service: string
 ) => {
-  const serviceResponse = page.waitForResponse(`/api/v1/search/query?q=*`);
+  const serviceResponse = page.waitForResponse((response) => {
+    const url = response.url();
+
+    return url.includes('/api/v1/search/query') && url.includes(service);
+  });
   await page.fill('[data-testid="searchbar"]', service);
 
   await serviceResponse;

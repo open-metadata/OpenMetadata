@@ -15,8 +15,8 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    MigrationUtil migrationUtil = new MigrationUtil(ConnectionType.POSTGRES);
-    migrationUtil.migrateEntityStatusForExistingEntities(handle);
-    migrationUtil.migrateFlywayHistory(handle);
+    MigrationUtil migrationUtil = new MigrationUtil(handle, ConnectionType.POSTGRES);
+    migrationUtil.migrateEntityStatusForExistingEntities();
+    migrationUtil.cleanupOrphanedDataContracts();
   }
 }

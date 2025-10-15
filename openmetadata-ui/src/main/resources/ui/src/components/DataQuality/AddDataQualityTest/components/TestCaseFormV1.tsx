@@ -49,7 +49,7 @@ import {
   PAGE_SIZE_LARGE,
   PAGE_SIZE_MEDIUM,
 } from '../../../../constants/constants';
-import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
+import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../constants/Schedular.constants';
 import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
 import { OPEN_METADATA } from '../../../../constants/Services.constant';
@@ -99,6 +99,7 @@ import {
 import { convertSearchSourceToTable } from '../../../../utils/DataQuality/DataQualityUtils';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import {
+  createScrollToErrorHandler,
   generateFormFields,
   getPopupContainer,
 } from '../../../../utils/formUtils';
@@ -202,6 +203,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
   const [isCustomQuery, setIsCustomQuery] = useState<boolean>(false);
 
   const [activeField, setActiveField] = useState<string>('');
+
+  const scrollToError = useMemo(() => createScrollToErrorHandler(), []);
 
   // =============================================
   // HOOKS - Form Watches
@@ -371,8 +374,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         placeholder: t('message.enter-test-case-name'),
         rules: [
           {
-            pattern: ENTITY_NAME_REGEX,
-            message: t('message.entity-name-validation'),
+            pattern: TEST_CASE_NAME_REGEX,
+            message: t('message.test-case-name-validation'),
           },
           {
             max: MAX_NAME_LENGTH,
@@ -828,9 +831,10 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
               config: {
                 type: ConfigType.TestSuite,
                 entityFullyQualifiedName: testSuiteResponse.fullyQualifiedName,
-                testCases: values.selectAllTestCases
-                  ? undefined
-                  : [createdTestCase.name, ...selectedTestCases],
+                testCases:
+                  values?.selectAllTestCases === false
+                    ? [createdTestCase.name, ...selectedTestCases]
+                    : undefined,
               },
             },
           };
@@ -1028,12 +1032,8 @@ const TestCaseFormV1: FC<TestCaseFormV1Props> = ({
         layout="vertical"
         name="testCaseFormV1"
         preserve={false}
-        scrollToFirstError={{
-          behavior: 'smooth',
-          block: 'center',
-          scrollMode: 'if-needed',
-        }}
         onFinish={handleSubmit}
+        onFinishFailed={scrollToError}
         onFocus={handleFieldFocus}
         onValuesChange={handleValuesChange}>
         <Card className="form-card-section" data-testid="select-table-card">
