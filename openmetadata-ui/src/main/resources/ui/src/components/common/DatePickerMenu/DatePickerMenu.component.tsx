@@ -99,9 +99,9 @@ const DatePickerMenu = ({
     dateStrings: [string, string]
   ) => {
     if (values) {
-      const startTs = (values[0]?.startOf('day').valueOf() ?? 0) * 1000;
+      const startTs = values[0]?.startOf('day').valueOf() ?? 0;
 
-      const endTs = (values[1]?.endOf('day').valueOf() ?? 0) * 1000;
+      const endTs = values[1]?.endOf('day').valueOf() ?? 0;
 
       const daysCount = getDaysCount(dateStrings[0], dateStrings[1]);
 
