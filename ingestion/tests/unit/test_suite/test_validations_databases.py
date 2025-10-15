@@ -16,6 +16,7 @@ Each test should validate the Success, Failure and Aborted statuses
 """
 from datetime import date, datetime
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 
@@ -25,6 +26,8 @@ from metadata.data_quality.validations.models import (
 from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.importer import import_test_case_class
 
 EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
@@ -576,10 +579,6 @@ def test_suite_validation_database(
 # Test cases for dimensional validation
 def test_column_values_to_be_in_set_backward_compatibility(create_sqlite_table):
     """Test backward compatibility: non-dimensional ColumnValuesToBeInSet still works"""
-    from uuid import uuid4
-
-    from metadata.generated.schema.type.entityReference import EntityReference
-
     test_case = TestCase(
         name="test_dimensional_backward_compatibility",
         entityLink="<#E::table::service.db.users::columns::nickname>",
@@ -623,10 +622,6 @@ def test_column_values_to_be_in_set_backward_compatibility(create_sqlite_table):
 
 def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
     """Test dimensional validation functionality"""
-    from uuid import uuid4
-
-    from metadata.generated.schema.type.entityReference import EntityReference
-
     test_case = TestCase(
         id=uuid4(),
         name="my_test_case",
@@ -662,8 +657,6 @@ def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
     # Mock the main query result and dimensional query results
     # Simulate realistic data: John and Jane are in the allowed set, Alice is not
     # Note: Using Metrics enum names as keys after refactoring
-    from metadata.profiler.metrics.registry import Metrics
-
     mock_dimensional_data = [
         {
             "dimension_value": "John",
@@ -763,10 +756,6 @@ def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
 
 def test_column_values_to_be_in_set_invalid_dimension_column(create_sqlite_table):
     """Test error handling for invalid dimension columns"""
-    from uuid import uuid4
-
-    from metadata.generated.schema.type.entityReference import EntityReference
-
     test_case = TestCase(
         name="test_invalid_dimension_column",
         entityLink="<#E::table::service.db.users::columns::nickname>",

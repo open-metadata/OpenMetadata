@@ -34,6 +34,7 @@ from pydantic import BaseModel
 
 from metadata.data_quality.validations import utils
 from metadata.generated.schema.tests.basic import (
+    DimensionValue,
     TestCaseDimensionResult,
     TestCaseResult,
     TestCaseStatus,
@@ -462,8 +463,6 @@ class BaseTestValidator(ABC):
         Returns:
             DimensionResult: Dimension result object with calculated percentages
         """
-        from metadata.generated.schema.tests.basic import DimensionValue
-
         if failed_rows is None:
             failed_rows = total_rows - passed_rows
 
