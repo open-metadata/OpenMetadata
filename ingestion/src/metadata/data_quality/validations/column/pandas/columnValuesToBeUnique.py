@@ -20,7 +20,6 @@ import pandas as pd
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
-    DIMENSION_NULL_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
@@ -34,7 +33,6 @@ from metadata.data_quality.validations.impact_score import (
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
-from metadata.generated.schema.tests.basic import TestResultValue
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -96,7 +94,7 @@ class ColumnValuesToBeUniqueValidator(
         Args:
             column: The column being validated
             dimension_col: Single SQALikeColumn object corresponding to the dimension column
-            metrics_to_compute: Dictionary mapping metric names to Metrics objects
+            metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
 
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
@@ -111,20 +109,18 @@ class ColumnValuesToBeUniqueValidator(
             results_data = []
 
             for dimension_value, group_df in grouped:
-                if pd.isna(dimension_value):
-                    dimension_value = DIMENSION_NULL_LABEL
-                else:
-                    dimension_value = str(dimension_value)
+                dimension_value = self.format_dimension_value(dimension_value)
 
                 total_count = len(group_df)
                 unique_count = group_df[column.name].nunique()
                 duplicate_count = total_count - unique_count
 
+                # Use enum names as keys
                 results_data.append(
                     {
                         "dimension": dimension_value,
-                        "count": total_count,
-                        "unique_count": unique_count,
+                        Metrics.COUNT.name: total_count,
+                        Metrics.UNIQUE_COUNT.name: unique_count,
                         DIMENSION_TOTAL_COUNT_KEY: total_count,
                         DIMENSION_FAILED_COUNT_KEY: duplicate_count,
                     }
@@ -145,30 +141,21 @@ class ColumnValuesToBeUniqueValidator(
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 
-                for _, row in results_df.iterrows():
-                    dimension_value = row["dimension"]
-                    total_count = int(row.get("count", 0))
-                    unique_count = int(row.get("unique_count", 0))
-                    duplicate_count = int(row.get(DIMENSION_FAILED_COUNT_KEY, 0))
-                    matched = total_count == unique_count
+                for row_dict in results_df.to_dict("records"):
+                    # Rename dimension column to dimension_value for helper methods
+                    row_dict["dimension_value"] = row_dict.pop("dimension")
 
-                    impact_score = float(row.get("impact_score", 0.0))
+                    # Build metric_values dict using helper method
+                    metric_values = self._build_metric_values_from_row(
+                        row_dict, metrics_to_compute
+                    )
 
-                    # Create dimension result
-                    dimension_result = self.get_dimension_result_object(
-                        dimension_values={dimension_col.name: dimension_value},
-                        test_case_status=self.get_test_case_status(matched),
-                        result=f"Dimension {dimension_col.name}={dimension_value}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
-                        test_result_value=[
-                            TestResultValue(name="valuesCount", value=str(total_count)),
-                            TestResultValue(
-                                name="uniqueCount", value=str(unique_count)
-                            ),
-                        ],
-                        total_rows=total_count,
-                        passed_rows=unique_count,
-                        failed_rows=duplicate_count,
-                        impact_score=impact_score,
+                    # Evaluate test condition
+                    evaluation = self._evaluate_test_condition(metric_values)
+
+                    # Create dimension result using helper method
+                    dimension_result = self._create_dimension_result(
+                        row_dict, dimension_col.name, metric_values, evaluation
                     )
 
                     dimension_results.append(dimension_result)

@@ -18,7 +18,16 @@ from __future__ import annotations
 import reprlib
 import traceback
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Callable, List, Optional, Type, TypeVar, Union
+from typing import (
+    TYPE_CHECKING,
+    Callable,
+    List,
+    Optional,
+    Type,
+    TypedDict,
+    TypeVar,
+    Union,
+)
 from uuid import uuid4
 
 from pydantic import BaseModel
@@ -54,10 +63,38 @@ DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
 
 
+class TestEvaluation(TypedDict, total=False):
+    """Result of evaluating a test condition
+
+    Attributes:
+        matched: Whether the test passed
+        passed_rows: Number of rows that passed the test
+        failed_rows: Number of rows that failed the test
+        total_rows: Total number of rows (optional, test-specific)
+    """
+
+    matched: bool
+    passed_rows: int
+    failed_rows: int
+    total_rows: int
+
+
+class DimensionInfo(TypedDict):
+    """Information about a dimension for result formatting
+
+    Attributes:
+        dimension_name: Name of the dimension column
+        dimension_value: Value of this dimension group
+    """
+
+    dimension_name: str
+    dimension_value: str
+
+
 class BaseTestValidator(ABC):
     """Abstract class for test case handlers
     The runtime_parameter_setter is run after the test case is created to set the runtime parameters.
-    This can be useful to resolve complex test parameters based on the parameters gibven by the user.
+    This can be useful to resolve complex test parameters based on the parameters given by the user.
     """
 
     def __init__(
@@ -169,6 +206,98 @@ class BaseTestValidator(ABC):
                 to implement dimensional validation support.
         """
         return []
+
+    def _extract_dimension_value(self, row: dict) -> str:
+        """Extract and format dimension value from result row
+
+        Args:
+            row: Result row from dimensional query
+
+        Returns:
+            str: Formatted dimension value (NULL label if value is None)
+        """
+        return (
+            str(row[DIMENSION_VALUE_KEY])
+            if row[DIMENSION_VALUE_KEY] is not None
+            else DIMENSION_NULL_LABEL
+        )
+
+    def _build_metric_values_from_row(
+        self,
+        row: dict,
+        metrics_to_compute: dict,
+        test_params: Optional[dict] = None,
+    ) -> dict:
+        """Build metric_values dictionary from result row
+
+        Args:
+            row: Result row from dimensional query
+            metrics_to_compute: Metrics that were computed (keys are enum names)
+            test_params: Optional test parameters for conditional metric inclusion
+
+        Returns:
+            dict: Metric values with enum names as keys, defaulting to 0 for missing values
+        """
+        return {
+            metric_name: row.get(metric_name, 0) or 0
+            for metric_name in metrics_to_compute.keys()
+        }
+
+    def _create_dimension_result(
+        self,
+        row: dict,
+        dimension_col_name: str,
+        metric_values: dict,
+        evaluation: TestEvaluation,
+        test_params: Optional[dict] = None,
+    ) -> DimensionResult:
+        """Create a DimensionResult from a result row
+
+        This method encapsulates the common pattern of creating dimensional results:
+        1. Extract dimension value
+        2. Format result message
+        3. Get test result values
+        4. Create DimensionResult object
+
+        Args:
+            row: Result row from dimensional query
+            dimension_col_name: Name of the dimension column
+            metric_values: Computed metric values
+            evaluation: Test evaluation result from _evaluate_test_condition
+            test_params: Optional test parameters
+
+        Returns:
+            DimensionResult: Formatted dimension result
+        """
+        dimension_value = self._extract_dimension_value(row)
+
+        result_message = self._format_result_message(
+            metric_values,
+            dimension_info=DimensionInfo(
+                dimension_name=dimension_col_name,
+                dimension_value=dimension_value,
+            ),
+        )
+
+        test_result_values = self._get_test_result_values(metric_values)
+        impact_score = row.get(DIMENSION_IMPACT_SCORE_KEY, 0.0)
+
+        # Get total_rows from evaluation if present, otherwise from metric_values
+        # Import here to avoid circular import (metrics.registry -> utils.importer -> base_test_handler)
+        from metadata.profiler.metrics.registry import Metrics
+
+        total_rows = evaluation.get("total_rows", metric_values.get(Metrics.COUNT.name))
+
+        return self.get_dimension_result_object(
+            dimension_values={dimension_col_name: dimension_value},
+            test_case_status=self.get_test_case_status(evaluation["matched"]),
+            result=result_message,
+            test_result_value=test_result_values,
+            total_rows=total_rows,
+            passed_rows=evaluation["passed_rows"],
+            failed_rows=evaluation["failed_rows"],
+            impact_score=impact_score,
+        )
 
     @staticmethod
     def get_test_case_param_value(

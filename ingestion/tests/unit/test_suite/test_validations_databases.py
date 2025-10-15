@@ -661,20 +661,23 @@ def test_column_values_to_be_in_set_dimensional_validation(create_sqlite_table):
 
     # Mock the main query result and dimensional query results
     # Simulate realistic data: John and Jane are in the allowed set, Alice is not
+    # Note: Using Metrics enum names as keys after refactoring
+    from metadata.profiler.metrics.registry import Metrics
+
     mock_dimensional_data = [
         {
             "dimension_value": "John",
-            "count_in_set": 2,
+            Metrics.COUNT_IN_SET.name: 2,
             "impact_score": 0.3,
         },  # 2 Johns in allowed set
         {
             "dimension_value": "Jane",
-            "count_in_set": 1,
+            Metrics.COUNT_IN_SET.name: 1,
             "impact_score": 0.15,
         },  # 1 Jane in allowed set
         {
             "dimension_value": "Alice",
-            "count_in_set": 0,
+            Metrics.COUNT_IN_SET.name: 0,
             "impact_score": 0.0,
         },  # Alice not in allowed set
     ]

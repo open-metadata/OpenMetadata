@@ -21,7 +21,6 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
-    DIMENSION_NULL_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
@@ -31,7 +30,6 @@ from metadata.data_quality.validations.impact_score import DEFAULT_TOP_DIMENSION
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
-from metadata.generated.schema.tests.basic import TestResultValue
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import Dialects
@@ -125,7 +123,7 @@ class ColumnValuesToBeUniqueValidator(
         Args:
             column: The column being validated
             dimension_col: Single Column object corresponding to the dimension column
-            metrics_to_compute: Dictionary mapping metric names to Metrics objects
+            metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
 
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
@@ -133,12 +131,12 @@ class ColumnValuesToBeUniqueValidator(
         dimension_results = []
 
         try:
-            # Build metric expressions dictionary
+            # Build metric expressions dictionary using enum names as keys
             metric_expressions = {}
             for metric_name, metric in metrics_to_compute.items():
                 metric_instance = metric.value(column)
 
-                if metric_name == "unique_count":
+                if metric_name == Metrics.UNIQUE_COUNT.name:
                     # For UNIQUE_COUNT in dimensional context, use COUNT(DISTINCT column)
                     metric_expressions[metric_name] = func.count(func.distinct(column))
                 elif hasattr(metric_instance, "fn"):
@@ -151,9 +149,12 @@ class ColumnValuesToBeUniqueValidator(
                     )
                     continue
 
-            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions["count"]
+            metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[
+                Metrics.COUNT.name
+            ]
             metric_expressions[DIMENSION_FAILED_COUNT_KEY] = (
-                metric_expressions["count"] - metric_expressions["unique_count"]
+                metric_expressions[Metrics.COUNT.name]
+                - metric_expressions[Metrics.UNIQUE_COUNT.name]
             )
 
             result_rows = self._execute_with_others_aggregation(
@@ -161,40 +162,23 @@ class ColumnValuesToBeUniqueValidator(
             )
 
             for row in result_rows:
-                dimension_value = (
-                    str(row["dimension_value"])
-                    if row["dimension_value"] is not None
-                    else DIMENSION_NULL_LABEL
+                # Build metric_values dict using helper method
+                metric_values = self._build_metric_values_from_row(
+                    row, metrics_to_compute
                 )
 
-                total_count = row.get("count", 0) or 0
-                unique_count = row.get("unique_count", 0) or 0
-                duplicate_count = total_count - unique_count
-                matched = total_count == unique_count
+                # Evaluate test condition
+                evaluation = self._evaluate_test_condition(metric_values)
 
-                impact_score = row.get("impact_score", 0.0)
-
-                dimension_result = self.get_dimension_result_object(
-                    dimension_values={dimension_col.name: dimension_value},
-                    test_case_status=self.get_test_case_status(matched),
-                    result=f"Dimension {dimension_col.name}={dimension_value}: Found valuesCount={total_count} vs. uniqueCount={unique_count}",
-                    test_result_value=[
-                        TestResultValue(name="valuesCount", value=str(total_count)),
-                        TestResultValue(name="uniqueCount", value=str(unique_count)),
-                    ],
-                    total_rows=total_count,
-                    passed_rows=unique_count,
-                    failed_rows=duplicate_count,
-                    impact_score=impact_score,
+                # Create dimension result using helper method
+                dimension_result = self._create_dimension_result(
+                    row, dimension_col.name, metric_values, evaluation
                 )
 
-                # Add to results list
                 dimension_results.append(dimension_result)
 
         except Exception as exc:
-            # Use the same error handling pattern as _run_results
             logger.warning(f"Error executing dimensional query: {exc}")
             logger.debug("Full error details: ", exc_info=True)
-            # Return empty list on error (test continues without dimensions)
 
         return dimension_results

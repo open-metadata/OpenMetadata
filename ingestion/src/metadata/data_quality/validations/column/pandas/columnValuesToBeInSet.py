@@ -13,17 +13,15 @@
 Validator for column value to be in set test case
 """
 
-from typing import Optional
+from typing import List, Optional
 
 import pandas as pd
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
-    DIMENSION_NULL_LABEL,
     DIMENSION_TOTAL_COUNT_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
-    ALLOWED_VALUE_COUNT,
     BaseColumnValuesToBeInSetValidator,
 )
 from metadata.data_quality.validations.impact_score import (
@@ -34,7 +32,7 @@ from metadata.data_quality.validations.impact_score import (
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
 )
-from metadata.generated.schema.tests.basic import TestResultValue
+from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
@@ -93,14 +91,18 @@ class ColumnValuesToBeInSetValidator(
         return self._compute_row_count(self.runner, column)
 
     def _execute_dimensional_validation(
-        self, column, dimension_col, metrics_to_compute, test_params
-    ):
+        self,
+        column: SQALikeColumn,
+        dimension_col: SQALikeColumn,
+        metrics_to_compute: dict,
+        test_params: dict,
+    ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
         Args:
             column: The column being validated
             dimension_col: Single SQALikeColumn object corresponding to the dimension column
-            metrics_to_compute: Dictionary mapping metric names to Metrics objects
+            metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
             test_params: Dictionary with test-specific parameters (allowed_values, match_enum)
 
         Returns:
@@ -119,13 +121,11 @@ class ColumnValuesToBeInSetValidator(
             results_data = []
 
             for dimension_value, group_df in grouped:
-                if pd.isna(dimension_value):
-                    dimension_value = DIMENSION_NULL_LABEL
-                else:
-                    dimension_value = str(dimension_value)
+                dimension_value = self.format_dimension_value(dimension_value)
 
                 count_in_set = group_df[column.name].isin(allowed_values).sum()
 
+                # Use enum names as keys
                 if match_enum:
                     row_count = len(group_df)
                     failed_count = row_count - count_in_set
@@ -133,20 +133,19 @@ class ColumnValuesToBeInSetValidator(
                     results_data.append(
                         {
                             "dimension": dimension_value,
-                            "count_in_set": count_in_set,
+                            Metrics.COUNT_IN_SET.name: count_in_set,
+                            Metrics.ROW_COUNT.name: row_count,
                             DIMENSION_TOTAL_COUNT_KEY: row_count,
                             DIMENSION_FAILED_COUNT_KEY: failed_count,
                         }
                     )
                 else:
-                    # Non-enum mode: we only care about matches, not failures
-                    # Following SQLAlchemy's logic exactly
                     results_data.append(
                         {
                             "dimension": dimension_value,
-                            "count_in_set": count_in_set,
-                            DIMENSION_TOTAL_COUNT_KEY: count_in_set,  # Use count_in_set as total
-                            DIMENSION_FAILED_COUNT_KEY: 0,  # Don't track failures in non-enum mode
+                            Metrics.COUNT_IN_SET.name: count_in_set,
+                            DIMENSION_TOTAL_COUNT_KEY: count_in_set,
+                            DIMENSION_FAILED_COUNT_KEY: 0,
                         }
                     )
 
@@ -165,36 +164,27 @@ class ColumnValuesToBeInSetValidator(
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 
-                for _, row in results_df.iterrows():
-                    dimension_value = row["dimension"]
-                    count_in_set = int(row.get("count_in_set", 0))
+                for row_dict in results_df.to_dict("records"):
+                    # Rename dimension column to dimension_value for helper methods
+                    row_dict["dimension_value"] = row_dict.pop("dimension")
 
-                    if match_enum:
-                        # Enum mode: track actual totals and failures
-                        total_count = int(row.get(DIMENSION_TOTAL_COUNT_KEY, 0))
-                        failed_count = int(row.get(DIMENSION_FAILED_COUNT_KEY, 0))
-                        matched = failed_count == 0  # All values must be in enum
-                    else:
-                        # Non-enum mode: we only care about matches
-                        matched = count_in_set > 0  # Pass if ANY values are in set
-                        total_count = count_in_set  # Use count_in_set as total
-                        failed_count = 0  # Don't track failures
+                    # Build metric_values dict using helper method
+                    metric_values = self._build_metric_values_from_row(
+                        row_dict, metrics_to_compute, test_params
+                    )
 
-                    impact_score = float(row.get("impact_score", 0.0))
+                    # Evaluate test condition
+                    evaluation = self._evaluate_test_condition(
+                        metric_values, test_params
+                    )
 
-                    dimension_result = self.get_dimension_result_object(
-                        dimension_values={dimension_col.name: dimension_value},
-                        test_case_status=self.get_test_case_status(matched),
-                        result=f"Dimension {dimension_col.name}={dimension_value}: Found countInSet={count_in_set}",
-                        test_result_value=[
-                            TestResultValue(
-                                name=ALLOWED_VALUE_COUNT, value=str(count_in_set)
-                            ),
-                        ],
-                        total_rows=total_count,
-                        passed_rows=count_in_set,
-                        failed_rows=failed_count if match_enum else None,
-                        impact_score=impact_score if match_enum else None,
+                    # Create dimension result using helper method
+                    dimension_result = self._create_dimension_result(
+                        row_dict,
+                        dimension_col.name,
+                        metric_values,
+                        evaluation,
+                        test_params,
                     )
 
                     dimension_results.append(dimension_result)
