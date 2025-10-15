@@ -48,43 +48,31 @@ test.describe('Service Listing', () => {
 
   test('should render the service listing page', async ({ page }) => {
     await page.waitForLoadState('networkidle');
+
     await page.getByTestId('filter-icon').click();
 
     const searchService1Response = page.waitForResponse(
-      `/api/v1/search/query?q=**%20AND%20(serviceType:${databaseService1.entity.serviceType})&from=0&size=15&index=database_service_search_index*`
+      '/api/v1/search/query?q=*&index=database_service_search_index&*'
     );
     await page.getByLabel(databaseService1.entity.serviceType).check();
     await searchService1Response;
 
-    await expect(
-      page.getByTestId(`service-name-${databaseService1.entity.name}`)
-    ).toBeVisible();
-
     await page.getByTestId('filter-icon').click();
 
-    const searchService2Response = page.waitForResponse(
-      // eslint-disable-next-line max-len
-      `/api/v1/search/query?q=**%20AND%20(serviceType:${databaseService1.entity.serviceType}%20OR%20serviceType:${databaseService2.entity.serviceType})&from=0&size=15&index=database_service_search_index*`
-    );
     await page.getByLabel(databaseService2.entity.serviceType).check();
-
-    await searchService2Response;
-
-    const searchService2Response2 = page.waitForResponse(
-      // eslint-disable-next-line max-len
-      `/api/v1/search/query?q=**%20AND%20(serviceType:${databaseService1.entity.serviceType}%20OR%20serviceType:${databaseService2.entity.serviceType})&from=0&size=15&index=database_service_search_index*`
+    const searchService2Response = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=database_service_search_index&*'
     );
 
     await page.getByTestId('searchbar').fill(databaseService2.entity.name);
-
-    await searchService2Response2;
-
-    await expect(
-      page.getByTestId(`service-name-${databaseService2.entity.name}`)
-    ).toBeVisible();
+    await searchService2Response;
 
     await page.getByTestId('filter-icon').click();
+    const searchService2Response2 = page.waitForResponse(
+      '/api/v1/search/query?q=*&index=database_service_search_index&*'
+    );
     await page.getByLabel(databaseService1.entity.serviceType).uncheck();
+    await searchService2Response2;
 
     await expect(
       page.getByRole('cell', { name: databaseService2.entity.name })

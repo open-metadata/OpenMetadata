@@ -30,7 +30,6 @@ import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditi
 import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -62,7 +61,6 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
-import org.apache.http.util.EntityUtils;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -138,8 +136,6 @@ import os.org.opensearch.OpenSearchStatusException;
 import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
-import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
-import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.delete.DeleteRequest;
@@ -148,7 +144,6 @@ import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
-import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
@@ -157,16 +152,14 @@ import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
-import os.org.opensearch.client.indices.CreateIndexRequest;
-import os.org.opensearch.client.indices.CreateIndexResponse;
 import os.org.opensearch.client.indices.DataStream;
 import os.org.opensearch.client.indices.DeleteDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamResponse;
-import os.org.opensearch.client.indices.GetIndexRequest;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
-import os.org.opensearch.client.indices.PutMappingRequest;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.transport.rest_client.RestClientTransport;
 import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.ParsingException;
@@ -229,10 +222,15 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
+  // New OpenSearch Java API client
+  @Getter private final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
+  private final boolean isNewClientAvailable;
+
   private final OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private final String clusterAlias;
+  private final OpenSearchIndexManager indexManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -264,13 +262,34 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
-    this.client = createOpenSearchClient(config);
+    RestClientBuilder restClientBuilder = getLowLevelClient(config);
+    this.client = createOpenSearchLegacyClient(restClientBuilder);
+    this.newClient = createOpenSearchNewClient(restClientBuilder);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
+    isNewClientAvailable = newClient != null;
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new OSLineageGraphBuilder(client);
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
+    indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
+  }
+
+  private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
+      RestClientBuilder restClientBuilder) {
+    try {
+      // Create transport and new client
+      RestClientTransport transport =
+          new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
+      os.org.opensearch.client.opensearch.OpenSearchClient newClient =
+          new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
+
+      LOG.info("Successfully initialized new OpenSearch Java API client");
+      return newClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize new Opensearch client", e);
+      return null;
+    }
   }
 
   @Override
@@ -279,226 +298,68 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
+  public boolean isNewClientAvailable() {
+    return isNewClientAvailable;
+  }
+
+  @Override
   public boolean indexExists(String indexName) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(indexName);
-      gRequest.local(false);
-      return client.indices().exists(gRequest, RequestOptions.DEFAULT);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to check if index %s exists due to", indexName), e);
-      return false;
-    }
+    return indexManager.indexExists(indexName);
   }
 
   @Override
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
-    if (Boolean.TRUE.equals(isClientAvailable)) {
-      try {
-        CreateIndexRequest request =
-            new CreateIndexRequest(indexMapping.getIndexName(clusterAlias));
-        request.source(indexMappingContent, XContentType.JSON);
-        CreateIndexResponse createIndexResponse =
-            client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.debug(
-            "{} Created {}",
-            indexMapping.getIndexName(clusterAlias),
-            createIndexResponse.isAcknowledged());
-        // creating alias for indexes
-        createAliases(indexMapping);
-      } catch (Exception e) {
-        LOG.error("Failed to create Open Search indexes due to", e);
-      }
-    } else {
-      LOG.error(
-          "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
-    }
+    indexManager.createIndex(indexMapping, indexMappingContent);
   }
 
   @Override
-  public void addIndexAlias(IndexMapping indexMapping, String... aliasName) {
-    try {
-      IndicesAliasesRequest.AliasActions aliasAction =
-          IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexName(clusterAlias))
-              .aliases(aliasName);
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-    } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
-          e);
-    }
+  public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
+    indexManager.addIndexAlias(indexMapping, aliasNames);
   }
 
   @Override
   public void createAliases(IndexMapping indexMapping) {
-    try {
-      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
-      aliases.add(indexMapping.getAlias(clusterAlias));
-      addIndexAlias(indexMapping, aliases.toArray(new String[0]));
-    } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getIndexName(clusterAlias)),
-          e);
-    }
+    indexManager.createAliases(indexMapping);
   }
 
   @Override
   public void createIndex(String indexName, String indexMappingContent) {
-    if (!Boolean.TRUE.equals(isClientAvailable)) {
-      LOG.error(
-          "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
-      return;
-    }
-    try {
-      CreateIndexRequest request = new CreateIndexRequest(indexName);
-      request.source(indexMappingContent, XContentType.JSON);
-      client.indices().create(request, RequestOptions.DEFAULT);
-      LOG.debug("Created staged index {}", indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to create staged index %s due to", indexName), e);
-    }
+    indexManager.createIndex(indexName, indexMappingContent);
   }
 
   @Override
   public void deleteIndex(String indexName) {
-    if (!Boolean.TRUE.equals(isClientAvailable)) {
-      return;
-    }
-    try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexName);
-      client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug("Deleted index {}", indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to delete index %s due to", indexName), e);
-    }
+    indexManager.deleteIndex(indexName);
   }
 
   @Override
   public Set<String> getAliases(String indexName) {
-    Set<String> aliases = new HashSet<>();
-    if (!Boolean.TRUE.equals(isClientAvailable)) {
-      return aliases;
-    }
-    try {
-      Request request = new Request("GET", String.format("/%s/_alias", indexName));
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
-      JsonNode root = JsonUtils.readTree(responseBody);
-      JsonNode indexNode = root.get(indexName);
-      if (indexNode != null && indexNode.has("aliases")) {
-        JsonNode aliasesNode = indexNode.get("aliases");
-        aliasesNode.fieldNames().forEachRemaining(aliases::add);
-      }
-    } catch (Exception e) {
-      LOG.warn(String.format("Failed to retrieve aliases for index %s", indexName), e);
-    }
-    return aliases;
+    return indexManager.getAliases(indexName);
   }
 
   @Override
   public void addAliases(String indexName, Set<String> aliases) {
-    if (!Boolean.TRUE.equals(isClientAvailable) || nullOrEmpty(aliases)) {
-      return;
-    }
-    try {
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      for (String alias : aliases) {
-        aliasesRequest.addAliasAction(
-            IndicesAliasesRequest.AliasActions.add().index(indexName).alias(alias));
-      }
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-      LOG.debug("Added aliases {} to index {}", aliases, indexName);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to add aliases %s to index %s", aliases, indexName), e);
-    }
+    indexManager.addAliases(indexName, aliases);
   }
 
   @Override
   public void removeAliases(String indexName, Set<String> aliases) {
-    if (!Boolean.TRUE.equals(isClientAvailable) || nullOrEmpty(aliases)) {
-      return;
-    }
-    try {
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      for (String alias : aliases) {
-        aliasesRequest.addAliasAction(
-            IndicesAliasesRequest.AliasActions.remove().index(indexName).alias(alias));
-      }
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-      LOG.debug("Removed aliases {} from index {}", aliases, indexName);
-    } catch (Exception e) {
-      if (e instanceof ResponseException responseException
-          && responseException.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.debug(
-            "Aliases {} not present on index {} while attempting removal (ignored).",
-            aliases,
-            indexName);
-        return;
-      }
-      LOG.error(String.format("Failed to remove aliases %s from index %s", aliases, indexName), e);
-    }
+    indexManager.removeAliases(indexName, aliases);
   }
 
   @Override
   public Set<String> getIndicesByAlias(String aliasName) {
-    Set<String> indices = new HashSet<>();
-    if (!Boolean.TRUE.equals(isClientAvailable) || aliasName == null || aliasName.isBlank()) {
-      return indices;
-    }
-    try {
-      Request request = new Request("GET", String.format("/_alias/%s", aliasName));
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = EntityUtils.toString(response.getEntity());
-      JsonNode root = JsonUtils.readTree(responseBody);
-      root.fieldNames().forEachRemaining(indices::add);
-    } catch (ResponseException ex) {
-      if (ex.getResponse() != null && ex.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.debug("Alias '{}' not found while resolving indices.", aliasName);
-      } else {
-        LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), ex);
-      }
-    } catch (Exception e) {
-      LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), e);
-    }
-    return indices;
+    return indexManager.getIndicesByAlias(aliasName);
   }
 
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
-    try {
-      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName(clusterAlias));
-      JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
-      request.source(JsonUtils.getMap(readProperties));
-      AcknowledgedResponse putMappingResponse =
-          client.indices().putMapping(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
-    } catch (Exception e) {
-      LOG.warn(
-          String.format(
-              "Failed to Update Open Search index %s", indexMapping.getIndexName(clusterAlias)));
-    }
+    indexManager.updateIndex(indexMapping, indexMappingContent);
   }
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
-    try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName(clusterAlias));
-      AcknowledgedResponse deleteIndexResponse =
-          client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Deleted {}",
-          indexMapping.getIndexName(clusterAlias),
-          deleteIndexResponse.isAcknowledged());
-    } catch (Exception e) {
-      LOG.error("Failed to delete Open Search indexes due to", e);
-    }
+    indexManager.deleteIndex(indexMapping);
   }
 
   @Override
@@ -2403,8 +2264,13 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       List<String> teamArray = Arrays.asList(team.split("\\s*,\\s*"));
 
       BoolQueryBuilder teamQueryFilter = QueryBuilders.boolQuery();
-      teamQueryFilter.should(
-          QueryBuilders.termsQuery(DataInsightChartRepository.DATA_TEAM, teamArray));
+      // Charts that use webAnalyticEntityViewReportData store owner in data.owner field
+      // Charts that use entityReportData store owner in data.team field
+      String teamField =
+          DataInsightChartRepository.USES_OWNER_FIELD_FOR_TEAM_FILTER.contains(dataInsightChartName)
+              ? DataInsightChartRepository.DATA_OWNER
+              : DataInsightChartRepository.DATA_TEAM;
+      teamQueryFilter.should(QueryBuilders.termsQuery(teamField, teamArray));
       searchQueryFiler.must(teamQueryFilter);
     }
 
@@ -2654,7 +2520,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  public RestHighLevelClient createOpenSearchClient(ElasticSearchConfiguration esConfig) {
+  private RestClientBuilder getLowLevelClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
         RestClientBuilder restClientBuilder =
@@ -2689,12 +2555,24 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
         restClientBuilder.setCompressionEnabled(true);
         restClientBuilder.setChunkedEnabled(true);
-        return new RestHighLevelClient(restClientBuilder);
+        return restClientBuilder;
       } catch (Exception e) {
-        LOG.error("Failed to create open search client ", e);
+        LOG.error("Failed to create low level rest client ", e);
         return null;
       }
     } else {
+      LOG.error("Failed to create low level rest client as esConfig is null");
+      return null;
+    }
+  }
+
+  public RestHighLevelClient createOpenSearchLegacyClient(RestClientBuilder restClientBuilder) {
+    try {
+      RestHighLevelClient legacyClient = new RestHighLevelClient(restClientBuilder);
+      LOG.info("Successfully initialized legacy OpenSearch Java API client");
+      return legacyClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize legacy OpenSearch client", e);
       return null;
     }
   }
