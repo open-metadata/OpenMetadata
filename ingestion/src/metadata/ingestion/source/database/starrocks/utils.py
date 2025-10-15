@@ -12,17 +12,15 @@
 """
 MySQL SQLAlchemy Helper Methods
 """
-from metadata.utils.logger import ingestion_logger
 import textwrap
 
 from sqlalchemy import sql
 from sqlalchemy.engine import reflection
 
+from metadata.utils.logger import ingestion_logger
 from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_TABLE_COMMENTS,
-    #STARROCKS_VIEW_DEFINITIONS,
 )
-from metadata.utils.sqlalchemy_utils import get_view_definition_wrapper
 logger = ingestion_logger()
 query = textwrap.dedent(
     """
@@ -36,17 +34,6 @@ query = textwrap.dedent(
     from INFORMATION_SCHEMA.tables 
     """
 )
-
-
-#@reflection.cache
-#def get_view_definition(self, connection, table_name, schema=None):
-#    return get_view_definition_wrapper(
-#        self,
-#        connection,
-#        table_name=table_name,
-#        schema=schema,
-#        query=STARROCKS_VIEW_DEFINITIONS,
-#    )
 
 
 def get_table_names_and_type(_, connection, schema=None, **kw):
