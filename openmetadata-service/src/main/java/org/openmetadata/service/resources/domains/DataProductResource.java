@@ -87,7 +87,6 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
   @Override
   public DataProduct addHref(UriInfo uriInfo, DataProduct dataProduct) {
     super.addHref(uriInfo, dataProduct);
-    Entity.withHref(uriInfo, dataProduct.getAssets());
     return dataProduct;
   }
 

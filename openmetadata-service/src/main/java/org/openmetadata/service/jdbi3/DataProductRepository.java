@@ -125,6 +125,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
   @Override
   public void clearFields(DataProduct entity, Fields fields) {
     // Assets field is deprecated - use GET /v1/dataProducts/{id}/assets API
+    entity.setAssets(null);
   }
 
   @Override
