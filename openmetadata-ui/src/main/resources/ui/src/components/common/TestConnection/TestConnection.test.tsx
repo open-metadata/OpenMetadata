@@ -31,6 +31,7 @@ import { StatusType } from '../StatusBadge/StatusBadge.interface';
 import TestConnection from './TestConnection';
 import {
   CREATE_WORKFLOW_PAYLOAD,
+  CREATE_WORKFLOW_PAYLOAD_WITH_RUNNER,
   FORM_DATA,
   TEST_CONNECTION_DEFINITION,
   WORKFLOW_DETAILS,
@@ -190,6 +191,37 @@ describe('Test Connection Component', () => {
 
     expect(addWorkflow).toHaveBeenCalledWith(
       CREATE_WORKFLOW_PAYLOAD,
+      controller.signal
+    );
+
+    expect(triggerWorkflowById).toHaveBeenCalledWith(
+      WORKFLOW_DETAILS.id,
+      controller.signal
+    );
+
+    jest.advanceTimersByTime(2000);
+
+    expect(getWorkflowById).toHaveBeenCalledWith(
+      WORKFLOW_DETAILS.id,
+      controller.signal
+    );
+  });
+
+  it('Should create workflow with ingestionRunner when extraInfo is provided', async () => {
+    jest.useFakeTimers();
+    await act(async () => {
+      render(<TestConnection {...mockProps} extraInfo="custom-runner-name" />);
+    });
+    const controller = new AbortController();
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
+
+    expect(addWorkflow).toHaveBeenCalledWith(
+      CREATE_WORKFLOW_PAYLOAD_WITH_RUNNER,
       controller.signal
     );
 
