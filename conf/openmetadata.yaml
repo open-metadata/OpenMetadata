@@ -177,9 +177,9 @@ objectStorage:
   maxFileSize: 5242880
 
 migrationConfiguration:
+  flywayPath: "./bootstrap/sql/migrations/flyway"
   nativePath: "./bootstrap/sql/migrations/native"
   extensionPath: ""
-  flywayPath: "./bootstrap/sql/migrations/flyway"
 
 # Authorizer Configuration
 authorizerConfiguration:
