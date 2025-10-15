@@ -87,7 +87,7 @@ const NotificationBox = ({
           )
           .sort((a, b) => (b.postTs ?? 0) - (a.postTs ?? 0))[0];
 
-        if (mentionPost && mentionPost.postTs !== undefined) {
+        if (mentionPost?.postTs !== undefined) {
           actualUser = mentionPost.from;
           actualTimestamp = mentionPost.postTs;
           feedType = ThreadType.Conversation;
