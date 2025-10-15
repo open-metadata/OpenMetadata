@@ -85,10 +85,6 @@
       "deprecated": true,
       "$comment": "@deprecated Use GET /v1/domains/{id}/assets API endpoint for paginated access to domain assets"
     },
-    "assetsCount": {
-      "description": "Count of data assets that are part of this domain (including inherited from sub-domains).",
-      "type": "integer"
-    },
     "tags": {
       "description": "Tags associated with the Domain.",
       "type": "array",

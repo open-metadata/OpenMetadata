@@ -9,11 +9,15 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Domain and Data Product specific operations"""
+import traceback
 from typing import Dict, List
 
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.models.custom_pydantic import BaseModel
 from metadata.ingestion.ometa.client import REST
+from metadata.utils.logger import ometa_logger
+
+logger = ometa_logger()
 
 
 class AssetsRequest(BaseModel):
@@ -71,9 +75,14 @@ class OMetaDomainMixin:
         Returns:
             API response as a dictionary containing paginated assets
         """
-        path = f"/dataProducts/name/{name}/assets"
-        params = {"limit": limit, "offset": offset}
-        return self.client.get(path, params)
+        try:
+            path = f"/dataProducts/name/{name}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get data product assets due to {exc}")
+            return {}
 
     def get_domain_assets(self, name: str, limit: int = 10, offset: int = 0) -> Dict:
         """
@@ -87,9 +96,14 @@ class OMetaDomainMixin:
         Returns:
             API response as a dictionary containing paginated assets
         """
-        path = f"/domains/name/{name}/assets"
-        params = {"limit": limit, "offset": offset}
-        return self.client.get(path, params)
+        try:
+            path = f"/domains/name/{name}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get domain assets due to {exc}")
+            return {}
 
     def _handle_data_product_assets(
         self,

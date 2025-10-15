@@ -1118,7 +1118,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
       @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
-          @DefaultValue("100")
+          @DefaultValue("10")
           @Min(1)
           @Max(1000)
           @QueryParam("limit")
@@ -1156,7 +1156,7 @@ public class UserResource extends EntityResource<User, UserRepository> {
           @PathParam("name")
           String name,
       @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
-          @DefaultValue("100")
+          @DefaultValue("10")
           @Min(1)
           @Max(1000)
           @QueryParam("limit")

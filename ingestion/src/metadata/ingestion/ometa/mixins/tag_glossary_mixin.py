@@ -9,9 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """Tag and Glossary Term specific operations"""
+import traceback
 from typing import Dict
 
 from metadata.ingestion.ometa.client import REST
+from metadata.utils.logger import ometa_logger
+
+logger = ometa_logger()
 
 
 class OMetaTagGlossaryMixin:
@@ -31,9 +35,14 @@ class OMetaTagGlossaryMixin:
         Returns:
             API response as a dictionary containing paginated assets
         """
-        path = f"/tags/name/{fqn}/assets"
-        params = {"limit": limit, "offset": offset}
-        return self.client.get(path, params)
+        try:
+            path = f"/tags/name/{fqn}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get tag assets due to {exc}")
+            return {}
 
     def get_glossary_term_assets(
         self, fqn: str, limit: int = 10, offset: int = 0
@@ -49,6 +58,11 @@ class OMetaTagGlossaryMixin:
         Returns:
             API response as a dictionary containing paginated assets
         """
-        path = f"/glossaryTerms/name/{fqn}/assets"
-        params = {"limit": limit, "offset": offset}
-        return self.client.get(path, params)
+        try:
+            path = f"/glossaryTerms/name/{fqn}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get glossary term assets due to {exc}")
+            return {}

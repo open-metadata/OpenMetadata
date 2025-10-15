@@ -14,6 +14,7 @@ Mixin class containing User specific methods
 To be used by OpenMetadata class
 """
 import json
+import traceback
 from functools import lru_cache
 from typing import Optional, Type
 
@@ -226,9 +227,14 @@ class OMetaUserMixin:
         Returns:
             API response as a dictionary containing paginated assets
         """
-        path = f"/users/name/{name}/assets"
-        params = {"limit": limit, "offset": offset}
-        return self.client.get(path, params)
+        try:
+            path = f"/users/name/{name}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get user assets due to {exc}")
+            return {}
 
     def get_team_assets(self, name: str, limit: int = 10, offset: int = 0) -> dict:
         """
@@ -242,6 +248,11 @@ class OMetaUserMixin:
         Returns:
             API response as a dictionary containing paginated assets
         """
-        path = f"/teams/name/{name}/assets"
-        params = {"limit": limit, "offset": offset}
-        return self.client.get(path, params)
+        try:
+            path = f"/teams/name/{name}/assets"
+            params = {"limit": limit, "offset": offset}
+            return self.client.get(path, params)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning(f"Could not get team assets due to {exc}")
+            return {}
