@@ -51,7 +51,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         borderRadius: 0,
         minHeight: 'auto',
         textTransform: 'none' as const,
-        fontSize: '0.875rem',
+        fontSize: '1rem',
         fontWeight: 500,
 
         '&:not(:first-of-type)': {
@@ -169,7 +169,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '12px',
-        fontSize: '0.875rem',
+        fontSize: '1rem',
         fontWeight: 500,
         color: colors.gray[500],
         backgroundColor: 'transparent',
@@ -275,7 +275,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         cursor: 'pointer' as const,
         margin: '1px 6px',
         padding: '8px 10px',
-        fontSize: '0.875rem',
+        fontSize: '1rem',
         fontWeight: 600,
         color: colors.gray[700],
         backgroundColor: 'transparent',
@@ -328,15 +328,15 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         minHeight: '56px',
       },
       selectLabel: {
-        fontSize: '0.875rem',
+        fontSize: '1rem',
         color: colors.gray[600],
       },
       displayedRows: {
-        fontSize: '0.875rem',
+        fontSize: '1rem',
         color: colors.gray[600],
       },
       select: {
-        fontSize: '0.875rem',
+        fontSize: '1rem',
       },
       actions: {
         marginLeft: '20px',
