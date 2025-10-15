@@ -259,6 +259,9 @@ public class JwtFilter implements ContainerRequestFilter {
     }
     // Extract the bearer token
     if (source.startsWith(TOKEN_PREFIX)) {
+      if (source.length() <= TOKEN_PREFIX.length() + 1) {
+        throw AuthenticationException.getTokenNotPresentException();
+      }
       return source.substring(TOKEN_PREFIX.length() + 1);
     }
     throw AuthenticationException.getTokenNotPresentException();
@@ -271,6 +274,9 @@ public class JwtFilter implements ContainerRequestFilter {
     }
     // Extract the bearer token
     if (tokenFromHeader.startsWith(TOKEN_PREFIX)) {
+      if (tokenFromHeader.length() <= TOKEN_PREFIX.length() + 1) {
+        throw AuthenticationException.getTokenNotPresentException();
+      }
       return tokenFromHeader.substring(TOKEN_PREFIX.length() + 1);
     }
     throw AuthenticationException.getTokenNotPresentException();
