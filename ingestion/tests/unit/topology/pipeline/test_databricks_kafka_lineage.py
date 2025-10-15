@@ -350,16 +350,16 @@ class TestKafkaLineageIntegration(unittest.TestCase):
         }
         self.mock_client.get_pipeline_details.return_value = pipeline_config
 
-        # Mock notebook source code
+        # Mock notebook source code - realistic DLT pattern with Kafka
         notebook_source = """
         import dlt
 
         topic_name = "dev.ern.cashout.moneyRequest_v1"
         entity_name = "moneyRequest"
 
-        @dlt.table(name=materializer.generate_event_log_table_name())
+        @dlt.table(name="moneyRequest")
         def event_log():
-            return df
+            return spark.readStream.format("kafka").option("subscribe", topic_name).load()
         """
         self.mock_client.export_notebook_source.return_value = notebook_source
 
