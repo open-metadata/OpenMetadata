@@ -17,8 +17,12 @@ const IncidentsTab = () => {
   const { table } = useTableProfiler();
 
   return (
-    <div className="p-b-lg p-t-md">
-      <IncidentManager isIncidentPage={false} tableDetails={table} />
+    <div className="p-b-lg">
+      <IncidentManager
+        isDateRangePickerVisible={false}
+        isIncidentPage={false}
+        tableDetails={table}
+      />
     </div>
   );
 };

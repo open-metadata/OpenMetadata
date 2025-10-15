@@ -22,6 +22,7 @@ import {
 import { AxiosError } from 'axios';
 import { find, first, isString, last, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
+import QueryString from 'qs';
 import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
@@ -40,6 +41,7 @@ import {
   ColumnProfile,
 } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
 import {
   formatNumberWithComma,
@@ -64,15 +66,14 @@ import { useTableProfiler } from './TableProfilerProvider';
 
 interface SingleColumnProfileProps {
   activeColumnFqn: string;
-  dateRangeObject: DateRangeObject;
   tableDetails?: Table;
 }
 
 const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   activeColumnFqn,
-  dateRangeObject,
   tableDetails,
 }) => {
+  const location = useCustomLocation();
   const {
     isProfilerDataLoading,
     customMetric: tableCustomMetric,
@@ -81,6 +82,27 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
   } = useTableProfiler();
   const theme = useTheme();
   const { t } = useTranslation();
+
+  const dateRangeObject = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    const startTs = searchData.startTs
+      ? Number(searchData.startTs)
+      : DEFAULT_RANGE_DATA.startTs;
+    const endTs = searchData.endTs
+      ? Number(searchData.endTs)
+      : DEFAULT_RANGE_DATA.endTs;
+
+    return {
+      startTs,
+      endTs,
+      key: searchData.key as string,
+      title: searchData.title as string,
+    } as DateRangeObject;
+  }, [location.search]);
   const profilerDocsLink =
     documentationLinksClassBase.getDocsURLS()
       .DATA_QUALITY_PROFILER_WORKFLOW_DOCS;

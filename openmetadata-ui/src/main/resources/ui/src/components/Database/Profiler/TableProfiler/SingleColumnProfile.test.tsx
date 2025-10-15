@@ -295,8 +295,6 @@ const defaultTableProfilerContext = {
   fetchAllTests: jest.fn(),
   onCustomMetricUpdate: jest.fn(),
   isProfilingEnabled: true,
-  dateRangeObject: { startTs: 0, endTs: 0, key: '' },
-  onDateRangeChange: jest.fn(),
   testCasePaging: {
     currentPage: 1,
     paging: { total: 0 },
@@ -346,7 +344,6 @@ describe('SingleColumnProfile', () => {
 
   const defaultProps = {
     activeColumnFqn: 'db.schema.test_table.test_column',
-    dateRangeObject: mockDateRangeObject,
     tableDetails: mockTableDetails,
   };
 
@@ -480,13 +477,8 @@ describe('SingleColumnProfile', () => {
       });
     });
 
-    it('should fetch data with default range when dateRangeObject is not provided', async () => {
-      render(
-        <SingleColumnProfile
-          {...defaultProps}
-          dateRangeObject={undefined as unknown as DateRangeObject}
-        />
-      );
+    it('should fetch data with default range when query params are not provided', async () => {
+      render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledWith(
@@ -528,22 +520,19 @@ describe('SingleColumnProfile', () => {
       });
     });
 
-    it('should refetch data when dateRangeObject changes', async () => {
+    it('should refetch data when URL query params change', async () => {
       const { rerender } = render(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(1);
       });
 
-      const newDateRange = {
-        startTs: 1703894400000,
-        endTs: 1703980800000,
-        key: 'last_1_day',
-      };
+      (useCustomLocation as jest.Mock).mockReturnValue({
+        search: '?startTs=1703894400000&endTs=1703980800000&key=last_1_day',
+        pathname: '/path',
+      });
 
-      rerender(
-        <SingleColumnProfile {...defaultProps} dateRangeObject={newDateRange} />
-      );
+      rerender(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(2);

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DateRangeObject } from 'Models';
 import { ReactNode } from 'react';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
@@ -52,8 +51,6 @@ export interface TableProfilerContextInterface {
   fetchAllTests: (params?: ListTestCaseParamsBySearch) => Promise<void>;
   onCustomMetricUpdate: (table: Table) => void;
   isProfilingEnabled: boolean;
-  dateRangeObject: DateRangeObject;
-  onDateRangeChange: (dateRange: DateRangeObject) => void;
   testCasePaging: UsePagingInterface;
   table?: Table;
   isTestCaseDrawerOpen: boolean;

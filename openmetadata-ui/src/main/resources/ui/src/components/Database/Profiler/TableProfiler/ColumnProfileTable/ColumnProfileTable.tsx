@@ -74,7 +74,6 @@ const ColumnProfileTable = () => {
     permissions,
     isProfilingEnabled,
     tableProfiler,
-    dateRangeObject,
     testCaseSummary,
   } = useTableProfiler();
 
@@ -442,7 +441,6 @@ const ColumnProfileTable = () => {
       ) : (
         <SingleColumnProfile
           activeColumnFqn={activeColumnFqn}
-          dateRangeObject={dateRangeObject}
           tableDetails={tableDetailsWithColumns}
         />
       )}

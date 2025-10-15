@@ -62,10 +62,6 @@ jest.mock('../../../../../constants/profiler.constant', () => ({
 }));
 jest.mock('../TableProfilerProvider', () => ({
   useTableProfiler: jest.fn().mockReturnValue({
-    dateRangeObject: {
-      startDate: '2022-01-01',
-      endDate: '2022-01-02',
-    },
     isProfilerDataLoading: false,
     permissions: {
       EditAll: true,

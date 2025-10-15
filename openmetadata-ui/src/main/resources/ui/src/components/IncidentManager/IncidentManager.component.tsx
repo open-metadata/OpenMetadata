@@ -15,7 +15,7 @@ import { Form, Select } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isEqual, isUndefined, pick, startCase } from 'lodash';
+import { isEqual, isUndefined, omit, pick, startCase } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -92,6 +92,7 @@ import { IncidentManagerProps } from './IncidentManager.interface';
 const IncidentManager = ({
   isIncidentPage = true,
   tableDetails,
+  isDateRangePickerVisible = true,
 }: IncidentManagerProps) => {
   const location = useCustomLocation();
   const navigate = useNavigate();
@@ -103,7 +104,9 @@ const IncidentManager = ({
     const searchData = QueryString.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
-    const data = isUndefined(searchData) ? {} : searchData;
+    const data = isUndefined(searchData)
+      ? {}
+      : omit(searchData, ['key', 'title']);
 
     return data as Partial<TestCaseIncidentStatusParams>;
   }, [location.search]);
@@ -617,7 +620,7 @@ const IncidentManager = ({
             </Form.Item>
           </Box>
         </Stack>
-        {true && (
+        {isDateRangePickerVisible && (
           <DatePickerMenu
             showSelectedCustomRange
             defaultDateRange={defaultRange}

@@ -15,6 +15,7 @@ import { Box, Grid, Stack } from '@mui/material';
 import { AxiosError } from 'axios';
 import { pick } from 'lodash';
 import { DateRangeObject } from 'Models';
+import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -24,6 +25,7 @@ import {
 } from '../../../../../constants/profiler.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { TableProfile } from '../../../../../generated/entity/data/table';
+import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
 import {
   getSystemProfileList,
@@ -53,16 +55,37 @@ const TableProfilerChart = ({
   showHeader = true,
   tableDetails,
 }: TableProfilerChartProps) => {
+  const location = useCustomLocation();
   const {
     isProfilerDataLoading: isSummaryLoading,
     permissions,
     overallSummary,
     isProfilingEnabled,
     customMetric: tableCustomMetric,
-    dateRangeObject = DEFAULT_RANGE_DATA,
   } = useTableProfiler();
 
   const { fqn: datasetFQN } = useFqn();
+
+  const dateRangeObject = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    const startTs = searchData.startTs
+      ? Number(searchData.startTs)
+      : DEFAULT_RANGE_DATA.startTs;
+    const endTs = searchData.endTs
+      ? Number(searchData.endTs)
+      : DEFAULT_RANGE_DATA.endTs;
+
+    return {
+      startTs,
+      endTs,
+      key: searchData.key as string,
+      title: searchData.title as string,
+    } as DateRangeObject;
+  }, [location.search]);
 
   const { t } = useTranslation();
   const customMetrics = useMemo(

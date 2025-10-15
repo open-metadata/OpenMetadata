@@ -21,7 +21,7 @@ import {
   Typography,
   useTheme,
 } from '@mui/material';
-import { isEmpty, isEqual } from 'lodash';
+import { isEmpty, isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import React, { useMemo, useState } from 'react';
@@ -55,11 +55,18 @@ const TabFilters = () => {
   const { subTab: activeTab = ProfilerTabPath.TABLE_PROFILE } =
     useParams<{ subTab: ProfilerTabPath }>();
 
-  const { formType, activeColumnFqn } = useMemo(() => {
+  const { formType, activeColumnFqn, dateRangeObject } = useMemo(() => {
     const param = location.search;
     const searchData = QueryString.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
+
+    const startTs = searchData.startTs
+      ? Number(searchData.startTs)
+      : DEFAULT_RANGE_DATA.startTs;
+    const endTs = searchData.endTs
+      ? Number(searchData.endTs)
+      : DEFAULT_RANGE_DATA.endTs;
 
     return {
       activeColumnFqn: searchData.activeColumnFqn as string,
@@ -67,9 +74,16 @@ const TabFilters = () => {
         activeTab === ProfilerTabPath.COLUMN_PROFILE
           ? TestLevel.COLUMN
           : TestLevel.TABLE,
+      dateRangeObject: {
+        startTs,
+        endTs,
+        key: searchData.key as string,
+        title: searchData.title as string,
+      } as DateRangeObject,
     } as {
       activeColumnFqn: string;
       formType: TestLevel | ProfilerDashboardType;
+      dateRangeObject: DateRangeObject;
     };
   }, [location.search, activeTab, isTourOpen]);
 
@@ -88,8 +102,6 @@ const TabFilters = () => {
     permissions,
     isTableDeleted = false,
     onSettingButtonClick,
-    dateRangeObject = DEFAULT_RANGE_DATA,
-    onDateRangeChange,
     onTestCaseDrawerOpen,
     table,
   } = useTableProfiler();
@@ -114,8 +126,32 @@ const TabFilters = () => {
   };
 
   const handleDateRangeChange = (value: DateRangeObject) => {
-    if (!isEqual(value, dateRangeObject)) {
-      onDateRangeChange(value);
+    const updatedFilter = pick(value, ['startTs', 'endTs', 'key', 'title']);
+    const existingFilters = pick(dateRangeObject, ['startTs', 'endTs']);
+
+    if (!isEqual(existingFilters, pick(updatedFilter, ['startTs', 'endTs']))) {
+      const param = location.search;
+      const searchData = QueryString.parse(
+        param.startsWith('?') ? param.substring(1) : param
+      );
+
+      navigate(
+        {
+          pathname: getEntityDetailsPath(
+            EntityType.TABLE,
+            datasetFQN,
+            EntityTabs.PROFILER,
+            activeTab
+          ),
+          search: QueryString.stringify({
+            ...searchData,
+            ...updatedFilter,
+          }),
+        },
+        {
+          replace: true,
+        }
+      );
     }
   };
 

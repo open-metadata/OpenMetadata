@@ -13,7 +13,6 @@
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { DateTime } from 'luxon';
-import { DateRangeObject } from 'Models';
 import {
   createContext,
   useCallback,
@@ -29,10 +28,7 @@ import { ReactComponent as RedCircleIcon } from '../../../../assets/svg/red-circ
 import { ReactComponent as SuccessTicketIcon } from '../../../../assets/svg/success-ticket-with-check.svg';
 import { ReactComponent as YellowCalendarIcon } from '../../../../assets/svg/yellow-calendar.icon.svg';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
-import {
-  DEFAULT_RANGE_DATA,
-  DEFAULT_SORT_ORDER,
-} from '../../../../constants/profiler.constant';
+import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';
 import { useTourProvider } from '../../../../context/TourProvider/TourProvider';
 import { TabSpecificField } from '../../../../enums/entity.enum';
 import { Table } from '../../../../generated/entity/data/table';
@@ -90,8 +86,6 @@ export const TableProfilerProvider = ({
   const [isProfilerDataLoading, setIsProfilerDataLoading] = useState(true);
   const [allTestCases, setAllTestCases] = useState<TestCase[]>([]);
   const [settingModalVisible, setSettingModalVisible] = useState(false);
-  const [dateRangeObject, setDateRangeObject] =
-    useState<DateRangeObject>(DEFAULT_RANGE_DATA);
   const [isTestCaseDrawerOpen, setIsTestCaseDrawerOpen] = useState(false);
   const [testLevel, setTestLevel] = useState<TestLevel>();
   const [table, setTable] = useState<Table | undefined>(tableEntity);
@@ -182,10 +176,6 @@ export const TableProfilerProvider = ({
       },
     ];
   }, [tableProfiler]);
-
-  const handleDateRangeChange = (data: DateRangeObject) => {
-    setDateRangeObject(data);
-  };
 
   const handleOpenTestCaseDrawer = (type: TestLevel) => {
     setIsTestCaseDrawerOpen(true);
@@ -361,8 +351,6 @@ export const TableProfilerProvider = ({
       isProfilingEnabled: !isUndefined(tableProfiler?.profile),
       customMetric,
       onCustomMetricUpdate: handleUpdateCustomMetrics,
-      onDateRangeChange: handleDateRangeChange,
-      dateRangeObject,
       testCasePaging,
       table,
       testCaseSummary,
@@ -379,7 +367,6 @@ export const TableProfilerProvider = ({
     overallSummary,
     onTestCaseUpdate,
     customMetric,
-    dateRangeObject,
     testCasePaging,
     table,
     testCaseSummary,
