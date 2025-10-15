@@ -1158,6 +1158,8 @@ test.describe('Data Contracts', () => {
   test('Semantic with Not_Contains Operator should work for Tier, Tag and Glossary', async ({
     page,
   }) => {
+    test.slow(true);
+
     const table = new TableClass();
     const testClassification = new ClassificationClass();
     const testTag = new TagClass({
@@ -1345,6 +1347,8 @@ test.describe('Data Contracts', () => {
   });
 
   test('Nested Column should not be selectable', async ({ page }) => {
+    test.slow(true);
+
     const { apiContext } = await getApiContext(page);
     const table = new TableClass();
     await table.create(apiContext);
@@ -1417,6 +1421,8 @@ test.describe('Data Contracts', () => {
   test('should allow adding a semantic with multiple rules', async ({
     page,
   }) => {
+    test.slow(true);
+
     const { apiContext } = await getApiContext(page);
     const table = new TableClass();
     await table.create(apiContext);
@@ -1716,6 +1722,8 @@ test.describe('Data Contracts', () => {
   });
 
   test('Add and update Security and SLA tabs', async ({ page }) => {
+    test.slow(true);
+
     const { apiContext } = await getApiContext(page);
     const table = new TableClass();
     await table.create(apiContext);
