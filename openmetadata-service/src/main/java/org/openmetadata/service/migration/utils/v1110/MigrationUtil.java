@@ -120,7 +120,7 @@ public class MigrationUtil {
                        WHEN script LIKE 'v%__.sql' THEN CONCAT('bootstrap/sql/migrations/flyway/mysql/', script)
                        ELSE CONCAT('bootstrap/sql/migrations/flyway/mysql/v', version, '__', REPLACE(LOWER(description), ' ', '_'), '.sql')
                      END as migrationfilename,
-                     CAST(checksum as CHAR(256)) as checksum,
+                     '0' as checksum,
                      installed_on,
                      NULL as metrics
               FROM DATABASE_CHANGE_LOG
@@ -134,7 +134,7 @@ public class MigrationUtil {
                        WHEN script LIKE 'v%__.sql' THEN 'bootstrap/sql/migrations/flyway/postgres/' || script
                        ELSE 'bootstrap/sql/migrations/flyway/postgres/v' || version || '__' || REPLACE(LOWER(description), ' ', '_') || '.sql'
                      END as migrationfilename,
-                     checksum::VARCHAR(256) as checksum,
+                     '0' as checksum,
                      installed_on,
                      NULL as metrics
               FROM "DATABASE_CHANGE_LOG"
