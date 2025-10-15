@@ -104,7 +104,7 @@ export enum EntityReferenceFields {
   GLOSSARY_TERM = 'glossaryTerm',
   TIER = 'tier',
   DOMAIN = 'domains',
-  DATA_PRODUCT = 'dataProduct',
+  DATA_PRODUCTS = 'dataProducts',
   TABLE_TYPE = 'tableType',
   EXTENSION = 'extension',
   SERVICE = 'service.name',
