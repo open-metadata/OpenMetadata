@@ -212,6 +212,7 @@ test.describe('Settings Navigation Page Tests', () => {
     //   Make changes
     const domainSwitch = page
       .locator('.ant-tree-title:has-text("Domains")')
+      .first()
       .locator('.ant-switch');
 
     await domainSwitch.click();
