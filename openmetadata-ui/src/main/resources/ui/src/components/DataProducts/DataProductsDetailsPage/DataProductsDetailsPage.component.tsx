@@ -21,12 +21,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
-import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
-import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -44,7 +42,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
-import { searchData } from '../../../rest/miscAPI';
+import { searchQuery } from '../../../rest/searchAPI';
 import { getEntityDeleteMessage } from '../../../utils/CommonUtils';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
@@ -58,13 +56,11 @@ import {
   getEntityDetailsPath,
   getVersionPath,
 } from '../../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../../utils/StringsUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
+import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import { ManageButtonItemLabel } from '../../common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../common/ResizablePanels/ResizablePanels';
 import TabsLabel from '../../common/TabsLabel/TabsLabel.component';
@@ -188,20 +184,19 @@ const DataProductsDetailsPage = ({
   const fetchDataProductAssets = async () => {
     if (dataProduct) {
       try {
-        const encodedFqn = getEncodedFqn(
-          escapeESReservedCharacters(dataProduct.fullyQualifiedName)
-        );
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(dataProducts.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.ALL
-        );
+        const queryFilter = getTermQuery({
+          'dataProducts.fullyQualifiedName':
+            dataProduct.fullyQualifiedName ?? '',
+        });
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter,
+          searchIndex: SearchIndex.ALL,
+        });
 
-        setAssetCount(res.data.hits.total.value ?? 0);
+        setAssetCount(res.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
         showErrorToast(
@@ -510,23 +505,13 @@ const DataProductsDetailsPage = ({
             entityType={EntityType.DATA_PRODUCT}
             handleFollowingClick={handleFollowingClick}
             icon={
-              dataProduct.style?.iconURL ? (
-                <img
-                  className="align-middle"
-                  data-testid="icon"
-                  height={36}
-                  src={dataProduct.style.iconURL}
-                  width={32}
-                />
-              ) : (
-                <DataProductIcon
-                  className="align-middle"
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
-                  name="folder"
-                  width={32}
-                />
-              )
+              <EntityAvatar
+                entity={{
+                  ...dataProduct,
+                  entityType: 'dataProduct',
+                }}
+                size={36}
+              />
             }
             isFollowing={isFollowing}
             isFollowingLoading={isFollowingLoading}

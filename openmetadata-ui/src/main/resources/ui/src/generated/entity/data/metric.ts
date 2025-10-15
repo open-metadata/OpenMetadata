@@ -99,6 +99,10 @@ export interface Metric {
      */
     relatedMetrics?: EntityReference[];
     /**
+     * Reviewers of this Metric.
+     */
+    reviewers?: EntityReference[];
+    /**
      * Tags for this chart.
      */
     tags?: TagLabel[];
@@ -168,6 +172,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */

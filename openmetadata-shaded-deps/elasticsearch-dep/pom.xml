@@ -27,6 +27,24 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <!-- New Elasticsearch Java API Client -->
+        <dependency>
+            <groupId>co.elastic.clients</groupId>
+            <artifactId>elasticsearch-java</artifactId>
+            <version>8.11.0</version>
+            <optional>true</optional>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.eclipse.parsson</groupId>
+                    <artifactId>parsson</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
     <profiles>
         <profile>
@@ -121,6 +139,15 @@
                         <relocation>
                             <pattern>org.apache.lucene</pattern>
                             <shadedPattern>es.org.apache.lucene</shadedPattern>
+                        </relocation>
+                        <!-- New Elasticsearch Java API Client relocations -->
+                        <relocation>
+                            <pattern>co.elastic</pattern>
+                            <shadedPattern>es.co.elastic</shadedPattern>
+                        </relocation>
+                        <relocation>
+                            <pattern>co.elastic.clients</pattern>
+                            <shadedPattern>es.co.elastic.clients</shadedPattern>
                         </relocation>
                         <relocation>
                             <pattern>META-INF/versions/9/org/apache/logging/log4j/</pattern>

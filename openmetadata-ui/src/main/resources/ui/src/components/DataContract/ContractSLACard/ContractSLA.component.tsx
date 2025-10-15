@@ -15,16 +15,38 @@ import { Col, Divider, Typography } from 'antd';
 import { isEmpty, lowerCase } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/ic-check-circle-2.svg';
+import { ReactComponent as DefaultIcon } from '../../../assets/svg/ic-task.svg';
 import { DATA_CONTRACT_SLA } from '../../../constants/DataContract.constants';
 import { DataContract } from '../../../generated/entity/data/dataContract';
+import { Table } from '../../../generated/entity/data/table';
 import { Transi18next } from '../../../utils/CommonUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import './contract-sla.less';
 
 const ContractSLA: React.FC<{
   contract: DataContract;
 }> = ({ contract }) => {
   const { t } = useTranslation();
+  const { data: tableData } = useGenericContext();
+
+  const tableColumnNameMap = useMemo(() => {
+    const columns = (tableData as Table).columns;
+    if (!isEmpty(columns)) {
+      const tableColumnNamesObject = new Map<string, string>();
+
+      columns.forEach((item) =>
+        tableColumnNamesObject.set(
+          item.fullyQualifiedName ?? '',
+          getEntityName(item)
+        )
+      );
+
+      return tableColumnNamesObject;
+    }
+
+    return null;
+  }, [tableData]);
 
   const renderSLAData = useMemo(() => {
     if (isEmpty(contract.sla)) {
@@ -51,7 +73,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.availabilityTime) {
       slaList.push({
         key: DATA_CONTRACT_SLA.TIME_AVAILABILITY,
         label: (
@@ -67,7 +89,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.maxLatency) {
       slaList.push({
         key: DATA_CONTRACT_SLA.MAX_LATENCY,
         label: (
@@ -85,7 +107,7 @@ const ContractSLA: React.FC<{
       });
     }
 
-    if (contract.sla?.refreshFrequency) {
+    if (contract.sla?.retention) {
       slaList.push({
         key: DATA_CONTRACT_SLA.RETENTION,
         label: (
@@ -103,8 +125,24 @@ const ContractSLA: React.FC<{
       });
     }
 
+    if (contract.sla?.columnName) {
+      slaList.push({
+        key: DATA_CONTRACT_SLA.COLUMN_NAME,
+        label: (
+          <Transi18next
+            i18nKey="message.column-name-sla-description"
+            renderElement={<strong />}
+            values={{
+              label: t('label.column'),
+              data: tableColumnNameMap?.get(contract.sla?.columnName ?? ''),
+            }}
+          />
+        ),
+      });
+    }
+
     return slaList;
-  }, [contract.sla]);
+  }, [contract.sla, tableColumnNameMap]);
 
   if (isEmpty(renderSLAData)) {
     return null;
@@ -125,7 +163,7 @@ const ContractSLA: React.FC<{
       <div className="sla-item-container">
         {renderSLAData.map((item) => (
           <div className="sla-item" key={item.key}>
-            <Icon className="sla-icon" component={CheckIcon} />
+            <Icon className="sla-icon" component={DefaultIcon} />
             <span className="sla-description">{item.label}</span>
           </div>
         ))}

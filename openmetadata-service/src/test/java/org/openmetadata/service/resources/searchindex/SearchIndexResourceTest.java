@@ -28,11 +28,8 @@ import static org.openmetadata.service.Entity.TAG;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
 import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
-import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.*;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
-import static org.openmetadata.service.util.TestUtils.assertListNotNull;
-import static org.openmetadata.service.util.TestUtils.assertListNull;
-import static org.openmetadata.service.util.TestUtils.assertResponse;
 
 import es.org.elasticsearch.index.query.QueryBuilders;
 import es.org.elasticsearch.script.Script;
@@ -1059,15 +1056,20 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
       createdSearchIndexes.add(searchIndex);
     }
 
-    WebTarget target =
-        getResource("searchIndexes").queryParam("fields", "tags").queryParam("limit", "50");
+    WebTarget target = getResource("searchIndexes").queryParam("fields", "tags");
 
-    SearchIndexResource.SearchIndexList searchIndexList =
-        TestUtils.get(target, SearchIndexResource.SearchIndexList.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(searchIndexList.getData());
+    List<SearchIndex> searchIndexList =
+        TestUtils.getAllPages(
+            target,
+            SearchIndexResource.SearchIndexList.class,
+            "after",
+            "limit",
+            50,
+            ADMIN_AUTH_HEADERS);
+    assertListNotEmpty(searchIndexList);
 
     List<SearchIndex> ourSearchIndexes =
-        searchIndexList.getData().stream()
+        searchIndexList.stream()
             .filter(
                 si -> createdSearchIndexes.stream().anyMatch(csi -> csi.getId().equals(si.getId())))
             .collect(Collectors.toList());
@@ -1094,19 +1096,24 @@ public class SearchIndexResourceTest extends EntityResourceTest<SearchIndex, Cre
       }
     }
 
-    target =
-        getResource("searchIndexes").queryParam("fields", "fields,tags").queryParam("limit", "50");
+    target = getResource("searchIndexes").queryParam("fields", "fields,tags");
 
     searchIndexList =
-        TestUtils.get(target, SearchIndexResource.SearchIndexList.class, ADMIN_AUTH_HEADERS);
-    assertNotNull(searchIndexList.getData());
+        TestUtils.getAllPages(
+            target,
+            SearchIndexResource.SearchIndexList.class,
+            "after",
+            "limit",
+            50,
+            ADMIN_AUTH_HEADERS);
+    assertListNotEmpty(searchIndexList);
 
     // Verify at least one of our created search indexes is in the response
     ourSearchIndexes =
-        searchIndexList.getData().stream()
+        searchIndexList.stream()
             .filter(
                 si -> createdSearchIndexes.stream().anyMatch(csi -> csi.getId().equals(si.getId())))
-            .collect(Collectors.toList());
+            .toList();
 
     assertFalse(
         ourSearchIndexes.isEmpty(),

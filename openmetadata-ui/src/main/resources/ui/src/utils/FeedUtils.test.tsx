@@ -25,38 +25,21 @@ import {
   suggestions,
 } from './FeedUtils';
 
-jest.mock('../rest/miscAPI', () => ({
-  getSearchedUsers: jest.fn().mockResolvedValue({
-    data: {
-      hits: {
-        hits: [
-          {
-            _source: {
-              entityType: 'User',
-              name: 'John Doe',
-              deleted: false,
-            },
-            _id: '1',
+jest.mock('../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: [
+        {
+          _source: {
+            entityType: 'Table',
+            name: 'Table1',
+            displayName: 'Table 1',
+            fullyQualifiedName: 'db.schema.Table1',
           },
-        ],
-      },
-    },
-  }),
-  searchData: jest.fn().mockResolvedValue({
-    data: {
-      hits: {
-        hits: [
-          {
-            _source: {
-              entityType: 'Table',
-              name: 'Table1',
-              displayName: 'Table 1',
-              fullyQualifiedName: 'db.schema.Table1',
-            },
-            _id: '1',
-          },
-        ],
-      },
+          _id: '1',
+          _index: 'team_search_index',
+        },
+      ],
     },
   }),
 }));

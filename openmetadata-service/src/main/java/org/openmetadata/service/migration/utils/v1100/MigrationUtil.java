@@ -1,16 +1,14 @@
 package org.openmetadata.service.migration.utils.v1100;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.DataContract;
-import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 @Slf4j
@@ -18,12 +16,13 @@ public class MigrationUtil {
   private static final int BATCH_SIZE = 500;
   private final Handle handle;
   private final ConnectionType connectionType;
-  private final CollectionDAO collectionDAO;
 
-  public MigrationUtil(CollectionDAO collectionDAO, Handle handle, ConnectionType connectionType) {
+  private static final String ADMIN_USER_NAME = "admin";
+  private static final String GLOSSARY_TERM_APPROVAL_WORKFLOW = "GlossaryTermApprovalWorkflow";
+
+  public MigrationUtil(Handle handle, ConnectionType connectionType) {
     this.handle = handle;
     this.connectionType = connectionType;
-    this.collectionDAO = collectionDAO;
   }
 
   public void migrateEntityStatusForExistingEntities() {
@@ -316,111 +315,61 @@ public class MigrationUtil {
     return totalMigrated;
   }
 
-  public void migrateTestCaseDataContractReferences() {
-    LOG.info("===== STARTING TEST CASE DATA CONTRACT MIGRATION =====");
-
-    int totalTestCasesMigrated = 0;
-    int dataContractsProcessed = 0;
-    int pageSize = 1000;
-    int offset = 0;
+  public void cleanupOrphanedDataContracts() {
+    LOG.info("Starting cleanup of orphaned data contracts...");
 
     try {
-      // Step 1: Paginate through all data contracts using DAO
-      while (true) {
-        List<String> dataContractJsons =
-            collectionDAO.dataContractDAO().listAfterWithOffset(pageSize, offset);
-        if (dataContractJsons.isEmpty()) {
-          break;
-        }
-        offset += pageSize;
+      DataContractRepository dataContractRepository =
+          (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
 
-        LOG.info(
-            "Processing {} data contracts in batch (offset: {})",
-            dataContractJsons.size(),
-            offset - pageSize);
+      List<DataContract> allDataContracts =
+          dataContractRepository.listAll(
+              dataContractRepository.getFields("id,entity"), new ListFilter(Include.ALL));
 
-        for (String dataContractJson : dataContractJsons) {
+      if (allDataContracts.isEmpty()) {
+        LOG.info("✓ No data contracts found - cleanup complete");
+        return;
+      }
+
+      int deletedCount = 0;
+      int totalContracts = allDataContracts.size();
+
+      LOG.info("Found {} data contracts to validate", totalContracts);
+
+      for (DataContract dataContract : allDataContracts) {
+        try {
+          // Try to get the associated entity
+          Entity.getEntityReferenceById(
+              dataContract.getEntity().getType(),
+              dataContract.getEntity().getId(),
+              Include.NON_DELETED);
+
+        } catch (EntityNotFoundException e) {
+          LOG.info(
+              "Deleting orphaned data contract '{}' - associated {} entity with ID {} not found",
+              dataContract.getFullyQualifiedName(),
+              dataContract.getEntity().getType(),
+              dataContract.getEntity().getId());
+
           try {
-            DataContract dataContract = JsonUtils.readValue(dataContractJson, DataContract.class);
-
-            // Step 2: Filter - only process contracts with quality expectations
-            if (nullOrEmpty(dataContract.getQualityExpectations())) {
-              LOG.debug(
-                  "Data contract {} has no quality expectations, skipping",
-                  dataContract.getFullyQualifiedName());
-              continue;
-            }
-
-            LOG.debug(
-                "Processing data contract: {} (ID: {}) with {} quality expectations",
+            dataContractRepository.delete(Entity.ADMIN_USER_NAME, dataContract.getId(), true, true);
+            deletedCount++;
+          } catch (Exception deleteException) {
+            LOG.warn(
+                "Failed to delete orphaned data contract '{}': {}",
                 dataContract.getFullyQualifiedName(),
-                dataContract.getId(),
-                dataContract.getQualityExpectations().size());
-            dataContractsProcessed++;
-
-            // Step 3: Process each test case in quality expectations
-            int testCasesUpdated = 0;
-            for (EntityReference testCaseRef : dataContract.getQualityExpectations()) {
-              try {
-                // Get test case using DAO
-                TestCase testCase = collectionDAO.testCaseDAO().findEntityById(testCaseRef.getId());
-                if (testCase == null) {
-                  LOG.debug("Test case not found: {}", testCaseRef.getId());
-                  continue;
-                }
-
-                // Check if test case already has dataContract reference
-                if (testCase.getDataContract() != null) {
-                  LOG.debug(
-                      "Test case {} already has dataContract reference",
-                      testCase.getFullyQualifiedName());
-                  continue;
-                }
-
-                // Step 4: Update test case with dataContract reference using DAO
-                testCase.setDataContract(
-                    new EntityReference()
-                        .withId(dataContract.getId())
-                        .withType(Entity.DATA_CONTRACT)
-                        .withFullyQualifiedName(dataContract.getFullyQualifiedName()));
-
-                // Update the test case using DAO
-                collectionDAO.testCaseDAO().update(testCase);
-                testCasesUpdated++;
-
-                LOG.debug(
-                    "Updated test case {} with dataContract reference to {}",
-                    testCase.getFullyQualifiedName(),
-                    dataContract.getFullyQualifiedName());
-
-              } catch (Exception e) {
-                LOG.warn("Failed to update test case {}: {}", testCaseRef.getId(), e.getMessage());
-              }
-            }
-
-            totalTestCasesMigrated += testCasesUpdated;
-
-            if (testCasesUpdated > 0) {
-              LOG.info(
-                  "Updated {} test cases for data contract: {}",
-                  testCasesUpdated,
-                  dataContract.getFullyQualifiedName());
-            }
-
-          } catch (Exception e) {
-            LOG.error("Failed to process data contract: {}", e.getMessage(), e);
+                deleteException.getMessage());
           }
         }
       }
 
-    } catch (Exception e) {
-      LOG.error("Error during test case dataContract migration: {}", e.getMessage(), e);
-      throw new RuntimeException("Migration failed", e);
-    }
+      LOG.info(
+          "✓ Cleanup complete: {} orphaned data contracts deleted out of {} total",
+          deletedCount,
+          totalContracts);
 
-    LOG.info("===== TEST CASE DATA CONTRACT MIGRATION SUMMARY =====");
-    LOG.info("Data contracts processed: {}", dataContractsProcessed);
-    LOG.info("Total test cases updated with dataContract reference: {}", totalTestCasesMigrated);
-    LOG.info("===== MIGRATION COMPLETE =====");
+    } catch (Exception e) {
+      LOG.error("✗ FAILED cleanup of orphaned data contracts: {}", e.getMessage(), e);
+    }
   }
 }
