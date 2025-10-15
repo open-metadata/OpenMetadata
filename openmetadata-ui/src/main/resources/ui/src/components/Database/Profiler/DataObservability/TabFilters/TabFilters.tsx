@@ -46,13 +46,14 @@ import TabsLabel from '../../../../common/TabsLabel/TabsLabel.component';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from '../../TableProfiler/ColumnPickerMenu';
+import profilerClassBase from '../../TableProfiler/ProfilerClassBase';
 import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
 
 const TabFilters = () => {
   const { isTourOpen } = useTourProvider();
   const location = useCustomLocation();
   const theme = useTheme();
-  const { subTab: activeTab = ProfilerTabPath.TABLE_PROFILE } =
+  const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
     useParams<{ subTab: ProfilerTabPath }>();
 
   const { formType, activeColumnFqn, dateRangeObject } = useMemo(() => {

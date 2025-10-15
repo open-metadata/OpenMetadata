@@ -10,10 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/ic-column.svg';
-import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-info-circle.svg';
-import { ReactComponent as TableProfileIcon } from '../../../../assets/svg/ic-table-test.svg';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';
@@ -49,30 +45,22 @@ class ProfilerClassBase {
           entityText: i18n.t('label.profile'),
         }),
         key: ProfilerTabPath.TABLE_PROFILE,
-
-        icon: TableProfileIcon,
       },
       {
         label: i18n.t('label.column-entity', {
           entity: i18n.t('label.profile'),
         }),
         key: ProfilerTabPath.COLUMN_PROFILE,
-
-        icon: ColumnProfileIcon,
       },
       {
         label: i18n.t('label.data-entity', {
           entity: i18n.t('label.quality'),
         }),
         key: ProfilerTabPath.DATA_QUALITY,
-
-        icon: DataQualityIcon,
       },
       {
         label: i18n.t('label.incident-plural'),
         key: ProfilerTabPath.INCIDENTS,
-
-        icon: IncidentIcon,
       },
     ];
   }
