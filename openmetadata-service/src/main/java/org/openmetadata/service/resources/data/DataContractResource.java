@@ -174,8 +174,18 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    ResultList<DataContract> result =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+
+    // Filter data contracts based on visibility for the current user
+    String currentUser = securityContext.getUserPrincipal().getName();
+    DataContractRepository dataContractRepo = repository;
+    List<DataContract> visibleDataContracts =
+        dataContractRepo.filterDataContractsByVisibility(result.getData(), currentUser);
+    result.setData(visibleDataContracts);
+
+    return result;
   }
 
   @GET
@@ -212,7 +222,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    DataContract dataContract = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+
+    // Check visibility permissions
+    String currentUser = securityContext.getUserPrincipal().getName();
+    DataContractRepository dataContractRepo = (DataContractRepository) repository;
+    if (!dataContractRepo.isDataContractVisibleToUser(dataContract, currentUser)) {
+      throw new EntityNotFoundException("Data contract not found for id " + id);
+    }
+
+    return dataContract;
   }
 
   @GET
@@ -252,7 +271,14 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    DataContract dataContract =
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    String currentUser = securityContext.getUserPrincipal().getName();
+    if (!repository.isDataContractVisibleToUser(dataContract, currentUser)) {
+      throw new EntityNotFoundException("Data contract not found for name " + fqn);
+    }
+
+    return dataContract;
   }
 
   @GET

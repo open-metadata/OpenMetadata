@@ -27,6 +27,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.common.utils.CommonUtil;
@@ -354,5 +355,34 @@ public class MetricRepository extends EntityRepository<Metric> {
 
       return metric;
     }
+  }
+
+  public boolean isMetricVisibleToUser(Metric metric, String userName) {
+    return isEntityVisibleToUserByStatus(
+        metric.getEntityStatus(),
+        metric.getUpdatedBy(),
+        metric.getOwners(),
+        metric.getReviewers(),
+        userName);
+  }
+
+  public List<Metric> filterMetricsByVisibility(List<Metric> metrics, String userName) {
+    if (metrics == null || metrics.isEmpty()) {
+      return metrics != null ? metrics : new ArrayList<>();
+    }
+
+    // If no user context, only return approved metrics (secure by default)
+    if (userName == null || userName.trim().isEmpty()) {
+      return metrics.stream()
+          .filter(
+              metric ->
+                  (EntityStatus.APPROVED.equals(metric.getEntityStatus())
+                      || EntityStatus.UNPROCESSED.equals(metric.getEntityStatus())))
+          .collect(Collectors.toList());
+    }
+
+    return metrics.stream()
+        .filter(metric -> isMetricVisibleToUser(metric, userName))
+        .collect(Collectors.toList());
   }
 }
