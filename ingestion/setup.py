@@ -67,7 +67,7 @@ VERSIONS = {
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
-    "sqlalchemy-bigquery": "sqlalchemy-bigquery>=1.2.2",
+    "sqlalchemy-bigquery": "sqlalchemy-bigquery~=1.15.0",
     "presidio-analyzer": "presidio-analyzer==2.2.358",
     "asammdf": "asammdf~=7.4.5",
     "kafka-connect": "kafka-connect-py==0.10.11",
@@ -189,7 +189,7 @@ plugins: Dict[str, Set[str]] = {
         "google-cloud-logging",
         VERSIONS["pyarrow"],
         VERSIONS["numpy"],
-        "sqlalchemy-bigquery>=1.2.2",
+        "sqlalchemy-bigquery~=1.15.0",
     },
     "bigtable": {
         VERSIONS["google-cloud-bigtable"],
