@@ -407,6 +407,7 @@ test.describe('Domains', () => {
     // The domain FQN should be properly escaped in the query
     // The actual format uses escaped hyphens, not URL encoding
     const fqn = (domain.data.fullyQualifiedName ?? '')
+      .replace(/\\/g, '\\\\')
       .replace(/"/g, '\\"')
       .replace(/-/g, '\\-');
 
