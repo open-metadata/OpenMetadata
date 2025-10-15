@@ -744,5 +744,139 @@ def orders_silver():
         self.assertFalse(silver.reads_from_kafka)
 
 
+class TestS3SourceDetection(unittest.TestCase):
+    """Test cases for S3 source detection"""
+
+    def test_s3_json_source(self):
+        """Test detecting S3 source with spark.read.json()"""
+        source_code = """
+        @dlt.view()
+        def s3_source():
+            return spark.read.json("s3://mybucket/data/")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertTrue(deps[0].reads_from_s3)
+        self.assertEqual(deps[0].s3_locations, ["s3://mybucket/data/"])
+
+    def test_s3_parquet_source(self):
+        """Test detecting S3 source with spark.read.parquet()"""
+        source_code = """
+        @dlt.table(name="parquet_table")
+        def load_parquet():
+            return spark.read.parquet("s3a://bucket/path/file.parquet")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertTrue(deps[0].reads_from_s3)
+        self.assertIn("s3a://bucket/path/file.parquet", deps[0].s3_locations)
+
+    def test_s3_with_options(self):
+        """Test S3 source with options"""
+        source_code = """
+        @dlt.view()
+        def external_source():
+            return (
+                spark.read
+                    .option("multiline", "true")
+                    .json("s3://test-firehose-con-bucket/firehose_data/")
+            )
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertTrue(deps[0].reads_from_s3)
+        self.assertEqual(
+            deps[0].s3_locations, ["s3://test-firehose-con-bucket/firehose_data/"]
+        )
+
+    def test_s3_format_load(self):
+        """Test S3 with format().load() pattern"""
+        source_code = """
+        @dlt.table(name="csv_data")
+        def load_csv():
+            return spark.read.format("csv").option("header", "true").load("s3://bucket/data.csv")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertTrue(deps[0].reads_from_s3)
+        self.assertIn("s3://bucket/data.csv", deps[0].s3_locations)
+
+    def test_dlt_read_batch(self):
+        """Test dlt.read() for batch table dependencies"""
+        source_code = """
+        @dlt.table(name="bronze")
+        def bronze_table():
+            return dlt.read("source_view")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 1)
+        self.assertEqual(deps[0].depends_on, ["source_view"])
+
+    def test_mixed_dlt_read_and_read_stream(self):
+        """Test both dlt.read() and dlt.read_stream() in same pipeline"""
+        source_code = """
+        @dlt.table(name="batch_table")
+        def batch():
+            return dlt.read("source1")
+
+        @dlt.table(name="stream_table")
+        def stream():
+            return dlt.read_stream("source2")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 2)
+
+        batch = next(d for d in deps if d.table_name == "batch_table")
+        self.assertEqual(batch.depends_on, ["source1"])
+
+        stream = next(d for d in deps if d.table_name == "stream_table")
+        self.assertEqual(stream.depends_on, ["source2"])
+
+    def test_user_s3_example(self):
+        """Test the user's exact S3 example"""
+        source_code = """
+        import dlt
+        from pyspark.sql.functions import col
+
+        @dlt.view(comment="External source data from S3")
+        def external_source():
+            return (
+                spark.read
+                    .option("multiline", "true")
+                    .json("s3://test-firehose-con-bucket/firehose_data/")
+            )
+
+        @dlt.table(name="bronze_firehose_data")
+        def bronze_firehose_data():
+            return dlt.read("external_source")
+
+        @dlt.table(name="silver_firehose_data")
+        def silver_firehose_data():
+            return dlt.read("bronze_firehose_data")
+        """
+        deps = extract_dlt_table_dependencies(source_code)
+        self.assertEqual(len(deps), 3)
+
+        # Verify external_source
+        external = next((d for d in deps if d.table_name == "external_source"), None)
+        self.assertIsNotNone(external)
+        self.assertTrue(external.reads_from_s3)
+        self.assertIn(
+            "s3://test-firehose-con-bucket/firehose_data/", external.s3_locations
+        )
+
+        # Verify bronze
+        bronze = next((d for d in deps if d.table_name == "bronze_firehose_data"), None)
+        self.assertIsNotNone(bronze)
+        self.assertEqual(bronze.depends_on, ["external_source"])
+        self.assertFalse(bronze.reads_from_s3)
+
+        # Verify silver
+        silver = next((d for d in deps if d.table_name == "silver_firehose_data"), None)
+        self.assertIsNotNone(silver)
+        self.assertEqual(silver.depends_on, ["bronze_firehose_data"])
+        self.assertFalse(silver.reads_from_s3)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -828,39 +828,55 @@ class DatabrickspipelineSource(PipelineServiceSource):
                             f"✓ Found {len(dlt_dependencies)} DLT table(s) with dependencies"
                         )
                         for dep in dlt_dependencies:
+                            s3_info = (
+                                f", reads_from_s3={dep.reads_from_s3}, s3_locations={dep.s3_locations}"
+                                if dep.reads_from_s3
+                                else ""
+                            )
                             logger.info(
                                 f"   - {dep.table_name}: depends_on={dep.depends_on}, "
-                                f"reads_from_kafka={dep.reads_from_kafka}"
+                                f"reads_from_kafka={dep.reads_from_kafka}{s3_info}"
                             )
                     else:
                         logger.info(f"⊗ No DLT table dependencies found in notebook")
 
-                    if not dlt_dependencies or not kafka_sources:
+                    # Check if we have anything to process
+                    has_kafka = kafka_sources and len(kafka_sources) > 0
+                    has_s3 = any(dep.reads_from_s3 for dep in dlt_dependencies)
+                    has_tables = dlt_dependencies and len(dlt_dependencies) > 0
+
+                    if not dlt_dependencies:
                         logger.warning(
-                            f"⊗ Skipping lineage for this notebook - need both Kafka sources AND DLT tables"
-                        )
-                        logger.info(
-                            f"   Kafka sources: {len(kafka_sources) if kafka_sources else 0}"
-                        )
-                        logger.info(
-                            f"   DLT tables: {len(dlt_dependencies) if dlt_dependencies else 0}"
+                            f"⊗ Skipping lineage for this notebook - no DLT tables found"
                         )
                         continue
 
-                    logger.info(
-                        f"✓ Notebook has both Kafka sources and DLT tables - creating lineage..."
-                    )
+                    if not has_kafka and not has_s3:
+                        logger.info(
+                            f"⊗ No external sources (Kafka or S3) found in this notebook - only table-to-table lineage will be created"
+                        )
+
+                    logger.info(f"✓ Notebook has DLT tables - creating lineage...")
+                    if has_kafka:
+                        logger.info(f"   Kafka sources: {len(kafka_sources)}")
+                    if has_s3:
+                        s3_count = sum(
+                            len(dep.s3_locations)
+                            for dep in dlt_dependencies
+                            if dep.reads_from_s3
+                        )
+                        logger.info(f"   S3 sources: {s3_count} location(s)")
 
                     # Create lineage edges based on dependencies
                     logger.info(f"\n⟳ Creating lineage edges...")
                     lineage_created = 0
 
                     # Step 1: Create Kafka topic -> DLT table lineage
-                    # Build a map to identify which tables/views read from Kafka
-                    kafka_sources_map = {}
+                    # Build a map to identify which tables/views read from external sources (Kafka/S3)
+                    external_sources_map = {}
                     for dep in dlt_dependencies:
-                        if dep.reads_from_kafka:
-                            kafka_sources_map[dep.table_name] = True
+                        if dep.reads_from_kafka or dep.reads_from_s3:
+                            external_sources_map[dep.table_name] = True
 
                     for kafka_config in kafka_sources:
                         for topic_name in kafka_config.topics:
@@ -880,10 +896,10 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     f"   ✓ Topic found: {kafka_topic.fullyQualifiedName.root if hasattr(kafka_topic.fullyQualifiedName, 'root') else kafka_topic.fullyQualifiedName}"
                                 )
 
-                                # Find tables that read directly from Kafka OR from a Kafka source view
+                                # Find tables that read directly from Kafka OR from an external source view
                                 for dep in dlt_dependencies:
                                     is_kafka_consumer = dep.reads_from_kafka or any(
-                                        src in kafka_sources_map
+                                        src in external_sources_map
                                         for src in dep.depends_on
                                     )
 
@@ -958,6 +974,92 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                         f"\n   🔍 Processing table dependency: {source_table_name} -> {dep.table_name}"
                                     )
 
+                                    # Check if source is a view/table that reads from S3
+                                    source_dep = next(
+                                        (
+                                            d
+                                            for d in dlt_dependencies
+                                            if d.table_name == source_table_name
+                                        ),
+                                        None,
+                                    )
+
+                                    # If source reads from S3, create container → table lineage
+                                    if (
+                                        source_dep
+                                        and source_dep.reads_from_s3
+                                        and source_dep.s3_locations
+                                    ):
+                                        target_table = self._find_dlt_table(
+                                            table_name=dep.table_name,
+                                            catalog=target_catalog,
+                                            schema=target_schema,
+                                        )
+
+                                        if target_table:
+                                            for s3_location in source_dep.s3_locations:
+                                                logger.info(
+                                                    f"   🔍 Looking for S3 container: {s3_location}"
+                                                )
+                                                # Search for container by S3 path
+                                                storage_location = s3_location.rstrip(
+                                                    "/"
+                                                )
+                                                container_entity = self.metadata.es_search_container_by_path(
+                                                    full_path=storage_location
+                                                )
+
+                                                if (
+                                                    container_entity
+                                                    and container_entity[0]
+                                                ):
+                                                    logger.info(
+                                                        f"   ✅ Creating lineage: {container_entity[0].fullyQualifiedName.root if hasattr(container_entity[0].fullyQualifiedName, 'root') else container_entity[0].fullyQualifiedName} -> {target_table.fullyQualifiedName.root if hasattr(target_table.fullyQualifiedName, 'root') else target_table.fullyQualifiedName}"
+                                                    )
+
+                                                    yield Either(
+                                                        right=AddLineageRequest(
+                                                            edge=EntitiesEdge(
+                                                                fromEntity=EntityReference(
+                                                                    id=container_entity[
+                                                                        0
+                                                                    ].id,
+                                                                    type="container",
+                                                                ),
+                                                                toEntity=EntityReference(
+                                                                    id=target_table.id.root
+                                                                    if hasattr(
+                                                                        target_table.id,
+                                                                        "root",
+                                                                    )
+                                                                    else target_table.id,
+                                                                    type="table",
+                                                                ),
+                                                                lineageDetails=LineageDetails(
+                                                                    pipeline=EntityReference(
+                                                                        id=pipeline_entity.id.root,
+                                                                        type="pipeline",
+                                                                    ),
+                                                                    source=LineageSource.PipelineLineage,
+                                                                ),
+                                                            )
+                                                        )
+                                                    )
+                                                    lineage_created += 1
+                                                else:
+                                                    logger.warning(
+                                                        f"   ✗ S3 container not found for path: {storage_location}"
+                                                    )
+                                                    logger.info(
+                                                        f"      Make sure the S3 container is ingested in OpenMetadata"
+                                                    )
+                                        else:
+                                            logger.warning(
+                                                f"   ✗ Target table '{dep.table_name}' not found"
+                                            )
+                                        continue
+
+                                    # Otherwise, create table → table lineage
                                     source_table = self._find_dlt_table(
                                         table_name=source_table_name,
                                         catalog=target_catalog,
