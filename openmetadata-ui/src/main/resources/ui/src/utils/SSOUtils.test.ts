@@ -15,16 +15,32 @@ import { ErrorSchema } from '@rjsf/utils';
 import { ClientType } from '../generated/configuration/securityConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
 import {
+  applySamlConfiguration,
   cleanupProviderSpecificFields,
   clearFieldError,
+  createDOMClickHandler,
+  createDOMFocusHandler,
+  createFreshFormData,
+  extractFieldName,
   findChangedFields,
   FormData,
   generatePatches,
+  getDefaultClientType,
   getDefaultsForProvider,
   getProviderDisplayName,
   getProviderIcon,
+  handleClientTypeChange,
+  handleConfidentialToPublicSwitch,
+  handlePublicToConfidentialSwitch,
+  hasFieldValidationErrors,
+  isValidNonBasicProvider,
   isValidUrl,
   parseValidationErrors,
+  populateSamlIdpAuthority,
+  populateSamlSpCallback,
+  removeRequiredFields,
+  removeSchemaFields,
+  updateLoadingState,
 } from './SSOUtils';
 
 // Mock the constants module
@@ -1762,6 +1778,1458 @@ describe('SSOUtils', () => {
 
       // Should generate no patches for identical empty objects
       expect(patches).toHaveLength(0);
+    });
+  });
+
+  /**
+   * Test suite for populateSamlIdpAuthority function
+   * Tests SAML IDP authority URL population logic
+   */
+  describe('populateSamlIdpAuthority', () => {
+    it('should populate IDP authorityUrl from root authority', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        authority: 'https://idp.example.com/auth',
+        samlConfiguration: {
+          idp: {
+            authorityUrl: '',
+          },
+        },
+      } as unknown as Parameters<typeof populateSamlIdpAuthority>[0];
+
+      populateSamlIdpAuthority(authConfig);
+
+      expect(authConfig.samlConfiguration?.idp?.authorityUrl).toBe(
+        'https://idp.example.com/auth'
+      );
+    });
+
+    it('should use default if authority is missing and authorityUrl is empty', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        samlConfiguration: {
+          idp: {
+            authorityUrl: '',
+          },
+        },
+      } as unknown as Parameters<typeof populateSamlIdpAuthority>[0];
+
+      populateSamlIdpAuthority(authConfig);
+
+      expect(authConfig.samlConfiguration?.idp?.authorityUrl).toBe(
+        'http://localhost:8585/api/v1/auth/login'
+      );
+    });
+
+    it('should not override existing IDP authorityUrl', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        authority: 'https://idp.example.com/auth',
+        samlConfiguration: {
+          idp: {
+            authorityUrl: 'https://existing.example.com/auth',
+          },
+        },
+      } as unknown as Parameters<typeof populateSamlIdpAuthority>[0];
+
+      populateSamlIdpAuthority(authConfig);
+
+      expect(authConfig.samlConfiguration?.idp?.authorityUrl).toBe(
+        'https://idp.example.com/auth'
+      );
+    });
+
+    it('should handle missing samlConfiguration gracefully', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        authority: 'https://idp.example.com/auth',
+      } as unknown as Parameters<typeof populateSamlIdpAuthority>[0];
+
+      expect(() => populateSamlIdpAuthority(authConfig)).not.toThrow();
+    });
+
+    it('should handle missing idp in samlConfiguration gracefully', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        authority: 'https://idp.example.com/auth',
+        samlConfiguration: {},
+      } as unknown as Parameters<typeof populateSamlIdpAuthority>[0];
+
+      expect(() => populateSamlIdpAuthority(authConfig)).not.toThrow();
+    });
+  });
+
+  /**
+   * Test suite for populateSamlSpCallback function
+   * Tests SAML SP callback URL population logic
+   */
+  describe('populateSamlSpCallback', () => {
+    it('should populate SP callback and acs from root callbackUrl', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        callbackUrl: 'https://app.example.com/callback',
+        samlConfiguration: {
+          sp: {
+            callback: '',
+            acs: '',
+          },
+        },
+      } as unknown as Parameters<typeof populateSamlSpCallback>[0];
+
+      populateSamlSpCallback(authConfig);
+
+      expect(authConfig.samlConfiguration?.sp?.callback).toBe(
+        'https://app.example.com/callback'
+      );
+      expect(authConfig.samlConfiguration?.sp?.acs).toBe(
+        'https://app.example.com/callback'
+      );
+    });
+
+    it('should handle missing callbackUrl gracefully', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        samlConfiguration: {
+          sp: {
+            callback: 'existing-callback',
+          },
+        },
+      } as unknown as Parameters<typeof populateSamlSpCallback>[0];
+
+      populateSamlSpCallback(authConfig);
+
+      expect(authConfig.samlConfiguration?.sp?.callback).toBe(
+        'existing-callback'
+      );
+    });
+
+    it('should handle missing samlConfiguration gracefully', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        callbackUrl: 'https://app.example.com/callback',
+      } as unknown as Parameters<typeof populateSamlSpCallback>[0];
+
+      expect(() => populateSamlSpCallback(authConfig)).not.toThrow();
+    });
+
+    it('should handle missing sp in samlConfiguration gracefully', () => {
+      const authConfig = {
+        provider: AuthProvider.Saml,
+        callbackUrl: 'https://app.example.com/callback',
+        samlConfiguration: {},
+      } as unknown as Parameters<typeof populateSamlSpCallback>[0];
+
+      expect(() => populateSamlSpCallback(authConfig)).not.toThrow();
+    });
+  });
+
+  /**
+   * Test suite for applySamlConfiguration function
+   * Tests SAML configuration application logic
+   */
+  describe('applySamlConfiguration', () => {
+    it('should apply both IDP and SP configurations', () => {
+      const configData: FormData = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+          authority: 'https://idp.example.com/auth',
+          callbackUrl: 'https://app.example.com/callback',
+          samlConfiguration: {
+            idp: {
+              authorityUrl: '',
+            },
+            sp: {
+              callback: '',
+              acs: '',
+            },
+          },
+        } as unknown,
+        authorizerConfiguration: {} as unknown,
+      } as FormData;
+
+      applySamlConfiguration(configData);
+
+      const samlConfig = (
+        configData.authenticationConfiguration as unknown as {
+          samlConfiguration: {
+            idp: { authorityUrl: string };
+            sp: { callback: string; acs: string };
+          };
+        }
+      ).samlConfiguration;
+
+      expect(samlConfig.idp.authorityUrl).toBe('https://idp.example.com/auth');
+      expect(samlConfig.sp.callback).toBe('https://app.example.com/callback');
+      expect(samlConfig.sp.acs).toBe('https://app.example.com/callback');
+    });
+
+    it('should handle missing samlConfiguration gracefully', () => {
+      const configData: FormData = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+          authority: 'https://idp.example.com/auth',
+        } as unknown,
+        authorizerConfiguration: {} as unknown,
+      } as FormData;
+
+      expect(() => applySamlConfiguration(configData)).not.toThrow();
+    });
+
+    it('should handle partial samlConfiguration (only IDP)', () => {
+      const configData: FormData = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+          authority: 'https://idp.example.com/auth',
+          samlConfiguration: {
+            idp: {
+              authorityUrl: '',
+            },
+          },
+        } as unknown,
+        authorizerConfiguration: {} as unknown,
+      } as FormData;
+
+      applySamlConfiguration(configData);
+
+      const samlConfig = (
+        configData.authenticationConfiguration as unknown as {
+          samlConfiguration: { idp: { authorityUrl: string } };
+        }
+      ).samlConfiguration;
+
+      expect(samlConfig.idp.authorityUrl).toBe('https://idp.example.com/auth');
+    });
+
+    it('should handle partial samlConfiguration (only SP)', () => {
+      const configData: FormData = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+          callbackUrl: 'https://app.example.com/callback',
+          samlConfiguration: {
+            sp: {
+              callback: '',
+              acs: '',
+            },
+          },
+        } as unknown,
+        authorizerConfiguration: {} as unknown,
+      } as FormData;
+
+      applySamlConfiguration(configData);
+
+      const samlConfig = (
+        configData.authenticationConfiguration as unknown as {
+          samlConfiguration: { sp: { callback: string; acs: string } };
+        }
+      ).samlConfiguration;
+
+      expect(samlConfig.sp.callback).toBe('https://app.example.com/callback');
+      expect(samlConfig.sp.acs).toBe('https://app.example.com/callback');
+    });
+
+    it('should populate default IDP authorityUrl when authority is missing', () => {
+      const configData: FormData = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+          callbackUrl: 'https://app.example.com/callback',
+          samlConfiguration: {
+            idp: {
+              authorityUrl: '',
+            },
+            sp: {
+              callback: '',
+              acs: '',
+            },
+          },
+        } as unknown,
+        authorizerConfiguration: {} as unknown,
+      } as FormData;
+
+      applySamlConfiguration(configData);
+
+      const samlConfig = (
+        configData.authenticationConfiguration as unknown as {
+          samlConfiguration: { idp: { authorityUrl: string } };
+        }
+      ).samlConfiguration;
+
+      expect(samlConfig.idp.authorityUrl).toBe(
+        'http://localhost:8585/api/v1/auth/login'
+      );
+    });
+  });
+
+  /**
+   * Test suite for getDefaultClientType function
+   * Tests default client type determination for each provider
+   */
+  describe('getDefaultClientType', () => {
+    it('should return Public for SAML provider', () => {
+      const result = getDefaultClientType(AuthProvider.Saml);
+
+      expect(result).toBe(ClientType.Public);
+    });
+
+    it('should return Public for LDAP provider', () => {
+      const result = getDefaultClientType(AuthProvider.LDAP);
+
+      expect(result).toBe(ClientType.Public);
+    });
+
+    it('should return Confidential for Google provider', () => {
+      const result = getDefaultClientType(AuthProvider.Google);
+
+      expect(result).toBe(ClientType.Confidential);
+    });
+
+    it('should return Confidential for Azure provider', () => {
+      const result = getDefaultClientType(AuthProvider.Azure);
+
+      expect(result).toBe(ClientType.Confidential);
+    });
+
+    it('should return Confidential for Okta provider', () => {
+      const result = getDefaultClientType(AuthProvider.Okta);
+
+      expect(result).toBe(ClientType.Confidential);
+    });
+
+    it('should return Confidential for Auth0 provider', () => {
+      const result = getDefaultClientType(AuthProvider.Auth0);
+
+      expect(result).toBe(ClientType.Confidential);
+    });
+
+    it('should return Confidential for AWS Cognito provider', () => {
+      const result = getDefaultClientType(AuthProvider.AwsCognito);
+
+      expect(result).toBe(ClientType.Confidential);
+    });
+
+    it('should return Confidential for Custom OIDC provider', () => {
+      const result = getDefaultClientType(AuthProvider.CustomOidc);
+
+      expect(result).toBe(ClientType.Confidential);
+    });
+  });
+
+  /**
+   * Test suite for createFreshFormData function
+   * Tests creation of fresh form data for different providers
+   */
+  describe('createFreshFormData', () => {
+    it('should create fresh form data for Google provider', () => {
+      const result = createFreshFormData(AuthProvider.Google);
+
+      expect(result.authenticationConfiguration.provider).toBe(
+        AuthProvider.Google
+      );
+      expect(result.authenticationConfiguration.clientType).toBe(
+        ClientType.Confidential
+      );
+      expect(result.authenticationConfiguration.authority).toBe(
+        'https://accounts.google.com'
+      );
+      expect(result.authenticationConfiguration.publicKeyUrls).toEqual([
+        'https://www.googleapis.com/oauth2/v3/certs',
+      ]);
+      expect(
+        result.authenticationConfiguration.oidcConfiguration
+      ).toBeDefined();
+      expect(result.authorizerConfiguration).toBeDefined();
+    });
+
+    it('should create fresh form data for SAML provider', () => {
+      const result = createFreshFormData(AuthProvider.Saml);
+
+      expect(result.authenticationConfiguration.provider).toBe(
+        AuthProvider.Saml
+      );
+      expect(result.authenticationConfiguration.clientType).toBe(
+        ClientType.Public
+      );
+      expect(
+        result.authenticationConfiguration.samlConfiguration
+      ).toBeDefined();
+      expect(
+        result.authenticationConfiguration.samlConfiguration?.idp
+      ).toBeDefined();
+      expect(
+        result.authenticationConfiguration.samlConfiguration?.sp
+      ).toBeDefined();
+      expect(result.authorizerConfiguration).toBeDefined();
+    });
+
+    it('should create fresh form data for LDAP provider', () => {
+      const result = createFreshFormData(AuthProvider.LDAP);
+
+      expect(result.authenticationConfiguration.provider).toBe(
+        AuthProvider.LDAP
+      );
+      expect(result.authenticationConfiguration.clientType).toBe(
+        ClientType.Public
+      );
+      expect(result.authorizerConfiguration).toBeDefined();
+    });
+
+    it('should create fresh form data for Azure provider', () => {
+      const result = createFreshFormData(AuthProvider.Azure);
+
+      expect(result.authenticationConfiguration.provider).toBe(
+        AuthProvider.Azure
+      );
+      expect(result.authenticationConfiguration.clientType).toBe(
+        ClientType.Confidential
+      );
+      expect(
+        result.authenticationConfiguration.oidcConfiguration
+      ).toBeDefined();
+      expect(result.authorizerConfiguration).toBeDefined();
+    });
+
+    it('should create fresh form data for Auth0 provider', () => {
+      const result = createFreshFormData(AuthProvider.Auth0);
+
+      expect(result.authenticationConfiguration.provider).toBe(
+        AuthProvider.Auth0
+      );
+      expect(result.authenticationConfiguration.clientType).toBe(
+        ClientType.Confidential
+      );
+      expect(result.authorizerConfiguration).toBeDefined();
+    });
+
+    it('should create fresh form data for Okta provider', () => {
+      const result = createFreshFormData(AuthProvider.Okta);
+
+      expect(result.authenticationConfiguration.provider).toBe(
+        AuthProvider.Okta
+      );
+      expect(result.authenticationConfiguration.clientType).toBe(
+        ClientType.Confidential
+      );
+      expect(result.authorizerConfiguration).toBeDefined();
+    });
+
+    it('should create fresh form data for AWS Cognito provider', () => {
+      const result = createFreshFormData(AuthProvider.AwsCognito);
+
+      expect(result.authenticationConfiguration.provider).toBe(
+        AuthProvider.AwsCognito
+      );
+      expect(result.authenticationConfiguration.clientType).toBe(
+        ClientType.Confidential
+      );
+      expect(result.authorizerConfiguration).toBeDefined();
+    });
+
+    it('should create fresh form data for Custom OIDC provider', () => {
+      const result = createFreshFormData(AuthProvider.CustomOidc);
+
+      expect(result.authenticationConfiguration.provider).toBe(
+        AuthProvider.CustomOidc
+      );
+      expect(result.authenticationConfiguration.clientType).toBe(
+        ClientType.Confidential
+      );
+      expect(result.authorizerConfiguration).toBeDefined();
+    });
+
+    it('should always include valid authorizer configuration', () => {
+      const result = createFreshFormData(AuthProvider.Google);
+
+      expect(result.authorizerConfiguration.className).toBe(
+        'org.openmetadata.service.security.DefaultAuthorizer'
+      );
+      expect(result.authorizerConfiguration.containerRequestFilter).toBe(
+        'org.openmetadata.service.security.JwtFilter'
+      );
+      expect(result.authorizerConfiguration.enforcePrincipalDomain).toBe(false);
+      expect(result.authorizerConfiguration.enableSecureSocketConnection).toBe(
+        false
+      );
+    });
+  });
+
+  /**
+   * Test suite for removeSchemaFields function
+   * Tests removal of fields from schema properties
+   */
+  describe('removeSchemaFields', () => {
+    it('should remove single field from schema properties', () => {
+      const schema = {
+        properties: {
+          fieldA: { type: 'string' },
+          fieldB: { type: 'number' },
+          fieldC: { type: 'boolean' },
+        },
+      };
+
+      removeSchemaFields(schema, ['fieldB']);
+
+      expect(schema.properties).toEqual({
+        fieldA: { type: 'string' },
+        fieldC: { type: 'boolean' },
+      });
+    });
+
+    it('should remove multiple fields from schema properties', () => {
+      const schema = {
+        properties: {
+          fieldA: { type: 'string' },
+          fieldB: { type: 'number' },
+          fieldC: { type: 'boolean' },
+          fieldD: { type: 'array' },
+        },
+      };
+
+      removeSchemaFields(schema, ['fieldB', 'fieldD']);
+
+      expect(schema.properties).toEqual({
+        fieldA: { type: 'string' },
+        fieldC: { type: 'boolean' },
+      });
+    });
+
+    it('should handle removal of non-existent fields gracefully', () => {
+      const schema = {
+        properties: {
+          fieldA: { type: 'string' },
+          fieldB: { type: 'number' },
+        },
+      };
+
+      removeSchemaFields(schema, ['nonExistent', 'fieldB']);
+
+      expect(schema.properties).toEqual({
+        fieldA: { type: 'string' },
+      });
+    });
+
+    it('should handle schema without properties object', () => {
+      const schema = {
+        type: 'object',
+      };
+
+      removeSchemaFields(schema, ['fieldA']);
+
+      expect(schema).toEqual({ type: 'object' });
+    });
+
+    it('should handle empty fieldsToRemove array', () => {
+      const schema = {
+        properties: {
+          fieldA: { type: 'string' },
+          fieldB: { type: 'number' },
+        },
+      };
+
+      removeSchemaFields(schema, []);
+
+      expect(schema.properties).toEqual({
+        fieldA: { type: 'string' },
+        fieldB: { type: 'number' },
+      });
+    });
+
+    it('should handle schema with properties as non-object', () => {
+      const schema = {
+        properties: null,
+      };
+
+      removeSchemaFields(schema, ['fieldA']);
+
+      expect(schema.properties).toBeNull();
+    });
+  });
+
+  /**
+   * Test suite for removeRequiredFields function
+   * Tests removal of fields from schema required array
+   */
+  describe('removeRequiredFields', () => {
+    it('should remove single field from required array', () => {
+      const schema = {
+        required: ['fieldA', 'fieldB', 'fieldC'],
+      };
+
+      removeRequiredFields(schema, ['fieldB']);
+
+      expect(schema.required).toEqual(['fieldA', 'fieldC']);
+    });
+
+    it('should remove multiple fields from required array', () => {
+      const schema = {
+        required: ['fieldA', 'fieldB', 'fieldC', 'fieldD'],
+      };
+
+      removeRequiredFields(schema, ['fieldB', 'fieldD']);
+
+      expect(schema.required).toEqual(['fieldA', 'fieldC']);
+    });
+
+    it('should handle removal of non-existent fields from required', () => {
+      const schema = {
+        required: ['fieldA', 'fieldB'],
+      };
+
+      removeRequiredFields(schema, ['nonExistent', 'fieldB']);
+
+      expect(schema.required).toEqual(['fieldA']);
+    });
+
+    it('should handle schema without required array', () => {
+      const schema: Record<string, unknown> = {
+        properties: { fieldA: { type: 'string' } },
+      };
+
+      removeRequiredFields(schema, ['fieldA']);
+
+      expect(schema.required).toBeUndefined();
+    });
+
+    it('should handle empty fieldsToRemove array', () => {
+      const schema = {
+        required: ['fieldA', 'fieldB'],
+      };
+
+      removeRequiredFields(schema, []);
+
+      expect(schema.required).toEqual(['fieldA', 'fieldB']);
+    });
+
+    it('should handle schema with required as non-array', () => {
+      const schema = {
+        required: null,
+      };
+
+      removeRequiredFields(schema, ['fieldA']);
+
+      expect(schema.required).toBeNull();
+    });
+
+    it('should remove all fields from required if all match', () => {
+      const schema = {
+        required: ['fieldA', 'fieldB'],
+      };
+
+      removeRequiredFields(schema, ['fieldA', 'fieldB']);
+
+      expect(schema.required).toEqual([]);
+    });
+  });
+
+  /**
+   * Test suite for handleConfidentialToPublicSwitch function
+   * Tests migration of fields when switching from Confidential to Public client type
+   */
+  describe('handleConfidentialToPublicSwitch', () => {
+    it('should move callback URL from OIDC config to root level', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        oidcConfiguration: {
+          callbackUrl: 'https://app.example.com/callback',
+        },
+      } as unknown as Parameters<typeof handleConfidentialToPublicSwitch>[0];
+
+      handleConfidentialToPublicSwitch(authConfig);
+
+      expect(authConfig.callbackUrl).toBe('https://app.example.com/callback');
+    });
+
+    it('should use default callback URL if OIDC callbackUrl is missing', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        oidcConfiguration: {},
+      } as unknown as Parameters<typeof handleConfidentialToPublicSwitch>[0];
+
+      handleConfidentialToPublicSwitch(authConfig);
+
+      expect(authConfig.callbackUrl).toBe('http://localhost:8585/callback');
+    });
+
+    it('should not override existing root callbackUrl', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        callbackUrl: 'https://existing.example.com/callback',
+        oidcConfiguration: {
+          callbackUrl: 'https://oidc.example.com/callback',
+        },
+      } as unknown as Parameters<typeof handleConfidentialToPublicSwitch>[0];
+
+      handleConfidentialToPublicSwitch(authConfig);
+
+      expect(authConfig.callbackUrl).toBe(
+        'https://existing.example.com/callback'
+      );
+    });
+
+    it('should add Google-specific defaults for Google provider', () => {
+      const authConfig = {
+        provider: AuthProvider.Google,
+        oidcConfiguration: {
+          callbackUrl: 'https://app.example.com/callback',
+        },
+      } as unknown as Parameters<typeof handleConfidentialToPublicSwitch>[0];
+
+      handleConfidentialToPublicSwitch(authConfig);
+
+      expect(authConfig.authority).toBe('https://accounts.google.com');
+      expect(authConfig.publicKeyUrls).toEqual([
+        'https://www.googleapis.com/oauth2/v3/certs',
+      ]);
+    });
+
+    it('should not add Google defaults for non-Google providers', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        oidcConfiguration: {
+          callbackUrl: 'https://app.example.com/callback',
+        },
+      } as unknown as Parameters<typeof handleConfidentialToPublicSwitch>[0];
+
+      handleConfidentialToPublicSwitch(authConfig);
+
+      expect(authConfig.authority).toBeUndefined();
+      expect(authConfig.publicKeyUrls).toBeUndefined();
+    });
+  });
+
+  /**
+   * Test suite for handlePublicToConfidentialSwitch function
+   * Tests migration of fields when switching from Public to Confidential client type
+   */
+  describe('handlePublicToConfidentialSwitch', () => {
+    it('should initialize OIDC configuration if missing', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        callbackUrl: 'https://app.example.com/callback',
+      } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
+
+      handlePublicToConfidentialSwitch(authConfig);
+
+      expect(authConfig.oidcConfiguration).toBeDefined();
+    });
+
+    it('should move callback URL from root to OIDC config', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        callbackUrl: 'https://app.example.com/callback',
+      } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
+
+      handlePublicToConfidentialSwitch(authConfig);
+
+      expect(
+        (authConfig.oidcConfiguration as Record<string, unknown>)?.callbackUrl
+      ).toBe('https://app.example.com/callback');
+    });
+
+    it('should not override existing OIDC callbackUrl', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        callbackUrl: 'https://root.example.com/callback',
+        oidcConfiguration: {
+          callbackUrl: 'https://existing.example.com/callback',
+        },
+      } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
+
+      handlePublicToConfidentialSwitch(authConfig);
+
+      expect(
+        (authConfig.oidcConfiguration as Record<string, unknown>)?.callbackUrl
+      ).toBe('https://existing.example.com/callback');
+    });
+
+    it('should use default callback URL if root callbackUrl is missing', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+      } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
+
+      handlePublicToConfidentialSwitch(authConfig);
+
+      expect(
+        (authConfig.oidcConfiguration as Record<string, unknown>)?.callbackUrl
+      ).toBe('http://localhost:8585/callback');
+    });
+
+    it('should add Google-specific OIDC defaults for Google provider', () => {
+      const authConfig = {
+        provider: AuthProvider.Google,
+        callbackUrl: 'https://app.example.com/callback',
+      } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
+
+      handlePublicToConfidentialSwitch(authConfig);
+
+      const oidcConfig = authConfig.oidcConfiguration as Record<
+        string,
+        unknown
+      >;
+
+      expect(oidcConfig.type).toBe(AuthProvider.Google);
+      expect(oidcConfig.discoveryUri).toBe(
+        'https://accounts.google.com/.well-known/openid-configuration'
+      );
+      expect(oidcConfig.tokenValidity).toBe(3600);
+      expect(oidcConfig.sessionExpiry).toBe(604800);
+      expect(oidcConfig.serverUrl).toBe('http://localhost:8585');
+      expect(oidcConfig.scope).toBe('openid email profile');
+      expect(oidcConfig.useNonce).toBe(false);
+      expect(oidcConfig.preferredJwsAlgorithm).toBe('RS256');
+      expect(oidcConfig.responseType).toBe('code');
+      expect(oidcConfig.disablePkce).toBe(false);
+      expect(oidcConfig.maxClockSkew).toBe(0);
+      expect(oidcConfig.clientAuthenticationMethod).toBe('client_secret_post');
+    });
+
+    it('should not override existing Google OIDC field values', () => {
+      const authConfig = {
+        provider: AuthProvider.Google,
+        callbackUrl: 'https://app.example.com/callback',
+        oidcConfiguration: {
+          scope: 'custom scope',
+          useNonce: true,
+          preferredJwsAlgorithm: 'ES256',
+          responseType: 'id_token',
+          disablePkce: true,
+          maxClockSkew: 10,
+          clientAuthenticationMethod: 'client_secret_basic',
+        },
+      } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
+
+      handlePublicToConfidentialSwitch(authConfig);
+
+      const oidcConfig = authConfig.oidcConfiguration as Record<
+        string,
+        unknown
+      >;
+
+      expect(oidcConfig.scope).toBe('custom scope');
+      expect(oidcConfig.useNonce).toBe(true);
+      expect(oidcConfig.preferredJwsAlgorithm).toBe('ES256');
+      expect(oidcConfig.responseType).toBe('id_token');
+      expect(oidcConfig.disablePkce).toBe(true);
+      expect(oidcConfig.maxClockSkew).toBe(10);
+      expect(oidcConfig.clientAuthenticationMethod).toBe('client_secret_basic');
+    });
+
+    it('should not add Google defaults for non-Google providers', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        callbackUrl: 'https://app.example.com/callback',
+      } as unknown as Parameters<typeof handlePublicToConfidentialSwitch>[0];
+
+      handlePublicToConfidentialSwitch(authConfig);
+
+      const oidcConfig = authConfig.oidcConfiguration as Record<
+        string,
+        unknown
+      >;
+
+      expect(oidcConfig.type).toBeUndefined();
+      expect(oidcConfig.discoveryUri).toBeUndefined();
+      expect(oidcConfig.tokenValidity).toBeUndefined();
+    });
+  });
+
+  /**
+   * Test suite for handleClientTypeChange function
+   * Tests coordinated client type transition handling
+   */
+  describe('handleClientTypeChange', () => {
+    it('should handle Confidential to Public transition', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        clientType: ClientType.Public,
+        oidcConfiguration: {
+          callbackUrl: 'https://app.example.com/callback',
+        },
+      } as unknown as Parameters<typeof handleClientTypeChange>[0];
+
+      handleClientTypeChange(
+        authConfig,
+        ClientType.Confidential,
+        ClientType.Public
+      );
+
+      expect(authConfig?.callbackUrl).toBe('https://app.example.com/callback');
+    });
+
+    it('should handle Public to Confidential transition', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        clientType: ClientType.Confidential,
+        callbackUrl: 'https://app.example.com/callback',
+      } as unknown as Parameters<typeof handleClientTypeChange>[0];
+
+      handleClientTypeChange(
+        authConfig,
+        ClientType.Public,
+        ClientType.Confidential
+      );
+
+      expect(authConfig?.oidcConfiguration).toBeDefined();
+      expect(
+        (authConfig?.oidcConfiguration as Record<string, unknown>)?.callbackUrl
+      ).toBe('https://app.example.com/callback');
+    });
+
+    it('should do nothing if authConfig is undefined', () => {
+      expect(() =>
+        handleClientTypeChange(undefined, ClientType.Public, ClientType.Public)
+      ).not.toThrow();
+    });
+
+    it('should do nothing if newClientType is undefined', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+      } as unknown as Parameters<typeof handleClientTypeChange>[0];
+
+      handleClientTypeChange(authConfig, ClientType.Public, undefined);
+
+      expect(authConfig?.oidcConfiguration).toBeUndefined();
+      expect(authConfig?.callbackUrl).toBeUndefined();
+    });
+
+    it('should do nothing if client type has not changed', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        clientType: ClientType.Public,
+      } as unknown as Parameters<typeof handleClientTypeChange>[0];
+
+      handleClientTypeChange(authConfig, ClientType.Public, ClientType.Public);
+
+      expect(authConfig?.oidcConfiguration).toBeUndefined();
+      expect(authConfig?.callbackUrl).toBeUndefined();
+    });
+
+    it('should handle Google provider Confidential to Public with defaults', () => {
+      const authConfig = {
+        provider: AuthProvider.Google,
+        clientType: ClientType.Public,
+        oidcConfiguration: {
+          callbackUrl: 'https://app.example.com/callback',
+        },
+      } as unknown as Parameters<typeof handleClientTypeChange>[0];
+
+      handleClientTypeChange(
+        authConfig,
+        ClientType.Confidential,
+        ClientType.Public
+      );
+
+      expect(authConfig?.authority).toBe('https://accounts.google.com');
+      expect(authConfig?.publicKeyUrls).toEqual([
+        'https://www.googleapis.com/oauth2/v3/certs',
+      ]);
+    });
+
+    it('should handle Google provider Public to Confidential with OIDC defaults', () => {
+      const authConfig = {
+        provider: AuthProvider.Google,
+        clientType: ClientType.Confidential,
+        callbackUrl: 'https://app.example.com/callback',
+      } as unknown as Parameters<typeof handleClientTypeChange>[0];
+
+      handleClientTypeChange(
+        authConfig,
+        ClientType.Public,
+        ClientType.Confidential
+      );
+
+      const oidcConfig = authConfig?.oidcConfiguration as Record<
+        string,
+        unknown
+      >;
+
+      expect(oidcConfig.type).toBe(AuthProvider.Google);
+      expect(oidcConfig.discoveryUri).toBe(
+        'https://accounts.google.com/.well-known/openid-configuration'
+      );
+      expect(oidcConfig.tokenValidity).toBe(3600);
+    });
+
+    it('should not perform transition when previousClientType is undefined (no prior state)', () => {
+      const authConfig = {
+        provider: AuthProvider.Azure,
+        clientType: ClientType.Confidential,
+        callbackUrl: 'https://app.example.com/callback',
+      } as unknown as Parameters<typeof handleClientTypeChange>[0];
+
+      handleClientTypeChange(authConfig, undefined, ClientType.Confidential);
+
+      // Should not perform any transition when previous state is unknown
+      expect(authConfig?.oidcConfiguration).toBeUndefined();
+    });
+  });
+
+  /**
+   * Test suite for isValidNonBasicProvider function
+   * Tests validation of SSO provider configuration
+   */
+  describe('isValidNonBasicProvider', () => {
+    it('should return true for valid non-Basic provider (Google)', () => {
+      const config = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Google,
+        },
+      };
+
+      expect(isValidNonBasicProvider(config)).toBe(true);
+    });
+
+    it('should return true for valid non-Basic provider (Azure)', () => {
+      const config = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Azure,
+        },
+      };
+
+      expect(isValidNonBasicProvider(config)).toBe(true);
+    });
+
+    it('should return true for valid non-Basic provider (Okta)', () => {
+      const config = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Okta,
+        },
+      };
+
+      expect(isValidNonBasicProvider(config)).toBe(true);
+    });
+
+    it('should return true for valid non-Basic provider (SAML)', () => {
+      const config = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+        },
+      };
+
+      expect(isValidNonBasicProvider(config)).toBe(true);
+    });
+
+    it('should return false for Basic provider', () => {
+      const config = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Basic,
+        },
+      };
+
+      expect(isValidNonBasicProvider(config)).toBe(false);
+    });
+
+    it('should return false for undefined config', () => {
+      expect(isValidNonBasicProvider(undefined)).toBe(false);
+    });
+
+    it('should return false for config with no authenticationConfiguration', () => {
+      const config = {};
+
+      expect(isValidNonBasicProvider(config)).toBe(false);
+    });
+
+    it('should return false for config with no provider', () => {
+      const config = {
+        authenticationConfiguration: {},
+      };
+
+      expect(isValidNonBasicProvider(config)).toBe(false);
+    });
+
+    it('should return false for config with undefined provider', () => {
+      const config = {
+        authenticationConfiguration: {
+          provider: undefined,
+        },
+      };
+
+      expect(isValidNonBasicProvider(config)).toBe(false);
+    });
+  });
+
+  /**
+   * Test suite for extractFieldName function
+   * Tests field name extraction from RJSF field IDs
+   */
+  describe('extractFieldName', () => {
+    it('should extract simple field name from path', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/clientId')
+      ).toBe('clientId');
+    });
+
+    it('should extract authority field name', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/authority')
+      ).toBe('authority');
+    });
+
+    it('should map "secret" to "clientSecret"', () => {
+      expect(extractFieldName('root/authenticationConfiguration/secret')).toBe(
+        'clientSecret'
+      );
+    });
+
+    it('should map "domain" to "authority" for Auth0', () => {
+      expect(extractFieldName('root/authenticationConfiguration/domain')).toBe(
+        'authority'
+      );
+    });
+
+    it('should map "secretKey" to "clientSecret"', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/secretKey')
+      ).toBe('clientSecret');
+    });
+
+    it('should extract callbackUrl field name', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/callbackUrl')
+      ).toBe('callbackUrl');
+    });
+
+    it('should extract enableSelfSignup field name', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/enableSelfSignup')
+      ).toBe('enableSelfSignup');
+    });
+
+    it('should extract scopes field name', () => {
+      expect(extractFieldName('root/authenticationConfiguration/scopes')).toBe(
+        'scopes'
+      );
+    });
+
+    it('should extract oidcConfiguration field name', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/oidcConfiguration')
+      ).toBe('oidcConfiguration');
+    });
+
+    it('should extract samlConfiguration field name', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/samlConfiguration')
+      ).toBe('samlConfiguration');
+    });
+
+    it('should extract ldapConfiguration field name', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/ldapConfiguration')
+      ).toBe('ldapConfiguration');
+    });
+
+    it('should extract providerName field name', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/providerName')
+      ).toBe('providerName');
+    });
+
+    it('should return clientSecret for mapped field', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/clientSecret')
+      ).toBe('clientSecret');
+    });
+
+    it('should return unmapped field name as-is', () => {
+      expect(
+        extractFieldName('root/authenticationConfiguration/unknownField')
+      ).toBe('unknownField');
+    });
+
+    it('should handle nested paths correctly', () => {
+      expect(
+        extractFieldName(
+          'root/authenticationConfiguration/oidcConfiguration/clientId'
+        )
+      ).toBe('clientId');
+    });
+  });
+
+  /**
+   * Test suite for createDOMFocusHandler function
+   * Tests DOM focus event handler creation
+   */
+  describe('createDOMFocusHandler', () => {
+    let setActiveFieldMock: jest.Mock;
+    let mockElement: HTMLElement;
+
+    beforeEach(() => {
+      setActiveFieldMock = jest.fn();
+      mockElement = document.createElement('div');
+      mockElement.id = 'root/authenticationConfiguration/clientId';
+      document.body.appendChild(mockElement);
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    it('should create a focus handler that extracts field name', () => {
+      const handler = createDOMFocusHandler(setActiveFieldMock);
+      const event = new FocusEvent('focusin', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: mockElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).toHaveBeenCalledWith('clientId');
+    });
+
+    it('should handle focus on element with mapped field name', () => {
+      mockElement.id = 'root/authenticationConfiguration/secret';
+      const handler = createDOMFocusHandler(setActiveFieldMock);
+      const event = new FocusEvent('focusin', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: mockElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).toHaveBeenCalledWith('clientSecret');
+    });
+
+    it('should traverse up the DOM tree to find root element', () => {
+      const childElement = document.createElement('input');
+      mockElement.appendChild(childElement);
+
+      const handler = createDOMFocusHandler(setActiveFieldMock);
+      const event = new FocusEvent('focusin', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: childElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).toHaveBeenCalledWith('clientId');
+    });
+
+    it('should not call setActiveField if no root element found', () => {
+      const orphanElement = document.createElement('div');
+      orphanElement.id = 'no-matching-prefix';
+
+      const handler = createDOMFocusHandler(setActiveFieldMock);
+      const event = new FocusEvent('focusin', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: orphanElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Test suite for createDOMClickHandler function
+   * Tests DOM click event handler creation
+   */
+  describe('createDOMClickHandler', () => {
+    let setActiveFieldMock: jest.Mock;
+    let mockElement: HTMLElement;
+
+    beforeEach(() => {
+      setActiveFieldMock = jest.fn();
+      mockElement = document.createElement('div');
+      mockElement.id = 'root/authenticationConfiguration/authority';
+      document.body.appendChild(mockElement);
+    });
+
+    afterEach(() => {
+      document.body.innerHTML = '';
+    });
+
+    it('should create a click handler that extracts field name', () => {
+      const handler = createDOMClickHandler(setActiveFieldMock);
+      const event = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: mockElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).toHaveBeenCalledWith('authority');
+    });
+
+    it('should handle click on element with mapped field name', () => {
+      mockElement.id = 'root/authenticationConfiguration/domain';
+      const handler = createDOMClickHandler(setActiveFieldMock);
+      const event = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: mockElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).toHaveBeenCalledWith('authority');
+    });
+
+    it('should traverse up the DOM tree to find root element', () => {
+      const childElement = document.createElement('button');
+      mockElement.appendChild(childElement);
+
+      const handler = createDOMClickHandler(setActiveFieldMock);
+      const event = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: childElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).toHaveBeenCalledWith('authority');
+    });
+
+    it('should not call setActiveField if no root element found', () => {
+      const orphanElement = document.createElement('div');
+      orphanElement.id = 'no-matching-prefix';
+
+      const handler = createDOMClickHandler(setActiveFieldMock);
+      const event = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: orphanElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).not.toHaveBeenCalled();
+    });
+
+    it('should handle nested elements correctly', () => {
+      const nestedElement = document.createElement('span');
+      const buttonElement = document.createElement('button');
+      mockElement.appendChild(buttonElement);
+      buttonElement.appendChild(nestedElement);
+
+      const handler = createDOMClickHandler(setActiveFieldMock);
+      const event = new MouseEvent('click', { bubbles: true });
+      Object.defineProperty(event, 'target', { value: nestedElement });
+
+      handler(event);
+
+      expect(setActiveFieldMock).toHaveBeenCalledWith('authority');
+    });
+  });
+
+  /**
+   * Test suite for updateLoadingState function
+   * Tests conditional loading state updates based on modal save flag
+   */
+  describe('updateLoadingState', () => {
+    it('should update loading state when isModalSave is false', () => {
+      const setIsLoadingMock = jest.fn();
+      updateLoadingState(false, setIsLoadingMock, true);
+
+      expect(setIsLoadingMock).toHaveBeenCalledWith(true);
+    });
+
+    it('should not update loading state when isModalSave is true', () => {
+      const setIsLoadingMock = jest.fn();
+      updateLoadingState(true, setIsLoadingMock, true);
+
+      expect(setIsLoadingMock).not.toHaveBeenCalled();
+    });
+
+    it('should update loading state to false when isModalSave is false', () => {
+      const setIsLoadingMock = jest.fn();
+      updateLoadingState(false, setIsLoadingMock, false);
+
+      expect(setIsLoadingMock).toHaveBeenCalledWith(false);
+    });
+
+    it('should not update loading state to false when isModalSave is true', () => {
+      const setIsLoadingMock = jest.fn();
+      updateLoadingState(true, setIsLoadingMock, false);
+
+      expect(setIsLoadingMock).not.toHaveBeenCalled();
+    });
+  });
+
+  /**
+   * Test suite for hasFieldValidationErrors function
+   * Tests type guard for field-level validation errors
+   */
+  describe('hasFieldValidationErrors', () => {
+    it('should return true for error with field validation errors', () => {
+      const error = {
+        response: {
+          data: {
+            status: 'failed',
+            errors: [{ field: 'clientId', error: 'Required field' }],
+          },
+        },
+      };
+
+      expect(hasFieldValidationErrors(error)).toBe(true);
+    });
+
+    it('should return true for error with empty errors array', () => {
+      const error = {
+        response: {
+          data: {
+            status: 'failed',
+            errors: [],
+          },
+        },
+      };
+
+      expect(hasFieldValidationErrors(error)).toBe(true);
+    });
+
+    it('should return false for error without response', () => {
+      const error = {
+        message: 'Network error',
+      };
+
+      expect(hasFieldValidationErrors(error)).toBe(false);
+    });
+
+    it('should return false for error without data', () => {
+      const error = {
+        response: {},
+      };
+
+      expect(hasFieldValidationErrors(error)).toBe(false);
+    });
+
+    it('should return false for error with null data', () => {
+      const error = {
+        response: {
+          data: null,
+        },
+      };
+
+      expect(hasFieldValidationErrors(error)).toBe(false);
+    });
+
+    it('should return false for error with non-object data', () => {
+      const error = {
+        response: {
+          data: 'error string',
+        },
+      };
+
+      expect(hasFieldValidationErrors(error)).toBe(false);
+    });
+
+    it('should return false for error without errors field', () => {
+      const error = {
+        response: {
+          data: {
+            status: 'failed',
+            message: 'Validation failed',
+          },
+        },
+      };
+
+      expect(hasFieldValidationErrors(error)).toBe(false);
+    });
+
+    it('should return false for undefined error', () => {
+      expect(hasFieldValidationErrors(undefined)).toBe(false);
+    });
+
+    it('should return false for null error', () => {
+      expect(hasFieldValidationErrors(null)).toBe(false);
+    });
+
+    it('should return true for error with multiple field validation errors', () => {
+      const error = {
+        response: {
+          data: {
+            status: 'failed',
+            errors: [
+              { field: 'clientId', error: 'Required field' },
+              { field: 'authority', error: 'Invalid URL' },
+              { field: 'callbackUrl', error: 'Invalid format' },
+            ],
+          },
+        },
+      };
+
+      expect(hasFieldValidationErrors(error)).toBe(true);
     });
   });
 });

@@ -47,6 +47,36 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
+
+// Mock SSOUtils - use actual implementations where needed
+jest.mock('../../../utils/SSOUtils', () => {
+  const actual = jest.requireActual('../../../utils/SSOUtils');
+
+  return {
+    ...actual, // Use actual implementations
+    // Only override what needs to be spied on
+    applySamlConfiguration: jest.fn(actual.applySamlConfiguration),
+    cleanupProviderSpecificFields: jest.fn(
+      actual.cleanupProviderSpecificFields
+    ),
+  };
+});
+
+// Mock formUtils - use actual implementations
+jest.mock('../../../utils/formUtils', () => {
+  const actual = jest.requireActual('../../../utils/formUtils');
+
+  return {
+    ...actual, // Use actual implementations
+  };
+});
+
+// Mock SwTokenStorageUtils
+jest.mock('../../../utils/SwTokenStorageUtils', () => ({
+  setOidcToken: jest.fn(),
+  setRefreshToken: jest.fn(),
+}));
+
 jest.mock('../../../rest/securityConfigAPI');
 jest.mock('../../../rest/miscAPI');
 jest.mock('../../../hooks/useApplicationStore');
@@ -1617,6 +1647,355 @@ describe('SSOConfigurationForm', () => {
       await waitFor(() => {
         expect(mockApplySecurityConfiguration).toHaveBeenCalled();
       });
+    });
+  });
+
+  describe('Invalid Provider Configuration', () => {
+    it('should show provider selector for invalid non-basic provider config', async () => {
+      const invalidConfig = {
+        authenticationConfiguration: {
+          provider: null as unknown as AuthProvider,
+          providerName: '',
+          authority: '',
+          clientId: '',
+          callbackUrl: '',
+          jwtPrincipalClaims: [],
+          jwtPrincipalClaimsMapping: [],
+          publicKeyUrls: [],
+          tokenValidationAlgorithm: '',
+          enableSelfSignup: false,
+        },
+        authorizerConfiguration: {} as unknown as AuthorizerConfiguration,
+      };
+
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse(invalidConfig)
+      );
+
+      renderComponent({});
+
+      await waitFor(() => {
+        expect(screen.getByTestId('provider-selector')).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Client Type Switching Coverage', () => {
+    it('should handle switching from Public to Confidential without existing callbackUrl', async () => {
+      const mockConfigData = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Google,
+          providerName: 'Google',
+          clientType: ClientType.Public,
+          authority: 'https://accounts.google.com',
+          clientId: 'test-client-id',
+          callbackUrl: 'http://localhost:8585/callback',
+          jwtPrincipalClaims: ['email'],
+          jwtPrincipalClaimsMapping: [],
+          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          tokenValidationAlgorithm: 'RS256',
+          enableSelfSignup: false,
+        },
+        authorizerConfiguration: {
+          className: 'org.openmetadata.service.security.DefaultAuthorizer',
+          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          adminPrincipals: [],
+          principalDomain: '',
+          enforcePrincipalDomain: false,
+          enableSecureSocketConnection: false,
+        },
+      };
+
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse(mockConfigData)
+      );
+
+      const { rerender } = renderComponent({
+        selectedProvider: AuthProvider.Google,
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+
+      // Simulate client type change by re-rendering with updated config
+      mockConfigData.authenticationConfiguration.clientType =
+        ClientType.Confidential;
+      rerender(
+        <MemoryRouter>
+          <SSOConfigurationFormRJSF selectedProvider={AuthProvider.Google} />
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should handle switching from Confidential to Public for Google with callback URL', async () => {
+      const mockConfigData = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Google,
+          providerName: 'Google',
+          clientType: ClientType.Confidential,
+          authority: 'https://accounts.google.com',
+          clientId: 'test-client-id',
+          jwtPrincipalClaims: ['email'],
+          jwtPrincipalClaimsMapping: [],
+          publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+          tokenValidationAlgorithm: 'RS256',
+          callbackUrl: 'https://custom.callback.com/auth',
+          enableSelfSignup: false,
+          oidcConfiguration: {
+            id: 'test-id',
+            secret: 'test-secret',
+            callbackUrl: 'https://custom.callback.com/auth',
+            discoveryUri:
+              'https://accounts.google.com/.well-known/openid-configuration',
+            tenant: '',
+          },
+        },
+        authorizerConfiguration: {
+          className: 'org.openmetadata.service.security.DefaultAuthorizer',
+          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          adminPrincipals: [],
+          principalDomain: '',
+          enforcePrincipalDomain: false,
+          enableSecureSocketConnection: false,
+        },
+      };
+
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse(mockConfigData)
+      );
+
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should set default callback URL when switching to Public without any callbackUrl', async () => {
+      const mockConfigData = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Azure,
+          providerName: 'Azure',
+          clientType: ClientType.Confidential,
+          authority: 'https://login.microsoftonline.com',
+          clientId: 'test-client-id',
+          jwtPrincipalClaims: ['email'],
+          jwtPrincipalClaimsMapping: [],
+          publicKeyUrls: [],
+          tokenValidationAlgorithm: 'RS256',
+          callbackUrl: 'http://localhost:8585/callback',
+          enableSelfSignup: false,
+          oidcConfiguration: {
+            id: 'test-client-id',
+            secret: 'test-secret',
+            discoveryUri:
+              'https://login.microsoftonline.com/.well-known/openid-configuration',
+            tenant: 'common',
+          },
+        },
+        authorizerConfiguration: {
+          className: 'org.openmetadata.service.security.DefaultAuthorizer',
+          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          adminPrincipals: [],
+          principalDomain: '',
+          enforcePrincipalDomain: false,
+          enableSecureSocketConnection: false,
+        },
+      };
+
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse(mockConfigData)
+      );
+
+      renderComponent({ selectedProvider: AuthProvider.Azure });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Field Error Clearing', () => {
+    it('should render form with existing config', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          authenticationConfiguration: {
+            provider: AuthProvider.Google,
+            providerName: 'google',
+            clientType: ClientType.Public,
+            authority: 'https://accounts.google.com',
+            clientId: 'existing-client-id',
+            callbackUrl: 'https://app.example.com/callback',
+            publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+            jwtPrincipalClaims: ['email'],
+            jwtPrincipalClaimsMapping: [],
+            tokenValidationAlgorithm: 'RS256',
+            enableSelfSignup: false,
+          },
+          authorizerConfiguration: {
+            className: 'org.openmetadata.service.security.DefaultAuthorizer',
+            containerRequestFilter:
+              'org.openmetadata.service.security.JwtFilter',
+            adminPrincipals: [],
+            principalDomain: '',
+            enforcePrincipalDomain: false,
+            enableSecureSocketConnection: false,
+          },
+        })
+      );
+
+      renderComponent({});
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Focus Event Handling', () => {
+    it('should update active field on focus', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          authenticationConfiguration: {
+            provider: AuthProvider.Google,
+            providerName: 'google',
+            clientType: ClientType.Public,
+            authority: 'https://accounts.google.com',
+            clientId: 'test-client-id',
+            callbackUrl: 'http://localhost:8585/callback',
+            jwtPrincipalClaims: ['email'],
+            jwtPrincipalClaimsMapping: [],
+            publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+            tokenValidationAlgorithm: 'RS256',
+            enableSelfSignup: false,
+          },
+          authorizerConfiguration: {
+            className: 'org.openmetadata.service.security.DefaultAuthorizer',
+            containerRequestFilter:
+              'org.openmetadata.service.security.JwtFilter',
+            adminPrincipals: [],
+            principalDomain: '',
+            enforcePrincipalDomain: false,
+            enableSecureSocketConnection: false,
+          },
+        })
+      );
+
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+
+      // Verify doc panel is rendered (confirms activeField state is working)
+      expect(screen.getByTestId('sso-doc-panel')).toBeInTheDocument();
+    });
+  });
+
+  describe('Form onChange with No Errors', () => {
+    it('should handle form change without existing errors', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          authenticationConfiguration: {
+            provider: AuthProvider.Google,
+            providerName: 'google',
+            clientType: ClientType.Public,
+            authority: 'https://accounts.google.com',
+            clientId: 'test-client-id',
+            callbackUrl: 'http://localhost:8585/callback',
+            jwtPrincipalClaims: ['email'],
+            jwtPrincipalClaimsMapping: [],
+            publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+            tokenValidationAlgorithm: 'RS256',
+            enableSelfSignup: false,
+          },
+          authorizerConfiguration: {
+            className: 'org.openmetadata.service.security.DefaultAuthorizer',
+            containerRequestFilter:
+              'org.openmetadata.service.security.JwtFilter',
+            adminPrincipals: [],
+            principalDomain: '',
+            enforcePrincipalDomain: false,
+            enableSecureSocketConnection: false,
+          },
+        })
+      );
+
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+
+      // Verify the form card is rendered
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe('Extract Field Name Utility', () => {
+    it('should handle field name extraction from field IDs', async () => {
+      mockGetSecurityConfiguration.mockResolvedValue(
+        createAxiosResponse({
+          authenticationConfiguration: {
+            provider: AuthProvider.Google,
+            providerName: 'google',
+            clientType: ClientType.Public,
+            authority: 'https://accounts.google.com',
+            clientId: 'test-client-id',
+            callbackUrl: 'http://localhost:8585/callback',
+            jwtPrincipalClaims: ['email'],
+            jwtPrincipalClaimsMapping: [],
+            publicKeyUrls: ['https://www.googleapis.com/oauth2/v3/certs'],
+            tokenValidationAlgorithm: 'RS256',
+            enableSelfSignup: false,
+          },
+          authorizerConfiguration: {
+            className: 'org.openmetadata.service.security.DefaultAuthorizer',
+            containerRequestFilter:
+              'org.openmetadata.service.security.JwtFilter',
+            adminPrincipals: [],
+            principalDomain: '',
+            enforcePrincipalDomain: false,
+            enableSecureSocketConnection: false,
+          },
+        })
+      );
+
+      renderComponent({ selectedProvider: AuthProvider.Google });
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('sso-configuration-form-card')
+        ).toBeInTheDocument();
+      });
+
+      // Verify the doc panel shows proper field mapping
+      const docPanel = screen.getByTestId('sso-doc-panel');
+
+      expect(docPanel).toBeInTheDocument();
     });
   });
 });

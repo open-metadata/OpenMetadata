@@ -22,7 +22,7 @@ export const getCallbackUrl = (): string => {
   }
 
   // In production, use the current domain with /callback path
-  return `${window.location.origin}/callback`;
+  return `${globalThis.location.origin}/callback`;
 };
 
 /**
@@ -35,7 +35,7 @@ export const getServerUrl = (): string => {
   }
 
   // In production, use the current domain
-  return window.location.origin;
+  return globalThis.location.origin;
 };
 
 /**
@@ -48,7 +48,7 @@ export const getDomainUrl = (): string => {
   }
 
   // In production, use just the origin (protocol + domain + port)
-  return window.location.origin;
+  return globalThis.location.origin;
 };
 
 /**
@@ -61,5 +61,5 @@ export const getAuthorityUrl = (): string => {
   }
 
   // In production, use the current domain with /api/auth/login path
-  return `${window.location.origin}/api/v1/auth/login`;
+  return `${globalThis.location.origin}/api/v1/auth/login`;
 };

@@ -21,6 +21,8 @@ import LdapIcon from '../assets/svg/ic-ldap.svg';
 import SamlIcon from '../assets/svg/ic-saml.svg';
 
 import { ErrorSchema } from '@rjsf/utils';
+import { AxiosError } from 'axios';
+import { isNil } from 'lodash';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -189,7 +191,7 @@ export const parseValidationErrors = (
 ): ErrorSchema => {
   const errorSchema: ErrorSchema = {};
 
-  errors.forEach((error) => {
+  for (const error of errors) {
     // Parse the field path to create nested error structure
     // e.g., "authenticationConfiguration.oidcConfiguration.clientSecret" needs to become:
     // { authenticationConfiguration: { oidcConfiguration: { clientSecret: { __errors: ["..."] } } } }
@@ -215,7 +217,7 @@ export const parseValidationErrors = (
         current = current[part] as ErrorSchema;
       }
     }
-  });
+  }
 
   return errorSchema;
 };
@@ -418,9 +420,9 @@ export const cleanupProviderSpecificFields = (
     const authConfig = cleanedData.authenticationConfiguration;
 
     // Remove common unwanted fields that might persist
-    COMMON_AUTH_FIELDS_TO_REMOVE.forEach(
-      (field) => delete authConfig[field as keyof AuthenticationConfiguration]
-    );
+    for (const field of COMMON_AUTH_FIELDS_TO_REMOVE) {
+      delete authConfig[field as keyof AuthenticationConfiguration];
+    }
 
     // Set clientType to Public for SAML and LDAP providers
     if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
@@ -437,9 +439,9 @@ export const cleanupProviderSpecificFields = (
     // Handle oidcConfiguration based on client type
     if (authConfig.clientType === ClientType.Public) {
       // For public clients, remove oidcConfiguration entirely
-      fieldsToRemove.forEach(
-        (field) => delete authConfig[field as keyof AuthenticationConfiguration]
-      );
+      for (const field of fieldsToRemove) {
+        delete authConfig[field as keyof AuthenticationConfiguration];
+      }
       // Also remove secret from root level for public clients
       delete authConfig.secret;
     } else {
@@ -447,9 +449,10 @@ export const cleanupProviderSpecificFields = (
       const fieldsToActuallyRemove = fieldsToRemove.filter(
         (field) => field !== 'oidcConfiguration'
       );
-      fieldsToActuallyRemove.forEach(
-        (field) => delete authConfig[field as keyof AuthenticationConfiguration]
-      );
+
+      for (const field of fieldsToActuallyRemove) {
+        delete authConfig[field as keyof AuthenticationConfiguration];
+      }
 
       // For confidential clients, populate clientId and callbackUrl from OIDC configuration
       // since they are hidden in the UI but needed in the authentication object
@@ -486,9 +489,9 @@ export const cleanupProviderSpecificFields = (
     const authorizerConfig = cleanedData.authorizerConfiguration;
 
     // Remove common authorizer fields that shouldn't be sent
-    COMMON_AUTHORIZER_FIELDS_TO_REMOVE.forEach(
-      (field) => delete authorizerConfig[field as keyof AuthorizerConfiguration]
-    );
+    for (const field of COMMON_AUTHORIZER_FIELDS_TO_REMOVE) {
+      delete authorizerConfig[field as keyof AuthorizerConfiguration];
+    }
 
     // Remove bot principals for providers that don't support them (only Azure and Okta should have botPrincipals)
     if (PROVIDERS_WITHOUT_BOT_PRINCIPALS.includes(provider)) {
@@ -510,8 +513,8 @@ export const cleanupProviderSpecificFields = (
 
   // Provider-specific boolean field handling
   if (cleanedData.authenticationConfiguration?.ldapConfiguration) {
-    const ldapConfig = cleanedData.authenticationConfiguration
-      .ldapConfiguration as Record<string, unknown>;
+    const ldapConfig =
+      cleanedData.authenticationConfiguration.ldapConfiguration;
 
     // LDAP-specific boolean fields
     if (ldapConfig.isFullDn === undefined) {
@@ -560,8 +563,8 @@ export const cleanupProviderSpecificFields = (
   }
 
   if (cleanedData.authenticationConfiguration?.samlConfiguration) {
-    const samlConfig = cleanedData.authenticationConfiguration
-      .samlConfiguration as Record<string, unknown>;
+    const samlConfig =
+      cleanedData.authenticationConfiguration.samlConfiguration;
     const authConfig = cleanedData.authenticationConfiguration;
 
     // SAML-specific boolean fields
@@ -578,7 +581,7 @@ export const cleanupProviderSpecificFields = (
         idpConfig.authorityUrl &&
         typeof idpConfig.authorityUrl === 'string'
       ) {
-        authConfig.authority = idpConfig.authorityUrl as string;
+        authConfig.authority = idpConfig.authorityUrl;
       }
 
       if (
@@ -586,9 +589,10 @@ export const cleanupProviderSpecificFields = (
         typeof idpConfig.idpX509Certificate === 'string'
       ) {
         // Fix certificate escaping by replacing \\n with \n
-        idpConfig.idpX509Certificate = (
-          idpConfig.idpX509Certificate as string
-        ).replace(/\\n/g, '\n');
+        idpConfig.idpX509Certificate = idpConfig.idpX509Certificate.replaceAll(
+          '\\n',
+          '\n'
+        );
       }
     }
 
@@ -597,7 +601,7 @@ export const cleanupProviderSpecificFields = (
 
       // Copy SP callback to root level callbackUrl and ensure ACS matches callback
       if (spConfig.callback && typeof spConfig.callback === 'string') {
-        authConfig.callbackUrl = spConfig.callback as string;
+        authConfig.callbackUrl = spConfig.callback;
         // Also ensure ACS has the same value as callback
         spConfig.acs = spConfig.callback;
       }
@@ -606,16 +610,14 @@ export const cleanupProviderSpecificFields = (
         typeof spConfig.spX509Certificate === 'string'
       ) {
         // Fix certificate escaping by replacing \\n with \n
-        spConfig.spX509Certificate = (
-          spConfig.spX509Certificate as string
-        ).replace(/\\n/g, '\n');
+        spConfig.spX509Certificate = spConfig.spX509Certificate.replaceAll(
+          '\\n',
+          '\n'
+        );
       }
       if (spConfig.spPrivateKey && typeof spConfig.spPrivateKey === 'string') {
         // Fix private key escaping by replacing \\n with \n
-        spConfig.spPrivateKey = (spConfig.spPrivateKey as string).replace(
-          /\\n/g,
-          '\n'
-        );
+        spConfig.spPrivateKey = spConfig.spPrivateKey.replaceAll('\\n', '\n');
       }
     }
 
@@ -712,7 +714,7 @@ export const generatePatches = (
 
   const toRecord = (obj: unknown): Record<string, unknown> => {
     if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
-      return obj as unknown as Record<string, unknown>;
+      return obj as Record<string, unknown>;
     }
 
     return {};
@@ -726,7 +728,7 @@ export const generatePatches = (
     // Handle authentication configuration
     if (basePath === '/authenticationConfiguration') {
       // Compare top-level authentication fields
-      Object.keys(newObj).forEach((key) => {
+      for (const key of Object.keys(newObj)) {
         if (
           key === 'oidcConfiguration' ||
           key === 'ldapConfiguration' ||
@@ -741,7 +743,7 @@ export const generatePatches = (
             | undefined;
 
           if (newNestedObj && oldNestedObj) {
-            Object.keys(newNestedObj).forEach((nestedKey) => {
+            for (const nestedKey of Object.keys(newNestedObj)) {
               const oldValue = oldNestedObj[nestedKey];
               const newValue = newNestedObj[nestedKey];
 
@@ -762,7 +764,7 @@ export const generatePatches = (
                     | null,
                 });
               }
-            });
+            }
           } else if (newNestedObj && !oldNestedObj) {
             // Add new nested configuration
             patches.push({
@@ -794,10 +796,10 @@ export const generatePatches = (
             });
           }
         }
-      });
+      }
     } else {
       // Handle authorizer configuration - simple field comparison
-      Object.keys(newObj).forEach((key) => {
+      for (const key of Object.keys(newObj)) {
         const oldValue = oldObj[key];
         const newValue = newObj[key];
 
@@ -818,7 +820,7 @@ export const generatePatches = (
               | null,
           });
         }
-      });
+      }
     }
   };
 
@@ -828,8 +830,8 @@ export const generatePatches = (
     newData.authenticationConfiguration
   ) {
     compareObjects(
-      toRecord(oldData.authenticationConfiguration as unknown),
-      toRecord(newData.authenticationConfiguration as unknown),
+      toRecord(oldData.authenticationConfiguration),
+      toRecord(newData.authenticationConfiguration),
       '/authenticationConfiguration'
     );
   }
@@ -837,11 +839,354 @@ export const generatePatches = (
   // Generate patches for authorizer configuration
   if (oldData.authorizerConfiguration && newData.authorizerConfiguration) {
     compareObjects(
-      toRecord(oldData.authorizerConfiguration as unknown),
-      toRecord(newData.authorizerConfiguration as unknown),
+      toRecord(oldData.authorizerConfiguration),
+      toRecord(newData.authorizerConfiguration),
       '/authorizerConfiguration'
     );
   }
 
   return patches;
+};
+
+/**
+ * Type for SAML authentication configuration
+ */
+type SamlAuthConfig = AuthenticationConfiguration & {
+  samlConfiguration?: {
+    idp?: { authorityUrl?: string };
+    sp?: { callback?: string; acs?: string };
+  };
+};
+
+/**
+ * Populates SAML IDP authority URL from root authority or defaults
+ * @param authConfig - SAML authentication configuration
+ */
+export const populateSamlIdpAuthority = (authConfig: SamlAuthConfig): void => {
+  if (!authConfig.samlConfiguration?.idp) {
+    return;
+  }
+
+  if (authConfig.authority) {
+    authConfig.samlConfiguration.idp.authorityUrl = authConfig.authority;
+  } else if (!authConfig.samlConfiguration.idp.authorityUrl) {
+    authConfig.samlConfiguration.idp.authorityUrl =
+      SAML_SSO_DEFAULTS.idp.authorityUrl;
+  }
+};
+
+/**
+ * Populates SAML SP callback URLs from root callbackUrl
+ * @param authConfig - SAML authentication configuration
+ */
+export const populateSamlSpCallback = (authConfig: SamlAuthConfig): void => {
+  if (!authConfig.callbackUrl || !authConfig.samlConfiguration?.sp) {
+    return;
+  }
+
+  authConfig.samlConfiguration.sp.callback = authConfig.callbackUrl;
+  authConfig.samlConfiguration.sp.acs = authConfig.callbackUrl;
+};
+
+/**
+ * Applies SAML-specific configuration by populating IDP and SP fields
+ * @param configData - Form data containing authentication configuration
+ */
+export const applySamlConfiguration = (configData: FormData): void => {
+  const authConfig = configData.authenticationConfiguration as SamlAuthConfig;
+
+  if (!authConfig.samlConfiguration) {
+    return;
+  }
+
+  populateSamlIdpAuthority(authConfig);
+  populateSamlSpCallback(authConfig);
+};
+
+/**
+ * Determines the default client type for a given provider
+ * @param provider - The authentication provider
+ * @returns The default client type (Public or Confidential)
+ */
+export const getDefaultClientType = (provider: AuthProvider): ClientType => {
+  // SAML and LDAP are always public clients, OAuth providers default to confidential but can be changed
+  return provider === AuthProvider.Saml || provider === AuthProvider.LDAP
+    ? ClientType.Public
+    : ClientType.Confidential;
+};
+
+/**
+ * Creates fresh form data for a new provider with all required fields
+ * @param provider - The authentication provider
+ * @returns FormData object with provider-specific defaults
+ */
+export const createFreshFormData = (provider: AuthProvider): FormData => {
+  const defaultClientType = getDefaultClientType(provider);
+  const defaults = getDefaultsForProvider(provider, defaultClientType);
+
+  return defaults;
+};
+
+/**
+ * Removes specified fields from a schema's properties object
+ * @param schema - The schema object to modify
+ * @param fieldsToRemove - Array of field names to remove
+ */
+export const removeSchemaFields = (
+  schema: Record<string, unknown>,
+  fieldsToRemove: string[]
+): void => {
+  if (!schema.properties || typeof schema.properties !== 'object') {
+    return;
+  }
+
+  const properties = schema.properties as Record<string, unknown>;
+  for (const field of fieldsToRemove) {
+    if (properties[field]) {
+      delete properties[field];
+    }
+  }
+};
+
+/**
+ * Removes specified fields from a schema's required array
+ * @param schema - The schema object to modify
+ * @param fieldsToRemove - Array of field names to remove from required
+ */
+export const removeRequiredFields = (
+  schema: Record<string, unknown>,
+  fieldsToRemove: string[]
+): void => {
+  if (!schema.required || !Array.isArray(schema.required)) {
+    return;
+  }
+
+  schema.required = (schema.required as string[]).filter(
+    (field) => !fieldsToRemove.includes(field)
+  );
+};
+
+/**
+ * Handles switching from Confidential to Public client type
+ * Moves callback URL from OIDC config to root level and adds Google-specific defaults if applicable
+ * @param authConfig - Authentication configuration to modify
+ */
+export const handleConfidentialToPublicSwitch = (
+  authConfig: AuthenticationConfiguration
+): void => {
+  const oidcConfig = authConfig.oidcConfiguration;
+
+  // Move callback URL from OIDC to root level
+  authConfig.callbackUrl ??=
+    (oidcConfig?.callbackUrl as string) ?? DEFAULT_CALLBACK_URL;
+
+  // For Google SSO, prepopulate Authority and Public Key URLs when switching to Public
+  const isGoogle = authConfig.provider === AuthProvider.Google;
+  if (isGoogle) {
+    authConfig.authority = GOOGLE_SSO_DEFAULTS.authority;
+    authConfig.publicKeyUrls = GOOGLE_SSO_DEFAULTS.publicKeyUrls;
+  }
+};
+
+/**
+ * Handles switching from Public to Confidential client type
+ * Moves callback URL from root to OIDC config and adds Google-specific OIDC defaults if applicable
+ * @param authConfig - Authentication configuration to modify
+ */
+export const handlePublicToConfidentialSwitch = (
+  authConfig: AuthenticationConfiguration
+): void => {
+  // Initialize OIDC configuration if it doesn't exist
+  authConfig.oidcConfiguration ??= {};
+
+  const oidcConfig = authConfig.oidcConfiguration;
+
+  // Move callback URL from root to OIDC
+  oidcConfig.callbackUrl ??= authConfig.callbackUrl ?? DEFAULT_CALLBACK_URL;
+
+  // For Google SSO, prepopulate OIDC fields when switching to Confidential
+  const isGoogle = authConfig.provider === AuthProvider.Google;
+  if (isGoogle) {
+    oidcConfig.type = AuthProvider.Google;
+    oidcConfig.discoveryUri = GOOGLE_SSO_DEFAULTS.discoveryUri;
+    oidcConfig.tokenValidity = GOOGLE_SSO_DEFAULTS.tokenValidity;
+    oidcConfig.sessionExpiry = GOOGLE_SSO_DEFAULTS.sessionExpiry;
+    oidcConfig.serverUrl = GOOGLE_SSO_DEFAULTS.serverUrl;
+    // Set default values for other required OIDC fields
+    oidcConfig.scope = oidcConfig.scope || 'openid email profile';
+    oidcConfig.useNonce = oidcConfig.useNonce ?? false;
+    oidcConfig.preferredJwsAlgorithm =
+      oidcConfig.preferredJwsAlgorithm || 'RS256';
+    oidcConfig.responseType = oidcConfig.responseType || 'code';
+    oidcConfig.disablePkce = oidcConfig.disablePkce ?? false;
+    oidcConfig.maxClockSkew = oidcConfig.maxClockSkew ?? 0;
+    oidcConfig.clientAuthenticationMethod =
+      oidcConfig.clientAuthenticationMethod || 'client_secret_post';
+  }
+};
+
+/**
+ * Handles client type transitions for authentication configuration
+ * Migrates fields between root and OIDC configuration based on client type change
+ * @param authConfig - Authentication configuration to modify
+ * @param previousClientType - The previous client type (undefined if not set)
+ * @param newClientType - The new client type (undefined if not set)
+ */
+export const handleClientTypeChange = (
+  authConfig: AuthenticationConfiguration | undefined,
+  previousClientType: ClientType | undefined,
+  newClientType: ClientType | undefined
+): void => {
+  // Early return if no auth config or client type hasn't changed
+  if (!authConfig || !newClientType || previousClientType === newClientType) {
+    return;
+  }
+
+  // Handle Confidential → Public transition
+  if (
+    newClientType === ClientType.Public &&
+    previousClientType === ClientType.Confidential
+  ) {
+    handleConfidentialToPublicSwitch(authConfig);
+  }
+  // Handle Public → Confidential transition
+  else if (
+    newClientType === ClientType.Confidential &&
+    previousClientType === ClientType.Public
+  ) {
+    handlePublicToConfidentialSwitch(authConfig);
+  }
+};
+
+/**
+ * Checks if a provider is valid (non-Basic) SSO provider
+ * @param config - Security configuration to check
+ * @returns true if configuration has a valid non-Basic provider
+ */
+export const isValidNonBasicProvider = (
+  config: { authenticationConfiguration?: { provider?: string } } | undefined
+): boolean => {
+  return (
+    !!config?.authenticationConfiguration?.provider &&
+    config.authenticationConfiguration.provider !== AuthProvider.Basic
+  );
+};
+
+/**
+ * Extracts meaningful field name from RJSF field ID
+ * Maps field IDs like "root/authenticationConfiguration/clientId" to "clientId"
+ * Also handles field mappings for documentation purposes
+ * @param fieldId - The RJSF field ID to extract from
+ * @returns The extracted and mapped field name
+ */
+export const extractFieldName = (fieldId: string): string => {
+  // Extract meaningful field name from RJSF field ID
+  // Examples:
+  // "root/authenticationConfiguration/clientId" -> "clientId"
+  // "root/authenticationConfiguration/authority" -> "authority"
+  const parts = fieldId.split('/');
+  const lastPart = parts.at(parts.length - 1) ?? '';
+
+  // Handle common field mappings for SSO documentation
+  const fieldMappings: Record<string, string> = {
+    clientSecret: 'clientSecret',
+    secret: 'clientSecret', // Map 'secret' to 'clientSecret' for documentation
+    authority: 'authority',
+    domain: 'authority', // Auth0 uses 'domain' but docs show 'authority'
+    callbackUrl: 'callbackUrl',
+    enableSelfSignup: 'enableSelfSignup',
+    scopes: 'scopes',
+    secretKey: 'clientSecret', // Auth0 secret key maps to clientSecret
+    oidcConfiguration: 'oidcConfiguration',
+    samlConfiguration: 'samlConfiguration',
+    ldapConfiguration: 'ldapConfiguration',
+    providerName: 'providerName',
+  };
+
+  return fieldMappings[lastPart] || lastPart;
+};
+
+/**
+ * Creates a DOM focus handler that extracts field names and sets active field state
+ * @param setActiveField - State setter for active field
+ * @returns Focus event handler
+ */
+export const createDOMFocusHandler =
+  (setActiveField: (field: string) => void) =>
+  (event: FocusEvent): void => {
+    const target = event.target as HTMLElement;
+    // Look for the closest field container with an id
+    let element: HTMLElement | null = target;
+    while (element && element !== document.body) {
+      if (element.id?.includes('root')) {
+        const fieldName = extractFieldName(element.id);
+        setActiveField(fieldName);
+
+        break;
+      }
+      element = element.parentElement;
+    }
+  };
+
+/**
+ * Creates a DOM click handler that extracts field names and sets active field state
+ * @param setActiveField - State setter for active field
+ * @returns Mouse event handler
+ */
+export const createDOMClickHandler =
+  (setActiveField: (field: string) => void) =>
+  (event: MouseEvent): void => {
+    const target = event.target as HTMLElement;
+    // Look for the closest field container with an id
+    let element: HTMLElement | null = target;
+    while (element && element !== document.body) {
+      if (element.id?.includes('root')) {
+        const fieldName = extractFieldName(element.id);
+        setActiveField(fieldName);
+
+        break;
+      }
+      element = element.parentElement;
+    }
+  };
+
+/**
+ * Updates loading state conditionally based on isModalSave flag
+ * @param isModalSave - Whether save is triggered from modal
+ * @param setIsLoading - Loading state setter
+ * @param value - New loading state value
+ */
+export const updateLoadingState = (
+  isModalSave: boolean,
+  setIsLoading: (value: boolean) => void,
+  value: boolean
+): void => {
+  if (!isModalSave) {
+    setIsLoading(value);
+  }
+};
+
+/**
+ * Checks if error response contains field-level validation errors
+ * @param error - Error object to check
+ * @returns True if error contains field-level validation errors
+ */
+export const hasFieldValidationErrors = (
+  error: unknown
+): error is {
+  response: {
+    data: { status: string; errors: Array<{ field: string; error: string }> };
+  };
+} => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const axiosError = error as AxiosError;
+
+  return (
+    !isNil(axiosError.response?.data) &&
+    typeof axiosError.response.data === 'object' &&
+    'errors' in axiosError.response.data
+  );
 };
