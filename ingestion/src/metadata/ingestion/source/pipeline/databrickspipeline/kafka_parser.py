@@ -50,6 +50,26 @@ DLT_TABLE_NAME_FUNCTION = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
+# Pattern to extract dlt.read_stream("table_name") calls
+DLT_READ_STREAM_PATTERN = re.compile(
+    r'dlt\.read_stream\s*\(\s*["\']([^"\']+)["\']\s*\)',
+    re.IGNORECASE,
+)
+
+# Pattern to extract dlt.read("table_name") calls (batch reads)
+DLT_READ_PATTERN = re.compile(
+    r'dlt\.read\s*\(\s*["\']([^"\']+)["\']\s*\)',
+    re.IGNORECASE,
+)
+
+# Pattern to extract S3 paths from spark.read operations
+# Matches: spark.read.json("s3://..."), spark.read.format("parquet").load("s3a://...")
+# Uses a simpler pattern that captures any spark.read followed by method calls ending with a path
+S3_PATH_PATTERN = re.compile(
+    r'spark\.read.*?\.(?:load|json|parquet|csv|orc|avro)\s*\(\s*["\']([^"\']+)["\']\s*\)',
+    re.DOTALL | re.IGNORECASE,
+)
+
 
 @dataclass
 class KafkaSourceConfig:
@@ -58,6 +78,17 @@ class KafkaSourceConfig:
     bootstrap_servers: Optional[str] = None
     topics: List[str] = field(default_factory=list)
     group_id_prefix: Optional[str] = None
+
+
+@dataclass
+class DLTTableDependency:
+    """Model for DLT table dependencies"""
+
+    table_name: str
+    depends_on: List[str] = field(default_factory=list)
+    reads_from_kafka: bool = False
+    reads_from_s3: bool = False
+    s3_locations: List[str] = field(default_factory=list)
 
 
 def _extract_variables(source_code: str) -> dict:
@@ -314,6 +345,129 @@ def _infer_table_name_from_function(
         logger.debug(f"Could not infer table name from function {function_call}: {exc}")
 
     return None
+
+
+def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]:
+    """
+    Extract DLT table dependencies by analyzing @dlt.table decorators and dlt.read_stream calls
+
+    For each DLT table, identifies:
+    - Table name from @dlt.table(name="...")
+    - Dependencies from dlt.read_stream("other_table") or dlt.read("other_table") calls
+    - Whether it reads from Kafka (spark.readStream.format("kafka"))
+    - Whether it reads from S3 (spark.read.json("s3://..."))
+    - S3 locations if applicable
+
+    Example:
+        @dlt.table(name="source_table")
+        def my_source():
+            return spark.read.json("s3://bucket/path/")...
+
+        @dlt.table(name="target_table")
+        def my_target():
+            return dlt.read("source_table")
+
+    Returns:
+        [
+            DLTTableDependency(table_name="source_table", depends_on=[], reads_from_s3=True,
+                             s3_locations=["s3://bucket/path/"]),
+            DLTTableDependency(table_name="target_table", depends_on=["source_table"],
+                             reads_from_s3=False)
+        ]
+    """
+    dependencies = []
+
+    try:
+        if not source_code:
+            return dependencies
+
+        # Split source code into function definitions
+        # Pattern: @dlt.table(...) or @dlt.view(...) followed by def function_name():
+        # Handle multiline decorators with potentially nested parentheses
+        function_pattern = re.compile(
+            r"(@dlt\.(?:table|view)\s*\(.*?\)\s*def\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\([^)]*\)\s*:.*?)(?=@dlt\.|$)",
+            re.DOTALL | re.IGNORECASE,
+        )
+
+        for match in function_pattern.finditer(source_code):
+            try:
+                function_block = match.group(1)
+
+                # Extract table name from @dlt.table decorator
+                table_name = None
+                name_match = DLT_TABLE_NAME_LITERAL.search(function_block)
+                if name_match and name_match.group(1):
+                    table_name = name_match.group(1)
+                else:
+                    # Try function name pattern
+                    func_name_match = DLT_TABLE_NAME_FUNCTION.search(function_block)
+                    if func_name_match and func_name_match.group(1):
+                        table_name = _infer_table_name_from_function(
+                            func_name_match.group(1), source_code
+                        )
+
+                if not table_name:
+                    # Try to extract from function definition itself
+                    def_match = re.search(
+                        r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", function_block
+                    )
+                    if def_match:
+                        table_name = def_match.group(1)
+
+                if not table_name:
+                    logger.debug(
+                        f"Could not extract table name from block: {function_block[:100]}..."
+                    )
+                    continue
+
+                # Check if it reads from Kafka
+                reads_from_kafka = bool(KAFKA_STREAM_PATTERN.search(function_block))
+
+                # Check if it reads from S3
+                s3_locations = []
+                for s3_match in S3_PATH_PATTERN.finditer(function_block):
+                    s3_path = s3_match.group(1)
+                    if s3_path.startswith(("s3://", "s3a://", "s3n://")):
+                        s3_locations.append(s3_path)
+                        logger.debug(f"Table {table_name} reads from S3: {s3_path}")
+
+                reads_from_s3 = len(s3_locations) > 0
+
+                # Extract dlt.read_stream dependencies (streaming)
+                depends_on = []
+                for stream_match in DLT_READ_STREAM_PATTERN.finditer(function_block):
+                    source_table = stream_match.group(1)
+                    depends_on.append(source_table)
+                    logger.debug(f"Table {table_name} streams from {source_table}")
+
+                # Extract dlt.read dependencies (batch)
+                for read_match in DLT_READ_PATTERN.finditer(function_block):
+                    source_table = read_match.group(1)
+                    depends_on.append(source_table)
+                    logger.debug(f"Table {table_name} reads from {source_table}")
+
+                dependency = DLTTableDependency(
+                    table_name=table_name,
+                    depends_on=depends_on,
+                    reads_from_kafka=reads_from_kafka,
+                    reads_from_s3=reads_from_s3,
+                    s3_locations=s3_locations,
+                )
+                dependencies.append(dependency)
+                logger.debug(
+                    f"Extracted dependency: {table_name} - depends_on={depends_on}, "
+                    f"reads_from_kafka={reads_from_kafka}, reads_from_s3={reads_from_s3}, "
+                    f"s3_locations={s3_locations}"
+                )
+
+            except Exception as exc:
+                logger.debug(f"Error parsing function block: {exc}")
+                continue
+
+    except Exception as exc:
+        logger.warning(f"Error extracting DLT table dependencies: {exc}")
+
+    return dependencies
 
 
 def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:

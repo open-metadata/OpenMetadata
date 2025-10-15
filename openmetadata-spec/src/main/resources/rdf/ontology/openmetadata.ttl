@@ -25,10 +25,10 @@
 # OpenMetadata Complete Ontology
 om: a owl:Ontology ;
     owl:versionInfo "1.0.0" ;
-    dct:title "OpenMetadata Complete Ontology" ;
+    dct:title "OpenMetadata Ontology" ;
     dct:description "Complete ontology for OpenMetadata covering all entities and relationships" ;
     dct:creator "OpenMetadata Team" ;
-    dct:created "2024-01-01"^^xsd:date ;
+    dct:created "2025-08-24"^^xsd:date ;
     dct:license <https://www.apache.org/licenses/LICENSE-2.0> ;
     owl:imports dcat: , prov: , skos: .
 
