@@ -23,6 +23,7 @@ import {
   assignTagToChildren,
   getFirstRowColumnLink,
   removeTagsFromChildren,
+  waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { columnPaginationTable } from '../../utils/table';
@@ -251,6 +252,46 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(page.getByTestId('page-size-selection-dropdown')).toHaveText(
       '15 / Page'
     );
+  });
+
+  test('Verify search feature in tables and stored procedure', async ({
+    dataConsumerPage: page,
+  }) => {
+    await page.goto('/databaseSchema/sample_data.ecommerce_db.shopify');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
+
+    const waitForTableSearchResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*index=table_search_index*'
+    );
+
+    await page.getByTestId('searchbar').fill('agent_performance_summary');
+    await waitForTableSearchResponse;
+
+    await expect(
+      page.getByTestId('agent_performance_summary').first()
+    ).toContainText('agent_performance_summary');
+
+    await expect(
+      page.getByTestId('big_data_table_with_nested_columns').first()
+    ).not.toBeVisible();
+
+    await page.getByText('Stored Procedures').click();
+    await waitForAllLoadersToDisappear(page);
+
+    const waitForStoreProcedureSearchResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*stored_procedure_search_index*'
+    );
+
+    await page.getByTestId('searchbar').fill('calculate_average');
+    await waitForStoreProcedureSearchResponse;
+
+    await expect(page.locator('tbody')).toContainText('calculate_average');
+
+    await expect(
+      page.getByText('calculate_interest').first()
+    ).not.toBeVisible();
   });
 });
 

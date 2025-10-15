@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
   PAGE_SIZE,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
@@ -41,11 +42,13 @@ import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useTableFilters } from '../../../../hooks/useTableFilters';
 import {
   getDatabaseSchemas,
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
@@ -54,7 +57,6 @@ import {
 } from '../../../../utils/EntityUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
   dataProductTableObject,
@@ -83,8 +85,12 @@ export const DatabaseSchemaTable = ({
   const { permissions } = usePermissionProvider();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
+
   const { data } = useGenericContext<Database>();
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
+  const { showDeletedTables: showDeletedSchemas } = tableFilters;
 
   const { deleted: isDatabaseDeleted } = data ?? {};
 
@@ -157,18 +163,10 @@ export const DatabaseSchemaTable = ({
         query: '',
         pageNumber,
         pageSize: PAGE_SIZE,
-        queryFilter: getTermQuery(
-          { 'database.fullyQualifiedName': decodedDatabaseFQN },
-          'must',
-          undefined,
+        queryFilter: buildSchemaQueryFilter(
+          'database.fullyQualifiedName',
+          decodedDatabaseFQN,
           searchValue
-            ? {
-                wildcardShouldQueries: {
-                  'name.keyword': `*${searchValue}*`,
-                  'description.keyword': `*${searchValue}*`,
-                },
-              }
-            : undefined
         ),
         searchIndex: SearchIndex.DATABASE_SCHEMA,
         includeDeleted: showDeletedSchemas,
@@ -186,7 +184,7 @@ export const DatabaseSchemaTable = ({
   };
 
   const handleShowDeletedSchemas = useCallback((value: boolean) => {
-    setShowDeletedSchemas(value);
+    setFilters({ showDeletedTables: value });
     handlePageChange(INITIAL_PAGING_VALUE, {
       cursorType: null,
       cursorValue: undefined,
@@ -211,11 +209,7 @@ export const DatabaseSchemaTable = ({
   );
 
   const onSchemaSearch = (value: string) => {
-    navigate({
-      search: QueryString.stringify({
-        schema: isEmpty(value) ? undefined : value,
-      }),
-    });
+    setFilters({ schema: isEmpty(value) ? undefined : value });
     if (value) {
       searchSchema(value);
     } else {
