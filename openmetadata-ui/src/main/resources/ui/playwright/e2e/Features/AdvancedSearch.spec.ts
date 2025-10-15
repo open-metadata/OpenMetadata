@@ -282,6 +282,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
     await afterAction();
   });
 
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
+
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
     await sidebarClick(page, SidebarItem.EXPLORE);

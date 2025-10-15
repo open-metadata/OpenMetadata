@@ -143,6 +143,12 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+test.afterAll('Cleanup entity', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await EntityDataClass.postRequisitesForTests(apiContext);
+  await afterAction();
+});
+
 test.describe('Widgets', () => {
   test.beforeAll(async ({ page }) => {
     test.slow(true);
