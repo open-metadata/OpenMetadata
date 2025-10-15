@@ -332,7 +332,7 @@ class TableauClient:
                 )
             )
             if datasources_graphql_result and datasources_graphql_result.get("data"):
-                if datasources_graphql_result["data"]["workbooks"]:
+                if datasources_graphql_result["data"].get("workbooks"):
                     tableau_datasource_connection = TableauDatasourcesConnection(
                         **datasources_graphql_result["data"]["workbooks"][0]
                     )
@@ -341,7 +341,7 @@ class TableauClient:
                     logger.warning(
                         f"No Datasources found in GraphQL datasources query result for the workbook {dashboard_id}. "
                         "If this is a recently created or updated workbook, it may take some time "
-                        "to become available for querying via the GraphQL API."
+                        f"to become available for querying via the GraphQL API. : \n graphql = {datasources_graphql_result}\n"
                     )
         except Exception:
             logger.debug(traceback.format_exc())
