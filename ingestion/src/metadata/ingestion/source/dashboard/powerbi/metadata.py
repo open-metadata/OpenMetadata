@@ -59,7 +59,9 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.powerbi.databricks_parser import parse_databricks_native_query_source
+from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
+    parse_databricks_native_query_source,
+)
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     Dataset,
@@ -961,7 +963,9 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_catalog_table_definition(self, source_expression: str, datamodel_entity: DashboardDataModel) -> Optional[List[dict]]:
+    def _parse_catalog_table_definition(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[List[dict]]:
         """parse catalog table definition"""
         db_match = re.search(
             r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression
@@ -994,7 +998,7 @@ class PowerbiSource(DashboardServiceSource):
         return None
 
     def _parse_databricks_source(
-            self, source_expression: str, datamodel_entity: DashboardDataModel
+        self, source_expression: str, datamodel_entity: DashboardDataModel
     ) -> Optional[List[dict]]:
         if "Databricks.Catalogs" not in source_expression:
             return None
@@ -1004,7 +1008,9 @@ class PowerbiSource(DashboardServiceSource):
                 if DATABRICKS_QUERY_EXPRESSION_KW in source_expression:
                     return parse_databricks_native_query_source(source_expression)
                 else:
-                    return self._parse_catalog_table_definition(source_expression, datamodel_entity)
+                    return self._parse_catalog_table_definition(
+                        source_expression, datamodel_entity
+                    )
             except Exception as exc:
                 logger.debug(f"Error to parse databricks table source: {exc}")
                 logger.debug(traceback.format_exc())
@@ -1020,7 +1026,9 @@ class PowerbiSource(DashboardServiceSource):
             if SNOWFLAKE_QUERY_EXPRESSION_KW in source_expression:
                 # snowflake query source identified
                 return self._parse_snowflake_query_source(source_expression)
-            return self._parse_catalog_table_definition(source_expression, datamodel_entity)
+            return self._parse_catalog_table_definition(
+                source_expression, datamodel_entity
+            )
         except Exception as exc:
             logger.debug(f"Error to parse snowflake table source: {exc}")
             logger.debug(traceback.format_exc())

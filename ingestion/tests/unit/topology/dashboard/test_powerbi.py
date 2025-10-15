@@ -101,11 +101,7 @@ in
     Source"""
 
 EXPECTED_DATABRICKS_RESULT = [
-    {
-        "database": "DEMO_STAGE",
-        "schema": "PUBLIC",
-        "table": "STG_CUSTOMERS"
-    }
+    {"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
 ]
 
 mock_config = {

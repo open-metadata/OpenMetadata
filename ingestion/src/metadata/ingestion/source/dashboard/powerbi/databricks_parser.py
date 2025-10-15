@@ -1,21 +1,24 @@
 import re
-from typing import Optional, List
+from typing import List, Optional
 
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.utils.logger import ingestion_logger
 
 NATIVE_QUERY_PARSER_EXPRESSION = re.compile(
-    r'Value\.NativeQuery\(\s*'
-    r'(?P<catalog_type>[A-Za-z0-9_\.]+)\('
-    r'(?P<catalog_info>.*?)\)'
-    r'(?P<catalog_parameters>\{\[.*?\]\})\[Data\],\s*'
+    r"Value\.NativeQuery\(\s*"
+    r"(?P<catalog_type>[A-Za-z0-9_\.]+)\("
+    r"(?P<catalog_info>.*?)\)"
+    r"(?P<catalog_parameters>\{\[.*?\]\})\[Data\],\s*"
     r'"(?P<query>.*?)"',
-    re.DOTALL
+    re.DOTALL,
 )
 logger = ingestion_logger()
 
-def parse_databricks_native_query_source(source_expression: str) -> Optional[List[dict]]:
+
+def parse_databricks_native_query_source(
+    source_expression: str,
+) -> Optional[List[dict]]:
 
     groups = NATIVE_QUERY_PARSER_EXPRESSION.search(source_expression)
 
@@ -23,16 +26,21 @@ def parse_databricks_native_query_source(source_expression: str) -> Optional[Lis
         details = groups.groupdict()
         catalog_info = details.get("catalog_info", "")
         catalog_parameters = details.get("catalog_parameters", "")
-        catalog_info_match = re.match(r'.*Catalog\s*=\s*(?P<catalog>.*?)\s*,', catalog_info).groupdict()
+        catalog_info_match = re.match(
+            r".*Catalog\s*=\s*(?P<catalog>.*?)\s*,", catalog_info
+        ).groupdict()
         catalog = catalog_info_match.get("catalog", None)
-        database_match = re.search(r'Name\s*=\s*(?P<database>.*?)\s*,\s*Kind\s*=\s*"Database"', catalog_parameters)
+        database_match = re.search(
+            r'Name\s*=\s*(?P<database>.*?)\s*,\s*Kind\s*=\s*"Database"',
+            catalog_parameters,
+        )
         database = None
         if database_match:
             database = database_match.groupdict().get("database", None)
         else:
             logger.error(f"Could not find database in parameters: {catalog_parameters}")
             database = catalog
-        if not(database or catalog):
+        if not (database or catalog):
             logger.error(f"Could not find database in {source_expression}")
             return None
 
@@ -53,10 +61,17 @@ def parse_databricks_native_query_source(source_expression: str) -> Optional[Lis
         logger.debug(
             f"Attempting LineageParser with cleaned query: {parser_query[:200]}"
         )
-        if re.match("^([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?(?:\.([A-Za-z0-9_]+))?$", parser_query):
-            logger.debug("Query appears to be a simple table reference, skipping LineageParser.")
-            schema_table = parser_query.split('.')
-            schema, table = (schema_table[-2:] if len(schema_table) > 1 else [None, schema_table[0]])
+        if re.match(
+            "^([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?(?:\.([A-Za-z0-9_]+))?$",
+            parser_query,
+        ):
+            logger.debug(
+                "Query appears to be a simple table reference, skipping LineageParser."
+            )
+            schema_table = parser_query.split(".")
+            schema, table = (
+                schema_table[-2:] if len(schema_table) > 1 else [None, schema_table[0]]
+            )
 
             return [{"database": database, "schema": schema, "table": table}]
         try:
@@ -65,7 +80,10 @@ def parse_databricks_native_query_source(source_expression: str) -> Optional[Lis
             )
 
         except Exception as parser_exc:
-            logger.error(f"LineageParser failed parsing query with error {parser_query[:200]} ", exc_info=parser_exc)
+            logger.error(
+                f"LineageParser failed parsing query with error {parser_query[:200]} ",
+                exc_info=parser_exc,
+            )
             return None
 
         lineage_tables_list = []
