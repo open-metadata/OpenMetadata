@@ -221,7 +221,11 @@ const TagPage = () => {
       setIsLoading(true);
       if (tagFqn) {
         const response = await getTagByFqn(tagFqn, {
-          fields: [TabSpecificField.DOMAINS, TabSpecificField.OWNERS],
+          fields: [
+            TabSpecificField.DOMAINS,
+            TabSpecificField.OWNERS,
+            TabSpecificField.REVIEWERS,
+          ],
         });
         setTagItem(response);
       }
