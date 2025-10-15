@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityHistory } from '../../../generated/type/entityHistory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -33,6 +33,7 @@ import {
   patchDataProduct,
   removeFollower,
 } from '../../../rest/dataProductAPI';
+import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../../utils/EntityUtils';
 import {
   getDomainPath,
@@ -120,15 +121,7 @@ const DataProductsPage = () => {
     setIsMainContentLoading(true);
     try {
       const data = await getDataProductByName(fqn, {
-        fields: [
-          TabSpecificField.DOMAINS,
-          TabSpecificField.OWNERS,
-          TabSpecificField.EXPERTS,
-          TabSpecificField.ASSETS,
-          TabSpecificField.EXTENSION,
-          TabSpecificField.TAGS,
-          TabSpecificField.FOLLOWERS,
-        ],
+        fields: dataProductClassBase.getDataProductDetailsPageFields(),
       });
       setDataProduct(data);
 

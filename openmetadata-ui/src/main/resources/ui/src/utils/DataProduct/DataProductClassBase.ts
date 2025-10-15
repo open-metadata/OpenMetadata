@@ -17,7 +17,7 @@ import {
   GridSizes,
 } from '../../constants/CustomizeWidgets.constants';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
-import { EntityTabs } from '../../enums/entity.enum';
+import { EntityTabs, TabSpecificField } from '../../enums/entity.enum';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Tab } from '../../generated/system/ui/uiCustomization';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
@@ -55,6 +55,18 @@ class DataProductClassBase {
     dataProductDetailsPageProps: DataProductDetailPageTabProps
   ): TabProps[] {
     return getDataProductDetailTabs(dataProductDetailsPageProps);
+  }
+
+  public getDataProductDetailsPageFields(): TabSpecificField[] {
+    return [
+      TabSpecificField.DOMAINS,
+      TabSpecificField.OWNERS,
+      TabSpecificField.EXPERTS,
+      TabSpecificField.ASSETS,
+      TabSpecificField.EXTENSION,
+      TabSpecificField.TAGS,
+      TabSpecificField.FOLLOWERS,
+    ];
   }
 
   public getDataProductDetailPageTabsIds(): Tab[] {
