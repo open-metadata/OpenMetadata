@@ -1,0 +1,12 @@
+# .github/codeql-config.yml
+name: "CodeQL Ignore Playwright Tests"
+
+# Add the directories or file patterns to ignore
+paths-ignore:
+  # Ignore files that end with .spec.ts, which is common for Playwright
+  - "**/(*.spec.ts|*.spec.js)"
+  # Ignore entire folders where tests are typically kept, e.g., 'tests' or 'e2e'
+  - "**/tests/**"
+  - "**/e2e/**"
+  - "**/__tests__/**" # Also a common pattern for test folders
+  - "**/playwright/**"
