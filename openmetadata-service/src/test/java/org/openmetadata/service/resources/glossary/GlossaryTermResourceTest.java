@@ -3001,4 +3001,45 @@ public class GlossaryTermResourceTest extends EntityResourceTest<GlossaryTerm, C
     deleteEntity(term1.getId(), true, true, ADMIN_AUTH_HEADERS);
     glossaryTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
   }
+
+  @Test
+  void test_getGlossaryTermAssetsAPI(TestInfo test) throws IOException {
+    Glossary glossary = createGlossary(test, null, emptyList());
+    CreateGlossaryTerm createTerm = createRequest(getEntityName(test), "", "", null);
+    createTerm.setGlossary(glossary.getFullyQualifiedName());
+    GlossaryTerm term = createEntity(createTerm, ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    TagLabel termLabel = EntityUtil.toTagLabel(term);
+    CreateTable createTable1 =
+        tableTest.createRequest(getEntityName(test, 1)).withTags(List.of(termLabel));
+    Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest.createRequest(getEntityName(test, 2)).withTags(List.of(termLabel));
+    Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        tableTest.createRequest(getEntityName(test, 3)).withTags(List.of(termLabel));
+    Table table3 = tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(term.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    ResultList<EntityReference> assetsByName =
+        getAssetsByName(term.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    ResultList<EntityReference> page1 = getAssets(term.getId(), 2, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    ResultList<EntityReference> page2 = getAssets(term.getId(), 2, 2, ADMIN_AUTH_HEADERS);
+    assertFalse(page2.getData().isEmpty());
+  }
 }

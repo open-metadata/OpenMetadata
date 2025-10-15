@@ -170,6 +170,7 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -6040,19 +6041,27 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     CreateDataProduct createDataProduct =
         dataProductTest
             .createRequest("test-data-product-" + test.getDisplayName())
-            .withDomains(List.of(domain.getFullyQualifiedName()))
-            .withAssets(List.of(refreshedTable.getEntityReference()));
+            .withDomains(List.of(domain.getFullyQualifiedName()));
 
     DataProduct dataProduct = dataProductTest.createEntity(createDataProduct, ADMIN_AUTH_HEADERS);
 
+    // Add the table to the data product using the bulk add API
+    BulkAssets bulkAssets =
+        new BulkAssets().withAssets(List.of(refreshedTable.getEntityReference()));
+    jakarta.ws.rs.client.WebTarget bulkAddTarget =
+        getResource("dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add");
+    TestUtils.put(bulkAddTarget, bulkAssets, Status.OK, ADMIN_AUTH_HEADERS);
+
     // Verify data product was created successfully
     assertNotNull(dataProduct);
-    assertNotNull(dataProduct.getAssets());
-    assertEquals(1, dataProduct.getAssets().size());
-    assertEquals(refreshedTable.getId(), dataProduct.getAssets().get(0).getId());
+    ResultList<EntityReference> assets =
+        dataProductTest.getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(1, assets.getPaging().getTotal());
+    assertEquals(1, assets.getData().size());
+    assertEquals(refreshedTable.getId(), assets.getData().getFirst().getId());
     assertNotNull(dataProduct.getDomains());
     assertEquals(1, dataProduct.getDomains().size());
-    assertEquals(domain.getId(), dataProduct.getDomains().get(0).getId());
+    assertEquals(domain.getId(), dataProduct.getDomains().getFirst().getId());
   }
 
   @Test
@@ -6173,14 +6182,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(1, tableWithDomain.getDomains().size());
     assertEquals(domain.getId(), tableWithDomain.getDomains().getFirst().getId());
 
-    // Step 6: Add the table to the dataProduct
-    String originalJson = JsonUtils.pojoToJson(dataProduct);
-    dataProduct.setAssets(List.of(table.getEntityReference()));
-    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
-    fieldAdded(change, "assets", List.of(table.getEntityReference()));
-    dataProduct =
-        dataProductTest.patchEntityAndCheck(
-            dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    // Step 6: Add the table to the dataProduct using the bulk add API
+    BulkAssets bulkAssets = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    jakarta.ws.rs.client.WebTarget bulkAddTarget =
+        getResource("dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add");
+    TestUtils.put(bulkAddTarget, bulkAssets, Status.OK, ADMIN_AUTH_HEADERS);
 
     // Verify table has the dataProduct
     Table tableWithDataProduct =
@@ -6222,12 +6228,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(dataProduct.getId(), fullyRestoredTable.getDataProducts().getFirst().getId());
 
     // Additional verification: Check that the dataProduct still lists the table as an asset
-    DataProduct verifyDataProduct =
-        dataProductTest.getEntity(dataProduct.getId(), "assets", ADMIN_AUTH_HEADERS);
-    assertNotNull(verifyDataProduct.getAssets());
+    // Note: Assets field is deprecated, use the paginated assets API instead
+    ResultList<EntityReference> assets =
+        dataProductTest.getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(assets);
     assertTrue(
-        verifyDataProduct.getAssets().stream()
-            .anyMatch(asset -> asset.getId().equals(table.getId())),
+        assets.getData().stream().anyMatch(asset -> asset.getId().equals(table.getId())),
         "Table should still be an asset of the data product after restore");
 
     // Cleanup: Hard delete all test entities

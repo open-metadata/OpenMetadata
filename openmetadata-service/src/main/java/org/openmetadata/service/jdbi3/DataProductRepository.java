@@ -19,10 +19,8 @@ import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
-import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mergedInheritedEntityRefs;
 
 import java.util.ArrayList;
@@ -50,13 +48,20 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.domains.DataProductResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.LineageUtil;
+import org.openmetadata.service.util.ResultList;
 
 @Slf4j
 public class DataProductRepository extends EntityRepository<DataProduct> {
-  private static final String UPDATE_FIELDS = "experts,assets"; // Domain field can't be updated
+  private static final String UPDATE_FIELDS = "experts"; // Domain field can't be updated
+
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public DataProductRepository() {
     super(
@@ -68,14 +73,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         UPDATE_FIELDS);
     supportsSearch = true;
 
+    // Initialize inherited field search
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
+
     // Register bulk field fetchers for efficient database operations
-    fieldFetchers.put(FIELD_ASSETS, this::fetchAndSetAssets);
     fieldFetchers.put("experts", this::fetchAndSetExperts);
   }
 
   @Override
   public void setFields(DataProduct entity, Fields fields) {
-    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
+    // Assets field is not exposed via API - use dedicated paginated API:
+    // GET /v1/dataProducts/{id}/assets
   }
 
   @Override
@@ -87,14 +97,6 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
   }
 
-  // Individual field fetchers registered in constructor
-  private void fetchAndSetAssets(List<DataProduct> dataProducts, Fields fields) {
-    if (!fields.contains(FIELD_ASSETS) || dataProducts == null || dataProducts.isEmpty()) {
-      return;
-    }
-    setFieldFromMap(true, dataProducts, batchFetchAssets(dataProducts), DataProduct::setAssets);
-  }
-
   private void fetchAndSetExperts(List<DataProduct> dataProducts, Fields fields) {
     if (!fields.contains("experts") || dataProducts == null || dataProducts.isEmpty()) {
       return;
@@ -104,11 +106,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   @Override
   public void clearFields(DataProduct entity, Fields fields) {
-    entity.withAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
-  }
-
-  private List<EntityReference> getAssets(DataProduct entity) {
-    return findTo(entity.getId(), Entity.DATA_PRODUCT, Relationship.HAS, null);
+    // Assets field is deprecated - use GET /v1/dataProducts/{id}/assets API
+    entity.setAssets(null);
   }
 
   @Override
@@ -135,10 +134,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       addRelationship(
           entity.getId(), expert.getId(), Entity.DATA_PRODUCT, Entity.USER, Relationship.EXPERT);
     }
-    for (EntityReference asset : listOrEmpty(entity.getAssets())) {
-      addRelationship(
-          entity.getId(), asset.getId(), Entity.DATA_PRODUCT, asset.getType(), Relationship.HAS);
-    }
+    // Assets cannot be added via create/PUT/PATCH - use bulk API:
+    // PUT /v1/dataProducts/{name}/assets/add
   }
 
   public final EntityReference getDomain(Domain domain) {
@@ -201,6 +198,38 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       }
     }
     return result;
+  }
+
+  public ResultList<EntityReference> getDataProductAssets(
+      UUID dataProductId, int limit, int offset) {
+    DataProduct dataProduct = get(null, dataProductId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for data product assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    // Use InheritedFieldQuery for data product assets
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forDataProduct(dataProduct.getFullyQualifiedName(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for data product {} assets. Returning empty list.",
+                  dataProduct.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getDataProductAssetsByName(
+      String dataProductName, int limit, int offset) {
+    DataProduct dataProduct = getByName(null, dataProductName, getFields("id,fullyQualifiedName"));
+    return getDataProductAssets(dataProduct.getId(), limit, offset);
   }
 
   @Transaction
@@ -315,6 +344,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       EntityInterface asset = Entity.getEntity(assetRef, "*", Include.ALL);
       searchRepository.updateEntityIndex(asset);
     }
+
+    // Assets are not tracked via inline updates - they are managed through bulk APIs
+    // Search index updates for assets are triggered by the bulk APIs directly
   }
 
   public class DataProductUpdater extends EntityUpdater {
@@ -325,67 +357,10 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      updateAssets();
+      // Assets cannot be updated via PUT/PATCH - use bulk APIs:
+      // PUT /v1/dataProducts/{name}/assets/add
+      // PUT /v1/dataProducts/{name}/assets/remove
     }
-
-    private void updateAssets() {
-      List<EntityReference> origToRefs = listOrEmpty(original.getAssets());
-      List<EntityReference> updatedToRefs = listOrEmpty(updated.getAssets());
-      origToRefs.sort(EntityUtil.compareEntityReference);
-      updatedToRefs.sort(EntityUtil.compareEntityReference);
-      List<EntityReference> added = new ArrayList<>();
-      List<EntityReference> deleted = new ArrayList<>();
-
-      if (!recordListChange(
-          FIELD_ASSETS, origToRefs, updatedToRefs, added, deleted, entityReferenceMatch)) {
-        return; // No changes between original and updated.
-      }
-      // Remove assets that were deleted
-      for (EntityReference asset : deleted) {
-        deleteRelationship(
-            original.getId(), DATA_PRODUCT, asset.getId(), asset.getType(), Relationship.HAS);
-      }
-      // Add new assets
-      for (EntityReference asset : added) {
-        addRelationship(
-            original.getId(),
-            asset.getId(),
-            DATA_PRODUCT,
-            asset.getType(),
-            Relationship.HAS,
-            false);
-      }
-    }
-  }
-
-  private Map<UUID, List<EntityReference>> batchFetchAssets(List<DataProduct> dataProducts) {
-    Map<UUID, List<EntityReference>> assetsMap = new HashMap<>();
-    if (dataProducts == null || dataProducts.isEmpty()) {
-      return assetsMap;
-    }
-
-    // Initialize empty lists for all data products
-    for (DataProduct dataProduct : dataProducts) {
-      assetsMap.put(dataProduct.getId(), new ArrayList<>());
-    }
-
-    // Single batch query to get all assets for all data products
-    List<CollectionDAO.EntityRelationshipObject> records =
-        daoCollection
-            .relationshipDAO()
-            .findToBatchAllTypes(
-                entityListToStrings(dataProducts), Relationship.HAS.ordinal(), Include.ALL);
-
-    // Group assets by data product ID
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      UUID dataProductId = UUID.fromString(record.getFromId());
-      EntityReference assetRef =
-          Entity.getEntityReferenceById(
-              record.getToEntity(), UUID.fromString(record.getToId()), NON_DELETED);
-      assetsMap.get(dataProductId).add(assetRef);
-    }
-
-    return assetsMap;
   }
 
   private Map<UUID, List<EntityReference>> batchFetchExperts(List<DataProduct> dataProducts) {

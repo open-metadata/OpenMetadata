@@ -62,7 +62,9 @@
     },
     "assets": {
       "description": "Data assets collection that is part of this data product.",
-      "$ref" : "../../type/entityReferenceList.json"
+      "$ref" : "../../type/entityReferenceList.json",
+      "deprecated": true,
+      "$comment": "@deprecated Use GET /v1/dataProducts/{id}/assets API endpoint for paginated access to data product assets"
     },
     "tags": {
       "description": "Tags associated with the Data Product.",

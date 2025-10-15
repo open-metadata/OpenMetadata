@@ -76,6 +76,10 @@ import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CollectionDAO.UserDAO;
 import org.openmetadata.service.resources.feeds.FeedUtil;
 import org.openmetadata.service.resources.teams.UserResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.security.SecurityUtil;
@@ -85,6 +89,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.UserUtil;
 
 @Slf4j
@@ -97,6 +102,7 @@ public class UserRepository extends EntityRepository<User> {
   static final String USER_UPDATE_FIELDS =
       "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
   private volatile EntityReference organization;
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public UserRepository() {
     super(
@@ -117,6 +123,10 @@ public class UserRepository extends EntityRepository<User> {
     this.fieldFetchers.put("personas", this::fetchAndSetPersonas);
     this.fieldFetchers.put("defaultPersona", this::fetchAndSetDefaultPersona);
     this.fieldFetchers.put("domains", this::fetchAndSetDomains);
+
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
   }
 
   private EntityReference getOrganization() {
@@ -607,6 +617,39 @@ public class UserRepository extends EntityRepository<User> {
       addRelationship(
           persona.getId(), user.getId(), Entity.PERSONA, USER, Relationship.DEFAULTS_TO);
     }
+  }
+
+  public ResultList<EntityReference> getUserAssets(UUID userId, int limit, int offset) {
+    User user = get(null, userId, getFields("id,teams"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for user assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    List<EntityReference> teams = user.getTeams();
+    List<String> teamIds =
+        teams != null
+            ? teams.stream().map(EntityReference::getId).map(UUID::toString).toList()
+            : new ArrayList<>();
+
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forUser(userId.toString(), teamIds, offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn("Search fallback for user {} assets. Returning empty list.", userId);
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getUserAssetsByName(String userName, int limit, int offset) {
+    User user = getByName(null, userName, getFields("id"));
+    return getUserAssets(user.getId(), limit, offset);
   }
 
   // Bulk fetch methods for User-specific fields
