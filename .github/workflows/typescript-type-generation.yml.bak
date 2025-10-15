@@ -31,32 +31,21 @@ jobs:
         run: |
           if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
             echo "is_fork=true" >> $GITHUB_OUTPUT
-            # 输出Fork仓库地址和分支名（用于调试）
-            echo "fork_repo=${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_OUTPUT
-            echo "fork_branch=${{ github.event.pull_request.head.ref }}" >> $GITHUB_OUTPUT
           else
             echo "is_fork=false" >> $GITHUB_OUTPUT
           fi
 
-      # 关键修改：手动初始化仓库并拉取Fork分支
-      - name: Manual git clone and fetch
-        if: steps.check-fork.outputs.is_fork == 'true'
-        run: |
-          # 初始化空仓库
-          git init
-          # 添加Fork仓库作为远程
-          git remote add fork https://github.com/${{ steps.check-fork.outputs.fork_repo }}.git
-          # 拉取目标分支（深度设为0，获取完整历史）
-          git fetch fork ${{ steps.check-fork.outputs.fork_branch }} --depth=0
-          # 切换到该分支
-          git checkout ${{ steps.check-fork.outputs.fork_branch }}
-
-      # 非Fork情况仍使用常规checkout（保持兼容）
-      - name: Checkout repository (non-fork)
-        if: steps.check-fork.outputs.is_fork == 'false'
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
+          #repository: baopuzi/OpenMetadata # 关键修改：指定从 PR 的源仓库（ Fork 仓库）拉取
+          #ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
+          #token: ${{ secrets.GITHUB_TOKEN }}
+          # 硬编码 Fork 仓库地址（替换为你的 Fork 仓库名）
+          repository: baopuzi/OpenMetadata
+          # 硬编码目标分支
+          ref: feature/add_starrocks_connector
+          # 仍使用内置 GITHUB_TOKEN（主仓库令牌，用于拉取公开 Fork 仓库的代码）
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Node.js
@@ -71,10 +60,10 @@ jobs:
       - name: Generate TypeScript types
         run: |
           cd openmetadata-ui/src/main/resources/ui
+          # Create a symlink to the root node_modules
           ln -sf ../../../../../node_modules .
           ./json2ts-generate-all.sh -l true
 
-      # 后续步骤保持不变...
       - name: Check for changes
         id: git-check
         run: |
