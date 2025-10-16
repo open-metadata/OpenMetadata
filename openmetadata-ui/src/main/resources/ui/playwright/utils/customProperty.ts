@@ -570,7 +570,7 @@ export const addCustomPropertiesForEntity = async ({
 }: {
   page: Page;
   propertyName: string;
-  customPropertyData: { description: string; entityApiType: string };
+  customPropertyData: { description: string; entityApiType?: string };
   customType: string;
   enumConfig?: { values: string[]; multiSelect: boolean };
   formatConfig?: string;
