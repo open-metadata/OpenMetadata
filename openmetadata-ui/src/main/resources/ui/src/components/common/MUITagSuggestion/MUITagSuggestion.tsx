@@ -211,15 +211,13 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
             <Box
               fontWeight="medium"
               sx={{
-                color: (option as TagOption).data?.style?.color || undefined,
+                color: option.data?.style?.color || undefined,
               }}>
-              {(option as TagOption).label}
+              {option.label}
             </Box>
-            {((option as TagOption).data?.displayName ||
-              (option as TagOption).data?.name) && (
+            {(option.data?.displayName || option.data?.name) && (
               <Box color="text.secondary" fontSize="0.875rem">
-                {(option as TagOption).data?.displayName ||
-                  (option as TagOption).data?.name}
+                {option.data?.displayName || option.data?.name}
               </Box>
             )}
           </Box>
@@ -232,10 +230,10 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           return (
             <TagChip
               {...chipProps}
-              key={(option as TagOption).value}
-              label={(option as TagOption).label}
+              key={option.value}
+              label={option.label}
               size="small"
-              tagColor={(option as TagOption).data?.style?.color}
+              tagColor={option.data?.style?.color}
             />
           );
         })
