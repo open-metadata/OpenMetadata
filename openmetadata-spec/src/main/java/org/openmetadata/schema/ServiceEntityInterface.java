@@ -13,6 +13,7 @@
 
 package org.openmetadata.schema;
 
+import java.net.URI;
 import java.util.List;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.type.EntityReference;
@@ -36,6 +37,10 @@ public interface ServiceEntityInterface extends EntityInterface {
   EnumInterface getServiceType();
 
   default EntityReference getIngestionRunner() {
+    return null;
+  }
+
+  default URI getLogoUrl() {
     return null;
   }
 }

@@ -64,6 +64,11 @@ export interface DriveService {
      */
     ingestionRunner?: EntityReference;
     /**
+     * URL to the logo image for this service. Primarily used for custom service types to
+     * provide a visual identifier.
+     */
+    logoUrl?: string;
+    /**
      * Name that identifies this drive service.
      */
     name: string;
@@ -322,7 +327,7 @@ export interface GCPCredentialsConfiguration {
      *
      * Google Cloud Platform ADC ( Application Default Credentials )
      */
-    type?: string;
+    type?: CredentialsType;
     /**
      * Path of the file containing the GCP credentials info
      */
@@ -340,7 +345,7 @@ export interface GCPCredentialsConfiguration {
     /**
      * Google Cloud Platform account type.
      */
-    externalType?: string;
+    externalType?: GCPAccountType;
     /**
      * Google Security Token Service subject token type based on the OAuth 2.0 token exchange
      * spec.
@@ -351,6 +356,17 @@ export interface GCPCredentialsConfiguration {
      */
     tokenURL?: string;
     [property: string]: any;
+}
+
+export enum GCPAccountType {
+    ExternalAccount = "external_account",
+}
+
+export enum CredentialsType {
+    ExternalAccount = "external_account",
+    GcpADC = "gcp_adc",
+    GcpCredentialPath = "gcp_credential_path",
+    ServiceAccount = "service_account",
 }
 
 /**

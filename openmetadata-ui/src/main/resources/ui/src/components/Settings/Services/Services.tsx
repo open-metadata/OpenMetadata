@@ -345,7 +345,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       width: 200,
       render: (name, record) => (
         <div className="d-flex gap-2 items-center">
-          {getServiceLogo(record.serviceType || '', 'w-4')}
+          {getServiceLogo(record.serviceType || '', 'w-4', record)}
           <Link
             className="max-two-lines"
             data-testid={`service-name-${name}`}
@@ -445,7 +445,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
             <div className="d-flex flex-col justify-between flex-none">
               <div className="d-flex justify-end" data-testid="service-icon">
-                {getServiceLogo(service.serviceType || '', 'h-7')}
+                {getServiceLogo(service.serviceType || '', 'h-7', service)}
               </div>
             </div>
           </div>
