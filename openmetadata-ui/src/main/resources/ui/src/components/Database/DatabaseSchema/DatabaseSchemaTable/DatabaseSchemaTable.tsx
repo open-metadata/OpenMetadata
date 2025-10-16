@@ -202,6 +202,7 @@ export const DatabaseSchemaTable = ({
         searchSchema(value);
       } else {
         fetchDatabaseSchema();
+        handlePageChange(INITIAL_PAGING_VALUE);
       }
     },
     [setFilters, searchSchema, fetchDatabaseSchema]
