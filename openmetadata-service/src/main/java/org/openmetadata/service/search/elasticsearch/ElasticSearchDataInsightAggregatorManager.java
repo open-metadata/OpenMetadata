@@ -29,6 +29,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -46,6 +47,7 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
+import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 
 @Slf4j
 public class ElasticSearchDataInsightAggregatorManager implements DataInsightAggregatorClient {
@@ -149,6 +151,18 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
         .build();
   }
 
+  @Override
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot get query cost records.");
+      return null;
+    }
+
+    SearchRequest searchRequest = QueryCostRecordsAggregator.getQueryCostRecords(serviceName);
+    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    return QueryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
+  }
+
   private void getFieldNames(
       Map<String, Property> properties,
       String prefix,
@@ -204,7 +218,7 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
     }
   }
 
-  private static DataInsightChartResult processDataInsightChartResult(
+  private DataInsightChartResult processDataInsightChartResult(
       SearchResponse<JsonData> searchResponse,
       DataInsightChartResult.DataInsightChartType dataInsightChartType) {
     DataInsightAggregatorInterface processor =
@@ -212,7 +226,7 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
     return processor.process(dataInsightChartType);
   }
 
-  private static DataInsightAggregatorInterface createDataAggregator(
+  private DataInsightAggregatorInterface createDataAggregator(
       SearchResponse<JsonData> response,
       DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws IllegalArgumentException {
@@ -236,7 +250,7 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
     };
   }
 
-  private static SearchRequest buildSearchRequest(
+  private SearchRequest buildSearchRequest(
       Long startTs,
       Long endTs,
       String tier,
@@ -339,7 +353,7 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
     return searchRequestBuilder.build();
   }
 
-  private static Map<String, Aggregation> buildQueryAggregation(
+  private Map<String, Aggregation> buildQueryAggregation(
       DataInsightChartResult.DataInsightChartType dataInsightChartName) {
     Map<String, Aggregation> aggregations = new HashMap<>();
 

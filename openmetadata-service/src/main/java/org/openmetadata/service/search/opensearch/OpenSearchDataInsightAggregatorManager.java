@@ -18,6 +18,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.dataInsight.custom.FormulaHolder;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
 import org.openmetadata.service.jdbi3.DataInsightChartRepository;
@@ -35,6 +36,7 @@ import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSear
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
+import org.openmetadata.service.search.opensearch.dataInsightAggregator.QueryCostRecordsAggregator;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch._types.FieldValue;
@@ -113,6 +115,62 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     return fields;
   }
 
+  @Override
+  public Response listDataInsightChartResult(
+      Long startTs,
+      Long endTs,
+      String tier,
+      String team,
+      DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
+      String dataReportIndex)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot list DI chart result.");
+      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
+          .entity("OpenSearch client is not available")
+          .build();
+    }
+
+    SearchRequest searchRequest =
+        buildSearchRequestNew(
+            startTs,
+            endTs,
+            tier,
+            team,
+            dataInsightChartName,
+            size,
+            from,
+            queryFilter,
+            dataReportIndex);
+    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    return Response.status(OK)
+        .entity(processDataInsightChartResultNew(searchResponse, dataInsightChartName))
+        .build();
+  }
+
+  @Override
+  public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("OpenSearch client is not available. Cannot get query cost records.");
+      return null;
+    }
+
+    SearchRequest searchRequest = QueryCostRecordsAggregator.getQueryCostRecords(serviceName);
+    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
+    return QueryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
+  }
+
+  private DataInsightChartResult processDataInsightChartResultNew(
+      SearchResponse<JsonData> searchResponse,
+      DataInsightChartResult.DataInsightChartType dataInsightChartType) {
+    DataInsightAggregatorInterface processor =
+        createDataAggregatorNew(searchResponse, dataInsightChartType);
+    return processor.process(dataInsightChartType);
+  }
+
   private void getFieldNames(
       Map<String, Property> properties,
       String parent,
@@ -165,51 +223,7 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     }
   }
 
-  @Override
-  public Response listDataInsightChartResult(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      Integer size,
-      Integer from,
-      String queryFilter,
-      String dataReportIndex)
-      throws IOException {
-    if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot list DI chart result.");
-      return Response.status(Response.Status.SERVICE_UNAVAILABLE)
-          .entity("OpenSearch client is not available")
-          .build();
-    }
-
-    SearchRequest searchRequest =
-        buildSearchRequestNew(
-            startTs,
-            endTs,
-            tier,
-            team,
-            dataInsightChartName,
-            size,
-            from,
-            queryFilter,
-            dataReportIndex);
-    SearchResponse<JsonData> searchResponse = client.search(searchRequest, JsonData.class);
-    return Response.status(OK)
-        .entity(processDataInsightChartResultNew(searchResponse, dataInsightChartName))
-        .build();
-  }
-
-  private static DataInsightChartResult processDataInsightChartResultNew(
-      SearchResponse<JsonData> searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartType) {
-    DataInsightAggregatorInterface processor =
-        createDataAggregatorNew(searchResponse, dataInsightChartType);
-    return processor.process(dataInsightChartType);
-  }
-
-  private static DataInsightAggregatorInterface createDataAggregatorNew(
+  private DataInsightAggregatorInterface createDataAggregatorNew(
       SearchResponse<JsonData> response,
       DataInsightChartResult.DataInsightChartType dataInsightChartType)
       throws IllegalArgumentException {
@@ -232,7 +246,7 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     };
   }
 
-  private static SearchRequest buildSearchRequestNew(
+  private SearchRequest buildSearchRequestNew(
       Long startTs,
       Long endTs,
       String tier,
@@ -335,7 +349,7 @@ public class OpenSearchDataInsightAggregatorManager implements DataInsightAggreg
     return searchRequestBuilder.build();
   }
 
-  private static Map<String, Aggregation> buildQueryAggregationNew(
+  private Map<String, Aggregation> buildQueryAggregationNew(
       DataInsightChartResult.DataInsightChartType dataInsightChartName) {
     Map<String, Aggregation> aggregations = new HashMap<>();
 

@@ -7,6 +7,7 @@ import java.util.Map;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
+import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 
 public interface DataInsightAggregatorClient {
 
@@ -35,4 +36,6 @@ public interface DataInsightAggregatorClient {
       String queryFilter,
       String dataReportIndex)
       throws IOException;
+
+  QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
 }

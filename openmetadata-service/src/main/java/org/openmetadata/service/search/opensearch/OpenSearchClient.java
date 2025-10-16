@@ -99,7 +99,6 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -2029,12 +2028,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
-    QueryCostRecordsAggregator queryCostRecordsAggregator = new QueryCostRecordsAggregator();
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        queryCostRecordsAggregator.getQueryCostRecords(serviceName);
-    os.org.opensearch.action.search.SearchResponse searchResponse =
-        client.search(searchRequest, RequestOptions.DEFAULT);
-    return queryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
+    return dataInsightAggregatorManager.getQueryCostRecords(serviceName);
   }
 
   @Override

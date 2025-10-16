@@ -133,7 +133,6 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
 import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
-import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -1726,12 +1725,9 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
   }
 
+  @Override
   public QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException {
-    QueryCostRecordsAggregator queryCostRecordsAggregator = new QueryCostRecordsAggregator();
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        queryCostRecordsAggregator.getQueryCostRecords(serviceName);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    return queryCostRecordsAggregator.parseQueryCostResponse(searchResponse);
+    return dataInsightAggregatorManager.getQueryCostRecords(serviceName);
   }
 
   public RestClient getLowLevelRestClient(ElasticSearchConfiguration esConfig) {

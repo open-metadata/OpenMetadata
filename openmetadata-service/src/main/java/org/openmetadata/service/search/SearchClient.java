@@ -16,7 +16,6 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
-import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -532,8 +531,6 @@ public interface SearchClient<T>
   Object getClient();
 
   T getHighLevelClient();
-
-  QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
 
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
