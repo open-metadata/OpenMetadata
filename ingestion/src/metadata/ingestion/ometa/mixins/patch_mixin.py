@@ -558,7 +558,16 @@ class OMetaPatchMixin(OMetaPatchMixinBase):
         """Patch domain data for an Entity"""
         try:
             destination: Entity = entity.model_copy(deep=True)
-            destination.domain = EntityReference(id=domain.id, type="domain")
+            destination.domain = EntityReference(
+                id=domain.id,
+                type="domain",
+                name=domain.name.root,
+                fullyQualifiedName=domain.fullyQualifiedName.root,
+                displayName=domain.displayName
+                if domain.displayName
+                else domain.name.root,
+                description=domain.description.root if domain.description else None,
+            )
             return self.patch(
                 entity=type(entity), source=entity, destination=destination
             )

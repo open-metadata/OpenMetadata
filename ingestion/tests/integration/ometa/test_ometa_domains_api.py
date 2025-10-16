@@ -229,12 +229,7 @@ class OMetaDomainTest(TestCase):
     def test_get_domain_assets(self):
         """We can get assets for a domain"""
         domain: Domain = self.metadata.create_or_update(data=self.create_domain)
-        domains_ref = EntityReferenceList(
-            root=[EntityReference(id=domain.id, type="domain")]
-        )
-        self.metadata.patch_domain(
-            entity=Dashboard, source=self.dashboard, domains=domains_ref
-        )
+        self.metadata.patch_domain(entity=self.dashboard, domain=domain)
 
         # Get domain assets
         assets_response = self.metadata.get_domain_assets(domain.name.root, limit=100)
