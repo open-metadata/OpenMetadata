@@ -435,10 +435,10 @@ describe('ContractDetail', () => {
       expect(screen.queryByText('ContractQualityCard')).toBeInTheDocument();
     });
 
-    it('should not display test cases when contract has quality expectations', async () => {
+    it("should not display test cases when contract doesn't have quality expectations", async () => {
       render(
         <ContractDetail
-          contract={{ ...mockContract, testSuite: undefined }}
+          contract={{ ...mockContract, qualityExpectations: undefined }}
           onDelete={mockOnDelete}
           onEdit={mockOnEdit}
         />,
