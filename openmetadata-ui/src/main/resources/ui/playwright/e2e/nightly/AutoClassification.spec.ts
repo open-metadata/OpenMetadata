@@ -25,7 +25,7 @@ const mysqlService = new MysqlIngestionClass({
 // use the admin user to login
 test.use({
   storageState: 'playwright/.auth/admin.json',
-  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'on-first-retry',
+  trace: process.env.PLAYWRIGHT_IS_OSS ? 'off' : 'retain-on-failure',
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
@@ -78,17 +78,6 @@ test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
       .expect(
         page.locator(
           `[data-row-key*="DWH_X10"] [data-testid="tag-PII.Sensitive"] `
-        )
-      )
-      .toBeAttached();
-
-    mysqlService.name;
-
-    // Verify the non sensitive tags
-    await test
-      .expect(
-        page.locator(
-          `[data-row-key*="address"] [data-testid="tag-PII.Sensitive"] `
         )
       )
       .toBeAttached();

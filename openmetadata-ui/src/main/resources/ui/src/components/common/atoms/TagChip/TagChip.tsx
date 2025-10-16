@@ -26,6 +26,7 @@ export interface TagChipProps extends Omit<MuiChipProps, 'variant' | 'color'> {
   maxWidth?: string | number;
   showEllipsis?: boolean;
   showIcon?: boolean;
+  labelDataTestId?: string;
 }
 
 const TagChip: FC<TagChipProps> = ({
@@ -39,6 +40,7 @@ const TagChip: FC<TagChipProps> = ({
   maxWidth,
   showEllipsis = true,
   showIcon = true,
+  labelDataTestId,
   ...otherProps
 }) => {
   const defaultIcon = showIcon ? (
@@ -76,7 +78,13 @@ const TagChip: FC<TagChipProps> = ({
     : {};
 
   const heightStyles =
-    size === 'small' ? { height: 24 } : size === 'large' ? { height: 32 } : {};
+    size === 'small'
+      ? { height: 24 }
+      : size === 'medium'
+      ? { height: 28 }
+      : size === 'large'
+      ? { height: 30 }
+      : {};
 
   // Custom delete icon with appropriate sizing
   const deleteIcon = onDelete ? (
@@ -90,6 +98,9 @@ const TagChip: FC<TagChipProps> = ({
       icon={chipIcon}
       label={label}
       size={size}
+      slotProps={{
+        label: labelDataTestId ? { 'data-testid': labelDataTestId } : undefined,
+      }}
       sx={{
         maxWidth,
         minWidth: 0,

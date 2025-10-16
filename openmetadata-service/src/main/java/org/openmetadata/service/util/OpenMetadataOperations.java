@@ -436,17 +436,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
+      initializeCollectionRegistry();
+      initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
       }
-      initializeCollectionRegistry();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       try {
         userRepository.getByEmail(null, email, EntityUtil.Fields.EMPTY_FIELDS);
-        LOG.error("User {} already exists.", email);
-        return 1;
+        LOG.info("User {} already exists.", email);
+        return 0;
       } catch (EntityNotFoundException ex) {
         // Expected – continue to create the user.
       }
@@ -474,6 +475,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } finally {
       // Restore the original logging level.
       rootLogger.setLevel(originalLevel);
+    }
+  }
+
+  private void initializeSecurityConfig() {
+    try {
+      var authConfig =
+          Entity.getSystemRepository()
+              .getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+      if (authConfig != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(
+                JsonUtils.convertValue(
+                    authConfig.getConfigValue(),
+                    org.openmetadata.schema.api.security.AuthenticationConfiguration.class));
+      } else if (config.getAuthenticationConfiguration() != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
+      }
+    } catch (Exception e) {
+      if (config.getAuthenticationConfiguration() != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
+      }
     }
   }
 

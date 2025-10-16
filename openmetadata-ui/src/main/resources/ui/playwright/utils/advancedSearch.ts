@@ -187,10 +187,17 @@ export const selectOption = async (
       .locator('.ant-select-selector')
       .click({ force: true });
 
+    await page.waitForSelector('.ant-select-item-empty', {
+      state: 'detached',
+    });
+
     // Clear any existing input and type the new value
     const combobox = dropdownLocator.getByRole('combobox');
     await combobox.clear();
     await combobox.fill(optionTitle);
+    await page.waitForSelector('.ant-select-item-empty', {
+      state: 'detached',
+    });
   } else {
     await dropdownLocator.click();
   }
@@ -530,24 +537,33 @@ export const checkAddRuleOrGroupWithOperator = async (
       .click();
   }
 
-  const searchRes = page.waitForResponse(
-    `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
-      searchCriteria1.toLowerCase(),
-      true
-    )}*${getEncodedFqn(searchCriteria2.toLowerCase(), true)}*`
-  );
-  await page.getByTestId('apply-btn').click();
-
   // Since the OR operator with must not conditions will result in huge API response
   // with huge data, checking the required criteria might not be present on first page
   // Hence, checking the criteria only for AND operator
-  if (field.id !== 'Column' && operator === 'AND') {
+  if (field.id === 'Column') {
+    await page.getByTestId('apply-btn').click();
+  } else {
+    const searchRes = page.waitForResponse(
+      `/api/v1/search/query?*index=dataAsset&from=0&size=15*${getEncodedFqn(
+        searchCriteria1.toLowerCase(),
+        true
+      )}*${getEncodedFqn(searchCriteria2.toLowerCase(), true)}*`
+    );
+    await page.getByTestId('apply-btn').click();
     const res = await searchRes;
     const json = await res.json();
     const hits = json.hits.hits;
 
-    expect(JSON.stringify(hits)).toContain(searchCriteria1);
-    expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
+    if (operator === 'AND') {
+      expect(JSON.stringify(hits)).toContain(searchCriteria1);
+      expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
+    } else {
+      const hitsString = JSON.stringify(hits);
+      const containsCriteria1 = hitsString.includes(searchCriteria1);
+      const containsCriteria2 = hitsString.includes(searchCriteria2);
+
+      expect(containsCriteria1 || !containsCriteria2).toBe(true);
+    }
   }
 };
 

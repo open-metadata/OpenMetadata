@@ -3405,15 +3405,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return new HashSet<>(allowedFields);
   }
 
-  /**
-   * Returns entity fields not stored in the database but derived from search operations.
-   *
-   * @return Set of field names to exclude during reindexing. Empty by default.
-   */
-  public Set<String> getSearchDerivedFields() {
-    return Collections.emptySet();
-  }
-
   protected String getCustomPropertyFQNPrefix(String entityType) {
     return FullyQualifiedName.build(entityType, "customProperties");
   }
@@ -4064,7 +4055,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Record changes for audit trail
-      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+      recordListChange(
+          fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
       updatedTags.sort(compareTagLabel);
     }
 

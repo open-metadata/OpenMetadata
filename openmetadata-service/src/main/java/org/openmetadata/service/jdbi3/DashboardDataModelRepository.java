@@ -276,6 +276,7 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       DatabaseUtil.validateColumns(original.getColumns());
       updateColumns("columns", original.getColumns(), updated.getColumns(), EntityUtil.columnMatch);
+      recordChange("sourceUrl", original.getSourceUrl(), updated.getSourceUrl());
       recordChange("sourceHash", original.getSourceHash(), updated.getSourceHash());
       recordChange("sql", original.getSql(), updated.getSql());
     }

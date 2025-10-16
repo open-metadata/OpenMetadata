@@ -64,8 +64,8 @@ export const defaultColors: ThemeColors = {
     725: '#363636', // custom shade for search icon
     750: '#404040', // custom shade
     800: '#252B37',
-    900: '#101828',
-    950: '#0C111D',
+    900: '#181D27',
+    950: '#0A0D12',
   },
   blueGray: {
     25: '#FCFCFD',

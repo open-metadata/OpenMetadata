@@ -203,9 +203,7 @@ export const ContractSemanticFormTab: React.FC<{
           <Form.List name="semantics">
             {(fields, { add }) => {
               // Store the add function so it can be used outside
-              if (!addFunctionRef.current) {
-                addFunctionRef.current = add;
-              }
+              addFunctionRef.current ??= add;
 
               return fields.map((field) => {
                 return (
@@ -316,7 +314,7 @@ export const ContractSemanticFormTab: React.FC<{
                               fields={queryBuilderFields}
                               getQueryActions={handleAddQueryBuilderRule}
                               key={field.name}
-                              label="Rule"
+                              label={t('label.rule')}
                               outputType={SearchOutputType.JSONLogic}
                               tree={
                                 editFieldData?.jsonTree
