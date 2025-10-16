@@ -944,6 +944,9 @@ class DbtSource(DbtServiceSource):
     def create_dbt_exposures_lineage(
         self, exposure_spec: dict
     ) -> Iterable[Either[AddLineageRequest]]:
+        """
+        Method to process dbt exposure lineage
+        """
         to_entity = exposure_spec[DbtCommonEnum.EXPOSURE]
         upstream = exposure_spec[DbtCommonEnum.UPSTREAM]
         manifest_node = exposure_spec[DbtCommonEnum.MANIFEST_NODE]
@@ -1178,7 +1181,30 @@ class DbtSource(DbtServiceSource):
             manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
             if manifest_node:
                 logger.debug(f"Processing DBT Test Case for node: {manifest_node.name}")
-                entity_link_list = generate_entity_link(dbt_test)
+
+                # Fetch table entity to get actual column names for case-sensitive databases
+                table_entity = None
+                upstream_tables = dbt_test.get(DbtCommonEnum.UPSTREAM.value, [])
+                if upstream_tables:
+                    # Get the first upstream table for column name matching
+                    table_entity = self._get_table_entity(table_fqn=upstream_tables[0])
+
+                # Generate entity links with case-matched column names
+                entity_link_list = generate_entity_link(dbt_test, table_entity)
+
+                # Get matched column name for test case FQN
+                dbt_column_name = (
+                    manifest_node.column_name
+                    if hasattr(manifest_node, "column_name")
+                    else None
+                )
+                matched_column_name = dbt_column_name
+                if dbt_column_name and table_entity and table_entity.columns:
+                    for col in table_entity.columns.root:
+                        if col.name.root.lower() == dbt_column_name.lower():
+                            matched_column_name = col.name.root
+                            break
+
                 for entity_link_str in entity_link_list:
                     table_fqn = get_table_fqn(entity_link_str)
                     logger.debug(f"Table fqn found: {table_fqn}")
@@ -1190,9 +1216,7 @@ class DbtSource(DbtServiceSource):
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=manifest_node.column_name
-                        if hasattr(manifest_node, "column_name")
-                        else None,
+                        column_name=matched_column_name,
                         test_case_name=manifest_node.name,
                     )
 
@@ -1293,6 +1317,22 @@ class DbtSource(DbtServiceSource):
 
                 # Create the test case fqns and add the results
                 for table_fqn in dbt_test.get(DbtCommonEnum.UPSTREAM.value):
+                    # Fetch table entity to match column names case-insensitively
+                    table_entity = self._get_table_entity(table_fqn=table_fqn)
+
+                    # Get matched column name for test case FQN
+                    dbt_column_name = (
+                        manifest_node.column_name
+                        if hasattr(manifest_node, "column_name")
+                        else None
+                    )
+                    matched_column_name = dbt_column_name
+                    if dbt_column_name and table_entity and table_entity.columns:
+                        for col in table_entity.columns.root:
+                            if col.name.root.lower() == dbt_column_name.lower():
+                                matched_column_name = col.name.root
+                                break
+
                     source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
                     test_case_fqn = fqn.build(
                         self.metadata,
@@ -1301,9 +1341,7 @@ class DbtSource(DbtServiceSource):
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=manifest_node.column_name
-                        if hasattr(manifest_node, "column_name")
-                        else None,
+                        column_name=matched_column_name,
                         test_case_name=manifest_node.name,
                     )
 
@@ -1315,7 +1353,7 @@ class DbtSource(DbtServiceSource):
                         )
                     except APIError as err:
                         if err.code != 409:
-                            raise APIError(err) from err
+                            raise err
 
         except Exception as err:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
