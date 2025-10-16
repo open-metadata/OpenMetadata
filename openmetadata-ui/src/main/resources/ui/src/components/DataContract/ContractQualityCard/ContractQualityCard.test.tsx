@@ -18,7 +18,7 @@ import {
 } from '../../../generated/entity/datacontract/dataContractResult';
 import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
-import { getListTestCasResultsBySearch } from '../../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ContractQualityCard from './ContractQualityCard.component';
 
@@ -29,7 +29,7 @@ jest.mock('../../../hooks/useFqn', () => ({
 }));
 
 jest.mock('../../../rest/testAPI', () => ({
-  getListTestCasResultsBySearch: jest.fn(),
+  getListTestCaseBySearch: jest.fn(),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
@@ -169,7 +169,7 @@ describe('ContractQualityCard', () => {
   });
 
   it('should fetch and display test case summary and test cases', async () => {
-    (getListTestCasResultsBySearch as jest.Mock).mockResolvedValue({
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
 
@@ -188,15 +188,20 @@ describe('ContractQualityCard', () => {
       expect(screen.getByText('Table Row Count To Equal')).toBeInTheDocument();
     });
 
-    expect(getListTestCasResultsBySearch).toHaveBeenCalledWith(
+    expect(getListTestCaseBySearch).toHaveBeenCalledWith(
       expect.objectContaining({
-        dataContractId: MOCK_DATA_CONTRACT.id,
+        entityLink: '<#E::table::fqn>',
+        include: 'non-deleted',
+        includeAllTests: true,
+        limit: 10000,
+        sortField: 'testCaseResult.timestamp',
+        sortType: 'desc',
       })
     );
   });
 
   it('should display test summary chart when data is available', async () => {
-    (getListTestCasResultsBySearch as jest.Mock).mockResolvedValue({
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
 
@@ -220,7 +225,7 @@ describe('ContractQualityCard', () => {
   });
 
   it('should display contract status when provided', async () => {
-    (getListTestCasResultsBySearch as jest.Mock).mockResolvedValue({
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
 
@@ -243,7 +248,7 @@ describe('ContractQualityCard', () => {
   });
 
   it('should show error toast when test cases fetch fails', async () => {
-    (getListTestCasResultsBySearch as jest.Mock).mockRejectedValue(
+    (getListTestCaseBySearch as jest.Mock).mockRejectedValue(
       new Error('API Error')
     );
 
@@ -261,7 +266,7 @@ describe('ContractQualityCard', () => {
   });
 
   it('should render test case links correctly', async () => {
-    (getListTestCasResultsBySearch as jest.Mock).mockResolvedValue({
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
 
@@ -290,7 +295,7 @@ describe('ContractQualityCard', () => {
   });
 
   it('should calculate segment widths correctly', async () => {
-    (getListTestCasResultsBySearch as jest.Mock).mockResolvedValue({
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: mockTestCases,
     });
 
@@ -321,7 +326,7 @@ describe('ContractQualityCard', () => {
   });
 
   it('should not show test summary chart when total is 0', async () => {
-    (getListTestCasResultsBySearch as jest.Mock).mockResolvedValue({
+    (getListTestCaseBySearch as jest.Mock).mockResolvedValue({
       data: [],
     });
 

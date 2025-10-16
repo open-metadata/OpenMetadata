@@ -20,14 +20,13 @@ import { TEST_CASE_STATUS_ICON } from '../../../constants/DataQuality.constants'
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
-import {
-  TestCaseResult,
-  TestCaseStatus,
-} from '../../../generated/tests/testCase';
+import { TestCase, TestCaseStatus } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { useFqn } from '../../../hooks/useFqn';
-import { getListTestCasResultsBySearch } from '../../../rest/testAPI';
+import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import { getTestCaseDetailPagePath } from '../../../utils/RouterUtils';
+import { generateEntityLink } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../../common/Loader/Loader';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
@@ -41,18 +40,21 @@ const ContractQualityCard: React.FC<{
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState(false);
-  const [testCaseResult, setTestCaseResult] = useState<TestCaseResult[]>([]);
+  const [testCase, setTestCase] = useState<TestCase[]>([]);
 
   const fetchTestCases = async () => {
     setIsTestCaseLoading(true);
     try {
-      const response = await getListTestCasResultsBySearch({
-        dataContractId: contract.id,
+      const { data } = await getListTestCaseBySearch({
         ...DEFAULT_SORT_ORDER,
+        entityLink: generateEntityLink(fqn ?? ''),
+        includeAllTests: true,
         limit: ES_MAX_PAGE_SIZE,
+        include: Include.NonDeleted,
       });
-      setTestCaseResult(response.data);
-    } catch {
+
+      setTestCase(data);
+    } catch (error) {
       showErrorToast(
         t('server.entity-fetch-error', {
           entity: t('label.test-case-plural'),
@@ -112,10 +114,7 @@ const ContractQualityCard: React.FC<{
 
   const processedQualityExpectations = useMemo(() => {
     const testCaseResultsMap = new Map(
-      testCaseResult.map((result) => [
-        result.testCaseFQN?.split('.').pop(), // Use the last segment as the key (name)
-        result,
-      ])
+      testCase.map((result) => [result.id, result])
     );
 
     const mergedData = contract.qualityExpectations?.map((item) => ({
@@ -123,12 +122,12 @@ const ContractQualityCard: React.FC<{
       name: item.name,
       fullyQualifiedName: `${fqn}.${item.name}`,
       testCaseStatus:
-        testCaseResultsMap.get(item.name)?.testCaseStatus ??
+        testCaseResultsMap.get(item.id)?.testCaseStatus ??
         TestCaseStatus.Queued,
     }));
 
     return mergedData ?? [];
-  }, [contract, testCaseResult]);
+  }, [contract, testCase]);
 
   useEffect(() => {
     fetchTestCases();

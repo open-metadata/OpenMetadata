@@ -135,19 +135,6 @@ export const getListTestCaseBySearch = async (
   return response.data;
 };
 
-export const getListTestCasResultsBySearch = async (
-  params?: ListTestCaseParamsBySearch
-) => {
-  const response = await APIClient.get<PagingResponse<TestCaseResult[]>>(
-    `${testResultUrl}/search/list`,
-    {
-      params,
-    }
-  );
-
-  return response.data;
-};
-
 export const getListTestCaseResults = async (
   fqn: string,
   params?: ListTestCaseResultsParams
