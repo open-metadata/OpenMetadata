@@ -1,0 +1,14 @@
+{
+    "name": "Dataflow",
+    "displayName": "Google Cloud Dataflow Test Connection",
+    "description": "This Test Connection validates the access against GCP and basic metadata extraction of Dataflow jobs.",
+    "steps": [
+        {
+            "name": "GetJobs",
+            "description": "Validate that the API can fetch Dataflow jobs.",
+            "errorMessage": "Failed to fetch Dataflow jobs, please validate the credentials or check if user has dataflow.jobs.list permission",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}
