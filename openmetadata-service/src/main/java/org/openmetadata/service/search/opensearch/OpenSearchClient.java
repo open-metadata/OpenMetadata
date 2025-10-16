@@ -139,6 +139,7 @@ import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
+import os.org.opensearch.action.admin.indices.alias.get.GetAliasesRequest;
 import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
@@ -150,6 +151,7 @@ import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
+import os.org.opensearch.client.GetAliasesResponse;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.ResponseException;
@@ -466,6 +468,31 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     } catch (Exception e) {
       LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), e);
     }
+    return indices;
+  }
+
+  @Override
+  public Set<String> listIndicesByPrefix(String prefix) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot list indices by prefix.");
+      return indices;
+    }
+
+    try {
+      String pattern = prefix + "*";
+      GetAliasesRequest request = new GetAliasesRequest();
+      request.indices(pattern);
+
+      GetAliasesResponse response = client.indices().getAlias(request, RequestOptions.DEFAULT);
+
+      indices.addAll(response.getAliases().keySet());
+
+      LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
+    } catch (Exception e) {
+      LOG.error("Unexpected exception while listing indices by prefix {}", prefix, e);
+    }
+
     return indices;
   }
 

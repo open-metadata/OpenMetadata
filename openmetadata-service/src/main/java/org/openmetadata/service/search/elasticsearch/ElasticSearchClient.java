@@ -25,6 +25,7 @@ import es.org.elasticsearch.action.ActionListener;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthRequest;
 import es.org.elasticsearch.action.admin.cluster.health.ClusterHealthResponse;
 import es.org.elasticsearch.action.admin.indices.alias.IndicesAliasesRequest;
+import es.org.elasticsearch.action.admin.indices.alias.get.GetAliasesRequest;
 import es.org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
@@ -36,6 +37,7 @@ import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.action.support.WriteRequest;
 import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
 import es.org.elasticsearch.action.update.UpdateRequest;
+import es.org.elasticsearch.client.GetAliasesResponse;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.ResponseException;
@@ -449,6 +451,31 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     } catch (Exception e) {
       LOG.warn(String.format("Failed to resolve indices for alias %s", aliasName), e);
     }
+    return indices;
+  }
+
+  @Override
+  public Set<String> listIndicesByPrefix(String prefix) {
+    Set<String> indices = new HashSet<>();
+    if (!isClientAvailable) {
+      LOG.error("Elasticsearch client is not available. Cannot list indices by prefix.");
+      return indices;
+    }
+
+    try {
+      String pattern = prefix + "*";
+      GetAliasesRequest request = new GetAliasesRequest();
+      request.indices(pattern);
+
+      GetAliasesResponse response = client.indices().getAlias(request, RequestOptions.DEFAULT);
+
+      indices.addAll(response.getAliases().keySet());
+
+      LOG.info("Retrieved {} indices matching prefix '{}': {}", indices.size(), prefix, indices);
+    } catch (Exception e) {
+      LOG.error("Unexpected exception while listing indices by prefix {}", prefix, e);
+    }
+
     return indices;
   }
 

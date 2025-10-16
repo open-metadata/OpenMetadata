@@ -509,6 +509,8 @@ public interface SearchClient<T> {
 
   Response aggregate(AggregationRequest request) throws IOException;
 
+  Set<String> listIndicesByPrefix(String prefix);
+
   JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filters)
       throws IOException;
