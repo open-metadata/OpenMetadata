@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
@@ -62,6 +63,8 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
     conditions.add(getEntityStatusCondition());
+    conditions.add(getEntityVisibilityCondition(tableName));
+
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -557,12 +560,40 @@ public class ListFilter extends Filter<ListFilter> {
     if (entityStatus == null) {
       return "";
     }
+    return String.format("entityStatus = '%s'", entityStatus);
+  }
 
-    if (Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())) {
-      return String.format(
-          "JSON_UNQUOTE(JSON_EXTRACT(json, '$.entityStatus')) = '%s'", entityStatus);
-    } else {
-      return String.format("json->>'entityStatus' = '%s'", entityStatus);
+  public String getEntityVisibilityCondition(String tableName) {
+    String currentUserId = getQueryParam("userId");
+
+    if (currentUserId == null) {
+      return "";
     }
+
+    // Validate UUID format to prevent injection
+    try {
+      UUID.fromString(currentUserId);
+    } catch (IllegalArgumentException e) {
+      return "";
+    }
+
+    String entityColumn = tableName == null ? "id" : tableName + ".id";
+    String statusColumn = tableName == null ? "entityStatus" : tableName + ".entityStatus";
+
+    return String.format(
+        "(%s IN ('Approved', 'Unprocessed') "
+            + "OR EXISTS ("
+            + "SELECT 1 FROM entity_relationship er "
+            + "WHERE er.fromId = '%s' "
+            + "AND er.toId = %s "
+            + "AND er.fromEntity = 'user' "
+            + "AND er.relation IN (%d, %d) "
+            + "LIMIT 1"
+            + "))",
+        statusColumn,
+        currentUserId,
+        entityColumn,
+        Relationship.OWNS.ordinal(),
+        Relationship.REVIEWS.ordinal());
   }
 }

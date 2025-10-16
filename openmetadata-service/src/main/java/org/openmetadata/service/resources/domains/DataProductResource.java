@@ -44,7 +44,6 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
@@ -65,7 +64,9 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 @Path("/v1/dataProducts")
@@ -148,14 +149,19 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
       filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
-    ResultList<DataProduct> result =
-        listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
-    String currentUser = securityContext.getUserPrincipal().getName();
-    List<DataProduct> visibleDataProducts =
-        repository.filterDataProductsByVisibility(result.getData(), currentUser);
-    result.setData(visibleDataProducts);
 
-    return result;
+    // Apply visibility filter query
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
+      try {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        UUID currentUserId = subjectContext.user().getId();
+
+        filter.addQueryParam("userId", currentUserId.toString());
+      } catch (Exception ignore) {
+      }
+    }
+
+    return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -232,8 +238,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
 
     // Check visibility permissions
     String currentUser = securityContext.getUserPrincipal().getName();
-    DataProductRepository dataProductRepo = (DataProductRepository) repository;
-    if (!dataProductRepo.isDataProductVisibleToUser(dataProduct, currentUser)) {
+    if (!repository.isDataProductVisibleToUser(dataProduct, currentUser)) {
       throw new EntityNotFoundException("Data product not found for name " + name);
     }
 

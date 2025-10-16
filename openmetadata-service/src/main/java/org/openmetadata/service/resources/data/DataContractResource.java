@@ -73,8 +73,10 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
@@ -174,18 +176,19 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
-    ResultList<DataContract> result =
-        super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
+    // Apply visibility filter param
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
+      try {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        UUID currentUserId = subjectContext.user().getId();
 
-    // Filter data contracts based on visibility for the current user
-    String currentUser = securityContext.getUserPrincipal().getName();
-    DataContractRepository dataContractRepo = repository;
-    List<DataContract> visibleDataContracts =
-        dataContractRepo.filterDataContractsByVisibility(result.getData(), currentUser);
-    result.setData(visibleDataContracts);
+        filter.addQueryParam("userId", currentUserId.toString());
+      } catch (Exception ignore) {
+      }
+    }
 
-    return result;
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -226,8 +229,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
     // Check visibility permissions
     String currentUser = securityContext.getUserPrincipal().getName();
-    DataContractRepository dataContractRepo = (DataContractRepository) repository;
-    if (!dataContractRepo.isDataContractVisibleToUser(dataContract, currentUser)) {
+    if (!repository.isDataContractVisibleToUser(dataContract, currentUser)) {
       throw new EntityNotFoundException("Data contract not found for id " + id);
     }
 

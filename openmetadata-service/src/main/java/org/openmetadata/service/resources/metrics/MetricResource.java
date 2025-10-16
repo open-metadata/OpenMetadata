@@ -63,6 +63,8 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Path("/v1/metrics")
 @Tag(
@@ -137,18 +139,20 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
-    ResultList<Metric> result =
-        super.listInternal(
-            uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
 
-    // Filter metrics based on visibility for the current user
-    String currentUser = securityContext.getUserPrincipal().getName();
-    MetricRepository metricRepo = (MetricRepository) repository;
-    List<Metric> visibleMetrics =
-        metricRepo.filterMetricsByVisibility(result.getData(), currentUser);
-    result.setData(visibleMetrics);
+    // Apply visibility filter query
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
+      try {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        UUID currentUserId = subjectContext.user().getId();
 
-    return result;
+        filter.addQueryParam("userId", currentUserId.toString());
+      } catch (Exception ignore) {
+      }
+    }
+
+    return super.listInternal(
+        uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
   @GET
@@ -231,8 +235,7 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
 
     // Check visibility permissions
     String currentUser = securityContext.getUserPrincipal().getName();
-    MetricRepository metricRepo = (MetricRepository) repository;
-    if (!metricRepo.isMetricVisibleToUser(metric, currentUser)) {
+    if (!repository.isMetricVisibleToUser(metric, currentUser)) {
       throw new EntityNotFoundException("Metric not found for name " + fqn);
     }
 
