@@ -62,35 +62,35 @@ const StoredProcedureTab = () => {
   );
   const { showDeletedTables: showDeletedStoredProcedures } = tableFilters;
 
-  const searchStoredProcedure = async (
-    searchValue: string,
-    pageNumber = INITIAL_PAGING_VALUE
-  ) => {
-    setIsLoading(true);
-    try {
-      const response = await searchQuery({
-        query: '',
-        pageNumber,
-        pageSize: PAGE_SIZE,
-        queryFilter: buildSchemaQueryFilter(
-          'databaseSchema.fullyQualifiedName',
-          decodedDatabaseSchemaFQN,
-          searchValue
-        ),
-        searchIndex: SearchIndex.STORED_PROCEDURE,
-        includeDeleted: showDeletedStoredProcedures,
-        trackTotalHits: true,
-      });
-      const data = response.hits.hits.map((schema) => schema._source);
-      const total = response.hits.total.value;
-      setStoredProcedure(data);
-      handlePagingChange({ total });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const searchStoredProcedure = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setIsLoading(true);
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          queryFilter: buildSchemaQueryFilter(
+            'databaseSchema.fullyQualifiedName',
+            decodedDatabaseSchemaFQN,
+            searchValue
+          ),
+          searchIndex: SearchIndex.STORED_PROCEDURE,
+          includeDeleted: showDeletedStoredProcedures,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((schema) => schema._source);
+        const total = response.hits.total.value;
+        setStoredProcedure(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [decodedDatabaseSchemaFQN, showDeletedStoredProcedures, handlePagingChange]
+  );
 
   const fetchStoreProcedureDetails = useCallback(
     async (params?: Partial<Paging>) => {
@@ -179,14 +179,17 @@ const StoredProcedureTab = () => {
     []
   );
 
-  const onStoredProcedureSearch = (value: string) => {
-    setFilters({ schema: isEmpty(value) ? undefined : value });
-    if (value) {
-      searchStoredProcedure(value);
-    } else {
-      fetchStoreProcedureDetails();
-    }
-  };
+  const onStoredProcedureSearch = useCallback(
+    (value: string) => {
+      setFilters({ schema: isEmpty(value) ? undefined : value });
+      if (value) {
+        searchStoredProcedure(value);
+      } else {
+        fetchStoreProcedureDetails();
+      }
+    },
+    [setFilters, searchStoredProcedure, fetchStoreProcedureDetails]
+  );
 
   useEffect(() => {
     fetchStoreProcedureDetails();
@@ -211,6 +214,17 @@ const StoredProcedureTab = () => {
       storedProcedurePagingHandler,
       handlePageSizeChange,
     ]
+  );
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.stored-procedure'),
+      }),
+      typingInterval: 500,
+      onSearch: onStoredProcedureSearch,
+    }),
+    [onStoredProcedureSearch]
   );
 
   return (
@@ -238,13 +252,7 @@ const StoredProcedureTab = () => {
       }}
       pagination={false}
       rowKey="id"
-      searchProps={{
-        placeholder: t('label.search-for-type', {
-          type: t('label.stored-procedure'),
-        }),
-        typingInterval: 500,
-        onSearch: onStoredProcedureSearch,
-      }}
+      searchProps={searchProps}
       size="small"
     />
   );
