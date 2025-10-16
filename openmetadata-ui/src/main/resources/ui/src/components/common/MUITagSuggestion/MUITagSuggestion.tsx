@@ -16,6 +16,7 @@ import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
   FC,
+  HtmlHTMLAttributes,
   ReactNode,
   useCallback,
   useEffect,
@@ -172,16 +173,14 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
       ListboxProps={
         {
           key: `listbox-${memoizedOptions.length}`,
-        } as any
+        } as HtmlHTMLAttributes<HTMLUListElement>
       }
       autoFocus={autoFocus}
-      getOptionLabel={(option: TagOption | string) =>
+      getOptionLabel={(option) =>
         typeof option === 'string' ? option : option.label
       }
       inputValue={inputValue}
-      isOptionEqualToValue={(option, value) =>
-        (option as TagOption).value === (value as TagOption).value
-      }
+      isOptionEqualToValue={(option, value) => option.value === value.value}
       loading={loading}
       open={open && (memoizedOptions.length > 0 || loading)}
       options={memoizedOptions}
@@ -206,7 +205,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           variant="outlined"
         />
       )}
-      renderOption={(props, option: string | TagOption) => (
+      renderOption={(props, option) => (
         <Box component="li" {...props}>
           <Box display="flex" flexDirection="column">
             <Box
@@ -226,8 +225,8 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           </Box>
         </Box>
       )}
-      renderTags={(value: (string | TagOption)[], getTagProps) =>
-        value.map((option: string | TagOption, index: number) => {
+      renderTags={(value, getTagProps) =>
+        value.map((option, index: number) => {
           const chipProps = getTagProps({ index });
 
           return (
