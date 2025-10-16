@@ -15,6 +15,7 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
+  db-data-postgres:
 services:
   postgresql:
     container_name: openmetadata_postgresql
@@ -27,9 +28,9 @@ services:
     expose:
       - 5432
     ports:
-      - "5432:5432"
+      - "5439:5432"
     volumes:
-     - ./docker-volume/db-data-postgres:/var/lib/postgresql/data
+     - db-data-postgres:/var/lib/postgresql/data
     
     networks:
       - app_net
