@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,8 +11,4 @@
  *  limitations under the License.
  */
 
-import { Domain } from '../../../generated/entity/domains/domain';
-
-export interface DomainLeftPanelProps {
-  domains: Domain[];
-}
+export { default as MUICoverImageUpload } from './MUICoverImageUpload';
