@@ -1,0 +1,49 @@
+# ThirdEye Analytics Service - Python Dependencies
+# Python 3.11+
+
+# Web Framework
+fastapi==0.109.2
+uvicorn[standard]==0.27.1
+python-multipart==0.0.9
+
+# Validation & Settings
+pydantic==2.6.1
+pydantic-settings==2.1.0
+
+# Database
+SQLAlchemy==2.0.25
+asyncmy==0.2.9
+mysqlclient==2.2.4
+alembic==1.13.1
+
+# Authentication
+PyJWT==2.8.0
+python-jose[cryptography]==3.3.0
+
+# HTTP Client
+httpx==0.26.0
+
+# Retry & Resilience
+tenacity==8.2.3
+
+# Monitoring & Metrics
+prometheus-client==0.19.0
+
+# Logging
+loguru==0.7.2
+
+# System Monitoring
+psutil==5.9.8
+
+# Development & Testing
+pytest==8.0.0
+pytest-asyncio==0.23.4
+httpx==0.26.0
+mypy==1.8.0
+types-PyYAML==6.0.12.12
+
+# Code Quality
+black==24.1.1
+isort==5.13.2
+flake8==7.0.0
+
