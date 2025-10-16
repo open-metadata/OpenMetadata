@@ -1,0 +1,6 @@
+name: "CodeQL Config"
+paths:
+  - openmetadata-ui/src/main/resources/ui/src
+paths-ignore:
+  - openmetadata-ui/src/main/resources/ui/playwright
+  - openmetadata-ui/src/main/resources/ui/node_modules
