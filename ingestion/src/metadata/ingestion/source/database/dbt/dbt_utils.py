@@ -123,7 +123,7 @@ def generate_entity_link(dbt_test, table_entity: Optional[Table] = None):
 
     # Get the column name from manifest (may be lowercase from DBT)
     dbt_column_name = (
-        manifest_node.column_name if hasattr(manifest_node, "column_name") else None
+        getattr(manifest_node, "column_name", None)
     )
 
     # Match against actual table columns if table entity provided
