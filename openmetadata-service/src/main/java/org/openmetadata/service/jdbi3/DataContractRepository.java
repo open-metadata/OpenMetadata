@@ -1216,25 +1216,4 @@ public class DataContractRepository extends EntityRepository<DataContract> {
         dataContract.getReviewers(),
         userName);
   }
-
-  public List<DataContract> filterDataContractsByVisibility(
-      List<DataContract> dataContracts, String userName) {
-    if (dataContracts == null || dataContracts.isEmpty()) {
-      return dataContracts != null ? dataContracts : new ArrayList<>();
-    }
-
-    // If no user context, only return approved data contracts (secure by default)
-    if (userName == null || userName.trim().isEmpty()) {
-      return dataContracts.stream()
-          .filter(
-              dataContract ->
-                  (EntityStatus.APPROVED.equals(dataContract.getEntityStatus())
-                      || EntityStatus.UNPROCESSED.equals(dataContract.getEntityStatus())))
-          .collect(Collectors.toList());
-    }
-
-    return dataContracts.stream()
-        .filter(dataContract -> isDataContractVisibleToUser(dataContract, userName))
-        .collect(Collectors.toList());
-  }
 }

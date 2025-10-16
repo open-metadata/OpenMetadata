@@ -35,7 +35,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
@@ -594,26 +593,5 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         dataProduct.getOwners(),
         dataProduct.getReviewers(),
         userName);
-  }
-
-  public List<DataProduct> filterDataProductsByVisibility(
-      List<DataProduct> dataProducts, String userName) {
-    if (dataProducts == null || dataProducts.isEmpty()) {
-      return dataProducts != null ? dataProducts : new ArrayList<>();
-    }
-
-    // If no user context, only return approved data products (secure by default)
-    if (userName == null || userName.trim().isEmpty()) {
-      return dataProducts.stream()
-          .filter(
-              dataProduct ->
-                  (EntityStatus.APPROVED.equals(dataProduct.getEntityStatus())
-                      || EntityStatus.UNPROCESSED.equals(dataProduct.getEntityStatus())))
-          .collect(Collectors.toList());
-    }
-
-    return dataProducts.stream()
-        .filter(dataProduct -> isDataProductVisibleToUser(dataProduct, userName))
-        .collect(Collectors.toList());
   }
 }
