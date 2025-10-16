@@ -38,7 +38,6 @@ import java.util.Objects;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.Callable;
-import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
@@ -67,6 +66,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -152,7 +152,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -1435,19 +1435,48 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Drop regular search repository indexes
       for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
         LOG.info("Dropping index for entity type: {}", entityType);
-        searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
+        IndexMapping entityIndexMapping = searchRepository.getIndexMapping(entityType);
+        Set<String> allEntityIndices =
+            searchRepository
+                .getSearchClient()
+                .listIndicesByPrefix(
+                    entityIndexMapping.getIndexName(searchRepository.getClusterAlias()));
+        for (String oldIndex : allEntityIndices) {
+          try {
+            if (searchRepository.getSearchClient().indexExists(oldIndex)) {
+              searchRepository.getSearchClient().deleteIndex(oldIndex);
+              LOG.info("Cleaned up old index '{}' for entity '{}'.", oldIndex, entityType);
+            }
+          } catch (Exception deleteEx) {
+            LOG.warn(
+                "Failed to delete old index '{}' for entity '{}'.", oldIndex, entityType, deleteEx);
+          }
+        }
       }
 
       // Drop data streams and data quality indexes created by DataInsightsApp
       dropDataInsightsIndexes();
 
-      // Drop orphaned rebuild indexes from zero-downtime reindexing
-      dropRebuildIndexes();
-
       LOG.info("All indexes dropped successfully.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop indexes due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "create-indexes", description = "Creates Indexes for Elastic/OpenSearch")
+  public Integer createIndexes() {
+    try {
+      LOG.info("Creating indexes for search engine...");
+      parseConfig();
+      searchRepository.createIndexes();
+      createDataInsightsIndexes();
+      Entity.cleanup();
+      LOG.info("All indexes created successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to drop create due to ", e);
       return 1;
     }
   }
@@ -1474,36 +1503,25 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
-  private void dropRebuildIndexes() {
+  private void createDataInsightsIndexes() {
     try {
-      LOG.info("Dropping orphaned rebuild indexes from zero-downtime reindexing...");
+      LOG.info("Create Data Insights data streams and indexes...");
 
-      Set<String> allIndices = getAllIndices();
-      List<String> rebuildIndices =
-          allIndices.stream()
-              .filter(index -> index.contains("_rebuild_"))
-              .collect(Collectors.toList());
+      // Create a DataInsightsApp instance to access its cleanup methods
+      DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
 
-      if (rebuildIndices.isEmpty()) {
-        LOG.info("No rebuild indexes found to delete.");
-        return;
-      }
+      // Drop data assets data streams
+      LOG.info("Create/Update data assets data streams...");
+      dataInsightsApp.createOrUpdateDataAssetsDataStream();
 
-      LOG.info("Found {} rebuild indexes to delete: {}", rebuildIndices.size(), rebuildIndices);
+      // Drop data quality indexes
+      LOG.info("Create/Updated data quality indexes...");
+      dataInsightsApp.createDataQualityDataIndex();
 
-      for (String index : rebuildIndices) {
-        try {
-          searchRepository.getSearchClient().deleteIndex(index);
-          LOG.info("Deleted rebuild index: {}", index);
-        } catch (Exception ex) {
-          LOG.warn("Failed to delete rebuild index {}: {}", index, ex.getMessage());
-        }
-      }
-
-      LOG.info("Rebuild index cleanup completed.");
+      LOG.info("Data Insights indexes and data streams created successfully.");
     } catch (Exception e) {
-      LOG.warn("Failed to drop rebuild indexes: {}", e.getMessage());
-      LOG.debug("Rebuild index cleanup error details: ", e);
+      LOG.warn("Failed to create some Data Insights indexes: {}", e.getMessage());
+      LOG.debug("Data Insights index creation error details: ", e);
     }
   }
 

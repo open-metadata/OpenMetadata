@@ -12,7 +12,7 @@
  */
 import { Domain } from '../../../generated/entity/domains/domain';
 
-export interface DomainDetailsPageProps {
+export interface DomainDetailsProps {
   domain: Domain;
   onUpdate: (value: Domain) => Promise<void>;
   onDelete: (id: string) => void;
