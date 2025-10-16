@@ -103,7 +103,7 @@ describe('DescriptionSection', () => {
       render(<DescriptionSection onDescriptionUpdate={jest.fn()} />);
 
       const clickable = document.querySelector(
-        '.description-header .cursor-pointer'
+        '.description-header .edit-icon'
       ) as HTMLElement | null;
 
       expect(clickable).toBeTruthy();
@@ -118,7 +118,7 @@ describe('DescriptionSection', () => {
       );
 
       const clickable = document.querySelector(
-        '.description-header .cursor-pointer'
+        '.description-header .edit-icon'
       ) as HTMLElement | null;
 
       expect(clickable).toBeNull();
@@ -128,7 +128,7 @@ describe('DescriptionSection', () => {
       render(<DescriptionSection showEditButton />);
 
       const clickable = document.querySelector(
-        '.description-header .cursor-pointer'
+        '.description-header .edit-icon'
       ) as HTMLElement | null;
 
       expect(clickable).toBeNull();
@@ -140,8 +140,11 @@ describe('DescriptionSection', () => {
       render(<DescriptionSection onDescriptionUpdate={jest.fn()} />);
 
       const editTrigger = document.querySelector(
-        '.description-header .cursor-pointer'
+        '.description-header .edit-icon'
       ) as HTMLElement;
+      if (!editTrigger) {
+        throw new Error('Edit icon not found');
+      }
       fireEvent.click(editTrigger);
 
       expect(screen.getByTestId('markdown-editor')).toBeInTheDocument();
@@ -159,8 +162,11 @@ describe('DescriptionSection', () => {
       render(<DescriptionSection onDescriptionUpdate={onUpdate} />);
 
       const editTrigger = document.querySelector(
-        '.description-header .cursor-pointer'
+        '.description-header .edit-icon'
       ) as HTMLElement;
+      if (!editTrigger) {
+        throw new Error('Edit icon not found');
+      }
       fireEvent.click(editTrigger);
 
       const saveBtn = screen.getByTestId('save');
@@ -201,8 +207,11 @@ describe('DescriptionSection', () => {
       );
 
       const editTrigger = document.querySelector(
-        '.description-header .cursor-pointer'
+        '.description-header .edit-icon'
       ) as HTMLElement;
+      if (!editTrigger) {
+        throw new Error('Edit icon not found');
+      }
       fireEvent.click(editTrigger);
 
       expect(screen.getByTestId('markdown-editor')).toBeInTheDocument();

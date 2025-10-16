@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+@import (reference) '../../../styles/variables.less';
 
 @keyframes spin {
   0% {
@@ -42,41 +43,32 @@
   gap: 8px;
 }
 .owner-label-section {
-  gap: 10px !important;
   color: #21263c !important;
-  margin-left: 0px !important;
-  .owner-label-container {
-    border-radius: 56px;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    min-width: 45%;
-    text-align: center;
-    justify-content: unset;
-  }
 }
 .loading-text {
   color: #666;
   font-size: 14px;
   font-weight: 500;
 }
-
+.edit-icon,
+.cancel-icon {
+  cursor: pointer;
+  height: 20px;
+}
 .owners-section {
-  border-bottom: solid;
-  border-bottom-width: 1px;
-  border-color: #f2f3f9;
-  padding-bottom: 18px;
+  border-bottom: 0.6px solid @grey-15;
+  padding-bottom: 16px;
   .owners-header {
     display: flex;
     gap: 4px;
     align-items: center;
     margin-bottom: 10px;
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 14px;
+    padding-right: 14px;
     .owners-title {
       font-weight: 600;
       font-size: 13px;
-      color: #21263c;
+      color: @grey-900;
     }
 
     .edit-button {
@@ -134,8 +126,8 @@
   }
 
   .owners-content {
-    padding-left: 20px;
-    padding-right: 16px;
+    padding-left: 14px;
+    padding-right: 14px;
     .inline-edit-container {
       .owner-selector-display {
         min-height: 40px;
@@ -184,12 +176,8 @@
     }
   }
 
-  .owners-display {
-    // OwnerLabel component will handle its own styling
-  }
-
   .no-data-placeholder {
-    color: #8c8c8c;
-    font-style: italic;
+    color: @grey-700;
+    font-size: 13px;
   }
 }

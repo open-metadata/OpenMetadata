@@ -52,9 +52,7 @@ jest.mock('../../../assets/svg/close-icon.svg', () => ({
 jest.mock('../OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
     .fn()
-    .mockImplementation(({ children, ..._props }) => (
-      <div data-testid="owner-label">OwnerLabel</div>
-    )),
+    .mockImplementation(() => <div data-testid="owner-label">OwnerLabel</div>),
 }));
 
 // Mock UserSelectableList
@@ -143,30 +141,6 @@ const defaultProps = {
   onOwnerUpdate: jest.fn(),
 };
 
-const clickEdit = () => {
-  const clickable = document.querySelector(
-    '.owners-header .cursor-pointer'
-  ) as HTMLElement | null;
-  if (!clickable) {
-    throw new Error('Edit clickable not found');
-  }
-  fireEvent.click(clickable);
-};
-
-const clickClose = () => {
-  const clickable =
-    (document.querySelector(
-      '.edit-actions .cursor-pointer'
-    ) as HTMLElement | null) ||
-    (document.querySelector(
-      '.owners-header .cursor-pointer'
-    ) as HTMLElement | null);
-  if (!clickable) {
-    throw new Error('Close clickable not found');
-  }
-  fireEvent.click(clickable);
-};
-
 describe('OwnersSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -199,16 +173,28 @@ describe('OwnersSection', () => {
     });
 
     it('should enter and exit edit mode when no owners', () => {
-      render(<OwnersSection {...(defaultProps as any)} owners={[]} />);
+      const { container } = render(
+        <OwnersSection {...(defaultProps as any)} owners={[]} />
+      );
+
+      // Check if edit icon exists
+      const editIcon = container.querySelector('.edit-icon');
+
+      expect(editIcon).toBeInTheDocument();
 
       // Enter edit mode
-      clickEdit();
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
 
       expect(screen.getByTestId('user-selectable-list')).toBeInTheDocument();
       expect(screen.getByTestId('close-icon')).toBeInTheDocument();
 
       // Exit edit mode
-      clickClose();
+      const cancelIcon = container.querySelector('.cancel-icon');
+      if (cancelIcon) {
+        fireEvent.click(cancelIcon);
+      }
 
       expect(
         screen.queryByTestId('user-selectable-list')
@@ -219,9 +205,12 @@ describe('OwnersSection', () => {
 
   describe('Edit Mode', () => {
     it('should enter edit mode and show selected owners', () => {
-      render(<OwnersSection {...(defaultProps as any)} />);
+      const { container } = render(
+        <OwnersSection {...(defaultProps as any)} />
+      );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
 
       expect(screen.getByTestId('user-selectable-list')).toBeInTheDocument();
       // Initial selected owners are shown in edit display (use selector to avoid duplicates)
@@ -231,10 +220,15 @@ describe('OwnersSection', () => {
     });
 
     it('should exit edit mode on cancel', () => {
-      render(<OwnersSection {...(defaultProps as any)} />);
+      const { container } = render(
+        <OwnersSection {...(defaultProps as any)} />
+      );
 
-      clickEdit();
-      clickClose();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+
+      const cancelIcon = container.querySelector('.cancel-icon');
+      fireEvent.click(cancelIcon!);
 
       expect(
         screen.queryByTestId('user-selectable-list')
@@ -253,7 +247,7 @@ describe('OwnersSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      render(
+      const { container } = render(
         <OwnersSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
@@ -261,7 +255,8 @@ describe('OwnersSection', () => {
         />
       );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
 
       // Trigger selection which immediately saves
       const trigger = screen.getByTestId('owner-selector-trigger');
@@ -284,14 +279,15 @@ describe('OwnersSection', () => {
       const mockError = new Error('Save failed') as AxiosError;
       patchTableDetails.mockRejectedValue(mockError);
 
-      render(
+      const { container } = render(
         <OwnersSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
 
       // Trigger selection which immediately saves
       const trigger = screen.getByTestId('owner-selector-trigger');
@@ -308,14 +304,15 @@ describe('OwnersSection', () => {
     it('should not save when no changes are made', async () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
 
-      render(
+      const { container } = render(
         <OwnersSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
 
       // Simulate selecting the same owners list (no changes)
       userSelectableListMock.mockImplementationOnce(
@@ -332,8 +329,10 @@ describe('OwnersSection', () => {
       );
 
       // Re-render to use the one-off mock implementation
-      clickClose();
-      clickEdit();
+      const cancelIcon = container.querySelector('.cancel-icon');
+      fireEvent.click(cancelIcon!);
+      const editIcon2 = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon2!);
 
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
@@ -351,14 +350,15 @@ describe('OwnersSection', () => {
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
-      render(
+      const { container } = render(
         <OwnersSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
 
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
@@ -377,14 +377,15 @@ describe('OwnersSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      render(
+      const { container } = render(
         <OwnersSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
 
@@ -403,14 +404,15 @@ describe('OwnersSection', () => {
 
       patchDashboardDetails.mockResolvedValue({});
 
-      render(
+      const { container } = render(
         <OwnersSection
           {...(defaultProps as any)}
           entityType={EntityType.DASHBOARD}
         />
       );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
 
@@ -427,7 +429,7 @@ describe('OwnersSection', () => {
     it('should show error when entityId is missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(
+      const { container } = render(
         <OwnersSection
           {...(defaultProps as any)}
           entityId={undefined}
@@ -435,7 +437,8 @@ describe('OwnersSection', () => {
         />
       );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
 
@@ -449,7 +452,7 @@ describe('OwnersSection', () => {
     it('should show error when entityId is not a valid UUID', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(
+      const { container } = render(
         <OwnersSection
           {...(defaultProps as any)}
           entityId="invalid-id"
@@ -457,7 +460,8 @@ describe('OwnersSection', () => {
         />
       );
 
-      clickEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
       const trigger = screen.getByTestId('owner-selector-trigger');
       fireEvent.click(trigger);
 

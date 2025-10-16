@@ -18,7 +18,6 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
-import { ReactComponent as TickIcon } from '../../../assets/svg/tick.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
@@ -42,6 +41,7 @@ interface DataProductsSectionProps {
   entityId?: string;
   entityType?: EntityType;
   onDataProductsUpdate?: (updatedDataProducts: EntityReference[]) => void;
+  maxVisibleDataProducts?: number;
 }
 
 const DataProductsSection: React.FC<DataProductsSectionProps> = ({
@@ -52,6 +52,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
   entityId,
   entityType,
   onDataProductsUpdate,
+  maxVisibleDataProducts = 3,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -59,6 +60,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     []
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [showAllDataProducts, setShowAllDataProducts] = useState(false);
 
   // Function to get the correct patch API based on entity type
   const getPatchAPI = (entityType?: EntityType) => {
@@ -208,17 +210,14 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
             {t('label.data-product-plural')}
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="cursor-pointer" onClick={handleEditClick}>
+            <span className="edit-icon" onClick={handleEditClick}>
               <EditIcon />
             </span>
           )}
           {isEditing && !isLoading && (
             <div className="edit-actions">
-              <span className="cursor-pointer" onClick={handleCancel}>
+              <span className="cancel-icon" onClick={handleCancel}>
                 <CloseIcon />
-              </span>
-              <span className="cursor-pointer" onClick={handleSave}>
-                <TickIcon />
               </span>
             </div>
           )}
@@ -261,17 +260,14 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
           {t('label.data-product-plural')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span className="cursor-pointer" onClick={handleEditClick}>
+          <span className="edit-icon" onClick={handleEditClick}>
             <EditIcon />
           </span>
         )}
         {isEditing && !isLoading && (
           <div className="edit-actions">
-            <span className="cursor-pointer" onClick={handleCancel}>
+            <span className="cancel-icon" onClick={handleCancel}>
               <CloseIcon />
-            </span>
-            <span className="cursor-pointer" onClick={handleSave}>
-              <TickIcon />
             </span>
           </div>
         )}
@@ -300,14 +296,33 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
         ) : (
           <div className="data-products-display">
             <div className="data-products-list">
-              {(dataProducts || []).map((dataProduct, index) => (
+              {(showAllDataProducts
+                ? dataProducts
+                : dataProducts.slice(0, maxVisibleDataProducts)
+              ).map((dataProduct, index) => (
                 <div className="data-product-item" key={index}>
-                  <DataProductIcon className="data-product-icon" />
-                  <span className="data-product-name">
-                    {getEntityName(dataProduct)}
-                  </span>
+                  <div className="data-product-card-bar">
+                    <div className="data-product-card-content">
+                      <DataProductIcon className="data-product-icon" />
+                      <span className="data-product-name">
+                        {getEntityName(dataProduct)}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               ))}
+              {dataProducts.length > maxVisibleDataProducts && (
+                <button
+                  className="show-more-data-products-button"
+                  type="button"
+                  onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
+                  {showAllDataProducts
+                    ? t('label.less')
+                    : `+${dataProducts.length - maxVisibleDataProducts} ${t(
+                        'label.more-lowercase'
+                      )}`}
+                </button>
+              )}
             </div>
           </div>
         )}

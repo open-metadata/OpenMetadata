@@ -10,9 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+@import (reference) '../../../styles/variables.less';
+.edit-icon {
+  cursor: pointer;
+  height: 20px;
+}
 .description-section {
-  margin-top: 16px;
+  margin-top: 12px;
+  padding-left: 14px;
+  padding-right: 14px;
+  border-bottom: 0.6px solid @grey-15;
+  padding-bottom: 16px;
   .description-header {
     display: flex;
     gap: 4px;
@@ -21,7 +29,7 @@
     .description-title {
       font-weight: 600;
       font-size: 13px;
-      color: #414651;
+      color: @grey-900;
     }
 
     .edit-button {
@@ -156,8 +164,8 @@
     }
 
     .no-data-placeholder {
-      color: #8c8c8c;
-      font-style: italic;
+      color: @grey-700;
+      font-size: 13px;
     }
   }
 }

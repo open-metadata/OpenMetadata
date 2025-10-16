@@ -118,7 +118,7 @@ describe('DataQualitySection', () => {
   });
 
   it('renders legend items only for non-zero counts', () => {
-    render(
+    const { container } = render(
       <DataQualitySection
         tests={[
           { type: 'success', count: 4 },
@@ -129,17 +129,22 @@ describe('DataQualitySection', () => {
       />
     );
 
-    // Success legend should be present with i18n formatted prefix and count
+    // Success legend should be present with label and count
     expect(
-      screen.getByText('label.-with-colon - {"text":"label.success"} 4')
+      screen.getByText('label.-with-colon - {"text":"label.success"}')
     ).toBeInTheDocument();
+
+    // Check the legend items rendered
+    const legendItems = container.querySelectorAll('.legend-item');
+
+    expect(legendItems).toHaveLength(1); // Only success should render
 
     // Aborted/failed legends should NOT render for zero counts
     expect(
-      screen.queryByText('label.-with-colon - {"text":"label.aborted"} 0')
+      screen.queryByText('label.-with-colon - {"text":"label.aborted"}')
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByText('label.-with-colon - {"text":"label.failed"} 0')
+      screen.queryByText('label.-with-colon - {"text":"label.failed"}')
     ).not.toBeInTheDocument();
   });
 

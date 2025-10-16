@@ -13,11 +13,11 @@
 import { Menu } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CustomPropertiesIcon } from '../../../assets/svg/explore-panel-icons/custom-prop.svg';
-import { ReactComponent as ExploreIcon } from '../../../assets/svg/explore.svg';
-import { ReactComponent as DataQualityIcon } from '../../../assets/svg/ic-data-contract.svg';
-import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/ic-platform-lineage.svg';
-import { ReactComponent as SchemaIcon } from '../../../assets/svg/ic-schema.svg';
+import { ReactComponent as CustomPropertiesIcon } from '../../../assets/svg/explore-vertical-nav-icons/custom-prop.svg';
+import { ReactComponent as ExploreIcon } from '../../../assets/svg/explore-vertical-nav-icons/explore.svg';
+import { ReactComponent as DataQualityIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-data-contract.svg';
+import { ReactComponent as PlatformLineageIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-platform-lineage.svg';
+import { ReactComponent as SchemaIcon } from '../../../assets/svg/explore-vertical-nav-icons/ic-schema.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import './EntityRightPanelVerticalNav.less';
 

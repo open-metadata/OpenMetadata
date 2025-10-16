@@ -94,13 +94,16 @@ jest.mock('../DomainSelectableList/DomainSelectableList.component', () => ({
   default: (props: any) => domainSelectableListMock(props),
 }));
 
-// DomainLabel mock
-jest.mock('../DomainLabel/DomainLabel.component', () => ({
-  DomainLabel: jest
+// Mock getDomainIcon utility
+jest.mock('../../../utils/DomainUtils', () => ({
+  getDomainIcon: jest.fn().mockReturnValue(<div data-testid="domain-icon" />),
+}));
+
+// Mock getEntityName utility
+jest.mock('../../../utils/EntityUtils', () => ({
+  getEntityName: jest
     .fn()
-    .mockImplementation(() => (
-      <div data-testid="domain-label">DomainLabel</div>
-    )),
+    .mockImplementation((entity) => entity.displayName || entity.name),
 }));
 
 const validUUID = '123e4567-e89b-12d3-a456-426614174000';
@@ -115,7 +118,7 @@ const defaultProps = {
 
 const clickHeaderEdit = () => {
   const clickable = document.querySelector(
-    '.domains-header .cursor-pointer'
+    '.domains-header .edit-icon'
   ) as HTMLElement | null;
   if (!clickable) {
     throw new Error('Edit clickable not found');
@@ -125,7 +128,7 @@ const clickHeaderEdit = () => {
 
 const clickHeaderCancel = () => {
   const clickable = document.querySelector(
-    '.edit-actions .cursor-pointer'
+    '.edit-actions .cancel-icon'
   ) as HTMLElement | null;
   if (!clickable) {
     throw new Error('Cancel clickable not found');
@@ -153,15 +156,17 @@ describe('DomainsSection', () => {
       expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
     });
 
-    it('renders existing domains via DomainLabel when provided', () => {
-      render(
+    it('renders existing domains via custom domain cards when provided', () => {
+      const { container } = render(
         <DomainsSection
           {...(defaultProps as any)}
           domains={[{ id: 'd1', name: 'd1', displayName: 'Domain 1' }]}
         />
       );
 
-      expect(screen.getByTestId('domain-label')).toBeInTheDocument();
+      expect(container.querySelector('.domains-display')).toBeInTheDocument();
+      expect(container.querySelector('.domain-item')).toBeInTheDocument();
+      expect(screen.getByText('Domain 1')).toBeInTheDocument();
     });
   });
 

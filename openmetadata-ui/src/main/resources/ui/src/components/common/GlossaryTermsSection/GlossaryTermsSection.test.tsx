@@ -135,7 +135,7 @@ const nonGlossaryTags = [
 
 const clickHeaderEdit = () => {
   const clickable = document.querySelector(
-    '.glossary-terms-header .cursor-pointer'
+    '.glossary-terms-header .edit-icon'
   ) as HTMLElement | null;
   if (!clickable) {
     throw new Error('Edit clickable not found');
@@ -167,7 +167,7 @@ describe('GlossaryTermsSection', () => {
       expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
 
       const editClickable = document.querySelector(
-        '.glossary-terms-header .cursor-pointer'
+        '.glossary-terms-header .edit-icon'
       );
 
       expect(editClickable).toBeTruthy();

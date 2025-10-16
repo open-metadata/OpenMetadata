@@ -68,6 +68,14 @@ jest.mock('../../../../assets/svg/tick.svg', () => ({
   ReactComponent: () => <div data-testid="tick-icon-svg">TickIcon</div>,
 }));
 
+jest.mock('../../../assets/svg/classification.svg', () => ({
+  ReactComponent: ({ className }: { className?: string }) => (
+    <div className={className} data-testid="classification-icon-svg">
+      ClassificationIcon
+    </div>
+  ),
+}));
+
 // Mock AsyncSelectList component
 jest.mock('../AsyncSelectList/AsyncSelectList', () => {
   return jest
@@ -271,9 +279,7 @@ describe('TagsSection', () => {
       render(<TagsSection {...defaultProps} />);
 
       // Click show more button to expand
-      const showMoreButton = screen.getByText(
-        'label.plus-count-more - {"count":2}'
-      );
+      const showMoreButton = screen.getByText('+2 label.more-lowercase');
       fireEvent.click(showMoreButton);
 
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
@@ -296,32 +302,26 @@ describe('TagsSection', () => {
     it('should show show more button when there are more tags', () => {
       render(<TagsSection {...defaultProps} />);
 
-      expect(
-        screen.getByText('label.plus-count-more - {"count":2}')
-      ).toBeInTheDocument();
+      expect(screen.getByText('+2 label.more-lowercase')).toBeInTheDocument();
     });
 
     it('should show show less button when expanded', () => {
       render(<TagsSection {...defaultProps} />);
 
       // Click show more button to expand
-      const showMoreButton = screen.getByText(
-        'label.plus-count-more - {"count":2}'
-      );
+      const showMoreButton = screen.getByText('+2 label.more-lowercase');
       fireEvent.click(showMoreButton);
 
-      expect(screen.getByText('label.show-less-lowercase')).toBeInTheDocument();
+      expect(screen.getByText('label.less')).toBeInTheDocument();
     });
 
     it('should use custom maxDisplayCount', () => {
-      render(<TagsSection {...defaultProps} maxDisplayCount={2} />);
+      render(<TagsSection {...defaultProps} maxVisibleTags={2} />);
 
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
       expect(screen.getByText('Tag 2')).toBeInTheDocument();
       expect(screen.queryByText('Tag 3')).not.toBeInTheDocument();
-      expect(
-        screen.getByText('label.plus-count-more - {"count":3}')
-      ).toBeInTheDocument();
+      expect(screen.getByText('+3 label.more-lowercase')).toBeInTheDocument();
     });
 
     it('should render tag items with correct structure', () => {
@@ -333,7 +333,6 @@ describe('TagsSection', () => {
 
       tagItems.forEach((item) => {
         expect(item.querySelector('.tag-icon')).toBeInTheDocument();
-        expect(item.querySelector('.tag-minus-icon')).toBeInTheDocument();
         expect(item.querySelector('.tag-name')).toBeInTheDocument();
       });
     });
@@ -773,7 +772,7 @@ describe('TagsSection', () => {
     });
 
     it('should handle maxDisplayCount greater than tags length', () => {
-      render(<TagsSection {...defaultProps} maxDisplayCount={10} />);
+      render(<TagsSection {...defaultProps} maxVisibleTags={10} />);
 
       expect(screen.getByText('Tag 1')).toBeInTheDocument();
       expect(screen.getByText('Tag 2')).toBeInTheDocument();
@@ -781,17 +780,15 @@ describe('TagsSection', () => {
       expect(screen.getByText('Tag 4')).toBeInTheDocument();
       expect(screen.getByText('Tag 5')).toBeInTheDocument();
       expect(
-        screen.queryByText('label.plus-count-more')
+        screen.queryByText('label.more-lowercase')
       ).not.toBeInTheDocument();
     });
 
     it('should handle maxDisplayCount of 0', () => {
-      render(<TagsSection {...defaultProps} maxDisplayCount={0} />);
+      render(<TagsSection {...defaultProps} maxVisibleTags={0} />);
 
       expect(screen.queryByText('Tag 1')).not.toBeInTheDocument();
-      expect(
-        screen.getByText('label.plus-count-more - {"count":5}')
-      ).toBeInTheDocument();
+      expect(screen.getByText('+5 label.more-lowercase')).toBeInTheDocument();
     });
   });
 

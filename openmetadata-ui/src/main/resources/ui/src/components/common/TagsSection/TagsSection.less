@@ -10,24 +10,29 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+@import (reference) '../../../styles/variables.less';
+.edit-icon,
+.cancel-icon {
+  cursor: pointer;
+  height: 20px;
+}
 .tags-section {
   border-bottom: solid;
   border-bottom-width: 1px;
   border-color: #f2f3f9;
-  padding-bottom: 18px;
+  padding-bottom: 16px;
   .tags-header {
     display: flex;
     gap: 4px;
     align-items: center;
     margin-bottom: 10px;
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 14px;
+    padding-right: 14px;
 
     .tags-title {
       font-weight: 600;
       font-size: 13px;
-      color: #414651;
+      color: @grey-900;
     }
 
     .edit-button {
@@ -80,8 +85,8 @@
   }
 
   .tags-content {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 14px;
+    padding-right: 14px;
     .inline-edit-container {
       .tag-selector {
         padding: 4px;
@@ -132,51 +137,61 @@
         flex-direction: row;
         flex-wrap: wrap;
         gap: 8px;
-        margin-bottom: 8px;
 
         .tag-item {
           display: flex;
           align-items: center;
-          gap: 6px;
-          padding: 4px 8px;
-          border-radius: 6px;
-          width: fit-content;
+          gap: 5px;
+          padding: 5px 6px;
+          height: 26px;
+          border-radius: 8px;
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          min-width: 0;
 
           .tag-icon {
-            font-size: 12px;
-            color: inherit;
-          }
-
-          .tag-minus-icon {
-            font-size: 10px;
-            color: inherit;
-            margin-left: -4px;
+            height: 12px;
+            width: 12px;
+            flex-shrink: 0;
           }
 
           .tag-name {
             font-size: 12px;
-            font-weight: 500;
-            color: inherit;
+            font-weight: 400;
+            color: @tag-text;
+            text-overflow: ellipsis;
           }
         }
-      }
 
-      .show-more-button,
-      .show-less-button {
-        padding: 0;
-        height: auto;
-        font-size: 12px;
-        color: #1890ff;
+        .show-more-tags-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: 12px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.2s ease;
 
-        &:hover {
-          color: #40a9ff;
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
         }
       }
     }
 
     .no-data-placeholder {
-      color: #8c8c8c;
-      font-style: italic;
+      color: @grey-700;
+      font-size: 13px;
     }
 
     .tags-loading-container {

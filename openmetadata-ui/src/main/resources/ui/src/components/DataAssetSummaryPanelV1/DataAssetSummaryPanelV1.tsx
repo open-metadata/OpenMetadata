@@ -70,7 +70,6 @@ import TagsSection from '../common/TagsSection/TagsSection';
 import { DataAssetSummaryPanelProps } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import GlossaryTermSummary from '../Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
 import TagsSummary from '../Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component';
-import './DataAssetSummaryPanelV1.less';
 
 interface TestCaseStatusCounts {
   success: number;
@@ -447,7 +446,7 @@ export const DataAssetSummaryPanelV1 = ({
                 />
               )
             )}
-            <div className="section-container">
+            <div>
               <OwnersSection
                 entityId={dataAsset.id}
                 entityType={entityType}
@@ -459,7 +458,7 @@ export const DataAssetSummaryPanelV1 = ({
                 onOwnerUpdate={onOwnerUpdate}
               />
             </div>
-            <div className="section-container">
+            <div>
               <DomainsSection
                 domains={dataAsset.domains}
                 entityFqn={dataAsset.fullyQualifiedName}
@@ -472,18 +471,19 @@ export const DataAssetSummaryPanelV1 = ({
                 onDomainUpdate={onDomainUpdate}
               />
             </div>
-            <div className="section-container">
+            <div>
               <GlossaryTermsSection
                 entityId={dataAsset.id}
                 hasPermission={entityPermissions?.EditGlossaryTerms}
                 key={`glossary-terms-${dataAsset.id}-${
                   (dataAsset.tags as unknown[])?.length || 0
                 }`}
+                maxVisibleGlossaryTerms={3}
                 tags={dataAsset.tags}
                 onGlossaryTermsUpdate={onGlossaryTermsUpdate}
               />
             </div>
-            <div className="section-container">
+            <div>
               <TagsSection
                 entityId={dataAsset.id}
                 entityType={entityType}
@@ -497,7 +497,7 @@ export const DataAssetSummaryPanelV1 = ({
                 onTagsUpdate={onTagsUpdate}
               />
             </div>
-            <div className="section-container">
+            <div>
               <DataProductsSection
                 activeDomains={dataAsset.domains as EntityReference[]}
                 dataProducts={dataAsset.dataProducts as EntityReference[]}
@@ -521,7 +521,7 @@ export const DataAssetSummaryPanelV1 = ({
               description={dataAsset.description}
               onDescriptionUpdate={handleDescriptionUpdate}
             />
-            <div className="section-container">
+            <div>
               <OwnersSection
                 entityId={dataAsset.id}
                 entityType={entityType}
@@ -535,7 +535,7 @@ export const DataAssetSummaryPanelV1 = ({
                 onOwnerUpdate={onOwnerUpdate}
               />
             </div>
-            <div className="section-container">
+            <div>
               <DomainsSection
                 domains={dataAsset.domains}
                 entityFqn={dataAsset.fullyQualifiedName}
@@ -550,7 +550,7 @@ export const DataAssetSummaryPanelV1 = ({
                 onDomainUpdate={onDomainUpdate}
               />
             </div>
-            <div className="section-container">
+            <div>
               <TagsSection
                 entityId={dataAsset.id}
                 entityType={entityType}
@@ -603,7 +603,7 @@ export const DataAssetSummaryPanelV1 = ({
 
   return (
     <SummaryPanelSkeleton loading={isLoading || isEmpty(dataAsset)}>
-      <div className="d-flex flex-col gap-6">{commonEntitySummaryInfo}</div>
+      <div className="d-flex flex-col gap-4">{commonEntitySummaryInfo}</div>
     </SummaryPanelSkeleton>
   );
 };

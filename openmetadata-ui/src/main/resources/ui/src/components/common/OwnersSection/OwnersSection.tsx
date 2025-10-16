@@ -199,13 +199,13 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
             {t('label.owner-plural')}
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="cursor-pointer" onClick={handleEditClick}>
+            <span className="edit-icon" onClick={handleEditClick}>
               <EditIcon />
             </span>
           )}
           {isEditing && !isLoading && (
             <div className="edit-actions">
-              <span className="cursor-pointer" onClick={handleCancel}>
+              <span className="cancel-icon" onClick={handleCancel}>
                 <CloseIcon />
               </span>
             </div>
@@ -264,13 +264,13 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           {t('label.owner-plural')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span className="cursor-pointer" onClick={handleEditClick}>
+          <span className="edit-icon" onClick={handleEditClick}>
             <EditIcon />
           </span>
         )}
         {isEditing && !isLoading && (
           <div className="edit-actions">
-            <span className="cursor-pointer" onClick={handleCancel}>
+            <span className="cancel-icon" onClick={handleCancel}>
               <CloseIcon />
             </span>
           </div>
@@ -315,11 +315,11 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         ) : (
           <div className="owners-display">
             <OwnerLabel
-              avatarSize={19}
+              avatarSize={24}
               className="owner-label-section"
               hasPermission={hasPermission}
-              maxVisibleOwners={2}
-              ownerLabelClassName="owner-label-container"
+              isCompactView={false}
+              maxVisibleOwners={4}
               owners={owners}
               showLabel={false}
             />

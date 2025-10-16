@@ -51,7 +51,7 @@
 
     .data-quality-progress-segments {
       display: flex;
-      height: 8px;
+      height: 12px;
       overflow: hidden;
       background-color: #f0f0f0;
 
@@ -64,13 +64,13 @@
         }
 
         &.aborted {
-          background-color: @alert-warning;
+          background-color: @orange-8;
           margin-left: 1px;
           margin-right: 1px;
         }
 
         &.failed {
-          background-color: @red-15;
+          background-color: @red-22;
         }
       }
     }
@@ -97,19 +97,24 @@
         }
 
         &.aborted {
-          background-color: @alert-warning;
+          background-color: @orange-8;
         }
 
         &.failed {
-          background-color: @red-15;
+          background-color: @red-22;
         }
       }
 
       .legend-text {
-        font-size: 12px;
-        color: #181d27;
-        line-height: 1.4;
         font-weight: 500;
+      }
+      .legend-text-label {
+        color: @grey-700;
+        font-size: 13px;
+      }
+      .legend-text-value {
+        color: @grey-900;
+        font-size: 13px;
       }
     }
   }

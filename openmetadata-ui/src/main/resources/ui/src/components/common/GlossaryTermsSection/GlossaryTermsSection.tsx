@@ -35,6 +35,7 @@ interface GlossaryTermsSectionProps {
   hasPermission?: boolean;
   entityId?: string;
   onGlossaryTermsUpdate?: (updatedTags: TagLabel[]) => void;
+  maxVisibleGlossaryTerms?: number;
 }
 
 const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
@@ -43,6 +44,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   hasPermission = false,
   entityId,
   onGlossaryTermsUpdate,
+  maxVisibleGlossaryTerms = 3,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
@@ -50,6 +52,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     []
   );
   const [isLoading, setIsLoading] = useState(false);
+  const [showAllTerms, setShowAllTerms] = useState(false);
 
   // Filter only glossary terms from tags
   const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
@@ -130,13 +133,13 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             {t('label.glossary-term-plural')}
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="cursor-pointer" onClick={handleEditClick}>
+            <span className="edit-icon" onClick={handleEditClick}>
               <EditIcon />
             </span>
           )}
           {isEditing && !isLoading && (
             <div className="edit-actions">
-              <span className="cursor-pointer" onClick={handleCancel}>
+              <span className="cancel-icon" onClick={handleCancel}>
                 <CloseIcon />
               </span>
             </div>
@@ -180,13 +183,13 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           {t('label.glossary-term-plural')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span className="cursor-pointer" onClick={handleEditClick}>
+          <span className="edit-icon" onClick={handleEditClick}>
             <EditIcon />
           </span>
         )}
         {isEditing && !isLoading && (
           <div className="edit-actions">
-            <span className="cursor-pointer" onClick={handleCancel}>
+            <span className="cancel-icon" onClick={handleCancel}>
               <CloseIcon />
             </span>
           </div>
@@ -216,7 +219,10 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
         ) : (
           <div className="glossary-terms-display">
             <div className="glossary-terms-list">
-              {glossaryTerms.map((glossaryTerm, index) => (
+              {(showAllTerms
+                ? glossaryTerms
+                : glossaryTerms.slice(0, maxVisibleGlossaryTerms)
+              ).map((glossaryTerm, index) => (
                 <div className="glossary-term-item" key={index}>
                   <GlossaryIcon className="glossary-term-icon" />
                   <span className="glossary-term-name">
@@ -224,6 +230,18 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
                   </span>
                 </div>
               ))}
+              {glossaryTerms.length > maxVisibleGlossaryTerms && (
+                <button
+                  className="show-more-terms-button"
+                  type="button"
+                  onClick={() => setShowAllTerms(!showAllTerms)}>
+                  {showAllTerms
+                    ? t('label.less')
+                    : `+${glossaryTerms.length - maxVisibleGlossaryTerms} ${t(
+                        'label.more-lowercase'
+                      )}`}
+                </button>
+              )}
             </div>
           </div>
         )}

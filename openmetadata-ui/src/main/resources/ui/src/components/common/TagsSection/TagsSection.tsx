@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FolderOutlined, MinusOutlined } from '@ant-design/icons';
-import { Button, Typography } from 'antd';
+import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { EntityType } from '../../../enums/entity.enum';
@@ -42,10 +42,11 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AsyncSelectList from '../AsyncSelectList/AsyncSelectList';
 import { SelectOption } from '../AsyncSelectList/AsyncSelectList.interface';
 import './TagsSection.less';
+
 interface TagsSectionProps {
   tags?: TagLabel[];
   showEditButton?: boolean;
-  maxDisplayCount?: number;
+  maxVisibleTags?: number;
   hasPermission?: boolean;
   entityId?: string;
   entityType?: EntityType;
@@ -61,27 +62,23 @@ interface TagItem {
 const TagsSection: React.FC<TagsSectionProps> = ({
   tags = [],
   showEditButton = true,
-  maxDisplayCount = 3,
+  maxVisibleTags = 3,
   hasPermission = false,
   entityId,
   entityType,
   onTagsUpdate,
 }) => {
   const { t } = useTranslation();
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [showAllTags, setShowAllTags] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingTags, setEditingTags] = useState<TagItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-
-  const displayedTags = isExpanded ? tags : tags.slice(0, maxDisplayCount);
-  const remainingCount = tags.length - maxDisplayCount;
-  const shouldShowMore = remainingCount > 0 && !isExpanded;
 
   const getTagDisplayName = (tag: TagLabel) => {
     return tag.displayName || tag.name || tag.tagFQN || t('label.unknown');
   };
 
-  const getTagStyle = (_tag: TagLabel, index: number) => {
+  const getTagStyle = (_tag: TagLabel) => {
     // Default styling for other tags
     return {
       backgroundColor: '#F9FAFC',
@@ -265,7 +262,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
             <span
-              className="cursor-pointer"
+              className="edit-icon"
               data-testid="edit-icon"
               onClick={handleEditClick}>
               <EditIcon />
@@ -274,7 +271,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           {isEditing && !isLoading && (
             <div className="edit-actions">
               <span
-                className="cursor-pointer"
+                className="cancel-icon"
                 data-testid="close-icon"
                 onClick={handleCancel}>
                 <CloseIcon />
@@ -322,7 +319,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
           <span
-            className="cursor-pointer"
+            className="edit-icon"
             data-testid="edit-icon"
             onClick={handleEditClick}>
             <EditIcon />
@@ -331,7 +328,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         {isEditing && !isLoading && (
           <div className="edit-actions">
             <span
-              className="cursor-pointer"
+              className="cancel-icon"
               data-testid="close-icon"
               onClick={handleCancel}>
               <CloseIcon />
@@ -364,35 +361,27 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         ) : (
           <div className="tags-display">
             <div className="tags-list">
-              {displayedTags.map((tag, index) => (
-                <div
-                  className="tag-item"
-                  key={index}
-                  style={getTagStyle(tag, index)}>
-                  <FolderOutlined className="tag-icon" />
-                  <MinusOutlined className="tag-minus-icon" />
-                  <span className="tag-name">{getTagDisplayName(tag)}</span>
-                </div>
-              ))}
+              {(showAllTags ? tags : tags.slice(0, maxVisibleTags)).map(
+                (tag, index) => (
+                  <div className="tag-item" key={index}>
+                    <ClassificationIcon className="tag-icon" />
+                    <span className="tag-name">{getTagDisplayName(tag)}</span>
+                  </div>
+                )
+              )}
+              {tags.length > maxVisibleTags && (
+                <button
+                  className="show-more-tags-button"
+                  type="button"
+                  onClick={() => setShowAllTags(!showAllTags)}>
+                  {showAllTags
+                    ? t('label.less')
+                    : `+${tags.length - maxVisibleTags} ${t(
+                        'label.more-lowercase'
+                      )}`}
+                </button>
+              )}
             </div>
-            {shouldShowMore && (
-              <Button
-                className="show-more-button"
-                size="small"
-                type="link"
-                onClick={() => setIsExpanded(true)}>
-                {t('label.plus-count-more', { count: remainingCount })}
-              </Button>
-            )}
-            {isExpanded && remainingCount > 0 && (
-              <Button
-                className="show-less-button"
-                size="small"
-                type="link"
-                onClick={() => setIsExpanded(false)}>
-                {t('label.show-less-lowercase')}
-              </Button>
-            )}
           </div>
         )}
       </div>

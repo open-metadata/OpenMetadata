@@ -158,30 +158,6 @@ const defaultProps = {
   onDataProductsUpdate: jest.fn(),
 };
 
-const clickHeaderEdit = () => {
-  const clickable = document.querySelector(
-    '.data-products-header .cursor-pointer'
-  ) as HTMLElement | null;
-  if (!clickable) {
-    throw new Error('Edit clickable not found');
-  }
-  fireEvent.click(clickable);
-};
-
-const clickHeaderCancel = () => {
-  const clickable =
-    (document.querySelector(
-      '.edit-actions .cursor-pointer'
-    ) as HTMLElement | null) ||
-    (document.querySelector(
-      '.data-products-header .cursor-pointer'
-    ) as HTMLElement | null);
-  if (!clickable) {
-    throw new Error('Cancel clickable not found');
-  }
-  fireEvent.click(clickable);
-};
-
 describe('DataProductsSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -217,9 +193,14 @@ describe('DataProductsSection', () => {
 
   describe('Edit Mode', () => {
     it('enters edit mode and shows select list', () => {
-      render(<DataProductsSection {...(defaultProps as any)} />);
+      const { container } = render(
+        <DataProductsSection {...(defaultProps as any)} />
+      );
 
-      clickHeaderEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
 
       expect(
         screen.getByTestId('data-products-select-list')
@@ -231,9 +212,14 @@ describe('DataProductsSection', () => {
     });
 
     it('exits edit mode on cancel', () => {
-      render(<DataProductsSection {...(defaultProps as any)} />);
+      const { container } = render(
+        <DataProductsSection {...(defaultProps as any)} />
+      );
 
-      clickHeaderEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-cancel'));
 
       expect(
@@ -253,7 +239,7 @@ describe('DataProductsSection', () => {
 
       patchTableDetails.mockResolvedValue({});
 
-      render(
+      const { container } = render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
@@ -261,7 +247,10 @@ describe('DataProductsSection', () => {
         />
       );
 
-      clickHeaderEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-submit'));
 
       await waitFor(() => {
@@ -281,14 +270,17 @@ describe('DataProductsSection', () => {
       const error = new Error('fail') as AxiosError;
       patchTableDetails.mockRejectedValue(error);
 
-      render(
+      const { container } = render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      clickHeaderEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-submit'));
 
       await waitFor(() => {
@@ -325,14 +317,17 @@ describe('DataProductsSection', () => {
         </div>
       ));
 
-      render(
+      const { container } = render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      clickHeaderEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-submit'));
 
       await waitFor(() => {
@@ -347,14 +342,17 @@ describe('DataProductsSection', () => {
         () => new Promise((resolve) => setTimeout(resolve, 100))
       );
 
-      render(
+      const { container } = render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
 
-      clickHeaderEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-submit'));
 
       await waitFor(() => {
@@ -370,13 +368,17 @@ describe('DataProductsSection', () => {
       const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
       patchTableDetails.mockResolvedValue({});
 
-      render(
+      const { container } = render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.TABLE}
         />
       );
-      clickHeaderEdit();
+
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-submit'));
 
       await waitFor(() => {
@@ -393,13 +395,17 @@ describe('DataProductsSection', () => {
       );
       patchDashboardDetails.mockResolvedValue({});
 
-      render(
+      const { container } = render(
         <DataProductsSection
           {...(defaultProps as any)}
           entityType={EntityType.DASHBOARD}
         />
       );
-      clickHeaderEdit();
+
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-submit'));
 
       await waitFor(() => {
@@ -415,10 +421,14 @@ describe('DataProductsSection', () => {
     it('shows error when entityId missing', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(
+      const { container } = render(
         <DataProductsSection {...(defaultProps as any)} entityId={undefined} />
       );
-      clickHeaderEdit();
+
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-submit'));
 
       await waitFor(() => {
@@ -431,10 +441,14 @@ describe('DataProductsSection', () => {
     it('shows error when entityId invalid', async () => {
       const { showErrorToast } = jest.requireMock('../../../utils/ToastUtils');
 
-      render(
+      const { container } = render(
         <DataProductsSection {...(defaultProps as any)} entityId="invalid-id" />
       );
-      clickHeaderEdit();
+
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-submit'));
 
       await waitFor(() => {
@@ -451,9 +465,14 @@ describe('DataProductsSection', () => {
         '../../../rest/dataProductAPI'
       );
 
-      render(<DataProductsSection {...(defaultProps as any)} />);
+      const { container } = render(
+        <DataProductsSection {...(defaultProps as any)} />
+      );
 
-      clickHeaderEdit();
+      const editIcon = container.querySelector('.edit-icon');
+      if (editIcon) {
+        fireEvent.click(editIcon);
+      }
       fireEvent.click(screen.getByTestId('dps-fetch'));
 
       await waitFor(() => {

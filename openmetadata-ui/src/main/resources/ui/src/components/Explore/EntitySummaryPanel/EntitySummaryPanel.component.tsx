@@ -869,56 +869,198 @@ export default function EntitySummaryPanel({
         );
       case EntityRightPanelTab.SCHEMA:
         return (
-          <div className="entity-summary-panel-tab-content">
-            <EntityDetailsSection
-              dataAsset={entityDetails.details}
-              entityType={entityType}
-              highlights={highlights}
-              isLoading={isPermissionLoading}
-            />
-          </div>
+          <>
+            {viewPermission && (
+              <div className="title-container">
+                <Tooltip
+                  mouseEnterDelay={0.5}
+                  placement="topLeft"
+                  title={entityDetails.details.name}
+                  trigger="hover">
+                  <div className="d-flex items-center">
+                    <span className="entity-icon">
+                      {searchClassBase.getEntityIcon(
+                        entityDetails.details.entityType ?? ''
+                      )}
+                    </span>
+                    <Typography.Text
+                      className="entity-title-link"
+                      data-testid="entity-link"
+                      role="link"
+                      onClick={() => {
+                        const target =
+                          searchClassBase.getSearchEntityLinkTarget(
+                            entityDetails.details
+                          );
+                        if (target === '_blank') {
+                          window.open(entityLink as string, '_blank');
+                        } else {
+                          window.open(entityLink as string, '_blank');
+                        }
+                      }}>
+                      {stringToHTML(getEntityName(entityDetails.details))}
+                    </Typography.Text>
+                  </div>
+                </Tooltip>
+              </div>
+            )}
+            <div className="entity-summary-panel-tab-content">
+              <EntityDetailsSection
+                dataAsset={entityDetails.details}
+                entityType={entityType}
+                highlights={highlights}
+                isLoading={isPermissionLoading}
+              />
+            </div>
+          </>
         );
       case EntityRightPanelTab.LINEAGE:
         return (
-          <div className="entity-summary-panel-tab-content">
-            <div className="p-x-md p-t-md">
-              {isLineageLoading ? (
-                <div className="flex-center p-lg">
-                  <Loader size="default" />
-                </div>
-              ) : lineageData ? (
-                <LineageTabContent
-                  entityFqn={entityDetails?.details?.fullyQualifiedName || ''}
-                  filter={lineageFilter}
-                  lineageData={lineageData}
-                  onFilterChange={setLineageFilter}
-                />
-              ) : (
-                <div className="text-center text-grey-muted p-lg">
-                  {t('message.no-data-found')}
-                </div>
-              )}
+          <>
+            {viewPermission && (
+              <div className="title-container">
+                <Tooltip
+                  mouseEnterDelay={0.5}
+                  placement="topLeft"
+                  title={entityDetails.details.name}
+                  trigger="hover">
+                  <div className="d-flex items-center">
+                    <span className="entity-icon">
+                      {searchClassBase.getEntityIcon(
+                        entityDetails.details.entityType ?? ''
+                      )}
+                    </span>
+                    <Typography.Text
+                      className="entity-title-link"
+                      data-testid="entity-link"
+                      role="link"
+                      onClick={() => {
+                        const target =
+                          searchClassBase.getSearchEntityLinkTarget(
+                            entityDetails.details
+                          );
+                        if (target === '_blank') {
+                          window.open(entityLink as string, '_blank');
+                        } else {
+                          window.open(entityLink as string, '_blank');
+                        }
+                      }}>
+                      {stringToHTML(getEntityName(entityDetails.details))}
+                    </Typography.Text>
+                  </div>
+                </Tooltip>
+              </div>
+            )}
+            <div className="entity-summary-panel-tab-content">
+              <div className="p-x-md p-t-md">
+                {isLineageLoading ? (
+                  <div className="flex-center p-lg">
+                    <Loader size="default" />
+                  </div>
+                ) : lineageData ? (
+                  <LineageTabContent
+                    entityFqn={entityDetails?.details?.fullyQualifiedName || ''}
+                    filter={lineageFilter}
+                    lineageData={lineageData}
+                    onFilterChange={setLineageFilter}
+                  />
+                ) : (
+                  <div className="text-center text-grey-muted p-lg">
+                    {t('message.no-data-found')}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </>
         );
       case EntityRightPanelTab.DATA_QUALITY:
         return (
-          <div>
+          <>
+            {viewPermission && (
+              <div className="title-container">
+                <Tooltip
+                  mouseEnterDelay={0.5}
+                  placement="topLeft"
+                  title={entityDetails.details.name}
+                  trigger="hover">
+                  <div className="d-flex items-center">
+                    <span className="entity-icon">
+                      {searchClassBase.getEntityIcon(
+                        entityDetails.details.entityType ?? ''
+                      )}
+                    </span>
+                    <Typography.Text
+                      className="entity-title-link"
+                      data-testid="entity-link"
+                      role="link"
+                      onClick={() => {
+                        const target =
+                          searchClassBase.getSearchEntityLinkTarget(
+                            entityDetails.details
+                          );
+                        if (target === '_blank') {
+                          window.open(entityLink as string, '_blank');
+                        } else {
+                          window.open(entityLink as string, '_blank');
+                        }
+                      }}>
+                      {stringToHTML(getEntityName(entityDetails.details))}
+                    </Typography.Text>
+                  </div>
+                </Tooltip>
+              </div>
+            )}
             <DataQualityTab
               entityFQN={entityDetails.details.fullyQualifiedName || ''}
               entityType={entityType}
             />
-          </div>
+          </>
         );
       case EntityRightPanelTab.CUSTOM_PROPERTIES: {
         return (
-          <CustomPropertiesSection
-            entityData={entityData}
-            entityDetails={entityDetails}
-            entityType={entityType}
-            entityTypeDetail={entityTypeDetail}
-            isEntityDataLoading={isEntityDataLoading}
-          />
+          <>
+            {viewPermission && (
+              <div className="title-container">
+                <Tooltip
+                  mouseEnterDelay={0.5}
+                  placement="topLeft"
+                  title={entityDetails.details.name}
+                  trigger="hover">
+                  <div className="d-flex items-center">
+                    <span className="entity-icon">
+                      {searchClassBase.getEntityIcon(
+                        entityDetails.details.entityType ?? ''
+                      )}
+                    </span>
+                    <Typography.Text
+                      className="entity-title-link"
+                      data-testid="entity-link"
+                      role="link"
+                      onClick={() => {
+                        const target =
+                          searchClassBase.getSearchEntityLinkTarget(
+                            entityDetails.details
+                          );
+                        if (target === '_blank') {
+                          window.open(entityLink as string, '_blank');
+                        } else {
+                          window.open(entityLink as string, '_blank');
+                        }
+                      }}>
+                      {stringToHTML(getEntityName(entityDetails.details))}
+                    </Typography.Text>
+                  </div>
+                </Tooltip>
+              </div>
+            )}
+            <CustomPropertiesSection
+              entityData={entityData}
+              entityDetails={entityDetails}
+              entityType={entityType}
+              entityTypeDetail={entityTypeDetail}
+              isEntityDataLoading={isEntityDataLoading}
+            />
+          </>
         );
       }
       default:

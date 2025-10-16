@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+@import (reference) '../../../styles/variables.less';
 @keyframes spin {
   0% {
     transform: rotate(0deg);
@@ -27,22 +27,27 @@
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
+.edit-icon,
+.cancel-icon {
+  cursor: pointer;
+  height: 20px;
+}
 .domains-section {
   border-bottom: solid;
   border-bottom-width: 1px;
   border-color: #f2f3f9;
-  padding-bottom: 18px;
+  padding-bottom: 16px;
   .domains-header {
     display: flex;
     gap: 4px;
     align-items: center;
     margin-bottom: 10px;
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 14px;
+    padding-right: 14px;
     .domains-title {
       font-weight: 600;
       font-size: 13px;
-      color: #414651;
+      color: @grey-900;
     }
 
     .edit-button {
@@ -95,8 +100,8 @@
   }
 
   .domains-content {
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 14px;
+    padding-right: 14px;
     .inline-edit-container {
       .domain-selector-display {
         min-height: 40px;
@@ -129,9 +134,9 @@
             gap: 6px;
 
             .domain-name {
-              font-weight: 500;
-              font-size: 12px;
-              color: #21263c;
+              font-weight: 400 !important;
+              font-size: 12px !important;
+              color: @grey-700 !important;
             }
           }
         }
@@ -144,13 +149,96 @@
       }
     }
 
-    .domains-display {
-      // DomainLabel component will handle its own styling
+    .no-data-placeholder {
+      color: @grey-700;
+      font-size: 13px;
     }
 
-    .no-data-placeholder {
-      color: #8c8c8c;
-      font-style: italic;
+    .domains-display {
+      .domains-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .domain-item {
+          display: flex;
+          align-items: center;
+          height: 26px;
+          border: 1px solid @grey-40;
+          border-radius: 6px !important;
+          background-color: @white;
+          min-width: 0;
+          transition: all 0.2s ease;
+          overflow: hidden;
+
+          .domain-card-bar {
+            height: 100%;
+            border-left: 6px solid @primary-color;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            min-width: 0;
+            padding-top: 3px;
+            padding-bottom: 3px;
+
+            .domain-card-content {
+              display: flex;
+              align-items: center;
+              width: 100%;
+              min-width: 0;
+              gap: 4px;
+
+              .domain-card-icon {
+                width: 14px;
+                height: 14px;
+                border-radius: 2px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+
+                svg {
+                  width: 14px;
+                  height: 14px;
+                }
+              }
+
+              .domain-name {
+                font-size: 12px;
+                font-weight: 400;
+                color: @grey-700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+            }
+          }
+        }
+
+        .show-more-domains-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: 12px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
     }
 
     .domains-loading-container {

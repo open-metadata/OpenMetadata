@@ -24,9 +24,10 @@ import {
   getAPIfromSource,
   getEntityAPIfromSource,
 } from '../../../utils/Assets/AssetsUtils';
+import { getDomainIcon } from '../../../utils/DomainUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { AssetsUnion } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { DomainLabel } from '../DomainLabel/DomainLabel.component';
 import DomainSelectableList from '../DomainSelectableList/DomainSelectableList.component';
 import './DomainsSection.less';
 interface DomainsSectionProps {
@@ -37,6 +38,7 @@ interface DomainsSectionProps {
   entityId?: string;
   hasPermission?: boolean;
   onDomainUpdate?: (updatedDomains: EntityReference[]) => void;
+  maxVisibleDomains?: number;
 }
 
 const DomainsSection: React.FC<DomainsSectionProps> = ({
@@ -47,12 +49,14 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   entityId,
   hasPermission = false,
   onDomainUpdate,
+  maxVisibleDomains = 3,
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editingDomains, setEditingDomains] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeDomains, setActiveDomains] = useState<EntityReference[]>([]);
+  const [showAllDomains, setShowAllDomains] = useState(false);
 
   // Sync activeDomains with domains prop, similar to DomainLabel
   useEffect(() => {
@@ -197,13 +201,13 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
             {t('label.domain-plural')}
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="cursor-pointer" onClick={handleEditClick}>
+            <span className="edit-icon" onClick={handleEditClick}>
               <EditIcon />
             </span>
           )}
           {isEditing && !isLoading && (
             <div className="edit-actions">
-              <span className="cursor-pointer" onClick={handleCancel}>
+              <span className="cancel-icon" onClick={handleCancel}>
                 <CloseIcon />
               </span>
             </div>
@@ -264,13 +268,13 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           {t('label.domain-plural')}
         </Typography.Text>
         {showEditButton && !isEditing && !isLoading && (
-          <span className="cursor-pointer" onClick={handleEditClick}>
+          <span className="edit-icon" onClick={handleEditClick}>
             <EditIcon />
           </span>
         )}
         {isEditing && !isLoading && (
           <div className="edit-actions">
-            <span className="cursor-pointer" onClick={handleCancel}>
+            <span className="cancel-icon" onClick={handleCancel}>
               <CloseIcon />
             </span>
           </div>
@@ -316,16 +320,43 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           </div>
         ) : (
           <div className="domains-display">
-            <DomainLabel
-              multiple
-              domains={activeDomains}
-              entityFqn={entityFqn || ''}
-              entityId={entityId || ''}
-              entityType={entityType || EntityType.TABLE}
-              hasPermission={false}
-              headerLayout={false}
-              showDomainHeading={false}
-            />
+            <div className="domains-list">
+              {(showAllDomains
+                ? activeDomains
+                : activeDomains.slice(0, maxVisibleDomains)
+              ).map((domain, index) => {
+                const domainWithStyle = domain as EntityReference & {
+                  style?: { color?: string; iconURL?: string };
+                };
+
+                return (
+                  <div className="domain-item" key={index}>
+                    <div className="domain-card-bar">
+                      <div className="domain-card-content">
+                        <div className="domain-card-icon">
+                          {getDomainIcon(domainWithStyle?.style?.iconURL)}
+                        </div>
+                        <span className="domain-name">
+                          {getEntityName(domain)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              {activeDomains.length > maxVisibleDomains && (
+                <button
+                  className="show-more-domains-button"
+                  type="button"
+                  onClick={() => setShowAllDomains(!showAllDomains)}>
+                  {showAllDomains
+                    ? t('label.less')
+                    : `+${activeDomains.length - maxVisibleDomains} ${t(
+                        'label.more-lowercase'
+                      )}`}
+                </button>
+              )}
+            </div>
           </div>
         )}
       </div>

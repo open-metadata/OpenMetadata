@@ -10,19 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+@import (reference) '../../../styles/variables.less';
+.edit-icon,
+.cancel-icon {
+  cursor: pointer;
+  height: 20px;
+}
 .glossary-terms-section {
+  border-bottom: 0.6px solid @grey-15;
   .glossary-terms-header {
     display: flex;
     gap: 4px;
     align-items: center;
     margin-bottom: 10px;
-    padding-left: 16px;
-    padding-right: 16px;
+    padding-left: 14px;
+    padding-right: 14px;
 
     .glossary-terms-title {
       font-weight: 600;
-      color: #414651;
+      color: @grey-900;
       font-size: 13px;
     }
 
@@ -60,9 +66,9 @@
   }
 
   .glossary-terms-content {
-    padding-left: 16px;
-    padding-right: 16px;
-    padding-bottom: 18px;
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-bottom: 16px;
     .glossary-terms-loading-container {
       display: flex;
       justify-content: center;
@@ -88,26 +94,27 @@
     }
 
     .no-data-placeholder {
-      color: #6b7280;
-      font-size: 14px;
-      font-style: italic;
+      color: @grey-700;
+      font-size: 13px;
     }
 
     .glossary-terms-display {
       .glossary-terms-list {
         display: flex;
-        flex-direction: column;
+        flex-wrap: wrap;
         gap: 8px;
 
         .glossary-term-item {
           display: flex;
           align-items: center;
-          gap: 6px;
-          padding: 4px 8px;
-          border-radius: 6px;
-          width: fit-content;
-          background-color: #f9fafc;
+          gap: 5px;
+          padding: 5px 6px;
+          height: 26px;
+          border-radius: 8px;
 
+          min-width: 0;
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
           .glossary-term-icon {
             width: 14px;
             height: 14px;
@@ -116,9 +123,36 @@
           }
 
           .glossary-term-name {
-            color: #262626;
+            color: @tag-text;
             font-size: 12px;
-            font-weight: 500;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+
+        .show-more-terms-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: 12px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
           }
         }
       }
