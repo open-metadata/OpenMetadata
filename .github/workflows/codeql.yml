@@ -1,0 +1,29 @@
+name: CodeQL Advanced
+
+on:
+  push:
+    branches: ["main", "0.*.0", "1.*.*"]
+  pull_request:
+    branches: ["main", "0.*.0", "1.*.*"]
+  schedule:
+    - cron: "18 8 * * *"
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Branch to run the workflow on"
+        required: true
+        default: "main"
+        type: string
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.event.pull_request.head.ref || github.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
