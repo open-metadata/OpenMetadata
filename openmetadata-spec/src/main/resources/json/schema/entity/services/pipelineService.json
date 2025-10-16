@@ -19,6 +19,7 @@
       "enum": [
         "Airflow",
         "GluePipeline",
+        "KinesisFirehose",
         "Airbyte",
         "Fivetran",
         "Flink",
@@ -45,6 +46,9 @@
         },
         {
           "name": "GluePipeline"
+        },
+        {
+          "name": "KinesisFirehose"
         },
         {
           "name": "Airbyte"
@@ -127,6 +131,9 @@
             },
             {
               "$ref": "./connections/pipeline/gluePipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/kinesisFirehoseConnection.json"
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"

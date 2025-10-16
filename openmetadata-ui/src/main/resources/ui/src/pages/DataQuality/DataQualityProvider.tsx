@@ -95,6 +95,8 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       ownerFqn: params?.owner ? JSON.parse(params.owner)?.name : undefined,
       tier: params?.tier ? [params.tier] : undefined,
       entityFQN: params?.tableFqn,
+      startTs: params?.lastRunRange?.startTs,
+      endTs: params?.lastRunRange?.endTs,
     };
 
     setIsTestCaseSummaryLoading(true);

@@ -20,10 +20,6 @@ export interface Domain {
      */
     assets?: EntityReference[];
     /**
-     * Count of data assets that are part of this domain (including inherited from sub-domains).
-     */
-    assetsCount?: number;
-    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -251,9 +247,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
