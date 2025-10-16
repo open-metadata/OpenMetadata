@@ -223,7 +223,7 @@ describe('EntityRightPanelVerticalNav', () => {
         expect(screen.queryByText('label.schema')).not.toBeInTheDocument();
       });
 
-      it('should not show schema tab for PIPELINE entity', () => {
+      it('should show schema tab for PIPELINE entity', () => {
         render(
           <EntityRightPanelVerticalNav
             {...defaultProps}
@@ -231,7 +231,7 @@ describe('EntityRightPanelVerticalNav', () => {
           />
         );
 
-        expect(screen.queryByText('label.schema')).not.toBeInTheDocument();
+        expect(screen.getByText('label.schema')).toBeInTheDocument();
       });
     });
 

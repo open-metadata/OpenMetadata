@@ -121,10 +121,10 @@ describe('FieldCard', () => {
 
     expect(items.length).toBeGreaterThan(0);
 
-    expect(screen.getByText('label.tag-plural')).toBeInTheDocument();
+    expect(screen.getByText(/label\.tag-plural/)).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
 
-    expect(screen.getByText('label.glossary-term-plural')).toBeInTheDocument();
+    expect(screen.getByText(/label\.glossary-term-plural/)).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
   });
 
