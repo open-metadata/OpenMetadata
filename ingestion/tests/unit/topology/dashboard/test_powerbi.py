@@ -82,6 +82,28 @@ EXPECTED_SNOWFLAKE_RESULT = [
     }
 ]
 
+MOCK_DATABRICKS_EXP = """let
+    Source = Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog = "", Database = ""]),
+    test_database = Source{[Name="DEMO_STAGE",Kind="Database"]}[Data],
+    test_schema = test_database{[Name="PUBLIC",Kind="Schema"]}[Data],
+    test_table = test_schema{[Name="STG_CUSTOMERS",Kind="Table"]}[Data]
+in 
+    Source"""
+
+MOCK_DATABRICKS_NATIVE_EXP = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
+in
+    Source"""
+
+MOCK_DATABRICKS_NATIVE_QUERY_EXP = """let
+    Source = Value.NativeQuery(Databricks.Catalogs(Databricks_Server, Databricks_HTTP_Path, [Catalog="DEMO_CATALOG", Database=null, EnableAutomaticProxyDiscovery=null]){[Name="DEMO_STAGE",Kind="Database"]}[Data], "SELECT * FROM PUBLIC.STG_CUSTOMERS", null, [EnableFolding=true])
+in
+    Source"""
+
+EXPECTED_DATABRICKS_RESULT = [
+    {"database": "DEMO_STAGE", "schema": "PUBLIC", "table": "STG_CUSTOMERS"}
+]
+
 mock_config = {
     "source": {
         "type": "powerbi",
@@ -107,6 +129,7 @@ mock_config = {
         "openMetadataServerConfig": {
             "hostPort": "http://localhost:8585/api",
             "authProvider": "openmetadata",
+            "enableVersionValidation": "false",
             "securityConfig": {
                 "jwtToken": "eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGc"
                 "iOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE"
@@ -279,6 +302,22 @@ class PowerBIUnitTest(TestCase):
         result_table = result[0]
         self.assertEqual(result_table.get("schema"), "STG")
         self.assertEqual(result_table.get("table"), "STATIC_AOPANDLE")
+
+        # Test with valid databricks native source
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_NATIVE_QUERY_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
+
+        result = self.powerbi._parse_databricks_source(
+            MOCK_DATABRICKS_EXP, MOCK_DASHBOARD_DATA_MODEL
+        )
+        self.assertEqual(result, EXPECTED_DATABRICKS_RESULT)
 
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
