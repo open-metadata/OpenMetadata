@@ -12,6 +12,7 @@
  */
 
 /* eslint-disable */
+const React = require('react');
 module.exports = {
   useAntdColumnResize: jest.fn().mockImplementation((hookDataFunction) => {
     return {
