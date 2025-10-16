@@ -88,6 +88,9 @@ const FieldCard: React.FC<FieldCardProps> = ({
     <div
       className={`field-card ${isHighlighted ? 'field-card-highlighted' : ''}`}>
       <div className="field-card-header">
+        <Badge className="data-type-badge">
+          {getDataTypeString(startCase(dataType))}
+        </Badge>
         <div className="field-name-container">
           {columnConstraint && (
             <span className="constraint-icon">
@@ -104,10 +107,6 @@ const FieldCard: React.FC<FieldCardProps> = ({
             {fieldName}
           </Typography.Text>
         </div>
-
-        <Badge className="data-type-badge">
-          {getDataTypeString(startCase(dataType))}
-        </Badge>
       </div>
 
       <div className="field-card-content">
@@ -127,14 +126,18 @@ const FieldCard: React.FC<FieldCardProps> = ({
         <div className="field-metadata">
           {tags.length > 0 && (
             <div className="metadata-item">
-              <Text className="metadata-label">{t('label.tag-plural')}</Text>
+              <Text className="metadata-label">
+                {t('label.-with-colon', { text: t('label.tag-plural') })}
+              </Text>
               <Text className="metadata-value">{tags.length}</Text>
             </div>
           )}
           {glossaryTerms.length > 0 && (
             <div className="metadata-item">
               <Text className="metadata-label">
-                {t('label.glossary-term-plural')}
+                {t('label.-with-colon', {
+                  text: t('label.glossary-term-plural'),
+                })}
               </Text>
               <Text className="metadata-value">{glossaryTerms.length}</Text>
             </div>

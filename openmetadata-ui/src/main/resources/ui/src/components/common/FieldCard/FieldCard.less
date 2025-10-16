@@ -11,18 +11,17 @@
  *  limitations under the License.
  */
 
+@import (reference) '../../../styles/variables.less';
+
 .field-card {
-  border-bottom: 1px solid #e8e8e8;
-  // margin-bottom: 12px;
+  border-bottom: 0.6px solid @grey-15;
   padding-left: 16px;
   padding-right: 16px;
-  padding-bottom: 8px;
+  padding-bottom: 4px;
   padding-top: 16px;
   .field-card-header {
-    display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
 
     .field-name-container {
       display: flex;
@@ -38,32 +37,34 @@
       .field-name {
         font-size: 13px;
         font-weight: 600;
-        color: #20293a;
-        line-height: 1.4;
+        color: @grey-900;
+        margin-bottom: 10px;
       }
     }
 
     .data-type-badge {
       font-size: 12px;
       font-weight: 500;
-      padding: 3px 6px;
-      border: 1px solid #e3e8f0;
+      padding: 1px 6px;
+      margin-bottom: 8px;
+      height: 22px;
+      align-content: center;
+      color: @grey-900;
+      border: 1px solid @grey-38;
       border-radius: 4px;
       white-space: nowrap;
-      background-color: #f9fafc;
+      background-color: @grey-9;
       text-transform: capitalize;
     }
   }
 
   .field-card-content {
     .field-description {
-      margin-bottom: 8px;
       color: #364254;
-      font-size: 12px;
-
+      font-size: 13px;
+      font-weight: 400;
       .no-description-text {
-        color: #bfbfbf;
-        font-style: italic;
+        color: @grey-700;
       }
     }
 
@@ -78,15 +79,15 @@
         gap: 4px;
 
         .metadata-label {
-          font-size: 11px;
-          color: #21263c;
-          font-weight: 500;
+          font-size: 13px;
+          color: @grey-700;
+          font-weight: 400;
         }
 
         .metadata-value {
-          font-size: 11px;
-          color: #21263c;
-          font-weight: 500;
+          font-size: 13px;
+          color: @grey-900;
+          font-weight: 400;
         }
       }
     }
@@ -114,13 +115,6 @@
 
       .data-type-badge {
         align-self: flex-end;
-      }
-    }
-
-    .field-card-content {
-      .field-metadata {
-        flex-direction: column;
-        gap: 8px;
       }
     }
   }

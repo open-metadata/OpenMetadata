@@ -56,6 +56,9 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           EntityType.DASHBOARD,
           EntityType.DATABASE_SCHEMA,
           EntityType.DATABASE,
+          EntityType.PIPELINE,
+          EntityType.API_COLLECTION,
+          EntityType.SEARCH_INDEX,
           EntityType.DASHBOARD_DATA_MODEL,
           EntityType.API_ENDPOINT,
         ].includes(entityType)
@@ -76,8 +79,10 @@ const EntityRightPanelVerticalNav: React.FC<EntityRightPanelVerticalNavProps> =
           EntityType.CHART,
           EntityType.PIPELINE,
           EntityType.MLMODEL,
+          EntityType.SEARCH_INDEX,
           EntityType.DASHBOARD_DATA_MODEL,
           EntityType.API_ENDPOINT,
+          EntityType.DIRECTORY,
         ].includes(entityType)
       ) {
         items.push({

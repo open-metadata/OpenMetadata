@@ -139,6 +139,28 @@ export const getEntityChildDetailsV1 = (
         />
       );
 
+    case EntityType.PIPELINE:
+      heading = t('label.task-plural');
+
+      return (
+        <PipelineTasksV1
+          entityInfo={entityInfo as any}
+          highlights={highlights}
+          loading={loading}
+        />
+      );
+
+    case EntityType.API_COLLECTION:
+      heading = t('label.api-endpoint-plural');
+
+      return (
+        <APICollectionEndpointsV1
+          entityInfo={entityInfo as any}
+          highlights={highlights}
+          loading={loading}
+        />
+      );
+
     default:
       return null;
   }
@@ -386,6 +408,167 @@ const ContainerFieldCardsV1: React.FC<{
                 glossaryTerms={column.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={column.tags}
+              />
+            </Col>
+          );
+        })}
+      </Row>
+    </div>
+  );
+};
+
+// Component for Pipeline tasks
+const PipelineTasksV1: React.FC<{
+  entityInfo: any;
+  highlights?: Record<string, string[]>;
+  loading?: boolean;
+}> = ({ entityInfo, highlights, loading }) => {
+  const tasks = entityInfo.tasks || [];
+
+  if (loading) {
+    return (
+      <div className="flex-center p-lg">
+        <Loader size="default" />
+      </div>
+    );
+  }
+
+  if (isEmpty(tasks)) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+      </div>
+    );
+  }
+
+  return (
+    <div className="schema-field-cards-container">
+      <Row>
+        {tasks.map((task: any) => {
+          const isHighlighted = highlights?.tasks?.includes(task.name);
+
+          return (
+            <Col key={task.name} span={24}>
+              <FieldCard
+                dataType={task.taskType || t('label.task')}
+                description={task.description}
+                fieldName={task.displayName || task.name}
+                glossaryTerms={task.glossaryTerms}
+                isHighlighted={isHighlighted}
+                tags={task.tags}
+              />
+            </Col>
+          );
+        })}
+      </Row>
+    </div>
+  );
+};
+
+// Component for API Collection endpoints
+const APICollectionEndpointsV1: React.FC<{
+  entityInfo: any;
+  highlights?: Record<string, string[]>;
+  loading?: boolean;
+}> = ({ entityInfo, highlights, loading }) => {
+  const [endpoints, setEndpoints] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [hasInitialized, setHasInitialized] = useState<boolean>(false);
+  const fqn = entityInfo.fullyQualifiedName ?? '';
+
+  const fetchEndpoints = useCallback(async () => {
+    if (!fqn) {
+      setHasInitialized(true);
+
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Extract service from FQN
+      // FQN format: ServiceName.ApiCollectionName
+      const fqnParts = fqn.split('.');
+
+      if (fqnParts.length >= 2) {
+        const serviceName = fqnParts[0];
+        // Use the full FQN for apiCollection parameter
+        const collectionFQN = fqn;
+
+        // Import dynamically to avoid circular dependencies
+        const { getApiEndPoints } = await import('../rest/apiEndpointsAPI');
+        const { Include } = await import('../generated/type/include');
+
+        const response = await getApiEndPoints({
+          service: serviceName,
+          apiCollection: collectionFQN,
+          paging: { limit: PAGE_SIZE_LARGE },
+          include: Include.NonDeleted,
+        });
+
+        setEndpoints(response.data || []);
+      }
+      setHasInitialized(true);
+    } catch (error) {
+      setEndpoints([]);
+      setHasInitialized(true);
+      // eslint-disable-next-line no-console
+      console.error('Error fetching API endpoints:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [fqn]);
+
+  useEffect(() => {
+    fetchEndpoints();
+
+    return () => {
+      setEndpoints([]);
+      setIsLoading(false);
+      setHasInitialized(false);
+    };
+  }, [fetchEndpoints]);
+
+  if (loading || (isLoading && !hasInitialized)) {
+    return (
+      <div className="flex-center p-lg">
+        <Loader size="default" />
+      </div>
+    );
+  }
+
+  if (isEmpty(endpoints) && hasInitialized) {
+    return (
+      <div className="no-data-container">
+        <Text className="no-data-text">{t('message.no-data-available')}</Text>
+      </div>
+    );
+  }
+
+  // If not initialized yet, show loading
+  if (!hasInitialized) {
+    return (
+      <div className="flex-center p-lg">
+        <Loader size="default" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="schema-field-cards-container">
+      <Row>
+        {endpoints.map((endpoint: any) => {
+          const isHighlighted = highlights?.apiEndpoints?.includes(
+            endpoint.name
+          );
+
+          return (
+            <Col key={endpoint.id || endpoint.name} span={24}>
+              <FieldCard
+                dataType={endpoint.requestMethod || t('label.api-endpoint')}
+                description={endpoint.description}
+                fieldName={endpoint.displayName || endpoint.name}
+                isHighlighted={isHighlighted}
+                tags={endpoint.tags}
               />
             </Col>
           );
