@@ -1,0 +1,446 @@
+// Prisma schema for thirdeye DB - Complete schema definition
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model fact_datalake_table_usage_inventory {
+  // Prisma does not support generated columns, so FQN is just a String here
+  FQN                String    @db.VarChar(500)
+  RUN_DATE           DateTime  @db.Date
+  DATABASE_NAME      String?   @db.VarChar(100)
+  DB_SCHEMA          String?   @db.VarChar(100)
+  TABLE_NAME         String?   @db.VarChar(200)
+  TABLE_TYPE         String?   @db.VarChar(50)
+  ROLL_30D_TBL_UC    Int?
+  ROLL_30D_SCHEMA_UC Int?
+  ROLL_30D_DB_UC     Int?
+  ROLL_30D_TBL_QC    Int?
+  CREATE_DATE        DateTime? @db.Date
+  LAST_ACCESSED_DATE DateTime? @db.Date
+  LAST_REFRESHED_DATE DateTime? @db.Date
+  SIZE_GB            Decimal?  @db.Decimal(20,10)
+  START_DATE         DateTime? @db.Date
+  END_DATE           DateTime? @db.Date
+  ROLL_30D_START_DATE DateTime? @db.Date
+  SERVICE            String?   @db.VarChar(50)
+  CREATED_BY         String?   @db.VarChar(100)
+
+  @@id([FQN, RUN_DATE])
+  @@index([RUN_DATE], name: "idx_run_date")
+  @@index([SERVICE], name: "idx_service")
+  @@map("fact_datalake_table_usage_inventory")
+}
+
+model opportunity_campaigns {
+  campaign_id              BigInt      @id @default(autoincrement())
+  campaign_name            String      @db.VarChar(200)
+  campaign_type            String      @db.VarChar(50)
+  fqn_list                 Json
+  total_items              Int         @default(1)
+  grouping_rule            String?     @db.VarChar(100)
+  service                  String      @db.VarChar(50)
+  resource_type            String      @db.VarChar(50)
+  opportunity_type         String      @db.VarChar(100)
+  current_monthly_cost     Decimal     @default(0) @db.Decimal(12, 2)
+  projected_savings        Decimal     @default(0) @db.Decimal(12, 2)
+  confidence_score         Decimal     @default(0.85) @db.Decimal(3, 2)
+  risk_level               RiskLevel   @default(LOW)
+  status                   CampaignStatus @default(OPEN)
+  items_actioned           Int         @default(0)
+  status_updated_at        DateTime    @default(now()) @updatedAt
+  expires_at               DateTime?   @db.Date
+  detection_rule_id        String?     @db.VarChar(50)
+  om_task_id               String?     @db.VarChar(50)
+  created_at               DateTime    @default(now())
+  created_by               String      @default("system") @db.VarChar(100)
+  updated_at               DateTime    @default(now()) @updatedAt
+
+  // Relations
+  entity_decisions         entity_decisions[]
+  notification_engagement_tracking notification_engagement_tracking[]
+  cost_tracking            cost_tracking[]
+
+  @@index([status], name: "idx_status")
+  @@index([campaign_type], name: "idx_campaign_type")
+  @@index([om_task_id], name: "idx_om_task")
+  @@index([expires_at], name: "idx_expires")
+  @@map("opportunity_campaigns")
+}
+
+model entity_decisions {
+  decision_id              BigInt      @id @default(autoincrement())
+  campaign_id              BigInt?
+  service                  String      @db.VarChar(50)
+  fqn                      String      @unique @db.VarChar(500)
+  type                     String?     @db.VarChar(50)
+  final_decision           DecisionType
+  review_notes             String?     @db.Text
+  properties               Json?
+  scheduled_execution_date DateTime?   @db.Date
+  actual_execution_date    DateTime?   @db.Date
+  decision_date            DateTime    @db.Date
+  created_by               String      @db.VarChar(100)
+  created_at               DateTime    @default(now())
+  modified_by              String?     @db.VarChar(100)
+  modified_at              DateTime    @default(now()) @updatedAt
+  om_task_id               String?     @db.VarChar(36)
+
+  // Relations
+  campaign                 opportunity_campaigns? @relation(fields: [campaign_id], references: [campaign_id], onDelete: SetNull)
+  cost_tracking            cost_tracking[]
+
+  @@index([campaign_id], name: "idx_campaign")
+  @@index([decision_date], name: "idx_decision_date")
+  @@index([final_decision], name: "idx_final_decision")
+  @@index([om_task_id], name: "idx_om_task")
+  @@map("entity_decisions")
+}
+
+model notification_engagement_tracking {
+  tracking_id              BigInt      @id @default(autoincrement())
+  campaign_id              BigInt
+  om_entity_id             String      @db.VarChar(36)
+  om_entity_type           OmEntityType @default(task)
+  user_id                  String      @db.VarChar(100)
+  first_viewed_at          DateTime?
+  last_viewed_at           DateTime?
+  view_count               Int         @default(0)
+  clicked_at               DateTime?
+  dismissed_at             DateTime?
+  notification_channel     NotificationChannel @default(web)
+  created_at               DateTime    @default(now())
+
+  // Relations
+  campaign                 opportunity_campaigns @relation(fields: [campaign_id], references: [campaign_id], onDelete: Cascade)
+
+  @@unique([user_id, campaign_id], name: "uk_user_campaign")
+  @@index([campaign_id], name: "idx_campaign_tracking")
+  @@index([om_entity_id], name: "idx_om_entity")
+  @@index([user_id], name: "idx_user")
+  @@map("notification_engagement_tracking")
+}
+
+model cost_tracking {
+  tracking_id              BigInt      @id @default(autoincrement())
+  fqn                      String      @db.VarChar(500)
+  decision_id              BigInt?
+  campaign_id              BigInt?
+  measurement_date         DateTime    @db.Date
+  measurement_type         MeasurementType @default(DAILY)
+  baseline_cost            Decimal     @default(0) @db.Decimal(12, 2)
+  current_cost             Decimal     @default(0) @db.Decimal(12, 2)
+  realized_savings         Decimal?    @db.Decimal(12, 2) // Generated column
+  created_at               DateTime    @default(now())
+
+  // Relations
+  decision                 entity_decisions? @relation(fields: [decision_id], references: [decision_id], onDelete: Cascade)
+  campaign                 opportunity_campaigns? @relation(fields: [campaign_id], references: [campaign_id], onDelete: SetNull)
+
+  @@unique([fqn, measurement_date], name: "uk_fqn_date")
+  @@index([decision_id], name: "idx_decision_tracking")
+  @@index([campaign_id], name: "idx_campaign_tracking")
+  @@index([measurement_date], name: "idx_measurement_date")
+  @@map("cost_tracking")
+}
+
+model detection_rules {
+  rule_id                  String      @id @db.VarChar(50)
+  rule_name                String      @db.VarChar(200)
+  rule_category            RuleCategory @default(COST)
+  resource_type            String      @db.VarChar(50)
+  rule_sql                 String?     @db.Text
+  threshold_config         Json?
+  enable_grouping          Boolean     @default(true)
+  grouping_strategy        GroupingStrategy?
+  min_items_to_group       Int         @default(5)
+  max_items_per_group      Int         @default(100)
+  om_alert_config          Json?
+  om_webhook_id            String?     @db.VarChar(36)
+  is_active                Boolean     @default(true)
+  run_frequency            RunFrequency @default(DAILY)
+  last_run_at              DateTime?
+  next_run_at              DateTime?
+  created_at               DateTime    @default(now())
+  updated_at               DateTime    @default(now()) @updatedAt
+
+  @@index([is_active, next_run_at], name: "idx_active_rules")
+  @@index([resource_type], name: "idx_resource_type")
+  @@map("detection_rules")
+}
+
+model cost_basis_config {
+  cost_basis_id            BigInt      @id @default(autoincrement())
+  service                  String      @db.VarChar(50)
+  resource_type            String      @db.VarChar(50)
+  cost_metric              String      @db.VarChar(50)
+  unit_cost                Decimal     @db.Decimal(15, 6)
+  currency                 String      @default("USD") @db.VarChar(3)
+  tier_name                String      @default("STANDARD") @db.VarChar(50)
+  min_units                Decimal     @default(0) @db.Decimal(15, 2)
+  max_units                Decimal?    @db.Decimal(15, 2)
+  discount_percentage      Decimal     @default(0) @db.Decimal(5, 2)
+  contract_type            String      @default("ON_DEMAND") @db.VarChar(50)
+  commitment_term_months   Int?
+  effective_start_date     DateTime    @db.Date
+  effective_end_date       DateTime?   @db.Date
+  is_current               Boolean     @default(true)
+  source                   String      @default("MANUAL") @db.VarChar(100)
+  notes                    String?     @db.Text
+  created_at               DateTime    @default(now())
+  created_by               String      @default("system") @db.VarChar(100)
+  updated_at               DateTime    @default(now()) @updatedAt
+  updated_by               String?     @db.VarChar(100)
+
+  @@unique([service, resource_type, tier_name, effective_start_date], name: "uk_current_pricing")
+  @@index([service, resource_type], name: "idx_service_resource")
+  @@index([effective_start_date, effective_end_date], name: "idx_effective_dates")
+  @@index([is_current], name: "idx_is_current")
+  @@map("cost_basis_config")
+}
+
+model fact_health_score_history {
+  snapshot_date            DateTime    @id @db.Date
+  health_score             Decimal?    @db.Decimal(5, 1)
+  health_status            String?     @db.VarChar(20)
+  utilization_rate         Decimal?    @db.Decimal(5, 2)
+  storage_efficiency       Decimal?    @db.Decimal(5, 2)
+  access_freshness         Decimal?    @db.Decimal(5, 2)
+  total_tables             Int?
+  active_tables            Int?
+  total_storage_tb         Decimal?    @db.Decimal(10, 2)
+  waste_storage_tb         Decimal?    @db.Decimal(10, 2)
+  monthly_savings_usd      Decimal?    @db.Decimal(12, 2)
+  zombie_tables            Int?
+  created_at               DateTime    @default(now())
+
+  @@map("fact_health_score_history")
+}
+
+// Authentication Models
+model User {
+  id                String    @id @default(cuid())
+  email             String    @unique @db.VarChar(255)
+  emailVerified     Boolean   @default(false)
+  name              String?   @db.VarChar(255)
+  image             String?   @db.VarChar(500)
+  passwordHash      String?   @db.VarChar(255)
+  role              UserRole  @default(USER)
+  status            UserStatus @default(ACTIVE)
+  lastLoginAt       DateTime?
+  lastLoginIp       String?   @db.VarChar(45)
+  failedLoginAttempts Int     @default(0)
+  lockedUntil       DateTime?
+  twoFactorEnabled  Boolean   @default(false)
+  twoFactorSecret   String?   @db.VarChar(32)
+  deletedAt         DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  oauthAccounts     OAuthAccount[]
+  refreshTokens     RefreshToken[]
+  verificationTokens VerificationToken[]
+  auditLogs         AuditLog[]
+
+  @@index([email], name: "idx_user_email")
+  @@index([status], name: "idx_user_status")
+  @@index([role], name: "idx_user_role")
+  @@map("users")
+}
+
+model OAuthAccount {
+  id                String    @id @default(cuid())
+  provider          OAuthProvider
+  providerAccountId String    @db.VarChar(255)
+  type              String    @db.VarChar(50)
+  accessToken       String?   @db.Text
+  refreshToken      String?   @db.Text
+  expiresAt         DateTime?
+  tokenType         String?   @db.VarChar(50)
+  scope             String?   @db.VarChar(500)
+  idToken           String?   @db.Text
+  sessionState      String?   @db.VarChar(500)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  // Relations
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId], name: "uk_oauth_provider_account")
+  @@index([userId], name: "idx_oauth_user")
+  @@map("oauth_accounts")
+}
+
+model RefreshToken {
+  id                String    @id @default(cuid())
+  tokenHash         String    @unique @db.VarChar(500)
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  lastUsedAt        DateTime?
+  deviceInfo        Json?
+  ipAddress         String?   @db.VarChar(45)
+  userAgent         String?   @db.VarChar(500)
+  isRevoked         Boolean   @default(false)
+  revokedAt         DateTime?
+  replacedByToken   String?   @db.VarChar(500)
+
+  // Relations
+  userId            String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], name: "idx_refresh_token_user")
+  @@index([expiresAt], name: "idx_refresh_token_expires")
+  @@index([tokenHash], name: "idx_refresh_token_hash")
+  @@map("refresh_tokens")
+}
+
+model VerificationToken {
+  id                String    @id @default(cuid())
+  userId            String?
+  email             String    @db.VarChar(255)
+  type              VerificationType
+  tokenHash         String    @unique @db.VarChar(255)
+  expiresAt         DateTime
+  createdAt         DateTime  @default(now())
+  verifiedAt        DateTime?
+  attempts          Int       @default(0)
+  maxAttempts       Int       @default(3)
+  metadata          Json?
+
+  // Relations
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([email, tokenHash], name: "uk_verification_email_token")
+  @@index([expiresAt], name: "idx_verification_expires")
+  @@index([type], name: "idx_verification_type")
+  @@map("verification_tokens")
+}
+
+model AuditLog {
+  id                String    @id @default(cuid())
+  action            String    @db.VarChar(100)
+  resource          String?   @db.VarChar(100)
+  resourceId        String?   @db.VarChar(100)
+  details           Json?
+  ipAddress         String?   @db.VarChar(45)
+  userAgent         String?   @db.VarChar(500)
+  status            AuditStatus @default(SUCCESS)
+  errorMessage      String?   @db.Text
+  createdAt         DateTime  @default(now())
+
+  // Relations
+  userId            String?
+  user              User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId], name: "idx_audit_user")
+  @@index([action], name: "idx_audit_action")
+  @@index([resource], name: "idx_audit_resource")
+  @@index([createdAt], name: "idx_audit_created")
+  @@map("audit_logs")
+}
+
+// Authentication Enums
+enum UserRole {
+  ADMIN
+  MANAGER
+  USER
+  READONLY
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING_VERIFICATION
+  DELETED
+}
+
+enum OAuthProvider {
+  GOOGLE
+  GITHUB
+  MICROSOFT
+  LINKEDIN
+  SNOWFLAKE
+}
+
+enum VerificationType {
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+  TWO_FACTOR_SETUP
+  ACCOUNT_RECOVERY
+  EMAIL_CHANGE
+}
+
+enum AuditStatus {
+  SUCCESS
+  FAILURE
+  ERROR
+}
+
+// Existing Enums
+enum RiskLevel {
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum CampaignStatus {
+  OPEN
+  IN_REVIEW
+  COMPLETED
+  EXPIRED
+}
+
+enum DecisionType {
+  DELETE
+  ARCHIVE
+  KEEP
+  OPTIMIZE
+  DEFER
+}
+
+enum OmEntityType {
+  task
+  alert
+  announcement
+}
+
+enum NotificationChannel {
+  web
+  email
+  slack
+  teams
+}
+
+enum MeasurementType {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+enum RuleCategory {
+  COST
+  USAGE
+  COMPLIANCE
+  PERFORMANCE
+}
+
+enum GroupingStrategy {
+  BY_SCHEMA
+  BY_PATTERN
+  BY_OWNER
+  BY_AGE
+}
+
+enum RunFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}

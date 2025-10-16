@@ -1,0 +1,107 @@
+.topbar {
+  height: 4rem;
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--glass-border);
+  position: relative;
+  z-index: 40;
+}
+
+.topbar__content {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-lg);
+}
+
+.topbar__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.topbar__title-text {
+  font-weight: 700;
+  font-size: 1.5rem;
+  background: linear-gradient(135deg, #ffffff 0%, #06b6d4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+}
+
+.topbar__notification {
+  position: relative;
+  cursor: pointer;
+}
+
+.topbar__notification-icon,
+.topbar__user {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.topbar__notification-icon:hover,
+.topbar__user:hover {
+  background: var(--glass-bg-hover);
+  transform: translateY(-1px);
+}
+
+.topbar__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: rgba(255, 255, 255, 0.8);
+  transition: color 0.3s ease;
+}
+
+.topbar__notification-icon:hover .topbar__icon,
+.topbar__user:hover .topbar__icon {
+  color: var(--text-primary);
+}
+
+.topbar__notification-badge {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  background: var(--status-error);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .topbar__content {
+    padding: 0 var(--spacing-md);
+  }
+  
+  .topbar__title-text {
+    font-size: 1.25rem;
+  }
+  
+  .topbar__notification-icon,
+  .topbar__user {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .topbar__icon {
+    width: 1rem;
+    height: 1rem;
+  }
+}

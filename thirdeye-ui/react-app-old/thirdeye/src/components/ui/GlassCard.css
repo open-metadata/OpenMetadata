@@ -1,0 +1,65 @@
+.glass-card {
+  position: relative;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-glass);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.glass-card--default {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+}
+
+.glass-card--primary {
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.glass-card--secondary {
+  background: rgba(6, 182, 212, 0.1);
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.glass-card--hover:hover {
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: var(--shadow-hover);
+  transform: translateY(-2px);
+}
+
+.glass-card--clickable {
+  cursor: pointer;
+}
+
+.glass-card--clickable:active {
+  transform: translateY(0);
+}
+
+.glass-card__gradient-border {
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-xl);
+  background: linear-gradient(135deg, 
+    rgba(139, 92, 246, 0.2) 0%, 
+    rgba(6, 182, 212, 0.2) 50%, 
+    rgba(236, 72, 153, 0.2) 100%
+  );
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  z-index: -1;
+  filter: blur(1px);
+}
+
+.glass-card:hover .glass-card__gradient-border {
+  opacity: 1;
+}
+
+.glass-card__content {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  width: 100%;
+}

@@ -1,0 +1,1234 @@
+[
+  {
+    "id": "enable-auto-suspend-on-idle-warehouses",
+    "slug": "enable-auto-suspend-on-idle-warehouses",
+    "title": "Enable Auto-Suspend on Idle Warehouses",
+    "category": "warehouse",
+    "subcategory": "autosuspend",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 19,
+    "effort_minutes": 15,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN",
+      "Access to QUERY_HISTORY"
+    ],
+    "tags": [
+      "warehouse",
+      "autosuspend",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Idle dev and QA warehouses often burn credits even when no queries run. Auto-Suspend pauses compute after a short gap and eliminates that waste.",
+    "how_to_implement": [
+      "Run the SQL below to find the median idle gap (30-day window).",
+      "Multiply that gap by 1.5 and round to the nearest 10\u00a0seconds.",
+      "ALTER WAREHOUSE <name> SET AUTO_SUSPEND = <timeout>.",
+      "After one week, add 30\u00a0s if cold-start complaints rise."
+    ],
+    "code_snippet": "```sql\n-- Median idle gap (seconds)\nSELECT APPROX_PERCENTILE(\n  TIMESTAMPDIFF('second',\n      LAG(start_time) OVER(PARTITION BY warehouse_name ORDER BY start_time),\n      start_time),\n  0.5) AS median_gap_sec\nFROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY\nWHERE warehouse_name = 'DEV_WH'\n  AND start_time >= DATEADD(day,-30,CURRENT_TIMESTAMP());\n\n-- Apply 90-second auto-suspend\nALTER WAREHOUSE DEV_WH SET AUTO_SUSPEND = 90;\n```",
+    "success_indicators": [
+      "Warehouse credit burn \u2193 \u2265\u202f20\u202f%",
+      "No rise in dashboard time-out complaints"
+    ],
+    "when_to_use": "If the median idle gap is \u2265\u202f120\u202fs for at least 70\u202f% of queries."
+  },
+  {
+    "id": "right-size-warehouse-compute",
+    "slug": "right-size-warehouse-compute",
+    "title": "Right-Size Warehouse Compute",
+    "category": "warehouse",
+    "subcategory": "sizing",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 25,
+    "effort_minutes": 46,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN",
+      "Access to WAREHOUSE_LOAD_HISTORY"
+    ],
+    "tags": [
+      "warehouse",
+      "sizing",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Many warehouses stay over-provisioned after launch. Adjusting size to match real workload trims credits without hurting performance.",
+    "how_to_implement": [
+      "Query WAREHOUSE_LOAD_HISTORY for average queue length and execution time.",
+      "If queue \u2248\u202f0 and exec time \u226a SLA \u2192 scale down; if queue \u2265\u202f1 and exec time \u226b SLA \u2192 scale up.",
+      "ALTER WAREHOUSE ..  SET WAREHOUSE_SIZE = <new_size>.",
+      "Re-check weekly until credits\/query stabilise."
+    ],
+    "code_snippet": "```sql\n-- Avg queue length & exec time last 7\u00a0days\nSELECT warehouse_name,\n       AVG(queued_overload_time)\/1000 AS avg_queue_s,\n       AVG(execution_time)\/1000 AS avg_exec_s\nFROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_LOAD_HISTORY\nWHERE start_time >= DATEADD(day,-7,CURRENT_TIMESTAMP())\nGROUP BY 1;\n```",
+    "success_indicators": [
+      "Credits\/query \u2193 \u2265\u202f25\u202f%",
+      "Query latency within SLA"
+    ],
+    "when_to_use": "When avg queue length <\u202f0.1 and avg exec time <\u202f50\u202f% of SLA."
+  },
+  {
+    "id": "set-cost-aware-multi-cluster-scaling",
+    "slug": "set-cost-aware-multi-cluster-scaling",
+    "title": "Set Cost-Aware Multi-Cluster Scaling",
+    "category": "warehouse",
+    "subcategory": "scaling_policy",
+    "impact_level": "strategic",
+    "complexity": "medium",
+    "estimated_savings_pct": 15,
+    "effort_minutes": 45,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN"
+    ],
+    "tags": [
+      "warehouse",
+      "scaling_policy",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Multi-cluster handles peak bursts without paying for idle seconds between them. Standard policy spins clusters down quickly to save credits.",
+    "how_to_implement": [
+      "Find peak concurrent queries in QUERY_HISTORY.",
+      "Set MIN_CLUSTER_COUNT\u202f=\u202f1 and MAX_CLUSTER_COUNT = CEIL(peak\/10).",
+      "Set SCALING_POLICY\u202f=\u202fSTANDARD.",
+      "Review credits vs concurrency after two weeks and adjust MAX_CLUSTER_COUNT."
+    ],
+    "code_snippet": "```sql\n-- Peak concurrency in last month\nSELECT MAX(concurrency_level) AS peak_conc\nFROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY\nWHERE warehouse_name='REPORT_WH'\n  AND start_time>=DATEADD(month,-1,CURRENT_TIMESTAMP());\n```",
+    "success_indicators": [
+      "Query queue events \u2192\u202f0",
+      "Peak-hour credits \u2193 \u2265\u202f15\u202f%"
+    ],
+    "when_to_use": "Dashboards that spike for a few hours each day."
+  },
+  {
+    "id": "auto-suspend-dev-warehouses-on-weekends",
+    "slug": "auto-suspend-dev-warehouses-on-weekends",
+    "title": "Auto-Suspend Dev Warehouses on Weekends",
+    "category": "warehouse",
+    "subcategory": "scheduling",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 20,
+    "effort_minutes": 18,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN"
+    ],
+    "tags": [
+      "warehouse",
+      "scheduling",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Dev and test warehouses often sit idle over the weekend. Scheduling suspend\/resume saves nearly 100\u202f% of weekend credits.",
+    "how_to_implement": [
+      "Create a cron Task to SUSPEND the warehouse every Friday 19:00.",
+      "Create another Task to RESUME Monday 07:00.",
+      "Send Slack webhook notifications on suspend\/resume.",
+      "Compare weekend credit usage before and after one sprint."
+    ],
+    "code_snippet": "```sql\n-- Task to suspend DEV_WH Friday night\nCREATE OR REPLACE TASK suspend_dev_wh_weekend\n  WAREHOUSE = ADMIN_WH\n  SCHEDULE = 'USING CRON 0 19 * * FRI America\/Los_Angeles'\nAS ALTER WAREHOUSE DEV_WH SUSPEND;\n```",
+    "success_indicators": [
+      "Weekend credits \u2193 \u2248\u202f100\u202f%",
+      "No Monday cold-start tickets"
+    ],
+    "when_to_use": "Dev\/QA warehouses idle on weekends."
+  },
+  {
+    "id": "parameterise-repeating-queries",
+    "slug": "parameterise-repeating-queries",
+    "title": "Parameterise Repeating Queries",
+    "category": "query",
+    "subcategory": "result_cache",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 10,
+    "effort_minutes": 24,
+    "prerequisites": [
+      "Developers can modify app SQL"
+    ],
+    "tags": [
+      "query",
+      "result_cache",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Changing literals to bind parameters lets Snowflake reuse cached results, skipping compute on identical result sets.",
+    "how_to_implement": [
+      "Identify high-volume queries that differ only by literal values (QUERY_HISTORY).",
+      "Rewrite them to use bind parameters.",
+      "Deploy and monitor RESULT_CACHE_USAGE in QUERY_HISTORY.",
+      "Aim for \u2265\u202f70\u202f% result-cache hit rate."
+    ],
+    "code_snippet": "```sql\n-- Before\nSELECT * FROM sales WHERE region = 'NORTH';\n-- After\nSELECT * FROM sales WHERE region = :region_param;\n```",
+    "success_indicators": [
+      "Compute credits for query family \u2193 \u2265\u202f10\u202f%",
+      "Result-cache hit \u2265\u202f70\u202f%"
+    ],
+    "when_to_use": "If same query text runs >\u202f1\u202f000 times\/day with varying literals."
+  },
+  {
+    "id": "convert-temp-staging-tables-to-transient",
+    "slug": "convert-temp-staging-tables-to-transient",
+    "title": "Convert Temp Staging Tables to Transient",
+    "category": "storage",
+    "subcategory": "transient_tables",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 13,
+    "effort_minutes": 16,
+    "prerequisites": [
+      "Role: SYSADMIN"
+    ],
+    "tags": [
+      "storage",
+      "transient_tables",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Transient tables skip seven-day Fail-Safe fees. ideal for ETL staging data you can recreate anytime.",
+    "how_to_implement": [
+      "Identify tables older than seven days with zero reads (ACCOUNT_USAGE.TABLE_STORAGE_METRICS).",
+      "DROP and recreate them as CREATE TRANSIENT TABLE ..  ;",
+      "Add automatic DROP in your ETL job to keep storage minimal.",
+      "Verify restore requirements are covered elsewhere."
+    ],
+    "code_snippet": "```sql\n-- Find cold staging tables\nSELECT table_name, DATEDIFF(day, last_altered, CURRENT_DATE) AS days_old\nFROM SNOWFLAKE.ACCOUNT_USAGE.TABLES\nWHERE table_type='TEMPORARY'\n  AND table_schema='STAGE'\n  AND DATEDIFF(day, last_altered, CURRENT_DATE) > 7;\n\n-- Convert to transient\nCREATE OR REPLACE TRANSIENT TABLE stage_customer AS\nSELECT * FROM stage_customer_temp;\n```",
+    "success_indicators": [
+      "Storage costs \u2193 \u2265 10 %",
+      "No impact on downstream jobs"
+    ],
+    "when_to_use": "For ETL scratch tables you can rebuild within 24 hours."
+  },
+  {
+    "id": "set-credit-usage-alerting-via-tasks",
+    "slug": "set-credit-usage-alerting-via-tasks",
+    "title": "Set Credit-Usage Alerting via Tasks",
+    "category": "monitoring",
+    "subcategory": "alert_credits",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 8,
+    "effort_minutes": 39,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN",
+      "Notification integration"
+    ],
+    "tags": [
+      "monitoring",
+      "alert_credits",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Automated alerts catch runaway warehouses before costs explode.",
+    "how_to_implement": [
+      "Create a Task that queries WAREHOUSE_METERING_HISTORY for last hour credits.",
+      "If credits > threshold, INSERT into notification table.",
+      "Use Snowflake Alert or external webhook to send Slack\/Email.",
+      "Calibrate threshold to 150 % of normal hourly usage."
+    ],
+    "code_snippet": "```sql\n-- Task: credit alert\nCREATE OR REPLACE TASK alert_wh_credits\n  WAREHOUSE = ADMIN_WH\n  SCHEDULE = '1 HOUR'\nAS\nINSERT INTO alerts.credit_alerts\nSELECT warehouse_name, SUM(credits_used_compute)\nFROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY\nWHERE start_time >= DATEADD(hour,-1,CURRENT_TIMESTAMP())\nGROUP BY 1\nHAVING SUM(credits_used_compute) > 50;\n```",
+    "success_indicators": [
+      "Alerts fire < 5 min after spike",
+      "Remediation scripts trigger"
+    ],
+    "when_to_use": "Budgets at risk when hourly credits spike above normal."
+  },
+  {
+    "id": "add-partition-filters-for-predicate-pushdown",
+    "slug": "add-partition-filters-for-predicate-pushdown",
+    "title": "Add Partition Filters for Predicate Pushdown",
+    "category": "query",
+    "subcategory": "predicate_push",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 15,
+    "effort_minutes": 60,
+    "prerequisites": [
+      "Developers can modify SQL"
+    ],
+    "tags": [
+      "query",
+      "predicate_push",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Pushing predicates to table partitions avoids scanning unnecessary micro-partitions and saves compute.",
+    "how_to_implement": [
+      "Find full-table scans in QUERY_HISTORY where PARTITIONS_SCANNED > 1 000.",
+      "Rewrite SQL to include partition column filters (e.g., date, region).",
+      "Add CLUSTER BY on frequently filtered columns if needed.",
+      "Verify PARTITIONS_SCANNED drops after deploy."
+    ],
+    "code_snippet": "```sql\n-- Identify heavy scans\nSELECT query_id, partitions_total, partitions_scanned\nFROM SNOWFLAKE.ACCOUNT_USAGE.QUERY_HISTORY\nWHERE partitions_scanned\/partitions_total > 0.9\n  AND start_time >= DATEADD(day,-7,CURRENT_TIMESTAMP());\n```",
+    "success_indicators": [
+      "Partitions scanned \u2193 \u2265 80 %",
+      "Compute credits for query \u2193 \u2265 15 %"
+    ],
+    "when_to_use": "When queries scan > 90 % of table partitions."
+  },
+  {
+    "id": "cache-model-inference-results",
+    "slug": "cache-model-inference-results",
+    "title": "Cache Model Inference Results",
+    "category": "ml",
+    "subcategory": "model_inference",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 18,
+    "effort_minutes": 57,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN",
+      "Ability to change inference pipeline"
+    ],
+    "tags": [
+      "ml",
+      "model_inference",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Storing model inference outputs in a result table avoids re-scoring identical inputs and cuts compute usage in half.",
+    "how_to_implement": [
+      "Create a RESULT_CACHE table keyed by input hash.",
+      "Upsert new predictions; read from cache when hit.",
+      "Schedule clean-up of rows older than 30 days.",
+      "Track cache hit ratio to ensure \u2265 60 %."
+    ],
+    "code_snippet": "```sql\n-- Upsert inference cache\nMERGE INTO ml.inference_cache t\nUSING (SELECT :input_hash AS h, :prediction AS p) s\nON t.hash = s.h\nWHEN NOT MATCHED THEN\n  INSERT (hash, prediction, created_at) VALUES (s.h, s.p, CURRENT_TIMESTAMP());\n```",
+    "success_indicators": [
+      "Inference queries \u2193 \u2265 50 %",
+      "Cache hit ratio \u2265 60 %"
+    ],
+    "when_to_use": "Repeated scoring on the same inputs."
+  },
+  {
+    "id": "batch-external-function-calls",
+    "slug": "batch-external-function-calls",
+    "title": "Batch External Function Calls",
+    "category": "integration",
+    "subcategory": "external_functions",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 16,
+    "effort_minutes": 42,
+    "prerequisites": [
+      "External function configured"
+    ],
+    "tags": [
+      "integration",
+      "external_functions",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Batching rows into arrays before external function calls slashes network egress and per-call overhead.",
+    "how_to_implement": [
+      "Rewrite SELECT to GROUP_ARRAY inputs into \u2264 1000-row batches.",
+      "Call the external function once per batch.",
+      "Flatten the result set back to individual rows.",
+      "Measure credits\/API fees per 1k rows."
+    ],
+    "code_snippet": "```sql\n-- Example batching\nWITH batched AS (\n  SELECT ARRAY_AGG(input_column) AS batch\n  FROM source_table\n  GROUP BY CEIL(id\/1000)\n)\nSELECT external_fn(batch) FROM batched;\n```",
+    "success_indicators": [
+      "External calls \u2193 \u2265 90 %",
+      "Network egress cost \u2193"
+    ],
+    "when_to_use": "High-frequency external function calls > 10k\/day."
+  },
+  {
+    "id": "enable-query-acceleration-service-qas-for-spiky-workloads",
+    "slug": "enable-query-acceleration-service-qas-for-spiky-workloads",
+    "title": "Enable Query Acceleration Service (QAS) for Spiky Workloads",
+    "category": "performance",
+    "subcategory": "query_acceleration",
+    "impact_level": "strategic",
+    "complexity": "medium",
+    "estimated_savings_pct": 12,
+    "effort_minutes": 34,
+    "prerequisites": [
+      "Enterprise Edition"
+    ],
+    "tags": [
+      "performance",
+      "query_acceleration",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "QAS auto-adds temporary compute only when queries spill, avoiding permanent warehouse up-size.",
+    "how_to_implement": [
+      "Identify long-running queries with spills (bytes spilled > 0).",
+      "ALTER WAREHOUSE ..  SET QUERY_ACCELERATION_MAX_SCALE_FACTOR = 8;",
+      "Monitor QAS credits vs. latency over a week.",
+      "Cap scale factor at lowest value that meets SLA."
+    ],
+    "code_snippet": "```sql\nALTER WAREHOUSE BI_WH SET QUERY_ACCELERATION_MAX_SCALE_FACTOR = 8;\n```",
+    "success_indicators": [
+      "Latency \u2193 \u2265 40 % during spikes",
+      "Average credits unchanged"
+    ],
+    "when_to_use": "Spill-heavy queries but low average utilisation."
+  },
+  {
+    "id": "enforce-monthly-credit-quotas-with-resource-monitors",
+    "slug": "enforce-monthly-credit-quotas-with-resource-monitors",
+    "title": "Enforce Monthly Credit Quotas with Resource Monitors",
+    "category": "governance",
+    "subcategory": "budget_quota",
+    "impact_level": "strategic",
+    "complexity": "medium",
+    "estimated_savings_pct": 15,
+    "effort_minutes": 18,
+    "prerequisites": [
+      "ACCOUNTADMIN"
+    ],
+    "tags": [
+      "governance",
+      "budget_quota",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Resource Monitors automatically suspend warehouses when credit usage crosses a set budget, preventing runaway spend.",
+    "how_to_implement": [
+      "CREATE RESOURCE MONITOR mon_budget WITH CREDIT_QUOTA = 500;",
+      "ALTER WAREHOUSE <name> SET RESOURCE_MONITOR = mon_budget;",
+      "Set notification threshold at 80 % for early warning.",
+      "Review quotas quarterly based on actual usage."
+    ],
+    "code_snippet": "```sql\nCREATE OR REPLACE RESOURCE MONITOR mon_budget\n  WITH CREDIT_QUOTA = 500\n  TRIGGERS ON 80 PERCENT DO NOTIFY\n           ON 100 PERCENT DO SUSPEND;\n```",
+    "success_indicators": [
+      "Spend never exceeds budget",
+      "Proactive alerts at 80 % usage"
+    ],
+    "when_to_use": "When a business unit has a fixed monthly Snowflake budget."
+  },
+  {
+    "id": "terraform-schedule-to-shut-down-non-prod-warehouses",
+    "slug": "terraform-schedule-to-shut-down-non-prod-warehouses",
+    "title": "Terraform Schedule to Shut Down Non-Prod Warehouses",
+    "category": "devops",
+    "subcategory": "iac_shutdown",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 16,
+    "effort_minutes": 30,
+    "prerequisites": [
+      "Terraform access",
+      "SYSADMIN"
+    ],
+    "tags": [
+      "devops",
+      "iac_shutdown",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Infrastructure-as-Code lets you automate suspend\/resume cycles, eliminating idle credits in dev environments.",
+    "how_to_implement": [
+      "Add a Terraform module with a `time_sleep` trigger.",
+      "Invoke `snowflake_warehouse` resource to set AUTO_SUSPEND = 60.",
+      "Use CI pipeline to plan\/apply every evening.",
+      "Audit dev spend weekly."
+    ],
+    "code_snippet": "```sql\n# Terraform snippet\nresource \"snowflake_warehouse\" \"dev_wh\" {\n  name          = \"DEV_WH\"\n  warehouse_size= \"SMALL\"\n  auto_suspend  = 60\n}\n```",
+    "success_indicators": [
+      "Night credits \u2193 \u2265 90 %",
+      "No developer complaints"
+    ],
+    "when_to_use": "Dev warehouses idle overnight."
+  },
+  {
+    "id": "cache-bi-dashboards-with-materialized-views",
+    "slug": "cache-bi-dashboards-with-materialized-views",
+    "title": "Cache BI Dashboards with Materialized Views",
+    "category": "bi",
+    "subcategory": "dash_cache",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 20,
+    "effort_minutes": 65,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN",
+      "BI tool connection"
+    ],
+    "tags": [
+      "bi",
+      "dash_cache",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Materialized views pre-compute aggregations so dashboards hit cached data instead of raw tables, slashing query time and credits.",
+    "how_to_implement": [
+      "Identify top 5 slow dashboard queries.",
+      "CREATE MATERIALIZED VIEW mv_<table> AS SELECT ... GROUP BY ...;",
+      "Point BI tool to the MV or use query rewrite.",
+      "Refresh MV every hour via TASK."
+    ],
+    "code_snippet": "```sql\nCREATE OR REPLACE MATERIALIZED VIEW mv_sales_region AS\nSELECT region, SUM(amount) AS total_amt\nFROM sales\nGROUP BY region;\n```",
+    "success_indicators": [
+      "Load time \u2193 \u2265 50 %",
+      "Credits\/query \u2193 \u2265 30 %"
+    ],
+    "when_to_use": "Dashboards with >5 s load time and weekly refresh cadence."
+  },
+  {
+    "id": "apply-dynamic-data-masking-on-pii-columns",
+    "slug": "apply-dynamic-data-masking-on-pii-columns",
+    "title": "Apply Dynamic Data Masking on PII Columns",
+    "category": "security",
+    "subcategory": "masking",
+    "impact_level": "strategic",
+    "complexity": "medium",
+    "estimated_savings_pct": 10,
+    "effort_minutes": 49,
+    "prerequisites": [
+      "Role: SECURITYADMIN"
+    ],
+    "tags": [
+      "security",
+      "masking",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Dynamic masking hides sensitive data at query time, letting analysts work with datasets while preventing over-scans and costly clone copies.",
+    "how_to_implement": [
+      "Identify PII columns (email, phone, ssn).",
+      "CREATE MASKING POLICY mask_email AS (val STRING) -> CASE WHEN CURRENT_ROLE() IN ('ANALYST') THEN SHA2(val) ELSE val END;",
+      "ALTER TABLE <name> ALTER COLUMN email SET MASKING POLICY mask_email;",
+      "Audit query history to ensure no plaintext exposure."
+    ],
+    "code_snippet": "```sql\nCREATE OR REPLACE MASKING POLICY mask_email\n  AS (val STRING) ->\n  CASE WHEN CURRENT_ROLE() IN ('ANALYST') THEN SHA2(val) ELSE val END;\n\nALTER TABLE customers ALTER COLUMN email SET MASKING POLICY mask_email;\n```",
+    "success_indicators": [
+      "Cloned data volume \u2193 \u2265 50 %",
+      "Zero plaintext PII scans"
+    ],
+    "when_to_use": "Compliance needs and excess cloning to hide PII."
+  },
+  {
+    "id": "compress-files-before-snowpipe-loads",
+    "slug": "compress-files-before-snowpipe-loads",
+    "title": "Compress Files Before Snowpipe Loads",
+    "category": "ingestion",
+    "subcategory": "snowpipe_compression",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 13,
+    "effort_minutes": 16,
+    "prerequisites": [
+      "Snowpipe enabled"
+    ],
+    "tags": [
+      "ingestion",
+      "snowpipe_compression",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Gzip or Snappy compression shrinks stage footprint and speeds network transfer, cutting storage and load credits.",
+    "how_to_implement": [
+      "Update upstream job to gzip files (`.csv.gz`).",
+      "Create FILE FORMAT with COMPRESSION=GZIP;",
+      "ALTER PIPE ..  SET FILE_FORMAT = <format>;",
+      "Monitor load time and stage size."
+    ],
+    "code_snippet": "```sql\nCREATE OR REPLACE FILE FORMAT csv_gzip\n  TYPE=CSV COMPRESSION=GZIP;\nALTER PIPE raw_load SET FILE_FORMAT = csv_gzip;\n```",
+    "success_indicators": [
+      "Stage storage \u2193 \u2265 60 %",
+      "Load credits \u2193 \u2265 20 %"
+    ],
+    "when_to_use": "Large CSV loads > 10 GB\/day."
+  },
+  {
+    "id": "use-reader-accounts-for-high-traffic-data-shares",
+    "slug": "use-reader-accounts-for-high-traffic-data-shares",
+    "title": "Use Reader Accounts for High-Traffic Data Shares",
+    "category": "data_sharing",
+    "subcategory": "consumer_cost",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 19,
+    "effort_minutes": 36,
+    "prerequisites": [
+      "Business Critical",
+      "Org-level role"
+    ],
+    "tags": [
+      "data_sharing",
+      "consumer_cost",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Reader accounts push compute cost to consumers, preventing unexpected spikes on the provider\u2019s bill.",
+    "how_to_implement": [
+      "CREATE MANAGED ACCOUNT for each heavy consumer.",
+      "GRANT USAGE ON SHARE ..  TO MANAGED ACCOUNT .. ;",
+      "Set up billing alert for the reader account.",
+      "Review credits weekly."
+    ],
+    "code_snippet": "```sql\nCREATE MANAGED ACCOUNT consumer_acct\nADMIN_NAME='bob' ADMIN_PASSWORD='StrongP@ss1';\n```",
+    "success_indicators": [
+      "Provider credits for share \u2193 \u2265 80 %",
+      "Consumer pays own compute"
+    ],
+    "when_to_use": "External partners running heavy analytics on your share."
+  },
+  {
+    "id": "enable-search-optimization-service-on-high-filter-tables",
+    "slug": "enable-search-optimization-service-on-high-filter-tables",
+    "title": "Enable Search Optimization Service on High-Filter Tables",
+    "category": "performance",
+    "subcategory": "search_opt",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 17,
+    "effort_minutes": 26,
+    "prerequisites": [
+      "Enterprise Edition"
+    ],
+    "tags": [
+      "performance",
+      "search_opt",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Search Optimization indexes speed up highly selective point-lookups, reducing warehouse size needed for interactive queries.",
+    "how_to_implement": [
+      "Identify tables with selective filters (avg selective ratio < 1 %).",
+      "ALTER TABLE <name> ADD SEARCH OPTIMIZATION;",
+      "Measure query latency and credit savings over a week.",
+      "Disable if ROI < 10 %."
+    ],
+    "code_snippet": "```sql\nALTER TABLE orders ADD SEARCH OPTIMIZATION;\n```",
+    "success_indicators": [
+      "Latency \u2193 \u2265 70 %",
+      "Compute credits \u2193 \u2265 20 %"
+    ],
+    "when_to_use": "Look-ups by primary key or small ranges scanning > 100 micro-partitions."
+  },
+  {
+    "id": "alert-on-snowpipe-load-failures-via-event-notifications",
+    "slug": "alert-on-snowpipe-load-failures-via-event-notifications",
+    "title": "Alert on Snowpipe Load Failures via Event Notifications",
+    "category": "monitoring",
+    "subcategory": "fail_alert",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 9,
+    "effort_minutes": 29,
+    "prerequisites": [
+      "ACCOUNTADMIN",
+      "Notification integration"
+    ],
+    "tags": [
+      "monitoring",
+      "fail_alert",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Automatic notifications reduce time-to-fix for failed ingestions, preventing re-runs that double credit usage.",
+    "how_to_implement": [
+      "Create NOTIFICATION INTEGRATION for Slack\/Webhook.",
+      "ALTER PIPE ..  SET NOTIFY_ON_ERROR = TRUE;",
+      "Subscribe to the SNS\/Azure Event Grid topic.",
+      "Track mean-time-to-repair."
+    ],
+    "code_snippet": "```sql\nALTER PIPE raw_load SET NOTIFY_ON_ERROR = TRUE;\n```",
+    "success_indicators": [
+      "MTTR \u2193 \u2265 50 %",
+      "Re-run credits \u2193"
+    ],
+    "when_to_use": "Pipes with > 1 % error rate."
+  },
+  {
+    "id": "tag-warehouses-with-cost-center",
+    "slug": "tag-warehouses-with-cost-center",
+    "title": "Tag Warehouses with Cost Center",
+    "category": "governance",
+    "subcategory": "tagging",
+    "impact_level": "strategic",
+    "complexity": "low",
+    "estimated_savings_pct": 8,
+    "effort_minutes": 23,
+    "prerequisites": [
+      "ACCOUNTADMIN"
+    ],
+    "tags": [
+      "governance",
+      "tagging",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Object tags enable chargeback reports per team, driving accountability and self-optimization behavior.",
+    "how_to_implement": [
+      "CREATE TAG cost_center;",
+      "ALTER WAREHOUSE <name> SET TAG cost_center = 'Marketing';",
+      "Join TAG_REFERENCES with metering views for show-back.",
+      "Publish weekly cost dashboards."
+    ],
+    "code_snippet": "```sql\nALTER WAREHOUSE MKT_WH SET TAG cost_center = 'Marketing';\n```",
+    "success_indicators": [
+      "Cost reports by team available",
+      "Teams reduce own spend"
+    ],
+    "when_to_use": "Multi-team Snowflake accounts lacking chargeback."
+  },
+  {
+    "id": "recluster-tables-to-optimize-micro-partitions",
+    "slug": "recluster-tables-to-optimize-micro-partitions",
+    "title": "Recluster Tables to Optimize Micro-Partitions",
+    "category": "storage",
+    "subcategory": "micro_partition",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 14,
+    "effort_minutes": 47,
+    "prerequisites": [
+      "ACCOUNTADMIN"
+    ],
+    "tags": [
+      "storage",
+      "micro_partition",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Proper clustering reduces the number of micro-partitions scanned, lowering I\/O and compute for large table queries.",
+    "how_to_implement": [
+      "Analyze PARTITION_DEPTH for the table in TABLE_STORAGE_METRICS.",
+      "If > 800 micro-partitions touched per query, run RECLUSTER.",
+      "Schedule RECLUSTER during low-traffic windows.",
+      "Verify partitions scanned drops post-recluster."
+    ],
+    "code_snippet": "```sql\nALTER TABLE big_fact_table RECLUSTER;\n```",
+    "success_indicators": [
+      "Partitions scanned \u2193 \u2265 60 %",
+      "Compute credits\/query \u2193 \u2265 15 %"
+    ],
+    "when_to_use": "Queries scanning >800 partitions frequently."
+  },
+  {
+    "id": "use-server-side-cursors-in-snowflake-connector",
+    "slug": "use-server-side-cursors-in-snowflake-connector",
+    "title": "Use Server-Side Cursors in Snowflake Connector",
+    "category": "integration",
+    "subcategory": "snowflake_connector",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 10,
+    "effort_minutes": 21,
+    "prerequisites": [
+      "Snowflake Connector for Python >=2.8"
+    ],
+    "tags": [
+      "integration",
+      "snowflake_connector",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Server-side cursors stream results in chunks, avoiding large fetch_size memory overhead and reducing network egress.",
+    "how_to_implement": [
+      "Set `cursor_class=SnowflakeDictCursor` and `fetch_size=1000` in connector.",
+      "Paginate through result set instead of .fetchall().",
+      "Measure network bytes per query before\/after.",
+      "Tune fetch_size for your app."
+    ],
+    "code_snippet": "```sql\n# Python example\nctx.cursor(SnowflakeDictCursor, fetch_size=1000)\n```",
+    "success_indicators": [
+      "Network egress \u2193 \u2265 30 %",
+      "App memory footprint stable"
+    ],
+    "when_to_use": "Applications fetching >10k rows per request."
+  },
+  {
+    "id": "incremental-materialized-views-for-slowly-changing-fact",
+    "slug": "incremental-materialized-views-for-slowly-changing-fact",
+    "title": "Incremental Materialized Views for Slowly Changing Fact",
+    "category": "performance",
+    "subcategory": "materialized_view",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 16,
+    "effort_minutes": 42,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN"
+    ],
+    "tags": [
+      "performance",
+      "materialized_view",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Incremental refresh keeps materialized views cheap by only processing new partitions, reducing refresh compute.",
+    "how_to_implement": [
+      "Partition fact table by load_date.",
+      "CREATE MATERIALIZED VIEW with `WHERE load_date >= CURRENT_DATE - 7`.",
+      "Set TASK to REFRESH ON SCHEDULE every hour.",
+      "Monitor refresh credits vs. full refresh baseline."
+    ],
+    "code_snippet": "```sql\nCREATE MATERIALIZED VIEW mv_fact_recent AS\nSELECT * FROM fact WHERE load_date >= CURRENT_DATE - 7;\n```",
+    "success_indicators": [
+      "Refresh credits \u2193 \u2265 70 %",
+      "Query latency consistent"
+    ],
+    "when_to_use": "Fact tables append-only with recent query focus."
+  },
+  {
+    "id": "enable-auto-ingest-snowpipe-with-cloud-events",
+    "slug": "enable-auto-ingest-snowpipe-with-cloud-events",
+    "title": "Enable Auto-Ingest Snowpipe with Cloud Events",
+    "category": "ingestion",
+    "subcategory": "auto_ingest",
+    "impact_level": "quick_win",
+    "complexity": "medium",
+    "estimated_savings_pct": 12,
+    "effort_minutes": 35,
+    "prerequisites": [
+      "Cloud bucket events",
+      "ACCOUNTADMIN"
+    ],
+    "tags": [
+      "ingestion",
+      "auto_ingest",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Auto-Ingest triggers Snowpipe as soon as a file lands, reducing queue time and avoiding bursty catch-up loads that spike credits.",
+    "how_to_implement": [
+      "Create CLOUD STORAGE INTEGRATION with event notifications.",
+      "ALTER PIPE ..  SET AUTO_INGEST=TRUE;",
+      "Verify notification channel in pipe metadata.",
+      "Compare average file latency and credits\/day before vs after."
+    ],
+    "code_snippet": "```sql\nALTER PIPE raw_pipe SET AUTO_INGEST = TRUE;\n```",
+    "success_indicators": [
+      "Latency to table \u2193 \u2265 90 %",
+      "Credits distributed evenly"
+    ],
+    "when_to_use": "Loads that currently batch every 30+ minutes."
+  },
+  {
+    "id": "disable-auto-resume-on-rarely-used-warehouses",
+    "slug": "disable-auto-resume-on-rarely-used-warehouses",
+    "title": "Disable Auto-Resume on Rarely Used Warehouses",
+    "category": "warehouse",
+    "subcategory": "auto_resume",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 11,
+    "effort_minutes": 12,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN"
+    ],
+    "tags": [
+      "warehouse",
+      "auto_resume",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Turning off AUTO_RESUME prevents accidental credit burn from sporadic connections like BI tool metadata refreshes.",
+    "how_to_implement": [
+      "Identify warehouses with <2 resume events per week.",
+      "ALTER WAREHOUSE ..  SET AUTO_RESUME = FALSE;",
+      "Document manual resume procedure for power users.",
+      "Track unexpected resume events post-change."
+    ],
+    "code_snippet": "```sql\nALTER WAREHOUSE LEGACY_WH SET AUTO_RESUME = FALSE;\n```",
+    "success_indicators": [
+      "Unplanned credit burn events \u2193 to zero"
+    ],
+    "when_to_use": "Legacy or archived workloads accessed once in a while."
+  },
+  {
+    "id": "persist-features-in-a-shared-feature-store",
+    "slug": "persist-features-in-a-shared-feature-store",
+    "title": "Persist Features in a Shared Feature Store",
+    "category": "ml",
+    "subcategory": "feature_store",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 21,
+    "effort_minutes": 61,
+    "prerequisites": [
+      "Data Engineering pipeline access"
+    ],
+    "tags": [
+      "ml",
+      "feature_store",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Materializing ML features once and sharing across models avoids duplicate compute during training and scoring.",
+    "how_to_implement": [
+      "CREATE DATABASE feature_store;",
+      "Write features as incremental MERGE into standardized tables.",
+      "Grant SELECT to all data science roles.",
+      "Cache heavy joins in the feature build pipeline."
+    ],
+    "code_snippet": "```sql\nCREATE OR REPLACE TABLE feature_store.customer_features ...;\n```",
+    "success_indicators": [
+      "Training runtime \u2193 \u2265 40 %",
+      "Duplicate compute jobs eliminated"
+    ],
+    "when_to_use": "Multiple models computing same features separately."
+  },
+  {
+    "id": "use-ctas-to-materialize-complex-views",
+    "slug": "use-ctas-to-materialize-complex-views",
+    "title": "Use CTAS to Materialize Complex Views",
+    "category": "query",
+    "subcategory": "ctas",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 18,
+    "effort_minutes": 50,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN"
+    ],
+    "tags": [
+      "query",
+      "ctas",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "CREATE TABLE AS SELECT (CTAS) stores view results, avoiding repeated complex joins and boosting performance.",
+    "how_to_implement": [
+      "Identify top 10 slow views by total runtime.",
+      "CREATE TABLE new_table AS SELECT * FROM slow_view;",
+      "Swap BI queries to hit materialized table.",
+      "Refresh table nightly via TASK."
+    ],
+    "code_snippet": "```sql\nCREATE OR REPLACE TABLE sales_mv AS SELECT * FROM v_slow_sales;\n```",
+    "success_indicators": [
+      "Query runtime \u2193 \u2265 70 %",
+      "Compute credits \u2193 \u2265 25 %"
+    ],
+    "when_to_use": "Views with >10 s runtime and daily refresh cadence."
+  },
+  {
+    "id": "purge-undrop-history-on-large-tables",
+    "slug": "purge-undrop-history-on-large-tables",
+    "title": "Purge UNDROP History on Large Tables",
+    "category": "storage",
+    "subcategory": "undrop_cleanup",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 11,
+    "effort_minutes": 11,
+    "prerequisites": [
+      "SYSADMIN"
+    ],
+    "tags": [
+      "storage",
+      "undrop_cleanup",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Reducing Fail-Safe window on transient tables frees storage reserved for UNDROP, lowering long-term costs.",
+    "how_to_implement": [
+      "Locate transient tables with FAILSAFE_DAYS > 7.",
+      "ALTER TABLE ..  SET FAILSAFE = 1;",
+      "Document recovery procedures using backups.",
+      "Verify storage charges next billing cycle."
+    ],
+    "code_snippet": "```sql\nALTER TABLE stage_events SET FAILSAFE = 1;\n```",
+    "success_indicators": [
+      "Storage costs \u2193 \u2265 15 %",
+      "No failed restores reported"
+    ],
+    "when_to_use": "Transient staging tables older than 30 days."
+  },
+  {
+    "id": "build-daily-cost-dashboard-with-snowsight-charts",
+    "slug": "build-daily-cost-dashboard-with-snowsight-charts",
+    "title": "Build Daily Cost Dashboard with Snowsight Charts",
+    "category": "monitoring",
+    "subcategory": "cost_dashboard",
+    "impact_level": "strategic",
+    "complexity": "low",
+    "estimated_savings_pct": 12,
+    "effort_minutes": 32,
+    "prerequisites": [
+      "Snowsight access"
+    ],
+    "tags": [
+      "monitoring",
+      "cost_dashboard",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "A live Snowsight dashboard surfaces warehouse and query costs, driving real-time optimization by teams.",
+    "how_to_implement": [
+      "Create SQL worksheet querying WAREHOUSE_METERING_HISTORY.",
+      "Turn worksheet into Snowsight chart widgets.",
+      "Share dashboard with team leads.",
+      "Review daily for anomalies."
+    ],
+    "code_snippet": "```sql\n-- Example cost query\nSELECT warehouse_name, DATE(start_time) d, SUM(credits_used) c\nFROM SNOWFLAKE.ACCOUNT_USAGE.WAREHOUSE_METERING_HISTORY\nWHERE start_time >= DATEADD(day,-7,CURRENT_TIMESTAMP())\nGROUP BY 1,2;\n```",
+    "success_indicators": [
+      "Anomalous spikes detected <24 h",
+      "Teams self-optimize warehouses"
+    ],
+    "when_to_use": "Teams lack visibility into daily credit burn."
+  },
+  {
+    "id": "enable-concurrency-scaling-for-bi-warehouse",
+    "slug": "enable-concurrency-scaling-for-bi-warehouse",
+    "title": "Enable Concurrency Scaling for BI Warehouse",
+    "category": "warehouse",
+    "subcategory": "concurrency_scaling",
+    "impact_level": "strategic",
+    "complexity": "medium",
+    "estimated_savings_pct": 10,
+    "effort_minutes": 20,
+    "prerequisites": [
+      "Enterprise Edition"
+    ],
+    "tags": [
+      "warehouse",
+      "concurrency_scaling",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Concurrency Scaling adds burst clusters automatically during traffic peaks, avoiding permanent up-sizing.",
+    "how_to_implement": [
+      "ALTER WAREHOUSE ..  SET CONCURRENCY_SCALING = TRUE;",
+      "Monitor additional cluster credits vs latency for two weeks.",
+      "Cap scaling if credits > 10 % of total.",
+      "Keep MIN_CLUSTER_COUNT = 1 to avoid idle clusters."
+    ],
+    "code_snippet": "```sql\nALTER WAREHOUSE BI_WH SET CONCURRENCY_SCALING = TRUE;\n```",
+    "success_indicators": [
+      "Query queue events \u2193 to zero",
+      "Overall credits unchanged (<10 % rise)"
+    ],
+    "when_to_use": "Dashboard queries queue during peak morning hours."
+  },
+  {
+    "id": "restrict-insecure-clients-with-network-policies",
+    "slug": "restrict-insecure-clients-with-network-policies",
+    "title": "Restrict Insecure Clients with Network Policies",
+    "category": "security",
+    "subcategory": "network_policy",
+    "impact_level": "high_impact",
+    "complexity": "low",
+    "estimated_savings_pct": 9,
+    "effort_minutes": 18,
+    "prerequisites": [
+      "SECURITYADMIN"
+    ],
+    "tags": [
+      "security",
+      "network_policy",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Blocking public IP ranges stops unauthorized workloads that can consume compute without control.",
+    "how_to_implement": [
+      "CREATE NETWORK POLICY block_public; add allowed CIDRs only.",
+      "ALTER ACCOUNT SET NETWORK_POLICY = block_public;",
+      "Monitor login_history for blocked attempts.",
+      "Review policy quarterly."
+    ],
+    "code_snippet": "```sql\nCREATE NETWORK POLICY block_public ALLOWED_IP_LIST=('10.0.0.0\/8');\n```",
+    "success_indicators": [
+      "Unauthorized logins \u2193 100 %",
+      "Compute credits from rogue clients = 0"
+    ],
+    "when_to_use": "Unexpected client IDs or geos in LOGIN_HISTORY."
+  },
+  {
+    "id": "throttle-rest-api-calls-with-queuing-wrapper",
+    "slug": "throttle-rest-api-calls-with-queuing-wrapper",
+    "title": "Throttle REST API Calls with Queuing Wrapper",
+    "category": "integration",
+    "subcategory": "api_rate_limit",
+    "impact_level": "quick_win",
+    "complexity": "medium",
+    "estimated_savings_pct": 15,
+    "effort_minutes": 38,
+    "prerequisites": [
+      "Middleware access"
+    ],
+    "tags": [
+      "integration",
+      "api_rate_limit",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Rate-limiting prevents too many short-lived connections that force auto-resume and burn credits.",
+    "how_to_implement": [
+      "Implement a queue in middleware to batch API requests.",
+      "Set max 10 concurrent sessions to Snowflake.",
+      "Use persistent connections instead of open\/close per call.",
+      "Measure resume count before\/after."
+    ],
+    "code_snippet": "```sql\n# Example pseudo-code\nqueue.add(request)\n```",
+    "success_indicators": [
+      "Warehouse resumes\/day \u2193 \u2265 90 %",
+      "Credits\/day \u2193 \u2265 20 %"
+    ],
+    "when_to_use": "REST app opens >100 connections\/minute with low payload."
+  },
+  {
+    "id": "implement-row-access-policies-for-fine-grained-security",
+    "slug": "implement-row-access-policies-for-fine-grained-security",
+    "title": "Implement Row Access Policies for Fine-Grained Security",
+    "category": "governance",
+    "subcategory": "row_access_policy",
+    "impact_level": "high_impact",
+    "complexity": "medium",
+    "estimated_savings_pct": 10,
+    "effort_minutes": 58,
+    "prerequisites": [
+      "Role: SECURITYADMIN"
+    ],
+    "tags": [
+      "governance",
+      "row_access_policy",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Row access policies limit which rows each user sees, eliminating duplicate secure views and reducing query overhead.",
+    "how_to_implement": [
+      "CREATE ROW ACCESS POLICY rap_dept ON sales USING ( dept STRING ) RETURNS BOOLEAN -> dept = CURRENT_USER();",
+      "ALTER TABLE sales ADD ROW ACCESS POLICY rap_dept ON (dept);",
+      "Test with two user roles to confirm masking.",
+      "Remove redundant secure views."
+    ],
+    "code_snippet": "```sql\nCREATE OR REPLACE ROW ACCESS POLICY rap_dept\n  AS (dept STRING) RETURNS BOOLEAN ->\n  dept = CURRENT_ROLE();\n\nALTER TABLE sales ADD ROW ACCESS POLICY rap_dept ON (dept);\n```",
+    "success_indicators": [
+      "Secure views count \u2193",
+      "Query planning time \u2193 \u2265 20 %"
+    ],
+    "when_to_use": "Multiple secure views per department increasing maintenance."
+  },
+  {
+    "id": "tag-etl-queries-for-cost-attribution",
+    "slug": "tag-etl-queries-for-cost-attribution",
+    "title": "Tag ETL Queries for Cost Attribution",
+    "category": "monitoring",
+    "subcategory": "query_tagging",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 8,
+    "effort_minutes": 11,
+    "prerequisites": [
+      "Pipeline edit access"
+    ],
+    "tags": [
+      "monitoring",
+      "query_tagging",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Setting query tags enables precise cost drill-downs by job name, helping teams optimize their own pipelines.",
+    "how_to_implement": [
+      "Add `ALTER SESSION SET QUERY_TAG = 'ETL_Job1'` at pipeline start.",
+      "Join QUERY_HISTORY with TAG to build job-level cost charts.",
+      "Automate alerts when job credits spike \u2265 20 %."
+    ],
+    "code_snippet": "```sql\nALTER SESSION SET QUERY_TAG = 'ETL_Job1';\n```",
+    "success_indicators": [
+      "Job-level dashboard live",
+      "Teams tune high-cost jobs"
+    ],
+    "when_to_use": "Pipelines lacking per-job cost visibility."
+  },
+  {
+    "id": "increase-result-cache-time-to-live-for-slow-dashboards",
+    "slug": "increase-result-cache-time-to-live-for-slow-dashboards",
+    "title": "Increase RESULT_CACHE Time-to-Live for Slow Dashboards",
+    "category": "bi",
+    "subcategory": "result_set_cache",
+    "impact_level": "quick_win",
+    "complexity": "low",
+    "estimated_savings_pct": 13,
+    "effort_minutes": 17,
+    "prerequisites": [
+      "Role: ACCOUNTADMIN"
+    ],
+    "tags": [
+      "bi",
+      "result_set_cache",
+      "cost_optimization"
+    ],
+    "last_reviewed": "2025-08-08",
+    "status": "active",
+    "version": 1,
+    "description": "Extending RESULT_CACHE TTL keeps dashboards fast without rerunning heavy queries, saving compute.",
+    "how_to_implement": [
+      "ALTER SESSION SET USE_CACHED_RESULT = TRUE;",
+      "Set TTL with SET RESULT_CACHE_MAX_DATA_AGE = 3600;",
+      "Educate analysts on cache invalidation triggers.",
+      "Monitor cache hit ratio in PERFORMANCE_HISTORY."
+    ],
+    "code_snippet": "```sql\nALTER SESSION SET RESULT_CACHE_MAX_DATA_AGE = 3600;\n```",
+    "success_indicators": [
+      "Compute credits\/query \u2193 \u2265 30 %",
+      "Dashboard load < 3 s"
+    ],
+    "when_to_use": "Dashboards updating hourly but queried every minute."
+  }
+]

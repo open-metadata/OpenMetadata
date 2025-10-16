@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  thirdeye-ui:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - THIRDEYE_BASE_URL=https://api.thirdeye.example.com
+      - NEXT_PUBLIC_APP_NAME=ThirdEye Observability UI
+    volumes:
+      - .:/app
+      - /app/node_modules
+    command: npm run dev
+    depends_on:
+      - thirdeye-api
+    networks:
+      - thirdeye-network
+
+  thirdeye-api:
+    image: openmetadata/server:latest
+    ports:
+      - "8585:8585"
+    environment:
+      - AIRFLOW_WEBSERVER_HOST=http://localhost:8080
+    volumes:
+      - thirdeye-data:/var/lib/openmetadata
+    networks:
+      - thirdeye-network
+
+volumes:
+  thirdeye-data:
+
+networks:
+  thirdeye-network:
+    driver: bridge

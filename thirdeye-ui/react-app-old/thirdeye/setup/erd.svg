@@ -1,0 +1,288 @@
+<svg viewBox="0 0 1600 1000" xmlns="http://www.w3.org/2000/svg">
+  <!-- Title -->
+  <text x="800" y="30" font-family="Arial, sans-serif" font-size="24" font-weight="bold" text-anchor="middle">
+    Cost Optimization Data Model - ERD (6 Tables)
+  </text>
+  
+  <!-- Styles -->
+  <defs>
+    <style>
+      .table-header { fill: #2C3E50; }
+      .table-body { fill: white; stroke: #34495E; stroke-width: 2; }
+      .fact-table-header { fill: #16A085; }
+      .config-table-header { fill: #8B4513; }
+      .pk { fill: #E74C3C; font-weight: bold; }
+      .fk { fill: #3498DB; font-weight: bold; }
+      .field { fill: #2C3E50; }
+      .json-field { fill: #27AE60; }
+      .relationship { stroke: #3498DB; stroke-width: 2; fill: none; }
+      .relationship-arrow { fill: #3498DB; }
+      .one-to-many { stroke-dasharray: none; }
+      .optional { stroke-dasharray: 5,5; }
+    </style>
+  </defs>
+  
+  <!-- 1. fact_datalake_table_usage_inventory (Top Left) -->
+  <g id="fact_table">
+    <rect x="50" y="100" width="320" height="380" class="table-body"/>
+    <rect x="50" y="100" width="320" height="35" class="fact-table-header"/>
+    <text x="210" y="122" font-family="Arial" font-size="14" fill="white" text-anchor="middle" font-weight="bold">
+      fact_datalake_table_usage_inventory
+    </text>
+    <text x="60" y="155" font-family="monospace" font-size="12" class="pk">PK: FQN, RUN_DATE</text>
+    <line x1="50" y1="165" x2="370" y2="165" stroke="#ddd"/>
+    
+    <!-- Key fields -->
+    <text x="60" y="185" font-family="monospace" font-size="11" class="field">FQN (generated)</text>
+    <text x="60" y="205" font-family="monospace" font-size="11" class="field">DATABASE_NAME</text>
+    <text x="60" y="225" font-family="monospace" font-size="11" class="field">DB_SCHEMA</text>
+    <text x="60" y="245" font-family="monospace" font-size="11" class="field">TABLE_NAME</text>
+    <text x="60" y="265" font-family="monospace" font-size="11" class="field">SERVICE</text>
+    <text x="60" y="285" font-family="monospace" font-size="11" class="field">ROLL_30D_TBL_UC</text>
+    <text x="60" y="305" font-family="monospace" font-size="11" class="field">ROLL_30D_TBL_QC</text>
+    <text x="60" y="325" font-family="monospace" font-size="11" class="field">LAST_ACCESSED_DATE</text>
+    <text x="60" y="345" font-family="monospace" font-size="11" class="field">SIZE_GB</text>
+    <text x="60" y="365" font-family="monospace" font-size="11" class="field">RUN_DATE</text>
+    <text x="60" y="385" font-family="monospace" font-size="11" class="field">CREATED_BY</text>
+    
+    <!-- Metrics indicator -->
+    <rect x="60" y="400" width="250" height="60" fill="#f0f0f0" stroke="#999" stroke-width="1" rx="5"/>
+    <text x="185" y="420" font-family="Arial" font-size="10" text-anchor="middle" fill="#666">
+      Daily Snapshot Table
+    </text>
+    <text x="185" y="435" font-family="Arial" font-size="9" text-anchor="middle" fill="#666">
+      Provides metrics via FQN lookup
+    </text>
+    <text x="185" y="450" font-family="Arial" font-size="9" text-anchor="middle" fill="#666">
+      No direct FK relationships
+    </text>
+  </g>
+  
+  <!-- 2. opportunity_campaigns (Center) -->
+  <g id="campaigns_table">
+    <rect x="450" y="100" width="300" height="420" class="table-body"/>
+    <rect x="450" y="100" width="300" height="35" class="table-header"/>
+    <text x="600" y="122" font-family="Arial" font-size="14" fill="white" text-anchor="middle" font-weight="bold">
+      opportunity_campaigns
+    </text>
+    <text x="460" y="155" font-family="monospace" font-size="12" class="pk">PK: campaign_id</text>
+    <line x1="450" y1="165" x2="750" y2="165" stroke="#ddd"/>
+    
+    <text x="460" y="185" font-family="monospace" font-size="11" class="field">campaign_name</text>
+    <text x="460" y="205" font-family="monospace" font-size="11" class="field">campaign_type (INDIVIDUAL/BULK)</text>
+    <text x="460" y="225" font-family="monospace" font-size="11" class="json-field">fqn_list (JSON)</text>
+    <text x="460" y="245" font-family="monospace" font-size="11" class="field">total_items</text>
+    <text x="460" y="265" font-family="monospace" font-size="11" class="field">grouping_rule</text>
+    <text x="460" y="285" font-family="monospace" font-size="11" class="field">service</text>
+    <text x="460" y="305" font-family="monospace" font-size="11" class="field">resource_type</text>
+    <text x="460" y="325" font-family="monospace" font-size="11" class="field">opportunity_type</text>
+    <text x="460" y="345" font-family="monospace" font-size="11" class="field">current_monthly_cost</text>
+    <text x="460" y="365" font-family="monospace" font-size="11" class="field">projected_savings</text>
+    <text x="460" y="385" font-family="monospace" font-size="11" class="field">priority</text>
+    <text x="460" y="405" font-family="monospace" font-size="11" class="field">status</text>
+    <text x="460" y="425" font-family="monospace" font-size="11" class="field">detection_date</text>
+    <text x="460" y="445" font-family="monospace" font-size="11" class="field">detection_rule_id</text>
+    <text x="460" y="465" font-family="monospace" font-size="11" class="field">om_task_id</text>
+    <text x="460" y="485" font-family="monospace" font-size="11" class="field">created_at</text>
+    <text x="460" y="505" font-family="monospace" font-size="11" class="field">expires_at</text>
+  </g>
+  
+  <!-- 3. entity_decisions (Right Top) -->
+  <g id="decisions_table">
+    <rect x="850" y="100" width="280" height="340" class="table-body"/>
+    <rect x="850" y="100" width="280" height="35" class="table-header"/>
+    <text x="990" y="122" font-family="Arial" font-size="14" fill="white" text-anchor="middle" font-weight="bold">
+      entity_decisions
+    </text>
+    <text x="860" y="155" font-family="monospace" font-size="12" class="pk">PK: decision_id</text>
+    <text x="860" y="175" font-family="monospace" font-size="12" class="fk">FK: campaign_id</text>
+    <line x1="850" y1="185" x2="1130" y2="185" stroke="#ddd"/>
+    
+    <text x="860" y="205" font-family="monospace" font-size="11" class="field">service</text>
+    <text x="860" y="225" font-family="monospace" font-size="11" class="field">fqn (unique)</text>
+    <text x="860" y="245" font-family="monospace" font-size="11" class="field">type</text>
+    <text x="860" y="265" font-family="monospace" font-size="11" class="field">final_decision</text>
+    <text x="860" y="285" font-family="monospace" font-size="11" class="field">review_notes</text>
+    <text x="860" y="305" font-family="monospace" font-size="11" class="json-field">properties (JSON)</text>
+    <text x="860" y="325" font-family="monospace" font-size="11" class="field">scheduled_execution_date</text>
+    <text x="860" y="345" font-family="monospace" font-size="11" class="field">actual_execution_date</text>
+    <text x="860" y="365" font-family="monospace" font-size="11" class="field">decision_date</text>
+    <text x="860" y="385" font-family="monospace" font-size="11" class="field">created_by</text>
+    <text x="860" y="405" font-family="monospace" font-size="11" class="field">om_task_id</text>
+    <text x="860" y="425" font-family="monospace" font-size="11" class="field">created_at</text>
+  </g>
+  
+  <!-- 4. notification_engagement_tracking (Center Bottom) -->
+  <g id="tracking_table">
+    <rect x="450" y="580" width="300" height="320" class="table-body"/>
+    <rect x="450" y="580" width="300" height="35" class="table-header"/>
+    <text x="600" y="602" font-family="Arial" font-size="14" fill="white" text-anchor="middle" font-weight="bold">
+      notification_engagement_tracking
+    </text>
+    <text x="460" y="635" font-family="monospace" font-size="12" class="pk">PK: tracking_id</text>
+    <text x="460" y="655" font-family="monospace" font-size="12" class="fk">FK: campaign_id</text>
+    <line x1="450" y1="665" x2="750" y2="665" stroke="#ddd"/>
+    
+    <text x="460" y="685" font-family="monospace" font-size="11" class="field">om_entity_id</text>
+    <text x="460" y="705" font-family="monospace" font-size="11" class="field">om_entity_type</text>
+    <text x="460" y="725" font-family="monospace" font-size="11" class="field">user_id</text>
+    <text x="460" y="745" font-family="monospace" font-size="11" class="field">first_viewed_at</text>
+    <text x="460" y="765" font-family="monospace" font-size="11" class="field">last_viewed_at</text>
+    <text x="460" y="785" font-family="monospace" font-size="11" class="field">view_count</text>
+    <text x="460" y="805" font-family="monospace" font-size="11" class="field">clicked_at</text>
+    <text x="460" y="825" font-family="monospace" font-size="11" class="field">dismissed_at</text>
+    <text x="460" y="845" font-family="monospace" font-size="11" class="field">action_taken</text>
+    <text x="460" y="865" font-family="monospace" font-size="11" class="field">time_to_action_seconds</text>
+    <text x="460" y="885" font-family="monospace" font-size="11" class="field">notification_channel</text>
+  </g>
+  
+  <!-- 5. cost_tracking (Right Bottom) -->
+  <g id="cost_table">
+    <rect x="850" y="480" width="280" height="340" class="table-body"/>
+    <rect x="850" y="480" width="280" height="35" class="table-header"/>
+    <text x="990" y="502" font-family="Arial" font-size="14" fill="white" text-anchor="middle" font-weight="bold">
+      cost_tracking
+    </text>
+    <text x="860" y="535" font-family="monospace" font-size="12" class="pk">PK: tracking_id</text>
+    <text x="860" y="555" font-family="monospace" font-size="12" class="fk">FK: decision_id</text>
+    <text x="860" y="575" font-family="monospace" font-size="12" class="fk">FK: campaign_id</text>
+    <line x1="850" y1="585" x2="1130" y2="585" stroke="#ddd"/>
+    
+    <text x="860" y="605" font-family="monospace" font-size="11" class="field">fqn</text>
+    <text x="860" y="625" font-family="monospace" font-size="11" class="field">measurement_date</text>
+    <text x="860" y="645" font-family="monospace" font-size="11" class="field">measurement_type</text>
+    <text x="860" y="665" font-family="monospace" font-size="11" class="field">baseline_cost</text>
+    <text x="860" y="685" font-family="monospace" font-size="11" class="field">current_cost</text>
+    <text x="860" y="705" font-family="monospace" font-size="11" class="field">realized_savings (generated)</text>
+    <text x="860" y="725" font-family="monospace" font-size="11" class="field">cumulative_savings</text>
+    <text x="860" y="745" font-family="monospace" font-size="11" class="field">days_since_decision</text>
+    <text x="860" y="765" font-family="monospace" font-size="11" class="field">savings_validated</text>
+    <text x="860" y="785" font-family="monospace" font-size="11" class="field">validation_method</text>
+    <text x="860" y="805" font-family="monospace" font-size="11" class="field">created_at</text>
+  </g>
+  
+  <!-- 6. detection_rules (Left Bottom) -->
+  <g id="rules_table">
+    <rect x="50" y="580" width="320" height="320" class="table-body"/>
+    <rect x="50" y="580" width="320" height="35" class="config-table-header"/>
+    <text x="210" y="602" font-family="Arial" font-size="14" fill="white" text-anchor="middle" font-weight="bold">
+      detection_rules
+    </text>
+    <text x="60" y="635" font-family="monospace" font-size="12" class="pk">PK: rule_id</text>
+    <line x1="50" y1="645" x2="370" y2="645" stroke="#ddd"/>
+    
+    <text x="60" y="665" font-family="monospace" font-size="11" class="field">rule_name</text>
+    <text x="60" y="685" font-family="monospace" font-size="11" class="field">rule_category</text>
+    <text x="60" y="705" font-family="monospace" font-size="11" class="field">resource_type</text>
+    <text x="60" y="725" font-family="monospace" font-size="11" class="field">rule_sql</text>
+    <text x="60" y="745" font-family="monospace" font-size="11" class="json-field">threshold_config (JSON)</text>
+    <text x="60" y="765" font-family="monospace" font-size="11" class="field">enable_grouping</text>
+    <text x="60" y="785" font-family="monospace" font-size="11" class="field">grouping_strategy</text>
+    <text x="60" y="805" font-family="monospace" font-size="11" class="field">min_items_to_group</text>
+    <text x="60" y="825" font-family="monospace" font-size="11" class="field">is_active</text>
+    <text x="60" y="845" font-family="monospace" font-size="11" class="field">run_frequency</text>
+    <text x="60" y="865" font-family="monospace" font-size="11" class="field">om_alert_config (JSON)</text>
+    <text x="60" y="885" font-family="monospace" font-size="11" class="field">last_run_at</text>
+  </g>
+  
+  <!-- Relationships -->
+  
+  <!-- detection_rules to campaigns (creates) -->
+  <path d="M 370 740 L 450 300" class="relationship optional" marker-end="url(#arrowhead)"/>
+  <text x="410" y="520" font-family="Arial" font-size="10" fill="#666" text-anchor="middle">creates</text>
+  <text x="410" y="535" font-family="Arial" font-size="9" fill="#666" text-anchor="middle">detection_rule_id</text>
+  
+  <!-- campaigns to decisions (one-to-many) -->
+  <path d="M 750 270 L 850 270" class="relationship" marker-end="url(#arrowhead)"/>
+  <text x="800" y="265" font-family="Arial" font-size="10" fill="#666" text-anchor="middle">1:N</text>
+  <text x="800" y="280" font-family="Arial" font-size="9" fill="#666" text-anchor="middle">campaign_id</text>
+  
+  <!-- campaigns to notification_tracking (one-to-many) -->
+  <path d="M 600 520 L 600 580" class="relationship" marker-end="url(#arrowhead)"/>
+  <text x="620" y="550" font-family="Arial" font-size="10" fill="#666">1:N</text>
+  <text x="620" y="565" font-family="Arial" font-size="9" fill="#666">campaign_id</text>
+  
+  <!-- decisions to cost_tracking (one-to-many) -->
+  <path d="M 990 440 L 990 480" class="relationship" marker-end="url(#arrowhead)"/>
+  <text x="1010" y="460" font-family="Arial" font-size="10" fill="#666">1:N</text>
+  <text x="1010" y="475" font-family="Arial" font-size="9" fill="#666">decision_id</text>
+  
+  <!-- campaigns to cost_tracking (optional) -->
+  <path d="M 750 400 L 850 550" class="relationship optional" marker-end="url(#arrowhead)"/>
+  <text x="800" y="475" font-family="Arial" font-size="10" fill="#666" text-anchor="middle">optional</text>
+  <text x="800" y="490" font-family="Arial" font-size="9" fill="#666" text-anchor="middle">campaign_id</text>
+  
+  <!-- fact table to campaigns (FQN lookup - no FK) -->
+  <path d="M 370 280 Q 410 280 450 280" class="relationship" stroke-dasharray="3,3" stroke="#999" marker-end="url(#arrowhead-grey)"/>
+  <text x="410" y="275" font-family="Arial" font-size="9" fill="#999" text-anchor="middle">FQN lookup</text>
+  
+  <!-- fact table to cost_tracking (FQN lookup - no FK) -->
+  <path d="M 210 480 Q 210 650 850 650" class="relationship" stroke-dasharray="3,3" stroke="#999" marker-end="url(#arrowhead-grey)"/>
+  <text x="530" y="645" font-family="Arial" font-size="9" fill="#999" text-anchor="middle">FQN lookup</text>
+  
+  <!-- Arrow marker definitions -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" class="relationship-arrow"/>
+    </marker>
+    <marker id="arrowhead-grey" markerWidth="10" markerHeight="10" refX="10" refY="5" orient="auto">
+      <polygon points="0 0, 10 5, 0 10" fill="#999"/>
+    </marker>
+  </defs>
+  
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="1250" y="100" width="300" height="280" fill="white" stroke="#ccc" stroke-width="1" rx="5"/>
+    <text x="1400" y="125" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">Legend</text>
+    
+    <rect x="1270" y="140" width="15" height="15" class="fact-table-header"/>
+    <text x="1295" y="152" font-family="Arial" font-size="12">Fact Table (Time Series)</text>
+    
+    <rect x="1270" y="165" width="15" height="15" class="table-header"/>
+    <text x="1295" y="177" font-family="Arial" font-size="12">Transaction Table</text>
+    
+    <rect x="1270" y="190" width="15" height="15" class="config-table-header"/>
+    <text x="1295" y="202" font-family="Arial" font-size="12">Configuration Table</text>
+    
+    <text x="1270" y="227" font-family="monospace" font-size="12" class="pk">PK</text>
+    <text x="1295" y="227" font-family="Arial" font-size="12">Primary Key</text>
+    
+    <text x="1270" y="247" font-family="monospace" font-size="12" class="fk">FK</text>
+    <text x="1295" y="247" font-family="Arial" font-size="12">Foreign Key</text>
+    
+    <text x="1270" y="267" font-family="monospace" font-size="12" class="json-field">field</text>
+    <text x="1295" y="267" font-family="Arial" font-size="12">JSON Field</text>
+    
+    <line x1="1270" y1="285" x2="1290" y2="285" class="relationship"/>
+    <text x="1295" y="289" font-family="Arial" font-size="12">Foreign Key Relationship</text>
+    
+    <line x1="1270" y1="305" x2="1290" y2="305" stroke="#999" stroke-dasharray="3,3"/>
+    <text x="1295" y="309" font-family="Arial" font-size="12">FQN Lookup (No FK)</text>
+    
+    <line x1="1270" y1="325" x2="1290" y2="325" class="relationship optional"/>
+    <text x="1295" y="329" font-family="Arial" font-size="12">Optional Relationship</text>
+    
+    <text x="1270" y="355" font-family="Arial" font-size="11" font-weight="bold">1:N</text>
+    <text x="1295" y="355" font-family="Arial" font-size="12">One-to-Many</text>
+  </g>
+  
+  <!-- Data Flow Description -->
+  <rect x="1250" y="400" width="300" height="180" fill="#f9f9f9" stroke="#ccc" stroke-width="1" rx="5"/>
+  <text x="1400" y="425" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">Data Flow</text>
+  
+  <text x="1260" y="450" font-family="Arial" font-size="11">1. Detection rules find issues</text>
+  <text x="1260" y="470" font-family="Arial" font-size="11">2. Create campaigns (1 or many items)</text>
+  <text x="1260" y="490" font-family="Arial" font-size="11">3. Track user engagement</text>
+  <text x="1260" y="510" font-family="Arial" font-size="11">4. Record decisions</text>
+  <text x="1260" y="530" font-family="Arial" font-size="11">5. Measure cost savings</text>
+  <text x="1260" y="550" font-family="Arial" font-size="11">6. Fact table provides metrics throughout</text>
+  
+  <!-- Key Design Notes -->
+  <rect x="1250" y="600" width="300" height="120" fill="#e8f4ff" stroke="#3498DB" stroke-width="1" rx="5"/>
+  <text x="1400" y="625" font-family="Arial" font-size="14" font-weight="bold" text-anchor="middle">Key Design Points</text>
+  
+  <text x="1260" y="650" font-family="Arial" font-size="10">• Campaigns handle both individual &amp; groups</text>
+  <text x="1260" y="670" font-family="Arial" font-size="10">• FQN links fact table (no direct FK)</text>
+  <text x="1260" y="690" font-family="Arial" font-size="10">• Every decision tracked in entity_decisions</text>
+  <text x="1260" y="710" font-family="Arial" font-size="10">• Cost savings linked to decisions</text>
+</svg>

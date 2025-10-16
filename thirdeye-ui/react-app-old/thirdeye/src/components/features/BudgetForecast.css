@@ -1,0 +1,413 @@
+.budget-forecast {
+  padding: var(--spacing-lg);
+  height: 100%;
+}
+
+.budget-forecast__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  height: 100%;
+}
+
+.budget-forecast__title {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: 1.125rem;
+  margin: 0;
+}
+
+.budget-forecast__icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  color: #7c3aed;
+}
+
+/* Top Row: Total Cost and ROI */
+.budget-forecast__top-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-sm);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Bottom Row: Potential Savings */
+.budget-forecast__bottom-row {
+  display: flex;
+  width: 100%;
+}
+
+.budget-forecast__key-metric--full-width {
+  flex: 1;
+}
+
+/* Optimization Section */
+.budget-forecast__optimization {
+  width: 100%;
+  padding: var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.budget-forecast__optimization-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.budget-forecast__optimization-title {
+  display: flex;
+  align-items: center;
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.budget-forecast__optimization-savings {
+  color: #06b6d4;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.budget-forecast__optimization-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.budget-forecast__bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+.budget-forecast__bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 0.625rem;
+  font-weight: 500;
+}
+
+.budget-forecast__progress {
+  width: 100%;
+  height: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+
+.budget-forecast__progress--single {
+  height: 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.budget-forecast__progress-bar {
+  height: 100%;
+  border-radius: var(--radius-sm);
+  transition: width 0.8s ease;
+  position: relative;
+}
+
+.budget-forecast__progress-bar--current {
+  background: linear-gradient(90deg, #64748b 0%, #7c3aed 50%, #a855f7 100%);
+}
+
+.budget-forecast__progress-bar--optimized {
+  background: linear-gradient(90deg, #0891b2 0%, #06b6d4 50%, #8b5cf6 100%);
+}
+
+.budget-forecast__progress-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.budget-forecast__key-metric {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-sm);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  min-height: auto;
+}
+
+.budget-forecast__key-metric:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(124, 58, 237, 0.3);
+  transform: translateY(-1px);
+}
+
+.budget-forecast__key-metric--savings:hover {
+  border-color: rgba(8, 145, 178, 0.3);
+}
+
+.budget-forecast__key-metric--roi:hover {
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+.budget-forecast__key-metric-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  color: white;
+  flex-shrink: 0;
+}
+
+.budget-forecast__key-metric--savings .budget-forecast__key-metric-icon {
+  background: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+}
+
+.budget-forecast__key-metric--roi .budget-forecast__key-metric-icon {
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
+}
+
+.budget-forecast__key-metric-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+}
+
+.budget-forecast__key-metric--savings .budget-forecast__key-metric-content {
+  gap: 0.25rem;
+}
+
+.budget-forecast__savings-row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.budget-forecast__key-metric-value {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+
+.budget-forecast__key-metric-label {
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+
+.budget-forecast__key-metric-percentage {
+  color: #06b6d4;
+  font-size: 0.625rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Comparison Section */
+.budget-forecast__comparison {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.budget-forecast__comparison-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.budget-forecast__comparison-title {
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.budget-forecast__comparison-subtitle {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.budget-forecast__comparison-bars {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+}
+
+.budget-forecast__comparison-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.budget-forecast__comparison-bar-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.budget-forecast__comparison-bar {
+  position: relative;
+  width: 100%;
+  height: 1.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.budget-forecast__comparison-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-md);
+  transition: width 0.8s ease;
+  position: relative;
+}
+
+.budget-forecast__comparison-bar--current .budget-forecast__comparison-bar-fill {
+  background: linear-gradient(90deg, #64748b 0%, #7c3aed 50%, #a855f7 100%);
+}
+
+.budget-forecast__comparison-bar-fill--optimized {
+  background: linear-gradient(90deg, #0891b2 0%, #06b6d4 50%, #8b5cf6 100%);
+}
+
+.budget-forecast__savings-highlight {
+  position: absolute;
+  right: var(--spacing-sm);
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(6, 182, 212, 0.9);
+  color: white;
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.625rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.budget-forecast__comparison-bar::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.2),
+    transparent
+  );
+  animation: shimmer 3s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .budget-forecast {
+    padding: var(--spacing-md);
+  }
+  
+  .budget-forecast__title {
+    font-size: 1rem;
+  }
+  
+  .budget-forecast__icon {
+    width: 1rem;
+    height: 1rem;
+  }
+  
+  .budget-forecast__top-row {
+    grid-template-columns: 1fr;
+    gap: var(--spacing-xs);
+  }
+  
+  .budget-forecast__bottom-row {
+    margin-top: var(--spacing-xs);
+  }
+  
+  .budget-forecast__optimization {
+    padding: var(--spacing-sm);
+  }
+  
+  .budget-forecast__optimization-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-xs);
+  }
+  
+  .budget-forecast__optimization-title,
+  .budget-forecast__optimization-savings {
+    font-size: 0.625rem;
+  }
+  
+  .budget-forecast__progress {
+    height: 0.625rem;
+  }
+  
+  .budget-forecast__progress--single {
+    height: 0.875rem;
+  }
+  
+  .budget-forecast__key-metric {
+    padding: var(--spacing-sm);
+  }
+  
+  .budget-forecast__key-metric-value {
+    font-size: 1rem;
+  }
+  
+  .budget-forecast__comparison-bar {
+    height: 1.25rem;
+  }
+  
+  .budget-forecast__savings-highlight {
+    font-size: 0.5rem;
+    padding: 0.0625rem 0.25rem;
+  }
+}
