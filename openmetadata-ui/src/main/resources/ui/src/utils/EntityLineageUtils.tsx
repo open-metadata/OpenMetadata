@@ -1481,8 +1481,7 @@ const processPipelineEdge = (edge: EdgeDetails, pipelineNode: Pipeline) => {
 
 const processEdges = (
   edges: EdgeDetails[],
-  nodesArray: LineageEntityReference[],
-  pipelineViewMode: PipelineViewMode
+  nodesArray: LineageEntityReference[]
 ): EdgeDetails[] => {
   return edges.reduce<EdgeDetails[]>(
     (acc: EdgeDetails[], edge: EdgeDetails) => {
@@ -1495,7 +1494,7 @@ const processEdges = (
         (node) => node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName
       );
 
-      if (!pipelineNode || pipelineViewMode === PipelineViewMode.Edge) {
+      if (!pipelineNode) {
         return [...acc, edge];
       }
 
@@ -1570,7 +1569,10 @@ export const parseLineageData = (
     ...Object.values(downstreamEdges),
     ...Object.values(upstreamEdges),
   ];
-  const processedEdges = processEdges(allEdges, nodesArray, pipelineViewMode);
+  const processedEdges =
+    pipelineViewMode === PipelineViewMode.Node
+      ? processEdges(allEdges, nodesArray)
+      : allEdges;
 
   // Handle pagination
   const { newNodes, newEdges } = processPagination(

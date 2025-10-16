@@ -60,7 +60,7 @@ export interface CustomEdgeData {
 export type ElementLoadingState = Exclude<LoadingState, 'waiting'>;
 export type CustomElement = { node: Node[]; edge: FlowEdge[] };
 
-export interface LineageConfig extends LineageSettings {
+export interface LineageConfig extends Omit<LineageSettings, 'lineageLayer'> {
   nodesPerLayer: number;
 }
 
