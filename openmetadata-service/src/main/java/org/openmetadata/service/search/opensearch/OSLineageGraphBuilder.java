@@ -3,6 +3,7 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.common.utils.CommonUtil.collectionOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.GRAPH_AGGREGATION;
@@ -108,6 +109,7 @@ public class OSLineageGraphBuilder {
     fetchUpstreamNodesRecursively(
         request,
         result,
+        DATA_ASSET_SEARCH_ALIAS,
         Map.of(FullyQualifiedName.buildHash(request.getFqn()), request.getFqn()),
         request.getUpstreamDepth());
     return result;
@@ -116,6 +118,7 @@ public class OSLineageGraphBuilder {
   private void fetchUpstreamNodesRecursively(
       SearchLineageRequest lineageRequest,
       SearchLineageResult result,
+      String searchAlias,
       Map<String, String> hasToFqnMap,
       int remainingDepth)
       throws IOException {
@@ -131,7 +134,7 @@ public class OSLineageGraphBuilder {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
-            GLOBAL_SEARCH_ALIAS,
+            searchAlias,
             lineageRequest.getUpstreamDepth() == remainingDepth
                 ? null
                 : lineageRequest.getQueryFilter(),
@@ -177,11 +180,12 @@ public class OSLineageGraphBuilder {
       fetchUpstreamNodesRecursively(
           newReq.withDirectionValue(directionValue).withIsConnectedVia(false),
           result,
+          searchAlias,
           hasToFqnMapForLayer,
           remainingDepth - 1);
     } else {
       fetchUpstreamNodesRecursively(
-          lineageRequest, result, hasToFqnMapForLayer, remainingDepth - 1);
+          lineageRequest, result, searchAlias, hasToFqnMapForLayer, remainingDepth - 1);
     }
   }
 
@@ -195,6 +199,7 @@ public class OSLineageGraphBuilder {
     fetchDownstreamNodesRecursively(
         lineageRequest,
         result,
+        DATA_ASSET_SEARCH_ALIAS,
         Map.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
         lineageRequest.getDownstreamDepth());
     return result;
@@ -203,6 +208,7 @@ public class OSLineageGraphBuilder {
   private void fetchDownstreamNodesRecursively(
       SearchLineageRequest lineageRequest,
       SearchLineageResult result,
+      String searchAlias,
       Map<String, String> hasToFqnMap,
       int remainingDepth)
       throws IOException {
@@ -218,7 +224,7 @@ public class OSLineageGraphBuilder {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
-            GLOBAL_SEARCH_ALIAS,
+            searchAlias,
             lineageRequest.getQueryFilter(),
             GRAPH_AGGREGATION,
             directionKeyAndValues,
@@ -277,11 +283,12 @@ public class OSLineageGraphBuilder {
       fetchDownstreamNodesRecursively(
           newReq.withDirectionValue(directionValue).withIsConnectedVia(false),
           result,
+          searchAlias,
           hasToFqnMapForLayer,
           remainingDepth - 1);
     } else {
       fetchDownstreamNodesRecursively(
-          lineageRequest, result, hasToFqnMapForLayer, remainingDepth - 1);
+          lineageRequest, result, searchAlias, hasToFqnMapForLayer, remainingDepth - 1);
     }
   }
 
