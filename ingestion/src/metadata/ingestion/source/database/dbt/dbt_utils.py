@@ -130,7 +130,7 @@ def generate_entity_link(dbt_test, table_entity: Optional[Table] = None):
     matched_column_name = dbt_column_name
     if dbt_column_name and table_entity and table_entity.columns:
         # Case-insensitive lookup to find the actual column name
-        for col in table_entity.columns.root:
+        for col in table_entity.columns:
             if col.name.root.lower() == dbt_column_name.lower():
                 matched_column_name = col.name.root
                 break
