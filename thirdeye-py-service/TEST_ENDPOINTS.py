@@ -13,7 +13,7 @@ def test_endpoints():
     client = TestClient(app)
     
     print("=" * 60)
-    print("🧪 ThirdEye Service - Endpoint Tests")
+    print("ThirdEye Service - Endpoint Tests")
     print("=" * 60)
     
     endpoints = [
@@ -39,36 +39,36 @@ def test_endpoints():
                 response = client.get(path)
             
             if response.status_code == 200:
-                print(f"✅ {description}: {response.status_code}")
+                print(f"[OK] {description}: {response.status_code}")
                 results["success"] += 1
             elif response.status_code == 500:
                 # Expected if database is not connected
-                print(f"⚠️  {description}: {response.status_code} (Database required)")
+                print(f"[WARN] {description}: {response.status_code} (Database required)")
                 results["success"] += 1
             else:
-                print(f"❌ {description}: {response.status_code}")
+                print(f"[FAIL] {description}: {response.status_code}")
                 results["failed"] += 1
                 results["errors"].append((description, response.status_code))
         except Exception as e:
-            print(f"❌ {description}: Error - {str(e)}")
+            print(f"[ERROR] {description}: Error - {str(e)}")
             results["failed"] += 1
             results["errors"].append((description, str(e)))
     
     print("\n" + "=" * 60)
-    print("📊 Test Results")
+    print("Test Results")
     print("=" * 60)
-    print(f"✅ Passed: {results['success']}/{len(endpoints)}")
-    print(f"❌ Failed: {results['failed']}/{len(endpoints)}")
+    print(f"Passed: {results['success']}/{len(endpoints)}")
+    print(f"Failed: {results['failed']}/{len(endpoints)}")
     
     if results["errors"]:
-        print("\n⚠️  Failed Tests:")
+        print("\nFailed Tests:")
         for desc, error in results["errors"]:
             print(f"  - {desc}: {error}")
     
     print("\n" + "=" * 60)
     
     # List all routes
-    print("\n📋 All Available Routes:")
+    print("\nAll Available Routes:")
     print("=" * 60)
     for route in app.routes:
         if hasattr(route, 'path') and hasattr(route, 'methods'):
@@ -76,7 +76,7 @@ def test_endpoints():
             print(f"  {methods:6} {route.path}")
     
     print("\n" + "=" * 60)
-    print("✨ Endpoint configuration test complete!")
+    print("Endpoint configuration test complete!")
     print("=" * 60)
     
     return results["failed"] == 0

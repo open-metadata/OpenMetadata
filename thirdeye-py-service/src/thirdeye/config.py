@@ -56,7 +56,7 @@ class Settings(BaseSettings):
     om_api_timeout: int = Field(default=30, description="OpenMetadata API timeout (seconds)")
     
     # JWT Authentication
-    jwt_enabled: bool = Field(default=True, description="Enable JWT authentication")
+    jwt_enabled: bool = Field(default=False, description="Enable JWT authentication (set to True in production)")
     jwt_jwks_url: Optional[str] = Field(
         default=None,
         description="JWT JWKS URL for key discovery (e.g., http://localhost:8585/.well-known/jwks.json)"
@@ -66,7 +66,7 @@ class Settings(BaseSettings):
         description="JWT public key (PEM format) - alternative to JWKS URL"
     )
     jwt_secret: Optional[str] = Field(
-        default=None,
+        default="dev-secret-change-in-production",
         description="JWT secret key for HS256 (shared with OpenMetadata) - use for dev only"
     )
     jwt_algorithm: str = Field(default="RS256", description="JWT algorithm: RS256, HS256, etc.")
