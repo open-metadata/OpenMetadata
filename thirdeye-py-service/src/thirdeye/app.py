@@ -15,7 +15,7 @@ import sys
 
 from thirdeye.config import get_settings
 from thirdeye.db import init_engines, close_engines, ensure_schema_exists, run_migrations
-from thirdeye.routers import health, dashboard, action_items
+from thirdeye.routers import health, dashboard, action_items, insights, techniques
 
 
 # Configure loguru
@@ -146,6 +146,8 @@ async def global_exception_handler(request, exc: Exception):
 app.include_router(health.router, tags=["Health"])
 app.include_router(dashboard.router, tags=["Dashboard"])
 app.include_router(action_items.router, tags=["Action Items"])
+app.include_router(insights.router, tags=["Insights"])
+app.include_router(techniques.router, tags=["Techniques"])
 
 
 # Root endpoint
