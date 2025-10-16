@@ -335,8 +335,6 @@ class PowerBIUnitTest(TestCase):
         )
         self.assertIsNone(result)
 
-
-
         result = self.powerbi._parse_databricks_source(
             MOCK_DATABRICKS_EXP, MOCK_DASHBOARD_DATA_MODEL
         )
