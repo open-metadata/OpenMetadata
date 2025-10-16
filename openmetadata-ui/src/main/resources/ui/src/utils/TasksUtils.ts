@@ -213,7 +213,7 @@ export const getTaskDetailPath = (task: Thread) => {
       EntityTabs.ACTIVITY_FEED,
       ActivityFeedTabs.TASKS
     );
-  } else if (entityType === EntityType.PAGE) {
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
     return getKnowledgeCenterPagePath(
       entityFqn,
       EntityTabs.ACTIVITY_FEED,
