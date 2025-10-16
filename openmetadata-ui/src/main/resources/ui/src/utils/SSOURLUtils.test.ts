@@ -10,12 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  getAuthorityUrl,
-  getCallbackUrl,
-  getDomainUrl,
-  getServerUrl,
-} from './SSOURLUtils';
+import { getAuthorityUrl, getCallbackUrl, getServerUrl } from './SSOURLUtils';
 
 // Mock EnvironmentUtils
 jest.mock('./EnvironmentUtils', () => ({
@@ -48,14 +43,6 @@ describe('Environment-based URL functions', () => {
   describe('getServerUrl', () => {
     it('should return production server URL', () => {
       const result = getServerUrl();
-
-      expect(result).toBe('https://production.example.com');
-    });
-  });
-
-  describe('getDomainUrl', () => {
-    it('should return production domain URL', () => {
-      const result = getDomainUrl();
 
       expect(result).toBe('https://production.example.com');
     });

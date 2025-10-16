@@ -298,9 +298,7 @@ const SSOConfigurationFormRJSF = ({
     }
 
     // Deep clone the schema to avoid mutating the original
-    const authSchema = JSON.parse(
-      JSON.stringify(authenticationConfigSchema)
-    ) as Record<string, unknown>;
+    const authSchema = structuredClone(authenticationConfigSchema);
 
     // For configured SSO, remove providerName from required fields
     if (isConfigured) {
@@ -706,9 +704,8 @@ const SSOConfigurationFormRJSF = ({
 
       const payload: SecurityConfiguration = {
         authenticationConfiguration:
-          cleanedFormData.authenticationConfiguration as SecurityConfiguration['authenticationConfiguration'],
-        authorizerConfiguration:
-          cleanedFormData.authorizerConfiguration as SecurityConfiguration['authorizerConfiguration'],
+          cleanedFormData.authenticationConfiguration,
+        authorizerConfiguration: cleanedFormData.authorizerConfiguration,
       };
 
       // Save configuration (PATCH for existing, PUT with validation for new)

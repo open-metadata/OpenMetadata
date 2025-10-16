@@ -15,7 +15,6 @@ import { ClientType } from '../generated/configuration/securityConfiguration';
 import {
   getAuthorityUrl,
   getCallbackUrl,
-  getDomainUrl,
   getServerUrl,
 } from '../utils/SSOURLUtils';
 
@@ -39,7 +38,7 @@ export const SAML_SSO_DEFAULTS = {
     authorityUrl: getAuthorityUrl(), // Note: field name is authorityUrl in IDP, not authority
   },
   sp: {
-    entityId: getDomainUrl(),
+    entityId: getServerUrl(),
     acs: getCallbackUrl(),
     callback: getCallbackUrl(),
   },
@@ -541,7 +540,7 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
 };
 
 // Common fields to always remove from authentication configuration
-export const COMMON_AUTH_FIELDS_TO_REMOVE = ['responseType'];
+export const COMMON_AUTH_FIELD_TO_REMOVE = 'responseType';
 
 // Hardcoded authorizer values
 export const DEFAULT_AUTHORIZER_CLASS_NAME =

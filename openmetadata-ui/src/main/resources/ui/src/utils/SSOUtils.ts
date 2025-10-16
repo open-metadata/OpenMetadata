@@ -27,7 +27,7 @@ import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
   COMMON_AUTHORIZER_FIELDS_TO_REMOVE,
-  COMMON_AUTH_FIELDS_TO_REMOVE,
+  COMMON_AUTH_FIELD_TO_REMOVE,
   DEFAULT_AUTHORIZER_CLASS_NAME,
   DEFAULT_CALLBACK_URL,
   DEFAULT_CONTAINER_REQUEST_FILTER,
@@ -45,17 +45,19 @@ export interface FormData {
   authorizerConfiguration: AuthorizerConfiguration;
 }
 
+export type PatchOperationValues =
+  | string
+  | number
+  | boolean
+  | Record<string, unknown>
+  | unknown[]
+  | null;
+
 // JsonPatchOperation interface for configuration updates
 export interface JsonPatchOperation {
   op: 'replace' | 'add' | 'remove';
   path: string;
-  value?:
-    | string
-    | number
-    | boolean
-    | Record<string, unknown>
-    | unknown[]
-    | null;
+  value?: PatchOperationValues;
 }
 
 /**
@@ -205,21 +207,73 @@ export const parseValidationErrors = (
 
       if (i === pathParts.length - 1) {
         // Last part - add the actual error
-        if (!current[part]) {
-          current[part] = {};
-        }
+        current[part] ??= {};
         current[part].__errors = [error.error];
       } else {
         // Intermediate part - create nested object if needed
-        if (!current[part]) {
-          current[part] = {};
-        }
+        current[part] ??= {};
         current = current[part] as ErrorSchema;
       }
     }
   }
 
   return errorSchema;
+};
+
+/**
+ * Navigates to the target field in the error schema
+ * @param errorSchema - The error schema to navigate
+ * @param pathParts - Array of path parts to navigate
+ * @returns The parent error schema and the target field key, or null if path doesn't exist
+ */
+const navigateToTargetField = (
+  errorSchema: ErrorSchema,
+  pathParts: string[]
+): { parent: ErrorSchema; targetKey: string } | null => {
+  let current = errorSchema;
+
+  // Navigate to the parent of the target field
+  const parentParts = pathParts.slice(0, -1);
+  for (const part of parentParts) {
+    if (!current[part]) {
+      return null;
+    }
+    current = current[part] as ErrorSchema;
+  }
+
+  const targetKey = pathParts[pathParts.length - 1];
+  if (!current[targetKey]) {
+    return null;
+  }
+
+  return { parent: current, targetKey };
+};
+
+/**
+ * Cleans up empty parent objects after deleting a field error
+ * @param errorSchema - The root error schema
+ * @param pathParts - Array of path parts (excluding the target field)
+ */
+const cleanupEmptyParents = (
+  errorSchema: ErrorSchema,
+  pathParts: string[]
+): void => {
+  let current = errorSchema;
+
+  for (const part of pathParts) {
+    if (!current[part] || typeof current[part] !== 'object') {
+      break;
+    }
+
+    const obj = current[part] as ErrorSchema;
+    if (Object.keys(obj).length === 0) {
+      delete current[part];
+
+      break;
+    }
+
+    current = obj;
+  }
 };
 
 /**
@@ -240,48 +294,19 @@ export const clearFieldError = (
     return;
   }
 
-  // Parse the field path (e.g., "root/authenticationConfiguration/adminPrincipals")
   const pathParts = fieldPath.replace(/^root\//, '').split('/');
+  const navigation = navigateToTargetField(fieldErrorsRef.current, pathParts);
 
-  let current = fieldErrorsRef.current;
-
-  // Navigate through the error structure
-  for (let i = 0; i < pathParts.length; i++) {
-    const part = pathParts[i];
-
-    if (!current[part]) {
-      // Path doesn't exist in errors, nothing to clear
-      return;
-    }
-
-    if (i === pathParts.length - 1) {
-      // We're at the target field, clear its errors
-      delete current[part];
-
-      // Clean up empty parent objects
-      let cleanupCurrent = fieldErrorsRef.current;
-      const cleanupParts = pathParts.slice(0, -1);
-
-      for (let j = 0; j < cleanupParts.length; j++) {
-        const cleanupPart = cleanupParts[j];
-        if (
-          cleanupCurrent[cleanupPart] &&
-          typeof cleanupCurrent[cleanupPart] === 'object'
-        ) {
-          const obj = cleanupCurrent[cleanupPart] as ErrorSchema;
-          if (Object.keys(obj).length === 0) {
-            delete cleanupCurrent[cleanupPart];
-
-            break;
-          }
-          cleanupCurrent = obj;
-        }
-      }
-    } else {
-      // Navigate deeper
-      current = current[part] as ErrorSchema;
-    }
+  if (!navigation) {
+    return;
   }
+
+  // Clear the target field error
+  delete navigation.parent[navigation.targetKey];
+
+  // Clean up empty parent objects
+  const parentPaths = pathParts.slice(0, -1);
+  cleanupEmptyParents(fieldErrorsRef.current, parentPaths);
 };
 
 /**
@@ -296,6 +321,15 @@ export const getDefaultsForProvider = (
 ): FormData => {
   const isGoogle = provider === AuthProvider.Google;
   const isSaml = provider === AuthProvider.Saml;
+
+  const {
+    discoveryUri = '',
+    tokenValidity = '',
+    serverUrl = '',
+    sessionExpiry = '',
+    authority = '',
+    publicKeyUrls = [],
+  } = isGoogle ? GOOGLE_SSO_DEFAULTS : {};
 
   const authConfig: AuthenticationConfiguration = {
     provider: provider,
@@ -312,8 +346,8 @@ export const getDefaultsForProvider = (
     // Always include authority and publicKeyUrls for Google (required by backend)
     ...(isGoogle
       ? {
-          authority: GOOGLE_SSO_DEFAULTS.authority,
-          publicKeyUrls: GOOGLE_SSO_DEFAULTS.publicKeyUrls,
+          authority,
+          publicKeyUrls,
         }
       : {}),
     // Add SAML-specific configuration
@@ -361,30 +395,28 @@ export const getDefaultsForProvider = (
       id: '',
       secret: '',
       scope: 'openid email profile',
-      discoveryUri: isGoogle ? GOOGLE_SSO_DEFAULTS.discoveryUri : '',
+      discoveryUri,
       useNonce: false,
       preferredJwsAlgorithm: 'RS256',
       responseType: 'code',
       disablePkce: false,
       maxClockSkew: 0,
       clientAuthenticationMethod: 'client_secret_post',
-      tokenValidity: isGoogle ? GOOGLE_SSO_DEFAULTS.tokenValidity : 0,
+      tokenValidity,
       customParams: {},
       tenant: '',
-      serverUrl: isGoogle ? GOOGLE_SSO_DEFAULTS.serverUrl : '',
+      serverUrl,
       callbackUrl: DEFAULT_CALLBACK_URL,
       maxAge: 0,
       prompt: '',
-      sessionExpiry: isGoogle ? GOOGLE_SSO_DEFAULTS.sessionExpiry : 0,
+      sessionExpiry,
     };
   } else if (!isSaml) {
     // For public clients, use root level fields (excluding SAML)
-    authConfig.authority = isGoogle ? GOOGLE_SSO_DEFAULTS.authority : '';
+    authConfig.authority = authority;
     authConfig.clientId = '';
     authConfig.callbackUrl = DEFAULT_CALLBACK_URL;
-    authConfig.publicKeyUrls = isGoogle
-      ? GOOGLE_SSO_DEFAULTS.publicKeyUrls
-      : [];
+    authConfig.publicKeyUrls = publicKeyUrls;
   }
 
   return {
@@ -398,6 +430,215 @@ export const getDefaultsForProvider = (
       principalDomain: '',
     },
   };
+};
+
+/**
+ * Handles OIDC configuration cleanup for confidential clients
+ */
+const cleanupOidcConfiguration = (
+  authConfig: AuthenticationConfiguration,
+  oidcConfig: Record<string, unknown>
+): void => {
+  if (typeof oidcConfig.id === 'string') {
+    authConfig.clientId = oidcConfig.id;
+  }
+  if (typeof oidcConfig.callbackUrl === 'string') {
+    authConfig.callbackUrl = oidcConfig.callbackUrl;
+  }
+  if (typeof oidcConfig.serverUrl === 'string') {
+    oidcConfig.serverUrl = oidcConfig.serverUrl.replace(/\/callback\/?$/, '');
+  }
+};
+
+/**
+ * Removes provider-specific fields based on client type
+ */
+const removeProviderFields = (
+  authConfig: AuthenticationConfiguration,
+  fieldsToRemove: string[],
+  isPublicClient: boolean
+): void => {
+  if (isPublicClient) {
+    for (const field of fieldsToRemove) {
+      delete authConfig[field as keyof AuthenticationConfiguration];
+    }
+    delete authConfig.secret;
+  } else {
+    for (const field of fieldsToRemove.filter(
+      (field) => field !== 'oidcConfiguration'
+    )) {
+      delete authConfig[field as keyof AuthenticationConfiguration];
+    }
+  }
+};
+
+/**
+ * Cleans authentication configuration
+ */
+const cleanupAuthenticationConfig = (
+  authConfig: AuthenticationConfiguration,
+  provider: string
+): void => {
+  delete authConfig[
+    COMMON_AUTH_FIELD_TO_REMOVE as keyof AuthenticationConfiguration
+  ];
+
+  if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
+    authConfig.clientType = ClientType.Public;
+  }
+
+  const fieldsToRemove = PROVIDER_FIELD_MAPPINGS[provider] || [
+    'ldapConfiguration',
+    'samlConfiguration',
+    'oidcConfiguration',
+  ];
+
+  const isPublicClient = authConfig.clientType === ClientType.Public;
+  removeProviderFields(authConfig, fieldsToRemove, isPublicClient);
+
+  if (!isPublicClient && authConfig.oidcConfiguration) {
+    const oidcConfig = authConfig.oidcConfiguration;
+    cleanupOidcConfiguration(authConfig, oidcConfig);
+  }
+
+  authConfig.enableSelfSignup ??= true;
+};
+
+/**
+ * Cleans authorizer configuration
+ */
+const cleanupAuthorizerConfig = (
+  authorizerConfig: AuthorizerConfiguration,
+  provider: string
+): void => {
+  for (const field of COMMON_AUTHORIZER_FIELDS_TO_REMOVE) {
+    delete authorizerConfig[field as keyof AuthorizerConfiguration];
+  }
+
+  if (PROVIDERS_WITHOUT_BOT_PRINCIPALS.includes(provider)) {
+    delete authorizerConfig.botPrincipals;
+  }
+
+  authorizerConfig.enforcePrincipalDomain ??= false;
+  authorizerConfig.enableSecureSocketConnection ??= false;
+  authorizerConfig.className = DEFAULT_AUTHORIZER_CLASS_NAME;
+  authorizerConfig.containerRequestFilter = DEFAULT_CONTAINER_REQUEST_FILTER;
+};
+
+/**
+ * Extracts matching trust store configuration
+ */
+const extractTrustStoreConfig = (
+  trustStoreConfig: Record<string, unknown>,
+  truststoreFormat: string
+): Record<string, unknown> => {
+  const configMap: Record<string, string> = {
+    CustomTrustStore: 'customTrustManagerConfig',
+    HostName: 'hostNameConfig',
+    JVMDefault: 'jvmDefaultConfig',
+    TrustAll: 'trustAllConfig',
+  };
+
+  const configKey = configMap[truststoreFormat];
+  if (configKey && trustStoreConfig[configKey]) {
+    return { [configKey]: trustStoreConfig[configKey] };
+  }
+
+  return {};
+};
+
+/**
+ * Cleans LDAP configuration
+ */
+const cleanupLdapConfig = (ldapConfig: Record<string, unknown>): void => {
+  ldapConfig.isFullDn ??= false;
+  ldapConfig.sslEnabled ??= false;
+
+  if (ldapConfig.trustStoreConfig && ldapConfig.truststoreFormat) {
+    const trustStoreConfig = ldapConfig.trustStoreConfig as Record<
+      string,
+      unknown
+    >;
+    ldapConfig.trustStoreConfig = extractTrustStoreConfig(
+      trustStoreConfig,
+      ldapConfig.truststoreFormat as string
+    );
+  }
+};
+
+/**
+ * Cleans SAML IDP configuration
+ */
+const cleanupSamlIdp = (
+  idpConfig: Record<string, unknown>,
+  authConfig: AuthenticationConfiguration
+): void => {
+  if (typeof idpConfig.authorityUrl === 'string') {
+    authConfig.authority = idpConfig.authorityUrl;
+  }
+  if (typeof idpConfig.idpX509Certificate === 'string') {
+    idpConfig.idpX509Certificate = idpConfig.idpX509Certificate.replaceAll(
+      String.raw`\n`,
+      '\n'
+    );
+  }
+};
+
+/**
+ * Cleans SAML SP configuration
+ */
+const cleanupSamlSp = (
+  spConfig: Record<string, unknown>,
+  authConfig: AuthenticationConfiguration
+): void => {
+  if (typeof spConfig.callback === 'string') {
+    authConfig.callbackUrl = spConfig.callback;
+    spConfig.acs = spConfig.callback;
+  }
+  if (typeof spConfig.spX509Certificate === 'string') {
+    spConfig.spX509Certificate = spConfig.spX509Certificate.replaceAll(
+      String.raw`\n`,
+      '\n'
+    );
+  }
+  if (typeof spConfig.spPrivateKey === 'string') {
+    spConfig.spPrivateKey = spConfig.spPrivateKey.replaceAll(
+      String.raw`\n`,
+      '\n'
+    );
+  }
+};
+
+/**
+ * Cleans SAML security configuration
+ */
+const cleanupSamlSecurity = (securityConfig: Record<string, unknown>): void => {
+  securityConfig.strictMode ??= false;
+  securityConfig.wantAssertionsSigned ??= false;
+  securityConfig.wantMessagesSigned ??= false;
+  securityConfig.sendSignedAuthRequest ??= false;
+};
+
+/**
+ * Cleans SAML configuration
+ */
+const cleanupSamlConfig = (
+  samlConfig: Record<string, unknown>,
+  authConfig: AuthenticationConfiguration
+): void => {
+  samlConfig.debugMode ??= false;
+
+  if (samlConfig.idp && typeof samlConfig.idp === 'object') {
+    cleanupSamlIdp(samlConfig.idp as Record<string, unknown>, authConfig);
+  }
+
+  if (samlConfig.sp && typeof samlConfig.sp === 'object') {
+    cleanupSamlSp(samlConfig.sp as Record<string, unknown>, authConfig);
+  }
+
+  if (samlConfig.security) {
+    cleanupSamlSecurity(samlConfig.security as Record<string, unknown>);
+  }
 };
 
 /**
@@ -417,225 +658,27 @@ export const cleanupProviderSpecificFields = (
   const cleanedData = { ...data };
 
   if (cleanedData.authenticationConfiguration) {
-    const authConfig = cleanedData.authenticationConfiguration;
-
-    // Remove common unwanted fields that might persist
-    for (const field of COMMON_AUTH_FIELDS_TO_REMOVE) {
-      delete authConfig[field as keyof AuthenticationConfiguration];
-    }
-
-    // Set clientType to Public for SAML and LDAP providers
-    if (provider === AuthProvider.Saml || provider === AuthProvider.LDAP) {
-      authConfig.clientType = ClientType.Public;
-    }
-
-    // Remove provider-specific configs that shouldn't be sent
-    const fieldsToRemove = PROVIDER_FIELD_MAPPINGS[provider] || [
-      'ldapConfiguration',
-      'samlConfiguration',
-      'oidcConfiguration',
-    ];
-
-    // Handle oidcConfiguration based on client type
-    if (authConfig.clientType === ClientType.Public) {
-      // For public clients, remove oidcConfiguration entirely
-      for (const field of fieldsToRemove) {
-        delete authConfig[field as keyof AuthenticationConfiguration];
-      }
-      // Also remove secret from root level for public clients
-      delete authConfig.secret;
-    } else {
-      // For confidential clients, keep oidcConfiguration but remove other provider configs
-      const fieldsToActuallyRemove = fieldsToRemove.filter(
-        (field) => field !== 'oidcConfiguration'
-      );
-
-      for (const field of fieldsToActuallyRemove) {
-        delete authConfig[field as keyof AuthenticationConfiguration];
-      }
-
-      // For confidential clients, populate clientId and callbackUrl from OIDC configuration
-      // since they are hidden in the UI but needed in the authentication object
-      if (
-        authConfig.clientType === ClientType.Confidential &&
-        authConfig.oidcConfiguration
-      ) {
-        const oidcConfig = authConfig.oidcConfiguration as Record<
-          string,
-          unknown
-        >;
-        if (typeof oidcConfig.id === 'string') {
-          authConfig.clientId = oidcConfig.id;
-        }
-        if (typeof oidcConfig.callbackUrl === 'string') {
-          authConfig.callbackUrl = oidcConfig.callbackUrl;
-        }
-        // Clean up serverUrl to ensure it doesn't contain /callback
-        if (typeof oidcConfig.serverUrl === 'string') {
-          const serverUrl = oidcConfig.serverUrl as string;
-          // Remove /callback or any path from serverUrl
-          oidcConfig.serverUrl = serverUrl.replace(/\/callback\/?$/, '');
-        }
-      }
-    }
-
-    // Ensure boolean fields are always included (only for relevant providers)
-    if (authConfig.enableSelfSignup === undefined) {
-      authConfig.enableSelfSignup = true;
-    }
+    cleanupAuthenticationConfig(
+      cleanedData.authenticationConfiguration,
+      provider
+    );
   }
 
   if (cleanedData.authorizerConfiguration) {
-    const authorizerConfig = cleanedData.authorizerConfiguration;
-
-    // Remove common authorizer fields that shouldn't be sent
-    for (const field of COMMON_AUTHORIZER_FIELDS_TO_REMOVE) {
-      delete authorizerConfig[field as keyof AuthorizerConfiguration];
-    }
-
-    // Remove bot principals for providers that don't support them (only Azure and Okta should have botPrincipals)
-    if (PROVIDERS_WITHOUT_BOT_PRINCIPALS.includes(provider)) {
-      delete authorizerConfig.botPrincipals;
-    }
-
-    // Ensure boolean fields are always included (for all providers)
-    if (authorizerConfig.enforcePrincipalDomain === undefined) {
-      authorizerConfig.enforcePrincipalDomain = false;
-    }
-    if (authorizerConfig.enableSecureSocketConnection === undefined) {
-      authorizerConfig.enableSecureSocketConnection = false;
-    }
-
-    // Automatically set className and containerRequestFilter for all providers
-    authorizerConfig.className = DEFAULT_AUTHORIZER_CLASS_NAME;
-    authorizerConfig.containerRequestFilter = DEFAULT_CONTAINER_REQUEST_FILTER;
+    cleanupAuthorizerConfig(cleanedData.authorizerConfiguration, provider);
   }
 
-  // Provider-specific boolean field handling
   if (cleanedData.authenticationConfiguration?.ldapConfiguration) {
-    const ldapConfig =
-      cleanedData.authenticationConfiguration.ldapConfiguration;
-
-    // LDAP-specific boolean fields
-    if (ldapConfig.isFullDn === undefined) {
-      ldapConfig.isFullDn = false;
-    }
-    if (ldapConfig.sslEnabled === undefined) {
-      ldapConfig.sslEnabled = false;
-    }
-
-    // Clean up trustStoreConfig based on truststoreFormat
-    if (ldapConfig.trustStoreConfig && ldapConfig.truststoreFormat) {
-      const trustStoreConfig = ldapConfig.trustStoreConfig as Record<
-        string,
-        unknown
-      >;
-      const truststoreFormat = ldapConfig.truststoreFormat as string;
-
-      // Create a new clean trustStoreConfig object
-      const cleanTrustStoreConfig: Record<string, unknown> = {};
-
-      // Only include the configuration that matches the selected format
-      if (
-        truststoreFormat === 'CustomTrustStore' &&
-        trustStoreConfig.customTrustManagerConfig
-      ) {
-        cleanTrustStoreConfig.customTrustManagerConfig =
-          trustStoreConfig.customTrustManagerConfig;
-      }
-      if (truststoreFormat === 'HostName' && trustStoreConfig.hostNameConfig) {
-        cleanTrustStoreConfig.hostNameConfig = trustStoreConfig.hostNameConfig;
-      }
-      if (
-        truststoreFormat === 'JVMDefault' &&
-        trustStoreConfig.jvmDefaultConfig
-      ) {
-        cleanTrustStoreConfig.jvmDefaultConfig =
-          trustStoreConfig.jvmDefaultConfig;
-      }
-      if (truststoreFormat === 'TrustAll' && trustStoreConfig.trustAllConfig) {
-        cleanTrustStoreConfig.trustAllConfig = trustStoreConfig.trustAllConfig;
-      }
-
-      // Replace the original trustStoreConfig with the clean one
-      ldapConfig.trustStoreConfig = cleanTrustStoreConfig;
-    }
+    cleanupLdapConfig(
+      cleanedData.authenticationConfiguration.ldapConfiguration
+    );
   }
 
   if (cleanedData.authenticationConfiguration?.samlConfiguration) {
-    const samlConfig =
-      cleanedData.authenticationConfiguration.samlConfiguration;
-    const authConfig = cleanedData.authenticationConfiguration;
-
-    // SAML-specific boolean fields
-    if (samlConfig.debugMode === undefined) {
-      samlConfig.debugMode = false;
-    }
-
-    // Process certificates to fix escaping issues and handle authority/callback
-    if (samlConfig.idp && typeof samlConfig.idp === 'object') {
-      const idpConfig = samlConfig.idp as Record<string, unknown>;
-
-      // Copy IDP authorityUrl to root level authority
-      if (
-        idpConfig.authorityUrl &&
-        typeof idpConfig.authorityUrl === 'string'
-      ) {
-        authConfig.authority = idpConfig.authorityUrl;
-      }
-
-      if (
-        idpConfig.idpX509Certificate &&
-        typeof idpConfig.idpX509Certificate === 'string'
-      ) {
-        // Fix certificate escaping by replacing \\n with \n
-        idpConfig.idpX509Certificate = idpConfig.idpX509Certificate.replaceAll(
-          '\\n',
-          '\n'
-        );
-      }
-    }
-
-    if (samlConfig.sp && typeof samlConfig.sp === 'object') {
-      const spConfig = samlConfig.sp as Record<string, unknown>;
-
-      // Copy SP callback to root level callbackUrl and ensure ACS matches callback
-      if (spConfig.callback && typeof spConfig.callback === 'string') {
-        authConfig.callbackUrl = spConfig.callback;
-        // Also ensure ACS has the same value as callback
-        spConfig.acs = spConfig.callback;
-      }
-      if (
-        spConfig.spX509Certificate &&
-        typeof spConfig.spX509Certificate === 'string'
-      ) {
-        // Fix certificate escaping by replacing \\n with \n
-        spConfig.spX509Certificate = spConfig.spX509Certificate.replaceAll(
-          '\\n',
-          '\n'
-        );
-      }
-      if (spConfig.spPrivateKey && typeof spConfig.spPrivateKey === 'string') {
-        // Fix private key escaping by replacing \\n with \n
-        spConfig.spPrivateKey = spConfig.spPrivateKey.replaceAll('\\n', '\n');
-      }
-    }
-
-    if (samlConfig.security) {
-      const securityConfig = samlConfig.security as Record<string, unknown>;
-      if (securityConfig.strictMode === undefined) {
-        securityConfig.strictMode = false;
-      }
-      if (securityConfig.wantAssertionsSigned === undefined) {
-        securityConfig.wantAssertionsSigned = false;
-      }
-      if (securityConfig.wantMessagesSigned === undefined) {
-        securityConfig.wantMessagesSigned = false;
-      }
-      if (securityConfig.sendSignedAuthRequest === undefined) {
-        securityConfig.sendSignedAuthRequest = false;
-      }
-    }
+    cleanupSamlConfig(
+      cleanedData.authenticationConfiguration.samlConfiguration,
+      cleanedData.authenticationConfiguration
+    );
   }
 
   return cleanedData;
@@ -786,13 +829,7 @@ export const generatePatches = (
             patches.push({
               op: 'replace',
               path: `${basePath}/${key}`,
-              value: newValue as
-                | string
-                | number
-                | boolean
-                | Record<string, unknown>
-                | unknown[]
-                | null,
+              value: newValue as PatchOperationValues,
             });
           }
         }
@@ -811,13 +848,7 @@ export const generatePatches = (
           patches.push({
             op: 'replace',
             path: `${basePath}/${key}`,
-            value: newValue as
-              | string
-              | number
-              | boolean
-              | Record<string, unknown>
-              | unknown[]
-              | null,
+            value: newValue as PatchOperationValues,
           });
         }
       }
@@ -1085,7 +1116,7 @@ export const extractFieldName = (fieldId: string): string => {
   // "root/authenticationConfiguration/clientId" -> "clientId"
   // "root/authenticationConfiguration/authority" -> "authority"
   const parts = fieldId.split('/');
-  const lastPart = parts.at(parts.length - 1) ?? '';
+  const lastPart = parts.at(-1) ?? '';
 
   // Handle common field mappings for SSO documentation
   const fieldMappings: Record<string, string> = {

@@ -39,19 +39,6 @@ export const getServerUrl = (): string => {
 };
 
 /**
- * Get just the domain/origin without any path
- * @returns The domain URL for SSO entity ID
- */
-export const getDomainUrl = (): string => {
-  if (isDev()) {
-    return 'http://localhost:8585';
-  }
-
-  // In production, use just the origin (protocol + domain + port)
-  return globalThis.location.origin;
-};
-
-/**
  * Get the authority URL for SAML authentication
  * @returns The authority URL for SAML login
  */
