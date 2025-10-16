@@ -75,7 +75,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         })
       );
       setOptions(mappedOptions);
-    } catch (error) {
+    } catch {
       setOptions([]);
     } finally {
       setLoading(false);

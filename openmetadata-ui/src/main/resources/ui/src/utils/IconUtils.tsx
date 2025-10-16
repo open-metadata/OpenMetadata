@@ -54,7 +54,7 @@ import {
   Users01,
   XClose,
 } from '@untitledui/icons';
-import { ComponentType } from 'react';
+import { ComponentType, FC } from 'react';
 
 // Map of icon names to their components
 export const ICON_MAP: Record<
@@ -179,9 +179,7 @@ export const renderIcon = (
  * @param entityType - The type of entity
  * @returns The icon component
  */
-export const getDefaultIconForEntityType = (
-  entityType?: string
-): typeof Cube01 | typeof Globe01 => {
+export const getDefaultIconForEntityType = (entityType?: string): FC => {
   if (entityType === 'dataProduct') {
     return Cube01;
   }

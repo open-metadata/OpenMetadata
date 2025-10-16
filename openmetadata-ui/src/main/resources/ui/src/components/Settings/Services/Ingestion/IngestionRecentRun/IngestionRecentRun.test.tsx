@@ -439,7 +439,7 @@ describe('Test IngestionRecentRun component', () => {
       const unorderedAppRuns = [
         {
           runId: 'app-run-2',
-          status: 'Success' as Status,
+          status: Status.Success,
           startTime: 1667307000,
           timestamp: 1667307000,
           endTime: 1667307003,
@@ -447,7 +447,7 @@ describe('Test IngestionRecentRun component', () => {
         },
         {
           runId: 'app-run-1',
-          status: 'Failed' as Status,
+          status: Status.Failed,
           startTime: 1667301000,
           timestamp: 1667301000,
           endTime: 1667301003,
@@ -455,7 +455,7 @@ describe('Test IngestionRecentRun component', () => {
         },
         {
           runId: 'app-run-3',
-          status: 'Running' as Status,
+          status: Status.Running,
           startTime: 1667309000,
           timestamp: 1667309000,
           endTime: 1667309003,

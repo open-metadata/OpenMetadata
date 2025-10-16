@@ -23,7 +23,7 @@ export interface TreeContentProps {
   error: string | null;
   hasData: boolean;
   children: ReactNode;
-  selectedItems?: string | null | undefined;
+  selectedItems?: string | null;
   expandedItems?: string[];
   focusedItem?: string;
   apiRef?: MutableRefObject<any>;

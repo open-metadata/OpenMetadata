@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { TabsProps } from 'antd';
-import { TFunctionKeys } from 'i18next';
 import { get, noop, uniqueId } from 'lodash';
 import { EntityUnion } from '../../components/Explore/ExplorePage.interface';
 import { TAB_LABEL_MAP } from '../../constants/Customize.constants';
@@ -50,7 +49,7 @@ export const getGlossaryTermDefaultTabs = () => {
   return [
     {
       id: EntityTabs.OVERVIEW,
-      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.OVERVIEW] as TFunctionKeys),
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.OVERVIEW]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.OVERVIEW
       ),
@@ -59,9 +58,7 @@ export const getGlossaryTermDefaultTabs = () => {
     },
     {
       id: EntityTabs.GLOSSARY_TERMS,
-      displayName: i18n.t(
-        TAB_LABEL_MAP[EntityTabs.GLOSSARY_TERMS] as TFunctionKeys
-      ),
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.GLOSSARY_TERMS]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.GLOSSARY_TERMS
       ),
@@ -70,7 +67,7 @@ export const getGlossaryTermDefaultTabs = () => {
     },
     {
       id: EntityTabs.ASSETS,
-      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ASSETS] as TFunctionKeys),
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ASSETS]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.ASSETS
       ),
@@ -78,9 +75,7 @@ export const getGlossaryTermDefaultTabs = () => {
       editable: false,
     },
     {
-      displayName: i18n.t(
-        TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED] as TFunctionKeys
-      ),
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED]),
       name: EntityTabs.ACTIVITY_FEED,
       id: EntityTabs.ACTIVITY_FEED,
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
@@ -91,9 +86,7 @@ export const getGlossaryTermDefaultTabs = () => {
     {
       id: EntityTabs.CUSTOM_PROPERTIES,
       name: EntityTabs.CUSTOM_PROPERTIES,
-      displayName: i18n.t(
-        TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES] as TFunctionKeys
-      ),
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES]),
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
         EntityTabs.CUSTOM_PROPERTIES
       ),
@@ -107,16 +100,14 @@ export const getGlossaryDefaultTabs = () => {
     {
       id: EntityTabs.TERMS,
       name: EntityTabs.TERMS,
-      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.TERMS] as TFunctionKeys),
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.TERMS]),
       layout: customizeGlossaryPageClassBase.getDefaultWidgetForTab(
         EntityTabs.TERMS
       ),
       editable: true,
     },
     {
-      displayName: i18n.t(
-        TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED] as TFunctionKeys
-      ),
+      displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.ACTIVITY_FEED]),
       name: EntityTabs.ACTIVITY_FEED,
       id: EntityTabs.ACTIVITY_FEED,
       layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
@@ -184,9 +175,7 @@ export const getDefaultTabs = (pageType?: string): Tab[] => {
         {
           id: EntityTabs.CUSTOM_PROPERTIES,
           name: EntityTabs.CUSTOM_PROPERTIES,
-          displayName: i18n.t(
-            TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES] as TFunctionKeys
-          ),
+          displayName: i18n.t(TAB_LABEL_MAP[EntityTabs.CUSTOM_PROPERTIES]),
           layout: customizeGlossaryTermPageClassBase.getDefaultWidgetForTab(
             EntityTabs.CUSTOM_PROPERTIES
           ),
