@@ -1440,7 +1440,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
             {allowTestConn && (
               <TestConnection
                 connectionType={serviceDetails?.serviceType ?? ''}
-                extraInfo={extraInfoData?.name || extraInfoData?.displayName}
+                extraInfo={extraInfoData?.name}
                 getData={() => connectionDetails}
                 hostIp={hostIp}
                 isTestingDisabled={isTestingDisabled}
