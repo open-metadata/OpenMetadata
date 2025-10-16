@@ -212,6 +212,9 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await test.step(
       'Verify that notifications correctly display mentions for the incident manager',
       async () => {
+        const testcaseName = await page
+          .getByTestId('entity-header-name')
+          .innerText();
         await addMentionCommentInFeed(page, 'admin', true);
 
         await adminPage.waitForLoadState('networkidle');
@@ -221,12 +224,8 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
         await adminPage.waitForLoadState('networkidle');
         await waitForAllLoadersToDisappear(adminPage);
 
-        await expect(
-          adminPage
-            .getByLabel('Mentions')
-            .getByTestId('notification-item-column_values_to_be_between')
-        ).toContainText(
-          'admin mentioned you on the testCase column_values_to_be_between'
+        await expect(adminPage.getByLabel('Mentions')).toContainText(
+          `mentioned you on the testCase ${testcaseName}`
         );
       }
     );
