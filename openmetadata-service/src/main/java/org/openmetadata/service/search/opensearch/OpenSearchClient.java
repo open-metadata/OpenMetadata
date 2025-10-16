@@ -48,7 +48,6 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.text.WordUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.AuthScope;
@@ -87,8 +86,6 @@ import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.dataInsight.DataInsightAggregatorInterface;
-import org.openmetadata.service.jdbi3.DataInsightChartRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
@@ -102,15 +99,6 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
 import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsCountAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUnusedAssetsSizeAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchDailyActiveUsersAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostActiveUsersAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchMostViewedEntitiesAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchPageViewsByEntitiesAggregator;
-import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchUnusedAssetsAggregator;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.QueryCostRecordsAggregator;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
@@ -154,22 +142,16 @@ import os.org.opensearch.index.query.Operator;
 import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.index.query.QueryStringQueryBuilder;
-import os.org.opensearch.index.query.RangeQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
 import os.org.opensearch.rest.RestStatus;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
-import os.org.opensearch.search.aggregations.AggregationBuilder;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.aggregations.BucketOrder;
-import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramAggregationBuilder;
-import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
 import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
 import os.org.opensearch.search.aggregations.bucket.terms.Terms;
 import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import os.org.opensearch.search.aggregations.metrics.MaxAggregationBuilder;
-import os.org.opensearch.search.aggregations.metrics.SumAggregationBuilder;
 import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
@@ -1878,176 +1860,13 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       String queryFilter,
       String dataReportIndex)
       throws IOException {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        buildSearchRequest(
-            startTs,
-            endTs,
-            tier,
-            team,
-            dataInsightChartName,
-            size,
-            from,
-            queryFilter,
-            dataReportIndex);
-    SearchResponse searchResponse = client.search(searchRequest, RequestOptions.DEFAULT);
-    return Response.status(OK)
-        .entity(processDataInsightChartResult(searchResponse, dataInsightChartName))
-        .build();
-  }
-
-  private static DataInsightChartResult processDataInsightChartResult(
-      SearchResponse searchResponse,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName) {
-    DataInsightAggregatorInterface processor =
-        createDataAggregator(searchResponse, dataInsightChartName);
-    return processor.process(dataInsightChartName);
-  }
-
-  private static DataInsightAggregatorInterface createDataAggregator(
-      SearchResponse aggregations, DataInsightChartResult.DataInsightChartType dataInsightChartType)
-      throws IllegalArgumentException {
-    return switch (dataInsightChartType) {
-      case DAILY_ACTIVE_USERS -> new OpenSearchDailyActiveUsersAggregator(
-          aggregations.getAggregations());
-      case PAGE_VIEWS_BY_ENTITIES -> new OpenSearchPageViewsByEntitiesAggregator(
-          aggregations.getAggregations());
-      case MOST_ACTIVE_USERS -> new OpenSearchMostActiveUsersAggregator(
-          aggregations.getAggregations());
-      case MOST_VIEWED_ENTITIES -> new OpenSearchMostViewedEntitiesAggregator(
-          aggregations.getAggregations());
-      case UNUSED_ASSETS -> new OpenSearchUnusedAssetsAggregator(aggregations.getHits());
-      case AGGREGATED_UNUSED_ASSETS_SIZE -> new OpenSearchAggregatedUnusedAssetsSizeAggregator(
-          aggregations.getAggregations());
-      case AGGREGATED_UNUSED_ASSETS_COUNT -> new OpenSearchAggregatedUnusedAssetsCountAggregator(
-          aggregations.getAggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT -> new OpenSearchAggregatedUsedvsUnusedAssetsCountAggregator(
-          aggregations.getAggregations());
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE -> new OpenSearchAggregatedUsedvsUnusedAssetsSizeAggregator(
-          aggregations.getAggregations());
-    };
-  }
-
-  private static os.org.opensearch.action.search.SearchRequest buildSearchRequest(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      Integer size,
-      Integer from,
-      String queryFilter,
-      String dataReportIndex) {
-    SearchSourceBuilder searchSourceBuilder =
-        buildQueryFilter(startTs, endTs, tier, team, queryFilter, dataInsightChartName.value());
-    if (!dataInsightChartName
-        .toString()
-        .equalsIgnoreCase(DataInsightChartResult.DataInsightChartType.UNUSED_ASSETS.toString())) {
-      AggregationBuilder aggregationBuilder = buildQueryAggregation(dataInsightChartName);
-      searchSourceBuilder.aggregation(aggregationBuilder);
-      searchSourceBuilder.timeout(new TimeValue(30, TimeUnit.SECONDS));
-    } else {
-      searchSourceBuilder.fetchSource(true);
-      searchSourceBuilder.from(from);
-      searchSourceBuilder.size(size);
-      searchSourceBuilder.sort("data.lifeCycle.accessed.timestamp", SortOrder.DESC);
-    }
-
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(dataReportIndex));
-    searchRequest.source(searchSourceBuilder);
-    return searchRequest;
-  }
-
-  private static SearchSourceBuilder buildQueryFilter(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      String queryFilter,
-      String dataInsightChartName) {
-
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    BoolQueryBuilder searchQueryFiler = new BoolQueryBuilder();
-
-    if (team != null
-        && DataInsightChartRepository.SUPPORTS_TEAM_FILTER.contains(dataInsightChartName)) {
-      List<String> teamArray = Arrays.asList(team.split("\\s*,\\s*"));
-
-      BoolQueryBuilder teamQueryFilter = QueryBuilders.boolQuery();
-      teamQueryFilter.should(
-          QueryBuilders.termsQuery(DataInsightChartRepository.DATA_TEAM, teamArray));
-      searchQueryFiler.must(teamQueryFilter);
-    }
-
-    if (tier != null
-        && DataInsightChartRepository.SUPPORTS_TIER_FILTER.contains(dataInsightChartName)) {
-      List<String> tierArray = Arrays.asList(tier.split("\\s*,\\s*"));
-
-      BoolQueryBuilder tierQueryFilter = QueryBuilders.boolQuery();
-      tierQueryFilter.should(
-          QueryBuilders.termsQuery(DataInsightChartRepository.DATA_ENTITY_TIER, tierArray));
-      searchQueryFiler.must(tierQueryFilter);
-    }
-
-    if (!DataInsightChartRepository.SUPPORTS_NULL_DATE_RANGE.contains(dataInsightChartName)) {
-      if (startTs == null || endTs == null) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Start and End date are required for chart type %s ", dataInsightChartName));
-      }
-      RangeQueryBuilder dateQueryFilter =
-          QueryBuilders.rangeQuery(DataInsightChartRepository.TIMESTAMP).gte(startTs).lte(endTs);
-      searchQueryFiler.must(dateQueryFilter);
-    }
-
-    searchSourceBuilder.query(searchQueryFiler).fetchSource(false);
-
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-
-    return searchSourceBuilder;
+    return dataInsightAggregatorManager.listDataInsightChartResult(
+        startTs, endTs, tier, team, dataInsightChartName, size, from, queryFilter, dataReportIndex);
   }
 
   @Override
-  public List<Map<String, String>> fetchDIChartFields() throws IOException {
+  public List<Map<String, String>> fetchDIChartFields() {
     return dataInsightAggregatorManager.fetchDIChartFields();
-  }
-
-  void getFieldNames(
-      @NotNull Map<String, Object> fields,
-      String prefix,
-      List<Map<String, String>> fieldList,
-      String entityType) {
-    for (Map.Entry<String, Object> entry : fields.entrySet()) {
-      String postfix = "";
-      String type = (String) ((Map<String, Object>) entry.getValue()).get("type");
-      if (type != null && type.equals("text")) {
-        postfix = ".keyword";
-      }
-
-      String fieldName = prefix + entry.getKey() + postfix;
-      String fieldNameOriginal = WordUtils.capitalize((prefix + entry.getKey()).replace(".", " "));
-
-      if (entry.getValue() instanceof Map) {
-        Map<String, Object> subFields = (Map<String, Object>) entry.getValue();
-        if (subFields.containsKey("properties")) {
-          getFieldNames(
-              (Map<String, Object>) subFields.get("properties"),
-              fieldName + ".",
-              fieldList,
-              entityType);
-        } else {
-          if (fieldList.stream().noneMatch(e -> e.get("name").equals(fieldName))) {
-            Map<String, String> map = new HashMap<>();
-            map.put("name", fieldName);
-            map.put("displayName", fieldNameOriginal);
-            map.put("type", type);
-            map.put("entityType", entityType);
-            fieldList.add(map);
-          }
-        }
-      }
-    }
   }
 
   @Override
@@ -2055,140 +1874,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
-  }
-
-  private static AggregationBuilder buildQueryAggregation(
-      DataInsightChartResult.DataInsightChartType dataInsightChartName)
-      throws IllegalArgumentException {
-    DateHistogramAggregationBuilder dateHistogramAggregationBuilder =
-        AggregationBuilders.dateHistogram(DataInsightChartRepository.TIMESTAMP)
-            .field(DataInsightChartRepository.TIMESTAMP)
-            .calendarInterval(DateHistogramInterval.DAY);
-
-    TermsAggregationBuilder termsAggregationBuilder;
-    SumAggregationBuilder sumAggregationBuilder;
-    SumAggregationBuilder sumEntityCountAggregationBuilder =
-        AggregationBuilders.sum(DataInsightChartRepository.ENTITY_COUNT)
-            .field(DataInsightChartRepository.DATA_ENTITY_COUNT);
-
-    switch (dataInsightChartName) {
-      case AGGREGATED_UNUSED_ASSETS_COUNT, AGGREGATED_UNUSED_ASSETS_SIZE:
-        boolean isSize =
-            dataInsightChartName.equals(
-                DataInsightChartResult.DataInsightChartType.AGGREGATED_UNUSED_ASSETS_SIZE);
-        String fieldType = isSize ? "size" : "count";
-        String totalField = isSize ? "totalSize" : "totalCount";
-        SumAggregationBuilder threeDaysAgg =
-            AggregationBuilders.sum("threeDays")
-                .field(String.format("data.unusedDataAssets.%s.threeDays", fieldType));
-        SumAggregationBuilder sevenDaysAgg =
-            AggregationBuilders.sum("sevenDays")
-                .field(String.format("data.unusedDataAssets.%s.sevenDays", fieldType));
-        SumAggregationBuilder fourteenDaysAgg =
-            AggregationBuilders.sum("fourteenDays")
-                .field(String.format("data.unusedDataAssets.%s.fourteenDays", fieldType));
-        SumAggregationBuilder thirtyDaysAgg =
-            AggregationBuilders.sum("thirtyDays")
-                .field(String.format("data.unusedDataAssets.%s.thirtyDays", fieldType));
-        SumAggregationBuilder sixtyDaysAgg =
-            AggregationBuilders.sum("sixtyDays")
-                .field(String.format("data.unusedDataAssets.%s.sixtyDays", fieldType));
-        SumAggregationBuilder totalUnused =
-            AggregationBuilders.sum("totalUnused")
-                .field(String.format("data.unusedDataAssets.%s", totalField));
-        SumAggregationBuilder totalUsed =
-            AggregationBuilders.sum("totalUsed")
-                .field(String.format("data.unusedDataAssets.%s", totalField));
-        return dateHistogramAggregationBuilder
-            .subAggregation(threeDaysAgg)
-            .subAggregation(sevenDaysAgg)
-            .subAggregation(fourteenDaysAgg)
-            .subAggregation(thirtyDaysAgg)
-            .subAggregation(sixtyDaysAgg)
-            .subAggregation(totalUnused)
-            .subAggregation(totalUsed);
-      case AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE, AGGREGATED_USED_VS_UNUSED_ASSETS_COUNT:
-        boolean isSizeReport =
-            dataInsightChartName.equals(
-                DataInsightChartResult.DataInsightChartType.AGGREGATED_USED_VS_UNUSED_ASSETS_SIZE);
-        String totalFieldString = isSizeReport ? "totalSize" : "totalCount";
-        SumAggregationBuilder totalUnusedAssets =
-            AggregationBuilders.sum("totalUnused")
-                .field(String.format("data.unusedDataAssets.%s", totalFieldString));
-        SumAggregationBuilder totalUsedAssets =
-            AggregationBuilders.sum("totalUsed")
-                .field(String.format("data.frequentlyUsedDataAssets.%s", totalFieldString));
-        return dateHistogramAggregationBuilder
-            .subAggregation(totalUnusedAssets)
-            .subAggregation(totalUsedAssets);
-      case DAILY_ACTIVE_USERS:
-        return dateHistogramAggregationBuilder;
-      case PAGE_VIEWS_BY_ENTITIES:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE)
-                .size(1000);
-        SumAggregationBuilder sumPageViewsByEntityTypes =
-            AggregationBuilders.sum(DataInsightChartRepository.PAGE_VIEWS)
-                .field(DataInsightChartRepository.DATA_VIEWS);
-        return dateHistogramAggregationBuilder.subAggregation(
-            termsAggregationBuilder.subAggregation(sumPageViewsByEntityTypes));
-      case MOST_VIEWED_ENTITIES:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_FQN)
-                .field(DataInsightChartRepository.DATA_ENTITY_FQN)
-                .size(10)
-                .order(BucketOrder.aggregation(DataInsightChartRepository.PAGE_VIEWS, false));
-
-        TermsAggregationBuilder ownerTermsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.OWNER)
-                .field(DataInsightChartRepository.DATA_OWNER);
-        TermsAggregationBuilder entityTypeTermsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_TYPE)
-                .field(DataInsightChartRepository.DATA_ENTITY_TYPE);
-        TermsAggregationBuilder entityHrefAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.ENTITY_HREF)
-                .field(DataInsightChartRepository.DATA_ENTITY_HREF);
-        SumAggregationBuilder sumEntityPageViewsAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.PAGE_VIEWS)
-                .field(DataInsightChartRepository.DATA_VIEWS);
-
-        return termsAggregationBuilder
-            .subAggregation(sumEntityPageViewsAggregationBuilder)
-            .subAggregation(ownerTermsAggregationBuilder)
-            .subAggregation(entityTypeTermsAggregationBuilder)
-            .subAggregation(entityHrefAggregationBuilder);
-      case MOST_ACTIVE_USERS:
-        termsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.USER_NAME)
-                .field(DataInsightChartRepository.DATA_USER_NAME)
-                .size(10)
-                .order(BucketOrder.aggregation(DataInsightChartRepository.SESSIONS, false));
-        TermsAggregationBuilder teamTermsAggregationBuilder =
-            AggregationBuilders.terms(DataInsightChartRepository.TEAM)
-                .field(DataInsightChartRepository.DATA_TEAM);
-        SumAggregationBuilder sumSessionAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.SESSIONS)
-                .field(DataInsightChartRepository.DATA_SESSIONS);
-        SumAggregationBuilder sumUserPageViewsAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.PAGE_VIEWS)
-                .field(DataInsightChartRepository.DATA_PAGE_VIEWS);
-        MaxAggregationBuilder lastSessionAggregationBuilder =
-            AggregationBuilders.max(DataInsightChartRepository.LAST_SESSION)
-                .field(DataInsightChartRepository.DATA_LAST_SESSION);
-        SumAggregationBuilder sumSessionDurationAggregationBuilder =
-            AggregationBuilders.sum(DataInsightChartRepository.SESSION_DURATION)
-                .field(DataInsightChartRepository.DATA_TOTAL_SESSION_DURATION);
-        return termsAggregationBuilder
-            .subAggregation(sumSessionAggregationBuilder)
-            .subAggregation(sumUserPageViewsAggregationBuilder)
-            .subAggregation(lastSessionAggregationBuilder)
-            .subAggregation(sumSessionDurationAggregationBuilder)
-            .subAggregation(teamTermsAggregationBuilder);
-      default:
-        throw new IllegalArgumentException(
-            String.format("Invalid dataInsightChartType name %s", dataInsightChartName));
-    }
   }
 
   private RestClientBuilder getLowLevelClient(ElasticSearchConfiguration esConfig) {

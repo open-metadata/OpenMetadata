@@ -16,7 +16,6 @@ import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
@@ -512,18 +511,6 @@ public interface SearchClient<T>
 
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
-
-  Response listDataInsightChartResult(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      Integer size,
-      Integer from,
-      String queryFilter,
-      String dataReportIndex)
-      throws IOException;
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(

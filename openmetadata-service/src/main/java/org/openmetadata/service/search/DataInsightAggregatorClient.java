@@ -1,8 +1,10 @@
 package org.openmetadata.service.search;
 
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 
@@ -21,4 +23,16 @@ public interface DataInsightAggregatorClient {
   default List<Map<String, String>> fetchDIChartFields() throws IOException {
     return null;
   }
+
+  Response listDataInsightChartResult(
+      Long startTs,
+      Long endTs,
+      String tier,
+      String team,
+      DataInsightChartResult.DataInsightChartType dataInsightChartName,
+      Integer size,
+      Integer from,
+      String queryFilter,
+      String dataReportIndex)
+      throws IOException;
 }
