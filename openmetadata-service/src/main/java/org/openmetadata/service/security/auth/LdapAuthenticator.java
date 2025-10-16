@@ -200,7 +200,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     // performed in LDAP , the storedUser's name set as DN of the User in Ldap
     BindResult bindingResult = null;
     try {
-      bindingResult = ldapLookupConnectionPool.bind(userDn, reqPassword);
+      bindingResult = ldapLookupConnectionPool.bindAndRevertAuthentication(userDn, reqPassword);
       if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
         return;
       }
