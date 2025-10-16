@@ -3710,6 +3710,16 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
           'dd.MM.yyyy'
         );
         await page
+          .locator('.group')
+          .nth(0)
+          .locator('.rule--value .ant-picker-range')
+          .click();
+
+        await page.waitForSelector('.ant-picker-dropdown-range', {
+          state: 'visible',
+        });
+
+        await page
           .getByRole('textbox', { name: 'Enter date from' })
           .fill(newStart);
         await page.press('.ant-picker-input-active input', 'Enter');
