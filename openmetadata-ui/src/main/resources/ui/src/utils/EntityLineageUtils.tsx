@@ -1495,7 +1495,7 @@ const processEdges = (
         (node) => node.fullyQualifiedName === edge.pipeline?.fullyQualifiedName
       );
 
-      if (!pipelineNode || pipelineViewMode === PipelineViewMode.Node) {
+      if (!pipelineNode || pipelineViewMode === PipelineViewMode.Edge) {
         return [...acc, edge];
       }
 

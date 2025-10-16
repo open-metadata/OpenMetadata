@@ -83,6 +83,7 @@ const LineageConfigPage = () => {
           upstreamDepth: Number(values.upstreamDepth),
           downstreamDepth: Number(values.downstreamDepth),
           lineageLayer: values.lineageLayer,
+          pipelineViewMode: values.pipelineViewMode,
         },
       };
 
