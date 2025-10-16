@@ -16,6 +16,7 @@ import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
+import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -110,6 +111,15 @@ function SchemaTablesTab({
       getPrioritizedEditPermission(permissions.table, Operation.EditDisplayName)
     );
   }, [permissions, isVersionView]);
+
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.schema as string | undefined;
+  }, [location.search]);
 
   const { viewDatabaseSchemaPermission } = useMemo(
     () => ({
@@ -209,6 +219,7 @@ function SchemaTablesTab({
         searchSchema(value);
       } else {
         getSchemaTables();
+        handlePageChange(INITIAL_PAGING_VALUE);
       }
     },
     [setFilters, searchSchema, getSchemaTables]
@@ -216,8 +227,12 @@ function SchemaTablesTab({
 
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType && paging[cursorType]) {
+      if (searchValue) {
+        searchSchema(searchValue, currentPage);
+      } else if (cursorType) {
         getSchemaTables({ [cursorType]: paging[cursorType] });
+      }
+      if (cursorType && paging[cursorType]) {
         handlePageChange(
           currentPage,
           {
