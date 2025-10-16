@@ -280,16 +280,24 @@ const TestConnection: FC<TestConnectionProps> = ({
       timeoutId?: number;
     } = {};
 
+    const { ingestionRunner, ...rest } = updatedFormData as ConfigObject & {
+      ingestionRunner?: string;
+    };
+
     try {
+      const ingestionRunnerValue = extraInfo ?? ingestionRunner;
+
       const createWorkflowData: CreateWorkflow = {
         name: getTestConnectionName(connectionType),
         workflowType: WorkflowType.TestConnection,
         request: {
-          connection: { config: updatedFormData as ConfigObject },
+          connection: { config: rest },
           serviceType,
           connectionType,
           serviceName,
-          ingestionRunner: extraInfo,
+          ...(ingestionRunnerValue && {
+            ingestionRunner: ingestionRunnerValue,
+          }),
         },
       };
 
