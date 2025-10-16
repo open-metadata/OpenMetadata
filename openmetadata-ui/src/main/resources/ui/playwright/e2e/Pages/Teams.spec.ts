@@ -819,6 +819,8 @@ test.describe('Teams Page with Data Consumer User', () => {
     await dataConsumerUser.delete(apiContext);
     await user.delete(apiContext);
     await team.delete(apiContext);
+    await policy.delete(apiContext);
+    await role.delete(apiContext);
     await team2.delete(apiContext);
     await afterAction();
   });
@@ -987,6 +989,13 @@ test.describe('Teams Page action as Owner of Team', () => {
     await teamNoOwner.create(apiContext);
     await domain.create(apiContext);
     await dataProduct.create(apiContext);
+    await afterAction();
+  });
+
+  test.afterAll('Cleanup', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await policy.delete(apiContext);
+    await role.delete(apiContext);
     await afterAction();
   });
 
