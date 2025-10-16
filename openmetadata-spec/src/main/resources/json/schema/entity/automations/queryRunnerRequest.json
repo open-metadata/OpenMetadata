@@ -26,6 +26,18 @@
     "ingestionRunner": {
       "description": "Optional value of the ingestion runner name responsible for running the test",
       "type": "string"
+    },
+    "userId": {
+      "description": "UUID of the user executing the query (extracted from JWT token in backend)",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "userConfigId": {
+      "description": "UUID of the user's QueryRunner config for this specific service (looked up by backend using userId + serviceName)",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "authType": {
+      "description": "Authentication type configured by admin in QueryRunnerConfig (e.g., Basic, ExternalOAuth, etc.). Used to determine which credential field to use from user config.",
+      "type": "string"
     }
   },
   "additionalProperties": false
