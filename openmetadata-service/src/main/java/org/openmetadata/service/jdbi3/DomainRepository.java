@@ -17,13 +17,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DATA_PRODUCT;
 import static org.openmetadata.service.Entity.DOMAIN;
-import static org.openmetadata.service.Entity.FIELD_ASSETS;
 import static org.openmetadata.service.Entity.getEntityReferenceById;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -57,7 +55,6 @@ import org.openmetadata.service.util.ResultList;
 @Slf4j
 public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
-  private static final String FIELD_ASSETS_COUNT = "assetsCount";
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
@@ -78,14 +75,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   }
 
   @Override
-  public Set<String> getSearchDerivedFields() {
-    return Set.of(FIELD_ASSETS, FIELD_ASSETS_COUNT);
-  }
-
-  @Override
   public void setFields(Domain entity, Fields fields) {
-    entity.withAssets(fields.contains(FIELD_ASSETS) ? getAssets(entity) : null);
-    entity.withAssetsCount(fields.contains(FIELD_ASSETS_COUNT) ? getAssetsCount(entity) : null);
     entity.withParent(getParent(entity));
   }
 
@@ -129,42 +119,6 @@ public class DomainRepository extends EntityRepository<Domain> {
     }
   }
 
-  private List<EntityReference> getAssets(Domain entity) {
-    if (inheritedFieldEntitySearch == null) {
-      LOG.warn("Search is unavailable for domain assets. Returning empty list for consistency.");
-      return new ArrayList<>();
-    }
-
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain(entity.getFullyQualifiedName());
-    InheritedFieldResult result =
-        inheritedFieldEntitySearch.getEntitiesForField(
-            query,
-            () -> {
-              LOG.warn(
-                  "Search fallback triggered for domain {}. Returning empty list for consistency.",
-                  entity.getFullyQualifiedName());
-              return new InheritedFieldResult(new ArrayList<>(), 0);
-            });
-    return result.entities();
-  }
-
-  private int getAssetsCount(Domain entity) {
-    if (inheritedFieldEntitySearch == null) {
-      LOG.warn("Search is unavailable for domain assets count. Returning 0 for consistency.");
-      return 0;
-    }
-
-    InheritedFieldQuery query = InheritedFieldQuery.forDomain(entity.getFullyQualifiedName());
-    return inheritedFieldEntitySearch.getCountForField(
-        query,
-        () -> {
-          LOG.warn(
-              "Search fallback triggered for domain {} count. Returning 0 for consistency.",
-              entity.getFullyQualifiedName());
-          return 0;
-        });
-  }
-
   public BulkOperationResult bulkAddAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
     return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, true);
@@ -173,6 +127,37 @@ public class DomainRepository extends EntityRepository<Domain> {
   public BulkOperationResult bulkRemoveAssets(String domainName, BulkAssets request) {
     Domain domain = getByName(null, domainName, getFields("id"));
     return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false);
+  }
+
+  public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
+    Domain domain = get(null, domainId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for domain assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    // Use the forDomain helper method with pagination
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forDomain(domain.getFullyQualifiedName(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for domain {} assets. Returning empty list.",
+                  domain.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getDomainAssetsByName(
+      String domainName, int limit, int offset) {
+    Domain domain = getByName(null, domainName, getFields("id,fullyQualifiedName"));
+    return getDomainAssets(domain.getId(), limit, offset);
   }
 
   @Transaction

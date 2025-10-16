@@ -201,24 +201,23 @@ class OMetaDomainTest(TestCase):
         asset_ref = EntityReference(id=self.dashboard.id, type="dashboard")
         self.metadata.add_assets_to_data_product(data_product.name.root, [asset_ref])
 
-        res: DataProduct = self.metadata.get_by_name(
-            entity=DataProduct,
-            fqn=self.create_data_product.name.root,
-            fields=["assets"],
+        # Use the new assets API to get assets
+        assets_response = self.metadata.get_data_product_assets(
+            data_product.name.root, limit=100
         )
-        self.assertEqual(len(res.assets.root), 1)
-        self.assertEqual(res.assets.root[0].id, self.dashboard.id)
-        self.assertEqual(res.assets.root[0].type, "dashboard")
+        self.assertEqual(len(assets_response["data"]), 1)
+        self.assertEqual(assets_response["data"][0]["id"], str(self.dashboard.id.root))
+        self.assertEqual(assets_response["data"][0]["type"], "dashboard")
 
         self.metadata.remove_assets_from_data_product(
             data_product.name.root, [asset_ref]
         )
-        res: DataProduct = self.metadata.get_by_name(
-            entity=DataProduct,
-            fqn=self.create_data_product.name.root,
-            fields=["assets"],
+
+        # Use the new assets API to verify removal
+        assets_response = self.metadata.get_data_product_assets(
+            data_product.name.root, limit=100
         )
-        self.assertEqual(len(res.assets.root), 0)
+        self.assertEqual(len(assets_response["data"]), 0)
 
         # Check what happens if we remove an asset that's not there on a Data Product
         # We still get a success in the status
@@ -226,3 +225,28 @@ class OMetaDomainTest(TestCase):
             data_product.name.root, [asset_ref]
         )
         self.assertEqual(status["status"], "success")
+
+    def test_get_domain_assets(self):
+        """We can get assets for a domain"""
+        domain: Domain = self.metadata.create_or_update(data=self.create_domain)
+        self.metadata.patch_domain(entity=self.dashboard, domain=domain)
+
+        # Get domain assets
+        assets_response = self.metadata.get_domain_assets(domain.name.root, limit=100)
+        self.assertGreaterEqual(len(assets_response["data"]), 1)
+
+        # Check that our dashboard is in the assets list
+        dashboard_ids = [asset["id"] for asset in assets_response["data"]]
+        self.assertIn(str(self.dashboard.id.root), dashboard_ids)
+
+        # Verify the asset has correct type
+        dashboard_asset = next(
+            (
+                asset
+                for asset in assets_response["data"]
+                if asset["id"] == str(self.dashboard.id.root)
+            ),
+            None,
+        )
+        self.assertIsNotNone(dashboard_asset)
+        self.assertEqual(dashboard_asset["type"], "dashboard")

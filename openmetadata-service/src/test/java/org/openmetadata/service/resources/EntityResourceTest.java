@@ -2878,6 +2878,40 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return getFollowersCollection(id).path("/" + userId);
   }
 
+  protected final WebTarget getAssetsResource(UUID id, int limit, int offset) {
+    WebTarget target = getResource(id).path("/assets");
+    target = target.queryParam("limit", limit);
+    target = target.queryParam("offset", offset);
+    return target;
+  }
+
+  protected final WebTarget getAssetsResourceByName(String name, int limit, int offset) {
+    WebTarget target = getCollection().path("/name/" + name + "/assets");
+    target = target.queryParam("limit", limit);
+    target = target.queryParam("offset", offset);
+    return target;
+  }
+
+  public final ResultList<EntityReference> getAssets(
+      UUID id, int limit, int offset, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getAssetsResource(id, limit, offset);
+    Response response = SecurityUtil.addHeaders(target, authHeaders).get();
+    String json = response.readEntity(String.class);
+    return JsonUtils.readValue(
+        json, new com.fasterxml.jackson.core.type.TypeReference<ResultList<EntityReference>>() {});
+  }
+
+  protected final ResultList<EntityReference> getAssetsByName(
+      String name, int limit, int offset, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget target = getAssetsResourceByName(name, limit, offset);
+    Response response = SecurityUtil.addHeaders(target, authHeaders).get();
+    String json = response.readEntity(String.class);
+    return JsonUtils.readValue(
+        json, new com.fasterxml.jackson.core.type.TypeReference<ResultList<EntityReference>>() {});
+  }
+
   public final T getEntity(UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource(id);
     target = target.queryParam("fields", allFields);

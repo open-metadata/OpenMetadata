@@ -20,10 +20,6 @@ export interface Domain {
      */
     assets?: EntityReference[];
     /**
-     * Count of data assets that are part of this domain (including inherited from sub-domains).
-     */
-    assetsCount?: number;
-    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
