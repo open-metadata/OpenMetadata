@@ -145,8 +145,10 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
       try {
         SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
         UUID currentUserId = subjectContext.user().getId();
+        boolean isAdmin = subjectContext.isAdmin();
 
         filter.addQueryParam("userId", currentUserId.toString());
+        filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
       } catch (Exception ignore) {
       }
     }

@@ -21,6 +21,3 @@ CREATE INDEX idx_metric_visibility ON metric_entity (entityStatus, id);
 -- Create optimized indexes for visibility filtering on data_product_entity  
 CREATE INDEX idx_data_product_visibility ON data_product_entity (entityStatus, id);
 
--- Create optimized index for entity relationships used in visibility queries
-CREATE INDEX idx_entity_relationship_user_visibility ON entity_relationship (fromId, toId, fromEntity, relation) 
-WHERE fromEntity = 'user' AND relation IN (8, 15);

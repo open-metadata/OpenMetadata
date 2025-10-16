@@ -565,8 +565,14 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getEntityVisibilityCondition(String tableName) {
     String currentUserId = getQueryParam("userId");
+    String isAdminParam = getQueryParam("isAdmin");
 
     if (currentUserId == null) {
+      return "";
+    }
+
+    // Admin users can see all entities regardless of status
+    if ("true".equals(isAdminParam)) {
       return "";
     }
 
