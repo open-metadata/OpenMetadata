@@ -149,39 +149,35 @@ export const DatabaseSchemaTable = ({
     [pageSize, decodedDatabaseFQN, showDeletedSchemas]
   );
 
-  const searchSchema = async (
-    searchValue: string,
-    pageNumber = INITIAL_PAGING_VALUE
-  ) => {
-    setIsLoading(true);
-    try {
-      handlePageChange(INITIAL_PAGING_VALUE, {
-        cursorType: null,
-        cursorValue: undefined,
-      });
-      const response = await searchQuery({
-        query: '',
-        pageNumber,
-        pageSize: PAGE_SIZE,
-        queryFilter: buildSchemaQueryFilter(
-          'database.fullyQualifiedName',
-          decodedDatabaseFQN,
-          searchValue
-        ),
-        searchIndex: SearchIndex.DATABASE_SCHEMA,
-        includeDeleted: showDeletedSchemas,
-        trackTotalHits: true,
-      });
-      const data = response.hits.hits.map((schema) => schema._source);
-      const total = response.hits.total.value;
-      setSchemas(data);
-      handlePagingChange({ total });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const searchSchema = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setIsLoading(true);
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          queryFilter: buildSchemaQueryFilter(
+            'database.fullyQualifiedName',
+            decodedDatabaseFQN,
+            searchValue
+          ),
+          searchIndex: SearchIndex.DATABASE_SCHEMA,
+          includeDeleted: showDeletedSchemas,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((schema) => schema._source);
+        const total = response.hits.total.value;
+        setSchemas(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [decodedDatabaseFQN, showDeletedSchemas, handlePagingChange]
+  );
 
   const handleShowDeletedSchemas = useCallback((value: boolean) => {
     setFilters({ showDeletedTables: value });
@@ -208,14 +204,17 @@ export const DatabaseSchemaTable = ({
     [paging, fetchDatabaseSchema, searchSchema, searchValue]
   );
 
-  const onSchemaSearch = (value: string) => {
-    setFilters({ schema: isEmpty(value) ? undefined : value });
-    if (value) {
-      searchSchema(value);
-    } else {
-      fetchDatabaseSchema();
-    }
-  };
+  const onSchemaSearch = useCallback(
+    (value: string) => {
+      setFilters({ schema: isEmpty(value) ? undefined : value });
+      if (value) {
+        searchSchema(value);
+      } else {
+        fetchDatabaseSchema();
+      }
+    },
+    [setFilters, searchSchema, fetchDatabaseSchema]
+  );
 
   const handleDisplayNameUpdate = useCallback(
     async (data: EntityName, id?: string) => {
@@ -330,6 +329,18 @@ export const DatabaseSchemaTable = ({
     pagingCursor,
   ]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.schema'),
+      }),
+      typingInterval: 500,
+      searchValue: searchValue,
+      onSearch: onSchemaSearch,
+    }),
+    [onSchemaSearch, searchValue]
+  );
+
   return (
     <Table
       columns={schemaTableColumns}
@@ -371,14 +382,7 @@ export const DatabaseSchemaTable = ({
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}
-      searchProps={{
-        placeholder: t('label.search-for-type', {
-          type: t('label.schema'),
-        }),
-        searchValue: searchValue,
-        typingInterval: 500,
-        onSearch: onSchemaSearch,
-      }}
+      searchProps={searchProps}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />

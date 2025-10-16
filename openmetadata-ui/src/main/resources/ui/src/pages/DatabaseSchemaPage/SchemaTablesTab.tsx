@@ -121,35 +121,35 @@ function SchemaTablesTab({
     [databaseSchemaPermission]
   );
 
-  const searchSchema = async (
-    searchValue: string,
-    pageNumber = INITIAL_PAGING_VALUE
-  ) => {
-    setTableDataLoading(true);
-    try {
-      const response = await searchQuery({
-        query: '',
-        pageNumber,
-        pageSize: PAGE_SIZE,
-        queryFilter: buildSchemaQueryFilter(
-          'databaseSchema.fullyQualifiedName',
-          decodedDatabaseSchemaFQN,
-          searchValue
-        ),
-        searchIndex: SearchIndex.TABLE,
-        includeDeleted: showDeletedSchemas,
-        trackTotalHits: true,
-      });
-      const data = response.hits.hits.map((schema) => schema._source);
-      const total = response.hits.total.value;
-      setTableData(data);
-      handlePagingChange({ total });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setTableDataLoading(false);
-    }
-  };
+  const searchSchema = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setTableDataLoading(true);
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          queryFilter: buildSchemaQueryFilter(
+            'databaseSchema.fullyQualifiedName',
+            decodedDatabaseSchemaFQN,
+            searchValue
+          ),
+          searchIndex: SearchIndex.TABLE,
+          includeDeleted: showDeletedSchemas,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((schema) => schema._source);
+        const total = response.hits.total.value;
+        setTableData(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setTableDataLoading(false);
+      }
+    },
+    [decodedDatabaseSchemaFQN, showDeletedSchemas, handlePagingChange]
+  );
 
   const handleDisplayNameUpdate = useCallback(
     async (data: EntityName, id?: string) => {
@@ -202,14 +202,17 @@ function SchemaTablesTab({
     [decodedDatabaseSchemaFQN, showDeletedSchemas, pageSize]
   );
 
-  const onSchemaSearch = (value: string) => {
-    setFilters({ schema: isEmpty(value) ? undefined : value });
-    if (value) {
-      searchSchema(value);
-    } else {
-      getSchemaTables();
-    }
-  };
+  const onSchemaSearch = useCallback(
+    (value: string) => {
+      setFilters({ schema: isEmpty(value) ? undefined : value });
+      if (value) {
+        searchSchema(value);
+      } else {
+        getSchemaTables();
+      }
+    },
+    [setFilters, searchSchema, getSchemaTables]
+  );
 
   const tablePaginationHandler = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
@@ -313,6 +316,17 @@ function SchemaTablesTab({
     });
   }, [databaseSchemaDetails.deleted, showDeletedSchemas]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.table'),
+      }),
+      typingInterval: 500,
+      onSearch: onSchemaSearch,
+    }),
+    [t, onSchemaSearch]
+  );
+
   return (
     <TableAntd
       columns={tableColumn}
@@ -361,13 +375,7 @@ function SchemaTablesTab({
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}
-      searchProps={{
-        placeholder: t('label.search-for-type', {
-          type: t('label.table'),
-        }),
-        typingInterval: 500,
-        onSearch: onSchemaSearch,
-      }}
+      searchProps={searchProps}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />
