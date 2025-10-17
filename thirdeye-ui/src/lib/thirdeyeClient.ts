@@ -2,9 +2,11 @@
  * ThirdEye API Client
  * 
  * Client library for calling ThirdEye analytics service endpoints
+ * Uses Next.js API proxy to avoid CORS issues
  */
 
-const THIRDEYE_BASE_URL = process.env.NEXT_PUBLIC_THIRDEYE_API_URL || 'http://localhost:8586';
+// Use Next.js API proxy route instead of direct backend URL
+const THIRDEYE_BASE_URL = process.env.NEXT_PUBLIC_THIRDEYE_API_URL || '/api/thirdeye';
 
 interface DashboardData {
   ziScore: {
@@ -86,23 +88,23 @@ class ThirdEyeClient {
 
   // Dashboard endpoints
   async getDashboardData(): Promise<DashboardData> {
-    return this.fetch<DashboardData>('/api/v1/thirdeye/dashboard/data');
+    return this.fetch<DashboardData>('/dashboard/data');
   }
 
   async getHealthScoreHistory(days: number = 30): Promise<any[]> {
-    return this.fetch<any[]>(`/api/v1/thirdeye/dashboard/health-score-history?days=${days}`);
+    return this.fetch<any[]>(`/dashboard/health-score-history?days=${days}`);
   }
 
   async getOpportunityCampaigns(status?: string, limit: number = 10): Promise<any[]> {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     params.append('limit', limit.toString());
-    return this.fetch<any[]>(`/api/v1/thirdeye/dashboard/opportunity-campaigns?${params}`);
+    return this.fetch<any[]>(`/dashboard/opportunity-campaigns?${params}`);
   }
 
   // Action Items endpoints
   async getActionItems(): Promise<ActionItemsResponse> {
-    return this.fetch<ActionItemsResponse>('/api/v1/thirdeye/action-items');
+    return this.fetch<ActionItemsResponse>('/action-items');
   }
 
   async getActionItemsByCategory(
@@ -114,11 +116,11 @@ class ThirdEyeClient {
     if (category) params.append('category', category);
     if (priority) params.append('priority', priority);
     if (status) params.append('status', status);
-    return this.fetch<ActionItemsResponse>(`/api/v1/thirdeye/action-items/by-category?${params}`);
+    return this.fetch<ActionItemsResponse>(`/action-items/by-category?${params}`);
   }
 
   async getActionItemById(id: string): Promise<any> {
-    return this.fetch<any>(`/api/v1/thirdeye/action-items/${id}`);
+    return this.fetch<any>(`/action-items/${id}`);
   }
 
   async getActionItemTables(
@@ -127,7 +129,7 @@ class ThirdEyeClient {
     offset: number = 0
   ): Promise<any> {
     return this.fetch<any>(
-      `/api/v1/thirdeye/action-items/${actionItemId}/tables?limit=${limit}&offset=${offset}`
+      `/action-items/${actionItemId}/tables?limit=${limit}&offset=${offset}`
     );
   }
 
@@ -138,34 +140,37 @@ class ThirdEyeClient {
     offset: number = 0
   ): Promise<InsightReport> {
     return this.fetch<InsightReport>(
-      `/api/v1/thirdeye/insights/report?report_type=${reportType}&limit=${limit}&offset=${offset}`
+      `/insights/report?report_type=${reportType}&limit=${limit}&offset=${offset}`
     );
   }
 
   async getInsightSummary(): Promise<any> {
-    return this.fetch<any>('/api/v1/thirdeye/insights/summary');
+    return this.fetch<any>('/insights/summary');
   }
 
   // Techniques endpoints
   async getTechniques(): Promise<TechniquesResponse> {
-    return this.fetch<TechniquesResponse>('/api/v1/thirdeye/techniques');
+    return this.fetch<TechniquesResponse>('/techniques');
   }
 
   async getTechniqueById(id: string): Promise<any> {
-    return this.fetch<any>(`/api/v1/thirdeye/techniques/${id}`);
+    return this.fetch<any>(`/techniques/${id}`);
   }
 
   async getTechniquesByCategory(category: string): Promise<TechniquesResponse> {
-    return this.fetch<TechniquesResponse>(`/api/v1/thirdeye/techniques/by-category/${category}`);
+    return this.fetch<TechniquesResponse>(`/techniques/by-category/${category}`);
   }
 
   async getTechniquesStats(): Promise<any> {
-    return this.fetch<any>('/api/v1/thirdeye/techniques/stats/overview');
+    return this.fetch<any>('/techniques/stats/overview');
   }
 
-  // Health check
+  // Health check (direct to backend, not proxied)
   async healthCheck(): Promise<any> {
-    return this.fetch<any>('/health');
+    const backendUrl = process.env.NEXT_PUBLIC_THIRDEYE_BACKEND_URL || 'http://localhost:8586';
+    const response = await fetch(`${backendUrl}/health`);
+    if (!response.ok) throw new Error('Health check failed');
+    return response.json();
   }
 }
 
