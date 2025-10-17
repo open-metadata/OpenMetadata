@@ -33,6 +33,16 @@ runs:
         distribution: 'temurin'
     # ------------------------------------------------------------------------------
 
+    # ---- Setup Node --------------------------------------------------------------
+    - name: Use Node.js v22.x
+      uses: actions/setup-node@v4
+      with:
+        node-version: v22.x
+
+    - name: Install yarn
+      run: npm install -g yarn
+    # ------------------------------------------------------------------------------
+
     # ---- Setup Python Test Environment -------------------------------------------
     - name: Setup Python ${{ inputs.python-version }}
       uses: actions/setup-python@v5
