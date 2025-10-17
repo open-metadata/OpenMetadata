@@ -28,6 +28,7 @@ import {
   assignDomain,
   redirectToHomePage,
   removeDataProduct,
+  removeDomain,
 } from '../../utils/common';
 import {
   performInitialStepForRules,
@@ -1106,15 +1107,23 @@ test.describe('Data Contracts Semantics Rule Description', () => {
   });
 });
 
-test.describe('Data Contracts Semantics Rule Version', () => {
-  test('Validate Entity Version Is', async ({ page, browser }) => {
+test.describe('Data Contracts Semantics Rule Domain', () => {
+  const domain1 = new Domain();
+  const domain2 = new Domain();
+
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await domain1.create(apiContext);
+    await domain2.create(apiContext);
+    await afterAction();
+  });
+
+  test('Validate Domain Rule Is', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step(
@@ -1122,11 +1131,14 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
+
+        await assignDomain(page, domain1.responseData);
+
         await performInitialStepForRules(page);
       }
     );
 
-    await test.step('Correct entity version should passed', async () => {
+    await test.step('Domain with Is condition should passed', async () => {
       await page.getByRole('tab', { name: 'Semantics' }).click();
 
       await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
@@ -1139,7 +1151,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       await selectOption(
         page,
         ruleLocator.locator('.group--field .ant-select'),
-        'Version',
+        'Domain',
         true
       );
       await selectOption(
@@ -1147,10 +1159,12 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         ruleLocator.locator('.rule--operator .ant-select'),
         DATA_CONTRACT_SEMANTIC_OPERATIONS.is
       );
-
-      await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-        .fill('0.1');
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--value .ant-select'),
+        domain1.responseData.name,
+        true
+      );
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -1163,8 +1177,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       ).not.toBeVisible();
     });
 
-    await test.step('Non-Correct entity version should failed', async () => {
-      await assignDomain(page, domain.responseData);
+    await test.step('Domain with Is condition should failed', async () => {
+      await removeDomain(page, domain1.responseData);
+      await assignDomain(page, domain2.responseData);
 
       await page.getByTestId('manage-contract-actions').click();
 
@@ -1195,14 +1210,12 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     });
   });
 
-  test('Validate Entity Version Is Not', async ({ page, browser }) => {
+  test('Validate Domain Rule Is Not', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step(
@@ -1210,93 +1223,90 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
+        await assignDomain(page, domain1.responseData);
+
         await performInitialStepForRules(page);
       }
     );
 
-    await test.step(
-      'Contract with is_not condition for version should passed',
-      async () => {
-        await page.getByRole('tab', { name: 'Semantics' }).click();
+    await test.step('Domain with IsNot condition should passed', async () => {
+      await page.getByRole('tab', { name: 'Semantics' }).click();
 
-        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
-        await page.fill(
-          '#semantics_0_description',
-          DATA_CONTRACT_SEMANTICS1.description
-        );
+      await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+      await page.fill(
+        '#semantics_0_description',
+        DATA_CONTRACT_SEMANTICS1.description
+      );
 
-        const ruleLocator = page.locator('.group').nth(0);
-        await selectOption(
-          page,
-          ruleLocator.locator('.group--field .ant-select'),
-          'Version',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--operator .ant-select'),
-          DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
-        );
+      const ruleLocator = page.locator('.group').nth(0);
+      await selectOption(
+        page,
+        ruleLocator.locator('.group--field .ant-select'),
+        'Domain',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--value .ant-select'),
+        domain2.responseData.name,
+        true
+      );
 
-        await ruleLocator
-          .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-          .fill('0.2');
+      // save and trigger contract validation
+      await saveAndTriggerDataContractValidation(page, true);
 
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Passed');
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).not.toBeVisible();
+    });
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Passed');
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).not.toBeVisible();
-      }
-    );
+    await test.step('Domain with IsNot condition should failed', async () => {
+      await removeDomain(page, domain1.responseData);
+      await assignDomain(page, domain2.responseData);
 
-    await test.step(
-      'Contract with is_not condition for version should failed',
-      async () => {
-        await assignDomain(page, domain.responseData);
+      await page.getByTestId('manage-contract-actions').click();
 
-        await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
+      const runNowResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*/validate'
+      );
+      await page.getByTestId('contract-run-now-button').click();
+      await runNowResponse;
 
-        const runNowResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*/validate'
-        );
-        await page.getByTestId('contract-run-now-button').click();
-        await runNowResponse;
+      await page.reload();
 
-        await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Failed');
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Failed');
-
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).toContainText('Contract Failed');
-      }
-    );
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).toContainText('Contract Failed');
+    });
   });
 
-  test('Validate Entity Version Less than <', async ({ page, browser }) => {
+  test('Validate Domain Rule Any_In', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step(
@@ -1304,93 +1314,91 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
+
+        await assignDomain(page, domain1.responseData);
+
         await performInitialStepForRules(page);
       }
     );
 
-    await test.step(
-      'Contract with < condition for version should passed',
-      async () => {
-        await page.getByRole('tab', { name: 'Semantics' }).click();
+    await test.step('Domain with AnyIn condition should passed', async () => {
+      await page.getByRole('tab', { name: 'Semantics' }).click();
 
-        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
-        await page.fill(
-          '#semantics_0_description',
-          DATA_CONTRACT_SEMANTICS1.description
-        );
+      await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+      await page.fill(
+        '#semantics_0_description',
+        DATA_CONTRACT_SEMANTICS1.description
+      );
 
-        const ruleLocator = page.locator('.group').nth(0);
-        await selectOption(
-          page,
-          ruleLocator.locator('.group--field .ant-select'),
-          'Version',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--operator .ant-select'),
-          DATA_CONTRACT_SEMANTIC_OPERATIONS.less
-        );
+      const ruleLocator = page.locator('.group').nth(0);
+      await selectOption(
+        page,
+        ruleLocator.locator('.group--field .ant-select'),
+        'Domain',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        DATA_CONTRACT_SEMANTIC_OPERATIONS.any_in
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--value .ant-select'),
+        domain1.responseData.name,
+        true
+      );
 
-        await ruleLocator
-          .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-          .fill('0.2');
+      // save and trigger contract validation
+      await saveAndTriggerDataContractValidation(page, true);
 
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Passed');
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).not.toBeVisible();
+    });
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Passed');
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).not.toBeVisible();
-      }
-    );
+    await test.step('Domain with AnyIn condition should failed', async () => {
+      await removeDomain(page, domain1.responseData);
+      await assignDomain(page, domain2.responseData);
 
-    await test.step(
-      'Contract with < condition for version should failed',
-      async () => {
-        await assignDomain(page, domain.responseData);
+      await page.getByTestId('manage-contract-actions').click();
 
-        await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
+      const runNowResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*/validate'
+      );
+      await page.getByTestId('contract-run-now-button').click();
+      await runNowResponse;
 
-        const runNowResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*/validate'
-        );
-        await page.getByTestId('contract-run-now-button').click();
-        await runNowResponse;
+      await page.reload();
 
-        await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Failed');
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Failed');
-
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).toContainText('Contract Failed');
-      }
-    );
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).toContainText('Contract Failed');
+    });
   });
 
-  test('Validate Entity Version Greater than >', async ({ page, browser }) => {
+  test('Validate Domain Rule Not_In', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step(
@@ -1398,96 +1406,89 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
+        await assignDomain(page, domain2.responseData);
         await performInitialStepForRules(page);
       }
     );
 
-    await test.step(
-      'Contract with > condition for version should failed',
-      async () => {
-        await page.getByRole('tab', { name: 'Semantics' }).click();
+    await test.step('Domain with NotIn condition should passed', async () => {
+      await page.getByRole('tab', { name: 'Semantics' }).click();
 
-        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
-        await page.fill(
-          '#semantics_0_description',
-          DATA_CONTRACT_SEMANTICS1.description
-        );
+      await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+      await page.fill(
+        '#semantics_0_description',
+        DATA_CONTRACT_SEMANTICS1.description
+      );
 
-        const ruleLocator = page.locator('.group').nth(0);
-        await selectOption(
-          page,
-          ruleLocator.locator('.group--field .ant-select'),
-          'Version',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--operator .ant-select'),
-          DATA_CONTRACT_SEMANTIC_OPERATIONS.greater
-        );
+      const ruleLocator = page.locator('.group').nth(0);
+      await selectOption(
+        page,
+        ruleLocator.locator('.group--field .ant-select'),
+        'Domain',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        DATA_CONTRACT_SEMANTIC_OPERATIONS.not_in
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--value .ant-select'),
+        domain1.responseData.name,
+        true
+      );
 
-        await ruleLocator
-          .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-          .fill('0.1');
+      // save and trigger contract validation
+      await saveAndTriggerDataContractValidation(page, true);
 
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Passed');
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).not.toBeVisible();
+    });
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Failed');
+    await test.step('Domain with NotIn condition should failed', async () => {
+      await removeDomain(page, domain2.responseData);
+      await assignDomain(page, domain1.responseData);
 
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).toContainText('Contract Failed');
-      }
-    );
+      await page.getByTestId('manage-contract-actions').click();
 
-    await test.step(
-      'Contract with > condition for version should passed',
-      async () => {
-        await assignDomain(page, domain.responseData);
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
-        await page.getByTestId('manage-contract-actions').click();
+      const runNowResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*/validate'
+      );
+      await page.getByTestId('contract-run-now-button').click();
+      await runNowResponse;
 
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
+      await page.reload();
 
-        const runNowResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*/validate'
-        );
-        await page.getByTestId('contract-run-now-button').click();
-        await runNowResponse;
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        await page.reload();
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Failed');
 
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Passed');
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).not.toBeVisible();
-      }
-    );
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).toContainText('Contract Failed');
+    });
   });
 
-  test('Validate Entity Version Less than equal <=', async ({
-    page,
-    browser,
-  }) => {
+  test('Validate Domain Rule Is_Set', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step(
@@ -1495,96 +1496,82 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       async () => {
         await redirectToHomePage(page);
         await table.visitEntityPage(page);
+        await assignDomain(page, domain1.responseData);
         await performInitialStepForRules(page);
       }
     );
 
-    await test.step(
-      'Contract with <= condition for version should passed',
-      async () => {
-        await page.getByRole('tab', { name: 'Semantics' }).click();
+    await test.step('Domain with IsSet condition should passed', async () => {
+      await page.getByRole('tab', { name: 'Semantics' }).click();
 
-        await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
-        await page.fill(
-          '#semantics_0_description',
-          DATA_CONTRACT_SEMANTICS1.description
-        );
+      await page.fill('#semantics_0_name', DATA_CONTRACT_SEMANTICS1.name);
+      await page.fill(
+        '#semantics_0_description',
+        DATA_CONTRACT_SEMANTICS1.description
+      );
 
-        const ruleLocator = page.locator('.group').nth(0);
-        await selectOption(
-          page,
-          ruleLocator.locator('.group--field .ant-select'),
-          'Version',
-          true
-        );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--operator .ant-select'),
-          DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
-        );
+      const ruleLocator = page.locator('.group').nth(0);
+      await selectOption(
+        page,
+        ruleLocator.locator('.group--field .ant-select'),
+        'Domain',
+        true
+      );
+      await selectOption(
+        page,
+        ruleLocator.locator('.rule--operator .ant-select'),
+        DATA_CONTRACT_SEMANTIC_OPERATIONS.is_set
+      );
 
-        await ruleLocator
-          .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-          .fill('0.1');
+      // save and trigger contract validation
+      await saveAndTriggerDataContractValidation(page, true);
 
-        // save and trigger contract validation
-        await saveAndTriggerDataContractValidation(page, true);
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Passed');
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).not.toBeVisible();
+    });
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Passed');
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).not.toBeVisible();
-      }
-    );
+    await test.step('Domain with IsSet condition should failed', async () => {
+      await removeDomain(page, domain1.responseData);
 
-    await test.step(
-      'Contract with <= condition for version should failed',
-      async () => {
-        await assignDomain(page, domain.responseData);
+      await page.getByTestId('manage-contract-actions').click();
 
-        await page.getByTestId('manage-contract-actions').click();
+      await page.waitForSelector('.contract-action-dropdown', {
+        state: 'visible',
+      });
 
-        await page.waitForSelector('.contract-action-dropdown', {
-          state: 'visible',
-        });
+      const runNowResponse = page.waitForResponse(
+        '/api/v1/dataContracts/*/validate'
+      );
+      await page.getByTestId('contract-run-now-button').click();
+      await runNowResponse;
 
-        const runNowResponse = page.waitForResponse(
-          '/api/v1/dataContracts/*/validate'
-        );
-        await page.getByTestId('contract-run-now-button').click();
-        await runNowResponse;
+      await page.reload();
 
-        await page.reload();
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
-        await page.waitForLoadState('networkidle');
-        await page.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
+      await expect(
+        page.getByTestId('contract-status-card-item-semantics-status')
+      ).toContainText('Failed');
 
-        await expect(
-          page.getByTestId('contract-status-card-item-semantics-status')
-        ).toContainText('Failed');
-
-        await expect(
-          page.getByTestId('data-contract-latest-result-btn')
-        ).toContainText('Contract Failed');
-      }
-    );
+      await expect(
+        page.getByTestId('data-contract-latest-result-btn')
+      ).toContainText('Contract Failed');
+    });
   });
 
-  test('Validate Entity Version Greater than equal >=', async ({
-    page,
-    browser,
-  }) => {
+  test.fixme('Validate Domain Rule Is_Not_Set', async ({ page, browser }) => {
     test.slow();
 
     const { apiContext, afterAction } = await performAdminLogin(browser);
     const table = new TableClass();
-    const domain = new Domain();
     await table.create(apiContext);
-    await domain.create(apiContext);
     await afterAction();
 
     await test.step(
@@ -1597,7 +1584,7 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     );
 
     await test.step(
-      'Contract with >= condition for version should passed',
+      'Domain with IsNotSet condition should passed',
       async () => {
         await page.getByRole('tab', { name: 'Semantics' }).click();
 
@@ -1611,18 +1598,14 @@ test.describe('Data Contracts Semantics Rule Version', () => {
         await selectOption(
           page,
           ruleLocator.locator('.group--field .ant-select'),
-          'Version',
+          'Domain',
           true
         );
         await selectOption(
           page,
           ruleLocator.locator('.rule--operator .ant-select'),
-          DATA_CONTRACT_SEMANTIC_OPERATIONS.less_equal
+          DATA_CONTRACT_SEMANTIC_OPERATIONS.is_not_set
         );
-
-        await ruleLocator
-          .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
-          .fill('0.1');
 
         // save and trigger contract validation
         await saveAndTriggerDataContractValidation(page, true);
@@ -1637,9 +1620,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
     );
 
     await test.step(
-      'Contract with >= condition for version should failed',
+      'Domain with IsNotSet condition should failed',
       async () => {
-        await assignDomain(page, domain.responseData);
+        await assignDomain(page, domain1.responseData);
 
         await page.getByTestId('manage-contract-actions').click();
 
