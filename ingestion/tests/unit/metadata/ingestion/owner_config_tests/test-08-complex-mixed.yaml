@@ -1,0 +1,69 @@
+# ============================================
+# Test Case 08: Complex Mixed Scenario
+# ============================================
+# Test Scenario: Comprehensive test combining all features
+# Tests combination of:
+#   - FQN vs simple name matching
+#   - Multiple users vs single team
+#   - Inheritance for unconfigured entities
+#   - All validation rules working together
+#
+# Expected Results:
+#   - finance_db → "finance-team" (single team)
+#   - marketing_db → 2 users (marketing-user-1, marketing-user-2)
+#   - finance_db.accounting → 2 users (alice, bob) - FQN match
+#   - finance_db.treasury → "treasury-team" (simple name match, log INFO)
+#   - finance_db.accounting.revenue → 3 users (charlie, david, emma) - FQN match
+#   - finance_db.accounting.expenses → "expense-team" (simple name match, log INFO)
+#   - finance_db.treasury.cash_flow → "treasury-ops-team" - FQN match
+
+source:
+  type: postgres
+  serviceName: postgres-test-08-complex
+  serviceConnection:
+    config:
+      type: Postgres
+      username: admin
+      authType:
+        password: admin123
+      hostPort: localhost:5433
+      database: finance_db
+  sourceConfig:
+    config:
+      type: DatabaseMetadata
+      
+      # Owner Configuration - Complex mixed scenario
+      ownerConfig:
+        default: "data-platform-team"
+        enableInheritance: true
+        
+        database:
+          "finance_db": "finance-team"
+          "marketing_db": ["marketing-user-1", "marketing-user-2"]  # Multiple users
+        
+        databaseSchema:
+          "finance_db.accounting": ["alice", "bob"]  # FQN + multiple users
+          "treasury": "treasury-team"                # Simple name + single team
+        
+        table:
+          "finance_db.accounting.revenue": ["charlie", "david", "emma"]  # FQN + 3 users
+          "expenses": "expense-team"                                      # Simple name + team
+          "finance_db.treasury.cash_flow": "treasury-ops-team"           # FQN + team
+      
+      includeTables: true
+      includeViews: true
+      markDeletedTables: true
+      useFqnForFiltering: true
+      overrideMetadata: true
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: DEBUG
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: "YOUR_JWT_TOKEN_HERE"
