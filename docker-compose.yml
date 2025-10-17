@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: om-postgres
+    environment:
+      POSTGRES_USER: omuser
+      POSTGRES_PASSWORD: ompassword
+      POSTGRES_DB: openmetadata
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  openmetadata:
+    build: .
+    container_name: openmetadata
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_USERNAME: omuser
+      DATABASE_PASSWORD: ompassword
+      DATABASE_HOST: postgres
+      DATABASE_PORT: 5432
+      DATABASE_DB: openmetadata
+    ports:
+      - "8585:8585"
+    restart: unless-stopped
+
+volumes:
+  pgdata:
