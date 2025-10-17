@@ -1,7 +1,7 @@
 package org.openmetadata.service.migration.mysql.v1110;
 
-import lombok.SneakyThrows;
 import java.util.Map;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
@@ -15,7 +15,7 @@ public class Migration extends MigrationProcessImpl {
 
   public Migration(MigrationFile migrationFile) {
     super(migrationFile);
-    this.migrationUtil = new MigrationUtil(migrationFile);
+    this.migrationUtil = new MigrationUtil(ConnectionType.MYSQL, migrationFile);
   }
 
   @Override
@@ -32,7 +32,6 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
-    MigrationUtil migrationUtil = new MigrationUtil(ConnectionType.MYSQL);
-    migrationUtil.migrateFlywayHistory(handle);
+    this.migrationUtil.migrateFlywayHistory(handle);
   }
 }
