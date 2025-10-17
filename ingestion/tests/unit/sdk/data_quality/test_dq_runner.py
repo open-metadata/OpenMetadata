@@ -158,8 +158,8 @@ def test_runner_initialization(mock_get_client):
     runner = TestRunner.for_table("MySQL.default.test_db.test_table")
 
     assert runner.table_fqn == "MySQL.default.test_db.test_table"
-    assert runner.table is not None
-    assert runner.service_connection is not None
+    assert runner.config_builder.table is not None
+    assert runner.config_builder.service_connection is not None
 
 
 @pytest.mark.parametrize(
@@ -243,17 +243,10 @@ def test_run_executes_workflow(
 
 
 @patch("metadata.sdk.data_quality.runner.TestSuiteWorkflow")
-@patch("metadata.sdk.data_quality.runner.WorkflowConfigBuilder")
-def test_run_uses_config_builder(
-    mock_builder_class, mock_workflow_class, mock_get_client
-):
+def test_run_uses_config_builder(mock_workflow_class, mock_get_client):
     """Test that run() uses WorkflowConfigBuilder correctly"""
     mock_config = MagicMock(spec=OpenMetadataWorkflowConfig)
     mock_config.model_dump.return_value = {"test": "config"}
-
-    mock_builder = MagicMock()
-    mock_builder.build.return_value = mock_config
-    mock_builder_class.return_value = mock_builder
 
     mock_processor = MagicMock()
     mock_workflow = MagicMock()
@@ -264,15 +257,12 @@ def test_run_uses_config_builder(
     test_def = TableColumnCountToBeBetween(min_count=10, max_count=20)
     runner.add_test(test_def)
 
-    runner.run()
+    with patch.object(runner.config_builder, "build", return_value=mock_config):
+        runner.run()
 
-    mock_builder_class.assert_called_once_with(
-        table=runner.table,
-        service_connection=runner.service_connection,
-        ometa_config=runner.client.config,
-    )
-    mock_builder.add_test_definitions.assert_called_once()
-    mock_builder.build.assert_called_once()
+    assert len(runner.config_builder.test_definitions) == 1
+    mock_workflow_class.create.assert_called_once_with({"test": "config"})
+    mock_workflow.execute.assert_called_once()
 
 
 @patch("metadata.sdk.data_quality.runner.TestSuiteWorkflow")

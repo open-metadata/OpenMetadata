@@ -12,7 +12,7 @@
 """Class that allows running data quality checks by code"""
 # pyright: reportCallIssue=false, reportRedeclaration=false
 
-from typing import Any, List, Optional, Type, TypeVar, cast
+from typing import Any, List, Optional, cast
 
 import yaml
 from typing_extensions import Self
@@ -22,22 +22,14 @@ from metadata.data_quality.api.models import (
     TestCaseResultResponse,
     TestSuiteProcessorConfig,
 )
-from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
-    DatabaseService,
-)
 from metadata.generated.schema.metadataIngestion.testSuitePipeline import (
     TestSuiteConfigType,
     TestSuitePipeline,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
+    LogLevels,
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import Uuid
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.models.custom_pydantic import BaseModel
-from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
 from metadata.sdk import OpenMetadata
 from metadata.sdk import client as get_client
@@ -47,8 +39,6 @@ from metadata.sdk.data_quality.result_capturing_processor import (
 from metadata.sdk.data_quality.tests import BaseTest
 from metadata.sdk.data_quality.workflow_config_builder import WorkflowConfigBuilder
 from metadata.workflow.data_quality import TestSuiteWorkflow
-
-T = TypeVar("T", bound=BaseModel)
 
 
 class TestRunner:
@@ -63,10 +53,7 @@ class TestRunner:
 
     Attributes:
         table_fqn: Fully qualified name of the table to test
-        test_definitions: List of test definitions to execute
         client: OpenMetadata API client
-        table: Table entity from OpenMetadata
-        service_connection: Database connection from the service
 
     Example:
         >>> from metadata.sdk.data_quality import TestRunner, TableRowCountToBeBetween
@@ -79,7 +66,7 @@ class TestRunner:
         self,
         table_fqn: str,
         client: Optional[OMeta[Any, Any]] = None,
-    ):
+    ) -> None:
         """Initialize TestRunner with table FQN and optional OpenMetadata client.
 
         Args:
@@ -87,85 +74,45 @@ class TestRunner:
             client: Optional OpenMetadata client (will create one if not provided)
         """
         self.table_fqn: str = table_fqn
-        self.test_definitions: List[TestCaseDefinition] = []
 
         if client is None:
             metadata: OpenMetadata = get_client()
             client: OMeta[Any, Any] = metadata.ometa
 
         self.client: OMeta[Any, Any] = client
-        self.table: Optional[Table] = None
-        self.service_connection: Optional[DatabaseConnection] = None
+        self.config_builder: WorkflowConfigBuilder = WorkflowConfigBuilder(client)
 
-    @staticmethod
-    def _convert_ometa_exception(
-        entity: Type[T], identifier: str | Uuid, e: Exception
-    ) -> Exception:
-        """Handle OpenMetadata exceptions."""
-        if not isinstance(e, APIError):
-            return e
-
-        status_code = cast(int, e.status_code)
-        if status_code == 404:
-            return ValueError(
-                f"{entity.__name__} '{identifier}' not found in OpenMetadata."
-            )
-
-        if status_code in (401, 403):
-            return ValueError(
-                f"Could not fetch {entity.__name__} from OpenMetadata. "
-                + "Request was unauthorized or it couldn't be authenticated."
-            )
-
-        return e
-
-    def _safe_get_by_name(
-        self, entity_type: Type[T], fqn: str, fields: Optional[List[str]] = None
-    ) -> T:
-        """Safely fetch entity by name with exception handling.
+    def setup(
+        self,
+        force_test_update: bool = False,
+        log_level: LogLevels = LogLevels.INFO,
+        raise_on_error: bool = False,
+        success_threshold: int = 90,
+        enable_streamable_logs: bool = False,
+    ) -> None:
+        """Change the default configuration for the workflow.
 
         Args:
-            entity_type: Entity class to fetch
-            fqn: Fully qualified name
-            fields: Optional list of fields to fetch
+            force_test_update: Force test update even if tests already exist.
+            log_level: Log level to use.
+            raise_on_error: Raise exception if test data already exists.
+            success_threshold: threshold below which the test will fail.
+            enable_streamable_logs: Enable streamable logs.
 
         Returns:
-            Entity instance of type T
-
-        Raises:
-            ValueError: If entity not found or fetch fails
+            None
         """
-        try:
-            typed_client = cast(OMeta[T, Any], self.client)
-            entity = typed_client.get_by_name(
-                entity=entity_type,
-                fqn=fqn,
-                fields=fields,
-                nullable=False,
-            )
-            return cast(T, entity)
-        except Exception as exc:
-            raise self._convert_ometa_exception(entity_type, fqn, exc)
+        self.config_builder = (
+            self.config_builder.with_force_test_update(force_test_update)
+            .with_log_level(log_level)
+            .with_raise_on_error(raise_on_error)
+            .with_success_threshold(success_threshold)
+            .with_enable_streamable_logs(enable_streamable_logs)
+        )
 
-    def _safe_get_by_id(self, entity_type: Type[T], entity_id: str | Uuid) -> T:
-        """Safely fetch entity by ID with exception handling.
-
-        Args:
-            entity_type: Entity class to fetch
-            entity_id: Entity UUID
-
-        Returns:
-            Entity instance of type T
-
-        Raises:
-            ValueError: If entity not found or fetch fails
-        """
-        try:
-            typed_client = cast(OMeta[T, Any], self.client)
-            entity = typed_client.get_by_id(entity_type, entity_id, nullable=False)
-            return cast(T, entity)
-        except Exception as exc:
-            raise self._convert_ometa_exception(entity_type, entity_id, exc)
+    @property
+    def test_definitions(self) -> List[TestCaseDefinition]:
+        return self.config_builder.test_definitions
 
     @classmethod
     def for_table(
@@ -243,7 +190,7 @@ class TestRunner:
             return runner
 
         if tests_definitions := processor.testCases:
-            runner.test_definitions = tests_definitions
+            _ = runner.config_builder.add_test_definitions(tests_definitions)
 
         return runner
 
@@ -257,22 +204,7 @@ class TestRunner:
         Raises:
             ValueError: If table not found, service not found, or connection not configured
         """
-        self.table = self._safe_get_by_name(
-            Table,
-            self.table_fqn,
-            fields=[
-                "tableProfilerConfig",
-                "testSuite",
-                "serviceType",
-                "service",
-                "database",
-            ],
-        )
-
-        service_id = cast(EntityReference, self.table.service).id
-        service = self._safe_get_by_id(DatabaseService, service_id)
-
-        self.service_connection = cast(DatabaseConnection, service.connection)
+        self.config_builder = self.config_builder.with_table(self.table_fqn)
 
     def add_test(self, test_definition: BaseTest) -> None:
         """Add a test definition to be executed.
@@ -283,7 +215,9 @@ class TestRunner:
         Returns:
             Self for method chaining
         """
-        self.test_definitions.append(test_definition.to_test_case_definition())
+        self.config_builder = self.config_builder.add_test_definition(
+            test_definition.to_test_case_definition()
+        )
 
     def add_tests(self, *test_definitions: BaseTest) -> None:
         """Add multiple test definitions at once.
@@ -315,22 +249,17 @@ class TestRunner:
         if not self.test_definitions:
             raise ValueError("No tests added. Use add_test() to add test definitions.")
 
-        assert self.table is not None
-        assert self.service_connection is not None
+        config = self.config_builder.build()
 
-        config_builder = WorkflowConfigBuilder(
-            table=self.table,
-            service_connection=self.service_connection,
-            ometa_config=self.client.config,
-        )
-        config_builder.add_test_definitions(self.test_definitions)
-        config = config_builder.build()
-
-        workflow = TestSuiteWorkflow.create(config.model_dump())
+        workflow = TestSuiteWorkflow.create(
+            config.model_dump()
+        )  # pyright: ignore[reportUnknownMemberType]
 
         original_processor = workflow.steps[0]
         result_capturer = ResultCapturingProcessor(original_processor)
-        workflow.steps = (result_capturer,) + workflow.steps[1:]
+        workflow.steps = (result_capturer,) + workflow.steps[
+            1:
+        ]  # pyright: ignore[reportAttributeAccessIssue]
 
         workflow.execute()
 
