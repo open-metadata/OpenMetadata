@@ -16,6 +16,7 @@ import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
   FC,
+  HtmlHTMLAttributes,
   ReactNode,
   useCallback,
   useEffect,
@@ -62,6 +63,26 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
   const [open, setOpen] = useState(false);
   const { t } = useTranslation();
 
+  const fetchOptions = async (searchText: string) => {
+    setLoading(true);
+    try {
+      const response = await tagClassBase.getTags(searchText, 1, true);
+      const fetchedOptions = response?.data || [];
+      const mappedOptions: TagOption[] = fetchedOptions.map(
+        (opt: SelectOption) => ({
+          label: opt.label,
+          value: opt.value,
+          data: opt.data as TagLabel,
+        })
+      );
+      setOptions(mappedOptions);
+    } catch {
+      setOptions([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const searchDebounced = useRef(
     debounce(async (searchValue: string) => {
       await fetchOptions(searchValue);
@@ -94,26 +115,6 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
     }
   }, [open]);
 
-  const fetchOptions = async (searchText: string) => {
-    setLoading(true);
-    try {
-      const response = await tagClassBase.getTags(searchText, 1, 20);
-      const fetchedOptions = response?.data || [];
-      const mappedOptions: TagOption[] = fetchedOptions.map(
-        (opt: SelectOption) => ({
-          label: opt.label,
-          value: opt.value,
-          data: opt.data as TagLabel,
-        })
-      );
-      setOptions(mappedOptions);
-    } catch (error) {
-      setOptions([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleInputChange = useCallback(
     (_event: React.SyntheticEvent, newInputValue: string) => {
       setInputValue(newInputValue);
@@ -122,11 +123,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
   );
 
   const handleChange = useCallback(
-    (
-      event: React.SyntheticEvent,
-      newValue: (TagOption | string)[],
-      reason: string
-    ) => {
+    (_event: React.SyntheticEvent, newValue: (TagOption | string)[]) => {
       if (isArray(newValue)) {
         // Filter out string values from freeSolo
         const optionValues = newValue.filter(
@@ -176,10 +173,10 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
       ListboxProps={
         {
           key: `listbox-${memoizedOptions.length}`,
-        } as any
+        } as HtmlHTMLAttributes<HTMLUListElement>
       }
       autoFocus={autoFocus}
-      getOptionLabel={(option: TagOption | string) =>
+      getOptionLabel={(option) =>
         typeof option === 'string' ? option : option.label
       }
       inputValue={inputValue}
@@ -213,7 +210,9 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           <Box display="flex" flexDirection="column">
             <Box
               fontWeight="medium"
-              sx={{ color: option.data?.style?.color || undefined }}>
+              sx={{
+                color: option.data?.style?.color || undefined,
+              }}>
               {option.label}
             </Box>
             {(option.data?.displayName || option.data?.name) && (
@@ -224,8 +223,8 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           </Box>
         </Box>
       )}
-      renderTags={(value: TagOption[], getTagProps) =>
-        value.map((option: TagOption, index: number) => {
+      renderTags={(value, getTagProps) =>
+        value.map((option, index: number) => {
           const chipProps = getTagProps({ index });
 
           return (

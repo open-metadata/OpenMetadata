@@ -108,6 +108,16 @@ import { t } from './i18next/LocalUtil';
 import { jsonToCSV } from './StringsUtils';
 import { showErrorToast } from './ToastUtils';
 
+interface LayoutedElements {
+  node: Array<
+    Node & {
+      nodeHeight: number;
+      childrenHeight: number;
+    }
+  >;
+  edge: Edge[];
+}
+
 export const MAX_LINEAGE_LENGTH = 20;
 
 export const encodeLineageHandles = (handle: string) => {
@@ -177,7 +187,7 @@ export const getLayoutedElements = (
   isExpanded = true,
   expandAllColumns = false,
   columnsHavingLineage: string[] = []
-) => {
+): LayoutedElements => {
   const Graph = graphlib.Graph;
   const dagreGraph = new Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
