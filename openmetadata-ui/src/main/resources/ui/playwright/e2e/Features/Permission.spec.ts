@@ -138,7 +138,9 @@ test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await user.delete(apiContext);
   await role.delete(apiContext);
+  await role2.delete(apiContext);
   await policy.delete(apiContext);
+  await policy2.delete(apiContext);
   await table.delete(apiContext);
   await afterAction();
 });
