@@ -16,6 +16,7 @@ import { debounce, isArray, isEmpty } from 'lodash';
 import { EntityTags } from 'Models';
 import {
   FC,
+  HtmlHTMLAttributes,
   ReactNode,
   useCallback,
   useEffect,
@@ -65,7 +66,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
   const fetchOptions = async (searchText: string) => {
     setLoading(true);
     try {
-      const response = await tagClassBase.getTags(searchText, 1);
+      const response = await tagClassBase.getTags(searchText, 1, true);
       const fetchedOptions = response?.data || [];
       const mappedOptions: TagOption[] = fetchedOptions.map(
         (opt: SelectOption) => ({
@@ -75,7 +76,7 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         })
       );
       setOptions(mappedOptions);
-    } catch (error) {
+    } catch {
       setOptions([]);
     } finally {
       setLoading(false);
@@ -175,10 +176,10 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
       ListboxProps={
         {
           key: `listbox-${memoizedOptions.length}`,
-        } as React.HTMLAttributes<HTMLUListElement>
+        } as HtmlHTMLAttributes<HTMLUListElement>
       }
       autoFocus={autoFocus}
-      getOptionLabel={(option: TagOption | string) =>
+      getOptionLabel={(option) =>
         typeof option === 'string' ? option : option.label
       }
       inputValue={inputValue}
