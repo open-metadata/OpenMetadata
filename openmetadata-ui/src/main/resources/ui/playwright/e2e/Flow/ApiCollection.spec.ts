@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test } from '@playwright/test';
 import { ApiCollectionClass } from '../../support/entity/ApiCollectionClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
+import { performAdminLogin } from '../../utils/admin';
 import { createNewPage, redirectToHomePage } from '../../utils/common';
 import {
   addMultiOwner,
@@ -20,17 +20,14 @@ import {
   removeOwner,
   updateOwner,
 } from '../../utils/entity';
-
-const entity = new ApiCollectionClass();
-
-// use the admin user to login
-test.use({ storageState: 'playwright/.auth/admin.json' });
+import { test } from '../fixtures/pages';
 
 test.describe('API Collection Entity Special Test Cases', () => {
-  test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    const { apiContext, afterAction } = await createNewPage(browser);
+  const entity = new ApiCollectionClass();
 
-    await EntityDataClass.preRequisitesForTests(apiContext);
+  test.beforeAll('Setup pre-requests', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
     await entity.create(apiContext);
     await afterAction();
   });
@@ -43,7 +40,6 @@ test.describe('API Collection Entity Special Test Cases', () => {
   test.afterAll('Cleanup', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
     await entity.delete(apiContext);
-    await EntityDataClass.postRequisitesForTests(apiContext);
     await afterAction();
   });
 

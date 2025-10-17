@@ -14,7 +14,6 @@
 import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
 import { Domain } from '../../../support/domain/Domain';
-import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage, uuid } from '../../../utils/common';
@@ -70,7 +69,6 @@ const customPropertyName = `pwDomainCustomProperty${uuid()}`;
 
 test.beforeAll('Setup domain and custom property', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  await EntityDataClass.preRequisitesForTests(apiContext);
   await domain.create(apiContext);
 
   // Create custom property for domain once
@@ -235,7 +233,6 @@ test('Domain deny operations', async ({ testUserPage, browser }) => {
 test.afterAll('Cleanup domain', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await domain.delete(apiContext);
-  await EntityDataClass.postRequisitesForTests(apiContext);
   await afterAction();
 });
 

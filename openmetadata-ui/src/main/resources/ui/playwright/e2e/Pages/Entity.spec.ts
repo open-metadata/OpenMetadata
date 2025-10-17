@@ -118,7 +118,6 @@ entities.forEach((EntityClass) => {
     test.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -622,7 +621,6 @@ entities.forEach((EntityClass) => {
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });

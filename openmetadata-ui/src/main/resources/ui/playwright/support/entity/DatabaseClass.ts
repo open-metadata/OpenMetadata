@@ -195,6 +195,18 @@ export class DatabaseClass extends EntityClass {
     };
   }
 
+  public set(data: {
+    entity: ResponseDataWithServiceType;
+    service: ResponseDataType;
+    schema: ResponseDataWithServiceType;
+    table: ResponseDataWithServiceType;
+  }): void {
+    this.entityResponseData = data.entity;
+    this.serviceResponseData = data.service;
+    this.schemaResponseData = data.schema;
+    this.tableResponseData = data.table;
+  }
+
   async visitEntityPage(page: Page) {
     await visitServiceDetailsPage(
       page,
