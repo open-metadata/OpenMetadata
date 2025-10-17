@@ -56,6 +56,7 @@ import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
+import { DomainExpertWidget } from '../../Domain/DomainExpertsWidget/DomainExpertWidget';
 import { GlossaryUpdateConfirmationModal } from '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
@@ -394,13 +395,13 @@ export const CommonWidgets = ({
         />
       );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.OWNERS)) {
-      return <OwnerLabelV2<GenericEntity> />;
+      return <OwnerLabelV2<GenericEntity> fieldType="owners" />;
     } else if (
       widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
     ) {
       return <ReviewerLabelV2<GenericEntity> />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
-      return <OwnerLabelV2<GenericEntity> />;
+      return <DomainExpertWidget />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN)) {
       return <DomainLabelV2 multiple showDomainHeading />;
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)) {

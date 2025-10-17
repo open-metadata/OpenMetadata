@@ -291,7 +291,7 @@ test.describe('Tag Page with Admin Roles', () => {
       page: adminPage,
       ownerNames: [OWNER1],
       activatorBtnDataTestId: 'add-owner',
-      resultTestId: 'tag-owner-name',
+      resultTestId: 'owner-link',
       endpoint: EntityTypeEndpoint.Tag,
       isSelectableInsideForm: false,
       type: 'Users',

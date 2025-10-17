@@ -28,19 +28,39 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 interface OwnerLabelV2Props {
   dataTestId?: string;
   hasPermission?: boolean;
+  fieldType?: 'owners' | 'experts';
 }
 
 export const OwnerLabelV2 = <
-  T extends { owners?: EntityReference[]; id: string }
+  T extends {
+    owners?: EntityReference[];
+    experts?: EntityReference[];
+    id: string;
+  }
 >(
   props: OwnerLabelV2Props
 ) => {
-  const { dataTestId = 'glossary-right-panel-owner-link' } = props;
+  const {
+    dataTestId = 'glossary-right-panel-owner-link',
+    fieldType = 'owners',
+  } = props;
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
   const { t } = useTranslation();
+
+  const isExpertsField = fieldType === 'experts';
+  const fieldData = isExpertsField ? data.experts : data.owners;
+  const fieldLabel = isExpertsField ? 'expert-plural' : 'owner-plural';
+  const tabSpecificField = isExpertsField
+    ? TabSpecificField.EXPERTS
+    : TabSpecificField.OWNERS;
+
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
     const updatedEntity = { ...data };
-    updatedEntity.owners = updatedUser;
+    if (isExpertsField) {
+      updatedEntity.experts = updatedUser;
+    } else {
+      updatedEntity.owners = updatedUser;
+    }
     await onUpdate(updatedEntity);
   };
 
@@ -54,30 +74,30 @@ export const OwnerLabelV2 = <
     () => (
       <div className="d-flex items-center gap-2">
         <Typography.Text className="text-sm font-medium">
-          {t('label.owner-plural')}
+          {t(`label.${fieldLabel}`)}
         </Typography.Text>
         {!isVersionView && hasPermission && (
           <UserTeamSelectableList
             hasPermission={hasPermission}
             listHeight={200}
             multiple={{ user: true, team: false }}
-            owner={data.owners}
+            owner={fieldData}
             onUpdate={handleUpdatedOwner}>
-            {isEmpty(data.owners) ? (
+            {isEmpty(fieldData) ? (
               <PlusIconButton
-                data-testid="add-owner"
+                data-testid={`add-${fieldType}`}
                 size="small"
                 title={t('label.add-entity', {
-                  entity: t('label.owner-plural'),
+                  entity: t(`label.${fieldLabel}`),
                 })}
               />
             ) : (
               <EditIconButton
                 newLook
-                data-testid="edit-owner"
+                data-testid={`edit-${fieldType}`}
                 size="small"
                 title={t('label.edit-entity', {
-                  entity: t('label.owner-plural'),
+                  entity: t(`label.${fieldLabel}`),
                 })}
               />
             )}
@@ -85,7 +105,15 @@ export const OwnerLabelV2 = <
         )}
       </div>
     ),
-    [data, hasPermission, handleUpdatedOwner, isVersionView]
+    [
+      data,
+      hasPermission,
+      handleUpdatedOwner,
+      isVersionView,
+      fieldType,
+      fieldLabel,
+      fieldData,
+    ]
   );
 
   return (
@@ -94,11 +122,11 @@ export const OwnerLabelV2 = <
         title: header,
       }}
       dataTestId={dataTestId}
-      isExpandDisabled={isEmpty(data.owners)}>
+      isExpandDisabled={isEmpty(fieldData)}>
       {getOwnerVersionLabel(
         data,
         isVersionView ?? false,
-        TabSpecificField.OWNERS,
+        tabSpecificField,
         hasPermission
       )}
     </ExpandableCard>

@@ -34,8 +34,10 @@ type DataProductWidgetKeys =
   | DetailPageWidgetKeys.OWNERS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
+  | DetailPageWidgetKeys.EXPERTS
   | DetailPageWidgetKeys.DOMAIN
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.EXPERTS;
 
 class DataProductClassBase {
   defaultWidgetHeight: Record<DataProductWidgetKeys, number>;
@@ -46,6 +48,7 @@ class DataProductClassBase {
       [DetailPageWidgetKeys.OWNERS]: 1.5,
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
+      [DetailPageWidgetKeys.EXPERTS]: 2,
       [DetailPageWidgetKeys.DOMAIN]: 1.5,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
@@ -129,11 +132,27 @@ class DataProductClassBase {
         static: false,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS],
+        i: DetailPageWidgetKeys.EXPERTS,
+        w: 2,
+        x: 6,
+        y: 4,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 4,
+        y: 5,
+        static: false,
+      },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS],
+        i: DetailPageWidgetKeys.EXPERTS,
+        w: 2,
+        x: 6,
+        y: 5,
         static: false,
       },
     ];
@@ -156,6 +175,13 @@ class DataProductClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.EXPERTS,
+        name: i18n.t('label.expert-plural'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
     ];
   }
 
@@ -173,6 +199,8 @@ class DataProductClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.TAGS];
       case DetailPageWidgetKeys.GLOSSARY_TERMS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
+      case DetailPageWidgetKeys.EXPERTS:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS];
       case DetailPageWidgetKeys.DOMAIN:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
