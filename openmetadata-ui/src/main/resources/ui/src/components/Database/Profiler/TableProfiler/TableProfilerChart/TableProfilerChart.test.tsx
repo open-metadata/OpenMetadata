@@ -20,9 +20,20 @@ import {
 import '../../../../../test/unit/mocks/mui.mock';
 import TableProfilerChart from './TableProfilerChart';
 
+const MOCK_START_TS = 1640995200000;
+const MOCK_END_TS = 1641081600000;
+
 jest.mock('react-router-dom', () => ({
+  ...jest.requireActual('react-router-dom'),
   useNavigate: jest.fn().mockReturnValue(jest.fn()),
   useParams: jest.fn().mockReturnValue({ fqn: 'testFQN' }),
+  useLocation: jest.fn().mockReturnValue({
+    hash: '',
+    key: 'default',
+    pathname: '/test-path',
+    search: '',
+    state: null,
+  }),
 }));
 
 jest.mock('../../../../../rest/tableAPI');
@@ -54,8 +65,8 @@ jest.mock('../../../../common/SummaryCard/SummaryCard.component', () => {
 });
 jest.mock('../../../../../constants/profiler.constant', () => ({
   DEFAULT_RANGE_DATA: {
-    startDate: '2022-01-01',
-    endDate: '2022-01-02',
+    startTs: 1640995200000,
+    endTs: 1641081600000,
   },
   INITIAL_OPERATION_METRIC_VALUE: {},
   INITIAL_ROW_METRIC_VALUE: {},
@@ -177,8 +188,14 @@ describe('TableProfilerChart component test', () => {
     expect(mockGetSystemProfileList.mock.calls[0][0]).toEqual('testFQN');
     expect(mockGetTableProfilesList.mock.calls[0][0]).toEqual('testFQN');
     // API should be call with proper Param value
-    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({});
-    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({});
+    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({
+      endTs: MOCK_END_TS,
+      startTs: MOCK_START_TS,
+    });
+    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
+      endTs: MOCK_END_TS,
+      startTs: MOCK_START_TS,
+    });
   });
 
   it('If TimeRange change API should be call accordingly', async () => {
@@ -190,7 +207,13 @@ describe('TableProfilerChart component test', () => {
     });
 
     // API should be call with proper Param value
-    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({});
-    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({});
+    expect(mockGetSystemProfileList.mock.calls[0][1]).toEqual({
+      endTs: MOCK_END_TS,
+      startTs: MOCK_START_TS,
+    });
+    expect(mockGetTableProfilesList.mock.calls[0][1]).toEqual({
+      endTs: MOCK_END_TS,
+      startTs: MOCK_START_TS,
+    });
   });
 });

@@ -10,10 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as ColumnProfileIcon } from '../../../../assets/svg/column-profile.svg';
-import { ReactComponent as DataQualityIcon } from '../../../../assets/svg/data-quality.svg';
-import { ReactComponent as IncidentIcon } from '../../../../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as TableProfilerIcon } from '../../../../assets/svg/table-profile.svg';
+import i18n from '../../../../utils/i18next/LocalUtil';
 import { ProfilerTabPath } from '../ProfilerDashboard/profilerDashboard.interface';
 import ColumnProfileTable from './ColumnProfileTable/ColumnProfileTable';
 import IncidentsTab from './IncidentsTab/IncidentsTab.component';
@@ -47,24 +44,26 @@ describe('ProfilerClassBase', () => {
     it('should return the correct profiler tab options', () => {
       const expectedOptions = [
         {
-          label: 'label.table-entity-text',
+          label: i18n.t('label.table-entity-text', {
+            entityText: i18n.t('label.profile'),
+          }),
           key: ProfilerTabPath.TABLE_PROFILE,
-          icon: TableProfilerIcon,
         },
         {
-          label: 'label.column-entity',
+          label: i18n.t('label.column-entity', {
+            entity: i18n.t('label.profile'),
+          }),
           key: ProfilerTabPath.COLUMN_PROFILE,
-          icon: ColumnProfileIcon,
         },
         {
-          label: 'label.data-entity',
+          label: i18n.t('label.data-entity', {
+            entity: i18n.t('label.quality'),
+          }),
           key: ProfilerTabPath.DATA_QUALITY,
-          icon: DataQualityIcon,
         },
         {
-          label: 'label.incident-plural',
+          label: i18n.t('label.incident-plural'),
           key: ProfilerTabPath.INCIDENTS,
-          icon: IncidentIcon,
         },
       ];
 

@@ -13,17 +13,46 @@
 
 import { render, screen, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
-import { DateRangeObject } from 'Models';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ColumnProfile } from '../../../../generated/entity/data/container';
 import { Table } from '../../../../generated/entity/data/table';
 import { Operation } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { DataType } from '../../../../generated/tests/testDefinition';
+import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
 import '../../../../test/unit/mocks/mui.mock';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';
+
+const MOCK_START_TS = 1703980800000;
+const MOCK_END_TS = 1704067200000;
+const UPDATED_START_TS = 1703894400000;
+const UPDATED_END_TS = 1703980800000;
+jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => ({
+  __esModule: true,
+  default: jest.fn().mockReturnValue({
+    hash: '',
+    key: 'default',
+    pathname: '/test-path',
+    search: '',
+    state: null,
+  }),
+}));
+
+jest.mock('../../../../constants/profiler.constant', () => ({
+  DEFAULT_RANGE_DATA: {
+    startTs: 1703980800000,
+    endTs: 1704067200000,
+  },
+  INITIAL_COLUMN_METRICS_VALUE: {
+    countMetrics: { data: [] },
+    proportionMetrics: { data: [] },
+    mathMetrics: { data: [] },
+    sumMetrics: { data: [] },
+    quartileMetrics: { data: [] },
+  },
+}));
 
 jest.mock('../../../../rest/tableAPI', () => ({
   getColumnProfilerList: jest.fn(),
@@ -248,12 +277,6 @@ const mockStringColumnProfilerData: ColumnProfile[] = [
   },
 ];
 
-const mockDateRangeObject: DateRangeObject = {
-  startTs: 1703980800000,
-  endTs: 1704067200000,
-  key: 'last_7_days',
-};
-
 const mockTableDetails: Table = {
   id: 'table-id',
   name: 'test_table',
@@ -325,6 +348,9 @@ const defaultTableProfilerContext = {
 const mockGetColumnProfilerList = getColumnProfilerList as jest.MockedFunction<
   typeof getColumnProfilerList
 >;
+const mockUseCustomLocation = useCustomLocation as jest.MockedFunction<
+  typeof useCustomLocation
+>;
 const mockUseTableProfiler = useTableProfiler as jest.MockedFunction<
   typeof useTableProfiler
 >;
@@ -335,6 +361,13 @@ const mockShowErrorToast = showErrorToast as jest.MockedFunction<
 describe('SingleColumnProfile', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseCustomLocation.mockReturnValue({
+      hash: '',
+      key: 'default',
+      pathname: '/test-path',
+      search: '',
+      state: null,
+    });
     mockUseTableProfiler.mockReturnValue(defaultTableProfilerContext);
     mockGetColumnProfilerList.mockResolvedValue({
       data: mockColumnProfilerData,
@@ -472,7 +505,7 @@ describe('SingleColumnProfile', () => {
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledWith(
           'db.schema.test_table.test_column',
-          { startTs: 1703980800000, endTs: 1704067200000 }
+          { startTs: MOCK_START_TS, endTs: MOCK_END_TS }
         );
       });
     });
@@ -515,7 +548,7 @@ describe('SingleColumnProfile', () => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(2);
         expect(mockGetColumnProfilerList).toHaveBeenLastCalledWith(
           'db.schema.test_table.new_column',
-          { startTs: 1703980800000, endTs: 1704067200000 }
+          { startTs: MOCK_START_TS, endTs: MOCK_END_TS }
         );
       });
     });
@@ -527,18 +560,20 @@ describe('SingleColumnProfile', () => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(1);
       });
 
-      (useCustomLocation as jest.Mock).mockReturnValue({
-        search: '?startTs=1703894400000&endTs=1703980800000&key=last_1_day',
+      mockUseCustomLocation.mockReturnValue({
+        hash: '',
+        key: 'default',
         pathname: '/path',
+        search: `?startTs=${UPDATED_START_TS}&endTs=${UPDATED_END_TS}&key=last_1_day`,
+        state: null,
       });
-
       rerender(<SingleColumnProfile {...defaultProps} />);
 
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledTimes(2);
         expect(mockGetColumnProfilerList).toHaveBeenLastCalledWith(
           'db.schema.test_table.test_column',
-          { startTs: 1703894400000, endTs: 1703980800000 }
+          { startTs: UPDATED_START_TS, endTs: UPDATED_END_TS }
         );
       });
     });
@@ -721,7 +756,7 @@ describe('SingleColumnProfile', () => {
       await waitFor(() => {
         expect(mockGetColumnProfilerList).toHaveBeenCalledWith(
           'db.schema.test_table.string_column',
-          { startTs: 1703980800000, endTs: 1704067200000 }
+          { startTs: MOCK_START_TS, endTs: MOCK_END_TS }
         );
       });
     });
