@@ -143,7 +143,7 @@ export interface App {
     /**
      * Application Private configuration loaded at runtime.
      */
-    privateConfiguration?: PrivateConfig;
+    privateConfiguration?: CollateAIAppPrivateConfig | string;
     provider?:             ProviderType;
     /**
      * Execution Configuration.
@@ -1486,11 +1486,9 @@ export enum Permissions {
 }
 
 /**
- * Application Private configuration loaded at runtime.
- *
  * Private Configuration for the CollateAI External Application.
  */
-export interface PrivateConfig {
+export interface CollateAIAppPrivateConfig {
     /**
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io
