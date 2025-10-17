@@ -6359,6 +6359,12 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     return listEntities(queryParams, null, null, null, authHeaders);
   }
 
+  public ResultList<T> listEntitiesWithLimit(
+      Map<String, String> queryParams, Map<String, String> authHeaders, int limit)
+      throws HttpResponseException {
+    return listEntities(queryParams, limit, null, null, authHeaders);
+  }
+
   public ResultList<T> listEntities(
       Map<String, String> queryParams,
       Integer limit,

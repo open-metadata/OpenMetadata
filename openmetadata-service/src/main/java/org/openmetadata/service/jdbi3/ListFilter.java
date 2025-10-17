@@ -590,16 +590,20 @@ public class ListFilter extends Filter<ListFilter> {
         "(%s IN ('Approved', 'Unprocessed') "
             + "OR EXISTS ("
             + "SELECT 1 FROM entity_relationship er "
-            + "WHERE er.fromId = '%s' "
-            + "AND er.toId = %s "
-            + "AND er.fromEntity = 'user' "
+            + "WHERE er.toId = %s "
             + "AND er.relation IN (%d, %d) "
+            + "AND (er.fromId = '%s' AND er.fromEntity = 'user' "
+            + "     OR er.fromId IN (SELECT fromId FROM entity_relationship "
+            + "                      WHERE toId = '%s' AND fromEntity = 'team' AND toEntity = 'user' AND relation = %d) "
+            + "        AND er.fromEntity = 'team') "
             + "LIMIT 1"
             + "))",
         statusColumn,
-        currentUserId,
         entityColumn,
         Relationship.OWNS.ordinal(),
-        Relationship.REVIEWS.ordinal());
+        Relationship.REVIEWS.ordinal(),
+        currentUserId,
+        currentUserId,
+        Relationship.HAS.ordinal());
   }
 }
