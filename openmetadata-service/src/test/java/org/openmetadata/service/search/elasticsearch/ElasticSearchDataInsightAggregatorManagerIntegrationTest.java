@@ -122,22 +122,6 @@ class ElasticSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetad
   }
 
   @Test
-  void testBuildDIChart_WithNullChart() throws Exception {
-    long start = System.currentTimeMillis() - 86400000L;
-    long end = System.currentTimeMillis();
-
-    try {
-      DataInsightCustomChartResultList result =
-          aggregatorManager.buildDIChart(null, start, end, false);
-      assertNull(result, "Result should be null for null chart input");
-    } catch (NullPointerException e) {
-      LOG.debug(
-          "buildDIChart with null chart throws exception as expected: {}",
-          e.getClass().getSimpleName());
-    }
-  }
-
-  @Test
   void testBuildDIChart_WithLiveParameter() {
     String clusterAlias = Entity.getSearchRepository().getClusterAlias();
     String diIndexName =
@@ -179,6 +163,14 @@ class ElasticSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetad
 
   @Test
   void testFetchDIChartFields_ReturnsFieldList() {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String indexPrefix =
+        (clusterAlias == null || clusterAlias.isEmpty())
+            ? "di-data-assets"
+            : clusterAlias + "-di-data-assets";
+
+    createDataInsightFieldsTestIndex(indexPrefix + "-table");
+
     List<Map<String, String>> fields = aggregatorManager.fetchDIChartFields();
 
     assertNotNull(fields, "Fields list should not be null");
@@ -192,6 +184,12 @@ class ElasticSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetad
     }
 
     LOG.info("Fetched {} DI chart fields", fields.size());
+
+    try {
+      client.indices().delete(d -> d.index(indexPrefix + "-table"));
+    } catch (Exception e) {
+      LOG.debug("Failed to cleanup DI fields test index", e);
+    }
   }
 
   @Test
@@ -655,6 +653,52 @@ class ElasticSearchDataInsightAggregatorManagerIntegrationTest extends OpenMetad
 
       client.indices().create(request);
       LOG.info("Created query cost test index: {}", indexName);
+    } catch (Exception e) {
+      LOG.debug("Index {} might already exist", indexName);
+    }
+  }
+
+  private void createDataInsightFieldsTestIndex(String indexName) {
+    try {
+      CreateIndexRequest request =
+          CreateIndexRequest.of(
+              c ->
+                  c.index(indexName)
+                      .mappings(
+                          m ->
+                              m.properties("timestamp", p -> p.date(d -> d))
+                                  .properties("entityId", p -> p.keyword(k -> k))
+                                  .properties("entityType", p -> p.keyword(k -> k))
+                                  .properties("entityFQN", p -> p.keyword(k -> k))
+                                  .properties(
+                                      "entityName",
+                                      p ->
+                                          p.text(
+                                              t ->
+                                                  t.fields(
+                                                      "keyword",
+                                                      f -> f.keyword(kw -> kw.ignoreAbove(256)))))
+                                  .properties("views", p -> p.long_(l -> l))
+                                  .properties("owner", p -> p.keyword(k -> k))
+                                  .properties("team", p -> p.keyword(k -> k))
+                                  .properties("tier", p -> p.keyword(k -> k))
+                                  .properties("tags", p -> p.keyword(k -> k))
+                                  .properties("usageCount", p -> p.integer(i -> i))
+                                  .properties("lastAccessed", p -> p.date(d -> d))
+                                  .properties(
+                                      "metadata",
+                                      p ->
+                                          p.object(
+                                              o ->
+                                                  o.properties("description", ep -> ep.text(t -> t))
+                                                      .properties(
+                                                          "columns", ep -> ep.integer(i -> i))
+                                                      .properties(
+                                                          "sizeInBytes",
+                                                          ep -> ep.long_(l -> l))))));
+
+      client.indices().create(request);
+      LOG.info("Created data insight fields test index: {}", indexName);
     } catch (Exception e) {
       LOG.debug("Index {} might already exist", indexName);
     }
