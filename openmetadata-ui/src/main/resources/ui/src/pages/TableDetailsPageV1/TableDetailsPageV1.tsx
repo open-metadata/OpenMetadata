@@ -15,7 +15,7 @@
 import { Col, Row, Tabs, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
-import { isUndefined } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -466,7 +466,10 @@ const TableDetailsPageV1: React.FC = () => {
     if (!tableDetails) {
       return;
     }
-    const updatedTable = { ...tableDetails, displayName: data.displayName };
+    const updatedTable = {
+      ...tableDetails,
+      displayName: isEmpty(data.displayName) ? undefined : data.displayName,
+    };
     await onTableUpdate(updatedTable, 'displayName');
   };
 

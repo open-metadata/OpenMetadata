@@ -61,6 +61,7 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -301,7 +302,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
-    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    entity =
+        addHref(
+            uriInfo,
+            repository.create(
+                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
@@ -316,7 +322,12 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-    entity = addHref(uriInfo, repository.create(uriInfo, entity));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    entity =
+        addHref(
+            uriInfo,
+            repository.create(
+                uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
     return Response.created(entity.getHref()).entity(entity).build();
   }
 
@@ -326,12 +337,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
     OperationContext operationContext = new OperationContext(entityType, operation);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
-      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      entity =
+          addHref(
+              uriInfo,
+              repository.create(
+                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
     resourceContext =
@@ -355,12 +371,17 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext<T> resourceContext = getResourceContextByName(entity.getFullyQualifiedName());
     MetadataOperation operation = createOrUpdateOperation(resourceContext);
     OperationContext operationContext = new OperationContext(entityType, operation);
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     if (operation == CREATE) {
       CreateResourceContext<T> createResourceContext =
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
-      entity = addHref(uriInfo, repository.create(uriInfo, entity));
+      entity =
+          addHref(
+              uriInfo,
+              repository.create(
+                  uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
       return new PutResponse<>(Response.Status.CREATED, entity, ENTITY_CREATED).toResponse();
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
@@ -406,6 +427,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
             uriInfo,
@@ -413,7 +435,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             securityContext.getUserPrincipal().getName(),
             patch,
             changeSource,
-            ifMatchHeader);
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }
@@ -461,6 +484,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
         securityContext,
         operationContext,
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
             uriInfo,
@@ -468,7 +492,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
             securityContext.getUserPrincipal().getName(),
             patch,
             changeSource,
-            ifMatchHeader);
+            ifMatchHeader,
+            impersonatedBy);
     addHref(uriInfo, response.entity());
     return response.toResponse();
   }

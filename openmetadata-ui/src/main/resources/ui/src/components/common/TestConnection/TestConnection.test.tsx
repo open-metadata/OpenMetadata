@@ -238,6 +238,54 @@ describe('Test Connection Component', () => {
     );
   });
 
+  it('Should create workflow with ingestionRunner when ingestionRunner is present in formData', async () => {
+    jest.useFakeTimers();
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          getData={() =>
+            ({
+              ...FORM_DATA,
+              ingestionRunner: 'custom-runner-name',
+            } as ConfigData)
+          }
+        />
+      );
+    });
+    const controller = new AbortController();
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
+
+    expect(addWorkflow).toHaveBeenCalledWith(
+      CREATE_WORKFLOW_PAYLOAD_WITH_RUNNER,
+      controller.signal
+    );
+  });
+
+  it('Should create workflow without ingestionRunner field when ingestionRunner is not in formData and in extraInfo', async () => {
+    jest.useFakeTimers();
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+    const controller = new AbortController();
+
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
+    await act(async () => {
+      fireEvent.click(testConnectionButton);
+    });
+
+    expect(addWorkflow).toHaveBeenCalledWith(
+      CREATE_WORKFLOW_PAYLOAD,
+      controller.signal
+    );
+  });
+
   it('Should show success message if test connection successful', async () => {
     jest.useFakeTimers();
     await act(async () => {
