@@ -844,7 +844,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 <StatusBadge
                   dataTestId={termFQN + '-status'}
                   label={status}
-                  status={StatusClass[status]}
+                  status={StatusClass[status as keyof typeof StatusClass]}
                 />
               </div>
             </Popover>
