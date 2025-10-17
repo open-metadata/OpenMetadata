@@ -496,6 +496,26 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
 
+  /*
+   Used for listing knowledge page hierarchy with visibility filtering based on user permissions
+  */
+  @SuppressWarnings("unused")
+  default ResultList listPageHierarchyWithVisibility(
+      String parent, String pageType, int offset, int limit, java.util.UUID userId, boolean isAdmin) {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
+  /*
+   Used for listing knowledge page hierarchy for active page with visibility filtering
+  */
+  @SuppressWarnings("unused")
+  default ResultList listPageHierarchyForActivePageWithVisibility(
+      String activeFqn, String pageType, int offset, int limit, java.util.UUID userId, boolean isAdmin) {
+    throw new CustomExceptionMessage(
+        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
+  }
+
   Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException;
 
