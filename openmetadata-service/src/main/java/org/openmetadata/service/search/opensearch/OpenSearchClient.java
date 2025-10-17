@@ -301,6 +301,11 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
+  public Set<String> listIndicesByPrefix(String prefix) {
+    return indexManager.listIndicesByPrefix(prefix);
+  }
+
+  @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
     indexManager.updateIndex(indexMapping, indexMappingContent);
   }

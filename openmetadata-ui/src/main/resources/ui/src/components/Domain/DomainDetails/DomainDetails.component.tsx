@@ -11,18 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { DownOutlined } from '@ant-design/icons';
-import { Typography as MuiTypography } from '@mui/material';
-import {
-  Button,
-  Col,
-  Dropdown,
-  Form,
-  Row,
-  Space,
-  Tabs,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Box, Typography as MuiTypography, useTheme } from '@mui/material';
+import { Button, Dropdown, Form, Space, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -62,17 +52,21 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
-import { addDataProducts } from '../../../rest/dataProductAPI';
-import { addDomains } from '../../../rest/domainAPI';
-import { searchData } from '../../../rest/miscAPI';
+import {
+  addDataProducts,
+  patchDataProduct,
+} from '../../../rest/dataProductAPI';
+import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
+import { getDomainContainerStyles } from '../../../utils/DomainPageStyles';
 import {
   getQueryFilterForDomain,
   getQueryFilterToExcludeDomainTerms,
@@ -80,10 +74,7 @@ import {
 import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import Fqn from '../../../utils/Fqn';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-} from '../../../utils/NotistackUtils';
+import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -93,27 +84,31 @@ import {
   getDomainPath,
   getDomainVersionsPath,
 } from '../../../utils/RouterUtils';
+import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
+import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
+import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
+import { CoverImage } from '../../common/CoverImage/CoverImage.component';
 import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
 import { EntityAvatar } from '../../common/EntityAvatar/EntityAvatar';
 import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
-import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
+import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import AddDomainForm from '../AddDomainForm/AddDomainForm.component';
 import '../domain.less';
 import { DomainFormType } from '../DomainPage.interface';
 import { DataProductsTabRef } from '../DomainTabs/DataProductsTab/DataProductsTab.interface';
-import { DomainDetailsPageProps } from './DomainDetailsPage.interface';
+import { DomainDetailsProps } from './DomainDetails.interface';
 
-const DomainDetailsPage = ({
+const DomainDetails = ({
   domain,
   onUpdate,
   onDelete,
@@ -121,8 +116,9 @@ const DomainDetailsPage = ({
   isFollowing,
   isFollowingLoading,
   handleFollowingClick,
-}: DomainDetailsPageProps) => {
+}: DomainDetailsProps) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { getEntityPermission, permissions } = usePermissionProvider();
   const navigate = useNavigate();
@@ -138,7 +134,6 @@ const DomainDetailsPage = ({
   const [domainPermission, setDomainPermission] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [assetModalVisible, setAssetModalVisible] = useState(false);
   // Sub-domain drawer implementation
   const [subDomainForm] = Form.useForm();
   const [isSubDomainLoading, setIsSubDomainLoading] = useState(false);
@@ -238,46 +233,24 @@ const DomainDetailsPage = ({
             (formData as CreateDataProduct).domains = [
               domain.fullyQualifiedName ?? '',
             ];
-            await addDataProducts(formData as CreateDataProduct);
-            showNotistackSuccess(
-              enqueueSnackbar,
-              <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
-                {t('server.create-entity-success', {
-                  entity: t('label.data-product'),
-                })}
-              </MuiTypography>,
-              closeSnackbar
-            );
-            fetchDataProducts();
-            // Navigate to the data products tab
-            handleTabChange(EntityTabs.DATA_PRODUCTS);
-            onUpdate?.(domain);
-            closeDataProductDrawer();
-          } catch (error) {
-            showNotistackError(
-              enqueueSnackbar,
-              getIsErrorMatch(
-                error as AxiosError,
-                ERROR_MESSAGE.alreadyExist
-              ) ? (
-                <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
-                  {t('server.entity-already-exist', {
-                    entity: t('label.data-product'),
-                    entityPlural: 'data-products',
-                    name: formData.name,
-                  })}
-                </MuiTypography>
-              ) : (
-                (error as AxiosError)
-              ),
-              t('server.add-entity-error', {
-                entity: t('label.data-product').toLowerCase(),
-              }),
-              { vertical: 'top', horizontal: 'center' },
-              closeSnackbar
-            );
 
-            throw error; // Re-throw to reject the promise
+            await createEntityWithCoverImage({
+              formData: formData as CreateDataProduct,
+              entityType: EntityType.DATA_PRODUCT,
+              entityLabel: t('label.data-product'),
+              entityPluralLabel: 'data-products',
+              createEntity: addDataProducts,
+              patchEntity: patchDataProduct,
+              onSuccess: () => {
+                fetchDataProducts();
+                handleTabChange(EntityTabs.DATA_PRODUCTS);
+                onUpdate?.(domain);
+                closeDataProductDrawer();
+              },
+              enqueueSnackbar,
+              closeSnackbar,
+              t,
+            });
           } finally {
             setIsDataProductLoading(false);
           }
@@ -292,9 +265,9 @@ const DomainDetailsPage = ({
     loading: isDataProductLoading,
   });
 
-  const breadcrumbs = useMemo(() => {
+  const breadcrumbItems = useMemo<BreadcrumbItem[]>(() => {
     if (!domainFqn) {
-      return [];
+      return [{ name: t('label.domain-plural'), url: getDomainPath() }];
     }
 
     const arr = Fqn.split(domainFqn);
@@ -302,21 +275,32 @@ const DomainDetailsPage = ({
 
     return [
       {
-        name: 'Domains',
-        url: getDomainPath(), // Navigate to domains listing page
-        activeTitle: false,
+        name: t('label.domain-plural'),
+        url: getDomainPath(),
       },
-      ...arr.slice(0, -1).map((d) => {
+      ...arr.map((d) => {
         dataFQN.push(d);
 
         return {
           name: d,
           url: getDomainPath(dataFQN.join(FQN_SEPARATOR_CHAR)),
-          activeTitle: false,
         };
       }),
     ];
-  }, [domainFqn]);
+  }, [domainFqn, t]);
+
+  const { breadcrumbs } = useBreadcrumbs({ items: breadcrumbItems });
+
+  // Asset selection drawer state
+  const [isAssetDrawerOpen, setIsAssetDrawerOpen] = useState(false);
+
+  const openAssetDrawer = useCallback(() => {
+    setIsAssetDrawerOpen(true);
+  }, []);
+
+  const closeAssetDrawer = useCallback(() => {
+    setIsAssetDrawerOpen(false);
+  }, []);
 
   const [name, displayName] = useMemo(() => {
     if (isVersionsView) {
@@ -362,45 +346,23 @@ const DomainDetailsPage = ({
           setIsSubDomainLoading(true);
           try {
             (formData as CreateDomain).parent = domain.fullyQualifiedName;
-            await addDomains(formData as CreateDomain);
-            showNotistackSuccess(
-              enqueueSnackbar,
-              <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
-                {t('server.create-entity-success', {
-                  entity: t('label.sub-domain'),
-                })}
-              </MuiTypography>,
-              closeSnackbar
-            );
-            fetchSubDomainsCount();
-            // Navigate to the subdomains tab
-            handleTabChange(EntityTabs.SUBDOMAINS);
-            closeSubDomainDrawer();
-          } catch (error) {
-            showNotistackError(
-              enqueueSnackbar,
-              getIsErrorMatch(
-                error as AxiosError,
-                ERROR_MESSAGE.alreadyExist
-              ) ? (
-                <MuiTypography sx={{ fontWeight: 600 }} variant="body2">
-                  {t('server.entity-already-exist', {
-                    entity: t('label.sub-domain'),
-                    entityPlural: 'sub-domains',
-                    name: formData.name,
-                  })}
-                </MuiTypography>
-              ) : (
-                (error as AxiosError)
-              ),
-              t('server.add-entity-error', {
-                entity: t('label.sub-domain').toLowerCase(),
-              }),
-              { vertical: 'top', horizontal: 'center' },
-              closeSnackbar
-            );
 
-            throw error; // Re-throw to reject the promise
+            await createEntityWithCoverImage({
+              formData: formData as CreateDomain,
+              entityType: EntityType.DOMAIN,
+              entityLabel: t('label.sub-domain'),
+              entityPluralLabel: 'sub-domains',
+              createEntity: addDomains,
+              patchEntity: patchDomains,
+              onSuccess: () => {
+                fetchSubDomainsCount();
+                handleTabChange(EntityTabs.SUBDOMAINS);
+                closeSubDomainDrawer();
+              },
+              enqueueSnackbar,
+              closeSnackbar,
+              t,
+            });
           } finally {
             setIsSubDomainLoading(false);
           }
@@ -428,7 +390,7 @@ const DomainDetailsPage = ({
           {
             label: t('label.asset-plural'),
             key: '1',
-            onClick: () => setAssetModalVisible(true),
+            onClick: openAssetDrawer,
           },
           {
             label: t('label.sub-domain-plural'),
@@ -451,19 +413,19 @@ const DomainDetailsPage = ({
   const fetchSubDomainsCount = useCallback(async () => {
     if (!isVersionsView) {
       try {
-        const res = await searchData(
-          '',
-          0,
-          0,
-          `(parent.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DOMAIN,
-          false,
-          true
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'parent.fullyQualifiedName.keyword':
+              domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DOMAIN,
+          trackTotalHits: true,
+        });
 
-        const totalCount = res.data.hits.total.value ?? 0;
+        const totalCount = res.hits.total.value ?? 0;
         setSubDomainsCount(totalCount);
       } catch (error) {
         setSubDomainsCount(0);
@@ -528,17 +490,17 @@ const DomainDetailsPage = ({
   const fetchDataProducts = async () => {
     if (!isVersionsView) {
       try {
-        const res = await searchData(
-          '',
-          1,
-          0,
-          `(domains.fullyQualifiedName:"${encodedFqn}")`,
-          '',
-          '',
-          SearchIndex.DATA_PRODUCT
-        );
+        const res = await searchQuery({
+          query: '',
+          pageNumber: 1,
+          pageSize: 0,
+          queryFilter: getTermQuery({
+            'domains.fullyQualifiedName': domain.fullyQualifiedName ?? '',
+          }),
+          searchIndex: SearchIndex.DATA_PRODUCT,
+        });
 
-        setDataProductsCount(res.data.hits.total.value ?? 0);
+        setDataProductsCount(res.hits.total.value ?? 0);
       } catch (error) {
         setDataProductsCount(0);
         showNotistackError(
@@ -598,12 +560,6 @@ const DomainDetailsPage = ({
 
     await onUpdate(updatedDetails);
     setIsStyleEditing(false);
-  };
-
-  const handleAssetSave = () => {
-    fetchDomainAssets();
-    assetTabRef.current?.refreshAssets();
-    activeTab !== 'assets' && handleTabChange('assets');
   };
 
   const handleAssetClick = useCallback(
@@ -702,9 +658,13 @@ const DomainDetailsPage = ({
       dataProductsTabRef,
       previewAsset,
       setPreviewAsset,
-      setAssetModalVisible,
+      setAssetModalVisible: openAssetDrawer,
       handleAssetClick,
-      handleAssetSave,
+      handleAssetSave: () => {
+        fetchDomainAssets();
+        assetTabRef.current?.refreshAssets();
+        activeTab !== 'assets' && handleTabChange('assets');
+      },
       setShowAddSubDomainModal: openSubDomainDrawer,
       onAddSubDomain: addSubDomain,
       showAddSubDomainModal: false,
@@ -721,13 +681,15 @@ const DomainDetailsPage = ({
     domainPermission,
     previewAsset,
     handleAssetClick,
-    handleAssetSave,
     assetCount,
     dataProductsCount,
     activeTab,
     subDomainsCount,
     queryFilter,
     customizedPage?.tabs,
+    openAssetDrawer,
+    fetchDomainAssets,
+    handleTabChange,
   ]);
 
   useEffect(() => {
@@ -748,10 +710,17 @@ const DomainDetailsPage = ({
           entityType: 'domain',
           parent: isSubDomain ? { type: 'domain' } : undefined,
         }}
-        size={36}
+        size={91}
+        sx={{
+          borderRadius: '5px',
+          border: '2px solid',
+          borderColor: theme.palette.allShades.white,
+          marginTop: '-25px',
+          marginRight: 2,
+        }}
       />
     );
-  }, [domain, isSubDomain]);
+  }, [domain, isSubDomain, theme]);
 
   const toggleTabExpanded = () => {
     setIsTabExpanded(!isTabExpanded);
@@ -765,106 +734,139 @@ const DomainDetailsPage = ({
     return <Loader />;
   }
 
-  return (
+  const content = (
     <>
-      <Row
+      <Box
         className="domain-details"
         data-testid="domain-details"
-        gutter={[0, 12]}>
-        <Col flex="auto">
-          <EntityHeader
-            breadcrumb={breadcrumbs}
-            entityData={{ ...domain, displayName, name }}
-            entityType={EntityType.DOMAIN}
-            handleFollowingClick={handleFollowingClick}
-            icon={iconData}
-            isFollowing={isFollowing}
-            isFollowingLoading={isFollowingLoading}
-            serviceName=""
-            titleColor={domain.style?.color}
-          />
-        </Col>
-        <Col flex="320px">
-          <div className="d-flex gap-3 justify-end">
-            {!isVersionsView && addButtonContent.length > 0 && (
-              <Dropdown
-                className="m-l-xs h-10"
-                data-testid="domain-details-add-button-menu"
-                menu={{
-                  items: addButtonContent,
-                }}
-                placement="bottomRight"
-                trigger={['click']}>
-                <Button data-testid="domain-details-add-button" type="primary">
-                  <Space>
-                    {t('label.add')}
-                    <DownOutlined />
-                  </Space>
-                </Button>
-              </Dropdown>
-            )}
-
-            <ButtonGroup className="spaced" size="small">
-              {domain?.version && (
-                <Tooltip
-                  title={t(
-                    `label.${
-                      isVersionsView
-                        ? 'exit-version-history'
-                        : 'version-plural-history'
-                    }`
-                  )}>
-                  <Button
-                    className={classNames('', {
-                      'text-primary border-primary': version,
-                    })}
-                    data-testid="version-button"
-                    icon={<Icon component={VersionIcon} />}
-                    onClick={handleVersionClick}>
-                    <Typography.Text
-                      className={classNames('', {
-                        'text-primary': version,
-                      })}>
-                      {toString(domain.version)}
-                    </Typography.Text>
-                  </Button>
-                </Tooltip>
-              )}
-
-              {!isVersionsView && manageButtonContent.length > 0 && (
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1.5,
+        }}>
+        <CoverImage
+          imageUrl={
+            (domain.style as Style & { coverImage?: { url?: string } })
+              ?.coverImage?.url
+          }
+          position={
+            (domain.style as Style & { coverImage?: { position?: string } })
+              ?.coverImage?.position
+              ? {
+                  y: (
+                    domain.style as Style & {
+                      coverImage?: { position?: string };
+                    }
+                  ).coverImage!.position!,
+                }
+              : undefined
+          }
+        />
+        <Box sx={{ display: 'flex', mx: 5, alignItems: 'flex-end' }}>
+          <Box sx={{ flex: 1 }}>
+            <EntityHeader
+              breadcrumb={[]}
+              entityData={{ ...domain, displayName, name }}
+              entityType={EntityType.DOMAIN}
+              handleFollowingClick={handleFollowingClick}
+              icon={iconData}
+              isFollowing={isFollowing}
+              isFollowingLoading={isFollowingLoading}
+              serviceName=""
+              titleColor={domain.style?.color}
+            />
+          </Box>
+          <Box sx={{ width: '320px' }}>
+            <Box
+              sx={{
+                display: 'flex',
+                gap: 3,
+                justifyContent: 'flex-end',
+                pb: '4px',
+              }}>
+              {!isVersionsView && addButtonContent.length > 0 && (
                 <Dropdown
-                  align={{ targetOffset: [-12, 0] }}
-                  className="m-l-xs"
+                  className="m-l-xs h-10"
+                  data-testid="domain-details-add-button-menu"
                   menu={{
-                    items: manageButtonContent,
+                    items: addButtonContent,
                   }}
-                  open={showActions}
-                  overlayClassName="domain-manage-dropdown-list-container"
-                  overlayStyle={{ width: '350px' }}
                   placement="bottomRight"
-                  trigger={['click']}
-                  onOpenChange={setShowActions}>
-                  <Tooltip
-                    placement="topRight"
-                    title={t('label.manage-entity', {
-                      entity: t('label.domain'),
-                    })}>
-                    <Button
-                      className="domain-manage-dropdown-button tw-px-1.5"
-                      data-testid="manage-button"
-                      icon={
-                        <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
-                      }
-                      onClick={() => setShowActions(true)}
-                    />
-                  </Tooltip>
+                  trigger={['click']}>
+                  <Button
+                    data-testid="domain-details-add-button"
+                    type="primary">
+                    <Space>
+                      {t('label.add')}
+                      <DownOutlined />
+                    </Space>
+                  </Button>
                 </Dropdown>
               )}
-            </ButtonGroup>
-          </div>
-        </Col>
+
+              <ButtonGroup className="spaced" size="small">
+                {domain?.version && (
+                  <Tooltip
+                    title={t(
+                      `label.${
+                        isVersionsView
+                          ? 'exit-version-history'
+                          : 'version-plural-history'
+                      }`
+                    )}>
+                    <Button
+                      className={classNames('', {
+                        'text-primary border-primary': version,
+                      })}
+                      data-testid="version-button"
+                      icon={<Icon component={VersionIcon} />}
+                      onClick={handleVersionClick}>
+                      <Typography.Text
+                        className={classNames('', {
+                          'text-primary': version,
+                        })}>
+                        {toString(domain.version)}
+                      </Typography.Text>
+                    </Button>
+                  </Tooltip>
+                )}
+
+                {!isVersionsView && manageButtonContent.length > 0 && (
+                  <Dropdown
+                    align={{ targetOffset: [-12, 0] }}
+                    className="m-l-xs"
+                    menu={{
+                      items: manageButtonContent,
+                    }}
+                    open={showActions}
+                    overlayClassName="domain-manage-dropdown-list-container"
+                    overlayStyle={{ width: '350px' }}
+                    placement="bottomRight"
+                    trigger={['click']}
+                    onOpenChange={setShowActions}>
+                    <Tooltip
+                      placement="topRight"
+                      title={t('label.manage-entity', {
+                        entity: t('label.domain'),
+                      })}>
+                      <Button
+                        className="domain-manage-dropdown-button tw-px-1.5"
+                        data-testid="manage-button"
+                        icon={
+                          <IconDropdown className="vertical-align-inherit manage-dropdown-icon" />
+                        }
+                        onClick={() => setShowActions(true)}
+                      />
+                    </Tooltip>
+                  </Dropdown>
+                )}
+              </ButtonGroup>
+            </Box>
+          </Box>
+        </Box>
 
         <GenericProvider<Domain>
+          muiTags
           customizedPage={customizedPage}
           data={domain}
           isTabExpanded={isTabExpanded}
@@ -872,41 +874,45 @@ const DomainDetailsPage = ({
           permissions={domainPermission}
           type={EntityType.DOMAIN}
           onUpdate={onUpdate}>
-          <Col className="domain-details-page-tabs" span={24}>
-            <Tabs
-              destroyInactiveTabPane
-              activeKey={activeTab}
-              className="tabs-new"
-              data-testid="tabs"
-              items={tabs}
-              tabBarExtraContent={
-                isExpandViewSupported && (
-                  <AlignRightIconButton
-                    className={isTabExpanded ? 'rotate-180' : ''}
-                    title={
-                      isTabExpanded ? t('label.collapse') : t('label.expand')
-                    }
-                    onClick={toggleTabExpanded}
-                  />
-                )
-              }
-              onChange={handleTabChange}
-            />
-          </Col>
+          <Box className="domain-details-page-tabs" sx={{ width: '100%' }}>
+            <Box sx={{ padding: 5 }}>
+              <Tabs
+                destroyInactiveTabPane
+                activeKey={activeTab}
+                className="tabs-new"
+                data-testid="tabs"
+                items={tabs}
+                tabBarExtraContent={
+                  isExpandViewSupported && (
+                    <AlignRightIconButton
+                      className={isTabExpanded ? 'rotate-180' : ''}
+                      title={
+                        isTabExpanded ? t('label.collapse') : t('label.expand')
+                      }
+                      onClick={toggleTabExpanded}
+                    />
+                  )
+                }
+                onChange={handleTabChange}
+              />
+            </Box>
+          </Box>
         </GenericProvider>
-      </Row>
+      </Box>
 
       {dataProductDrawer}
-      {assetModalVisible && (
-        <AssetSelectionModal
-          entityFqn={domainFqn}
-          open={assetModalVisible}
-          queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
-          type={AssetsOfEntity.DOMAIN}
-          onCancel={() => setAssetModalVisible(false)}
-          onSave={handleAssetSave}
-        />
-      )}
+      <AssetSelectionDrawer
+        entityFqn={domainFqn}
+        open={isAssetDrawerOpen}
+        queryFilter={getQueryFilterToExcludeDomainTerms(domainFqn)}
+        type={AssetsOfEntity.DOMAIN}
+        onCancel={closeAssetDrawer}
+        onSave={() => {
+          fetchDomainAssets();
+          assetTabRef.current?.refreshAssets();
+          activeTab !== 'assets' && handleTabChange('assets');
+        }}
+      />
 
       {domain && (
         <DeleteWidgetModal
@@ -939,6 +945,13 @@ const DomainDetailsPage = ({
       {subDomainDrawer}
     </>
   );
+
+  return (
+    <>
+      {breadcrumbs}
+      <Box sx={getDomainContainerStyles(theme)}>{content}</Box>
+    </>
+  );
 };
 
-export default DomainDetailsPage;
+export default DomainDetails;

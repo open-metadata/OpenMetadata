@@ -37,6 +37,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @ExtendWith(MockitoExtension.class)
 @Slf4j
@@ -232,6 +233,22 @@ public class OpenMetadataOperationsTest {
     assertTrue(
         reindexResult == 0 && shouldUpdateVersions,
         "Should update versions after successful reindexing");
+  }
+
+  @Test
+  void testCreateUser_NullAuthConfigThrowsException() throws Exception {
+    try (MockedStatic<SecurityConfigurationManager> securityManagerMock =
+        Mockito.mockStatic(SecurityConfigurationManager.class)) {
+      securityManagerMock.when(SecurityConfigurationManager::getCurrentAuthConfig).thenReturn(null);
+
+      OpenMetadataOperations ops = new OpenMetadataOperations();
+      char[] password = "testPassword123".toCharArray();
+      String email = "test@example.com";
+
+      int result = ops.createUser(email, password, false);
+
+      assertEquals(1, result);
+    }
   }
 
   // Helper methods using reflection to access private fields for testing
