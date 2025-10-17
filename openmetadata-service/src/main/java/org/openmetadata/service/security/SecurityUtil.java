@@ -39,6 +39,7 @@ import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
 public final class SecurityUtil {
@@ -49,6 +50,15 @@ public final class SecurityUtil {
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
     return principal == null ? null : principal.getName().split("[/@]")[0];
+  }
+
+  public static String getImpersonatedByUser(SecurityContext securityContext) {
+    if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
+      return catalogSecurityContext.impersonatedUser() != null
+          ? getUserName(securityContext)
+          : null;
+    }
+    return null;
   }
 
   public static LoginConfiguration getLoginConfiguration() {
