@@ -225,7 +225,8 @@ public class AlertsRuleEvaluator {
     }
 
     // we need to handle both fields updated and fields added
-    List<FieldChange> fieldChanges = changeEvent.getChangeDescription().getFieldsUpdated();
+    List<FieldChange> fieldChanges = 
+        new ArrayList<>(changeEvent.getChangeDescription().getFieldsUpdated());
     if (!changeEvent.getChangeDescription().getFieldsAdded().isEmpty()) {
       fieldChanges.addAll(changeEvent.getChangeDescription().getFieldsAdded());
     }
