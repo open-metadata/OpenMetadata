@@ -1254,6 +1254,7 @@
     "pipeline-service-type": "流水线服务类型",
     "pipeline-state": "工作流状态",
     "pipeline-type": "工作流类型",
+    "pipeline-view-mode": "管道视图模式",
     "platform": "平台",
     "platform-service-client-unavailable": "平台服务客户端不可用",
     "platform-type-lineage": "{{platformType}} 血缘关系",

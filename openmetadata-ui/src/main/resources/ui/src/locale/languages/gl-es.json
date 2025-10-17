@@ -1254,6 +1254,7 @@
     "pipeline-service-type": "Tipo de servizo do pipeline",
     "pipeline-state": "Estado do pipeline",
     "pipeline-type": "Tipo de pipeline",
+    "pipeline-view-mode": "Modo de vista do pipeline",
     "platform": "Plataforma",
     "platform-service-client-unavailable": "Cliente de Servizo de Plataforma Non Dispoñible",
     "platform-type-lineage": "{{platformType}} Liñaxe",

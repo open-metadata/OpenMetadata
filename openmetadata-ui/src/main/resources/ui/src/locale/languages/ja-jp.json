@@ -1254,6 +1254,7 @@
     "pipeline-service-type": "パイプラインサービスタイプ",
     "pipeline-state": "パイプライン状態",
     "pipeline-type": "パイプラインタイプ",
+    "pipeline-view-mode": "パイプラインビューモード",
     "platform": "プラットフォーム",
     "platform-service-client-unavailable": "プラットフォームサービスクライアントが利用できません",
     "platform-type-lineage": "{{platformType}}リネージ",

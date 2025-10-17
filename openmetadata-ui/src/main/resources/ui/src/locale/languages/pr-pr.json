@@ -1254,6 +1254,7 @@
     "pipeline-service-type": "نوع سرویس خط لوله",
     "pipeline-state": "وضعیت خط لوله",
     "pipeline-type": "نوع خط لوله",
+    "pipeline-view-mode": "حالت نمایش خط لوله",
     "platform": "پلتفرم",
     "platform-service-client-unavailable": "پلیٹ فارم سروس کلائنٹ دستیاب نہیں",
     "platform-type-lineage": "{{platformType}} شجره داده",

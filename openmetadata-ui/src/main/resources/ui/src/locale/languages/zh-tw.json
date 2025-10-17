@@ -1254,6 +1254,7 @@
     "pipeline-service-type": "管線服務類型",
     "pipeline-state": "管線狀態",
     "pipeline-type": "管線類型",
+    "pipeline-view-mode": "管線檢視模式",
     "platform": "平台",
     "platform-service-client-unavailable": "平台服務客戶端無法使用",
     "platform-type-lineage": "{{platformType}} 血緣",

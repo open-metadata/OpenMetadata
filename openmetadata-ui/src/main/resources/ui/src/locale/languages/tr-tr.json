@@ -1254,6 +1254,7 @@
     "pipeline-service-type": "İş Akışı Servisi Türü",
     "pipeline-state": "İş Akışı Durumu",
     "pipeline-type": "İş Akışı Türü",
+    "pipeline-view-mode": "İş Akışı Görünüm Modu",
     "platform": "Platform",
     "platform-service-client-unavailable": "Platform Servis İstemcisi Kullanılamıyor",
     "platform-type-lineage": "{{platformType}} Veri Soyu",

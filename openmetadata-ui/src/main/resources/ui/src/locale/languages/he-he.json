@@ -1254,6 +1254,7 @@
     "pipeline-service-type": "סוג שירות צינור",
     "pipeline-state": "מצב תהליך הטעינה/עיבוד",
     "pipeline-type": "סוג תהליך הטעינה/עיבוד",
+    "pipeline-view-mode": "מצב תצוגת תהליך הטעינה",
     "platform": "Platform",
     "platform-service-client-unavailable": "לקוח שירות פלטפורמה לא זמין",
     "platform-type-lineage": "{{platformType}} שורשים",

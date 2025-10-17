@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { get } from 'lodash';
 import { SidebarItem } from '../../constant/sidebar';
 import { ApiEndpointClass } from '../../support/entity/ApiEndpointClass';
@@ -50,11 +50,7 @@ import {
   visitLineageTab,
 } from '../../utils/lineage';
 import { sidebarClick } from '../../utils/sidebar';
-
-// use the admin user to login
-test.use({
-  storageState: 'playwright/.auth/admin.json',
-});
+import { test } from '../fixtures/pages';
 
 const entities = [
   TableClass,
@@ -85,12 +81,11 @@ for (const EntityClass of entities) {
   const defaultEntity = new EntityClass();
 
   test(`Lineage creation from ${defaultEntity.getType()} entity`, async ({
-    browser,
+    page,
   }) => {
     // 5 minutes to avoid test timeout happening some times in AUTs
     test.setTimeout(300_000);
 
-    const { page } = await createNewPage(browser);
     const { currentEntity, entities, cleanup } = await setupEntitiesForLineage(
       page,
       defaultEntity
@@ -521,7 +516,7 @@ test('Verify table search with special characters as handled', async ({
   }
 });
 
-test.fixme('Verify cycle lineage should be handled properly', async ({ browser }) => {
+test('Verify cycle lineage should be handled properly', async ({ browser }) => {
   test.slow();
 
   const { page } = await createNewPage(browser);

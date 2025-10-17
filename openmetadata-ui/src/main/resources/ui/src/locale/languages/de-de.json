@@ -1254,6 +1254,7 @@
     "pipeline-service-type": "Pipeline Service Typ",
     "pipeline-state": "Pipeline-Status",
     "pipeline-type": "Pipeline Typ",
+    "pipeline-view-mode": "Pipeline-Ansichtsmodus",
     "platform": "Plattform",
     "platform-service-client-unavailable": "Plattform-Service-Client nicht verfügbar",
     "platform-type-lineage": "{{platformType}} Abstammung",

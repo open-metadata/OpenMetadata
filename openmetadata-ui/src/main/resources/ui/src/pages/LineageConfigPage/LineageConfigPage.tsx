@@ -209,7 +209,7 @@ const LineageConfigPage = () => {
                     <Form.Item
                       className="m-t-sm"
                       id="root/pipelineViewMode"
-                      label={t('label.lineage-layer')}
+                      label={t('label.pipeline-view-mode')}
                       name="pipelineViewMode">
                       <Select data-testid="field-pipeline-view-mode">
                         <Select.Option value={PipelineViewMode.Edge}>
