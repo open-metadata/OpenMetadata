@@ -70,7 +70,6 @@ import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
-import org.openmetadata.schema.search.TopHits;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -86,6 +85,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -143,11 +143,7 @@ import os.org.opensearch.rest.RestStatus;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
-import os.org.opensearch.search.aggregations.BucketOrder;
-import os.org.opensearch.search.aggregations.bucket.terms.IncludeExclude;
 import os.org.opensearch.search.aggregations.bucket.terms.Terms;
-import os.org.opensearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import os.org.opensearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
 import os.org.opensearch.search.fetch.subphase.FetchSourceContext;
 import os.org.opensearch.search.fetch.subphase.highlight.HighlightBuilder;
@@ -175,6 +171,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final OpenSearchIndexManager indexManager;
   private final OpenSearchEntityManager entityManager;
   private final OpenSearchGenericManager genericManager;
+  private final AggregationManagementClient aggregationManagementClient;
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
@@ -220,6 +217,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
+    aggregationManagementClient = new OpenSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
   }
 
@@ -1454,76 +1452,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-
-    // Check if query is JSON format or simple search query
-    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
-      // Try to parse as JSON first (for backward compatibility with filters)
-      if (request.getQuery().trim().startsWith("{")) {
-        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
-      } else {
-        // Handle as a search query (including field:value syntax)
-        OpenSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
-        // Use getSearchSourceBuilder which properly handles field:value syntax
-        SearchSourceBuilder tempBuilder =
-            searchBuilderFactory.getSearchSourceBuilder(
-                request.getIndex(), request.getQuery(), 0, 10);
-        searchSourceBuilder.query(tempBuilder.query());
-      }
-    }
-
-    // Apply deleted filter if specified
-    if (request.getDeleted() != null) {
-      QueryBuilder currentQuery = searchSourceBuilder.query();
-      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-
-      if (currentQuery != null) {
-        boolQuery.must(currentQuery);
-      }
-      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
-
-      searchSourceBuilder.query(boolQuery);
-    }
-
-    String aggregationField = request.getFieldName();
-    if (aggregationField == null || aggregationField.isBlank()) {
-      throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
-    }
-
-    int bucketSize = request.getSize();
-    String includeValue = request.getFieldValue().toLowerCase();
-
-    TermsAggregationBuilder termsAgg =
-        AggregationBuilders.terms(aggregationField)
-            .field(aggregationField)
-            .size(bucketSize)
-            .includeExclude(new IncludeExclude(includeValue, null))
-            .order(BucketOrder.key(true));
-
-    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
-      request.setTopHits(Optional.ofNullable(request.getTopHits()).orElse(new TopHits()));
-
-      List<String> topHitFields = request.getSourceFields();
-
-      TopHitsAggregationBuilder topHitsAgg =
-          AggregationBuilders.topHits("top")
-              .size(request.getTopHits().getSize())
-              .fetchSource(topHitFields.toArray(new String[0]), null)
-              .trackScores(false);
-
-      termsAgg.subAggregation(topHitsAgg);
-    }
-
-    searchSourceBuilder.aggregation(termsAgg).size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    SearchResponse searchResponse =
-        client.search(
-            new os.org.opensearch.action.search.SearchRequest(
-                    Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-                .source(searchSourceBuilder),
-            RequestOptions.DEFAULT);
-
-    return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
+    return aggregationManagementClient.aggregate(request);
   }
 
   @Override
