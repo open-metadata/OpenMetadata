@@ -28,7 +28,7 @@ from metadata.generated.schema.type.basic import (
     TestCaseEntityName,
     Timestamp,
 )
-from metadata.ingestion.api.models import Entity
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Processor
 from metadata.sdk.data_quality.result_capturing_processor import (
     ResultCapturingProcessor,
@@ -94,7 +94,7 @@ def test_captures_single_result(
     test_case_results = TestCaseResults.model_construct(
         test_results=[sample_test_result_response]
     )
-    mock_processor.run.return_value = test_case_results
+    mock_processor._run.return_value = Either(right=test_case_results)
 
     capturer = ResultCapturingProcessor(mock_processor)
     result = capturer.run(mock_record)
@@ -132,7 +132,7 @@ def test_captures_multiple_results(mock_processor, sample_test_case, mock_record
     test_case_results = TestCaseResults.model_construct(
         test_results=[test_result_1, test_result_2, test_result_3]
     )
-    mock_processor.run.return_value = test_case_results
+    mock_processor._run.return_value = Either(right=test_case_results)
 
     capturer = ResultCapturingProcessor(mock_processor)
     capturer.run(mock_record)
@@ -164,7 +164,10 @@ def test_captures_across_multiple_runs(mock_processor, sample_test_case, mock_re
     test_case_results_1 = TestCaseResults.model_construct(test_results=[test_result_1])
     test_case_results_2 = TestCaseResults.model_construct(test_results=[test_result_2])
 
-    mock_processor.run.side_effect = [test_case_results_1, test_case_results_2]
+    mock_processor._run.side_effect = [
+        Either(right=test_case_results_1),
+        Either(right=test_case_results_2),
+    ]
 
     capturer = ResultCapturingProcessor(mock_processor)
     capturer.run(mock_record)
@@ -178,13 +181,11 @@ def test_captures_across_multiple_runs(mock_processor, sample_test_case, mock_re
 
 def test_delegates_attributes_to_wrapped_processor(mock_processor):
     """Verify delegation works for processor attributes"""
-    mock_processor.name = "TestCaseRunner"
     mock_processor.custom_attribute = "custom_value"
     mock_processor.custom_method = MagicMock(return_value="method_result")
 
     capturer = ResultCapturingProcessor(mock_processor)
 
-    assert capturer.name == "TestCaseRunner"
     assert capturer.custom_attribute == "custom_value"
     assert capturer.custom_method() == "method_result"
     mock_processor.custom_method.assert_called_once()
@@ -197,7 +198,7 @@ def test_passes_through_result_unchanged(
     test_case_results = TestCaseResults.model_construct(
         test_results=[sample_test_result_response]
     )
-    mock_processor.run.return_value = test_case_results
+    mock_processor._run.return_value = Either(right=test_case_results)
 
     capturer = ResultCapturingProcessor(mock_processor)
     result = capturer.run(mock_record)
@@ -209,12 +210,10 @@ def test_passes_through_result_unchanged(
 def test_handles_empty_test_results(mock_processor, mock_record):
     """Verify None/empty results handled correctly"""
     test_case_results_with_empty_list = TestCaseResults.model_construct(test_results=[])
-    test_case_results_with_none = TestCaseResults.model_construct(test_results=None)
 
-    mock_processor.run.side_effect = [
-        test_case_results_with_empty_list,
-        test_case_results_with_none,
-        None,
+    mock_processor._run.side_effect = [
+        Either(right=test_case_results_with_empty_list),
+        Either(right=None),
     ]
 
     capturer = ResultCapturingProcessor(mock_processor)
@@ -223,10 +222,7 @@ def test_handles_empty_test_results(mock_processor, mock_record):
     assert result1 == test_case_results_with_empty_list
 
     result2 = capturer.run(mock_record)
-    assert result2 == test_case_results_with_none
-
-    result3 = capturer.run(mock_record)
-    assert result3 is None
+    assert result2 is None
 
     results = capturer.get_results()
     assert len(results) == 0
@@ -249,7 +245,10 @@ def test_handles_non_test_case_results(mock_processor, mock_record):
         ),
     )
 
-    mock_processor.run.side_effect = [create_test_suite_request, table]
+    mock_processor._run.side_effect = [
+        Either(right=create_test_suite_request),
+        Either(right=table),
+    ]
 
     capturer = ResultCapturingProcessor(mock_processor)
 
@@ -272,24 +271,14 @@ def test_get_results_returns_list(mock_processor):
     assert len(results) == 0
 
 
-def test_delegates_status_attribute(mock_processor):
-    """Verify status attribute delegation"""
-    mock_status = MagicMock()
-    mock_processor.status = mock_status
-
-    capturer = ResultCapturingProcessor(mock_processor)
-
-    assert capturer.status is mock_status
-
-
 def test_run_calls_wrapped_processor_run(mock_processor, mock_record):
     """Verify run() delegates to wrapped processor"""
-    mock_processor.run.return_value = None
+    mock_processor._run.return_value = Either(right=None)
 
     capturer = ResultCapturingProcessor(mock_processor)
     capturer.run(mock_record)
 
-    mock_processor.run.assert_called_once_with(mock_record)
+    mock_processor._run.assert_called_once_with(mock_record)
 
 
 def test_captures_mixed_results_and_non_results(
@@ -304,7 +293,11 @@ def test_captures_mixed_results_and_non_results(
         name=EntityName("test_table"),
     )
 
-    mock_processor.run.side_effect = [test_case_results, table, test_case_results]
+    mock_processor._run.side_effect = [
+        Either(right=test_case_results),
+        Either(right=table),
+        Either(right=test_case_results),
+    ]
 
     capturer = ResultCapturingProcessor(mock_processor)
     capturer.run(mock_record)

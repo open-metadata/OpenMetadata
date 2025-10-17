@@ -5,6 +5,7 @@ Tests that data quality validators are actually executed against real PostgreSQL
 import sys
 
 import pytest
+from dirty_equals import HasAttributes
 from sqlalchemy import Column as SQAColumn
 from sqlalchemy import Integer, MetaData, String
 from sqlalchemy import Table as SQATable
@@ -33,6 +34,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.type.basic import EntityLink
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sdk.data_quality import (
     ColumnValuesToBeBetween,
@@ -298,11 +300,11 @@ def test_table_row_count_tests(
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case), entity_id=test_case.id, hard_delete=True, recursive=True
             )
 
 
@@ -332,11 +334,14 @@ def test_table_row_count_failure(
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case),
+                entity_id=test_case.id,
+                hard_delete=True,
+                recursive=True
             )
 
 
@@ -366,11 +371,11 @@ def test_table_column_count_test(
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case), entity_id=test_case.id, hard_delete=True, recursive=True
             )
 
 
@@ -402,11 +407,11 @@ def test_column_unique_test(
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case), entity_id=test_case.id, hard_delete=True, recursive=True
             )
 
 
@@ -420,29 +425,32 @@ def test_column_not_null_test(
 
     runner = TestRunner.for_table(table_fqn, client=metadata)
 
-    runner.add_test(
+    test = (
         ColumnValuesToBeNotNull(column="email")
         .with_description("Check email is not null")
         .with_compute_row_count(True)
     )
 
+    runner.add_test(test)
+
     results = runner.run()
 
-    assert len(results) == 1
-    result = results[0]
-    assert result.testCaseResult.testCaseStatus == TestCaseStatus.Failed
-    assert result.testCaseResult.passedRows == 4
-    assert result.testCaseResult.failedRows == 1
+    # Because of parallel tests, the table might contain a TestSuite with other tests already
+    test_result = next(r for r in results if r.testCase.testDefinition.name == test.test_definition_name)
+
+    assert test_result.testCaseResult.testCaseStatus == TestCaseStatus.Failed
+    assert test_result.testCaseResult.passedRows == 4
+    assert test_result.testCaseResult.failedRows == 1
 
     table = metadata.get_by_name(Table, table_fqn)
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case), entity_id=test_case.id, hard_delete=True, recursive=True
             )
 
 
@@ -456,29 +464,32 @@ def test_column_values_between_test(
 
     runner = TestRunner.for_table(table_fqn, client=metadata)
 
-    runner.add_test(
+    test = (
         ColumnValuesToBeBetween(column="age", min_value=20, max_value=40)
         .with_description("Check age is between 20-40")
         .with_compute_row_count(True)
     )
 
+    runner.add_test(test)
+
     results = runner.run()
 
-    assert len(results) == 1
-    result = results[0]
-    assert result.testCaseResult.testCaseStatus == TestCaseStatus.Success
-    assert result.testCaseResult.passedRows == 5
-    assert result.testCaseResult.failedRows == 0
+    # Because of parallel tests, the table might contain a TestSuite with other tests already
+    test_result = next(r for r in results if r.testCase.testDefinition.name == test.test_definition_name)
+
+    assert test_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
+    assert test_result.testCaseResult.passedRows == 5
+    assert test_result.testCaseResult.failedRows == 0
 
     table = metadata.get_by_name(Table, table_fqn)
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case), entity_id=test_case.id, hard_delete=True, recursive=True
             )
 
 
@@ -492,37 +503,67 @@ def test_multiple_tests_in_single_runner(
 
     runner = TestRunner.for_table(table_fqn, client=metadata)
 
-    runner.add_tests(
+    tests = (
         TableRowCountToBeBetween(min_count=1, max_count=10),
         TableColumnCountToBeBetween(min_count=3),
         ColumnValuesToBeUnique(column="username"),
         ColumnValuesToBeNotNull(column="username"),
     )
 
+    runner.add_tests(*tests)
+
     results = runner.run()
 
-    assert len(results) == 4
+    table_row_count_result = next(
+        r for r in results if r.testCase == HasAttributes(
+            testDefinition=HasAttributes(name=tests[0].test_definition_name),
+            parameterValues=[
+                HasAttributes(name="minValue", value="1"),
+                HasAttributes(name="maxValue", value="10"),
+            ],
+        )
+    )
+    assert table_row_count_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 
-    for result in results:
-        assert result.testCaseResult.testCaseStatus == TestCaseStatus.Success
+    test_table_column_count_result = next(
+        r for r in results if r.testCase == HasAttributes(
+            testDefinition=HasAttributes(name=tests[1].test_definition_name),
+            parameterValues=[
+                HasAttributes(name="minColValue", value="3"),
+            ],
+        )
+    )
+    assert test_table_column_count_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 
-    test_names = {result.testCase.name.root for result in results}
-    assert test_names == {
-        "table_row_count_between",
-        "table_column_count_between",
-        "username_not_null",
-        "username_unique",
-    }
+    column_values_unique_result = next(
+        r for r in results if r.testCase == HasAttributes(
+            testDefinition=HasAttributes(name=tests[2].test_definition_name),
+            entityLink=EntityLink(
+                root="<#E::table::dq_test_service_dq0.dq_test_db.public.users::columns::username>"
+            )
+        )
+    )
+    assert column_values_unique_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
+
+    column_values_not_null_result = next(
+        r for r in results if r.testCase == HasAttributes(
+            testDefinition=HasAttributes(name=tests[3].test_definition_name),
+            entityLink=EntityLink(
+                root="<#E::table::dq_test_service_dq0.dq_test_db.public.users::columns::username>"
+            )
+        )
+    )
+    assert column_values_not_null_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 
     table = metadata.get_by_name(Table, table_fqn)
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case), entity_id=test_case.id, hard_delete=True, recursive=True
             )
 
 
@@ -547,11 +588,11 @@ def test_runner_for_table_class_method(
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case), entity_id=test_case.id, hard_delete=True, recursive=True
             )
 
 
@@ -583,9 +624,9 @@ def test_runner_for_table_diff_test(
     if table:
         for test_case in metadata.list_entities(
             entity=TestCase,
-            fields=["testSuite"],
+            fields=["testSuite", "testDefinition"],
             params={"entityLink": f"<#E::table::{table_fqn}>"},
         ).entities:
             metadata.delete(
-                entity=type(test_case), entity_id=test_case.id, hard_delete=True
+                entity=type(test_case), entity_id=test_case.id, hard_delete=True, recursive=True
             )

@@ -16,48 +16,61 @@ Processor wrapper that captures test case results without modifying the processo
 from typing import Any, List, Optional
 
 from metadata.data_quality.api.models import TestCaseResultResponse, TestCaseResults
-from metadata.generated.schema.api.tests.createTestSuite import CreateTestSuiteRequest
-from metadata.ingestion.api.models import Entity
+from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import Processor
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 
 
-class ResultCapturingProcessor:
+class ResultCapturingProcessor(Processor):
     """
     Wraps a processor to capture TestCaseResults without modifying it.
 
-    This processor wrapper intercepts the run() method to extract and store
-    TestCaseResultResponse objects while passing through all results unchanged.
-    All other attributes are delegated to the wrapped processor.
+    This processor wrapper intercepts the _run() method to extract and store
+    TestCaseResultResponse objects while delegating all processing to the wrapped
+    processor. All other attributes are delegated to the wrapped processor.
     """
 
-    _processor: Processor
-    _collected_results: List[TestCaseResultResponse]
-
     def __init__(self, processor: Processor):
+        super().__init__()
         self._processor = processor
-        self._collected_results = []
+        self._collected_results: List[TestCaseResultResponse] = []
 
     def __getattr__(self, name: str) -> Any:
         """Delegate all attributes to wrapped processor."""
         return getattr(self._processor, name)
 
-    def run(self, record: Entity) -> Optional[Entity]:
+    def _run(self, record: Entity) -> Either:
         """
-        Intercept run to capture TestCaseResults.
+        Intercept _run to capture TestCaseResults.
 
-        Extracts TestCaseResultResponse objects from TestCaseResults
-        and stores them in the internal collection. The result is
-        returned unchanged to preserve the workflow behavior.
+        Delegates to the wrapped processor's _run method and extracts
+        TestCaseResultResponse objects from TestCaseResults for storage.
         """
-        result = self._processor.run(record)
+        result = self._processor._run(record)
 
-        if result is not None and isinstance(
-            result, (TestCaseResults, CreateTestSuiteRequest)
-        ):
-            if isinstance(result, TestCaseResults) and result.test_results:
-                self._collected_results.extend(result.test_results)
+        if result and result.right is not None:
+            data = result.right
+            if isinstance(data, TestCaseResults) and data.test_results:
+                self._collected_results.extend(data.test_results)
 
         return result
+
+    @classmethod
+    def create(
+        cls,
+        config_dict: dict,
+        metadata: OpenMetadata,
+        pipeline_name: Optional[str] = None,
+    ) -> "ResultCapturingProcessor":
+        """Not used - ResultCapturingProcessor wraps existing processors."""
+        raise NotImplementedError(
+            "ResultCapturingProcessor.create() is not supported. "
+            "Use ResultCapturingProcessor(processor) to wrap an existing processor."
+        )
+
+    def close(self) -> None:
+        """Delegate close to wrapped processor."""
+        self._processor.close()
 
     def get_results(self) -> List[TestCaseResultResponse]:
         """Return all captured test case results."""

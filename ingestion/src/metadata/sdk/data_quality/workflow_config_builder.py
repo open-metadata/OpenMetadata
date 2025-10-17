@@ -83,7 +83,7 @@ class WorkflowConfigBuilder:
         self.table: Optional[Table] = None
         self.service_connection: Optional[DatabaseConnection] = None
         self.test_definitions: List[TestCaseDefinition] = []
-        self.force_test_update: bool = False
+        self.force_test_update: bool = True
         self.log_level: LogLevels = LogLevels.INFO
         self.raise_on_error: bool = False
         self.success_threshold: int = 90
