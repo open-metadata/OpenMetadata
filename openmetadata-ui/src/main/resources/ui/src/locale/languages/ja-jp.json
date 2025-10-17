@@ -1127,6 +1127,7 @@
     "no-reviewer": "レビュワーがいません",
     "no-tags-added": "タグは追加されていません",
     "no-tasks-yet": "タスクはまだありません",
+    "node": "ノード",
     "node-depth": "ノードの深さ",
     "nodes-per-layer": "レイヤーごとのノード数",
     "non-partitioned": "非パーティション化",

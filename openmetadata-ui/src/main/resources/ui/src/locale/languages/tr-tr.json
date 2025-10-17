@@ -1127,6 +1127,7 @@
     "no-reviewer": "İnceleyici yok",
     "no-tags-added": "Etiket eklenmedi",
     "no-tasks-yet": "Henüz görev yok",
+    "node": "Düğüm",
     "node-depth": "Düğüm derinliği",
     "nodes-per-layer": "Katman Başına Düğüm Sayısı",
     "non-partitioned": "Bölümlenmemiş",

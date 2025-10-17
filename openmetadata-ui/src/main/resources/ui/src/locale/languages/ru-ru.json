@@ -1127,6 +1127,7 @@
     "no-reviewer": "Нет согласующего",
     "no-tags-added": "Теги не добавлены",
     "no-tasks-yet": "Пока нет задач",
+    "node": "Узел",
     "node-depth": "Глубина узла",
     "nodes-per-layer": "Количество объектов",
     "non-partitioned": "Неразделенный",
