@@ -10,7 +10,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
-import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
@@ -537,15 +536,4 @@ public interface SearchClient<T>
 
   SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
-
-  SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
-      String schemaFqn,
-      String queryFilter,
-      String includeSourceFields,
-      int offset,
-      int limit,
-      int from,
-      int size,
-      boolean deleted)
-      throws IOException;
 }

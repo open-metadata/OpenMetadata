@@ -9,7 +9,6 @@ import static org.openmetadata.service.search.EntityBuilderConstant.MAX_RESULT_H
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
-import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
@@ -67,10 +66,8 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -115,7 +112,6 @@ import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
-import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
@@ -2086,71 +2082,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       int size,
       boolean deleted)
       throws IOException {
-    SearchSchemaEntityRelationshipResult result = new SearchSchemaEntityRelationshipResult();
-    result.setData(
-        new SearchEntityRelationshipResult()
-            .withNodes(new TreeMap<>())
-            .withUpstreamEdges(new HashMap<>())
-            .withDownstreamEdges(new HashMap<>()));
-    SearchEntityRelationshipRequest request =
-        new SearchEntityRelationshipRequest()
-            .withUpstreamDepth(0) // Node + Immediate Upstream
-            .withDownstreamDepth(1) // Node + Immediate Downstream
-            .withQueryFilter(queryFilter)
-            .withIncludeDeleted(deleted)
-            .withLayerFrom(from)
-            .withLayerSize(size)
-            .withIncludeSourceFields(getRequiredEntityRelationshipFields(includeSourceFields));
-    String finalQueryFilter = buildERQueryFilter(schemaFqn, queryFilter);
-    String tableIndex = Entity.getSearchRepository().getIndexOrAliasName(TABLE_SEARCH_INDEX);
-    SearchResponse searchResponse =
-        EsUtils.searchEntitiesWithLimitOffset(tableIndex, finalQueryFilter, offset, limit, deleted);
-    int total = 0;
-    if (searchResponse == null
-        || searchResponse.getHits() == null
-        || searchResponse.getHits().getTotalHits() == null) {
-      result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
-      return result;
-    }
-    for (SearchHit hit : searchResponse.getHits().getHits()) {
-      Map<String, Object> source = hit.getSourceAsMap();
-      Object fqn = source.get(FQN_FIELD);
-      if (fqn != null) {
-        String fqnString = fqn.toString();
-        request.withFqn(fqnString);
-        SearchEntityRelationshipResult tableER = this.searchEntityRelationship(request);
-        // Find the table Node
-        Map.Entry<String, org.openmetadata.schema.type.entityRelationship.NodeInformation>
-            tableNode =
-                tableER.getNodes().entrySet().stream()
-                    .filter(e -> fqn.toString().equals(e.getKey()))
-                    .findFirst()
-                    .orElse(null);
-        result
-            .getData()
-            .getNodes()
-            .putIfAbsent(fqnString, Objects.requireNonNull(tableNode).getValue());
-        result.getData().getUpstreamEdges().putAll(tableER.getUpstreamEdges());
-        result.getData().getDownstreamEdges().putAll(tableER.getDownstreamEdges());
-      }
-    }
-    total = (int) searchResponse.getHits().getTotalHits().value;
-    result.setPaging(new Paging().withOffset(offset).withLimit(limit).withTotal(total));
-    return result;
-  }
-
-  private static String buildERQueryFilter(String schemaFqn, String queryFilter) {
-    String schemaFqnWildcardClause =
-        String.format(
-            "{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}",
-            ReindexingUtil.escapeDoubleQuotes(schemaFqn));
-    String innerBoolFilter;
-    if (!org.openmetadata.common.utils.CommonUtil.nullOrEmpty(queryFilter)
-        && !"{}".equals(queryFilter)) {
-      innerBoolFilter = String.format("[ %s , %s ]", schemaFqnWildcardClause, queryFilter);
-    } else {
-      innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
-    }
-    return String.format("{\"query\":{\"bool\":{\"must\":%s}}}", innerBoolFilter);
+    return entityManager.getSchemaEntityRelationship(
+        schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
   }
 }
