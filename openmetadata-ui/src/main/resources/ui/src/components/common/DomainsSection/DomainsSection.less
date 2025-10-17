@@ -1,0 +1,275 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.loading-spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid #f3f3f3;
+  border-top: 3px solid #1890ff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+.edit-icon,
+.cancel-icon {
+  cursor: pointer;
+  height: 20px;
+}
+.domains-section {
+  border-bottom: solid;
+  border-bottom-width: 1px;
+  border-color: #f2f3f9;
+  padding-bottom: 16px;
+  .domains-header {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-left: 14px;
+    padding-right: 14px;
+    .domains-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: @grey-900;
+    }
+
+    .edit-button {
+      color: #1890ff;
+      font-size: 12px;
+      padding: 0;
+      height: auto;
+      border: none;
+      background: none;
+
+      &:hover {
+        color: #40a9ff;
+        background: none;
+      }
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 8px;
+
+      .cancel-button {
+        color: #8c8c8c;
+        border: none;
+        background: none;
+        padding: 4px 8px;
+        height: auto;
+        font-size: 14px;
+
+        &:hover {
+          color: #595959;
+          background: #f5f5f5;
+        }
+      }
+
+      .save-button {
+        background-color: #1890ff;
+        border-color: #1890ff;
+        color: #fff;
+        padding: 4px 16px;
+        height: auto;
+        font-size: 14px;
+        border-radius: 4px;
+
+        &:hover {
+          background-color: #40a9ff;
+          border-color: #40a9ff;
+        }
+      }
+    }
+  }
+
+  .domains-content {
+    padding-left: 14px;
+    padding-right: 14px;
+    .inline-edit-container {
+      .domain-selector-display {
+        min-height: 40px;
+        border: 1px solid #408dfb;
+        border-radius: 6px;
+        background-color: #fff;
+        padding: 8px 12px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        &:hover {
+          border-color: #40a9ff;
+        }
+
+        .selected-domains-list {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          width: 100%;
+
+          .selected-domain-chip {
+            background-color: #f9fafc;
+            border: 1px solid #e3e8f0;
+            border-radius: 16px;
+            padding: 4px 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+
+            .domain-name {
+              font-weight: 400 !important;
+              font-size: 12px !important;
+              color: @grey-700 !important;
+            }
+          }
+        }
+
+        .domain-placeholder {
+          color: #8c8c8c;
+          font-size: 14px;
+          font-style: italic;
+        }
+      }
+    }
+
+    .no-data-placeholder {
+      color: @grey-700;
+      font-size: 13px;
+    }
+
+    .domains-display {
+      .domains-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .domain-item {
+          display: flex;
+          align-items: center;
+          height: 26px;
+          border: 1px solid @grey-40;
+          border-radius: 6px !important;
+          background-color: @white;
+          min-width: 0;
+          transition: all 0.2s ease;
+          overflow: hidden;
+
+          .domain-card-bar {
+            height: 100%;
+            border-left: 6px solid @primary-color;
+            display: flex;
+            align-items: center;
+            width: 100%;
+            min-width: 0;
+            padding-top: 3px;
+            padding-bottom: 3px;
+
+            .domain-card-content {
+              display: flex;
+              align-items: center;
+              width: 100%;
+              min-width: 0;
+              gap: 4px;
+
+              .domain-card-icon {
+                width: 14px;
+                height: 14px;
+                border-radius: 2px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                flex-shrink: 0;
+
+                svg {
+                  width: 14px;
+                  height: 14px;
+                }
+              }
+
+              .domain-name {
+                font-size: 12px;
+                font-weight: 400;
+                color: @grey-700;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+              }
+            }
+          }
+        }
+
+        .show-more-domains-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: 12px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
+    }
+
+    .domains-loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+      min-height: 60px;
+
+      .domains-loading-spinner {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+
+        .loading-spinner {
+          animation: spin 1s linear infinite;
+        }
+
+        .loading-text {
+          color: #8c8c8c;
+          font-size: 12px;
+        }
+      }
+    }
+
+    // Ensure popover appears below the selector
+    :global(.domain-select-popover) {
+      .ant-popover-arrow {
+        display: none;
+      }
+    }
+  }
+}

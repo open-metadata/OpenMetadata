@@ -957,9 +957,9 @@ const getDatabaseOverview = (databaseDetails: Database) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName || NO_DATA,
+      value: service?.fullyQualifiedName || NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.DATABASE_SERVICES
       ),
       isLink: true,
@@ -998,9 +998,9 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
     },
     {
       name: i18next.t('label.service'),
-      value: service.fullyQualifiedName ?? NO_DATA,
+      value: service?.fullyQualifiedName ?? NO_DATA,
       url: getServiceDetailsPath(
-        service.fullyQualifiedName ?? '',
+        service?.fullyQualifiedName ?? '',
         ServiceCategory.DATABASE_SERVICES
       ),
       isLink: true,
@@ -1008,10 +1008,10 @@ const getDatabaseSchemaOverview = (databaseSchemaDetails: DatabaseSchema) => {
     },
     {
       name: i18next.t('label.database'),
-      value: database.fullyQualifiedName ?? NO_DATA,
+      value: database?.fullyQualifiedName ?? NO_DATA,
       url: getEntityDetailsPath(
         EntityType.DATABASE,
-        database.fullyQualifiedName ?? ''
+        database?.fullyQualifiedName ?? ''
       ),
       isLink: true,
       visible: [DRAWER_NAVIGATION_OPTIONS.explore],
