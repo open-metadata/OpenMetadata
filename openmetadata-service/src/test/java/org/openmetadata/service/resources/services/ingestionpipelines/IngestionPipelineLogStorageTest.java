@@ -25,6 +25,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.net.URI;
 import java.util.*;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.AfterAll;
@@ -40,6 +41,7 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -75,6 +77,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
   private static IngestionPipeline testPipeline;
   private static S3LogStorage s3LogStorage;
   private static StreamableLogsMetrics metrics;
+  private static String minioEndpoint;
   private static boolean initialized = false;
 
   @BeforeEach
@@ -109,7 +112,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
       return;
     }
     TestUtils.simulateWork(2000);
-    String minioEndpoint =
+    minioEndpoint =
         String.format("http://%s:%d", minioContainer.getHost(), minioContainer.getMappedPort(9000));
     LOG.info("Connecting to MinIO at: {}", minioEndpoint);
 
@@ -141,7 +144,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName(TEST_BUCKET)
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix("test-logs")
             .withAwsConfig(awsCreds);
 
@@ -247,13 +250,21 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
   @Test
   void testMaxConcurrentStreamsLimit() throws Exception {
     setupTestData();
+    // Initialize S3LogStorage with MinIO configuration
+    org.openmetadata.schema.security.credentials.AWSCredentials awsCreds =
+        new org.openmetadata.schema.security.credentials.AWSCredentials()
+            .withAwsAccessKeyId(MINIO_ACCESS_KEY)
+            .withAwsSecretAccessKey(MINIO_SECRET_KEY)
+            .withAwsRegion("us-east-1")
+            .withEndPointURL(new URI(minioEndpoint));
 
     // Create a storage with low max concurrent streams for testing
     LogStorageConfiguration limitedConfig =
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName(TEST_BUCKET)
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
+            .withAwsConfig(awsCreds)
             .withPrefix("limited-test")
             .withMaxConcurrentStreams(2); // Very low limit
 
@@ -489,7 +500,7 @@ class IngestionPipelineLogStorageTest extends OpenMetadataApplicationTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName("non-existent-bucket")
-            .withRegion("us-east-1")
+            .withAwsConfig(new AWSCredentials().withAwsRegion("us-east-1"))
             .withPrefix("test-logs");
 
     S3LogStorage badStorage = new S3LogStorage();

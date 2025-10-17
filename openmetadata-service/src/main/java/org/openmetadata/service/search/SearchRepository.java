@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
@@ -16,6 +17,7 @@ import static org.openmetadata.service.Entity.RAW_COST_ANALYSIS_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_ENTITY_VIEW_REPORT_DATA;
 import static org.openmetadata.service.Entity.WEB_ANALYTIC_USER_ACTIVITY_REPORT_DATA;
 import static org.openmetadata.service.search.SearchClient.ADD_DOMAINS_SCRIPT;
+import static org.openmetadata.service.search.SearchClient.ADD_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.ADD_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.DEFAULT_UPDATE_SCRIPT;
@@ -28,6 +30,7 @@ import static org.openmetadata.service.search.SearchClient.REMOVE_DATA_PRODUCTS_
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_CHILDREN_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_DOMAINS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_ENTITY_RELATIONSHIP;
+import static org.openmetadata.service.search.SearchClient.REMOVE_FOLLOWERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_OWNERS_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_ENTITY_REFERENCE_FIELD_SCRIPT;
 import static org.openmetadata.service.search.SearchClient.REMOVE_PROPAGATED_FIELD_SCRIPT;
@@ -85,6 +88,8 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -139,6 +144,7 @@ public class SearchRepository {
       List.of(
           FIELD_OWNERS,
           FIELD_DOMAINS,
+          FIELD_FOLLOWERS,
           Entity.FIELD_DISABLED,
           Entity.FIELD_TEST_SUITES,
           FIELD_DISPLAY_NAME);
@@ -231,7 +237,37 @@ public class SearchRepository {
 
   public void createIndexes() {
     RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
-    recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    ReindexContext context = recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    if (context != null) {
+      for (String entityType : context.getEntities()) {
+        try {
+          String originalIndex = context.getOriginalIndex(entityType).orElse(null);
+          String canonicalIndex = context.getCanonicalIndex(entityType).orElse(null);
+          String activeIndex = context.getOriginalIndex(entityType).orElse(null);
+          String stagedIndex = context.getStagedIndex(entityType).orElse(null);
+          String canonicalAlias = context.getCanonicalAlias(entityType).orElse(null);
+          Set<String> existingAliases = context.getExistingAliases(entityType);
+          Set<String> parentAliases =
+              new HashSet<>(listOrEmpty(context.getParentAliases(entityType)));
+
+          EntityReindexContext entityReindexContext =
+              EntityReindexContext.builder()
+                  .entityType(entityType)
+                  .originalIndex(originalIndex)
+                  .canonicalIndex(canonicalIndex)
+                  .activeIndex(activeIndex)
+                  .stagedIndex(stagedIndex)
+                  .canonicalAliases(canonicalAlias)
+                  .existingAliases(existingAliases)
+                  .parentAliases(parentAliases)
+                  .build();
+          recreateIndexHandler.finalizeReindex(entityReindexContext, true);
+
+        } catch (Exception ex) {
+          LOG.error("Failed to recreate index for entity {}", entityType, ex);
+        }
+      }
+    }
   }
 
   public void updateIndexes() {
@@ -263,12 +299,24 @@ public class SearchRepository {
   }
 
   public boolean indexExists(IndexMapping indexMapping) {
-    return searchClient.indexExists(indexMapping.getIndexName(clusterAlias));
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    if (searchClient.indexExists(indexName)) {
+      return true;
+    }
+    return !searchClient.getIndicesByAlias(indexName).isEmpty();
   }
 
   public void createIndex(IndexMapping indexMapping) {
     try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
       if (!indexExists(indexMapping)) {
+        // Clean up any lingering alias with the same name
+        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+        for (String target : aliasTargets) {
+          searchClient.removeAliases(target, Set.of(indexName));
+          searchClient.deleteIndex(target);
+        }
+
         String indexMappingContent = getIndexMapping(indexMapping);
         searchClient.createIndex(indexMapping, indexMappingContent);
         searchClient.createAliases(indexMapping);
@@ -297,8 +345,15 @@ public class SearchRepository {
 
   public void deleteIndex(IndexMapping indexMapping) {
     try {
-      if (indexExists(indexMapping)) {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      if (searchClient.indexExists(indexName)) {
         searchClient.deleteIndex(indexMapping);
+      } else {
+        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+        for (String target : aliasTargets) {
+          searchClient.removeAliases(target, Set.of(indexName));
+          searchClient.deleteIndex(target);
+        }
       }
     } catch (Exception e) {
       LOG.error(
@@ -320,6 +375,10 @@ public class SearchRepository {
       LOG.error("Failed to read index Mapping file due to ", e);
     }
     return null;
+  }
+
+  public String readIndexMapping(IndexMapping indexMapping) {
+    return getIndexMapping(indexMapping);
   }
 
   /**
@@ -525,7 +584,8 @@ public class SearchRepository {
       String entityId,
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
-      EntityInterface entity) {
+      EntityInterface entity)
+      throws IOException {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates =
           getInheritedFieldChanges(changeDescription, entity);
@@ -781,6 +841,12 @@ public class SearchRepository {
               fieldData.put("deletedDomains", inheritedDomains);
               scriptTxt.append(REMOVE_DOMAINS_SCRIPT);
               scriptTxt.append(" ");
+            } else if (field.getName().equals(FIELD_FOLLOWERS)) {
+              List<EntityReference> inheritedFollowers =
+                  copyWithInheritedFlag(entity.getFollowers());
+              fieldData.put("deletedFollowers", inheritedFollowers);
+              scriptTxt.append(REMOVE_FOLLOWERS_SCRIPT);
+              scriptTxt.append(" ");
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getOldValue().toString(), EntityReference.class);
@@ -852,6 +918,11 @@ public class SearchRepository {
               }
               fieldData.put("updatedDomains", inheritedDomains);
               scriptTxt.append(ADD_DOMAINS_SCRIPT);
+            } else if (field.getName().equals(FIELD_FOLLOWERS)) {
+              List<EntityReference> inheritedFollowers =
+                  copyWithInheritedFlag(entity.getFollowers());
+              fieldData.put("updatedFollowers", inheritedFollowers);
+              scriptTxt.append(ADD_FOLLOWERS_SCRIPT);
             } else {
               EntityReference entityReference =
                   JsonUtils.readValue(field.getNewValue().toString(), EntityReference.class);
@@ -1022,7 +1093,8 @@ public class SearchRepository {
     }
   }
 
-  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping) {
+  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping)
+      throws IOException {
     String docId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     switch (entityType) {
@@ -1087,7 +1159,8 @@ public class SearchRepository {
   }
 
   public void softDeleteOrRestoredChildren(
-      EntityReference entityReference, IndexMapping indexMapping, boolean delete) {
+      EntityReference entityReference, IndexMapping indexMapping, boolean delete)
+      throws IOException {
     String docId = entityReference.getId().toString();
     String entityType = entityReference.getType();
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
@@ -1275,6 +1348,23 @@ public class SearchRepository {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return searchClient.searchLineageWithDirection(lineageRequest);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
+    return searchClient.getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return searchClient.searchLineageByEntityCount(request);
   }
 
   public Response searchEntityRelationship(
@@ -1496,5 +1586,15 @@ public class SearchRepository {
           throws IOException {
     return searchClient.getSchemaEntityRelationship(
         schemaFqn, queryFilter, includeSourceFields, offset, limit, from, size, deleted);
+  }
+
+  private static List<EntityReference> copyWithInheritedFlag(List<EntityReference> references) {
+    if (references == null || references.isEmpty()) {
+      return new ArrayList<>();
+    }
+    List<EntityReference> inheritedReferences =
+        JsonUtils.deepCopyList(references, EntityReference.class);
+    inheritedReferences.forEach(ref -> ref.setInherited(true));
+    return inheritedReferences;
   }
 }

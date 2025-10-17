@@ -1,6 +1,5 @@
 package org.openmetadata.service.search.opensearch;
 
-import static jakarta.ws.rs.core.Response.Status.NOT_FOUND;
 import static jakarta.ws.rs.core.Response.Status.OK;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
@@ -10,7 +9,6 @@ import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
 import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
-import static org.openmetadata.service.exception.CatalogGenericExceptionMapper.getResponse;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
@@ -24,14 +22,11 @@ import static org.openmetadata.service.search.EntityBuilderConstant.UNIFIED;
 import static org.openmetadata.service.search.SearchConstants.SENDING_REQUEST_TO_ELASTIC_SEARCH;
 import static org.openmetadata.service.search.SearchUtils.createElasticSearchSSLContext;
 import static org.openmetadata.service.search.SearchUtils.getEntityRelationshipDirection;
-import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
 import static org.openmetadata.service.search.SearchUtils.getRelationshipRef;
 import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelationshipFields;
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
-import static org.openmetadata.service.search.opensearch.OpenSearchEntitiesProcessor.getUpdateRequest;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -68,8 +63,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.EsLineageData;
-import org.openmetadata.schema.api.lineage.LineageDirection;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -90,7 +86,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.Paging;
-import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
@@ -135,20 +130,13 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
-import os.org.opensearch.action.ActionListener;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
 import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
-import os.org.opensearch.action.admin.indices.alias.IndicesAliasesRequest;
-import os.org.opensearch.action.admin.indices.delete.DeleteIndexRequest;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
-import os.org.opensearch.action.delete.DeleteRequest;
-import os.org.opensearch.action.get.GetRequest;
-import os.org.opensearch.action.get.GetResponse;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
-import os.org.opensearch.action.support.master.AcknowledgedResponse;
 import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
@@ -157,16 +145,14 @@ import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
-import os.org.opensearch.client.indices.CreateIndexRequest;
-import os.org.opensearch.client.indices.CreateIndexResponse;
 import os.org.opensearch.client.indices.DataStream;
 import os.org.opensearch.client.indices.DeleteDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamRequest;
 import os.org.opensearch.client.indices.GetDataStreamResponse;
-import os.org.opensearch.client.indices.GetIndexRequest;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
-import os.org.opensearch.client.indices.PutMappingRequest;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.transport.rest_client.RestClientTransport;
 import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.ParsingException;
@@ -181,25 +167,15 @@ import os.org.opensearch.common.xcontent.XContentParser;
 import os.org.opensearch.common.xcontent.XContentType;
 import os.org.opensearch.index.IndexNotFoundException;
 import os.org.opensearch.index.query.BoolQueryBuilder;
-import os.org.opensearch.index.query.IdsQueryBuilder;
-import os.org.opensearch.index.query.MatchQueryBuilder;
 import os.org.opensearch.index.query.MultiMatchQueryBuilder;
 import os.org.opensearch.index.query.Operator;
-import os.org.opensearch.index.query.PrefixQueryBuilder;
 import os.org.opensearch.index.query.QueryBuilder;
 import os.org.opensearch.index.query.QueryBuilders;
 import os.org.opensearch.index.query.QueryStringQueryBuilder;
 import os.org.opensearch.index.query.RangeQueryBuilder;
-import os.org.opensearch.index.query.ScriptQueryBuilder;
-import os.org.opensearch.index.query.TermQueryBuilder;
 import os.org.opensearch.index.query.functionscore.FunctionScoreQueryBuilder;
 import os.org.opensearch.index.query.functionscore.ScoreFunctionBuilders;
-import os.org.opensearch.index.reindex.DeleteByQueryRequest;
-import os.org.opensearch.index.reindex.ReindexRequest;
-import os.org.opensearch.index.reindex.UpdateByQueryRequest;
 import os.org.opensearch.rest.RestStatus;
-import os.org.opensearch.script.Script;
-import os.org.opensearch.script.ScriptType;
 import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchHits;
 import os.org.opensearch.search.aggregations.AggregationBuilder;
@@ -229,10 +205,16 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final boolean isClientAvailable;
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
+  // New OpenSearch Java API client
+  @Getter private final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
+  private final boolean isNewClientAvailable;
+
   private final OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
   private final String clusterAlias;
+  private final OpenSearchIndexManager indexManager;
+  private final OpenSearchEntityManager entityManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -264,13 +246,35 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   public OpenSearchClient(ElasticSearchConfiguration config) {
-    this.client = createOpenSearchClient(config);
+    RestClientBuilder restClientBuilder = getLowLevelClient(config);
+    this.client = createOpenSearchLegacyClient(restClientBuilder);
+    this.newClient = createOpenSearchNewClient(restClientBuilder);
     clusterAlias = config != null ? config.getClusterAlias() : "";
     isClientAvailable = client != null;
+    isNewClientAvailable = newClient != null;
     QueryBuilderFactory queryBuilderFactory = new OpenSearchQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
     lineageGraphBuilder = new OSLineageGraphBuilder(client);
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
+    indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
+    entityManager = new OpenSearchEntityManager(newClient);
+  }
+
+  private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
+      RestClientBuilder restClientBuilder) {
+    try {
+      // Create transport and new client
+      RestClientTransport transport =
+          new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
+      os.org.opensearch.client.opensearch.OpenSearchClient newClient =
+          new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
+
+      LOG.info("Successfully initialized new OpenSearch Java API client");
+      return newClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize new Opensearch client", e);
+      return null;
+    }
   }
 
   @Override
@@ -279,103 +283,73 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
+  public boolean isNewClientAvailable() {
+    return isNewClientAvailable;
+  }
+
+  @Override
   public boolean indexExists(String indexName) {
-    try {
-      GetIndexRequest gRequest = new GetIndexRequest(indexName);
-      gRequest.local(false);
-      return client.indices().exists(gRequest, RequestOptions.DEFAULT);
-    } catch (Exception e) {
-      LOG.error(String.format("Failed to check if index %s exists due to", indexName), e);
-      return false;
-    }
+    return indexManager.indexExists(indexName);
   }
 
   @Override
   public void createIndex(IndexMapping indexMapping, String indexMappingContent) {
-    if (Boolean.TRUE.equals(isClientAvailable)) {
-      try {
-        CreateIndexRequest request =
-            new CreateIndexRequest(indexMapping.getIndexName(clusterAlias));
-        request.source(indexMappingContent, XContentType.JSON);
-        CreateIndexResponse createIndexResponse =
-            client.indices().create(request, RequestOptions.DEFAULT);
-        LOG.debug(
-            "{} Created {}",
-            indexMapping.getIndexName(clusterAlias),
-            createIndexResponse.isAcknowledged());
-        // creating alias for indexes
-        createAliases(indexMapping);
-      } catch (Exception e) {
-        LOG.error("Failed to create Open Search indexes due to", e);
-      }
-    } else {
-      LOG.error(
-          "Failed to create Open Search index as client is not property configured, Please check your OpenMetadata configuration");
-    }
+    indexManager.createIndex(indexMapping, indexMappingContent);
   }
 
   @Override
-  public void addIndexAlias(IndexMapping indexMapping, String... aliasName) {
-    try {
-      IndicesAliasesRequest.AliasActions aliasAction =
-          IndicesAliasesRequest.AliasActions.add()
-              .index(indexMapping.getIndexName(clusterAlias))
-              .aliases(aliasName);
-      IndicesAliasesRequest aliasesRequest = new IndicesAliasesRequest();
-      aliasesRequest.addAliasAction(aliasAction);
-      client.indices().updateAliases(aliasesRequest, RequestOptions.DEFAULT);
-    } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getAlias(clusterAlias)),
-          e);
-    }
+  public void addIndexAlias(IndexMapping indexMapping, String... aliasNames) {
+    indexManager.addIndexAlias(indexMapping, aliasNames);
   }
 
   @Override
   public void createAliases(IndexMapping indexMapping) {
-    try {
-      Set<String> aliases = new HashSet<>(indexMapping.getParentAliases(clusterAlias));
-      aliases.add(indexMapping.getAlias(clusterAlias));
-      addIndexAlias(indexMapping, aliases.toArray(new String[0]));
-    } catch (Exception e) {
-      LOG.error(
-          String.format(
-              "Failed to create alias for %s due to", indexMapping.getIndexName(clusterAlias)),
-          e);
-    }
+    indexManager.createAliases(indexMapping);
+  }
+
+  @Override
+  public void createIndex(String indexName, String indexMappingContent) {
+    indexManager.createIndex(indexName, indexMappingContent);
+  }
+
+  @Override
+  public void deleteIndex(String indexName) {
+    indexManager.deleteIndex(indexName);
+  }
+
+  @Override
+  public Set<String> getAliases(String indexName) {
+    return indexManager.getAliases(indexName);
+  }
+
+  @Override
+  public void addAliases(String indexName, Set<String> aliases) {
+    indexManager.addAliases(indexName, aliases);
+  }
+
+  @Override
+  public void removeAliases(String indexName, Set<String> aliases) {
+    indexManager.removeAliases(indexName, aliases);
+  }
+
+  @Override
+  public Set<String> getIndicesByAlias(String aliasName) {
+    return indexManager.getIndicesByAlias(aliasName);
+  }
+
+  @Override
+  public Set<String> listIndicesByPrefix(String prefix) {
+    return indexManager.listIndicesByPrefix(prefix);
   }
 
   @Override
   public void updateIndex(IndexMapping indexMapping, String indexMappingContent) {
-    try {
-      PutMappingRequest request = new PutMappingRequest(indexMapping.getIndexName(clusterAlias));
-      JsonNode readProperties = JsonUtils.readTree(indexMappingContent).get("mappings");
-      request.source(JsonUtils.getMap(readProperties));
-      AcknowledgedResponse putMappingResponse =
-          client.indices().putMapping(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Updated {}", indexMapping.getIndexMappingFile(), putMappingResponse.isAcknowledged());
-    } catch (Exception e) {
-      LOG.warn(
-          String.format(
-              "Failed to Update Open Search index %s", indexMapping.getIndexName(clusterAlias)));
-    }
+    indexManager.updateIndex(indexMapping, indexMappingContent);
   }
 
   @Override
   public void deleteIndex(IndexMapping indexMapping) {
-    try {
-      DeleteIndexRequest request = new DeleteIndexRequest(indexMapping.getIndexName(clusterAlias));
-      AcknowledgedResponse deleteIndexResponse =
-          client.indices().delete(request, RequestOptions.DEFAULT);
-      LOG.debug(
-          "{} Deleted {}",
-          indexMapping.getIndexName(clusterAlias),
-          deleteIndexResponse.isAcknowledged());
-    } catch (Exception e) {
-      LOG.error("Failed to delete Open Search indexes due to", e);
-    }
+    indexManager.deleteIndex(indexMapping);
   }
 
   @Override
@@ -653,24 +627,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response getDocByID(String indexName, String entityId) throws IOException {
-    try {
-      GetRequest request =
-          new GetRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName), entityId);
-      GetResponse response = client.get(request, RequestOptions.DEFAULT);
-
-      if (response.isExists()) {
-        return Response.status(OK).entity(response.toString()).build();
-      }
-
-    } catch (OpenSearchException e) {
-      if (e.status() == RestStatus.NOT_FOUND) {
-        throw new SearchIndexNotFoundException(
-            String.format("Failed to to find doc with id %s", entityId));
-      } else {
-        throw new SearchException(String.format("Search failed due to %s", e.getMessage()));
-      }
-    }
-    return getResponse(NOT_FOUND, "Document not found.");
+    return entityManager.getDocByID(indexName, entityId);
   }
 
   private void buildHierarchyQuery(
@@ -986,63 +943,31 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException {
-    int upstreamDepth = lineageRequest.getUpstreamDepth();
-    int downstreamDepth = lineageRequest.getDownstreamDepth();
-    SearchLineageResult result =
-        lineageGraphBuilder.getDownstreamLineage(
-            lineageRequest
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
-                .withDirection(LineageDirection.DOWNSTREAM)
-                .withDirectionValue(
-                    getLineageDirection(
-                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    SearchLineageResult upstreamLineage =
-        lineageGraphBuilder.getUpstreamLineage(
-            lineageRequest
-                .withUpstreamDepth(upstreamDepth + 1)
-                .withDownstreamDepth(downstreamDepth + 1)
-                .withDirection(LineageDirection.UPSTREAM)
-                .withDirectionValue(
-                    getLineageDirection(
-                        lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-
-    // Here we are merging everything from downstream paging into upstream paging
-    for (var nodeFromDownstream : result.getNodes().entrySet()) {
-      if (upstreamLineage.getNodes().containsKey(nodeFromDownstream.getKey())) {
-        NodeInformation existingNode = upstreamLineage.getNodes().get(nodeFromDownstream.getKey());
-        LayerPaging existingPaging = existingNode.getPaging();
-        existingPaging.setEntityDownstreamCount(
-            nodeFromDownstream.getValue().getPaging().getEntityDownstreamCount());
-      }
-    }
-    // since paging from downstream is merged into upstream, we can just put the upstream result
-    result.getNodes().putAll(upstreamLineage.getNodes());
-    result.getUpstreamEdges().putAll(upstreamLineage.getUpstreamEdges());
-    return result;
+    return lineageGraphBuilder.searchLineage(lineageRequest);
   }
 
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
-    int upstreamDepth = lineageRequest.getUpstreamDepth();
-    int downstreamDepth = lineageRequest.getDownstreamDepth();
-    if (lineageRequest.getDirection().equals(LineageDirection.UPSTREAM)) {
-      return lineageGraphBuilder.getUpstreamLineage(
-          lineageRequest
-              .withUpstreamDepth(upstreamDepth + 1)
-              .withDownstreamDepth(downstreamDepth + 1)
-              .withDirectionValue(
-                  getLineageDirection(
-                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    } else {
-      return lineageGraphBuilder.getDownstreamLineage(
-          lineageRequest
-              .withUpstreamDepth(upstreamDepth + 1)
-              .withDownstreamDepth(downstreamDepth + 1)
-              .withDirectionValue(
-                  getLineageDirection(
-                      lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
-    }
+    return lineageGraphBuilder.searchLineageWithDirection(lineageRequest);
+  }
+
+  @Override
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
+    return lineageGraphBuilder.getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+  }
+
+  @Override
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
   @Override
@@ -1791,143 +1716,66 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public void createEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      updateRequest.doc(doc, XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-      updateSearch(updateRequest);
-    }
+  public void createEntity(String indexName, String docId, String doc) throws IOException {
+    entityManager.createEntity(indexName, docId, doc);
   }
 
   @Override
-  public void createEntities(String indexName, List<Map<String, String>> docsAndIds) {
-    if (isClientAvailable) {
-      BulkRequest bulkRequest = new BulkRequest();
-      for (Map<String, String> docAndId : docsAndIds) {
-        Map.Entry<String, String> entry = docAndId.entrySet().iterator().next();
-        UpdateRequest updateRequest = new UpdateRequest(indexName, entry.getKey());
-        updateRequest.doc(entry.getValue(), XContentType.JSON);
-        bulkRequest.add(updateRequest);
-      }
-      bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      ActionListener<BulkResponse> listener =
-          new ActionListener<BulkResponse>() {
-            @Override
-            public void onResponse(BulkResponse bulkItemResponses) {
-              if (bulkItemResponses.hasFailures()) {
-                LOG.error(
-                    "Failed to create entities in ElasticSearch: {}",
-                    bulkItemResponses.buildFailureMessage());
-              } else {
-                LOG.debug("Successfully created {} entities in ElasticSearch", docsAndIds.size());
-              }
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-              LOG.error("Failed to create entities in ElasticSearch", e);
-            }
-          };
-      client.bulkAsync(bulkRequest, RequestOptions.DEFAULT, listener);
-    }
+  public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
+      throws IOException {
+    entityManager.createEntities(indexName, docsAndIds);
   }
 
   @Override
-  public void createTimeSeriesEntity(String indexName, String docId, String doc) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      updateRequest.doc(doc, XContentType.JSON);
-      updateRequest.docAsUpsert(true);
-      updateSearch(updateRequest);
-    }
+  public void createTimeSeriesEntity(String indexName, String docId, String doc)
+      throws IOException {
+    entityManager.createTimeSeriesEntity(indexName, docId, doc);
   }
 
   @Override
-  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params) {
-    if (isClientAvailable) {
-      Script script = new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, params);
-      ScriptQueryBuilder scriptQuery = new ScriptQueryBuilder(script);
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-      deleteByQueryRequest.setQuery(scriptQuery);
-      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
-    }
+  public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params)
+      throws IOException {
+    entityManager.deleteByScript(indexName, scriptTxt, params);
   }
 
   @Override
-  public void deleteEntity(String indexName, String docId) {
-    if (isClientAvailable) {
-      DeleteRequest deleteRequest = new DeleteRequest(indexName, docId);
-      deleteEntityFromOpenSearch(deleteRequest);
-    }
+  public void deleteEntity(String indexName, String docId) throws IOException {
+    entityManager.deleteEntity(indexName, docId);
   }
 
   @Override
-  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) {
-    if (isClientAvailable) {
-      DeleteByQueryRequest deleteByQueryRequest = new DeleteByQueryRequest(indexName);
-      deleteByQueryRequest.setQuery(
-          new PrefixQueryBuilder("fullyQualifiedName.keyword", fqnPrefix.toLowerCase()));
-      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
-    }
+  public void deleteEntityByFQNPrefix(String indexName, String fqnPrefix) throws IOException {
+    entityManager.deleteEntityByFQNPrefix(indexName, fqnPrefix);
   }
 
   @Override
   public void deleteEntityByFields(
-      List<String> indexName, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
-      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      DeleteByQueryRequest deleteByQueryRequest =
-          new DeleteByQueryRequest(indexName.toArray(new String[0]));
-      for (Pair<String, String> p : fieldAndValue) {
-        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
-      }
-      deleteByQueryRequest.setQuery(queryBuilder);
-      deleteEntityFromOpenSearchByQuery(deleteByQueryRequest);
-    }
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
+    entityManager.deleteEntityByFields(indexNames, fieldAndValue);
   }
 
   @Override
-  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-      updateRequest.script(script);
-      updateSearch(updateRequest);
-    }
+  public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
+      throws IOException {
+    entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt);
   }
 
   @Override
   public void softDeleteOrRestoreChildren(
-      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[0]));
-      BoolQueryBuilder queryBuilder = new BoolQueryBuilder();
-      for (Pair<String, String> p : fieldAndValue) {
-        queryBuilder.must(new TermQueryBuilder(p.getKey(), p.getValue()));
-      }
-      updateByQueryRequest.setQuery(queryBuilder);
-      Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, new HashMap<>());
-      updateByQueryRequest.setScript(script);
-      updateOpenSearchByQuery(updateByQueryRequest);
-    }
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue)
+      throws IOException {
+    entityManager.softDeleteOrRestoreChildren(indexName, scriptTxt, fieldAndValue);
   }
 
   @Override
   public void updateEntity(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-      updateRequest.scriptedUpsert(true);
-      updateRequest.script(script);
-      updateOpenSearch(updateRequest);
-    }
+    entityManager.updateEntity(indexName, docId, doc, scriptTxt);
+  }
+
+  @Override
+  public void reindexEntities(List<EntityReference> entities) throws IOException {
+    entityManager.reindexEntities(entities);
   }
 
   @Override
@@ -1937,7 +1785,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
           .submit(
               () -> {
                 try {
-                  // Initialize the 'from' parameter to 0
                   int from = 0;
                   boolean hasMoreResults = true;
 
@@ -1948,10 +1795,8 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
                             ReindexingUtil.escapeDoubleQuotes(sourceRef.getFullyQualifiedName()),
                             from);
 
-                    // Async Re-index the entities which matched
-                    processEntitiesForReindex(entities);
+                    reindexEntities(entities);
 
-                    // Update from
                     from += entities.size();
                     hasMoreResults = !entities.isEmpty();
                   }
@@ -1962,124 +1807,33 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  private void processEntitiesForReindex(List<EntityReference> references) throws IOException {
-    if (!references.isEmpty()) {
-      // Process entities for reindex
-      BulkRequest bulkRequests = new BulkRequest();
-      // Build Bulk request
-      for (EntityReference entityRef : references) {
-        // Reindex entity
-        UpdateRequest request =
-            getUpdateRequest(entityRef.getType(), Entity.getEntity(entityRef, "*", Include.ALL));
-        bulkRequests.add(request);
-      }
-
-      if (isClientAvailable) {
-        client.bulk(bulkRequests, RequestOptions.DEFAULT);
-      }
-    }
-  }
-
-  private void updateChildren(
-      UpdateByQueryRequest updateByQueryRequest,
-      Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates) {
-    updateByQueryRequest.setQuery(
-        new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-            .operator(Operator.AND));
-    Script script =
-        new Script(
-            ScriptType.INLINE,
-            Script.DEFAULT_SCRIPT_LANG,
-            updates.getKey(),
-            JsonUtils.getMap(updates.getValue() == null ? new HashMap<>() : updates.getValue()));
-    updateByQueryRequest.setScript(script);
-    updateOpenSearchByQuery(updateByQueryRequest);
-  }
-
   @Override
   public void updateChildren(
       String indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-      updateChildren(updateByQueryRequest, fieldAndValue, updates);
-    }
+    entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
   @Override
   public void updateChildren(
       List<String> indexName,
       Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(indexName.toArray(new String[0]));
-      updateChildren(updateByQueryRequest, fieldAndValue, updates);
-    }
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
   @Override
   public void updateByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
-    // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
-    PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
-    UpdateByQueryRequest updateByQueryRequest =
-        new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-    updateByQueryRequest.setQuery(prefixQuery);
-
-    Map<String, Object> params = new HashMap<>();
-    params.put("oldParentFQN", oldParentFQN);
-    params.put("newParentFQN", newParentFQN);
-
-    String painlessScript =
-        "String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN); "
-            + "ctx._source.fullyQualifiedName = updatedFQN; "
-            + "ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length; "
-            + "if (ctx._source.containsKey('parent')) { "
-            + "    if (ctx._source.parent.containsKey('fullyQualifiedName')) { "
-            + "        String parentFQN = ctx._source.parent.fullyQualifiedName; "
-            + "        ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN); "
-            + "    } "
-            + "} "
-            + "if (ctx._source.containsKey('tags')) { "
-            + "    for (int i = 0; i < ctx._source.tags.size(); i++) { "
-            + "        if (ctx._source.tags[i].containsKey('tagFQN')) { "
-            + "            String tagFQN = ctx._source.tags[i].tagFQN; "
-            + "            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN); "
-            + "        } "
-            + "    } "
-            + "}";
-    Script inlineScript =
-        new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, painlessScript, params);
-
-    updateByQueryRequest.setScript(inlineScript);
-
-    try {
-      updateOpenSearchByQuery(updateByQueryRequest);
-      LOG.info("Successfully propagated FQN updates for parent FQN: {}", oldParentFQN);
-    } catch (Exception e) {
-      LOG.error("Error while propagating FQN updates: {}", e.getMessage(), e);
-    }
+    entityManager.updateByFqnPrefix(indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
   }
 
   @Override
   public void updateLineage(
       String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-      updateByQueryRequest.setQuery(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-              .operator(Operator.AND));
-      Map<String, Object> params =
-          Collections.singletonMap("lineageData", JsonUtils.getMap(lineageData));
-      Script script =
-          new Script(ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, ADD_UPDATE_LINEAGE, params);
-      updateByQueryRequest.setScript(script);
-      updateOpenSearchByQuery(updateByQueryRequest);
-    }
+    entityManager.updateLineage(indexName, fieldAndValue, lineageData);
   }
 
   @Override
@@ -2087,22 +1841,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       String indexName,
       Pair<String, String> fieldAndValue,
       Map<String, Object> entityRelationshipData) {
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest = new UpdateByQueryRequest(indexName);
-      updateByQueryRequest.setQuery(
-          new MatchQueryBuilder(fieldAndValue.getKey(), fieldAndValue.getValue())
-              .operator(Operator.AND));
-      Map<String, Object> params =
-          Collections.singletonMap("entityRelationshipData", entityRelationshipData);
-      Script script =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              ADD_UPDATE_ENTITY_RELATIONSHIP,
-              params);
-      updateByQueryRequest.setScript(script);
-      updateOpenSearchByQuery(updateByQueryRequest);
-    }
+    entityManager.updateEntityRelationship(indexName, fieldAndValue, entityRelationshipData);
   }
 
   @Override
@@ -2112,86 +1851,29 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       String pipelineName,
       String entityType,
       List<UUID> entityIds) {
-    String[] queryIDs = entityIds.stream().map(UUID::toString).toArray(String[]::new);
-
-    ReindexRequest request = new ReindexRequest();
-    request.setSourceIndices(sourceIndices.toArray(new String[0]));
-    request.setDestIndex(destinationIndex);
-    request.setDestPipeline(pipelineName);
-
-    // Add query to filter by IDs
-    IdsQueryBuilder idsQuery = QueryBuilders.idsQuery();
-    idsQuery.addIds(queryIDs);
-    request.setSourceQuery(idsQuery);
-
-    try {
-      client.reindex(request, RequestOptions.DEFAULT);
-      LOG.info("Reindexed {} entities of type {} to vector index", entityIds.size(), entityType);
-    } catch (IOException e) {
-      LOG.error("Failed to reindex entities: {}", e.getMessage());
-    }
+    entityManager.reindexWithEntityIds(
+        sourceIndices, destinationIndex, pipelineName, entityType, entityIds);
   }
 
-  @SneakyThrows
-  private void updateOpenSearchByQuery(UpdateByQueryRequest updateByQueryRequest) {
-    if (updateByQueryRequest != null && isClientAvailable) {
-      updateByQueryRequest.setRefresh(true);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateByQueryRequest);
-      client.updateByQuery(updateByQueryRequest, RequestOptions.DEFAULT);
-    }
+  @Override
+  public void deleteByRangeQuery(
+      String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
+      throws IOException {
+    entityManager.deleteByRangeQuery(index, fieldName, gt, gte, lt, lte);
   }
 
-  @SneakyThrows
-  public void updateOpenSearch(UpdateRequest updateRequest) {
-    if (updateRequest != null && isClientAvailable) {
-      updateRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.IMMEDIATE);
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, updateRequest);
-      client.update(updateRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  @SneakyThrows
-  public void deleteByQuery(String index, String query) {
-    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
-    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
-    // first token from the Parser
-    XContentParser parser = createXContentParser(query);
-    parser.nextToken();
-    deleteRequest.setQuery(RangeQueryBuilder.fromXContent(parser));
-    deleteEntityFromOpenSearchByQuery(deleteRequest);
-  }
-
-  @SneakyThrows
+  @Override
   public void deleteByRangeAndTerm(
-      String index, String rangeQueryStr, String termKey, String termValue) {
-    DeleteByQueryRequest deleteRequest = new DeleteByQueryRequest(index);
-    // Hack: Due to an issue on how the RangeQueryBuilder.fromXContent works, we're removing the
-    // first token from the Parser
-    XContentParser rangeParser = createXContentParser(rangeQueryStr);
-    rangeParser.nextToken();
-    RangeQueryBuilder rangeQuery = RangeQueryBuilder.fromXContent(rangeParser);
-
-    TermQueryBuilder termQuery = QueryBuilders.termQuery(termKey, termValue);
-
-    BoolQueryBuilder query = QueryBuilders.boolQuery().must(rangeQuery).must(termQuery);
-    deleteRequest.setQuery(query);
-    deleteEntityFromOpenSearchByQuery(deleteRequest);
-  }
-
-  @SneakyThrows
-  private void deleteEntityFromOpenSearch(DeleteRequest deleteRequest) {
-    if (deleteRequest != null && isClientAvailable) {
-      LOG.debug(SENDING_REQUEST_TO_ELASTIC_SEARCH, deleteRequest);
-      client.delete(deleteRequest, RequestOptions.DEFAULT);
-    }
-  }
-
-  @SneakyThrows
-  private void deleteEntityFromOpenSearchByQuery(DeleteByQueryRequest deleteRequest) {
-    if (deleteRequest != null && isClientAvailable) {
-      deleteRequest.setRefresh(true);
-      client.deleteByQuery(deleteRequest, RequestOptions.DEFAULT);
-    }
+      String index,
+      String rangeFieldName,
+      Object gt,
+      Object gte,
+      Object lt,
+      Object lte,
+      String termKey,
+      String termValue)
+      throws IOException {
+    entityManager.deleteByRangeAndTerm(index, rangeFieldName, gt, gte, lt, lte, termKey, termValue);
   }
 
   /** */
@@ -2312,8 +1994,13 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       List<String> teamArray = Arrays.asList(team.split("\\s*,\\s*"));
 
       BoolQueryBuilder teamQueryFilter = QueryBuilders.boolQuery();
-      teamQueryFilter.should(
-          QueryBuilders.termsQuery(DataInsightChartRepository.DATA_TEAM, teamArray));
+      // Charts that use webAnalyticEntityViewReportData store owner in data.owner field
+      // Charts that use entityReportData store owner in data.team field
+      String teamField =
+          DataInsightChartRepository.USES_OWNER_FIELD_FOR_TEAM_FILTER.contains(dataInsightChartName)
+              ? DataInsightChartRepository.DATA_OWNER
+              : DataInsightChartRepository.DATA_TEAM;
+      teamQueryFilter.should(QueryBuilders.termsQuery(teamField, teamArray));
       searchQueryFiler.must(teamQueryFilter);
     }
 
@@ -2563,7 +2250,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     }
   }
 
-  public RestHighLevelClient createOpenSearchClient(ElasticSearchConfiguration esConfig) {
+  private RestClientBuilder getLowLevelClient(ElasticSearchConfiguration esConfig) {
     if (esConfig != null) {
       try {
         RestClientBuilder restClientBuilder =
@@ -2598,12 +2285,24 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
         restClientBuilder.setCompressionEnabled(true);
         restClientBuilder.setChunkedEnabled(true);
-        return new RestHighLevelClient(restClientBuilder);
+        return restClientBuilder;
       } catch (Exception e) {
-        LOG.error("Failed to create open search client ", e);
+        LOG.error("Failed to create low level rest client ", e);
         return null;
       }
     } else {
+      LOG.error("Failed to create low level rest client as esConfig is null");
+      return null;
+    }
+  }
+
+  public RestHighLevelClient createOpenSearchLegacyClient(RestClientBuilder restClientBuilder) {
+    try {
+      RestHighLevelClient legacyClient = new RestHighLevelClient(restClientBuilder);
+      LOG.info("Successfully initialized legacy OpenSearch Java API client");
+      return legacyClient;
+    } catch (Exception e) {
+      LOG.error("Failed to initialize legacy OpenSearch client", e);
       return null;
     }
   }
@@ -2938,79 +2637,19 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
-    if (isClientAvailable) {
-      // Match all children documents whose fullyQualifiedName starts with the old parent's FQN
-      PrefixQueryBuilder prefixQuery = new PrefixQueryBuilder(prefixFieldCondition, oldParentFQN);
-
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-      updateByQueryRequest.setQuery(prefixQuery);
-
-      Map<String, Object> params = new HashMap<>();
-      params.put("oldParentFQN", oldParentFQN);
-      params.put("newParentFQN", newParentFQN);
-
-      Script inlineScript =
-          new Script(
-              ScriptType.INLINE,
-              Script.DEFAULT_SCRIPT_LANG,
-              UPDATE_GLOSSARY_TERM_TAG_FQN_BY_PREFIX_SCRIPT,
-              params);
-
-      updateByQueryRequest.setScript(inlineScript);
-
-      try {
-        updateOpenSearchByQuery(updateByQueryRequest);
-        LOG.info("Successfully Updated FQN for Glossary Term: {}", oldParentFQN);
-      } catch (Exception e) {
-        LOG.error("Error while updating Glossary Term tag FQN: {}", e.getMessage(), e);
-      }
-    }
+    entityManager.updateGlossaryTermByFqnPrefix(
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
   }
 
   @Override
   public void updateColumnsInUpstreamLineage(
       String indexName, HashMap<String, String> originalUpdatedColumnFqnMap) {
-
-    Map<String, Object> params = new HashMap<>();
-    params.put("columnUpdates", originalUpdatedColumnFqnMap);
-
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-      Script inlineScript =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, UPDATE_COLUMN_LINEAGE_SCRIPT, params);
-      updateByQueryRequest.setScript(inlineScript);
-
-      try {
-        updateOpenSearchByQuery(updateByQueryRequest);
-      } catch (Exception e) {
-        LOG.error("Error while updating Column Lineage: {}", e.getMessage(), e);
-      }
-    }
+    entityManager.updateColumnsInUpstreamLineage(indexName, originalUpdatedColumnFqnMap);
   }
 
   @Override
   public void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns) {
-
-    Map<String, Object> params = new HashMap<>();
-    params.put("deletedFQNs", deletedColumns);
-
-    if (isClientAvailable) {
-      UpdateByQueryRequest updateByQueryRequest =
-          new UpdateByQueryRequest(Entity.getSearchRepository().getIndexOrAliasName(indexName));
-      Script inlineScript =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, DELETE_COLUMN_LINEAGE_SCRIPT, params);
-      updateByQueryRequest.setScript(inlineScript);
-
-      try {
-        updateOpenSearchByQuery(updateByQueryRequest);
-      } catch (Exception e) {
-        LOG.error("Error while deleting Column Lineage: {}", e.getMessage(), e);
-      }
-    }
+    entityManager.deleteColumnsInUpstreamLineage(indexName, deletedColumns);
   }
 
   @Override

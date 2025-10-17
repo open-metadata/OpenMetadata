@@ -183,6 +183,7 @@
         "properties": {
           "tagFQN": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "text": {
                 "type": "text",
@@ -287,6 +288,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "href": {
         "type": "text"
       },
@@ -322,6 +326,7 @@
             "fields": {
               "keyword": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "ignore_above": 256
               }
             }

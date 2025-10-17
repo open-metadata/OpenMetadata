@@ -138,7 +138,9 @@ test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await user.delete(apiContext);
   await role.delete(apiContext);
+  await role2.delete(apiContext);
   await policy.delete(apiContext);
+  await policy2.delete(apiContext);
   await table.delete(apiContext);
   await afterAction();
 });
@@ -250,6 +252,11 @@ test('Permissions', async ({ userPage, adminPage }) => {
     });
 
     await userPage.getByTestId('profiler').click();
+    await userPage.waitForLoadState('networkidle');
+    await userPage.waitForSelector("[data-testid='loader']", {
+      state: 'detached',
+    });
+
     const testCaseResponse = userPage.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/dataQuality/testCases/') &&

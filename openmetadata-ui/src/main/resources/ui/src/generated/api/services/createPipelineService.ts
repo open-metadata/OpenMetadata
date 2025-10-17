@@ -74,6 +74,8 @@ export interface PipelineConnection {
  *
  * Glue Pipeline Connection Config
  *
+ * AWS Kinesis Firehose Pipeline Connection Config
+ *
  * Airbyte Metadata Database Connection Config
  *
  * Fivetran Metadata Database Connection Config
@@ -156,6 +158,14 @@ export interface ConfigObject {
      */
     packageConnection?: S3Connection | string;
     awsConfig?:         AWSCredentials;
+    /**
+     * Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g.
+     * local_kafka
+     *
+     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
+     * e.g. local_kafka
+     */
+    messagingServiceName?: string;
     /**
      * Airbyte API version.
      */
@@ -289,11 +299,6 @@ export interface ConfigObject {
      * We support username/password or No Authentication
      */
     KafkaConnectConfig?: UsernamePasswordAuthentication;
-    /**
-     * Name of the Kafka Messaging Service associated with this KafkaConnect Pipeline Service.
-     * e.g. local_kafka
-     */
-    messagingServiceName?: string;
     /**
      * ID of your DBT cloud account
      */
@@ -996,6 +1001,7 @@ export enum PipelineServiceType {
     Flink = "Flink",
     GluePipeline = "GluePipeline",
     KafkaConnect = "KafkaConnect",
+    KinesisFirehose = "KinesisFirehose",
     Matillion = "Matillion",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
@@ -1149,6 +1155,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source: TagSource;
@@ -1203,7 +1213,29 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }

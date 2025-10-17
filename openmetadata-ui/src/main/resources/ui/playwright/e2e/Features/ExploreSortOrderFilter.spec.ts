@@ -95,7 +95,6 @@ test.describe('Explore Sort Order Filter', () => {
       await page.getByTestId('update-btn').click();
 
       await selectSortOrder(page, 'Name');
-      await page.waitForLoadState('networkidle');
       await verifyEntitiesAreSorted(page);
 
       const clearFilters = page.getByTestId('clear-filters');

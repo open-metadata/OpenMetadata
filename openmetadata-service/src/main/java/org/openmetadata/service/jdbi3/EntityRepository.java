@@ -264,6 +264,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           .expireAfterWrite(30, TimeUnit.SECONDS)
           .recordStats()
           .build(new EntityLoaderWithId());
+
   private final String collectionPath;
   @Getter public final Class<T> entityClass;
   @Getter protected final String entityType;
@@ -585,8 +586,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entity.getEntityStatus() != null) {
       return;
     }
-    // Set default status to APPROVED
-    entity.setEntityStatus(EntityStatus.APPROVED);
+    // Set default status to UNPROCESSED
+    entity.setEntityStatus(EntityStatus.UNPROCESSED);
   }
 
   /**
@@ -1128,7 +1129,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return entity;
   }
 
+  public final T create(UriInfo uriInfo, T entity, String updatedBy, String impersonatedBy) {
+    entity = withHref(uriInfo, createInternal(entity, updatedBy, impersonatedBy));
+    return entity;
+  }
+
   public final T createInternal(T entity) {
+    return createInternal(entity, null, null);
+  }
+
+  private T createInternal(T entity, String updatedBy, String impersonatedBy) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -1140,6 +1150,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     prepareInternal(entity, false);
+
+    // Set updatedBy and impersonatedBy after prepare but before storing
+    if (updatedBy != null) {
+      entity.setUpdatedBy(updatedBy);
+    }
+    if (impersonatedBy != null) {
+      entity.setImpersonatedBy(impersonatedBy);
+    }
+
     return createNewEntity(entity);
   }
 
@@ -1186,11 +1205,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     entity.setReviewers(
         fields.contains(FIELD_REVIEWERS) ? getReviewers(entity) : entity.getReviewers());
     entity.setVotes(fields.contains(FIELD_VOTES) ? getVotes(entity) : entity.getVotes());
-    if (fields.contains(FIELD_ENTITY_STATUS)) {
-      if (entity.getEntityStatus() == null) {
-        entity.setEntityStatus(EntityStatus.APPROVED);
-      }
-    }
 
     setFields(entity, fields);
     return entity;
@@ -1212,6 +1226,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdate(UriInfo uriInfo, T updated, String updatedBy) {
+    return createOrUpdate(uriInfo, updated, updatedBy, null);
+  }
+
+  @Transaction
+  public final PutResponse<T> createOrUpdate(
+      UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -1224,20 +1244,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
+      if (impersonatedBy != null) {
+        updated.setImpersonatedBy(impersonatedBy);
+      }
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
-    return update(uriInfo, original, updated, updatedBy);
+    return update(uriInfo, original, updated, updatedBy, impersonatedBy);
   }
 
   @Transaction
   public PutResponse<T> createOrUpdateForImport(UriInfo uriInfo, T updated, String updatedBy) {
+    return createOrUpdateForImport(uriInfo, updated, updatedBy, null);
+  }
+
+  @Transaction
+  public PutResponse<T> createOrUpdateForImport(
+      UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
+      if (impersonatedBy != null) {
+        updated.setImpersonatedBy(impersonatedBy);
+      }
       return new PutResponse<>(
           Status.CREATED, withHref(uriInfo, createNewEntity(updated)), ENTITY_CREATED);
     }
-    return updateForImport(uriInfo, original, updated, updatedBy);
+    return updateForImport(uriInfo, original, updated, updatedBy, impersonatedBy);
   }
 
   @SuppressWarnings("unused")
@@ -1277,10 +1309,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> update(UriInfo uriInfo, T original, T updated, String updatedBy) {
+    return update(uriInfo, original, updated, updatedBy, null);
+  }
+
+  @Transaction
+  public final PutResponse<T> update(
+      UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
+    if (impersonatedBy != null) {
+      updated.setImpersonatedBy(impersonatedBy);
+    }
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), original.getId());
@@ -1301,10 +1342,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Transaction
   public final PutResponse<T> updateForImport(
       UriInfo uriInfo, T original, T updated, String updatedBy) {
+    return updateForImport(uriInfo, original, updated, updatedBy, null);
+  }
+
+  @Transaction
+  public final PutResponse<T> updateForImport(
+      UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
+    if (impersonatedBy != null) {
+      updated.setImpersonatedBy(impersonatedBy);
+    }
     // If the entity state is soft-deleted, recursively undelete the entity and it's children
     if (Boolean.TRUE.equals(original.getDeleted())) {
       restoreEntity(updated.getUpdatedBy(), original.getId());
@@ -1328,13 +1378,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
   @Deprecated
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, UUID id, String user, JsonPatch patch) {
-    return patch(uriInfo, id, user, patch, null);
+    return patch(uriInfo, id, user, patch, null, null, null);
   }
 
   @Transaction
   public final PatchResponse<T> patch(
       UriInfo uriInfo, UUID id, String user, JsonPatch patch, ChangeSource changeSource) {
-    return patch(uriInfo, id, user, patch, changeSource, null);
+    return patch(uriInfo, id, user, patch, changeSource, null, null);
   }
 
   @Transaction
@@ -1344,7 +1394,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String user,
       JsonPatch patch,
       ChangeSource changeSource,
-      String ifMatchHeader) {
+      String impersonatedBy) {
+    return patch(uriInfo, id, user, patch, changeSource, null, impersonatedBy);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      UUID id,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader,
+      String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1363,7 +1425,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Apply JSON patch to the original entity to get the updated entity
     return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
   }
 
   /**
@@ -1371,12 +1433,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   @Transaction
   public final PatchResponse<T> patch(UriInfo uriInfo, String fqn, String user, JsonPatch patch) {
-    return patch(uriInfo, fqn, user, patch, null);
+    return patch(uriInfo, fqn, user, patch, null, null, null);
   }
 
   public final PatchResponse<T> patch(
       UriInfo uriInfo, String fqn, String user, JsonPatch patch, ChangeSource changeSource) {
-    return patch(uriInfo, fqn, user, patch, changeSource, null);
+    return patch(uriInfo, fqn, user, patch, changeSource, null, null);
   }
 
   @Transaction
@@ -1387,6 +1449,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       JsonPatch patch,
       ChangeSource changeSource,
       String ifMatchHeader) {
+    return patch(uriInfo, fqn, user, patch, changeSource, ifMatchHeader, null);
+  }
+
+  @Transaction
+  public final PatchResponse<T> patch(
+      UriInfo uriInfo,
+      String fqn,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader,
+      String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1405,12 +1479,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Apply JSON patch to the original entity to get the updated entity
     return patchCommonWithOptimisticLocking(
-        original, patch, user, uriInfo, changeSource, useOptimisticLocking);
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
   }
 
   private PatchResponse<T> patchCommon(
       T original, JsonPatch patch, String user, UriInfo uriInfo, ChangeSource changeSource) {
-    return patchCommonWithOptimisticLocking(original, patch, user, uriInfo, changeSource, false);
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, false, null);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -1420,6 +1495,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UriInfo uriInfo,
       ChangeSource changeSource,
       boolean useOptimisticLocking) {
+    return patchCommonWithOptimisticLocking(
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, null);
+  }
+
+  private PatchResponse<T> patchCommonWithOptimisticLocking(
+      T original,
+      JsonPatch patch,
+      String user,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking,
+      String impersonatedBy) {
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
     updated.setUpdatedAt(System.currentTimeMillis());
@@ -1435,6 +1522,11 @@ public abstract class EntityRepository<T extends EntityInterface> {
     List<EntityReference> validatedDomains = getValidatedDomains(updated.getDomains());
     updated.setDomains(validatedDomains);
     restorePatchAttributes(original, updated);
+
+    // Set impersonatedBy after all attribute restoration to prevent it from being overwritten
+    if (impersonatedBy != null) {
+      updated.setImpersonatedBy(impersonatedBy);
+    }
 
     // Update the attributes and relationships of an entity
     EntityUpdater entityUpdater;
@@ -1491,6 +1583,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     entity.setIncrementalChangeDescription(change);
     entity.setChangeDescription(change);
+    // Populate followers before postUpdate to ensure propagation to children
+    entity.setFollowers(getFollowers(entity));
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
@@ -1966,6 +2060,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     entity.setChangeDescription(change);
     entity.setIncrementalChangeDescription(change);
+    // Populate followers before postUpdate to ensure propagation to children
+    entity.setFollowers(getFollowers(entity));
     postUpdate(entity, entity);
     return new PutResponse<>(Status.OK, changeEvent, ENTITY_FIELDS_CHANGED);
   }
@@ -2466,7 +2562,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getTagFQN(),
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
-                tagLabel.getState().ordinal());
+                tagLabel.getState().ordinal(),
+                tagLabel.getReason());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -3076,6 +3173,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       entity.setDomains(
           !nullOrEmpty(parent.getDomains()) ? parent.getDomains() : Collections.emptyList());
       listOrEmpty(entity.getDomains()).forEach(domain -> domain.setInherited(true));
+    }
+  }
+
+  public final void inheritFollowers(T entity, Fields fields, EntityInterface parent) {
+    if (fields.contains(FIELD_FOLLOWERS) && nullOrEmpty(entity.getFollowers()) && parent != null) {
+      entity.setFollowers(
+          Optional.ofNullable(parent.getFollowers())
+              .filter(list -> !list.isEmpty())
+              .orElse(Collections.emptyList()));
+      listOrEmpty(entity.getFollowers()).forEach(follower -> follower.setInherited(true));
     }
   }
 
@@ -3982,7 +4089,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
         EntityRepository.this.updateOwners(original, origOwners, updatedOwners);
         updated.setOwners(updatedOwners);
       } else {
-        updated.setOwners(origOwners); // Restore original owner
+        updated.setOwners(original.getOwners()); // Restore original owner
       }
     }
 
@@ -4063,7 +4170,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Record changes for audit trail
-      recordListChange(fieldName, origTags, updatedTags, addedTags, deletedTags, tagLabelMatch);
+      recordListChange(
+          fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
       updatedTags.sort(compareTagLabel);
     }
 
@@ -4253,6 +4361,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
       List<EntityReference> updatedDataProducts = listOrEmpty(updated.getDataProducts());
       validateDataProducts(updatedDataProducts);
 
+      if (operation.isPut() && !nullOrEmpty(original.getDataProducts()) && updatedByBot()) {
+        // Revert change to non-empty DataProduct if it is being updated by a bot
+        // This is to prevent bots from overwriting the DataProduct. DataProduct need to be
+        // updated with a PATCH request
+        updated.setDataProducts(original.getDataProducts());
+        return;
+      }
+
       if (nullOrEmpty(updated.getDomains()) && !nullOrEmpty(updatedDataProducts)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
@@ -4405,6 +4521,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
           "Updating certification - Original: {}, Updated: {}",
           origCertification,
           updatedCertification);
+
+      if (operation.isPut() && !nullOrEmpty(original.getCertification()) && updatedByBot()) {
+        // Revert change to non-empty certification if it is being updated by a bot
+        // This is to prevent bots from overwriting the certification. Certification need to be
+        // updated with a PATCH request
+        updated.setCertification(original.getCertification());
+        return;
+      }
 
       if (updatedCertification == null) {
         LOG.debug("Setting certification to null");

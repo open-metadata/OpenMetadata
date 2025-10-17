@@ -55,10 +55,15 @@ export const getAuthContext = async (token: string) => {
   });
 };
 
-export const redirectToHomePage = async (page: Page) => {
+export const redirectToHomePage = async (
+  page: Page,
+  waitForNetworkIdle = true
+) => {
   await page.goto('/');
   await page.waitForURL('**/my-data');
-  await page.waitForLoadState('networkidle');
+  if (waitForNetworkIdle) {
+    await page.waitForLoadState('networkidle');
+  }
 };
 
 export const redirectToExplorePage = async (page: Page) => {
@@ -262,7 +267,8 @@ export const updateDomain = async (
 
 export const removeDomain = async (
   page: Page,
-  domain: { name: string; displayName: string; fullyQualifiedName?: string }
+  domain: { name: string; displayName: string; fullyQualifiedName?: string },
+  showDashPlaceholder = true
 ) => {
   await page.getByTestId('add-domain').click();
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
@@ -280,7 +286,9 @@ export const removeDomain = async (
   await patchReq;
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  await expect(page.getByTestId('no-domain-text')).toContainText('No Domains');
+  await expect(page.getByTestId('no-domain-text')).toContainText(
+    showDashPlaceholder ? '--' : 'No Domains'
+  );
 };
 
 export const assignDataProduct = async (
@@ -527,5 +535,46 @@ export const executeWithRetry = async <T>(
         break;
       }
     }
+  }
+};
+
+export const readElementInListWithScroll = async (
+  page: Page,
+  locator: Locator,
+  hierarchyElementLocator: Locator
+) => {
+  const element = locator;
+
+  // Reset scroll position to top before starting pagination
+  await hierarchyElementLocator.hover();
+  await page.mouse.wheel(0, -99999);
+
+  await page.waitForTimeout(1000);
+
+  // Retry mechanism for pagination
+  let elementCount = await element.count();
+  let retryCount = 0;
+  const maxRetries = 10;
+
+  while (elementCount === 0 && retryCount < maxRetries) {
+    await hierarchyElementLocator.hover();
+    await page.mouse.wheel(0, 1000);
+    await page.waitForTimeout(500);
+
+    // Create fresh locator and check if the article is now visible after this retry
+    const freshArticle = locator;
+    const count = await freshArticle.count();
+
+    // Check if the article is now visible after this retry
+    elementCount = count;
+
+    // If we found the element, validate it and break out of the loop
+    if (count > 0) {
+      await expect(freshArticle).toBeVisible();
+
+      return; // Exit the function early since we found and validated the article
+    }
+
+    retryCount++;
   }
 };
