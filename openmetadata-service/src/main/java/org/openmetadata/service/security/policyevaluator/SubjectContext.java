@@ -39,13 +39,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Subject context used for Access Control Policies */
 @Slf4j
-public record SubjectContext(User user) {
+public record SubjectContext(User user, String impersonatedBy) {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
   public static final String TEAM_FIELDS = "defaultRoles, policies, parents, profile,domains";
 
   public static SubjectContext getSubjectContext(String userName) {
     User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
-    return new SubjectContext(user);
+    return new SubjectContext(user, null);
+  }
+
+  public static SubjectContext getSubjectContext(String userName, String impersonatedBy) {
+    User user = Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+    return new SubjectContext(user, impersonatedBy);
   }
 
   public boolean isAdmin() {
@@ -194,7 +199,7 @@ public record SubjectContext(User user) {
 
   /** Returns true if the user has any of the roles (either direct or inherited roles) */
   public boolean hasAnyRole(String roles) {
-    return hasRole(user(), roles);
+    return hasRole(user, roles);
   }
 
   /** Return true if the given user has any roles the list of roles */

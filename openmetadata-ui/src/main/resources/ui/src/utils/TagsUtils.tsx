@@ -48,9 +48,14 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
+import { getEntityName } from './EntityUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryUtils';
 import { checkPermissionEntityResource } from './PermissionsUtils';
-import { getExplorePath } from './RouterUtils';
+import {
+  getClassificationTagPath,
+  getExplorePath,
+  getGlossaryPath,
+} from './RouterUtils';
 import { getTermQuery } from './SearchUtils';
 import { getTagsWithoutTier } from './TableUtils';
 
@@ -609,4 +614,41 @@ export const getTagImageSrc = (iconURL: string) => {
   }
 
   return `${window.location.origin}/${iconURL}`;
+};
+
+/**
+ * Check if a tag is a glossary tag
+ */
+export const isGlossaryTag = (tag: EntityTags): boolean => {
+  return tag.source === TagSource.Glossary;
+};
+
+/**
+ * Get the display name for a tag
+ */
+export const getTagName = (tag: EntityTags, showOnlyName?: boolean): string => {
+  return (
+    getEntityName(tag) ||
+    getTagDisplay(
+      showOnlyName
+        ? tag.tagFQN
+            .split(FQN_SEPARATOR_CHAR)
+            .slice(-2)
+            .join(FQN_SEPARATOR_CHAR)
+        : tag.tagFQN
+    ) ||
+    tag.tagFQN
+  );
+};
+
+/**
+ * Get the redirect link for a tag
+ */
+export const getTagRedirectLink = (
+  tag: EntityTags,
+  tagType?: TagSource
+): string => {
+  return (tagType ?? tag.source) === TagSource.Glossary
+    ? getGlossaryPath(tag.tagFQN)
+    : getClassificationTagPath(tag.tagFQN);
 };
