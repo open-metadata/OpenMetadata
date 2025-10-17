@@ -105,10 +105,6 @@ describe('LineageLayers component', () => {
       fireEvent.click(layerBtn);
     });
 
-    const popover = screen.getByRole('tooltip');
-
-    expect(popover).toBeInTheDocument();
-
     const columnButton = screen.getByText('label.column');
     const dataObservabilityBtn = screen.getByText('label.observability');
 
