@@ -415,7 +415,7 @@
     },
     "startDate": {
       "description": "Start date of the workflow.",
-      "$ref": "../../type/basic.json#/definitions/dateTime"
+      "$ref": "../../type/basic.json#/definitions/timestamp"
     },
     "tasks": {
       "description": "All the tasks that are part of pipeline.",

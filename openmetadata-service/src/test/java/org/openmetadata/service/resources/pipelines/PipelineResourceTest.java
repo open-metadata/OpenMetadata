@@ -265,7 +265,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             request
                 .withSourceUrl(pipelineURL)
                 .withConcurrency(pipelineConcurrency)
-                .withStartDate(startDate),
+                .withStartDate(startDate.getTime()),
             OK,
             ADMIN_AUTH_HEADERS);
     String expectedFQN =
