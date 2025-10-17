@@ -11,7 +11,7 @@
 """
 Workflow definition for the Data Quality
 """
-from typing import Optional
+from typing import Optional, Tuple
 
 from metadata.data_quality.processor.test_case_runner import TestCaseRunner
 from metadata.data_quality.source.test_suite import TestSuiteSource
@@ -37,6 +37,7 @@ class TestSuiteWorkflow(IngestionWorkflow):
 
     __test__ = False
     service_type = ServiceType.TestSuite
+    steps: Tuple[Processor, Sink]
 
     def set_steps(self):
         self.source = TestSuiteSource.create(self.config.model_dump(), self.metadata)
