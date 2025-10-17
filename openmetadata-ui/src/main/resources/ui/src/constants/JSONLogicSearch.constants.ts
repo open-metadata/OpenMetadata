@@ -33,4 +33,6 @@ export const COMMON_ENTITY_FIELDS_KEYS: EntityReferenceFields[] = [
   EntityReferenceFields.DOMAIN,
   EntityReferenceFields.DATA_PRODUCTS,
   EntityReferenceFields.EXTENSION,
+  EntityReferenceFields.UPDATED_AT,
+  EntityReferenceFields.VERSION,
 ];
