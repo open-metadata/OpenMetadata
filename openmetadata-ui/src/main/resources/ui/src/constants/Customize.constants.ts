@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TFunctionKeys } from 'i18next';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 
-export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
+export const TAB_LABEL_MAP = {
   [EntityTabs.OVERVIEW]: 'label.overview',
   [EntityTabs.GLOSSARY_TERMS]: 'label.glossary-term-plural',
   [EntityTabs.ASSETS]: 'label.asset-plural',
@@ -62,7 +63,7 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.WORKSHEETS]: 'label.worksheet-plural',
   [EntityTabs.FILES]: 'label.file-plural',
   [EntityTabs.SPREADSHEETS]: 'label.spreadsheet-plural',
-} as const;
+} as Record<EntityTabs, TFunctionKeys>;
 
 export type CustomizeEntityType =
   | EntityType.TABLE

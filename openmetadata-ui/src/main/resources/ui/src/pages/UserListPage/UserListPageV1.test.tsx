@@ -16,7 +16,7 @@ import { act } from 'react-test-renderer';
 import { ROUTES } from '../../constants/constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useTableFilters } from '../../hooks/useTableFilters';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getUsers } from '../../rest/userAPI';
 import { MOCK_EMPTY_USER_DATA, MOCK_USER_DATA } from './MockUserPageData';
 import UserListPageV1 from './UserListPageV1';
@@ -62,10 +62,13 @@ jest.mock('../../rest/userAPI', () => ({
   updateUser: jest.fn(),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockImplementation(() =>
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockImplementation(() =>
     Promise.resolve({
-      data: MOCK_USER_DATA,
+      hits: {
+        hits: MOCK_USER_DATA.data.map((user) => ({ _source: user })),
+        total: { value: MOCK_USER_DATA.data.length },
+      },
     })
   ),
 }));
@@ -141,6 +144,19 @@ describe('Test UserListPage component', () => {
   beforeEach(() => {
     // Clear mock calls before each test
     mockTableComponent.mockClear();
+    (searchQuery as jest.Mock).mockClear();
+    (getUsers as jest.Mock).mockClear();
+
+    // Restore default mock implementations
+    (useTableFilters as jest.Mock).mockImplementation(() => ({
+      filters: {},
+      setFilters: mockSetFilters,
+    }));
+    (getUsers as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        ...MOCK_USER_DATA,
+      })
+    );
   });
 
   it('users api should called on initial load', async () => {
@@ -294,7 +310,7 @@ describe('Test UserListPage component', () => {
     });
   });
 
-  it('should call searchData API when search value is provided', async () => {
+  it('should call searchQuery API when search value is provided', async () => {
     const mockSearchValue = 'john';
     (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
       filters: {
@@ -306,20 +322,27 @@ describe('Test UserListPage component', () => {
     render(<UserListPageV1 />);
 
     await waitFor(() => {
-      expect(searchData).toHaveBeenCalledWith(
-        mockSearchValue,
-        1,
-        15,
-        'isAdmin:false isBot:false',
-        '',
-        '',
-        'user_search_index',
-        false
-      );
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: `*${mockSearchValue}*`,
+        pageNumber: 1,
+        pageSize: 15,
+        queryFilter: {
+          query: {
+            bool: {
+              must: [
+                { term: { isAdmin: 'false' } },
+                { term: { isBot: 'false' } },
+              ],
+            },
+          },
+        },
+        searchIndex: 'user_search_index',
+        includeDeleted: false,
+      });
     });
   });
 
-  it('should call searchData with isAdmin filter when on admin page', async () => {
+  it('should call searchQuery with isAdmin filter when on admin page', async () => {
     const mockSearchValue = 'admin user';
     mockParam.tab = GlobalSettingOptions.ADMINS;
     (useTableFilters as jest.Mock).mockImplementationOnce(() => ({
@@ -332,16 +355,23 @@ describe('Test UserListPage component', () => {
     render(<UserListPageV1 />);
 
     await waitFor(() => {
-      expect(searchData).toHaveBeenCalledWith(
-        mockSearchValue,
-        1,
-        15,
-        'isAdmin:true isBot:false',
-        '',
-        '',
-        'user_search_index',
-        false
-      );
+      expect(searchQuery).toHaveBeenCalledWith({
+        query: `*${mockSearchValue}*`,
+        pageNumber: 1,
+        pageSize: 15,
+        queryFilter: {
+          query: {
+            bool: {
+              must: [
+                { term: { isAdmin: 'true' } },
+                { term: { isBot: 'false' } },
+              ],
+            },
+          },
+        },
+        searchIndex: 'user_search_index',
+        includeDeleted: false,
+      });
     });
 
     // reset mockParam

@@ -103,7 +103,7 @@ export const addOwner = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=*&index=user_search_index&*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -162,7 +162,7 @@ export const addOwnerWithoutValidation = async ({
   await page.getByTestId(initiatorId).click();
   if (type === 'Users') {
     const userListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page.getByRole('tab', { name: type }).click();
     await userListResponse;
@@ -1342,7 +1342,8 @@ export const createInactiveAnnouncement = async (
 export const updateDisplayNameForEntity = async (
   page: Page,
   displayName: string,
-  endPoint: string
+  endPoint: string,
+  isRemoved?: boolean
 ) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="rename-button"]');
@@ -1360,9 +1361,15 @@ export const updateDisplayNameForEntity = async (
   await page.click('[data-testid="save-button"]');
   await updateNameResponse;
 
-  await expect(
-    page.locator('[data-testid="entity-header-display-name"]')
-  ).toHaveText(displayName);
+  if (isRemoved) {
+    await expect(
+      page.locator('[data-testid="entity-header-display-name"]')
+    ).not.toBeVisible();
+  } else {
+    await expect(
+      page.locator('[data-testid="entity-header-display-name"]')
+    ).toHaveText(displayName);
+  }
 };
 
 export const updateDisplayNameForEntityChildren = async (

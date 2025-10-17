@@ -492,6 +492,7 @@ class EntityUtilClassBase {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getEntityFloatingButton(_: EntityType): FC | null {
     return null;
   }
