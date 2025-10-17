@@ -87,7 +87,7 @@ const DomainDetailPage = () => {
     }
   };
 
-  const handleDomainDelete = (id: string) => {
+  const handleDomainDelete = () => {
     // Navigate back to domains listing page after deletion
     navigate(ROUTES.DOMAIN);
   };

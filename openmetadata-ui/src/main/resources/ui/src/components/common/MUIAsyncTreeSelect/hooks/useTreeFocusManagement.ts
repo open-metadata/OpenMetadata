@@ -35,24 +35,21 @@ export const useTreeFocusManagement = ({
     }
   }, [inputRef, disabled]);
 
-  const handleBlur = useCallback(
-    (e: React.FocusEvent) => {
-      // Use setTimeout to check if the new focus is still within our component
-      setTimeout(() => {
-        const currentActiveElement = document.activeElement;
+  const handleBlur = useCallback(() => {
+    // Use setTimeout to check if the new focus is still within our component
+    setTimeout(() => {
+      const currentActiveElement = document.activeElement;
 
-        // Close if focus moved outside our component
-        if (
-          anchorRef.current &&
-          !anchorRef.current.contains(currentActiveElement) &&
-          !(currentActiveElement as HTMLElement)?.closest('.MuiPopper-root')
-        ) {
-          onCloseDropdown?.();
-        }
-      }, 100);
-    },
-    [onCloseDropdown, anchorRef]
-  );
+      // Close if focus moved outside our component
+      if (
+        anchorRef.current &&
+        !anchorRef.current.contains(currentActiveElement) &&
+        !(currentActiveElement as HTMLElement)?.closest('.MuiPopper-root')
+      ) {
+        onCloseDropdown?.();
+      }
+    }, 100);
+  }, [onCloseDropdown, anchorRef]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
