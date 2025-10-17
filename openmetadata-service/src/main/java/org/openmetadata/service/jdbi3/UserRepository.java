@@ -1054,6 +1054,8 @@ public class UserRepository extends EntityRepository<User> {
     }
     // Remove suggestions
     daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
+    // Anonymize user data in threads and posts
+    Entity.getFeedRepository().anonymizeUserFromThreads(entity.getName());
   }
 
   /** Handles entity updated from PUT and POST operation. */
