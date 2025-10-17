@@ -39,12 +39,7 @@ import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchHits;
-import es.org.elasticsearch.search.aggregations.AggregationBuilders;
-import es.org.elasticsearch.search.aggregations.BucketOrder;
-import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.sort.FieldSortBuilder;
@@ -105,7 +100,6 @@ import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
-import org.openmetadata.schema.search.TopHits;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -163,6 +157,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private final ElasticSearchIndexManager indexManager;
   private final ElasticSearchEntityManager entityManager;
   private final ElasticSearchGenericManager genericManager;
+  private final ElasticSearchAggregationManager aggregationManager;
   private final ElasticSearchDataInsightAggregatorManager dataInsightAggregatorManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
@@ -208,6 +203,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
+    aggregationManager = new ElasticSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
     nlqService = null;
   }
@@ -1364,76 +1360,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-
-    // Check if query is JSON format or simple search query
-    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
-      // Try to parse as JSON first (for backward compatibility with filters)
-      if (request.getQuery().trim().startsWith("{")) {
-        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
-      } else {
-        // Handle as a search query (including field:value syntax)
-        ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
-        // Use getSearchSourceBuilder which properly handles field:value syntax
-        SearchSourceBuilder tempBuilder =
-            searchBuilderFactory.getSearchSourceBuilder(
-                request.getIndex(), request.getQuery(), 0, 10);
-        searchSourceBuilder.query(tempBuilder.query());
-      }
-    }
-
-    // Apply deleted filter if specified
-    if (request.getDeleted() != null) {
-      QueryBuilder currentQuery = searchSourceBuilder.query();
-      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-
-      if (currentQuery != null) {
-        boolQuery.must(currentQuery);
-      }
-      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
-
-      searchSourceBuilder.query(boolQuery);
-    }
-
-    String aggregationField = request.getFieldName();
-    if (aggregationField == null || aggregationField.isBlank()) {
-      throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
-    }
-
-    int bucketSize = request.getSize();
-    String includeValue = request.getFieldValue().toLowerCase();
-
-    TermsAggregationBuilder termsAgg =
-        AggregationBuilders.terms(aggregationField)
-            .field(aggregationField)
-            .size(bucketSize)
-            .includeExclude(new IncludeExclude(includeValue, null))
-            .order(BucketOrder.key(true));
-
-    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
-      request.setTopHits(Optional.ofNullable(request.getTopHits()).orElse(new TopHits()));
-
-      List<String> topHitFields = request.getSourceFields();
-
-      TopHitsAggregationBuilder topHitsAgg =
-          AggregationBuilders.topHits("top")
-              .size(request.getTopHits().getSize())
-              .fetchSource(topHitFields.toArray(new String[0]), null)
-              .trackScores(false);
-
-      termsAgg.subAggregation(topHitsAgg);
-    }
-
-    searchSourceBuilder.aggregation(termsAgg).size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    SearchResponse searchResponse =
-        client.search(
-            new es.org.elasticsearch.action.search.SearchRequest(
-                    Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-                .source(searchSourceBuilder),
-            RequestOptions.DEFAULT);
-
-    return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
+    return aggregationManager.aggregate(request);
   }
 
   @Override
