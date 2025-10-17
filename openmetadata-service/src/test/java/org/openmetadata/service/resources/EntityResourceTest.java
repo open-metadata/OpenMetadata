@@ -378,6 +378,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   public static EntityReference MLFLOW_REFERENCE;
 
+  public static EntityReference OPENAI_REFERENCE;
+
   public static EntityReference S3_OBJECT_STORE_SERVICE_REFERENCE;
   public static EntityReference ELASTICSEARCH_SEARCH_SERVICE_REFERENCE;
   public static EntityReference OPENSEARCH_SEARCH_SERVICE_REFERENCE;
@@ -550,6 +552,8 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
     new APIServiceResourceTest().setupAPIService(test);
     new MetadataServiceResourceTest().setupMetadataServices();
     new DriveServiceResourceTest().setupDriveServices(test);
+    new org.openmetadata.service.resources.services.llm.LLMServiceResourceTest()
+        .setupLLMServices(test);
     new TableResourceTest().setupDatabaseSchemas(test);
     new TestSuiteResourceTest().setupTestSuites(test);
     new TestDefinitionResourceTest().setupTestDefinitions();
