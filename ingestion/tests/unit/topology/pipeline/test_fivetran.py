@@ -32,6 +32,7 @@ from metadata.ingestion.source.pipeline.fivetran.metadata import (
     FivetranPipelineDetails,
     FivetranSource,
 )
+from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 
 mock_file_path = (
     Path(__file__).parent.parent.parent / "resources/datasets/fivetran_dataset.json"
@@ -151,3 +152,35 @@ class FivetranUnitTest(TestCase):
     def test_pipelines(self):
         pipline = list(self.fivetran.yield_pipeline(EXPECTED_FIVETRAN_DETAILS))[0].right
         assert pipline == EXPECTED_CREATED_PIPELINES
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
+    )
+    def test_get_table_fqn_with_flexible_service_resolution(self, mock_get_services):
+        mock_get_services.return_value = ["postgres_service", "redshift_service"]
+
+        with patch.object(
+            self.fivetran,
+            "_get_table_fqn_from_om",
+            return_value="postgres_service.TESTDB.public.users",
+        ):
+            table_details = TableDetails(
+                database="TESTDB", schema="public", name="users"
+            )
+            result = self.fivetran._get_table_fqn(table_details)
+            assert result == "postgres_service.TESTDB.public.users"
+
+    @patch(
+        "metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names"
+    )
+    @patch("metadata.utils.fqn.build")
+    def test_get_table_fqn_falls_back_when_not_found(
+        self, mock_fqn_build, mock_get_services
+    ):
+        mock_get_services.return_value = []
+        mock_fqn_build.return_value = "*.TESTDB.public.users"
+
+        table_details = TableDetails(database="TESTDB", schema="public", name="users")
+        result = self.fivetran._get_table_fqn(table_details)
+        assert result is not None
+        assert result == "*.TESTDB.public.users"
