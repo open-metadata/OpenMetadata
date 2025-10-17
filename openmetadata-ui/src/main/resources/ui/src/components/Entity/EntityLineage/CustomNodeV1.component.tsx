@@ -263,6 +263,12 @@ const CustomNodeV1 = (props: NodeProps) => {
     <div
       className={containerClass}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
+      {isRootNode && (
+        <div className="node-label-base">
+          <div className="node-label-base-content" />
+        </div>
+      )}
+
       <NodeHandles
         expandCollapseHandles={handlesElement}
         id={id}
