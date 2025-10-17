@@ -22,12 +22,16 @@ interface DataQualityTest {
   count: number;
 }
 
+type FilterStatus = 'success' | 'failed' | 'aborted';
+
 interface DataQualitySectionProps {
   tests: DataQualityTest[];
   totalTests: number;
   onEdit?: () => void;
   showEditButton?: boolean;
   isDataQualityTab?: boolean;
+  activeFilter?: FilterStatus;
+  onFilterChange?: (filter: FilterStatus) => void;
 }
 
 const DataQualitySection: React.FC<DataQualitySectionProps> = ({
@@ -36,6 +40,8 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   onEdit,
   showEditButton = true,
   isDataQualityTab = false,
+  activeFilter = 'success',
+  onFilterChange,
 }) => {
   const { t } = useTranslation();
 
@@ -50,155 +56,155 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   const abortedPercent = totalTests > 0 ? (abortedTests / totalTests) * 100 : 0;
   const failedPercent = totalTests > 0 ? (failedTests / totalTests) * 100 : 0;
 
-  return (
+  return isDataQualityTab ? (
+    <div className="data-quality-stats-container">
+      <div
+        className={`data-quality-stat-card success-card ${
+          activeFilter === 'success' ? 'active' : ''
+        }`}
+        role="button"
+        tabIndex={0}
+        onClick={() => onFilterChange?.('success')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onFilterChange?.('success');
+          }
+        }}>
+        <Typography.Text className="stat-count success">
+          {successTests}
+        </Typography.Text>
+        <Typography.Text className="stat-label success">
+          {t('label.passed')}
+        </Typography.Text>
+      </div>
+      <Divider
+        flexItem
+        className="vertical-divider"
+        orientation="vertical"
+        variant="middle"
+      />
+      <div
+        className={`data-quality-stat-card aborted-card ${
+          activeFilter === 'aborted' ? 'active' : ''
+        }`}
+        role="button"
+        tabIndex={0}
+        onClick={() => onFilterChange?.('aborted')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onFilterChange?.('aborted');
+          }
+        }}>
+        <Typography.Text className="stat-count aborted">
+          {abortedTests}
+        </Typography.Text>
+        <Typography.Text className="stat-label aborted">
+          {t('label.aborted')}
+        </Typography.Text>
+      </div>
+      <Divider
+        flexItem
+        className="vertical-divider"
+        orientation="vertical"
+        variant="middle"
+      />
+      <div
+        className={`data-quality-stat-card failed-card ${
+          activeFilter === 'failed' ? 'active' : ''
+        }`}
+        role="button"
+        tabIndex={0}
+        onClick={() => onFilterChange?.('failed')}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            onFilterChange?.('failed');
+          }
+        }}>
+        <Typography.Text className="stat-count failed">
+          {failedTests}
+        </Typography.Text>
+        <Typography.Text className="stat-label failed">
+          {t('label.failed')}
+        </Typography.Text>
+      </div>
+    </div>
+  ) : (
     <SectionWithEdit
       showEditButton={false}
       title={
-        isDataQualityTab ? (
+        <div className="d-flex">
           <Typography.Text className="section-title mr-2">
-            {t('label.test-plural')}
+            {t('label.data-quality-test-plural')}
           </Typography.Text>
-        ) : (
-          <div className="d-flex">
-            <Typography.Text className="section-title mr-2">
-              {t('label.data-quality-test-plural')}
+          <div className="data-quality-badge">
+            <Typography.Text className="data-quality-badge-text">
+              {totalTests}
             </Typography.Text>
-            <div className="data-quality-badge">
-              <Typography.Text className="data-quality-badge-text">
-                {totalTests}
-              </Typography.Text>
-            </div>
           </div>
-        )
+        </div>
       }
       onEdit={onEdit}>
       <div className="data-quality-content">
         <div className="data-quality-header" />
 
-        {isDataQualityTab ? (
-          <div className="overview-section gap-0">
-            <div className="overview-row m-b-sm">
-              <span className="overview-label" data-testid="all-label">
-                {t('label.all')}
-              </span>
-              <span
-                className="overview-value text-grey-body"
-                data-testid="all-value">
-                {totalTests}
-              </span>
-            </div>
-            <div className="overview-row gap-0 m-b-sm">
-              <Divider
-                flexItem
-                className="divider-color success"
-                orientation="vertical"
-                sx={{ borderRightWidth: '3px', marginRight: '8px' }}
-              />
-              <span className="overview-label" data-testid="success-label">
-                {t('label.success')}
-              </span>
-              <span
-                className="overview-value text-grey-body"
-                data-testid="success-value">
-                {successTests}
-              </span>
-            </div>
-            <div className="overview-row gap-0 m-b-sm">
-              <Divider
-                flexItem
-                className="divider-color aborted"
-                orientation="vertical"
-                sx={{ borderRightWidth: '3px', marginRight: '8px' }}
-              />
-              <span className="overview-label" data-testid="aborted-label">
-                {t('label.aborted')}
-              </span>
-              <span
-                className="overview-value text-grey-body"
-                data-testid="aborted-value">
-                {abortedTests}
-              </span>
-            </div>
-            <div className="overview-row gap-0 m-b-sm">
-              <Divider
-                flexItem
-                className="divider-color failed"
-                orientation="vertical"
-                sx={{
-                  borderRightWidth: '3px',
-                  marginRight: '8px',
-                }}
-              />
-              <span className="overview-label" data-testid="failed-label">
-                {t('label.failed')}
-              </span>
-              <span
-                className="overview-value text-grey-body"
-                data-testid="failed-value">
-                {failedTests}
-              </span>
+        <>
+          <div className="data-quality-progress">
+            <div className="data-quality-progress-segments">
+              {successPercent > 0 && (
+                <div
+                  className="progress-segment success"
+                  style={{ width: `${successPercent}%` }}
+                />
+              )}
+              {abortedPercent > 0 && (
+                <div
+                  className="progress-segment aborted"
+                  style={{ width: `${abortedPercent}%` }}
+                />
+              )}
+              {failedPercent > 0 && (
+                <div
+                  className="progress-segment failed"
+                  style={{ width: `${failedPercent}%` }}
+                />
+              )}
             </div>
           </div>
-        ) : (
-          <>
-            <div className="data-quality-progress">
-              <div className="data-quality-progress-segments">
-                {successPercent > 0 && (
-                  <div
-                    className="progress-segment success"
-                    style={{ width: `${successPercent}%` }}
-                  />
-                )}
-                {abortedPercent > 0 && (
-                  <div
-                    className="progress-segment aborted"
-                    style={{ width: `${abortedPercent}%` }}
-                  />
-                )}
-                {failedPercent > 0 && (
-                  <div
-                    className="progress-segment failed"
-                    style={{ width: `${failedPercent}%` }}
-                  />
-                )}
-              </div>
-            </div>
 
-            <div className="data-quality-legend">
-              {successTests > 0 && (
-                <div className="legend-item">
-                  <span className="legend-dot success" />
-                  <span className="legend-text">
-                    <Typography.Text className="legend-text-label">
-                      {t('label.-with-colon', { text: t('label.success') })}{' '}
-                    </Typography.Text>
-                    <Typography.Text className="legend-text-value">
-                      {successTests}
-                    </Typography.Text>
-                  </span>
-                </div>
-              )}
-              {abortedTests > 0 && (
-                <div className="legend-item">
-                  <span className="legend-dot aborted" />
-                  <span className="legend-text">
-                    {t('label.-with-colon', { text: t('label.aborted') })}{' '}
-                    {abortedTests}
-                  </span>
-                </div>
-              )}
-              {failedTests > 0 && (
-                <div className="legend-item">
-                  <span className="legend-dot failed" />
-                  <span className="legend-text">
-                    {t('label.-with-colon', { text: t('label.failed') })}{' '}
-                    {failedTests}
-                  </span>
-                </div>
-              )}
-            </div>
-          </>
-        )}
+          <div className="data-quality-legend">
+            {successTests > 0 && (
+              <div className="legend-item">
+                <span className="legend-dot success" />
+                <span className="legend-text">
+                  <Typography.Text className="legend-text-label">
+                    {t('label.-with-colon', { text: t('label.success') })}{' '}
+                  </Typography.Text>
+                  <Typography.Text className="legend-text-value">
+                    {successTests}
+                  </Typography.Text>
+                </span>
+              </div>
+            )}
+            {abortedTests > 0 && (
+              <div className="legend-item">
+                <span className="legend-dot aborted" />
+                <span className="legend-text">
+                  {t('label.-with-colon', { text: t('label.aborted') })}{' '}
+                  {abortedTests}
+                </span>
+              </div>
+            )}
+            {failedTests > 0 && (
+              <div className="legend-item">
+                <span className="legend-dot failed" />
+                <span className="legend-text">
+                  {t('label.-with-colon', { text: t('label.failed') })}{' '}
+                  {failedTests}
+                </span>
+              </div>
+            )}
+          </div>
+        </>
       </div>
     </SectionWithEdit>
   );

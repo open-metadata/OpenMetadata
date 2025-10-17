@@ -89,10 +89,23 @@
     color: @primary-7;
   }
 }
-
+.data-quality-test-overview-section {
+  border-radius: 8px;
+  border: 1px solid @grey-15;
+}
+.data-quality-test-overview-section-row {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  padding-left: 16px;
+  padding-right: 16px;
+}
 .data-quality-tab-content {
   padding-left: 16px;
   height: 100vh;
+}
+.dotted-row {
+  border-bottom: 1px dashed @grey-15;
+  padding-bottom: 10px;
 }
 .data-quality-tab-container {
   border: 0px !important;
@@ -100,7 +113,7 @@
   .data-quality-tabs {
     .ant-tabs-nav {
       margin-bottom: 16px;
-      margin-left: 16px;
+      padding-left: 16px;
 
       .ant-tabs-nav-wrap {
         .ant-tabs-nav-list {
@@ -114,11 +127,7 @@
             border: none;
             width: auto;
             flex: none;
-
-            &.ant-tabs-tab-active {
-              color: @primary-7;
-              font-weight: 600;
-            }
+            padding: 10px 0px !important;
 
             &:hover {
               color: @primary-7;
@@ -235,12 +244,20 @@
   }
 
   .test-case-card {
-    padding-bottom: 16px;
-    border-bottom: 1px solid @grey-15;
+    padding-bottom: 8px;
+    border: 0.6px solid @grey-15;
+    margin-right: 16px;
+    border-radius: 10px !important;
+    margin-left: 16px;
+
     .test-case-card-content {
       width: 100%;
       .test-case-header {
+        border-top-right-radius: 10px !important;
+        border-top-left-radius: 10px !important;
+        padding-top: 12px;
         display: flex;
+        background-color: @grey-9;
         justify-content: space-between;
         align-items: flex-start;
         gap: 24px;
@@ -249,9 +266,9 @@
           flex: 1;
           padding-left: 16px;
           .test-case-name {
-            font-size: 13px;
-            color: @grey-700;
-            font-weight: 600;
+            font-size: 12px;
+            color: @grey-900;
+            font-weight: 500;
             line-height: 20px;
             display: -webkit-box;
             -webkit-line-clamp: 2;
@@ -268,7 +285,7 @@
           align-items: flex-start;
           padding-right: 14px;
           .status-badge {
-            border-radius: 5px;
+            border-radius: 16px;
             &.failure {
               font-size: 10px;
               background-color: #fbf3f0;
@@ -283,17 +300,19 @@
         display: flex;
         flex-direction: column;
         gap: 8px;
-        padding-left: 16px;
-        padding-right: 16px;
+
+        padding-top: 10px;
         .test-case-detail-item {
           display: flex;
           align-items: center;
+          padding-left: 16px;
+          padding-right: 16px;
           gap: 4px;
           .detail-label {
-            font-size: 12px;
-            color: @grey-900;
+            font-size: 13px;
+            color: @grey-700;
             min-width: 60px;
-            font-weight: 500;
+            font-weight: 400;
 
             &::after {
               content: ':';
@@ -302,7 +321,7 @@
           }
 
           .detail-value {
-            font-size: 13px;
+            font-size: 12px;
             color: @grey-900;
             font-weight: 500;
           }

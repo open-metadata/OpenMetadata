@@ -12,6 +12,111 @@
  */
 @import (reference) '../../../styles/variables.less';
 
+.data-quality-stats-container {
+  display: flex;
+  margin-bottom: 10px;
+  margin-right: 16px;
+  border-radius: 8px;
+  border: 1px solid @grey-15;
+  .data-quality-stat-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 12px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    outline: none;
+
+    .stat-count {
+      font-size: 13px;
+      font-weight: 600;
+      display: block;
+    }
+
+    .stat-label {
+      font-size: 13px;
+      font-weight: 400;
+      display: block;
+    }
+
+    &.success-card {
+      .stat-count.success {
+        color: @green-10;
+        font-weight: 600;
+      }
+
+      .stat-label.success {
+        color: @green-10;
+      }
+
+      &.active {
+        background-color: @green-9;
+        border-radius: 6px;
+      }
+    }
+
+    &.aborted-card {
+      .stat-count.aborted {
+        color: @yellow-11;
+        font-weight: 600;
+      }
+
+      .stat-label.aborted {
+        color: @yellow-11;
+      }
+
+      &.active {
+        background-color: @yellow-10;
+        border-radius: 6px;
+      }
+    }
+
+    &.failed-card {
+      .stat-count.failed {
+        color: @red-10;
+        font-weight: 600;
+      }
+
+      .stat-label.failed {
+        color: @red-10;
+      }
+
+      &.active {
+        background-color: @red-9;
+        border-radius: 6px;
+      }
+    }
+  }
+}
+.tab-header-container {
+  gap: 4px;
+  display: flex;
+  align-items: center;
+  color: @grey-700;
+  &.active {
+    color: @primary-6;
+  }
+}
+.data-quality-tab-count {
+  background-color: #f8f9fc;
+  border: 1px solid #eaecf5;
+  padding: 0px 5px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  &.active {
+    background-color: @primary-6;
+    color: @white;
+    border-color: @primary-6;
+  }
+}
+.vertical-divider {
+  margin-top: 12px !important;
+  margin-bottom: 12px !important;
+}
 .data-quality-badge {
   border-radius: 6px;
   padding: 0px;
@@ -21,11 +126,11 @@
   margin-left: 8px;
   justify-content: center;
   align-items: center;
-  border: 1px solid #f2f3f9;
-  background-color: #f8f9fc;
+  border: 1px solid @grey-38;
+  background-color: @grey-9;
 }
 .data-quality-badge-text {
-  color: #414651;
+  color: @grey-700;
   font-size: 10px;
   font-weight: 500;
 }
@@ -53,7 +158,7 @@
       display: flex;
       height: 12px;
       overflow: hidden;
-      background-color: #f0f0f0;
+      background-color: @light-border-color;
 
       .progress-segment {
         height: 100%;
