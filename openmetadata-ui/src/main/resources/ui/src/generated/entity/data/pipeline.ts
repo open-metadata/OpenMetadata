@@ -122,7 +122,7 @@ export interface Pipeline {
     /**
      * Start date of the workflow.
      */
-    startDate?: Date;
+    startDate?: number;
     /**
      * State of the Pipeline.
      */

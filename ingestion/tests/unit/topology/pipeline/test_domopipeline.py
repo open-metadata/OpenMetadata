@@ -3,7 +3,6 @@ Test Domo Dashboard using the topology
 """
 
 import json
-from datetime import datetime
 from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
@@ -151,7 +150,7 @@ EXPECTED_PIPELINE = [
         sourceUrl=None,
         concurrency=None,
         pipelineLocation=None,
-        startDate=datetime(2022, 10, 7, 13, 20, 16),
+        startDate=1665148816000,
         tasks=[
             Task(
                 name="1",
