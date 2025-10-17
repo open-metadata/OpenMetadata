@@ -31,7 +31,7 @@
     "license-header-check": "license-check-and-add check -f .licenseheaderrc.json",
     "license-header-fix": "license-check-and-add add -f .licenseheaderrc.json -r $(date +%Y)",
     "parse-schema": "node parseSchemas",
-    "js-antlr": "PWD=$(echo $PWD) antlr4 -Dlanguage=JavaScript -o src/generated/antlr \"$PWD\"/../../../../../openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4",
+    "js-antlr": "node generateAntlr",
     "i18n": "sync-i18n --files '**/locale/languages/*.json' --primary en-us --space 2 --fn",
     "check-i18n": "npm run i18n -- --check",
     "playwright:run": "playwright test",
