@@ -1,58 +1,56 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
 import java.util.List;
+import java.util.Map;
 import org.openmetadata.service.dataInsight.MostActiveUsersAggregator;
-import os.org.opensearch.search.aggregations.Aggregations;
-import os.org.opensearch.search.aggregations.bucket.MultiBucketsAggregation;
-import os.org.opensearch.search.aggregations.metrics.Max;
-import os.org.opensearch.search.aggregations.metrics.Sum;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 
 public class OpenSearchMostActiveUsersAggregator
     extends MostActiveUsersAggregator<
-        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum, Max> {
+        Map<String, Aggregate>, StringTermsBucket, Aggregate, Aggregate, Aggregate> {
 
-  public OpenSearchMostActiveUsersAggregator(Aggregations aggregations) {
+  public OpenSearchMostActiveUsersAggregator(Map<String, Aggregate> aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Double getSumValue(Sum key) {
-    return key != null ? key.getValue() : null;
+  protected Double getSumValue(Aggregate key) {
+    return key != null && key.isSum() ? key.sum().value() : null;
   }
 
   @Override
-  protected Long getMaxValue(Max key) {
-    return key != null ? (long) key.getValue() : null;
+  protected Long getMaxValue(Aggregate key) {
+    return key != null && key.isMax() ? (long) key.max().value() : null;
   }
 
   @Override
-  protected String getKeyAsString(MultiBucketsAggregation.Bucket bucket) {
-    return bucket.getKeyAsString();
+  protected String getKeyAsString(StringTermsBucket bucket) {
+    return bucket.key();
   }
 
   @Override
-  protected Sum getSumAggregations(MultiBucketsAggregation.Bucket bucket, String key) {
-    return bucket.getAggregations().get(key);
+  protected Aggregate getSumAggregations(StringTermsBucket bucket, String key) {
+    return bucket.aggregations().get(key);
   }
 
   @Override
-  protected Max getMaxAggregations(MultiBucketsAggregation.Bucket bucket, String key) {
-    return bucket.getAggregations().get(key);
+  protected Aggregate getMaxAggregations(StringTermsBucket bucket, String key) {
+    return bucket.aggregations().get(key);
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
-      MultiBucketsAggregation buckets) {
-    return buckets.getBuckets();
+  protected List<StringTermsBucket> getBuckets(Aggregate buckets) {
+    return buckets.sterms().buckets().array();
   }
 
   @Override
-  protected MultiBucketsAggregation getUserNameBuckets(Aggregations aggregations) {
+  protected Aggregate getUserNameBuckets(Map<String, Aggregate> aggregations) {
     return aggregations.get("userName");
   }
 
   @Override
-  protected MultiBucketsAggregation getTeamBuckets(MultiBucketsAggregation.Bucket bucket) {
-    return bucket.getAggregations().get("team");
+  protected Aggregate getTeamBuckets(StringTermsBucket bucket) {
+    return bucket.aggregations().get("team");
   }
 }

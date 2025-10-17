@@ -27,8 +27,10 @@ import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.elasticsearch.core.GetResponse;
+import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.json.JsonData;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -44,16 +46,24 @@ import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
+import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.entityRelationship.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.EntityManagementClient;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 /**
  * Elasticsearch implementation of entity management operations.
@@ -928,6 +938,82 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     }
   }
 
+  @Override
+  public SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
+      String schemaFqn,
+      String queryFilter,
+      String includeSourceFields,
+      int offset,
+      int limit,
+      int from,
+      int size,
+      boolean deleted)
+      throws IOException {
+    SearchSchemaEntityRelationshipResult result = new SearchSchemaEntityRelationshipResult();
+    result.setData(
+        new SearchEntityRelationshipResult()
+            .withNodes(new java.util.TreeMap<>())
+            .withUpstreamEdges(new HashMap<>())
+            .withDownstreamEdges(new HashMap<>()));
+
+    String finalQueryFilter = buildERQueryFilter(schemaFqn, queryFilter);
+    String tableIndex =
+        Entity.getSearchRepository().getIndexOrAliasName(SearchClient.TABLE_SEARCH_INDEX);
+    SearchResponse<JsonData> searchResponse =
+        EsUtils.searchEntitiesWithLimitOffset(
+            client, tableIndex, finalQueryFilter, offset, limit, deleted);
+    int total = 0;
+    if (searchResponse == null
+        || searchResponse.hits() == null
+        || searchResponse.hits().total() == null) {
+      result.setPaging(
+          new org.openmetadata.schema.type.Paging()
+              .withOffset(offset)
+              .withLimit(limit)
+              .withTotal(total));
+      return result;
+    }
+    for (Hit<JsonData> hit : searchResponse.hits().hits()) {
+      Map<String, Object> source = JsonUtils.getMap(hit.source().toJson().asJsonObject());
+      Object fqn = source.get(SearchClient.FQN_FIELD);
+      if (fqn != null) {
+        String fqnString = fqn.toString();
+        SearchEntityRelationshipRequest request =
+            new SearchEntityRelationshipRequest()
+                .withFqn(fqnString)
+                .withUpstreamDepth(0)
+                .withDownstreamDepth(1)
+                .withQueryFilter(queryFilter)
+                .withIncludeDeleted(deleted)
+                .withLayerFrom(from)
+                .withLayerSize(size)
+                .withIncludeSourceFields(
+                    SearchUtils.getRequiredEntityRelationshipFields(includeSourceFields));
+        SearchEntityRelationshipResult tableER =
+            ((SearchClient) Entity.getSearchRepository().getSearchClient())
+                .searchEntityRelationship(request);
+        Map.Entry<String, NodeInformation> tableNode =
+            tableER.getNodes().entrySet().stream()
+                .filter(e -> fqn.toString().equals(e.getKey()))
+                .findFirst()
+                .orElse(null);
+        result
+            .getData()
+            .getNodes()
+            .putIfAbsent(fqnString, Objects.requireNonNull(tableNode).getValue());
+        result.getData().getUpstreamEdges().putAll(tableER.getUpstreamEdges());
+        result.getData().getDownstreamEdges().putAll(tableER.getDownstreamEdges());
+      }
+    }
+    total = (int) searchResponse.hits().total().value();
+    result.setPaging(
+        new org.openmetadata.schema.type.Paging()
+            .withOffset(offset)
+            .withLimit(limit)
+            .withTotal(total));
+    return result;
+  }
+
   private void upsertDocument(String indexName, String docId, String doc, String operation)
       throws IOException {
     if (!isClientAvailable) {
@@ -960,5 +1046,19 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       throw new IllegalArgumentException("Invalid JSON input", e);
     }
     return JsonData.of(docMap);
+  }
+
+  private static String buildERQueryFilter(String schemaFqn, String queryFilter) {
+    String schemaFqnWildcardClause =
+        String.format(
+            "{\"wildcard\":{\"fullyQualifiedName\":\"%s.*\"}}",
+            ReindexingUtil.escapeDoubleQuotes(schemaFqn));
+    String innerBoolFilter;
+    if (!CommonUtil.nullOrEmpty(queryFilter) && !"{}".equals(queryFilter)) {
+      innerBoolFilter = String.format("[ %s , %s ]", schemaFqnWildcardClause, queryFilter);
+    } else {
+      innerBoolFilter = String.format("[ %s ]", schemaFqnWildcardClause);
+    }
+    return String.format("{\"bool\":{\"must\":%s}}", innerBoolFilter);
   }
 }
