@@ -7,8 +7,6 @@ import static org.openmetadata.service.Entity.FIELD_DESCRIPTION;
 import static org.openmetadata.service.Entity.FIELD_DISPLAY_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
 import static org.openmetadata.service.Entity.TABLE;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.HEALTHY_STATUS;
-import static org.openmetadata.service.events.scheduled.ServicesStatusJobHandler.UNHEALTHY_STATUS;
 import static org.openmetadata.service.search.EntityBuilderConstant.DOMAIN_DISPLAY_NAME_KEYWORD;
 import static org.openmetadata.service.search.EntityBuilderConstant.ES_TAG_FQN_FIELD;
 import static org.openmetadata.service.search.EntityBuilderConstant.FIELD_DISPLAY_NAME_NGRAM;
@@ -32,7 +30,6 @@ import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -128,32 +125,25 @@ import org.openmetadata.service.search.security.RBACConditionEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
-import os.org.opensearch.OpenSearchException;
 import os.org.opensearch.OpenSearchStatusException;
-import os.org.opensearch.action.admin.cluster.health.ClusterHealthRequest;
-import os.org.opensearch.action.admin.cluster.health.ClusterHealthResponse;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.update.UpdateRequest;
-import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
-import os.org.opensearch.client.ResponseException;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
 import os.org.opensearch.client.RestHighLevelClient;
 import os.org.opensearch.client.WarningsHandler;
-import os.org.opensearch.client.indices.DataStream;
-import os.org.opensearch.client.indices.DeleteDataStreamRequest;
-import os.org.opensearch.client.indices.GetDataStreamRequest;
-import os.org.opensearch.client.indices.GetDataStreamResponse;
 import os.org.opensearch.client.indices.GetMappingsRequest;
 import os.org.opensearch.client.indices.GetMappingsResponse;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
+import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
+import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
+import os.org.opensearch.client.opensearch.nodes.NodesStatsResponse;
 import os.org.opensearch.client.transport.rest_client.RestClientTransport;
-import os.org.opensearch.cluster.health.ClusterHealthStatus;
 import os.org.opensearch.cluster.metadata.MappingMetadata;
 import os.org.opensearch.common.ParsingException;
 import os.org.opensearch.common.lucene.search.function.CombineFunction;
@@ -215,6 +205,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final String clusterAlias;
   private final OpenSearchIndexManager indexManager;
   private final OpenSearchEntityManager entityManager;
+  private final OpenSearchGenericManager genericManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
       Set.of(
@@ -258,6 +249,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     entityRelationshipGraphBuilder = new OSEntityRelationshipGraphBuilder(client);
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
+    genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
@@ -2392,14 +2384,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public SearchHealthStatus getSearchHealthStatus() throws IOException {
-    ClusterHealthRequest request = new ClusterHealthRequest();
-    ClusterHealthResponse response = client.cluster().health(request, RequestOptions.DEFAULT);
-    if (response.getStatus().equals(ClusterHealthStatus.GREEN)
-        || response.getStatus().equals(ClusterHealthStatus.YELLOW)) {
-      return new SearchHealthStatus(HEALTHY_STATUS);
-    } else {
-      return new SearchHealthStatus(UNHEALTHY_STATUS);
-    }
+    return genericManager.getSearchHealthStatus();
   }
 
   private OpenSearchSourceBuilderFactory getSearchBuilderFactory() {
@@ -2419,219 +2404,57 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   @Override
-  public List<String> getDataStreams(String prefix) {
-    try {
-      GetDataStreamRequest request = new GetDataStreamRequest(prefix + "*");
-      GetDataStreamResponse response =
-          client.indices().getDataStream(request, RequestOptions.DEFAULT);
-      return response.getDataStreams().stream()
-          .map(DataStream::getName)
-          .collect(Collectors.toList());
-    } catch (OpenSearchException e) {
-      if (e.status().getStatus() == 404) {
-        LOG.warn("No DataStreams exist with prefix  '{}'. Skipping deletion.", prefix);
-        return Collections.emptyList();
-      } else {
-        LOG.error("Failed to find DataStreams", e);
-        throw e;
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to get data streams with prefix {}", prefix, e);
-      return Collections.emptyList();
-    }
+  public List<String> getDataStreams(String prefix) throws IOException {
+    return genericManager.getDataStreams(prefix);
   }
 
   @Override
   public void deleteDataStream(String dataStreamName) throws IOException {
-    try {
-      DeleteDataStreamRequest request = new DeleteDataStreamRequest(dataStreamName);
-      client.indices().deleteDataStream(request, RequestOptions.DEFAULT);
-      LOG.debug("Deleted data stream {}", dataStreamName);
-    } catch (OpenSearchStatusException e) {
-      if (e.status().getStatus() == 404) {
-        LOG.warn("Data Stream {} does not exist. Skipping Deletion.", dataStreamName);
-      } else {
-        LOG.error("Failed to delete data stream {}", dataStreamName, e);
-        throw e;
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to delete data stream {}", dataStreamName, e);
-      throw e;
-    }
+    genericManager.deleteDataStream(dataStreamName);
   }
 
   @Override
   public void deleteILMPolicy(String policyName) throws IOException {
-    try {
-      // OpenSearch uses _plugins/_ism/policies/{policyName} for ISM policies
-      Request request = new Request("DELETE", "/_plugins/_ism/policies/" + policyName);
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-
-      if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("ISM policy {} does not exist", policyName);
-        return;
-      }
-      if (response.getStatusLine().getStatusCode() != 200) {
-        throw new IOException(
-            "Failed to delete ISM policy: " + response.getStatusLine().getReasonPhrase());
-      }
-      LOG.info("Successfully deleted ISM policy: {}", policyName);
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("ISM Policy {} does not exist. Skipping deletion.", policyName);
-      } else {
-        throw new IOException(
-            "Failed to delete ISM policy: " + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Error deleting ISM policy: {}", policyName, e);
-      throw new IOException("Failed to delete ISM policy: " + e.getMessage());
-    }
+    genericManager.deleteILMPolicy(policyName);
   }
 
   @Override
   public void deleteIndexTemplate(String templateName) throws IOException {
-    try {
-      // OpenSearch uses the low-level REST client for index template operations
-      Request request = new Request("DELETE", "/_index_template/" + templateName);
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      if (response.getStatusLine().getStatusCode() == 200) {
-        LOG.debug("Deleted index template {}", templateName);
-      } else if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
-      } else {
-        LOG.error(
-            "Failed to delete index template {}. Status: {}",
-            templateName,
-            response.getStatusLine().getStatusCode());
-        throw new IOException(
-            "Failed to delete index template: " + response.getStatusLine().getReasonPhrase());
-      }
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Index Template {} does not exist. Skipping deletion.", templateName);
-      } else {
-        throw new IOException(
-            "Failed to delete index template: "
-                + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Failed to delete index template {}", templateName, e);
-      throw e;
-    }
+    genericManager.deleteIndexTemplate(templateName);
   }
 
   @Override
   public void deleteComponentTemplate(String componentTemplateName) throws IOException {
-    try {
-      Request request = new Request("DELETE", "/_component_template/" + componentTemplateName);
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      if (response.getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Component template {} does not exist", componentTemplateName);
-        return;
-      }
-      if (response.getStatusLine().getStatusCode() != 200) {
-        throw new IOException(
-            "Failed to delete component template: " + response.getStatusLine().getReasonPhrase());
-      }
-      LOG.info("Successfully deleted component template: {}", componentTemplateName);
-    } catch (ResponseException e) {
-      if (e.getResponse().getStatusLine().getStatusCode() == 404) {
-        LOG.warn("Component template {} does not exist. Skipping deletion.", componentTemplateName);
-      } else {
-        throw new IOException(
-            "Failed to delete component template: "
-                + e.getResponse().getStatusLine().getReasonPhrase());
-      }
-    } catch (Exception e) {
-      LOG.error("Error deleting component template: {}", componentTemplateName, e);
-      throw new IOException("Failed to delete component template: " + e.getMessage());
-    }
+    genericManager.deleteComponentTemplate(componentTemplateName);
   }
 
   @Override
   public void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
-    try {
-      // 1. Get all indices matching the pattern
-      Request catRequest = new Request("GET", "/_cat/indices/" + indexPattern);
-      catRequest.addParameter("format", "json");
-      os.org.opensearch.client.Response catResponse =
-          client.getLowLevelClient().performRequest(catRequest);
-      String responseBody = org.apache.http.util.EntityUtils.toString(catResponse.getEntity());
-      com.fasterxml.jackson.databind.JsonNode indices = JsonUtils.readTree(responseBody);
-      if (!indices.isArray()) {
-        LOG.warn("No indices found matching pattern: {}", indexPattern);
-        return;
-      }
-      for (com.fasterxml.jackson.databind.JsonNode indexNode : indices) {
-        String indexName = indexNode.get("index").asText();
-        try {
-          // 2. Remove ISM policy by updating settings
-          Request putSettings = new Request("PUT", "/" + indexName + "/_settings");
-          putSettings.setJsonEntity("{\"index.plugins.index_state_management.policy_id\": null}");
-          os.org.opensearch.client.Response putResponse =
-              client.getLowLevelClient().performRequest(putSettings);
-          if (putResponse.getStatusLine().getStatusCode() == 200) {
-            LOG.info("Detached ISM policy from index: {}", indexName);
-          } else {
-            LOG.warn(
-                "Failed to detach ISM policy from index: {}. Status: {}",
-                indexName,
-                putResponse.getStatusLine().getStatusCode());
-          }
-        } catch (Exception e) {
-          LOG.error("Error detaching ISM policy from index: {}", indexName, e);
-        }
-      }
-    } catch (Exception e) {
-      LOG.error("Error detaching ISM policy from indexes matching pattern: {}", indexPattern, e);
-      throw new IOException("Failed to detach ISM policy from indexes: " + e.getMessage());
-    }
+    genericManager.dettachIlmPolicyFromIndexes(indexPattern);
   }
 
-  @SuppressWarnings("unchecked")
-  public Map<String, Object> clusterStats() throws IOException {
-    try {
-      Request request = new Request("GET", "/_cluster/stats");
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
-      return JsonUtils.readValue(responseBody, Map.class);
-    } catch (Exception e) {
-      LOG.error("Failed to fetch cluster stats", e);
-      throw new IOException("Failed to fetch cluster stats: " + e.getMessage());
-    }
+  public ClusterStatsResponse clusterStats() throws IOException {
+    return genericManager.clusterStats();
   }
 
-  @SuppressWarnings("unchecked")
-  public Map<String, Object> nodesStats() throws IOException {
-    try {
-      Request request = new Request("GET", "/_nodes/stats");
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
-      return JsonUtils.readValue(responseBody, Map.class);
-    } catch (Exception e) {
-      LOG.error("Failed to fetch nodes stats", e);
-      throw new IOException("Failed to fetch nodes stats: " + e.getMessage());
-    }
+  public NodesStatsResponse nodesStats() throws IOException {
+    return genericManager.nodesStats();
   }
 
-  @SuppressWarnings("unchecked")
-  public Map<String, Object> clusterSettings() throws IOException {
-    try {
-      Request request = new Request("GET", "/_cluster/settings");
-      os.org.opensearch.client.Response response =
-          client.getLowLevelClient().performRequest(request);
-      String responseBody = org.apache.http.util.EntityUtils.toString(response.getEntity());
-      return JsonUtils.readValue(responseBody, Map.class);
-    } catch (Exception e) {
-      LOG.error("Failed to fetch cluster settings", e);
-      throw new IOException("Failed to fetch cluster settings: " + e.getMessage());
-    }
+  public GetClusterSettingsResponse clusterSettings() throws IOException {
+    return genericManager.clusterSettings();
+  }
+
+  public double averageCpuPercentFromNodesStats(NodesStatsResponse nodesStats) {
+    return genericManager.averageCpuPercentFromNodesStats(nodesStats);
+  }
+
+  public Map<String, Object> extractJvmMemoryStats(NodesStatsResponse nodesStats) {
+    return genericManager.extractJvmMemoryStats(nodesStats);
+  }
+
+  public String extractMaxContentLengthStr(GetClusterSettingsResponse clusterSettings) {
+    return genericManager.extractMaxContentLengthStr(clusterSettings);
   }
 
   @Override
