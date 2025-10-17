@@ -1,5 +1,5 @@
 /*
- *  Copyright 2023 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,24 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PopoverProps } from 'antd';
-import { ReactNode } from 'react';
-import { Tag } from '../../../generated/entity/classification/tag';
+import { EntityType } from '../../../enums/entity.enum';
+import { TagLabel } from '../../../generated/type/tagLabel';
 
-export type CardWithListItems = {
-  id: string;
-  description: string;
-  data: string;
-  title: string;
-  style: Tag['style'];
-};
-
-export interface TierCardProps {
-  currentTier?: string;
-  tierCardClassName?: string;
-  footerActionButtonsClassName?: string;
-  updateTier?: (value?: Tag) => Promise<void>;
-  children?: ReactNode;
-  popoverProps?: PopoverProps;
-  onClose?: () => void;
+export interface TierSectionProps {
+  tier?: TagLabel;
+  tags?: TagLabel[];
+  showEditButton?: boolean;
+  hasPermission?: boolean;
+  entityId?: string;
+  entityType?: EntityType;
+  onTierUpdate?: (updatedTier?: TagLabel) => void;
 }

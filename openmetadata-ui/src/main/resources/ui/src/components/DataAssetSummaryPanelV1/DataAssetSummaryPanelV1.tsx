@@ -55,7 +55,7 @@ import { listTestCases } from '../../rest/testAPI';
 import { patchTopicDetails } from '../../rest/topicsAPI';
 import { fetchCharts } from '../../utils/DashboardDetailsUtils';
 import { getEpochMillisForPastDays } from '../../utils/date-time/DateTimeUtils';
-import { generateEntityLink } from '../../utils/TableUtils';
+import { generateEntityLink, getTierTags } from '../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import DataProductsSection from '../common/DataProductsSection/DataProductsSection';
 import DataQualitySection from '../common/DataQualitySection/DataQualitySection';
@@ -67,6 +67,7 @@ import OverviewSection from '../common/OverviewSection/OverviewSection';
 import OwnersSection from '../common/OwnersSection/OwnersSection';
 import SummaryPanelSkeleton from '../common/Skeleton/SummaryPanelSkeleton/SummaryPanelSkeleton.component';
 import TagsSection from '../common/TagsSection/TagsSection';
+import TierSection from '../common/TierSection/TierSection';
 import { DataAssetSummaryPanelProps } from '../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import GlossaryTermSummary from '../Explore/EntitySummaryPanel/GlossaryTermSummary/GlossaryTermSummary.component';
 import TagsSummary from '../Explore/EntitySummaryPanel/TagsSummary/TagsSummary.component';
@@ -87,6 +88,7 @@ export const DataAssetSummaryPanelV1 = ({
   highlights,
   onOwnerUpdate,
   onDomainUpdate,
+  onTierUpdate,
   isDomainVisible,
   onTagsUpdate,
   onDataProductsUpdate,
@@ -95,6 +97,12 @@ export const DataAssetSummaryPanelV1 = ({
 }: DataAssetSummaryPanelProps) => {
   const { t } = useTranslation();
   const { getEntityPermission } = usePermissionProvider();
+
+  // Extract tier from tags
+  const tier = useMemo(
+    () => getTierTags(dataAsset.tags ?? []),
+    [dataAsset.tags]
+  );
 
   // Function to get the appropriate patch API based on entity type
   const getPatchAPI = (entityType?: EntityType) => {
@@ -472,6 +480,17 @@ export const DataAssetSummaryPanelV1 = ({
               />
             </div>
             <div>
+              <TierSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={entityPermissions?.EditTags}
+                key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
+                tags={dataAsset.tags}
+                tier={tier}
+                onTierUpdate={onTierUpdate}
+              />
+            </div>
+            <div>
               <GlossaryTermsSection
                 entityId={dataAsset.id}
                 hasPermission={entityPermissions?.EditGlossaryTerms}
@@ -548,6 +567,19 @@ export const DataAssetSummaryPanelV1 = ({
                   (dataAsset.domains as EntityReference[])?.length || 0
                 }`}
                 onDomainUpdate={onDomainUpdate}
+              />
+            </div>
+            <div>
+              <TierSection
+                entityId={dataAsset.id}
+                entityType={entityType}
+                hasPermission={
+                  entityPermissions?.EditAll || entityPermissions?.EditTags
+                }
+                key={`tier-${dataAsset.id}-${tier?.tagFQN || 'no-tier'}`}
+                tags={dataAsset.tags}
+                tier={tier}
+                onTierUpdate={onTierUpdate}
               />
             </div>
             <div>

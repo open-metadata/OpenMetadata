@@ -429,6 +429,62 @@ export default function EntitySummaryPanel({
     [entityDetails.details]
   );
 
+  const handleTierUpdate = useCallback(
+    (updatedTier?: any) => {
+      setEntityData((prevData: any) => {
+        if (!prevData || prevData.id !== entityDetails.details.id) {
+          return prevData;
+        }
+
+        // Update the tags array by removing old tier and adding new one
+        const tagsWithoutTier = (prevData.tags || []).filter(
+          (tag: any) => !tag.tagFQN?.startsWith('Tier.')
+        );
+
+        const updatedTags = updatedTier
+          ? [...tagsWithoutTier, updatedTier]
+          : tagsWithoutTier;
+
+        const updatedData = {
+          ...prevData,
+          tags: updatedTags,
+          entityType: prevData.entityType || entityDetails.details.entityType,
+          fullyQualifiedName:
+            prevData.fullyQualifiedName ||
+            entityDetails.details.fullyQualifiedName,
+          id: prevData.id || entityDetails.details.id,
+          description:
+            prevData.description || entityDetails.details.description,
+          displayName:
+            prevData.displayName || entityDetails.details.displayName,
+          name: prevData.name || entityDetails.details.name,
+          deleted:
+            prevData.deleted !== undefined
+              ? prevData.deleted
+              : entityDetails.details.deleted,
+          serviceType:
+            prevData.serviceType || (entityDetails.details as any).serviceType,
+          service: prevData.service || entityDetails.details.service,
+          owners: prevData.owners || entityDetails.details.owners,
+          domains: prevData.domains || entityDetails.details.domains,
+          tier: updatedTier,
+          columnNames:
+            prevData.columnNames || (entityDetails.details as any).columnNames,
+          database:
+            prevData.database || (entityDetails.details as any).database,
+          databaseSchema:
+            prevData.databaseSchema ||
+            (entityDetails.details as any).databaseSchema,
+          tableType:
+            prevData.tableType || (entityDetails.details as any).tableType,
+        };
+
+        return updatedData;
+      });
+    },
+    [entityDetails.details]
+  );
+
   const handleDataProductsUpdate = useCallback(
     (updatedDataProducts: EntityReference[]) => {
       const dpsClone = updatedDataProducts.map((dp) => ({ ...dp }));
@@ -801,6 +857,7 @@ export default function EntitySummaryPanel({
         onGlossaryTermsUpdate={handleGlossaryTermsUpdate}
         onOwnerUpdate={handleOwnerUpdate}
         onTagsUpdate={handleTagsUpdate}
+        onTierUpdate={handleTierUpdate}
       />
     );
   }, [
@@ -812,6 +869,7 @@ export default function EntitySummaryPanel({
     handleOwnerUpdate,
     handleDomainUpdate,
     handleTagsUpdate,
+    handleTierUpdate,
     handleDataProductsUpdate,
     handleDescriptionUpdate,
     handleGlossaryTermsUpdate,
