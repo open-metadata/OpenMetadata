@@ -14,15 +14,28 @@ OpenMetadata high-level API Glossary test
 """
 from copy import deepcopy
 
+from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
 from metadata.generated.schema.api.data.createGlossaryTerm import (
     CreateGlossaryTermRequest,
 )
+from metadata.generated.schema.api.services.createDashboardService import (
+    CreateDashboardServiceRequest,
+)
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import (
     GlossaryTerm,
     TermReference,
+)
+from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LookerConnection,
+)
+from metadata.generated.schema.entity.services.dashboardService import (
+    DashboardConnection,
+    DashboardService,
+    DashboardServiceType,
 )
 from metadata.generated.schema.type.basic import (
     Email,
@@ -32,6 +45,12 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import (
+    LabelType,
+    State,
+    TagLabel,
+    TagSource,
+)
 from metadata.utils import fqn
 
 
@@ -524,3 +543,74 @@ class TestOMetaGlossary:
         assert patched_glossary_term_1 is not None
         assert len(patched_glossary_term_1.references) == 3
         assert patched_glossary_term_1.references[1].name == "GT1S2"
+
+    def test_get_glossary_term_assets(
+        self, metadata, create_glossary, create_glossary_term
+    ):
+        """We can get assets for a glossary term"""
+        glossary = create_glossary(
+            CreateGlossaryRequest(
+                name=EntityName("test-glossary"),
+                displayName="test-glossary",
+                description=Markdown("Description of test glossary"),
+            )
+        )
+
+        create_glossary_term_1 = CreateGlossaryTermRequest(
+            glossary=FullyQualifiedEntityName(glossary.name.root),
+            name=EntityName("GT1"),
+            displayName="Glossary Term 1",
+            description=Markdown("Test glossary term 1"),
+        )
+        glossary_term_1 = create_glossary_term(create_glossary_term_1)
+
+        service: DashboardService = metadata.create_or_update(
+            data=CreateDashboardServiceRequest(
+                name="test-service-dashboard-glossary-assets",
+                serviceType=DashboardServiceType.Looker,
+                connection=DashboardConnection(
+                    config=LookerConnection(
+                        hostPort="http://hostPort", clientId="id", clientSecret="secret"
+                    )
+                ),
+            )
+        )
+
+        dashboard: Dashboard = metadata.create_or_update(
+            CreateDashboardRequest(
+                name="test-dashboard-glossary-assets",
+                service=service.fullyQualifiedName,
+            )
+        )
+
+        metadata.patch(
+            entity=Dashboard,
+            source=dashboard,
+            destination=Dashboard(
+                id=dashboard.id,
+                name=dashboard.name,
+                service=dashboard.service,
+                tags=[
+                    TagLabel(
+                        tagFQN=glossary_term_1.fullyQualifiedName.root,
+                        source=TagSource.Glossary,
+                        labelType=LabelType.Manual,
+                        state=State.Confirmed,
+                    )
+                ],
+            ),
+        )
+
+        assets_response = metadata.get_glossary_term_assets(
+            glossary_term_1.fullyQualifiedName.root, limit=100
+        )
+        assert len(assets_response["data"]) >= 1
+        assert assets_response["data"][0]["id"] == str(dashboard.id.root)
+        assert assets_response["data"][0]["type"] == "dashboard"
+
+        metadata.delete(
+            entity=DashboardService,
+            entity_id=service.id,
+            recursive=True,
+            hard_delete=True,
+        )

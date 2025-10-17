@@ -489,14 +489,6 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
   );
 };
 
-export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
-  const keys: string[] = [];
-
-  processTerms(terms, keys);
-
-  return keys;
-};
-
 const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
   termList.forEach((term) => {
     if (
@@ -510,4 +502,12 @@ const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
       }
     }
   });
+};
+
+export const getAllExpandableKeys = (terms: ModifiedGlossary[]): string[] => {
+  const keys: string[] = [];
+
+  processTerms(terms, keys);
+
+  return keys;
 };

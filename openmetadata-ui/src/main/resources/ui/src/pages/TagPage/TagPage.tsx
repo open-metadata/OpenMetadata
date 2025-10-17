@@ -85,7 +85,7 @@ import { Style } from '../../generated/type/tagLabel';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, getTagByFqn, patchTag } from '../../rest/tagAPI';
 import { getEntityDeleteMessage, getFeedCounts } from '../../utils/CommonUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
@@ -94,10 +94,6 @@ import {
   getClassificationDetailsPath,
   getClassificationTagPath,
 } from '../../utils/RouterUtils';
-import {
-  escapeESReservedCharacters,
-  getEncodedFqn,
-} from '../../utils/StringsUtils';
 import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
@@ -221,7 +217,11 @@ const TagPage = () => {
       setIsLoading(true);
       if (tagFqn) {
         const response = await getTagByFqn(tagFqn, {
-          fields: [TabSpecificField.DOMAINS, TabSpecificField.OWNERS],
+          fields: [
+            TabSpecificField.DOMAINS,
+            TabSpecificField.OWNERS,
+            TabSpecificField.REVIEWERS,
+          ],
         });
         setTagItem(response);
       }
@@ -335,19 +335,16 @@ const TagPage = () => {
 
   const fetchClassificationTagAssets = async () => {
     try {
-      const encodedFqn = getEncodedFqn(escapeESReservedCharacters(tagFqn));
-      const res = await searchData(
-        '',
-        1,
-        0,
-        getTagAssetsQueryFilter(encodedFqn),
-        '',
-        '',
-        SearchIndex.ALL
-      );
+      const res = await searchQuery({
+        query: '',
+        pageNumber: 1,
+        pageSize: 0,
+        queryFilter: getTagAssetsQueryFilter(tagFqn),
+        searchIndex: SearchIndex.ALL,
+      });
 
-      setAssetCount(res.data.hits.total.value ?? 0);
-      if (res.data.hits.total.value === 0) {
+      setAssetCount(res.hits.total.value ?? 0);
+      if (res.hits.total.value === 0) {
         setPreviewAsset(undefined);
       }
     } catch (error) {

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
 import React from 'react';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import { DomainLabelV2 } from '../components/DataAssets/DomainLabelV2/DomainLabelV2';
@@ -29,6 +30,7 @@ import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interfa
 import { searchQuery } from '../rest/searchAPI';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
+import { getTermQuery } from './SearchUtils';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
 
 export interface TagRightPanelParams {
@@ -58,14 +60,33 @@ class TagClassBase {
     emptyQueryFilter?: boolean
   ) {
     const encodedValue = getEncodedFqn(escapeESReservedCharacters(searchText));
+
+    // Build the queryFilter by merging disabled:false with any existing filters
+    const disabledFilter = getTermQuery({ disabled: 'false' });
+
+    let mergedQueryFilter = {};
+    if (emptyQueryFilter) {
+      // If emptyQueryFilter is true, only use the disabled filter
+      mergedQueryFilter = disabledFilter;
+    } else if (!isEmpty(queryFilterToRemoveSomeClassification)) {
+      // Merge both filters: disabled:false (must) + classification exclusions (must_not)
+      mergedQueryFilter = {
+        query: {
+          bool: {
+            must: disabledFilter.query.bool.must,
+            must_not: queryFilterToRemoveSomeClassification.query.bool.must_not,
+          },
+        },
+      };
+    } else {
+      mergedQueryFilter = disabledFilter;
+    }
+
     const res = await searchQuery({
       query: `*${encodedValue}*`,
-      filters: 'disabled:false',
       pageNumber: page,
       pageSize: PAGE_SIZE,
-      queryFilter: emptyQueryFilter
-        ? {}
-        : queryFilterToRemoveSomeClassification,
+      queryFilter: mergedQueryFilter,
       searchIndex: SearchIndex.TAG,
     });
 
