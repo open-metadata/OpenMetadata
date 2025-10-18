@@ -166,19 +166,26 @@ const TagPage = () => {
     setFeedCount(data);
   }, []);
 
-  const { editTagsPermission } = useMemo(() => {
+  const { editTagsPermission, disabledAwarePermissions } = useMemo(() => {
     if (tagItem) {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
       return {
         editTagsPermission: isEditable && tagPermissions.EditAll,
+        disabledAwarePermissions: {
+          ...tagPermissions,
+          EditOwners:
+            isEditable && (tagPermissions.EditAll || tagPermissions.EditOwners),
+          EditAll: isEditable && tagPermissions.EditAll,
+        },
       };
     }
 
     return {
       editTagsPermission: false,
+      disabledAwarePermissions: tagPermissions,
     };
-  }, [tagPermissions, tagItem?.deleted]);
+  }, [tagPermissions, tagItem?.disabled, tagItem?.deleted]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
@@ -706,7 +713,7 @@ const TagPage = () => {
           customizedPage={customizedPage}
           data={tagItem as Tag}
           isVersionView={false}
-          permissions={tagPermissions}
+          permissions={disabledAwarePermissions}
           type={EntityType.TAG as CustomizeEntityType}
           onUpdate={(updatedData: Tag) =>
             Promise.resolve(updateTag(updatedData))
