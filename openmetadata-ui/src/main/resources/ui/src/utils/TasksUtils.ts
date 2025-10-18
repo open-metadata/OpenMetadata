@@ -183,6 +183,16 @@ export const getUpdateTagsPath = (
   return { pathname, search: searchParams.toString() };
 };
 
+export const getKnowledgeCenterPagePath = (
+  pageFQN: string,
+  tab: string,
+  subTab: string
+) => {
+  const encodedFqn = getEncodedFqn(pageFQN);
+
+  return `${ROUTES.KNOWLEDGE_CENTER_PAGE}/${encodedFqn}/${tab}/${subTab}`;
+};
+
 export const getTaskDetailPath = (task: Thread) => {
   const entityFqn = getEntityFQN(task.about) ?? '';
   const entityType = getEntityType(task.about) ?? '';
@@ -199,6 +209,12 @@ export const getTaskDetailPath = (task: Thread) => {
     [EntityType.GLOSSARY, EntityType.GLOSSARY_TERM].includes(entityType)
   ) {
     return getGlossaryTermDetailsPath(
+      entityFqn,
+      EntityTabs.ACTIVITY_FEED,
+      ActivityFeedTabs.TASKS
+    );
+  } else if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return getKnowledgeCenterPagePath(
       entityFqn,
       EntityTabs.ACTIVITY_FEED,
       ActivityFeedTabs.TASKS

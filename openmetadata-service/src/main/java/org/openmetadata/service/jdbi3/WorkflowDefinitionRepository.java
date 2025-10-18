@@ -278,15 +278,16 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
       if (isEndNode && hasOutgoing) {
         throw BadRequestException.of(
             String.format(
-                "Workflow '%s' has end event node '%s' with outgoing edges", workflowName, nodeId));
+                "Workflow '%s': End node '%s' cannot have outgoing edges",
+                workflowName, node.getNodeDisplayName()));
       }
 
       // Non-end nodes must have outgoing edges
       if (!isEndNode && !hasOutgoing) {
         throw BadRequestException.of(
             String.format(
-                "Workflow '%s' has non-end node '%s' with no outgoing edges",
-                workflowName, nodeId));
+                "Workflow '%s': Node '%s' requires outgoing edges",
+                workflowName, node.getNodeDisplayName()));
       }
     }
 

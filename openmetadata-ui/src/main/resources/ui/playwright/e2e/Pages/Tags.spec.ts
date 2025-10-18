@@ -657,7 +657,7 @@ test('Verify Owner Add Delete', async ({ page }) => {
   await page.waitForLoadState('networkidle');
 
   await expect(
-    page.locator(`[data-testid="tag-owner-name"]`).getByTestId(OWNER1)
+    page.locator(`[data-testid="owner-link"]`).getByTestId(OWNER1)
   ).toBeVisible();
 
   await classification1.visitPage(page);

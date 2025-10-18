@@ -95,14 +95,27 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
     actions: 100,
   }),
   permissionForApproveOrReject: jest.fn().mockReturnValue(false),
-  StatusClass: {
+}));
+
+jest.mock('../../../utils/EntityStatusUtils', () => ({
+  EntityStatusClass: {
     Draft: 'warning',
     InReview: 'info',
-    'In Review': 'info',
     Rejected: 'error',
     Approved: 'success',
     Deprecated: 'warning',
   },
+  getEntityStatusClass: jest.fn((status) => {
+    const statusMap = {
+      Draft: 'warning',
+      InReview: 'info',
+      Rejected: 'error',
+      Approved: 'success',
+      Deprecated: 'warning',
+    };
+
+    return statusMap[status] || 'warning';
+  }),
 }));
 
 jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>

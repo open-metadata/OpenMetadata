@@ -34,6 +34,7 @@ import { AssetsOfEntity } from '../../../components/Glossary/GlossaryTerms/tabs/
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ERROR_MESSAGE } from '../../../constants/constants';
+import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
@@ -52,13 +53,14 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useFqn } from '../../../hooks/useFqn';
+import { FeedCounts } from '../../../interface/feed.interface';
 import {
   addDataProducts,
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getIsErrorMatch } from '../../../utils/CommonUtils';
+import { getFeedCounts, getIsErrorMatch } from '../../../utils/CommonUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import {
   checkIfExpandViewSupported,
@@ -90,6 +92,7 @@ import {
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
@@ -151,6 +154,9 @@ const DomainDetails = ({
   const [assetCount, setAssetCount] = useState<number>(0);
   const [dataProductsCount, setDataProductsCount] = useState<number>(0);
   const [subDomainsCount, setSubDomainsCount] = useState<number>(0);
+  const [feedCount, setFeedCount] = useState<FeedCounts>(
+    FEED_COUNT_INITIAL_DATA
+  );
   const encodedFqn = getEncodedFqn(
     escapeESReservedCharacters(domain.fullyQualifiedName)
   );
@@ -197,12 +203,23 @@ const DomainDetails = ({
 
   const handleTabChange = (activeKey: string) => {
     if (activeKey === 'assets') {
-      // refresh domain count when assets tab is selected
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
       navigate(getDomainDetailsPath(domainFqn, activeKey));
     }
+  };
+
+  const handleFeedCount = useCallback((data: FeedCounts) => {
+    setFeedCount(data);
+  }, []);
+
+  const getEntityFeedCount = () => {
+    getFeedCounts(
+      EntityType.DOMAIN,
+      domain.fullyQualifiedName ?? '',
+      handleFeedCount
+    );
   };
 
   const {
@@ -669,6 +686,8 @@ const DomainDetails = ({
       onAddSubDomain: addSubDomain,
       showAddSubDomainModal: false,
       labelMap: tabLabelMap,
+      feedCount,
+      onFeedUpdate: getEntityFeedCount,
     });
 
     return getDetailsTabWithNewLabel(
@@ -687,6 +706,7 @@ const DomainDetails = ({
     subDomainsCount,
     queryFilter,
     customizedPage?.tabs,
+    feedCount,
     openAssetDrawer,
     fetchDomainAssets,
     handleTabChange,
@@ -696,6 +716,7 @@ const DomainDetails = ({
     fetchDomainPermission();
     fetchDomainAssets();
     fetchDataProducts();
+    getEntityFeedCount();
   }, [domain.fullyQualifiedName]);
 
   useEffect(() => {
@@ -954,4 +975,4 @@ const DomainDetails = ({
   );
 };
 
-export default DomainDetails;
+export default withActivityFeed(DomainDetails);

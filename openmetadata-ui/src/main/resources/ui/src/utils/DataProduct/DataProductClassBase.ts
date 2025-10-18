@@ -12,62 +12,34 @@
  */
 
 import { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
-import { DataProductsTabRef } from '../../components/Domain/DomainTabs/DataProductsTab/DataProductsTab.interface';
-import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
-import { AssetsTabRef } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import {
   DESCRIPTION_WIDGET,
   GridSizes,
 } from '../../constants/CustomizeWidgets.constants';
-import { DOMAIN_DUMMY_DATA } from '../../constants/Domain.constants';
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import { CreateDomain } from '../../generated/api/domains/createDomain';
-import { Domain } from '../../generated/entity/domains/domain';
+import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { Tab } from '../../generated/system/ui/uiCustomization';
-import { FeedCounts } from '../../interface/feed.interface';
 import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getTabLabelFromId } from '../CustomizePage/CustomizePageUtils';
-import { getDomainDetailTabs, getDomainWidgetsFromKey } from '../DomainUtils';
+import {
+  DataProductDetailPageTabProps,
+  getDataProductDetailTabs,
+  getDataProductWidgetsFromKey,
+} from '../DataProductUtils';
 import i18n from '../i18next/LocalUtil';
 
-export interface DomainDetailPageTabProps {
-  domain: Domain;
-  isVersionsView: boolean;
-  domainPermission: OperationPermission;
-  subDomainsCount: number;
-  dataProductsCount: number;
-  assetCount: number;
-  activeTab: EntityTabs;
-  onAddDataProduct: () => void;
-  onAddSubDomain: (subDomain: CreateDomain) => Promise<void>;
-  queryFilter?: string | Record<string, unknown>;
-  assetTabRef: React.RefObject<AssetsTabRef>;
-  dataProductsTabRef: React.RefObject<DataProductsTabRef>;
-  showAddSubDomainModal: boolean;
-  previewAsset?: EntityDetailsObjectInterface;
-  setPreviewAsset: (asset?: EntityDetailsObjectInterface) => void;
-  setAssetModalVisible: (visible: boolean) => void;
-  handleAssetClick: (asset?: EntityDetailsObjectInterface) => void;
-  handleAssetSave: () => void;
-  setShowAddSubDomainModal: (visible: boolean) => void;
-  labelMap?: Record<EntityTabs, string>;
-  feedCount?: FeedCounts;
-  onFeedUpdate?: () => void;
-}
-
-type DomainWidgetKeys =
+type DataProductWidgetKeys =
   | DetailPageWidgetKeys.DESCRIPTION
   | DetailPageWidgetKeys.OWNERS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
-  | DetailPageWidgetKeys.EXPERTS
-  | DetailPageWidgetKeys.DOMAIN_TYPE
-  | DetailPageWidgetKeys.CUSTOM_PROPERTIES;
+  | DetailPageWidgetKeys.DOMAIN
+  | DetailPageWidgetKeys.CUSTOM_PROPERTIES
+  | DetailPageWidgetKeys.EXPERTS;
 
-class DomainClassBase {
-  defaultWidgetHeight: Record<DomainWidgetKeys, number>;
+class DataProductClassBase {
+  defaultWidgetHeight: Record<DataProductWidgetKeys, number>;
 
   constructor() {
     this.defaultWidgetHeight = {
@@ -76,22 +48,20 @@ class DomainClassBase {
       [DetailPageWidgetKeys.TAGS]: 2,
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.EXPERTS]: 2,
-      [DetailPageWidgetKeys.DOMAIN_TYPE]: 2,
+      [DetailPageWidgetKeys.DOMAIN]: 1.5,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
     };
   }
 
-  public getDomainDetailPageTabs(
-    domainDetailsPageProps: DomainDetailPageTabProps
+  public getDataProductDetailPageTabs(
+    dataProductDetailsPageProps: DataProductDetailPageTabProps
   ): TabProps[] {
-    return getDomainDetailTabs(domainDetailsPageProps);
+    return getDataProductDetailTabs(dataProductDetailsPageProps);
   }
 
-  public getDomainDetailPageTabsIds(): Tab[] {
+  public getDataProductDetailPageTabsIds(): Tab[] {
     return [
       EntityTabs.DOCUMENTATION,
-      EntityTabs.SUBDOMAINS,
-      EntityTabs.DATA_PRODUCTS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.ASSETS,
       EntityTabs.CUSTOM_PROPERTIES,
@@ -129,11 +99,19 @@ class DomainClassBase {
         static: true,
       },
       {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN],
+        i: DetailPageWidgetKeys.DOMAIN,
+        w: 2,
+        x: 6,
+        y: 0,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.OWNERS],
         i: DetailPageWidgetKeys.OWNERS,
         w: 2,
         x: 6,
-        y: 0,
+        y: 1,
         static: false,
       },
       {
@@ -141,7 +119,7 @@ class DomainClassBase {
         i: DetailPageWidgetKeys.TAGS,
         w: 2,
         x: 6,
-        y: 1,
+        y: 2,
         static: false,
       },
       {
@@ -149,23 +127,7 @@ class DomainClassBase {
         i: DetailPageWidgetKeys.GLOSSARY_TERMS,
         w: 2,
         x: 6,
-        y: 2,
-        static: false,
-      },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS],
-        i: DetailPageWidgetKeys.EXPERTS,
-        w: 2,
-        x: 6,
         y: 3,
-        static: false,
-      },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_TYPE],
-        i: DetailPageWidgetKeys.DOMAIN_TYPE,
-        w: 2,
-        x: 6,
-        y: 4,
         static: false,
       },
       {
@@ -176,16 +138,27 @@ class DomainClassBase {
         y: 5,
         static: false,
       },
+      {
+        h: this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS],
+        i: DetailPageWidgetKeys.EXPERTS,
+        w: 2,
+        x: 6,
+        y: 5,
+        static: false,
+      },
     ];
-  }
-
-  public getDummyData(): Domain {
-    return DOMAIN_DUMMY_DATA;
   }
 
   public getCommonWidgetList() {
     return [
       DESCRIPTION_WIDGET,
+      {
+        fullyQualifiedName: DetailPageWidgetKeys.DOMAIN,
+        name: i18n.t('label.domain'),
+        data: {
+          gridSizes: ['large'] as GridSizes[],
+        },
+      },
       {
         fullyQualifiedName: DetailPageWidgetKeys.OWNERS,
         name: i18n.t('label.owner-plural'),
@@ -200,18 +173,11 @@ class DomainClassBase {
           gridSizes: ['large'] as GridSizes[],
         },
       },
-      {
-        fullyQualifiedName: DetailPageWidgetKeys.DOMAIN_TYPE,
-        name: i18n.t('label.domain-type'),
-        data: {
-          gridSizes: ['large'] as GridSizes[],
-        },
-      },
     ];
   }
 
   public getWidgetsFromKey(widgetConfig: WidgetConfig) {
-    return getDomainWidgetsFromKey(widgetConfig);
+    return getDataProductWidgetsFromKey(widgetConfig);
   }
 
   public getWidgetHeight(widgetName: string) {
@@ -226,17 +192,33 @@ class DomainClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.GLOSSARY_TERMS];
       case DetailPageWidgetKeys.EXPERTS:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS];
-      case DetailPageWidgetKeys.DOMAIN_TYPE:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_TYPE];
+      case DetailPageWidgetKeys.DOMAIN:
+        return this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:
         return 1;
     }
   }
+
+  public getDummyData(): DataProduct {
+    return {
+      id: 'dummy-data-product',
+      name: 'Sample Data Product',
+      displayName: 'Sample Data Product',
+      description: 'This is a sample data product for demonstration purposes',
+      fullyQualifiedName: 'sample.dataProduct',
+      version: 0.1,
+      updatedAt: Date.now(),
+      updatedBy: 'admin',
+      owners: [],
+      domains: [],
+      href: '',
+    } as DataProduct;
+  }
 }
 
-const domainClassBase = new DomainClassBase();
+const dataProductClassBase = new DataProductClassBase();
 
-export default domainClassBase;
-export { DomainClassBase };
+export default dataProductClassBase;
+export { DataProductClassBase };

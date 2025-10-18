@@ -727,6 +727,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
       <Route element={<ClassificationRouter />} path="/tags/*" />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM} />
       <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_TAB} />
+      <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_SUB_TAB} />
       <Route element={<GlossaryRouter />} path="/glossary/*" />
       <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
       <Route element={<SettingsRouter />} path="/settings/*" />
