@@ -55,6 +55,7 @@ import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -63,6 +64,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
@@ -71,8 +73,10 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
@@ -168,10 +172,23 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               schema = @Schema(type = "string", format = "uuid"))
           @QueryParam("entity")
           UUID entityId) {
-    ListFilter filter = new ListFilter(include).addQueryParam("status", status);
+    ListFilter filter = new ListFilter(include).addQueryParam("entityStatus", status);
     if (entityId != null) {
       filter.addQueryParam("entity", entityId.toString());
     }
+    // Apply visibility filter param
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
+      try {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        UUID currentUserId = subjectContext.user().getId();
+        boolean isAdmin = subjectContext.isAdmin();
+
+        filter.addQueryParam("userId", currentUserId.toString());
+        filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
+      } catch (Exception ignore) {
+      }
+    }
+
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -210,7 +227,15 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    DataContract dataContract = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+
+    // Check visibility permissions
+    String currentUser = securityContext.getUserPrincipal().getName();
+    if (!repository.isDataContractVisibleToUser(dataContract, currentUser)) {
+      throw new EntityNotFoundException("Data contract not found for id " + id);
+    }
+
+    return dataContract;
   }
 
   @GET
@@ -250,7 +275,14 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    DataContract dataContract =
+        getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    String currentUser = securityContext.getUserPrincipal().getName();
+    if (!repository.isDataContractVisibleToUser(dataContract, currentUser)) {
+      throw new EntityNotFoundException("Data contract not found for name " + fqn);
+    }
+
+    return dataContract;
   }
 
   @GET
@@ -872,6 +904,12 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     ResourceContext<DataContract> resourceContext =
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    if (dataContract.getEntityStatus() != EntityStatus.APPROVED) {
+      throw BadRequestException.of(
+          String.format(
+              "Cannot validate non-approved data contract. Current status: %s. Only APPROVED contracts can be validated.",
+              dataContract.getEntityStatus()));
+    }
 
     RestUtil.PutResponse<DataContractResult> result = repository.validateContract(dataContract);
     return result.toResponse();

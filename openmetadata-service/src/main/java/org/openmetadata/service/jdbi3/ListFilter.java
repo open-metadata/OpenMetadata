@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.entity.data.Table;
@@ -61,6 +62,9 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getEntityLinkCondition());
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
+    conditions.add(getEntityStatusCondition());
+    conditions.add(getEntityVisibilityCondition(tableName));
+
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -549,5 +553,57 @@ public class ListFilter extends Filter<ListFilter> {
     name = escapeApostrophe(name);
     // "_" is a wildcard and looks for any single character. Add "\\" in front of it to escape it
     return name.replaceAll("_", "\\\\_");
+  }
+
+  public String getEntityStatusCondition() {
+    String entityStatus = queryParams.get("entityStatus");
+    if (entityStatus == null) {
+      return "";
+    }
+    return String.format("entityStatus = '%s'", entityStatus);
+  }
+
+  public String getEntityVisibilityCondition(String tableName) {
+    String currentUserId = getQueryParam("userId");
+    String isAdminParam = getQueryParam("isAdmin");
+
+    if (currentUserId == null) {
+      return "";
+    }
+
+    // Admin users can see all entities regardless of status
+    if ("true".equals(isAdminParam)) {
+      return "";
+    }
+
+    // Validate UUID format to prevent injection
+    try {
+      UUID.fromString(currentUserId);
+    } catch (IllegalArgumentException e) {
+      return "";
+    }
+
+    String entityColumn = tableName == null ? "id" : tableName + ".id";
+    String statusColumn = tableName == null ? "entityStatus" : tableName + ".entityStatus";
+
+    return String.format(
+        "(%s IN ('Approved', 'Unprocessed') "
+            + "OR EXISTS ("
+            + "SELECT 1 FROM entity_relationship er "
+            + "WHERE er.toId = %s "
+            + "AND er.relation IN (%d, %d) "
+            + "AND (er.fromId = '%s' AND er.fromEntity = 'user' "
+            + "     OR er.fromId IN (SELECT fromId FROM entity_relationship "
+            + "                      WHERE toId = '%s' AND fromEntity = 'team' AND toEntity = 'user' AND relation = %d) "
+            + "        AND er.fromEntity = 'team') "
+            + "LIMIT 1"
+            + "))",
+        statusColumn,
+        entityColumn,
+        Relationship.OWNS.ordinal(),
+        Relationship.REVIEWS.ordinal(),
+        currentUserId,
+        currentUserId,
+        Relationship.HAS.ordinal());
   }
 }

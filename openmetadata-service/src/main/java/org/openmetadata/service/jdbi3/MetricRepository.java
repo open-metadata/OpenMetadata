@@ -355,4 +355,13 @@ public class MetricRepository extends EntityRepository<Metric> {
       return metric;
     }
   }
+
+  public boolean isMetricVisibleToUser(Metric metric, String userName) {
+    return isEntityVisibleToUserByStatus(
+        metric.getEntityStatus(),
+        metric.getUpdatedBy(),
+        metric.getOwners(),
+        metric.getReviewers(),
+        userName);
+  }
 }

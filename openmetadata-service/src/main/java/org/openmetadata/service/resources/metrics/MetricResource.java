@@ -56,12 +56,15 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Path("/v1/metrics")
 @Tag(
@@ -136,6 +139,20 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = new ListFilter(include);
+
+    // Apply visibility filter query
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
+      try {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        UUID currentUserId = subjectContext.user().getId();
+        boolean isAdmin = subjectContext.isAdmin();
+
+        filter.addQueryParam("userId", currentUserId.toString());
+        filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
+      } catch (Exception ignore) {
+      }
+    }
+
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -172,7 +189,13 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    Metric metric = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    String currentUser = securityContext.getUserPrincipal().getName();
+    if (!repository.isMetricVisibleToUser(metric, currentUser)) {
+      throw new EntityNotFoundException("Metric not found for id " + id);
+    }
+
+    return metric;
   }
 
   @GET
@@ -210,7 +233,15 @@ public class MetricResource extends EntityResource<Metric, MetricRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    Metric metric = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+
+    // Check visibility permissions
+    String currentUser = securityContext.getUserPrincipal().getName();
+    if (!repository.isMetricVisibleToUser(metric, currentUser)) {
+      throw new EntityNotFoundException("Metric not found for name " + fqn);
+    }
+
+    return metric;
   }
 
   @GET

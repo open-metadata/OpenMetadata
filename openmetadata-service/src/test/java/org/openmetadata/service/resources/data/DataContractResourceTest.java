@@ -785,7 +785,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     return new CreateDataContract()
         .withName(contractName)
         .withEntity(table.getEntityReference())
-        .withEntityStatus(EntityStatus.DRAFT);
+        .withEntityStatus(EntityStatus.APPROVED);
   }
 
   /**
@@ -806,7 +806,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     return new CreateDataContract()
         .withName(contractName)
         .withEntity(entity.getEntityReference())
-        .withEntityStatus(EntityStatus.DRAFT);
+        .withEntityStatus(EntityStatus.APPROVED);
   }
 
   public DataContract createDataContract(CreateDataContract create) throws IOException {
@@ -998,6 +998,14 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
         validateResponse, DataContractResult.class, Status.OK.getStatusCode());
   }
 
+  private DataContractResult validateContract(UUID id, Map<String, String> authHeaders)
+      throws HttpResponseException {
+    WebTarget validateTarget = getResource(id).path("/validate");
+    Response validateResponse = SecurityUtil.addHeaders(validateTarget, authHeaders).post(null);
+    return TestUtils.readResponse(
+        validateResponse, DataContractResult.class, Status.OK.getStatusCode());
+  }
+
   private Response getResultById(UUID dataContractId, UUID resultId) {
     WebTarget resultTarget = getResource(dataContractId).path("/results").path(resultId.toString());
     return SecurityUtil.addHeaders(resultTarget, ADMIN_AUTH_HEADERS).get();
@@ -1061,11 +1069,11 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     CreateDataContract create = createDataContractRequest(test.getDisplayName(), table);
     DataContract created = createDataContract(create);
 
-    // Update to Active status
-    create.withEntityStatus(EntityStatus.APPROVED);
+    // Update to In Review status
+    create.withEntityStatus(EntityStatus.IN_REVIEW);
     DataContract updated = updateDataContract(create);
 
-    assertEquals(EntityStatus.APPROVED, updated.getEntityStatus());
+    assertEquals(EntityStatus.IN_REVIEW, updated.getEntityStatus());
     assertEquals(created.getId(), updated.getId());
   }
 
@@ -2298,7 +2306,7 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
 
     // Regular user should not be able to patch admin's data contract
     String originalJson = JsonUtils.pojoToJson(created);
-    created.setEntityStatus(EntityStatus.APPROVED);
+    created.setEntityStatus(EntityStatus.IN_REVIEW);
 
     try {
       ObjectMapper mapper = new ObjectMapper();
@@ -5683,5 +5691,251 @@ public class DataContractResourceTest extends EntityResourceTest<DataContract, C
     DataContract finalState = getDataContract(created.getId(), null);
     assertEquals(1, finalState.getSecurity().getPolicies().size());
     assertEquals("policy-2", finalState.getSecurity().getPolicies().get(0).getAccessPolicy());
+  }
+
+  // ===================== Entity Status Filtering Tests =====================
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testEntityStatusFilteringWithMultipleContracts(TestInfo test) throws IOException {
+    // Create contracts with different entity statuses
+    Table table1 = createUniqueTable(test.getDisplayName() + "_1");
+    Table table2 = createUniqueTable(test.getDisplayName() + "_2");
+    Table table3 = createUniqueTable(test.getDisplayName() + "_3");
+    Table table4 = createUniqueTable(test.getDisplayName() + "_4");
+
+    // Create contracts with different statuses
+    CreateDataContract draftCreate =
+        createDataContractRequest("draft_contract", table1).withEntityStatus(EntityStatus.DRAFT);
+    CreateDataContract inReviewCreate =
+        createDataContractRequest("review_contract", table2)
+            .withEntityStatus(EntityStatus.IN_REVIEW);
+    CreateDataContract approvedCreate =
+        createDataContractRequest("approved_contract", table3)
+            .withEntityStatus(EntityStatus.APPROVED);
+    CreateDataContract rejectedCreate =
+        createDataContractRequest("rejected_contract", table4)
+            .withEntityStatus(EntityStatus.REJECTED);
+
+    DataContract draftContract = createDataContract(draftCreate);
+    DataContract inReviewContract = createDataContract(inReviewCreate);
+    DataContract approvedContract = createDataContract(approvedCreate);
+    DataContract rejectedContract = createDataContract(rejectedCreate);
+
+    // Test filtering by APPROVED status only
+    Map<String, String> approvedParams = new HashMap<>();
+    approvedParams.put("status", EntityStatus.APPROVED.toString());
+    ResultList<DataContract> approvedResults = listEntities(approvedParams, ADMIN_AUTH_HEADERS);
+
+    // Should only contain approved contracts
+    assertTrue(
+        approvedResults.getData().stream()
+            .allMatch(contract -> contract.getEntityStatus() == EntityStatus.APPROVED));
+    assertTrue(
+        approvedResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(approvedContract.getId())));
+    assertFalse(
+        approvedResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(draftContract.getId())));
+
+    // Test filtering by DRAFT status
+    Map<String, String> draftParams = new HashMap<>();
+    draftParams.put("status", EntityStatus.DRAFT.toString());
+    ResultList<DataContract> draftResults = listEntities(draftParams, ADMIN_AUTH_HEADERS);
+
+    assertTrue(
+        draftResults.getData().stream()
+            .allMatch(contract -> contract.getEntityStatus() == EntityStatus.DRAFT));
+    assertTrue(
+        draftResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(draftContract.getId())));
+    assertFalse(
+        draftResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(approvedContract.getId())));
+
+    // Test filtering by IN_REVIEW status
+    Map<String, String> reviewParams = new HashMap<>();
+    reviewParams.put("status", EntityStatus.IN_REVIEW.toString());
+    ResultList<DataContract> reviewResults = listEntities(reviewParams, ADMIN_AUTH_HEADERS);
+
+    assertTrue(
+        reviewResults.getData().stream()
+            .allMatch(contract -> contract.getEntityStatus() == EntityStatus.IN_REVIEW));
+    assertTrue(
+        reviewResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(inReviewContract.getId())));
+
+    // Test filtering by REJECTED status
+    Map<String, String> rejectedParams = new HashMap<>();
+    rejectedParams.put("status", EntityStatus.REJECTED.toString());
+    ResultList<DataContract> rejectedResults = listEntities(rejectedParams, ADMIN_AUTH_HEADERS);
+
+    assertTrue(
+        rejectedResults.getData().stream()
+            .allMatch(contract -> contract.getEntityStatus() == EntityStatus.REJECTED));
+    assertTrue(
+        rejectedResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(rejectedContract.getId())));
+
+    // Test listing without entityStatus filter - should return all contracts
+    ResultList<DataContract> allResults = listEntities(new HashMap<>(), ADMIN_AUTH_HEADERS);
+    assertTrue(
+        allResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(draftContract.getId())));
+    assertTrue(
+        allResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(approvedContract.getId())));
+    assertTrue(
+        allResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(inReviewContract.getId())));
+    assertTrue(
+        allResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(rejectedContract.getId())));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testEntityStatusFilteringDoesNotAffectOtherQueries(TestInfo test) throws IOException {
+    // Create a contract and verify entityStatus filtering works for DataContracts
+    Table table = createUniqueTable(test.getDisplayName());
+    CreateDataContract create =
+        createDataContractRequest("test_contract", table).withEntityStatus(EntityStatus.APPROVED);
+    DataContract contract = createDataContract(create);
+
+    // Test that entityStatus filtering works for DataContracts
+    Map<String, String> approvedParams = new HashMap<>();
+    approvedParams.put("status", EntityStatus.APPROVED.toString());
+    ResultList<DataContract> approvedResults = listEntities(approvedParams, ADMIN_AUTH_HEADERS);
+    assertTrue(
+        approvedResults.getData().stream().anyMatch(c -> c.getId().equals(contract.getId())));
+
+    // Test that entityStatus filtering doesn't break when filtering by DRAFT
+    Map<String, String> draftParams = new HashMap<>();
+    draftParams.put("status", EntityStatus.DRAFT.toString());
+    ResultList<DataContract> draftResults = listEntities(draftParams, ADMIN_AUTH_HEADERS);
+    assertFalse(draftResults.getData().stream().anyMatch(c -> c.getId().equals(contract.getId())));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testValidateContractThrowsExceptionForNonApproved(TestInfo test) throws IOException {
+    Table table1 = createUniqueTable(test.getDisplayName() + "_1");
+    Table table2 = createUniqueTable(test.getDisplayName() + "_2");
+    Table table3 = createUniqueTable(test.getDisplayName() + "_3");
+    Table table4 = createUniqueTable(test.getDisplayName() + "_4");
+
+    // Test DRAFT contract validation throws exception
+    CreateDataContract draftCreate =
+        createDataContractRequest("draft_test", table1).withEntityStatus(EntityStatus.DRAFT);
+    DataContract draftContract = createDataContract(draftCreate);
+
+    String expectedMsg =
+        "Cannot validate non-approved data contract. Current status: Draft. Only APPROVED contracts can be validated.";
+    assertResponse(
+        () -> validateContract(draftContract.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        expectedMsg);
+
+    // Test IN_REVIEW contract validation throws exception
+    CreateDataContract reviewCreate =
+        createDataContractRequest("review_test", table2).withEntityStatus(EntityStatus.IN_REVIEW);
+    DataContract reviewContract = createDataContract(reviewCreate);
+
+    assertResponse(
+        () -> validateContract(reviewContract.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Cannot validate non-approved data contract. Current status: In Review. Only APPROVED contracts can be validated.");
+
+    // Test REJECTED contract validation throws exception
+    CreateDataContract rejectedCreate =
+        createDataContractRequest("rejected_test", table3).withEntityStatus(EntityStatus.REJECTED);
+    DataContract rejectedContract = createDataContract(rejectedCreate);
+
+    assertResponse(
+        () -> validateContract(rejectedContract.getId(), ADMIN_AUTH_HEADERS),
+        BAD_REQUEST,
+        "Cannot validate non-approved data contract. Current status: Rejected. Only APPROVED contracts can be validated.");
+
+    // Test APPROVED contract validation works
+    CreateDataContract approvedCreate =
+        createDataContractRequest("approved_test", table4).withEntityStatus(EntityStatus.APPROVED);
+    DataContract approvedContract = createDataContract(approvedCreate);
+
+    // This should not throw exception
+    DataContractResult result = validateContract(approvedContract.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(result);
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testDataContractValidationAppFilteringBehavior(TestInfo test) throws IOException {
+    // Create contracts with different statuses
+    Table table1 = createUniqueTable(test.getDisplayName() + "_app_1");
+    Table table2 = createUniqueTable(test.getDisplayName() + "_app_2");
+
+    CreateDataContract draftCreate =
+        createDataContractRequest("app_draft", table1).withEntityStatus(EntityStatus.DRAFT);
+    CreateDataContract approvedCreate =
+        createDataContractRequest("app_approved", table2).withEntityStatus(EntityStatus.APPROVED);
+
+    DataContract draftContract = createDataContract(draftCreate);
+    DataContract approvedContract = createDataContract(approvedCreate);
+
+    // Simulate DataContractValidationApp filtering - should only get APPROVED contracts
+    Map<String, String> validationAppParams = new HashMap<>();
+    validationAppParams.put("status", EntityStatus.APPROVED.toString());
+    ResultList<DataContract> validationResults =
+        listEntities(validationAppParams, ADMIN_AUTH_HEADERS);
+
+    // Verify only approved contracts are returned
+    assertFalse(
+        validationResults.getData().isEmpty(), "Should have at least one approved contract");
+    assertTrue(
+        validationResults.getData().stream()
+            .allMatch(contract -> contract.getEntityStatus() == EntityStatus.APPROVED),
+        "All returned contracts should have APPROVED status");
+    assertTrue(
+        validationResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(approvedContract.getId())));
+    assertFalse(
+        validationResults.getData().stream()
+            .anyMatch(contract -> contract.getId().equals(draftContract.getId())));
+
+    // Verify that the approved contract can actually be validated via API
+    assertTrue(
+        validationResults.getData().stream()
+            .anyMatch(
+                contract -> {
+                  try {
+                    DataContractResult result =
+                        validateContract(contract.getId(), ADMIN_AUTH_HEADERS);
+                    return result != null
+                        && result.getDataContractFQN().equals(contract.getFullyQualifiedName());
+                  } catch (Exception e) {
+                    return false;
+                  }
+                }));
+  }
+
+  @Test
+  @Execution(ExecutionMode.CONCURRENT)
+  void testEntityStatusFilteringEdgeCases(TestInfo test) throws IOException {
+    // Test with invalid entityStatus value (should return no results)
+    Map<String, String> invalidParams = new HashMap<>();
+    invalidParams.put("status", "INVALID_STATUS");
+    ResultList<DataContract> invalidResults = listEntities(invalidParams, ADMIN_AUTH_HEADERS);
+    assertTrue(invalidResults.getData().isEmpty());
+
+    // Test with empty entityStatus value
+    Map<String, String> emptyParams = new HashMap<>();
+    emptyParams.put("status", "");
+    ResultList<DataContract> emptyResults = listEntities(emptyParams, ADMIN_AUTH_HEADERS);
+    // Should work like no filter - returning all contracts
+
+    // Test case sensitivity
+    Map<String, String> caseParams = new HashMap<>();
+    caseParams.put("status", "approved"); // lowercase
+    ResultList<DataContract> caseResults = listEntities(caseParams, ADMIN_AUTH_HEADERS);
+    assertTrue(caseResults.getData().isEmpty()); // Should be case sensitive
   }
 }

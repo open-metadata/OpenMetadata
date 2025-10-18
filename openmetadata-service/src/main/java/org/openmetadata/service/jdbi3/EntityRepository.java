@@ -5999,4 +5999,92 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public boolean isUpdateForImport(T entity) {
     return findByNameOrNull(entity.getFullyQualifiedName(), Include.ALL) != null;
   }
+
+  /**
+   * Check if an entity with entity status is visible to a user based on status and ownership/reviewer permissions.
+   * For customers without workflows -> status is Unprocessed (visible to all)
+   * For customers with workflows -> status is Approved (visible to all), other statuses only visible to owners, reviewers and admin
+   */
+  protected boolean isEntityVisibleToUserByStatus(
+      EntityStatus entityStatus,
+      String updatedBy,
+      List<EntityReference> owners,
+      List<EntityReference> reviewers,
+      String userName) {
+    if (userName == null) {
+      return false;
+    }
+
+    // Admin users can see all entities
+    if (isAdminUser(userName)) {
+      return true;
+    }
+
+    // Check visibility based on entity status
+    return switch (entityStatus) {
+      case APPROVED, UNPROCESSED -> true;
+      case DRAFT, IN_REVIEW, REJECTED -> isOwnerOrReviewerByRefs(
+          updatedBy, owners, reviewers, userName);
+      default -> false;
+    };
+  }
+
+  private boolean isOwnerOrReviewerByRefs(
+      String updatedBy,
+      List<EntityReference> owners,
+      List<EntityReference> reviewers,
+      String userName) {
+    // Check if user is the owner
+    if (isEntityOwnerByRefs(updatedBy, owners, userName)) {
+      return true;
+    }
+    // Check if user is in reviewers list
+    return isUserInEntityReferenceList(reviewers, userName);
+  }
+
+  private boolean isEntityOwnerByRefs(
+      String updatedBy, List<EntityReference> owners, String userName) {
+    // Check updatedBy (most recent editor)
+    if (userName.equals(updatedBy)) {
+      return true;
+    }
+    // Check if user is in the owners list (original creators)
+    return isUserInEntityReferenceList(owners, userName);
+  }
+
+  private boolean isUserInEntityReferenceList(List<EntityReference> entityRefs, String userName) {
+    if (nullOrEmpty(entityRefs)) {
+      return false;
+    }
+
+    return entityRefs.stream()
+        .anyMatch(
+            entityRef -> {
+              if (entityRef == null) {
+                return false;
+              }
+              if (TEAM.equals(entityRef.getType())) {
+                // For teams, check if user is a member of the team
+                String teamFqn = entityRef.getFullyQualifiedName();
+                if (teamFqn == null) {
+                  return false;
+                }
+                Team team = Entity.getEntityByName(TEAM, teamFqn, "users", Include.NON_DELETED);
+                return team.getUsers().stream()
+                    .anyMatch(
+                        user -> {
+                          String userFqn = user.getFullyQualifiedName();
+                          return userFqn != null && userFqn.equals(userName);
+                        });
+              } else {
+                // For users, directly compare FQN
+                String entityFqn = entityRef.getFullyQualifiedName();
+                return entityFqn != null && entityFqn.equals(userName);
+              }
+            });
+  }
+
+  private boolean isAdminUser(String userName) {
+    return ADMIN_USER_NAME.equals(userName);
+  }
 }

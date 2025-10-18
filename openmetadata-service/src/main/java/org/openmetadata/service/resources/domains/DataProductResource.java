@@ -57,13 +57,16 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 @Path("/v1/dataProducts")
@@ -145,6 +148,20 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
           Entity.getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED);
       filter.addQueryParam("domainId", String.format("'%s'", domainReference.getId()));
     }
+
+    // Apply visibility filter query
+    if (securityContext != null && securityContext.getUserPrincipal() != null) {
+      try {
+        SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
+        UUID currentUserId = subjectContext.user().getId();
+        boolean isAdmin = subjectContext.isAdmin();
+
+        filter.addQueryParam("userId", currentUserId.toString());
+        filter.addQueryParam("isAdmin", String.valueOf(isAdmin));
+      } catch (Exception ignore) {
+      }
+    }
+
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
 
@@ -177,7 +194,16 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
       @Parameter(description = "Id of the dataProduct", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, null);
+    DataProduct dataProduct = getInternal(uriInfo, securityContext, id, fieldsParam, null);
+
+    // Check visibility permissions
+    String currentUser = securityContext.getUserPrincipal().getName();
+    DataProductRepository dataProductRepo = (DataProductRepository) repository;
+    if (!dataProductRepo.isDataProductVisibleToUser(dataProduct, currentUser)) {
+      throw new EntityNotFoundException("Data product not found for id " + id);
+    }
+
+    return dataProduct;
   }
 
   @GET
@@ -209,7 +235,15 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
           String fieldsParam) {
-    return getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
+    DataProduct dataProduct = getByNameInternal(uriInfo, securityContext, name, fieldsParam, null);
+
+    // Check visibility permissions
+    String currentUser = securityContext.getUserPrincipal().getName();
+    if (!repository.isDataProductVisibleToUser(dataProduct, currentUser)) {
+      throw new EntityNotFoundException("Data product not found for name " + name);
+    }
+
+    return dataProduct;
   }
 
   @GET

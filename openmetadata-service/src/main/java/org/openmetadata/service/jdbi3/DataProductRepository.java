@@ -550,4 +550,13 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       LOG.info("No approval task found for data product {}", entity.getFullyQualifiedName());
     }
   }
+
+  public boolean isDataProductVisibleToUser(DataProduct dataProduct, String userName) {
+    return isEntityVisibleToUserByStatus(
+        dataProduct.getEntityStatus(),
+        dataProduct.getUpdatedBy(),
+        dataProduct.getOwners(),
+        dataProduct.getReviewers(),
+        userName);
+  }
 }
