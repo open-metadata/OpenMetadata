@@ -142,7 +142,7 @@ const DomainSelectableList = ({
           (!isVersionView && (
             <EditIconButton
               newLook
-              data-testid="edit-domain"
+              data-testid="add-domain"
               disabled={!hasPermission || disabled}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
               size="small"
