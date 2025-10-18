@@ -23,39 +23,32 @@
  *  limitations under the License.
  */
 
-import { expect, Page, test as base } from '@playwright/test';
-import { performAdminLogin } from '../../utils/admin';
+import {
+  LDAP_VISIBLE_FIELDS,
+  OIDC_COMMON_FIELDS,
+  SAML_VISIBLE_FIELDS,
+  SSO_COMMON_FIELDS,
+} from '../../constant/ssoConfiguration';
 import { redirectToHomePage } from '../../utils/common';
 import {
   enableSSOEditMode,
   selectSSOProvider,
   verifyProviderFields,
 } from '../../utils/sso';
+import { test } from '../fixtures/pages';
 
-const test = base.extend<{
-  adminPage: Page;
-}>({
-  adminPage: async ({ browser }, use) => {
-    const { page } = await performAdminLogin(browser);
-    await use(page);
-    await page.close();
-  },
-});
+const { expect } = test;
 
 test.describe('SSO Configuration Tests', () => {
-  test.beforeEach(async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
-    await enableSSOEditMode(adminPage);
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+    await enableSSOEditMode(page);
   });
 
   test.describe('Provider Selection Screen', () => {
-    test('should display all available SSO providers', async ({
-      adminPage,
-    }) => {
+    test('should display all available SSO providers', async ({ page }) => {
       // Verify provider selector is visible
-      await expect(
-        adminPage.locator('.provider-selector-container')
-      ).toBeVisible();
+      await expect(page.locator('.provider-selector-container')).toBeVisible();
 
       // Verify all provider cards are displayed
       const providers = [
@@ -70,12 +63,12 @@ test.describe('SSO Configuration Tests', () => {
       ];
       for (const provider of providers) {
         await expect(
-          adminPage.locator('.provider-item').filter({ hasText: provider })
+          page.locator('.provider-item').filter({ hasText: provider })
         ).toBeVisible();
       }
 
       // Verify Configure button is disabled initially
-      const configureButton = adminPage.getByRole('button', {
+      const configureButton = page.getByRole('button', {
         name: /configure/i,
       });
 
@@ -83,23 +76,21 @@ test.describe('SSO Configuration Tests', () => {
     });
 
     test('should enable Configure button when provider is selected', async ({
-      adminPage,
+      page,
     }) => {
       // Click on Google provider
-      await adminPage
+      await page
         .locator('.provider-item')
         .filter({ hasText: 'Google' })
         .click();
 
       // Verify the provider card is selected
       await expect(
-        adminPage
-          .locator('.provider-item.selected')
-          .filter({ hasText: 'Google' })
+        page.locator('.provider-item.selected').filter({ hasText: 'Google' })
       ).toBeVisible();
 
       // Verify Configure button is now enabled
-      const configureButton = adminPage.getByRole('button', {
+      const configureButton = page.getByRole('button', {
         name: /configure/i,
       });
 
@@ -111,52 +102,24 @@ test.describe('SSO Configuration Tests', () => {
     'Provider Field Visibility Checks - Confidential Client',
     () => {
       test('should show correct fields for Google provider with confidential client', async ({
-        adminPage,
+        page,
       }) => {
-        await selectSSOProvider(adminPage, 'google');
+        await selectSSOProvider(page, 'google');
 
         // Verify Confidential client type is selected by default
-        const confidentialRadio = adminPage.getByRole('radio', {
+        const confidentialRadio = page.getByRole('radio', {
           name: /confidential/i,
         });
 
         await expect(confidentialRadio).toBeChecked();
 
         // Verify common fields are visible
-        const googleCommonFields = [
-          'Provider Name',
-          'Authority',
-          'Client ID',
-          'Callback URL',
-          'Public Key URLs',
-          'Token Validation Algorithm',
-          'JWT Principal Claims',
-          'Enable Self Signup',
-        ];
-        await verifyProviderFields(adminPage, googleCommonFields);
+        await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
         // Verify OIDC specific fields with OIDC prefix in labels
-        const oidcFields = [
-          'OIDC Client ID',
-          'OIDC Client Secret',
-          'OIDC Request Scopes',
-          'OIDC Discovery URI',
-          'OIDC Use Nonce',
-          'OIDC Preferred JWS Algorithm',
-          'OIDC Response Type',
-          'OIDC Disable PKCE',
-          'OIDC Max Clock Skew',
-          'OIDC Client Authentication Method',
-          'OIDC Token Validity',
-          'OIDC Server URL',
-          'OIDC Callback URL',
-          'OIDC Max Age',
-          'OIDC Prompt',
-          'OIDC Session Expiry',
-        ];
 
-        for (const field of oidcFields) {
-          const fieldElement = adminPage.getByLabel(field);
+        for (const field of OIDC_COMMON_FIELDS) {
+          const fieldElement = page.getByLabel(field);
           const fieldCount = await fieldElement.count();
           if (fieldCount > 0) {
             await expect(fieldElement.first()).toBeVisible();
@@ -165,53 +128,25 @@ test.describe('SSO Configuration Tests', () => {
       });
 
       test('should show correct fields for Auth0 provider with confidential client', async ({
-        adminPage,
+        page,
       }) => {
-        await selectSSOProvider(adminPage, 'auth0');
+        await selectSSOProvider(page, 'auth0');
 
         // Verify Confidential client type is selected by default
-        const confidentialRadio = adminPage.getByRole('radio', {
+        const confidentialRadio = page.getByRole('radio', {
           name: /confidential/i,
         });
 
         await expect(confidentialRadio).toBeChecked();
 
         // Verify common fields are visible
-        const auth0CommonFields = [
-          'Provider Name',
-          'Authority',
-          'Client ID',
-          'Callback URL',
-          'Public Key URLs',
-          'Token Validation Algorithm',
-          'JWT Principal Claims',
-          'Enable Self Signup',
-        ];
-        await verifyProviderFields(adminPage, auth0CommonFields);
+        await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
         // Verify OIDC specific fields with OIDC prefix in labels
-        const oidcFields = [
-          'OIDC Client ID',
-          'OIDC Client Secret',
-          'OIDC Request Scopes',
-          'OIDC Discovery URI',
-          'OIDC Use Nonce',
-          'OIDC Preferred JWS Algorithm',
-          'OIDC Response Type',
-          'OIDC Disable PKCE',
-          'OIDC Max Clock Skew',
-          'OIDC Client Authentication Method',
-          'OIDC Token Validity',
-          'OIDC Tenant',
-          'OIDC Server URL',
-          'OIDC Callback URL',
-          'OIDC Max Age',
-          'OIDC Prompt',
-          'OIDC Session Expiry',
-        ];
+        const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
         for (const field of oidcFields) {
-          const fieldElement = adminPage.getByLabel(field);
+          const fieldElement = page.getByLabel(field);
           const fieldCount = await fieldElement.count();
           if (fieldCount > 0) {
             await expect(fieldElement.first()).toBeVisible();
@@ -220,53 +155,25 @@ test.describe('SSO Configuration Tests', () => {
       });
 
       test('should show correct fields for Okta provider with confidential client', async ({
-        adminPage,
+        page,
       }) => {
-        await selectSSOProvider(adminPage, 'okta');
+        await selectSSOProvider(page, 'okta');
 
         // Verify Confidential client type is selected by default
-        const confidentialRadio = adminPage.getByRole('radio', {
+        const confidentialRadio = page.getByRole('radio', {
           name: /confidential/i,
         });
 
         await expect(confidentialRadio).toBeChecked();
 
         // Verify common fields are visible
-        const oktaCommonFields = [
-          'Provider Name',
-          'Authority',
-          'Client ID',
-          'Callback URL',
-          'Public Key URLs',
-          'Token Validation Algorithm',
-          'JWT Principal Claims',
-          'Enable Self Signup',
-        ];
-        await verifyProviderFields(adminPage, oktaCommonFields);
+        await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
         // Verify OIDC specific fields with OIDC prefix in labels
-        const oidcFields = [
-          'OIDC Client ID',
-          'OIDC Client Secret',
-          'OIDC Request Scopes',
-          'OIDC Discovery URI',
-          'OIDC Use Nonce',
-          'OIDC Preferred JWS Algorithm',
-          'OIDC Response Type',
-          'OIDC Disable PKCE',
-          'OIDC Max Clock Skew',
-          'OIDC Client Authentication Method',
-          'OIDC Token Validity',
-          'OIDC Tenant',
-          'OIDC Server URL',
-          'OIDC Callback URL',
-          'OIDC Max Age',
-          'OIDC Prompt',
-          'OIDC Session Expiry',
-        ];
+        const oidcFields = [...OIDC_COMMON_FIELDS, 'OIDC Tenant'];
 
         for (const field of oidcFields) {
-          const fieldElement = adminPage.getByLabel(field);
+          const fieldElement = page.getByLabel(field);
           const fieldCount = await fieldElement.count();
           if (fieldCount > 0) {
             await expect(fieldElement.first()).toBeVisible();
@@ -278,28 +185,11 @@ test.describe('SSO Configuration Tests', () => {
 
   test.describe('Provider Field Visibility Checks - Public Client', () => {
     test('should show correct fields when selecting SAML provider', async ({
-      adminPage,
+      page,
     }) => {
-      await selectSSOProvider(adminPage, 'saml');
+      await selectSSOProvider(page, 'saml');
 
-      const samlVisibleFields = [
-        'IdP Entity ID',
-        'IdP SSO Login URL',
-        'IdP X.509 Certificate',
-        'Name ID Format',
-        'SP Entity ID',
-        'Assertion Consumer Service URL',
-        'SP X.509 Certificate',
-        'SP Private Key',
-        'Debug Mode',
-        'Strict Mode',
-        'Token Validity (seconds)',
-        'Want Assertions Signed',
-        'Want Messages Signed',
-        'Send Signed Auth Request',
-      ];
-
-      await verifyProviderFields(adminPage, samlVisibleFields);
+      await verifyProviderFields(page, SAML_VISIBLE_FIELDS);
 
       const commonFields = [
         'Provider Name',
@@ -310,7 +200,7 @@ test.describe('SSO Configuration Tests', () => {
         'JWT Principal Claims',
       ];
 
-      await verifyProviderFields(adminPage, commonFields);
+      await verifyProviderFields(page, commonFields);
 
       const hiddenFields = [
         'LDAP Host',
@@ -319,163 +209,97 @@ test.describe('SSO Configuration Tests', () => {
         'OIDC Client Secret',
       ];
 
-      await verifyProviderFields(adminPage, [], hiddenFields);
+      await verifyProviderFields(page, [], hiddenFields);
     });
 
     test('should show correct fields when selecting LDAP provider', async ({
-      adminPage,
+      page,
     }) => {
-      await selectSSOProvider(adminPage, 'ldap');
+      await selectSSOProvider(page, 'ldap');
 
-      const ldapVisibleFields = [
-        'LDAP Host',
-        'LDAP Port',
-        'Admin Principal DN',
-        'Admin Password',
-        'Enable SSL',
-        'Max Pool Size',
-        'User Base DN',
-        'Group Base DN',
-        'Full DN Required',
-        'Admin Role Name',
-        'All Attribute Name',
-        'Mail Attribute Name',
-        'Username Attribute Name',
-        'Group Attribute Name',
-        'Group Attribute Value',
-        'Group Member Attribute Name',
-        'Auth Roles Mapping',
-        'Auth Reassign Roles',
-      ];
-
-      await verifyProviderFields(adminPage, ldapVisibleFields);
+      await verifyProviderFields(page, LDAP_VISIBLE_FIELDS);
 
       const hiddenFields = ['OIDC Client ID', 'OIDC Client Secret'];
 
-      await verifyProviderFields(adminPage, [], hiddenFields);
+      await verifyProviderFields(page, [], hiddenFields);
     });
 
     test('should show correct fields when selecting Google provider', async ({
-      adminPage,
+      page,
     }) => {
-      await selectSSOProvider(adminPage, 'google');
-
-      const googleCommonFields = [
-        'Provider Name',
-        'Authority',
-        'Client ID',
-        'Callback URL',
-        'Public Key URLs',
-        'Token Validation Algorithm',
-        'JWT Principal Claims',
-        'Enable Self Signup',
-      ];
+      await selectSSOProvider(page, 'google');
 
       // Click on Public client type
-      const publicRadio = adminPage.getByRole('radio', { name: /public/i });
+      const publicRadio = page.getByRole('radio', { name: /public/i });
       await publicRadio.click();
 
       await expect(publicRadio).toBeChecked();
 
       // Verify public client fields are visible
-      await verifyProviderFields(adminPage, googleCommonFields);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify Client Type radio group is visible
-      await expect(
-        adminPage.locator('.field-radio-group').first()
-      ).toBeVisible();
+      await expect(page.locator('.field-radio-group').first()).toBeVisible();
 
       // Verify Secret field is NOT visible for public client
-      await expect(adminPage.getByLabel('Secret Key')).not.toBeVisible();
+      await expect(page.getByLabel('Secret Key')).not.toBeVisible();
 
       // Verify OIDC configuration fields are NOT visible for public client
-      await expect(
-        adminPage.locator('[id*="oidcConfiguration"]')
-      ).not.toBeVisible();
+      await expect(page.locator('[id*="oidcConfiguration"]')).not.toBeVisible();
     });
 
     test('should show correct fields when selecting Auth0 provider', async ({
-      adminPage,
+      page,
     }) => {
-      await selectSSOProvider(adminPage, 'auth0');
-
-      const auth0CommonFields = [
-        'Provider Name',
-        'Authority',
-        'Client ID',
-        'Callback URL',
-        'Public Key URLs',
-        'Token Validation Algorithm',
-        'JWT Principal Claims',
-        'Enable Self Signup',
-      ];
+      await selectSSOProvider(page, 'auth0');
 
       // Click on Public client type
-      const publicRadio = adminPage.getByRole('radio', { name: /public/i });
+      const publicRadio = page.getByRole('radio', { name: /public/i });
       await publicRadio.click();
 
       await expect(publicRadio).toBeChecked();
 
       // Verify public client fields are visible
-      await verifyProviderFields(adminPage, auth0CommonFields);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify Client Type radio group is visible
-      await expect(
-        adminPage.locator('.field-radio-group').first()
-      ).toBeVisible();
+      await expect(page.locator('.field-radio-group').first()).toBeVisible();
 
       const hiddenFields = ['LDAP Host', 'IdP Entity ID', 'IdP SSO Login URL'];
-      await verifyProviderFields(adminPage, [], hiddenFields);
+      await verifyProviderFields(page, [], hiddenFields);
 
       // Verify Secret field is NOT visible for public client
-      await expect(adminPage.getByLabel('Secret Key')).not.toBeVisible();
+      await expect(page.getByLabel('Secret Key')).not.toBeVisible();
 
       // Verify OIDC configuration fields are NOT visible for public client
-      await expect(
-        adminPage.locator('[id*="oidcConfiguration"]')
-      ).not.toBeVisible();
+      await expect(page.locator('[id*="oidcConfiguration"]')).not.toBeVisible();
     });
 
     test('should show correct fields when selecting Okta provider', async ({
-      adminPage,
+      page,
     }) => {
-      await selectSSOProvider(adminPage, 'okta');
-
-      const oktaCommonFields = [
-        'Provider Name',
-        'Authority',
-        'Client ID',
-        'Callback URL',
-        'Public Key URLs',
-        'Token Validation Algorithm',
-        'JWT Principal Claims',
-        'Enable Self Signup',
-      ];
+      await selectSSOProvider(page, 'okta');
 
       // Click on Public client type
-      const publicRadio = adminPage.getByRole('radio', { name: /public/i });
+      const publicRadio = page.getByRole('radio', { name: /public/i });
       await publicRadio.click();
 
       await expect(publicRadio).toBeChecked();
 
       // Verify public client fields are visible
-      await verifyProviderFields(adminPage, oktaCommonFields);
+      await verifyProviderFields(page, SSO_COMMON_FIELDS);
 
       // Verify Client Type radio group is visible
-      await expect(
-        adminPage.locator('.field-radio-group').first()
-      ).toBeVisible();
+      await expect(page.locator('.field-radio-group').first()).toBeVisible();
 
       const hiddenFields = ['LDAP Host', 'IdP Entity ID', 'IdP SSO Login URL'];
-      await verifyProviderFields(adminPage, [], hiddenFields);
+      await verifyProviderFields(page, [], hiddenFields);
 
       // Verify Secret field is NOT visible for public client
-      await expect(adminPage.getByLabel('Secret Key')).not.toBeVisible();
+      await expect(page.getByLabel('Secret Key')).not.toBeVisible();
 
       // Verify OIDC configuration fields are NOT visible for public client
-      await expect(
-        adminPage.locator('[id*="oidcConfiguration"]')
-      ).not.toBeVisible();
+      await expect(page.locator('[id*="oidcConfiguration"]')).not.toBeVisible();
     });
   });
 });

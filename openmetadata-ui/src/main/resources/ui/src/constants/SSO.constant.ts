@@ -15,9 +15,8 @@ import { ClientType } from '../generated/configuration/securityConfiguration';
 import {
   getAuthorityUrl,
   getCallbackUrl,
-  getDomainUrl,
   getServerUrl,
-} from '../utils/SSOUtils';
+} from '../utils/SSOURLUtils';
 
 // Default callback URL for SSO configuration
 export const DEFAULT_CALLBACK_URL = getCallbackUrl();
@@ -39,7 +38,7 @@ export const SAML_SSO_DEFAULTS = {
     authorityUrl: getAuthorityUrl(), // Note: field name is authorityUrl in IDP, not authority
   },
   sp: {
-    entityId: getDomainUrl(),
+    entityId: getServerUrl(),
     acs: getCallbackUrl(),
     callback: getCallbackUrl(),
   },
@@ -128,18 +127,6 @@ export const COMMON_HIDDEN_FIELDS = {
 // Authorizer hidden fields
 export const AUTHORIZER_HIDDEN_FIELDS = {
   testPrincipals: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
-  allowedEmailRegistrationDomains: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
-  allowedDomains: {
-    'ui:widget': 'hidden',
-    'ui:hideError': true,
-  },
-  useRolesFromProvider: {
     'ui:widget': 'hidden',
     'ui:hideError': true,
   },
@@ -553,7 +540,7 @@ export const PROVIDER_FIELD_MAPPINGS: Record<string, string[]> = {
 };
 
 // Common fields to always remove from authentication configuration
-export const COMMON_AUTH_FIELDS_TO_REMOVE = ['responseType'];
+export const COMMON_AUTH_FIELD_TO_REMOVE = 'responseType';
 
 // Hardcoded authorizer values
 export const DEFAULT_AUTHORIZER_CLASS_NAME =

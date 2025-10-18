@@ -384,6 +384,10 @@ export const verifyProviderFields = async (
       'sso-configuration-form-array-field-template-botPrincipals',
     'Auth Reassign Roles':
       'sso-configuration-form-array-field-template-authReassignRoles',
+    'Allowed Email Registration Domains':
+      'sso-configuration-form-array-field-template-allowedEmailRegistrationDomains',
+    'Allowed Domains':
+      'sso-configuration-form-array-field-template-allowedDomains',
   };
 
   // Verify visible fields
