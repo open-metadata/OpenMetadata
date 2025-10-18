@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { Button, Popover, Typography } from 'antd';
-import { isEmpty } from 'lodash';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -25,7 +24,7 @@ import { getVisiblePopupContainer } from '../../../utils/LandingPageWidget/Widge
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import DomainSelectablTree from '../DomainSelectableTree/DomainSelectableTree';
 import { FocusTrapWithContainer } from '../FocusTrap/FocusTrapWithContainer';
-import { EditIconButton, PlusIconButton } from '../IconButtons/EditIconButton';
+import { EditIconButton } from '../IconButtons/EditIconButton';
 import './domain-select-dropdown.less';
 import { DomainSelectableListProps } from './DomainSelectableList.interface';
 
@@ -140,30 +139,19 @@ const DomainSelectableList = ({
         }}
         {...popoverProps}>
         {children ??
-          (!isVersionView &&
-            (isEmpty(selectedDomain) ? (
-              <PlusIconButton
-                data-testid="add-domain"
-                disabled={!hasPermission || disabled}
-                size="small"
-                title={t('label.add-entity', {
-                  entity: t('label.domain-plural'),
-                })}
-                onClick={(e) => e.stopPropagation()}
-              />
-            ) : (
-              <EditIconButton
-                newLook
-                data-testid="edit-domain"
-                disabled={!hasPermission || disabled}
-                icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
-                size="small"
-                title={t('label.edit-entity', {
-                  entity: t('label.domain-plural'),
-                })}
-                onClick={(e) => e.stopPropagation()}
-              />
-            )))}
+          (!isVersionView && (
+            <EditIconButton
+              newLook
+              data-testid="edit-domain"
+              disabled={!hasPermission || disabled}
+              icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+              size="small"
+              title={t('label.edit-entity', {
+                entity: t('label.domain-plural'),
+              })}
+              onClick={(e) => e.stopPropagation()}
+            />
+          ))}
       </Popover>
     );
   }, [
