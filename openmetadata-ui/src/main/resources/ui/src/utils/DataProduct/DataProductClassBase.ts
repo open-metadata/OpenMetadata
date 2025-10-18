@@ -34,7 +34,6 @@ type DataProductWidgetKeys =
   | DetailPageWidgetKeys.OWNERS
   | DetailPageWidgetKeys.TAGS
   | DetailPageWidgetKeys.GLOSSARY_TERMS
-  | DetailPageWidgetKeys.EXPERTS
   | DetailPageWidgetKeys.DOMAIN
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
   | DetailPageWidgetKeys.EXPERTS;
@@ -129,14 +128,6 @@ class DataProductClassBase {
         w: 2,
         x: 6,
         y: 3,
-        static: false,
-      },
-      {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS],
-        i: DetailPageWidgetKeys.EXPERTS,
-        w: 2,
-        x: 6,
-        y: 4,
         static: false,
       },
       {
