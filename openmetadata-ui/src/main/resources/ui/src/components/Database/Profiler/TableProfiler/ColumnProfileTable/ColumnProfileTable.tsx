@@ -155,7 +155,7 @@ const ColumnProfileTable = () => {
         title: t('label.data-type'),
         dataIndex: 'dataTypeDisplay',
         key: 'dataType',
-        width: 150,
+        width: 200,
         render: (dataTypeDisplay: string) => {
           return (
             <Typography
@@ -213,7 +213,7 @@ const ColumnProfileTable = () => {
         title: t('label.value-count'),
         dataIndex: 'profile',
         key: 'valuesCount',
-        width: 120,
+        width: 200,
         render: (profile: ColumnProfile) =>
           profile?.valuesCount
             ? formatNumberWithComma(profile?.valuesCount)
@@ -436,7 +436,6 @@ const ColumnProfileTable = () => {
           rowKey="name"
           scroll={{ x: true }}
           searchProps={searchProps}
-          size="small"
         />
       ) : (
         <SingleColumnProfile

@@ -37,6 +37,7 @@ import { GRAPH_BACKGROUND_COLOR } from '../../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../../constants/profiler.constant';
 import {
   axisTickFormatter,
+  createHorizontalGridLineRenderer,
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
@@ -72,6 +73,11 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
       updateActiveChartFilter(event.dataKey, prevActiveKeys)
     );
   };
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
 
   if (isLoading) {
     return <Skeleton height={380} variant="rounded" width="100%" />;
@@ -114,16 +120,15 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
               <ComposedChart
                 className="w-full"
                 data={data}
-                margin={{ left: 16 }}>
+                margin={{ left: 0 }}>
                 <CartesianGrid
+                  horizontal={renderHorizontalGridLine}
                   stroke={GRAPH_BACKGROUND_COLOR}
                   strokeDasharray="3 3"
                   vertical={false}
                 />
                 <XAxis
-                  axisLine={{
-                    stroke: theme.palette.grey[200],
-                  }}
+                  axisLine={false}
                   dataKey="name"
                   padding={{ left: 16, right: 16 }}
                   tick={{ fontSize: 12 }}

@@ -16,8 +16,8 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Typography as MuiTypography,
   Skeleton,
+  Typography as MuiTypography,
 } from '@mui/material';
 import { Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
@@ -618,7 +618,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         pagination={false}
         rowKey="fullyQualifiedName"
         scroll={{ x: true }}
-        size="small"
         onChange={handleTableChange}
       />
       {selectedTestCase?.action === 'UPDATE' && (

@@ -13,6 +13,7 @@
 
 import { Box, Card, Divider, Typography, useTheme } from '@mui/material';
 import { isUndefined } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -28,7 +29,11 @@ import {
 import { CHART_BLUE_1 } from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { ColumnProfile } from '../../../generated/entity/data/table';
-import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
+import {
+  axisTickFormatter,
+  createHorizontalGridLineRenderer,
+  tooltipFormatter,
+} from '../../../utils/ChartUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { DataPill } from '../../common/DataPill/DataPill.styled';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -50,6 +55,11 @@ const CardinalityDistributionChart = ({
   const showSingleGraph =
     isUndefined(data.firstDayData?.cardinalityDistribution) ||
     isUndefined(data.currentDayData?.cardinalityDistribution);
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
 
   if (
     isUndefined(data.firstDayData?.cardinalityDistribution) &&
@@ -212,14 +222,13 @@ const CardinalityDistributionChart = ({
                   layout="vertical"
                   margin={{ left: 16 }}>
                   <CartesianGrid
+                    horizontal={renderHorizontalGridLine}
                     stroke={GRAPH_BACKGROUND_COLOR}
                     strokeDasharray="3 3"
                     vertical={false}
                   />
                   <XAxis
-                    axisLine={{
-                      stroke: theme.palette.grey[200],
-                    }}
+                    axisLine={false}
                     padding={{ left: 16, right: 16 }}
                     tick={{ fontSize: 12 }}
                     tickFormatter={(props) => axisTickFormatter(props, '%')}

@@ -39,7 +39,7 @@ const SummaryCardV1 = ({
     <Box>
       <Card
         sx={{
-          borderRadius: '12px',
+          borderRadius: '8px',
           border: `1px solid ${theme.palette.grey[200]}`,
           boxShadow: '0 4px 3px 0 rgba(235, 239, 250, 0.25)',
           minWidth: '210px',
@@ -79,7 +79,7 @@ const SummaryCardV1 = ({
             px: 2,
             py: 1,
             background: theme.palette.allShades.blueGray[50],
-            borderRadius: '0 0 12px 12px',
+            borderRadius: '0 0 8px 8px',
             boxShadow: '0 4px 3px 0 rgba(235, 239, 250, 0.10)',
             border: 'none',
           }}>

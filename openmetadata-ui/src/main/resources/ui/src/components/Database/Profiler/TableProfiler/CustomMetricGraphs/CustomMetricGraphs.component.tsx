@@ -45,6 +45,7 @@ import {
 } from '../../../../../rest/customMetricAPI';
 import {
   axisTickFormatter,
+  createHorizontalGridLineRenderer,
   tooltipFormatter,
 } from '../../../../../utils/ChartUtils';
 import { CustomDQTooltip } from '../../../../../utils/DataQuality/DataQualityUtils';
@@ -89,6 +90,11 @@ const CustomMetricGraphs = ({
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [anchorEl, setAnchorEl] = useState<Record<string, HTMLElement | null>>(
     {}
+  );
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
   );
 
   const items = useMemo(
@@ -275,14 +281,13 @@ const CustomMetricGraphs = ({
                       data={metric}
                       margin={{ left: 16 }}>
                       <CartesianGrid
+                        horizontal={renderHorizontalGridLine}
                         stroke={GRAPH_BACKGROUND_COLOR}
                         strokeDasharray="3 3"
                         vertical={false}
                       />
                       <XAxis
-                        axisLine={{
-                          stroke: theme.palette.grey[200],
-                        }}
+                        axisLine={false}
                         dataKey="formattedTimestamp"
                         padding={{ left: 16, right: 16 }}
                         tick={{ fontSize: 12 }}

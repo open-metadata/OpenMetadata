@@ -42,7 +42,7 @@ const ColumnSummary: FC<ColumnSummaryProps> = ({ column }) => {
   return (
     <Card
       sx={{
-        borderRadius: '12px',
+        borderRadius: '10px',
         border: `1px solid ${theme.palette.grey[200]}`,
         boxShadow: 'none',
         height: '100%',

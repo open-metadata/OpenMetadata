@@ -240,7 +240,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
           <Grid size="grow">
             <Card
               sx={{
-                borderRadius: '12px',
+                borderRadius: '10px',
                 border: `1px solid ${theme.palette.grey[200]}`,
                 boxShadow: 'none',
                 height: '100%',
@@ -330,7 +330,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                   <Box
                     sx={{
                       p: 4,
-                      borderRadius: '8px',
+                      borderRadius: '6px',
                       bgcolor: theme.palette.grey[50],
                       width: '100%',
                     }}>

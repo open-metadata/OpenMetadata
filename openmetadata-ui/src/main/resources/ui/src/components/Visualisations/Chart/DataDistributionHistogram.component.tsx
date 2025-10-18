@@ -13,6 +13,7 @@
 
 import { Box, useTheme } from '@mui/material';
 import { isUndefined } from 'lodash';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bar,
@@ -28,7 +29,11 @@ import { CHART_BLUE_1 } from '../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { DEFAULT_HISTOGRAM_DATA } from '../../../constants/profiler.constant';
 import { HistogramClass } from '../../../generated/entity/data/table';
-import { axisTickFormatter, tooltipFormatter } from '../../../utils/ChartUtils';
+import {
+  axisTickFormatter,
+  createHorizontalGridLineRenderer,
+  tooltipFormatter,
+} from '../../../utils/ChartUtils';
 import { CustomDQTooltip } from '../../../utils/DataQuality/DataQualityUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { DataPill } from '../../common/DataPill/DataPill.styled';
@@ -41,6 +46,11 @@ const DataDistributionHistogram = ({
 }: DataDistributionHistogramProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
 
   const showSingleGraph =
     isUndefined(data.firstDayData?.histogram) ||
@@ -140,14 +150,13 @@ const DataDistributionHistogram = ({
                   data={graphData}
                   margin={{ top: 10, right: 10, bottom: 10, left: 10 }}>
                   <CartesianGrid
+                    horizontal={renderHorizontalGridLine}
                     stroke={GRAPH_BACKGROUND_COLOR}
                     strokeDasharray="3 3"
                     vertical={false}
                   />
                   <XAxis
-                    axisLine={{
-                      stroke: theme.palette.grey[200],
-                    }}
+                    axisLine={false}
                     dataKey="name"
                     padding={{ left: 16, right: 16 }}
                     tick={{ fontSize: 12 }}
@@ -176,6 +185,7 @@ const DataDistributionHistogram = ({
                     }}
                   />
                   <Bar
+                    barSize={22}
                     dataKey="frequency"
                     fill={CHART_BLUE_1}
                     radius={[8, 8, 0, 0]}

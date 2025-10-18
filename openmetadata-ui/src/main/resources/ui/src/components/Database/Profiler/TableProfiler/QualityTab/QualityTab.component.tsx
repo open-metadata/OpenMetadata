@@ -354,7 +354,7 @@ export const QualityTab = () => {
                   color: theme.palette.grey['700'],
                   transition:
                     'background-color 0.2s ease-in, color 0.2s ease-in',
-                  borderRadius: '6px',
+                  borderRadius: '8px',
                 },
                 '.Mui-selected, .MuiTab-root:hover': {
                   backgroundColor: `${theme.palette.grey['50']}`,
@@ -369,6 +369,7 @@ export const QualityTab = () => {
                 '.MuiTabs-scroller': {
                   padding: '0px',
                   height: 'unset',
+                  borderRadius: '8px',
                 },
                 '.MuiTab-root:not(:first-of-type)': {
                   marginLeft: '0px',
@@ -399,8 +400,8 @@ export const QualityTab = () => {
           </Box>
 
           {isTestCaseTab && (
-            <Form layout="inline">
-              <Space align="center" className="w-full justify-end">
+            <Form className="new-form-style" layout="inline">
+              <Space align="center" className="w-full justify-end" size={20}>
                 <Form.Item className="m-0 w-40" label={t('label.type')}>
                   <Select
                     options={TEST_CASE_TYPE_OPTION}

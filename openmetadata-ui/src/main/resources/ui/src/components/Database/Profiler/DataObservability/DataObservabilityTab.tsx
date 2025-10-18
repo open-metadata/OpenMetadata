@@ -117,6 +117,7 @@ const DataObservabilityTab = (props: TableProfilerProps) => {
                 '.MuiTabs-scroller': {
                   padding: '4px',
                   height: '100%',
+                  borderRadius: '10px',
                 },
                 '.MuiTab-root:not(:first-of-type)': {
                   marginLeft: '4px',

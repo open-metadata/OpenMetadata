@@ -62,7 +62,6 @@ import {
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
 import {
-  formatDateTimeLong,
   getCurrentMillis,
   getEndOfDayInMillis,
   getEpochMillisForPastDays,
@@ -76,6 +75,7 @@ import {
 import { showErrorToast } from '../../utils/ToastUtils';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
 import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
+import DateTimeDisplay from '../common/DateTimeDisplay/DateTimeDisplay';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
@@ -459,7 +459,9 @@ const IncidentManager = ({
         dataIndex: 'timestamp',
         key: 'timestamp',
         width: 200,
-        render: (value: number) => (value ? formatDateTimeLong(value) : '--'),
+        render: (value: number) => {
+          return <DateTimeDisplay timestamp={value} />;
+        },
       },
       {
         title: t('label.status'),

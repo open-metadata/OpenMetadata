@@ -30,6 +30,7 @@ import { GRAPH_BACKGROUND_COLOR } from '../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../constants/profiler.constant';
 import {
   axisTickFormatter,
+  createHorizontalGridLineRenderer,
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../utils/ChartUtils';
@@ -54,6 +55,11 @@ const CustomBarChart = ({
       endIndex: PROFILER_CHART_DATA_SIZE,
     };
   }, [data.length]);
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
 
   if (data.length === 0) {
     return (
@@ -81,14 +87,13 @@ const CustomBarChart = ({
       minHeight={300}>
       <BarChart className="w-full" data={data} margin={{ left: 16 }}>
         <CartesianGrid
+          horizontal={renderHorizontalGridLine}
           stroke={GRAPH_BACKGROUND_COLOR}
           strokeDasharray="3 3"
           vertical={false}
         />
         <XAxis
-          axisLine={{
-            stroke: theme.palette.grey[200],
-          }}
+          axisLine={false}
           dataKey="name"
           padding={{ left: 16, right: 16 }}
           tick={{ fontSize: 12 }}
