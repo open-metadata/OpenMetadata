@@ -320,7 +320,7 @@ test.describe('Tag Page with Admin Roles', () => {
       endpoint: EntityTypeEndpoint.Tag,
       ownerName: OWNER1,
       type: 'Users',
-      dataTestId: 'tag-owner-name',
+      dataTestId: 'owner-link',
     });
   });
 });
