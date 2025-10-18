@@ -29,11 +29,11 @@ const navigation = [
   { name: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
-const thirdeyeNavigation = [
-  { name: 'ThirdEye Home', href: '/dashboard/thirdeye', icon: Sparkles },
-  { name: 'Analytics', href: '/dashboard/thirdeye/insights', icon: Lightbulb },
-  { name: 'Techniques', href: '/dashboard/thirdeye/techniques', icon: Shield },
-  { name: 'Help', href: '/dashboard/thirdeye/help', icon: HelpCircle },
+const zeroHumanNavigation = [
+  { name: 'ZeroInsight Home', href: '/dashboard/thirdeye', icon: Sparkles },
+  { name: 'ZeroInsight Reports', href: '/dashboard/thirdeye/insights', icon: Lightbulb },
+  { name: 'ZeroAct Strategies', href: '/dashboard/thirdeye/techniques', icon: Shield },
+  { name: 'ZeroExplain Guide', href: '/dashboard/thirdeye/help', icon: HelpCircle },
 ];
 
 export default function Sidebar() {
@@ -100,13 +100,13 @@ export default function Sidebar() {
           })}
         </div>
 
-        {/* ThirdEye Section */}
+        {/* Zero-Human Intelligence Section */}
         <div className="pt-4 mt-4 border-t">
           <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
-            ThirdEye Analytics
+            Zero-Human Intelligence
           </div>
           <div className="space-y-1">
-            {thirdeyeNavigation.map((item) => {
+            {zeroHumanNavigation.map((item) => {
               const isActive = pathname === item.href;
               return (
                 <Link

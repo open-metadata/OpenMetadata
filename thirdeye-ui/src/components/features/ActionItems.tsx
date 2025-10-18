@@ -98,7 +98,11 @@ export default function ActionItems({
       {/* Header */}
       <div className="flex items-center gap-2">
         <AlertCircle className="h-5 w-5" />
-        <h2 className="text-2xl font-bold">Actions</h2>
+        <h2 className="text-2xl font-bold">
+          <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+            ZeroAct
+          </span> Actions
+        </h2>
       </div>
 
       {/* Action Items Grid */}

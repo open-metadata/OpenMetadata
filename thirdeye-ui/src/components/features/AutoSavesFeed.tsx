@@ -49,7 +49,11 @@ export default function AutoSavesFeed({
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
-            <h3 className="text-lg font-semibold">Automation</h3>
+            <h3 className="text-lg font-semibold">
+              <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+                ZeroOps
+              </span>
+            </h3>
           </div>
           <Badge variant={isActive ? 'default' : 'secondary'} className="flex items-center gap-1">
             <div className={cn(

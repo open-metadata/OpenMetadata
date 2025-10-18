@@ -86,9 +86,13 @@ export default function TechniquesShowcase({
     <div className={cn('space-y-6', className)}>
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold">Cost Optimization Techniques</h2>
+        <h2 className="text-2xl font-bold">
+          <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+            ZeroAct
+          </span> Strategies
+        </h2>
         <p className="text-muted-foreground mt-1">
-          Automated detection rules and optimization strategies
+          Autonomous execution framework with intelligent optimization strategies
         </p>
       </div>
 

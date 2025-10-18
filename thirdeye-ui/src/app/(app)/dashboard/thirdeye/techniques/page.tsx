@@ -59,9 +59,13 @@ export default function TechniquesPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Optimization Techniques</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+            ZeroAct
+          </span> Strategies
+        </h1>
         <p className="text-muted-foreground">
-          Automated detection rules and cost optimization strategies
+          Autonomous execution framework for intelligent cost optimization
         </p>
       </div>
 

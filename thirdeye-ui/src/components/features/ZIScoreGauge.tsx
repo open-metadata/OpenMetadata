@@ -97,7 +97,7 @@ export default function ZIScoreGauge({
                   {score}
                 </div>
                 <div className="text-sm text-muted-foreground font-medium mt-1">
-                  ZI Score
+                  ZeroIndex
                 </div>
               </div>
             </div>
@@ -123,7 +123,7 @@ export default function ZIScoreGauge({
             className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <HelpCircle className="h-4 w-4" />
-            <span>Why {score}? Learn more →</span>
+            <span>Why {score}? ZeroExplain →</span>
           </button>
         </div>
       </div>

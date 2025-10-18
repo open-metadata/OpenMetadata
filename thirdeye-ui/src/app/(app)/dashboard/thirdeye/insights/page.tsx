@@ -47,9 +47,13 @@ export default function InsightsPage() {
     <div className="p-6 space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Insights & Analytics</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+            ZeroInsight
+          </span> Reports
+        </h1>
         <p className="text-muted-foreground">
-          Detailed reports and analytics for your data infrastructure
+          Root-cause analysis and impact correlation for your data infrastructure
         </p>
       </div>
 

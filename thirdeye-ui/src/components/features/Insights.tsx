@@ -54,7 +54,11 @@ export default function Insights({
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold">Insights</h2>
+          <h2 className="text-2xl font-bold">
+            <span className="bg-gradient-to-r from-purple-600 to-cyan-600 bg-clip-text text-transparent">
+              ZeroInsight
+            </span> Preview
+          </h2>
           <Button variant="outline" size="sm" onClick={() => onViewReport?.(activeTab)}>
             View Full Report
           </Button>
