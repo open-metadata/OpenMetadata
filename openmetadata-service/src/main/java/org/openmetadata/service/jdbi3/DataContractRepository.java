@@ -64,6 +64,7 @@ import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnect
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -81,6 +82,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.DataContractValidationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.data.DataContractResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
@@ -693,7 +695,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     if (!nullOrEmpty(dataContract.getQualityExpectations())) {
       try {
         deployAndTriggerDQValidation(dataContract);
-        compileResult(result, ContractExecutionStatus.Running);
+        // Don't compile result yet - keep status as "Running"
+        // Final compilation will happen in updateContractDQResults() with complete data
       } catch (Exception e) {
         LOG.error(
             "Failed to trigger DQ validation for data contract {}: {}",
@@ -898,7 +901,8 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   public DataContractResult updateContractDQResults(
       EntityReference contractReference, TestSuite testSuite) {
-    DataContract dataContract = Entity.getEntity(contractReference, "", Include.NON_DELETED);
+    DataContract dataContract =
+        Entity.getEntity(contractReference, "entity,owners,reviewers", Include.NON_DELETED);
     if (dataContract == null) {
       throw EntityNotFoundException.byMessage(
           String.format("Data contract not found for Test Suite %s", testSuite.getName()));
@@ -920,6 +924,29 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     compileResult(result, ContractExecutionStatus.Success);
     // Update the last result in the data contract
     addContractResult(dataContract, result);
+
+    // Sync the in-memory latestResult to reflect the updated status
+    dataContract.setLatestResult(
+        new LatestResult()
+            .withTimestamp(result.getTimestamp())
+            .withStatus(result.getContractExecutionStatus())
+            .withMessage(result.getResult())
+            .withResultId(result.getId()));
+
+    // Enrich the entity reference with fullyQualifiedName for notification template URL building
+    if (dataContract.getEntity() != null) {
+      EntityReference fullEntityRef =
+          Entity.getEntityReferenceById(
+              dataContract.getEntity().getType(),
+              dataContract.getEntity().getId(),
+              Include.NON_DELETED);
+      dataContract.setEntity(fullEntityRef);
+    }
+
+    ChangeEvent changeEvent =
+        FormatterUtil.getDataContractResultEvent(result, ADMIN_USER_NAME, ENTITY_UPDATED);
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(dataContract));
+    Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
 
     return result;
   }
