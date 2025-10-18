@@ -395,7 +395,7 @@ export const CommonWidgets = ({
         />
       );
     } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.OWNERS)) {
-      return <OwnerLabelV2<GenericEntity> fieldType="owners" />;
+      return <OwnerLabelV2<GenericEntity> />;
     } else if (
       widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REVIEWER)
     ) {

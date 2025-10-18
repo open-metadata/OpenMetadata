@@ -1,4 +1,16 @@
 /*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+/**
  *  Copyright 2024 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
@@ -24,43 +36,22 @@ import {
 } from '../../common/IconButtons/EditIconButton';
 import { UserTeamSelectableList } from '../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-
 interface OwnerLabelV2Props {
   dataTestId?: string;
   hasPermission?: boolean;
-  fieldType?: 'owners' | 'experts';
 }
 
 export const OwnerLabelV2 = <
-  T extends {
-    owners?: EntityReference[];
-    experts?: EntityReference[];
-    id: string;
-  }
+  T extends { owners?: EntityReference[]; id: string }
 >(
   props: OwnerLabelV2Props
 ) => {
-  const {
-    dataTestId = 'glossary-right-panel-owner-link',
-    fieldType = 'owners',
-  } = props;
+  const { dataTestId = 'glossary-right-panel-owner-link' } = props;
   const { data, onUpdate, permissions, isVersionView } = useGenericContext<T>();
   const { t } = useTranslation();
-
-  const isExpertsField = fieldType === 'experts';
-  const fieldData = isExpertsField ? data.experts : data.owners;
-  const fieldLabel = isExpertsField ? 'expert-plural' : 'owner-plural';
-  const tabSpecificField = isExpertsField
-    ? TabSpecificField.EXPERTS
-    : TabSpecificField.OWNERS;
-
   const handleUpdatedOwner = async (updatedUser?: EntityReference[]) => {
     const updatedEntity = { ...data };
-    if (isExpertsField) {
-      updatedEntity.experts = updatedUser;
-    } else {
-      updatedEntity.owners = updatedUser;
-    }
+    updatedEntity.owners = updatedUser;
     await onUpdate(updatedEntity);
   };
 
@@ -69,35 +60,34 @@ export const OwnerLabelV2 = <
       props?.hasPermission ?? (permissions?.EditOwners || permissions?.EditAll)
     );
   }, [permissions?.EditOwners, permissions?.EditAll, props?.hasPermission]);
-
   const header = useMemo(
     () => (
       <div className="d-flex items-center gap-2">
         <Typography.Text className="text-sm font-medium">
-          {t(`label.${fieldLabel}`)}
+          {t('label.owner-plural')}
         </Typography.Text>
         {!isVersionView && hasPermission && (
           <UserTeamSelectableList
             hasPermission={hasPermission}
             listHeight={200}
             multiple={{ user: true, team: false }}
-            owner={fieldData}
+            owner={data.owners}
             onUpdate={handleUpdatedOwner}>
-            {isEmpty(fieldData) ? (
+            {isEmpty(data.owners) ? (
               <PlusIconButton
-                data-testid={`add-${fieldType}`}
+                data-testid="add-owner"
                 size="small"
                 title={t('label.add-entity', {
-                  entity: t(`label.${fieldLabel}`),
+                  entity: t('label.owner-plural'),
                 })}
               />
             ) : (
               <EditIconButton
                 newLook
-                data-testid={`edit-${fieldType}`}
+                data-testid="edit-owner"
                 size="small"
                 title={t('label.edit-entity', {
-                  entity: t(`label.${fieldLabel}`),
+                  entity: t('label.owner-plural'),
                 })}
               />
             )}
@@ -105,15 +95,7 @@ export const OwnerLabelV2 = <
         )}
       </div>
     ),
-    [
-      data,
-      hasPermission,
-      handleUpdatedOwner,
-      isVersionView,
-      fieldType,
-      fieldLabel,
-      fieldData,
-    ]
+    [data, hasPermission, handleUpdatedOwner, isVersionView]
   );
 
   return (
@@ -122,11 +104,11 @@ export const OwnerLabelV2 = <
         title: header,
       }}
       dataTestId={dataTestId}
-      isExpandDisabled={isEmpty(fieldData)}>
+      isExpandDisabled={isEmpty(data.owners)}>
       {getOwnerVersionLabel(
         data,
         isVersionView ?? false,
-        tabSpecificField,
+        TabSpecificField.OWNERS,
         hasPermission
       )}
     </ExpandableCard>
