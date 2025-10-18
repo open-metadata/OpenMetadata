@@ -12,44 +12,48 @@
  */
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
-describe('getTestSuiteFQN', () => {
-  it('get FQN which not contain the testSuiteName', () => {
-    const result = getTestSuiteFQN(
-      'TeamType.Group.Data.TestSuite.TestSuiteName'
-    );
+describe('TestSuiteUtils', () => {
+  // All tests are in individual describe blocks
 
-    expect(result).toBe('TeamType.Group.Data.TestSuite');
-  });
+  describe('getTestSuiteFQN', () => {
+    it('get FQN which not contain the testSuiteName', () => {
+      const result = getTestSuiteFQN(
+        'TeamType.Group.Data.TestSuite.TestSuiteName'
+      );
 
-  it('get FQN which contain only testSuiteName', () => {
-    const result = getTestSuiteFQN('TestSuiteName');
-
-    expect(result).toBe('TestSuiteName');
-  });
-});
-
-describe('getTestSuiteDetailsPath', () => {
-  const FQN = 'TeamType.Group.Data.TestSuite.TestSuiteName';
-
-  it('should return detail path for ExecutableTestSuite', () => {
-    const result = getTestSuiteDetailsPath({
-      fullyQualifiedName: FQN,
-      isExecutableTestSuite: true,
+      expect(result).toBe('TeamType.Group.Data.TestSuite');
     });
 
-    expect(result).toBe(
-      '/table/TeamType.Group.Data.TestSuite.TestSuiteName/profiler?activeTab=Data Quality'
-    );
+    it('get FQN which contain only testSuiteName', () => {
+      const result = getTestSuiteFQN('TestSuiteName');
+
+      expect(result).toBe('TestSuiteName');
+    });
   });
 
-  it('should return detail path for not ExecutableTestSuite', () => {
-    const result = getTestSuiteDetailsPath({
-      fullyQualifiedName: FQN,
-      isExecutableTestSuite: false,
+  describe('getTestSuiteDetailsPath', () => {
+    const FQN = 'TeamType.Group.Data.TestSuite.TestSuiteName';
+
+    it('should return detail path for ExecutableTestSuite', () => {
+      const result = getTestSuiteDetailsPath({
+        fullyQualifiedName: FQN,
+        isExecutableTestSuite: true,
+      });
+
+      expect(result).toBe(
+        '/table/TeamType.Group.Data.TestSuite.TestSuiteName/profiler/data-quality'
+      );
     });
 
-    expect(result).toBe(
-      '/test-suites/TeamType.Group.Data.TestSuite.TestSuiteName'
-    );
+    it('should return detail path for not ExecutableTestSuite', () => {
+      const result = getTestSuiteDetailsPath({
+        fullyQualifiedName: FQN,
+        isExecutableTestSuite: false,
+      });
+
+      expect(result).toBe(
+        '/test-suites/TeamType.Group.Data.TestSuite.TestSuiteName'
+      );
+    });
   });
 });

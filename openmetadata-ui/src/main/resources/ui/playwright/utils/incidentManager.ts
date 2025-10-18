@@ -30,11 +30,7 @@ export const acknowledgeTask = async (data: {
 }) => {
   const { testCase, page, table } = data;
   await visitProfilerTab(page, table);
-  await page.click('[data-testid="profiler-tab-left-panel"]');
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
 
   await expect(
     page.locator(`[data-testid="status-badge-${testCase}"]`)

@@ -171,14 +171,7 @@ export const validateViewPermissions = async (
   await page.click('[data-testid="profiler"]');
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .waitFor({ state: 'visible' });
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
   await page.waitForLoadState('networkidle');
   await page.waitForSelector("[data-testid='loader']", { state: 'detached' });
   await checkNoPermissionPlaceholder(

@@ -19,4 +19,5 @@ export interface TestCaseStatusIncidentManagerProps {
   hasPermission?: boolean;
   newLook?: boolean;
   headerName?: string;
+  isInline?: boolean;
 }

@@ -12,6 +12,7 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
+import '../../../test/unit/mocks/mui.mock';
 import DataDistributionHistogram from './DataDistributionHistogram.component';
 
 const MOCK_HISTOGRAM_DATA = [
@@ -109,8 +110,6 @@ describe('DataDistributionHistogram component test', () => {
         }}
       />
     );
-    const skewTags = await screen.findAllByTestId('skew-tag');
-    const date = await screen.findAllByTestId('date');
 
     expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
     expect(
@@ -119,8 +118,8 @@ describe('DataDistributionHistogram component test', () => {
     expect(
       queryByAttribute('id', container, 'currentDayData-histogram')
     ).toBeInTheDocument();
-    expect(skewTags).toHaveLength(2);
-    expect(date).toHaveLength(2);
+    expect(screen.getAllByText(/label.skew:/)).toHaveLength(2);
+    expect(screen.getAllByText(/Jan 20, 1970/)).toHaveLength(2);
   });
 
   it('Render one graph if histogram data is available in only one profile data', async () => {
@@ -132,8 +131,6 @@ describe('DataDistributionHistogram component test', () => {
         }}
       />
     );
-    const skewTags = await screen.findAllByTestId('skew-tag');
-    const date = await screen.findAllByTestId('date');
 
     expect(await screen.findByTestId('chart-container')).toBeInTheDocument();
     expect(
@@ -142,8 +139,8 @@ describe('DataDistributionHistogram component test', () => {
     expect(
       queryByAttribute('id', container, 'currentDayData-histogram')
     ).toBeInTheDocument();
-    expect(skewTags).toHaveLength(1);
-    expect(date).toHaveLength(1);
+    expect(screen.getAllByText(/label.skew:/)).toHaveLength(1);
+    expect(screen.getAllByText(/Jan 20, 1970/)).toHaveLength(1);
   });
 
   it('No data placeholder should render when firstDay & currentDay data is undefined', async () => {

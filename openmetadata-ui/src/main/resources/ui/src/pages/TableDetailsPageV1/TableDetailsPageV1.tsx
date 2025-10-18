@@ -59,7 +59,7 @@ import {
 } from '../../generated/entity/feed/suggestion';
 import { Operation } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { PageType } from '../../generated/system/ui/page';
-import { TestSummary } from '../../generated/tests/testCase';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -68,6 +68,7 @@ import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
 import { FeedCounts } from '../../interface/feed.interface';
 import { getContractByEntityId } from '../../rest/contractAPI';
+import { fetchTestCaseResultByTestSuiteId } from '../../rest/dataQualityDashboardAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import {
@@ -78,7 +79,6 @@ import {
   restoreTable,
   updateTablesVotes,
 } from '../../rest/tableAPI';
-import { getTestCaseExecutionSummary } from '../../rest/testAPI';
 import {
   addToRecentViewed,
   getFeedCounts,
@@ -133,7 +133,6 @@ const TableDetailsPageV1: React.FC = () => {
   const [tablePermissions, setTablePermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
-  const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [dqFailureCount, setDqFailureCount] = useState(0);
   const { customizedPage, isLoading } = useCustomPages(PageType.Table);
   const [isTabExpanded, setIsTabExpanded] = useState(false);
@@ -233,7 +232,7 @@ const TableDetailsPageV1: React.FC = () => {
     }
   }, [tableFqn, viewUsagePermission]);
 
-  const fetchDQFailureCount = async () => {
+  const fetchDQUpstreamFailureCount = async () => {
     if (!tableClassBase.getAlertEnableStatus()) {
       setDqFailureCount(0);
     }
@@ -253,34 +252,38 @@ const TableDetailsPageV1: React.FC = () => {
     }
   };
 
-  const fetchTestCaseSummary = async () => {
+  const getTestCaseFailureCount = async () => {
     try {
-      if (isUndefined(tableDetails?.testSuite?.id)) {
-        setTestCaseSummary(undefined);
-        await fetchDQFailureCount();
+      if (!tableClassBase.getAlertEnableStatus()) {
+        setDqFailureCount(0);
 
         return;
       }
 
-      const response = await getTestCaseExecutionSummary(
-        tableDetails?.testSuite?.id
-      );
-      setTestCaseSummary(response);
+      if (isUndefined(tableDetails?.testSuite?.id)) {
+        await fetchDQUpstreamFailureCount();
 
-      const failureCount =
-        response.columnTestSummary?.reduce((acc, curr) => {
-          return acc + (curr.failed ?? 0);
-        }, response.failed ?? 0) ??
-        response.failed ??
-        0;
+        return;
+      }
+
+      const testSuiteId = tableDetails?.testSuite?.id;
+
+      const { data } = await fetchTestCaseResultByTestSuiteId(
+        testSuiteId,
+        TestCaseStatus.Failed
+      );
+      const failureCount = data.reduce(
+        (acc, curr) => acc + parseInt(curr.document_count ?? '0'),
+        0
+      );
 
       if (failureCount === 0) {
-        await fetchDQFailureCount();
+        await fetchDQUpstreamFailureCount();
       } else {
         setDqFailureCount(failureCount);
       }
     } catch {
-      setTestCaseSummary(undefined);
+      setDqFailureCount(0);
     }
   };
 
@@ -554,7 +557,6 @@ const TableDetailsPageV1: React.FC = () => {
       viewProfilerPermission,
       editLineagePermission,
       fetchTableDetails,
-      testCaseSummary,
       isViewTableType,
       labelMap: tabLabelMap,
     });
@@ -584,7 +586,6 @@ const TableDetailsPageV1: React.FC = () => {
     viewProfilerPermission,
     editLineagePermission,
     fetchTableDetails,
-    testCaseSummary,
     isViewTableType,
   ]);
 
@@ -790,7 +791,7 @@ const TableDetailsPageV1: React.FC = () => {
   useEffect(() => {
     if (tableDetails) {
       fetchQueryCount();
-      fetchTestCaseSummary();
+      getTestCaseFailureCount();
     }
   }, [tableDetails?.fullyQualifiedName]);
 

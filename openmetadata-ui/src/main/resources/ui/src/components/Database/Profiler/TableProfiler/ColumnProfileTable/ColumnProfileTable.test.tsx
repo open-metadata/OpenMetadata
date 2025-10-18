@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
+import '../../../../../test/unit/mocks/mui.mock';
 import ColumnProfileTable from './ColumnProfileTable';
 
 jest.mock('../../../../common/Table/Table', () =>

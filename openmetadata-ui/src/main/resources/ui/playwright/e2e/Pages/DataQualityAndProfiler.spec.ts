@@ -709,10 +709,7 @@ test(
 
     await table1.visitEntityPage(page);
     await page.getByTestId('profiler').click();
-    await page
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Data Quality')
-      .click();
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     await page.reload();
     await page.waitForLoadState('networkidle');

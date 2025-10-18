@@ -208,6 +208,10 @@ test.describe('Add TestCase New Flow', () => {
         page,
         ...tableTestCaseDetails,
       });
+      await page.waitForLoadState('networkidle');
+      await page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await expect(page.getByTestId('entity-header-name')).toHaveText(
         `${tableTestCaseDetails.testTypeId}_test_case`
@@ -301,7 +305,7 @@ test.describe('Add TestCase New Flow', () => {
     await visitDataQualityTab(page, table);
 
     await page
-      .getByRole('menuitem', {
+      .getByRole('tab', {
         name: 'Data Quality',
       })
       .click();
@@ -310,7 +314,7 @@ test.describe('Add TestCase New Flow', () => {
     await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
     await page.click('[data-testid="profiler-add-table-test-btn"]');
-    await page.click('[data-testid="table"]');
+    await page.getByRole('menuitem', { name: 'Test case' }).click();
     await page.waitForLoadState('networkidle');
 
     await createTestCase({
@@ -319,7 +323,11 @@ test.describe('Add TestCase New Flow', () => {
     });
 
     await page.click('[data-testid="profiler-add-table-test-btn"]');
-    await page.click('[data-testid="column"]');
+    await page.getByRole('menuitem', { name: 'Test case' }).click();
+    await page
+      .getByTestId('select-table-card')
+      .getByText('Column Level')
+      .click();
     await page.waitForLoadState('networkidle');
 
     await selectColumn(page, table.entity.columns[0].name);
