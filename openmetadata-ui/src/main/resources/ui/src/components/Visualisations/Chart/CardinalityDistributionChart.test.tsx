@@ -25,6 +25,7 @@ jest.mock('../../../utils/ChartUtils', () => ({
     (value: string, suffix: string) => `${value}${suffix}`
   ),
   tooltipFormatter: jest.fn((value: number) => value.toLocaleString()),
+  createHorizontalGridLineRenderer: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({

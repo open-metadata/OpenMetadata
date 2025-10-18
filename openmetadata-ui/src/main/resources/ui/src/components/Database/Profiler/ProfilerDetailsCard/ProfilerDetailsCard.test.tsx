@@ -22,6 +22,7 @@ jest.mock('../../../../utils/ChartUtils', () => ({
   axisTickFormatter: jest.fn(),
   tooltipFormatter: jest.fn(),
   updateActiveChartFilter: jest.fn(),
+  createHorizontalGridLineRenderer: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({

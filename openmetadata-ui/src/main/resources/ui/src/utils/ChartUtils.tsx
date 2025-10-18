@@ -61,11 +61,13 @@ export const createHorizontalGridLineRenderer = (
   epsilon = 0.5
 ): NonNullable<CartesianGridProps['horizontal']> => {
   return (gridLineProps) => {
-    const { x1, x2, y1, y2, y, height, stroke, ...rest } =
+    const { x1, x2, y1, y2, y, height, stroke, key, strokeDasharray } =
       gridLineProps as HorizontalGridLineProps & {
         x1?: number;
         x2?: number;
         index?: number;
+        key?: string | number;
+        strokeDasharray?: string;
       };
 
     const isTopBoundary =
@@ -81,9 +83,10 @@ export const createHorizontalGridLineRenderer = (
 
     return (
       <line
-        {...rest}
         fill="none"
+        key={key}
         stroke={nextStroke}
+        strokeDasharray={strokeDasharray}
         x1={x1}
         x2={x2}
         y1={y1}
