@@ -35,9 +35,6 @@ export const visitDataQualityTab = async (page: Page, table: TableClass) => {
   const testCaseResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/search/list?*fields=*'
   );
-  await page
-    .getByTestId('profiler-tab-left-panel')
-    .getByText('Data Quality')
-    .click();
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
   await testCaseResponse;
 };

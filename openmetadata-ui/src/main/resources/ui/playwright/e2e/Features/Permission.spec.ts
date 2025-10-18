@@ -262,10 +262,8 @@ test('Permissions', async ({ userPage, adminPage }) => {
         response.url().includes('/api/v1/dataQuality/testCases/') &&
         response.request().method() === 'GET'
     );
-    await userPage
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Data Quality')
-      .click();
+
+    await userPage.getByRole('tab', { name: 'Data Quality' }).click();
     await testCaseResponse;
 
     const testDefinitionResponse = userPage.waitForResponse(

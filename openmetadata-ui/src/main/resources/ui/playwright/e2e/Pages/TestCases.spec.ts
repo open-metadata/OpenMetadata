@@ -138,10 +138,7 @@ test('Table difference test case', async ({ page }) => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(page.getByTestId(testCase.name)).toBeVisible();
@@ -287,10 +284,7 @@ test('Custom SQL Query', async ({ page }) => {
       const testCaseResponse = page.waitForResponse(
         '/api/v1/dataQuality/testCases/search/list?*fields=*'
       );
-      await page
-        .getByTestId('profiler-tab-left-panel')
-        .getByText('Data Quality')
-        .click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
       await testCaseResponse;
 
       await expect(page.getByTestId(testCase.name)).toBeVisible();
