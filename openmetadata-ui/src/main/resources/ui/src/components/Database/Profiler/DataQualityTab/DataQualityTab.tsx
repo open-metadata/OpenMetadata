@@ -16,8 +16,8 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Skeleton,
   Typography as MuiTypography,
+  Skeleton,
 } from '@mui/material';
 import { Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
@@ -218,6 +218,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
                 WebkitBoxOrient: 'vertical',
+                fontSize: '14px',
               }}>
               {result.result}
             </MuiTypography>

@@ -47,7 +47,7 @@ test('Table difference test case', async ({ page }) => {
   );
   await page.getByText('Data Observability').click();
   await profileResponse;
-  await page.getByRole('menuitem', { name: 'Table Profile' }).click();
+  await page.getByRole('tab', { name: 'Table Profile' }).click();
 
   try {
     await test.step('Create', async () => {
@@ -152,6 +152,7 @@ test('Table difference test case', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
 
@@ -228,7 +229,7 @@ test('Custom SQL Query', async ({ page }) => {
   );
   await page.getByText('Data Observability').click();
   await profileResponse;
-  await page.getByRole('menuitem', { name: 'Table Profile' }).click();
+  await page.getByRole('tab', { name: 'Table Profile' }).click();
 
   try {
     await test.step('Create', async () => {
@@ -298,6 +299,7 @@ test('Custom SQL Query', async ({ page }) => {
       const testCaseDoc = page.waitForResponse(
         '/locales/en-US/OpenMetadata/TestCaseForm.md'
       );
+      await page.getByTestId(`action-dropdown-${testCase.name}`).click();
       await page.getByTestId(`edit-${testCase.name}`).click();
       await testCaseDoc;
 
@@ -366,7 +368,8 @@ test('Column Values To Be Not Null', async ({ page }) => {
   const testCaseDoc = page.waitForResponse(
     '/locales/en-US/OpenMetadata/TestCaseForm.md'
   );
-  await page.click('[data-testid="column"]');
+  await page.getByRole('menuitem', { name: 'Test case' }).click();
+  await page.getByTestId('select-table-card').getByText('Column Level').click();
   await testCaseDoc;
 
   try {
@@ -434,6 +437,11 @@ test('Column Values To Be Not Null', async ({ page }) => {
     });
 
     await test.step('Edit', async () => {
+      await page
+        .getByTestId(
+          `action-dropdown-${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}`
+        )
+        .click();
       await page
         .getByTestId(`edit-${NEW_COLUMN_TEST_CASE_WITH_NULL_TYPE.name}`)
         .click();
