@@ -32,10 +32,30 @@ export type TestCaseIncidentStatusParams = ListParams & {
   originEntityFQN?: string;
 };
 
+// Utility function to validate incident status parameters
+export const validateIncidentStatusParams = (
+  params: Partial<TestCaseIncidentStatusParams>
+): params is TestCaseIncidentStatusParams => {
+  return (
+    typeof params.startTs === 'number' &&
+    typeof params.endTs === 'number' &&
+    !isNaN(params.startTs) &&
+    !isNaN(params.endTs) &&
+    params.startTs < params.endTs
+  );
+};
+
 export const getListTestCaseIncidentStatus = async ({
   limit = 10,
   ...params
 }: TestCaseIncidentStatusParams) => {
+  // Validate required parameters before making the API call
+  if (!validateIncidentStatusParams({ ...params, limit })) {
+    throw new Error(
+      'Invalid incident status parameters: startTs and endTs must be valid numbers with startTs < endTs'
+    );
+  }
+
   const response = await APIClient.get<
     PagingResponse<TestCaseResolutionStatus[]>
   >(testCaseIncidentUrl, {

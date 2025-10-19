@@ -96,9 +96,37 @@ const IncidentManager = ({
     const searchData = QueryString.parse(
       param.startsWith('?') ? param.substring(1) : param
     );
-    const data = isUndefined(searchData) ? {} : searchData;
 
-    return data as Partial<TestCaseIncidentStatusParams>;
+    if (isUndefined(searchData)) {
+      return {} as Partial<TestCaseIncidentStatusParams>;
+    }
+
+    // Convert string values to proper types for API parameters
+    const processedData: Partial<TestCaseIncidentStatusParams> = {};
+
+    // Convert timestamp strings to numbers
+    if (searchData.startTs) {
+      processedData.startTs = parseInt(searchData.startTs as string, 10);
+    }
+    if (searchData.endTs) {
+      processedData.endTs = parseInt(searchData.endTs as string, 10);
+    }
+
+    // Pass through other string parameters
+    if (searchData.testCaseResolutionStatusType) {
+      processedData.testCaseResolutionStatusType = searchData.testCaseResolutionStatusType as string;
+    }
+    if (searchData.assignee) {
+      processedData.assignee = searchData.assignee as string;
+    }
+    if (searchData.testCaseFQN) {
+      processedData.testCaseFQN = searchData.testCaseFQN as string;
+    }
+    if (searchData.originEntityFQN) {
+      processedData.originEntityFQN = searchData.originEntityFQN as string;
+    }
+
+    return processedData;
   }, [location.search]);
 
   const defaultRange = useMemo(
@@ -150,6 +178,14 @@ const IncidentManager = ({
 
   const fetchTestCaseIncidents = useCallback(
     async (params: TestCaseIncidentStatusParams) => {
+      // Validate required timestamp parameters
+      if (!params.startTs || !params.endTs) {
+        console.error('Missing required timestamp parameters for incident filtering');
+        showErrorToast('Invalid time filter parameters. Please refresh and try again.');
+        setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
+        return;
+      }
+
       setTestCaseListData((prev) => ({ ...prev, isLoading: true }));
       try {
         const { data, paging } = await getListTestCaseIncidentStatus({
@@ -309,8 +345,34 @@ const IncidentManager = ({
     const updatedFilter = pick(value, ['startTs', 'endTs']);
     const existingFilters = pick(filters, ['startTs', 'endTs']);
 
-    if (!isEqual(existingFilters, updatedFilter)) {
-      setFilters((pre) => ({ ...pre, ...updatedFilter }));
+    // Validate timestamp values
+    if (updatedFilter.startTs && updatedFilter.endTs) {
+      const startTs = Number(updatedFilter.startTs);
+      const endTs = Number(updatedFilter.endTs);
+
+      if (isNaN(startTs) || isNaN(endTs)) {
+        console.error('Invalid timestamp values received:', updatedFilter);
+        showErrorToast('Invalid date range selected. Please try again.');
+        return;
+      }
+
+      if (startTs >= endTs) {
+        console.error('Start timestamp must be less than end timestamp:', updatedFilter);
+        showErrorToast('Start date must be before end date.');
+        return;
+      }
+
+      const validatedFilter = {
+        startTs,
+        endTs
+      };
+
+      if (!isEqual(existingFilters, validatedFilter)) {
+        setFilters((pre) => ({ ...pre, ...validatedFilter }));
+      }
+    } else {
+      console.error('Missing timestamp values in date range:', updatedFilter);
+      showErrorToast('Invalid date range. Please select both start and end dates.');
     }
   };
 
