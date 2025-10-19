@@ -63,6 +63,7 @@ import {
   GOOGLE_DRIVE,
   GRAFANA,
   GREENPLUM,
+  HEX,
   HIVE,
   IBMDB2,
   ICEBERGE,
@@ -283,7 +284,8 @@ class ServiceUtilClassBase {
     };
   }
 
-  public getServiceExtraInfo(_data?: ServicesType): any {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public getServiceExtraInfo(_data?: ServicesType) {
     return null;
   }
 
@@ -530,6 +532,9 @@ class ServiceUtilClassBase {
 
       case this.DashboardServiceTypeSmallCase.Tableau:
         return TABLEAU;
+
+      case this.DashboardServiceTypeSmallCase.Hex:
+        return HEX;
 
       case this.DashboardServiceTypeSmallCase.Redash:
         return REDASH;
@@ -822,6 +827,7 @@ class ServiceUtilClassBase {
     return getDriveConfig(type);
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public getInsightsTabWidgets(_: ServiceTypes) {
     const widgets: Record<string, React.ComponentType<any>> = {
       AgentsStatusWidget,
