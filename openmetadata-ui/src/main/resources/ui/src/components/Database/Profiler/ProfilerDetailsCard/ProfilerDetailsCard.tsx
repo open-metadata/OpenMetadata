@@ -193,7 +193,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     />
                   </Fragment>
                 ))}
-                {chartType === 'line' && <Legend onClick={handleClick} />}
+                {chartType === 'line' && (
+                  <Legend iconType="rect" onClick={handleClick} />
+                )}
                 {showBrush && (
                   <Brush
                     data={data}
