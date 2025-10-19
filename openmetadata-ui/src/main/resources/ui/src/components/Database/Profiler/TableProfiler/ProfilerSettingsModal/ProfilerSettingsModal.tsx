@@ -955,7 +955,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       open={visible}
       placement="right"
       title={t('label.setting-plural')}
-      width="50%"
+      width="40%"
       onClose={handleCancel}>
       {renderContent}
     </Drawer>
