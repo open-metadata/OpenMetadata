@@ -62,6 +62,19 @@ jest.mock('@mui/material', () => ({
     <span data-testid={props['data-testid']}>{label}</span>
   ),
   Tooltip: ({ children, title }) => <div title={title}>{children}</div>,
+  Menu: ({ children, ...props }) => (
+    <div data-testid={props['data-testid']} role="menu">
+      {props.open ? children : null}
+    </div>
+  ),
+  MenuItem: ({ children, ...props }) => (
+    <div
+      data-testid={props['data-testid']}
+      role="menuitem"
+      onClick={props.onClick}>
+      {children}
+    </div>
+  ),
   styled: (component) => () => component,
   useTheme: () => ({
     palette: {
@@ -76,6 +89,11 @@ jest.mock('@mui/material', () => ({
         700: '#616161',
         800: '#424242',
         900: '#212121',
+      },
+      primary: {
+        main: '#1976d2',
+        dark: '#115293',
+        contrastText: '#ffffff',
       },
       common: {
         white: '#ffffff',

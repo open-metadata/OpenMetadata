@@ -15,7 +15,6 @@ import { KeyboardArrowDown } from '@mui/icons-material';
 import { Box, Button, Divider, Menu, MenuItem, useTheme } from '@mui/material';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
-import { DateFilterType, DateRangeObject } from 'Models';
 import { memo, useCallback, useMemo, useState } from 'react';
 import {
   DEFAULT_SELECTED_RANGE,
@@ -30,16 +29,7 @@ import {
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
 import MyDatePicker from '../DatePicker/DatePicker';
-
-interface MuiDatePickerMenuProps {
-  defaultDateRange?: Partial<DateRangeObject>;
-  showSelectedCustomRange?: boolean;
-  handleDateRangeChange?: (value: DateRangeObject, days?: number) => void;
-  options?: DateFilterType;
-  allowCustomRange?: boolean;
-  handleSelectedTimeRange?: (value: string) => void;
-  size?: 'small' | 'medium' | 'large';
-}
+import { MuiDatePickerMenuProps } from './MuiDatePickerMenu.interface';
 
 const BUTTON_HEIGHTS = {
   small: '32px',
@@ -81,7 +71,6 @@ const MuiDatePickerMenu = ({
       menuOptions: options ?? PROFILER_FILTER_RANGE,
       defaultOptions: defaultOpts,
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [options]);
 
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
