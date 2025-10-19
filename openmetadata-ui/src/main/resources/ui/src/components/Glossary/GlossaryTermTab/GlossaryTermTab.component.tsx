@@ -50,6 +50,7 @@ import {
   API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
+  PAGE_SIZE_MEDIUM,
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
@@ -161,30 +162,84 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
 
-  const fetchAllTerms = async () => {
+  const fetchAllTerms = async (loadChildren = false) => {
     setIsTableLoading(true);
-    const key = isGlossary ? 'glossary' : 'parent';
-    const { data } = await getGlossaryTerms({
-      [key]: activeGlossary?.id || '',
-      limit: API_RES_MAX_SIZE,
-      fields: [
-        TabSpecificField.OWNERS,
-        TabSpecificField.PARENT,
-        TabSpecificField.CHILDREN,
-      ],
-    });
-    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
-    const keys = data.reduce((prev, curr) => {
-      if (curr.children?.length) {
-        prev.push(curr.fullyQualifiedName ?? '');
-      }
+    try {
+      const key = isGlossary ? 'glossary' : 'parent';
+      // For initial load, only fetch root level terms to improve performance
+      const limit = loadChildren ? API_RES_MAX_SIZE : PAGE_SIZE_MEDIUM;
+      const { data } = await getGlossaryTerms({
+        [key]: activeGlossary?.id || '',
+        limit,
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.PARENT,
+          TabSpecificField.CHILDREN,
+        ],
+      });
 
-      return prev;
-    }, [] as string[]);
+      // Build tree structure
+      const treeData = buildTree(data) as ModifiedGlossary[];
+      setGlossaryChildTerms(treeData);
 
-    setExpandedRowKeys(keys);
+      // Only auto-expand keys for smaller datasets to prevent UI freezing
+      const keys = data.length < 500 ? data.reduce((prev, curr) => {
+        if (curr.children?.length && curr.children.length < 50) {
+          prev.push(curr.fullyQualifiedName ?? '');
+        }
+        return prev;
+      }, [] as string[]) : [];
 
-    setIsTableLoading(false);
+      setExpandedRowKeys(keys);
+    } catch (error) {
+      console.error('Failed to fetch glossary terms:', error);
+      showErrorToast(
+        `Failed to load glossary terms. ${
+          error instanceof Error ? error.message : 'Please try again or contact support.'
+        }`
+      );
+    } finally {
+      setIsTableLoading(false);
+    }
+  };
+
+  // Lazy loading function for child terms to improve performance
+  const fetchChildTermsOnDemand = async (parentTermId: string) => {
+    try {
+      const { data } = await getGlossaryTerms({
+        parent: parentTermId,
+        limit: PAGE_SIZE_MEDIUM,
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.PARENT,
+          TabSpecificField.CHILDREN,
+        ],
+      });
+
+      // Update the tree structure with the loaded children
+      const updateTermsWithChildren = (terms: ModifiedGlossary[]): ModifiedGlossary[] => {
+        return terms.map((term) => {
+          if (term.id === parentTermId) {
+            return {
+              ...term,
+              children: data as GlossaryTerm[],
+              childrenCount: data.length,
+            };
+          } else if (term.children?.length) {
+            return {
+              ...term,
+              children: updateTermsWithChildren(term.children as ModifiedGlossary[]),
+            };
+          }
+          return term;
+        });
+      };
+
+      setGlossaryChildTerms(updateTermsWithChildren);
+    } catch (error) {
+      console.error('Failed to fetch child terms:', error);
+      showErrorToast('Failed to load child terms. Please try again.');
+    }
   };
 
   const fetchAllTasks = useCallback(async () => {

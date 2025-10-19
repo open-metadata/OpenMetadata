@@ -47,11 +47,16 @@ import Fqn from './Fqn';
 import { getGlossaryPath } from './RouterUtils';
 
 export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
+  if (!data || data.length === 0) {
+    return [];
+  }
+
   const nodes: Record<string, GlossaryTerm> = {};
 
-  // Create nodes first
+  // Create nodes first with performance optimization for large datasets
   data.forEach((obj) => {
-    nodes[obj.fullyQualifiedName ?? ''] = {
+    const fqn = obj.fullyQualifiedName ?? '';
+    nodes[fqn] = {
       ...obj,
       children: obj.children?.length ? [] : undefined,
     };
@@ -60,14 +65,19 @@ export const buildTree = (data: GlossaryTerm[]): GlossaryTerm[] => {
   // Build the tree structure
   const tree: GlossaryTerm[] = [];
   data.forEach((obj) => {
-    const current = nodes[obj.fullyQualifiedName ?? ''];
-    const parent = nodes[obj.parent?.fullyQualifiedName ?? ''];
+    const fqn = obj.fullyQualifiedName ?? '';
+    const current = nodes[fqn];
+    const parentFqn = obj.parent?.fullyQualifiedName ?? '';
+    const parent = parentFqn ? nodes[parentFqn] : null;
 
     if (parent?.children) {
       // converting glossaryTerm to EntityReference
       parent.children.push({ ...current, type: 'glossaryTerm' });
     } else {
-      tree.push(current);
+      // Only add to tree if it's truly a root node or parent doesn't exist in this batch
+      if (!obj.parent || !nodes[parentFqn]) {
+        tree.push(current);
+      }
     }
   });
 
@@ -302,18 +312,27 @@ export const findExpandableKeys = (
 
 /**
  * Finds the expandable keys for an array of glossary terms.
+ * Optimized for large datasets to prevent UI freezing.
  *
  * @param glossaryTerms - An array of ModifiedGlossaryTerm objects.
+ * @param maxKeys - Maximum number of keys to auto-expand (default: 100).
  * @returns An array of expandable keys.
  */
 export const findExpandableKeysForArray = (
-  glossaryTerms: ModifiedGlossaryTerm[]
+  glossaryTerms: ModifiedGlossaryTerm[],
+  maxKeys = 100
 ): string[] => {
   let expandableKeys: string[] = [];
 
-  glossaryTerms.forEach((glossaryTerm) => {
-    expandableKeys = expandableKeys.concat(findExpandableKeys(glossaryTerm));
-  });
+  for (const glossaryTerm of glossaryTerms) {
+    if (expandableKeys.length >= maxKeys) {
+      console.warn(`Limiting auto-expansion to ${maxKeys} terms for performance`);
+      break;
+    }
+
+    const termKeys = findExpandableKeys(glossaryTerm);
+    expandableKeys = expandableKeys.concat(termKeys.slice(0, maxKeys - expandableKeys.length));
+  }
 
   return expandableKeys;
 };
