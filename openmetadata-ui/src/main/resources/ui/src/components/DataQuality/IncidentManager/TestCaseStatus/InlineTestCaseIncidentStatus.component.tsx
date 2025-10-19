@@ -367,6 +367,7 @@ const InlineTestCaseIncidentStatus = ({
   return (
     <Box ref={chipRef} sx={{ display: 'inline-flex', alignItems: 'center' }}>
       <Chip
+        data-testid={`${data.testCaseReference?.name}-status`}
         deleteIcon={
           hasEditPermission ? (
             showStatusMenu || showAssigneePopover || showResolvedPopover ? (
@@ -451,6 +452,7 @@ const InlineTestCaseIncidentStatus = ({
           vertical: 'bottom',
           horizontal: 'left',
         }}
+        data-testid={`${data.testCaseReference?.name}-assignee-popover`}
         open={showAssigneePopover}
         slotProps={{
           paper: {
@@ -483,12 +485,14 @@ const InlineTestCaseIncidentStatus = ({
           </Typography>
           <Box sx={{ flex: 1 }} />
           <IconButton
+            data-testid="cancel-assignee-popover-button"
             size="small"
             sx={ACTION_BUTTON_STYLES.cancel}
             onClick={handleCloseAllPopovers}>
             <CloseIcon sx={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
           <IconButton
+            data-testid="submit-assignee-popover-button"
             disabled={!selectedAssignee || isLoading}
             size="small"
             sx={ACTION_BUTTON_STYLES.submit}
@@ -500,6 +504,7 @@ const InlineTestCaseIncidentStatus = ({
         <Box sx={{ p: 4 }}>
           <TextField
             fullWidth
+            data-testid="assignee-search-input"
             placeholder={t('label.search')}
             size="small"
             sx={{ mb: 2 }}
@@ -529,6 +534,7 @@ const InlineTestCaseIncidentStatus = ({
                 return (
                   <ListItem disablePadding key={option.value}>
                     <ListItemButton
+                      data-testid={option.name}
                       selected={selectedAssignee?.id === option.value}
                       sx={{ py: 1.5 }}
                       onClick={() => handleAssigneeSelect(user)}>
@@ -553,6 +559,7 @@ const InlineTestCaseIncidentStatus = ({
           vertical: 'bottom',
           horizontal: 'right',
         }}
+        data-testid={`${data.testCaseReference?.name}-resolved-popover`}
         open={showResolvedPopover}
         slotProps={{
           paper: {
@@ -583,12 +590,14 @@ const InlineTestCaseIncidentStatus = ({
           </Typography>
           <Box sx={{ flex: 1 }} />
           <IconButton
+            data-testid="cancel-resolved-popover-button"
             size="small"
             sx={ACTION_BUTTON_STYLES.cancel}
             onClick={handleCloseAllPopovers}>
             <CloseIcon sx={ACTION_BUTTON_STYLES.icon} />
           </IconButton>
           <IconButton
+            data-testid="submit-resolved-popover-button"
             disabled={!selectedReason || !comment || isLoading}
             size="small"
             sx={ACTION_BUTTON_STYLES.submit}
@@ -603,6 +612,7 @@ const InlineTestCaseIncidentStatus = ({
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mb: 5 }}>
             {Object.values(TestCaseFailureReasonType).map((reason) => (
               <Chip
+                data-testid={`reason-chip-${reason}`}
                 icon={
                   selectedReason === reason ? (
                     <CheckIcon
@@ -632,7 +642,6 @@ const InlineTestCaseIncidentStatus = ({
                         },
                         '& .MuiChip-icon': {
                           color: 'common.white',
-                          // marginLeft: '8px',
                         },
                       }
                     : {
@@ -654,6 +663,7 @@ const InlineTestCaseIncidentStatus = ({
           <TextField
             fullWidth
             multiline
+            data-testid="resolved-comment-textarea"
             placeholder="Enter your comment"
             rows={4}
             value={comment}

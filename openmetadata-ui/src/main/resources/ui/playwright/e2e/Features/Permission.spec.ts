@@ -266,6 +266,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     await userPage.getByRole('tab', { name: 'Data Quality' }).click();
     await testCaseResponse;
 
+    await userPage.getByTestId(`action-dropdown-${testCaseName}`).click();
     const testDefinitionResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testDefinitions/*'
     );

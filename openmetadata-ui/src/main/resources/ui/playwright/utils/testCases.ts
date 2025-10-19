@@ -15,6 +15,7 @@ import { TableClass } from '../support/entity/TableClass';
 import { toastNotification } from './common';
 
 export const deleteTestCase = async (page: Page, testCaseName: string) => {
+  await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`delete-${testCaseName}`).click();
   await page.fill('#deleteTextInput', 'DELETE');
 
