@@ -145,6 +145,7 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                   }
                   tickLine={false}
                   type={showYAxisCategory ? 'category' : 'number'}
+                  width={showYAxisCategory ? undefined : 50}
                 />
                 <Tooltip
                   content={
