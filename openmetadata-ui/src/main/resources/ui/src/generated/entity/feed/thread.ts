@@ -78,6 +78,10 @@ export interface Thread {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * The main message of the thread in Markdown format.
      */
     message: string;
