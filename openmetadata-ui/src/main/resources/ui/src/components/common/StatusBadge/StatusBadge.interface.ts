@@ -23,6 +23,7 @@ export enum StatusType {
   InReview = 'inReview',
   Deprecated = 'deprecated',
   Version = 'version',
+  Acknowledged = 'acknowledged',
 }
 
 export interface StatusBadgeProps {
@@ -31,4 +32,5 @@ export interface StatusBadgeProps {
   dataTestId?: string;
   className?: string;
   externalIcon?: SvgComponent;
+  hideIcon?: boolean;
 }

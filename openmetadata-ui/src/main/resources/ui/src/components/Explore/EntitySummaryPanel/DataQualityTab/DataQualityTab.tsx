@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Avatar, Button, Card, Col, Row, Tabs, Typography } from 'antd';
+import { Divider } from '@mui/material';
+import { Avatar, Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,6 +86,8 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     switch (status) {
       case TestCaseResolutionStatusTypes.New:
         return StatusType.Started;
+      case TestCaseResolutionStatusTypes.ACK:
+        return StatusType.Acknowledged;
       case TestCaseResolutionStatusTypes.Assigned:
         return StatusType.Warning;
       case TestCaseResolutionStatusTypes.Resolved:
@@ -130,6 +133,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
           </div>
           <div className="test-case-status-section">
             <StatusBadgeV2
+              hideIcon={isIncidentMode}
               label={status || 'Unknown'}
               status={
                 isIncidentMode
@@ -513,125 +517,95 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
       ),
       children: (
         <div className="incidents-tab-content">
-          {/* Incidents Summary Section */}
-          <div className="incidents-summary-section">
-            <div className="incidents-header">
-              <Typography.Title className="incidents-title" level={5}>
-                {t('label.incident-plural')}
-              </Typography.Title>
-              <div className="total-incidents-badge">
-                <Typography.Text className="total-incidents-badge-text">
-                  {incidentCounts.total}
+          {/* Incidents Stats Cards */}
+          <div className="incidents-stats-container">
+            <div className="incidents-stats-cards-container">
+              <div
+                className={`incident-stat-card new-card ${
+                  activeIncidentFilter === 'new' ? 'active' : ''
+                }`}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleIncidentFilterChange('new')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    handleIncidentFilterChange('new');
+                  }
+                }}>
+                <Typography.Text className="stat-count new">
+                  {incidentCounts.new.toString().padStart(2, '0')}
+                </Typography.Text>
+                <Typography.Text className="stat-label new">
+                  {t('label.new')}
+                </Typography.Text>
+              </div>
+              <Divider
+                flexItem
+                className="vertical-divider"
+                orientation="vertical"
+                variant="middle"
+              />
+              <div
+                className={`incident-stat-card ack-card ${
+                  activeIncidentFilter === 'ack' ? 'active' : ''
+                }`}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleIncidentFilterChange('ack')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    handleIncidentFilterChange('ack');
+                  }
+                }}>
+                <Typography.Text className="stat-count ack">
+                  {incidentCounts.ack.toString().padStart(2, '0')}
+                </Typography.Text>
+                <Typography.Text className="stat-label ack">
+                  {t('label.acknowledged')}
+                </Typography.Text>
+              </div>
+              <Divider
+                flexItem
+                className="vertical-divider"
+                orientation="vertical"
+                variant="middle"
+              />
+              <div
+                className={`incident-stat-card assigned-card ${
+                  activeIncidentFilter === 'assigned' ? 'active' : ''
+                }`}
+                role="button"
+                tabIndex={0}
+                onClick={() => handleIncidentFilterChange('assigned')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    handleIncidentFilterChange('assigned');
+                  }
+                }}>
+                <Typography.Text className="stat-count assigned">
+                  {incidentCounts.assigned.toString().padStart(2, '0')}
+                </Typography.Text>
+                <Typography.Text className="stat-label assigned">
+                  {t('label.assigned')}
                 </Typography.Text>
               </div>
             </div>
-
-            <div className="overview-section gap-0">
-              <div className="overview-row m-b-sm">
-                <span className="overview-label" data-testid="new-label">
-                  {t('label.new')}
-                </span>
-                <span
-                  className="overview-value text-grey-body"
-                  data-testid="new-value">
-                  {incidentCounts.new.toString().padStart(2, '0')}
-                </span>
-              </div>
-              <div className="overview-row m-b-sm">
-                <span className="overview-label" data-testid="ack-label">
-                  {t('label.acknowledged')}
-                </span>
-                <span
-                  className="overview-value text-grey-body"
-                  data-testid="ack-value">
-                  {incidentCounts.ack.toString().padStart(2, '0')}
-                </span>
-              </div>
-              <div className="overview-row m-b-sm">
-                <span className="overview-label" data-testid="assigned-label">
-                  {t('label.assigned')}
-                </span>
-                <span
-                  className="overview-value text-grey-body"
-                  data-testid="assigned-value">
-                  {incidentCounts.assigned.toString().padStart(2, '0')}
-                </span>
-              </div>
-              <div className="overview-row">
-                <span className="overview-label" data-testid="resolved-label">
-                  {t('label.resolved')}
-                </span>
-                <span
-                  className="overview-value text-grey-body"
-                  data-testid="resolved-value">
+            <div>
+              <div className="resolved-section">
+                <Typography.Text className="resolved-label">
+                  {t('label.-with-colon', { text: t('label.resolved') })}
+                </Typography.Text>
+                <Typography.Text className="resolved-value">
                   {incidentCounts.resolved.toString().padStart(2, '0')}
-                </span>
+                </Typography.Text>
               </div>
             </div>
           </div>
 
+          {/* Resolved Row */}
+
           {/* Test Cases Section */}
           <div className="test-cases-section">
-            <div className="incident-filter-buttons-container">
-              <Button
-                className={`incident-filter-button ${
-                  activeIncidentFilter === 'new' ? 'active' : ''
-                }`}
-                size="small"
-                onClick={() => handleIncidentFilterChange('new')}>
-                {t('label.new')}
-                <span
-                  className={`incident-test-case-count ${
-                    activeIncidentFilter === 'new' ? 'active' : ''
-                  }`}>
-                  {incidentCounts.new}
-                </span>
-              </Button>
-
-              <Button
-                className={`incident-filter-button ${
-                  activeIncidentFilter === 'ack' ? 'active' : ''
-                }`}
-                size="small"
-                onClick={() => handleIncidentFilterChange('ack')}>
-                {t('label.ack')}
-                <span
-                  className={`incident-test-case-count ${
-                    activeIncidentFilter === 'ack' ? 'active' : ''
-                  }`}>
-                  {incidentCounts.ack}
-                </span>
-              </Button>
-              <Button
-                className={`incident-filter-button ${
-                  activeIncidentFilter === 'assigned' ? 'active' : ''
-                }`}
-                size="small"
-                onClick={() => handleIncidentFilterChange('assigned')}>
-                {t('label.assigned')}
-                <span
-                  className={`incident-test-case-count ${
-                    activeIncidentFilter === 'assigned' ? 'active' : ''
-                  }`}>
-                  {incidentCounts.assigned}
-                </span>
-              </Button>
-              <Button
-                className={`incident-filter-button ${
-                  activeIncidentFilter === 'resolved' ? 'active' : ''
-                }`}
-                size="small"
-                onClick={() => handleIncidentFilterChange('resolved')}>
-                {t('label.resolved')}
-                <span
-                  className={`incident-test-case-count ${
-                    activeIncidentFilter === 'resolved' ? 'active' : ''
-                  }`}>
-                  {incidentCounts.resolved}
-                </span>
-              </Button>
-            </div>
-
             {/* Incident Cards */}
             <div className="incident-cards-section">
               {isIncidentsLoading ? (

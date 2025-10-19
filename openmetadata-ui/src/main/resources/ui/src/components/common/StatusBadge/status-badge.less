@@ -65,7 +65,11 @@
     border-radius: @border-rad-md;
     padding: @padding-xss @padding-xs;
   }
-
+  &.acknowledged {
+    color: @blue-3;
+    background-color: @blue-1;
+    border-color: @white;
+  }
   &.running {
     color: @primary-heading-color;
     background-color: @primary-button-background;
@@ -74,8 +78,8 @@
 
   &.started,
   &.inReview {
-    color: @blue-7;
-    background-color: @blue-13;
+    color: @purple-2;
+    background-color: @purple-1;
     border-color: @white;
   }
 

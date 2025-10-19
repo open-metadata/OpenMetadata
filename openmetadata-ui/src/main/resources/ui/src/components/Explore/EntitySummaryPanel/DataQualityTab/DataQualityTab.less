@@ -107,8 +107,34 @@
   border-bottom: 1px dashed @grey-15;
   padding-bottom: 10px;
 }
+.vertical-divider {
+  margin-top: 12px !important;
+  margin-bottom: 12px !important;
+}
 .data-quality-tab-container {
   border: 0px !important;
+
+  .tab-header-container {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+
+    .data-quality-tab-count {
+      border-radius: 6px;
+      padding: 2px 6px;
+      background-color: @grey-9;
+      border: 1px solid @grey-38;
+      color: @grey-700;
+      font-size: 10px;
+      font-weight: 500;
+
+      &.active {
+        background-color: @primary-1;
+        border-color: @primary-7;
+        color: @primary-7;
+      }
+    }
+  }
 
   .data-quality-tabs {
     .ant-tabs-nav {
@@ -128,6 +154,10 @@
             width: auto;
             flex: none;
             padding: 10px 0px !important;
+
+            &.ant-tabs-tab-active {
+              color: @primary-7;
+            }
 
             &:hover {
               color: @primary-7;
@@ -171,30 +201,119 @@
   .incidents-tab-content {
     padding-left: 12px;
     padding-right: 12px;
+    .incidents-stats-container {
+      display: flex;
+      border: 1px solid @grey-15;
+      border-radius: 8px;
+      flex-direction: column;
+      margin-bottom: 14px;
 
-    .incidents-summary-section {
-      margin-bottom: 24px;
-
-      .incidents-header {
+      .incidents-stats-cards-container {
         display: flex;
+        border-bottom: 1px solid @grey-15;
+        border-bottom-left-radius: 8px;
+        border-bottom-right-radius: 8px;
+      }
+      .incident-stat-card {
+        display: flex;
+        flex-direction: column;
         align-items: center;
-        margin-bottom: 8px;
+        justify-content: center;
+        margin: 6px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        outline: none;
 
-        .incidents-title {
-          margin: 0;
+        .stat-count {
           font-size: 13px;
           font-weight: 600;
-          color: #262626;
+          display: block;
         }
 
-        .incidents-badge {
-          background-color: #f9fafc;
-          border-radius: 6px;
-          border: 1px solid #e3e8f0;
-          text-align: center;
-          width: 20px;
-          margin-left: 8px;
+        .stat-label {
+          font-size: 12px;
+          font-weight: 400;
+          display: block;
         }
+
+        &.new-card {
+          width: 25%;
+          .stat-count.new {
+            color: @purple-2;
+            font-weight: 600;
+          }
+
+          .stat-label.new {
+            color: @purple-2;
+            font-weight: 400;
+          }
+
+          &.active {
+            background-color: @purple-1;
+            border-radius: 6px;
+          }
+        }
+
+        &.ack-card {
+          width: 50%;
+          .stat-count.ack {
+            color: @blue-3;
+            font-weight: 600;
+          }
+
+          .stat-label.ack {
+            color: @blue-3;
+          }
+
+          &.active {
+            background-color: @blue-1;
+            border-radius: 6px;
+          }
+        }
+
+        &.assigned-card {
+          width: 25%;
+          .stat-count.assigned {
+            color: @yellow-11;
+            font-weight: 600;
+          }
+
+          .stat-label.assigned {
+            color: @yellow-11;
+          }
+
+          &.active {
+            background-color: @yellow-10;
+            border-radius: 6px;
+          }
+        }
+      }
+    }
+
+    .resolved-section {
+      display: flex;
+      position: relative;
+      align-items: center;
+      gap: 8px;
+      padding-top: 6px;
+      padding-bottom: 6px;
+      padding-left: 12px;
+      padding-right: 12px;
+      border-bottom-right-radius: 8px;
+      border-bottom-left-radius: 8px;
+
+      background-color: @alert-success-bg;
+      .resolved-label {
+        font-size: 12px;
+        font-weight: 400;
+        color: @grey-700;
+      }
+
+      .resolved-value {
+        font-size: 12px;
+        font-weight: 600;
+        color: @grey-900;
       }
     }
 
