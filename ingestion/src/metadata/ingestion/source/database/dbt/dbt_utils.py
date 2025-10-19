@@ -104,6 +104,20 @@ def create_test_case_parameter_values(dbt_test):
     return None
 
 
+def get_matched_column_name(table_entity: Table, dbt_node):
+    """
+    Method to fetch the matched column name from dbt
+    """
+    dbt_column_name = getattr(dbt_node, "column_name", None)
+    if dbt_column_name:
+        # Case-insensitive lookup to find the actual column name
+        for col in getattr(table_entity, "columns", []) or []:
+            if col.name.root.lower() == dbt_column_name.lower():
+                return col.name.root
+        logger.warning(f"No Matching Column found for {dbt_column_name}")
+    return None
+
+
 def generate_entity_link(dbt_test, table_entity: Optional[Table] = None):
     """
     Method returns entity link with case-matched column names.
@@ -121,25 +135,13 @@ def generate_entity_link(dbt_test, table_entity: Optional[Table] = None):
     """
     manifest_node = dbt_test.get(DbtCommonEnum.MANIFEST_NODE.value)
 
-    # Get the column name from manifest (may be lowercase from DBT)
-    dbt_column_name = (
-        getattr(manifest_node, "column_name", None)
-    )
-
-    # Match against actual table columns if table entity provided
-    matched_column_name = dbt_column_name
-    if dbt_column_name and table_entity and table_entity.columns:
-        # Case-insensitive lookup to find the actual column name
-        for col in table_entity.columns:
-            if col.name.root.lower() == dbt_column_name.lower():
-                matched_column_name = col.name.root
-                break
+    dbt_column_name = get_matched_column_name(table_entity, manifest_node)
 
     entity_link_list = [
         entity_link.get_entity_link(
             Table,
             fqn=table_fqn,
-            column_name=matched_column_name,
+            column_name=dbt_column_name,
         )
         for table_fqn in dbt_test[DbtCommonEnum.UPSTREAM.value]
     ]

@@ -93,6 +93,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
     get_dbt_compiled_query,
     get_dbt_model_name,
     get_dbt_raw_query,
+    get_matched_column_name,
 )
 from metadata.ingestion.source.database.dbt.models import DbtMeta
 from metadata.utils import fqn
@@ -1193,17 +1194,7 @@ class DbtSource(DbtServiceSource):
                 entity_link_list = generate_entity_link(dbt_test, table_entity)
 
                 # Get matched column name for test case FQN
-                dbt_column_name = (
-                    manifest_node.column_name
-                    if hasattr(manifest_node, "column_name")
-                    else None
-                )
-                matched_column_name = dbt_column_name
-                if dbt_column_name and table_entity and table_entity.columns:
-                    for col in table_entity.columns:
-                        if col.name.root.lower() == dbt_column_name.lower():
-                            matched_column_name = col.name.root
-                            break
+                dbt_column_name = get_matched_column_name(table_entity, manifest_node)
 
                 for entity_link_str in entity_link_list:
                     table_fqn = get_table_fqn(entity_link_str)
@@ -1216,7 +1207,7 @@ class DbtSource(DbtServiceSource):
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=matched_column_name,
+                        column_name=dbt_column_name,
                         test_case_name=manifest_node.name,
                     )
 
@@ -1321,17 +1312,9 @@ class DbtSource(DbtServiceSource):
                     table_entity = self._get_table_entity(table_fqn=table_fqn)
 
                     # Get matched column name for test case FQN
-                    dbt_column_name = (
-                        manifest_node.column_name
-                        if hasattr(manifest_node, "column_name")
-                        else None
+                    dbt_column_name = get_matched_column_name(
+                        table_entity, manifest_node
                     )
-                    matched_column_name = dbt_column_name
-                    if dbt_column_name and table_entity and table_entity.columns:
-                        for col in table_entity.columns.root:
-                            if col.name.root.lower() == dbt_column_name.lower():
-                                matched_column_name = col.name.root
-                                break
 
                     source_elements = table_fqn.split(fqn.FQN_SEPARATOR)
                     test_case_fqn = fqn.build(
@@ -1341,7 +1324,7 @@ class DbtSource(DbtServiceSource):
                         database_name=source_elements[1],
                         schema_name=source_elements[2],
                         table_name=source_elements[3],
-                        column_name=matched_column_name,
+                        column_name=dbt_column_name,
                         test_case_name=manifest_node.name,
                     )
 
