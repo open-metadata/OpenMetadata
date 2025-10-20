@@ -803,6 +803,13 @@ a[href].link-text-grey,
   stroke: @primary-color;
 }
 
+.react-flow__edge-path::before {
+  content: 'abcd';
+  stroke-width: 12; /* ← much easier to click */
+  stroke: transparent; /* ← invisible */
+  pointer-events: stroke; /* ← this is the real hit area */
+}
+
 .react-flow__attribution > a {
   color: @background-color !important;
 }
