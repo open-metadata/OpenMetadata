@@ -12,6 +12,7 @@
  */
 
 import { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position } from 'reactflow';
 import { useLineageProvider } from '../../../context/LineageProvider/LineageProvider';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
@@ -144,6 +145,7 @@ const ExpandCollapseHandles = memo(
 
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
+  const { t } = useTranslation();
 
   const {
     isEditMode,
@@ -263,6 +265,12 @@ const CustomNodeV1 = (props: NodeProps) => {
     <div
       className={containerClass}
       data-testid={`lineage-node-${fullyQualifiedName}`}>
+      {isRootNode && (
+        <div className="lineage-node-badge-container">
+          <div className="lineage-node-badge">{t('label.base')}</div>
+        </div>
+      )}
+
       <NodeHandles
         expandCollapseHandles={handlesElement}
         id={id}
