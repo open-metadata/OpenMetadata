@@ -30,3 +30,9 @@ export interface SeverityModalProps {
   onCancel: () => void;
   onSubmit: (severity: Severities) => Promise<void>;
 }
+
+export interface InlineSeverityProps {
+  severity?: Severities;
+  hasEditPermission: boolean;
+  onSubmit: SeverityProps['onSubmit'];
+}

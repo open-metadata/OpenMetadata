@@ -13,10 +13,10 @@
 
 import {
   ArrowBack as ArrowBackIcon,
-  KeyboardArrowDown as ArrowDownIcon,
-  KeyboardArrowUp as ArrowUpIcon,
   Check as CheckIcon,
   Close as CloseIcon,
+  KeyboardArrowDown as ArrowDownIcon,
+  KeyboardArrowUp as ArrowUpIcon,
 } from '@mui/icons-material';
 import {
   Box,
@@ -36,6 +36,7 @@ import { AxiosError } from 'axios';
 import { debounce, isEmpty, startCase } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { STATUS_COLORS } from '../../../../constants/Color.constants';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { CreateTestCaseResolutionStatus } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -56,23 +57,7 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { RequiredLabel } from '../../../common/MuiComponents/RequiredLabel/RequiredLabel.styled';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
-import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
-
-interface InlineTestCaseIncidentStatusProps {
-  data: TestCaseStatusIncidentManagerProps['data'];
-  hasEditPermission: boolean;
-  onSubmit: TestCaseStatusIncidentManagerProps['onSubmit'];
-}
-
-const STATUS_COLORS: Record<
-  string,
-  { bg: string; color: string; border: string }
-> = {
-  New: { bg: '#E1D3FF', color: '#7147E8', border: '#7147E8' },
-  Ack: { bg: '#EBF6FE', color: '#3DA2F3', border: '#3DA2F3' },
-  Assigned: { bg: '#FFF6E1', color: '#D99601', border: '#D99601' },
-  Resolved: { bg: '#E8F5E9', color: '#4CAF50', border: '#81C784' },
-};
+import { InlineTestCaseIncidentStatusProps } from './TestCaseIncidentManagerStatus.interface';
 
 const ACTION_BUTTON_STYLES = {
   cancel: {

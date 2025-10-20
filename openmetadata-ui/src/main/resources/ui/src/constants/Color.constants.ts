@@ -47,3 +47,24 @@ export const LEMON_ZEST = '#FFD700';
 export const GREY_100 = '#f5f5f5';
 export const GREY_200 = '#E9EAEB';
 export const GRAY_600 = '#535862';
+
+export const SEVERITY_COLORS: Record<
+  string,
+  { bg: string; color: string; border: string }
+> = {
+  Severity1: { bg: '#FEF3F2', color: '#B42318', border: '#FDA29B' },
+  Severity2: { bg: '#FEF6EE', color: '#C4320A', border: '#FDB022' },
+  Severity3: { bg: '#FFFAEB', color: '#DC6803', border: '#FEC84B' },
+  Severity4: { bg: '#F0F9FF', color: '#026AA2', border: '#7CD4FD' },
+  Severity5: { bg: '#F9FAFB', color: '#344054', border: '#D0D5DD' },
+};
+
+export const STATUS_COLORS: Record<
+  string,
+  { bg: string; color: string; border: string }
+> = {
+  New: { bg: '#E1D3FF', color: '#7147E8', border: '#7147E8' },
+  Ack: { bg: '#EBF6FE', color: '#3DA2F3', border: '#3DA2F3' },
+  Assigned: { bg: '#FFF6E1', color: '#D99601', border: '#D99601' },
+  Resolved: { bg: '#E8F5E9', color: '#4CAF50', border: '#81C784' },
+};

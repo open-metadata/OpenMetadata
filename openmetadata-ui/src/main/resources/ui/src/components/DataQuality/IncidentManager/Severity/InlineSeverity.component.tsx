@@ -20,25 +20,9 @@ import classNames from 'classnames';
 import { startCase, toLower } from 'lodash';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { SEVERITY_COLORS } from '../../../../constants/Color.constants';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
-import { SeverityProps } from './Severity.interface';
-
-const SEVERITY_COLORS: Record<
-  string,
-  { bg: string; color: string; border: string }
-> = {
-  Severity1: { bg: '#FEF3F2', color: '#B42318', border: '#FDA29B' },
-  Severity2: { bg: '#FEF6EE', color: '#C4320A', border: '#FDB022' },
-  Severity3: { bg: '#FFFAEB', color: '#DC6803', border: '#FEC84B' },
-  Severity4: { bg: '#F0F9FF', color: '#026AA2', border: '#7CD4FD' },
-  Severity5: { bg: '#F9FAFB', color: '#344054', border: '#D0D5DD' },
-};
-
-interface InlineSeverityProps {
-  severity?: Severities;
-  hasEditPermission: boolean;
-  onSubmit: SeverityProps['onSubmit'];
-}
+import { InlineSeverityProps } from './Severity.interface';
 
 const InlineSeverity = ({
   severity,

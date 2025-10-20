@@ -221,7 +221,6 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    // DataQualityTab is still rendered, button visibility is controlled within it
     expect(
       await screen.findByText('DataQualityTab.component')
     ).toBeInTheDocument();
@@ -253,7 +252,6 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    // Tabs are now rendered as part of TabsLabel mock
     expect(await screen.findByTestId('test-cases')).toBeInTheDocument();
     expect(await screen.findByTestId('pipeline')).toBeInTheDocument();
   });
@@ -289,8 +287,6 @@ describe('QualityTab', () => {
       render(<QualityTab />);
     });
 
-    // Settings button was removed in the refactoring
-    // Just verify the component renders correctly
     expect(
       await screen.findByText('DataQualityTab.component')
     ).toBeInTheDocument();

@@ -179,6 +179,3 @@ hive-mind-prompt-*.txt
 .claude-flow/
 docs
 memory
-
-# Jest Sonar Reporter debug file
-debug.json
