@@ -580,7 +580,9 @@ class TestKafkaFallbackPatterns(unittest.TestCase):
         # Test Kafka extraction
         kafka_configs = extract_kafka_sources(source_code)
         self.assertEqual(len(kafka_configs), 1)
-        self.assertEqual(kafka_configs[0].topics, ["dev.example.cashout.customerEvent_v1"])
+        self.assertEqual(
+            kafka_configs[0].topics, ["dev.example.cashout.customerEvent_v1"]
+        )
 
         # Test DLT table extraction
         table_names = extract_dlt_table_names(source_code)

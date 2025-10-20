@@ -35,7 +35,7 @@ VARIABLE_ASSIGNMENT_PATTERN = re.compile(
 
 # Pattern to extract boolean variable assignments like: snapshot_required = True
 BOOL_ASSIGNMENT_PATTERN = re.compile(
-    r'^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(True|False)\s*$',
+    r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(True|False)\s*$",
     re.MULTILINE,
 )
 
@@ -461,10 +461,15 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
                 # Materializer pattern: materializer.build_event_log_dataframe()
                 # This method internally reads from Kafka, so if we find this pattern
                 # and the table name matches event_log pattern, mark as Kafka reader
-                if not reads_from_kafka and "materializer.build_event_log_dataframe" in function_block:
+                if (
+                    not reads_from_kafka
+                    and "materializer.build_event_log_dataframe" in function_block
+                ):
                     if "event_log" in table_name:
                         reads_from_kafka = True
-                        logger.debug(f"Table {table_name} reads from Kafka via Materializer")
+                        logger.debug(
+                            f"Table {table_name} reads from Kafka via Materializer"
+                        )
 
                 # Check if it reads from S3
                 s3_locations = []
@@ -523,8 +528,7 @@ def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]
             # Check if snapshot table is built
             # snapshot_required can be "True" (string) or True (boolean)
             is_snapshot_enabled = (
-                snapshot_required
-                and str(snapshot_required).lower() == "true"
+                snapshot_required and str(snapshot_required).lower() == "true"
             )
 
             if (

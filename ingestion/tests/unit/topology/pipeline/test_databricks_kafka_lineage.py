@@ -90,7 +90,9 @@ class TestKafkaTopicDiscovery(unittest.TestCase):
         self.mock_metadata.get_by_name.return_value = mock_topic
 
         # Test
-        result = self.source._find_kafka_topic("dev.example.transactions.customerEvent_v1")
+        result = self.source._find_kafka_topic(
+            "dev.example.transactions.customerEvent_v1"
+        )
 
         # Verify
         self.assertIsNotNone(result)
