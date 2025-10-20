@@ -1,5 +1,9 @@
--- Post-data migration script for 1.10.3 - Glossary Performance Optimization
--- This file contains data updates that need to run after schema changes in schemaChanges.sql
-
--- No post-data migrations required for glossary performance optimization
--- The index creation in schemaChanges.sql handles all necessary changes
+UPDATE test_definition
+SET json = jsonb_set(
+    json::jsonb,
+    '{supportedDataTypes}',
+    (json->'supportedDataTypes')::jsonb || '"NUMERIC"'::jsonb,
+    true
+)
+WHERE json->'supportedDataTypes' @> '"NUMBER"'::jsonb
+  AND NOT (json->'supportedDataTypes' @> '"NUMERIC"'::jsonb);
