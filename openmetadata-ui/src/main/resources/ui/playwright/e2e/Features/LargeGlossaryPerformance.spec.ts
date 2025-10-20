@@ -58,18 +58,16 @@ test.describe('Large Glossary Performance Tests', () => {
     await afterAction();
   });
 
-  test.afterAll(async ({ browser }) => {
+  test.afterAll(async () => {
     test.setTimeout(8 * 60 * 1000);
 
-    const { apiContext, afterAction } = await createNewPage(browser);
-
-    // // Clean up all terms and glossary
-    for (const term of glossaryTerms.reverse()) {
-      await term.delete(apiContext);
-    }
-    await glossary.delete(apiContext);
-
-    await afterAction();
+    // Cleanup disabled for development - uncomment for CI/CD
+    // const { apiContext, afterAction } = await createNewPage(browser);
+    // for (const term of glossaryTerms.reverse()) {
+    //   await term.delete(apiContext);
+    // }
+    // await glossary.delete(apiContext);
+    // await afterAction();
   });
 
   test.beforeEach(async ({ page }) => {
