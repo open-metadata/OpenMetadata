@@ -271,7 +271,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
             return {
               ...term,
-              children: newChildren,
+              children: newChildren as GlossaryTermWithChildren[],
             };
           }
 
@@ -769,9 +769,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                       fetchChildTerms(parentFQN, true);
                     }
                   }}>
-                  {t('label.load-more-entity', {
-                    entity: t('label.term-plural'),
-                  })}
+                  {t('label.load-more')}
                 </Button>
               </div>
             );
