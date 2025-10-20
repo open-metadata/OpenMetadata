@@ -137,7 +137,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "chardet==4.0.0",  # Used in the profiler
     "cryptography>=42.0.0",
-    "google-cloud-secret-manager==2.22.1",
+    "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
     "importlib-metadata>=4.13.0",  # From airflow constraints
@@ -171,8 +171,7 @@ base_requirements = {
 
 plugins: Dict[str, Set[str]] = {
     "airflow": {
-        "opentelemetry-exporter-otlp==1.27.0",
-        "protobuf<5",
+        "opentelemetry-exporter-otlp==1.37.0",
         "attrs",
         VERSIONS["airflow"],
     },  # Same as ingestion container. For development.
@@ -398,7 +397,7 @@ test_unit = {
 
 test = {
     # Install Airflow as it's not part of `all` plugin
-    "opentelemetry-exporter-otlp==1.27.0",
+    "opentelemetry-exporter-otlp==1.37.0",
     VERSIONS["airflow"],
     "boto3-stubs",
     "mypy-boto3-glue",
