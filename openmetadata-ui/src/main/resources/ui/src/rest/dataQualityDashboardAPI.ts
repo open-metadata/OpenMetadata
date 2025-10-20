@@ -107,13 +107,9 @@ export const fetchTestCaseSummaryByNoDimension = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags));
   }
 
   return getDataQualityReport({
@@ -139,13 +135,10 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
   }
 
   return getDataQualityReport({
@@ -181,13 +174,10 @@ export const fetchIncidentTimeMetrics = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
   }
 
   return getDataQualityReport({
@@ -232,13 +222,10 @@ export const fetchTestCaseStatusMetricsByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
   }
   if (filters?.entityFQN) {
     mustFilter.push({
