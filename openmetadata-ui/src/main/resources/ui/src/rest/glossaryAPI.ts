@@ -98,38 +98,6 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   return response.data;
 };
 
-// Optimized function to get first-level terms with pagination for better performance
-export const getFirstLevelGlossaryTerms = async (
-  glossaryId: string,
-  limit = PAGE_SIZE_MEDIUM,
-  after?: string
-) => {
-  const response = await APIClient.get<PagingResponse<GlossaryTerm[]>>(
-    '/glossaryTerms',
-    {
-      params: {
-        glossary: glossaryId,
-        directChildrenOf: undefined, // Only direct children
-        limit,
-        after,
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.PARENT,
-          TabSpecificField.CHILDREN,
-        ].join(','),
-      },
-    }
-  );
-
-  return response.data;
-};
-
-// Enhanced type to track child loading state
-export type GlossaryTermWithChildren = GlossaryTerm & {
-  childrenLoaded?: boolean;
-  childrenCount?: number;
-};
-
 export const queryGlossaryTerms = async (glossaryName: string) => {
   const apiUrl = `/search/query`;
 
@@ -430,6 +398,31 @@ export const getGlossaryTermChildrenLazy = async (
         TabSpecificField.REVIEWERS,
       ],
       limit,
+    },
+  });
+
+  return data;
+};
+
+export const getGlossaryTermChildrenPaginated = async (
+  parentFQN: string,
+  limit = 50,
+  after?: string
+) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      directChildrenOf: parentFQN,
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
+      limit,
+      after,
     },
   });
 
