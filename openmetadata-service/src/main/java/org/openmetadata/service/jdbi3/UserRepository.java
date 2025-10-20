@@ -21,10 +21,7 @@ import static org.openmetadata.csv.CsvUtil.addField;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.schema.utils.EntityInterfaceUtil.quoteName;
-import static org.openmetadata.service.Entity.FIELD_DOMAINS;
-import static org.openmetadata.service.Entity.ROLE;
-import static org.openmetadata.service.Entity.TEAM;
-import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.Entity.*;
 import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import jakarta.json.JsonPatch;
@@ -41,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -1045,6 +1043,13 @@ public class UserRepository extends EntityRepository<User> {
     }
   }
 
+  private void updateIncidentAssignee(User user) {
+    TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+        (TestCaseResolutionStatusRepository)
+            getEntityTimeSeriesRepository(TEST_CASE_RESOLUTION_STATUS);
+    testCaseResolutionStatusRepository.cleanUpAssignees(user.getFullyQualifiedName());
+  }
+
   @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
@@ -1054,6 +1059,12 @@ public class UserRepository extends EntityRepository<User> {
     }
     // Remove suggestions
     daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
+    CompletableFuture.runAsync(() -> updateIncidentAssignee(entity))
+        .exceptionally(
+            ex -> {
+              LOG.error("Error updating test case incident assignee: ", ex);
+              return null;
+            });
   }
 
   /** Handles entity updated from PUT and POST operation. */

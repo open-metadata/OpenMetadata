@@ -6692,6 +6692,12 @@ public interface CollectionDAO {
     @SqlQuery(
         value =
             "SELECT json FROM test_case_resolution_status_time_series "
+                + "WHERE assignee = :userFqn ORDER BY timestamp DESC")
+    List<String> listTestCaseResolutionForAssignee(@Bind("userFqn") String userFqn);
+
+    @SqlQuery(
+        value =
+            "SELECT json FROM test_case_resolution_status_time_series "
                 + "WHERE stateId = :stateId ORDER BY timestamp ASC LIMIT 1")
     String listFirstTestCaseResolutionStatusesForStateId(@Bind("stateId") String stateId);
 
