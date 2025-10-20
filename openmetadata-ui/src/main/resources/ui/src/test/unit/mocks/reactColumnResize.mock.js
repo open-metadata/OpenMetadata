@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import React from 'react';
 
 /* eslint-disable */
+const React = require('react');
 module.exports = {
   useAntdColumnResize: jest.fn().mockImplementation((hookDataFunction) => {
     return {

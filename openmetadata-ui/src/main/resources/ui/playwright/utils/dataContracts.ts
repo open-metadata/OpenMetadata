@@ -13,6 +13,7 @@
 import { expect, Page } from '@playwright/test';
 import {
   DataContractSecuritySlaData,
+  DATA_CONTRACT_DETAILS,
   DATA_CONTRACT_SECURITY_CONSUMER_DETAILS,
 } from '../constant/dataContracts';
 import { SidebarItem } from '../constant/sidebar';
@@ -350,4 +351,20 @@ export const validateSecurityAndSLADetails = async (
   await expect(page.getByTestId('retention-unit-select')).toContainText(
     data.retentionUnitSelect
   );
+};
+
+export const performInitialStepForRules = async (page: Page) => {
+  await page.click('[data-testid="contract"]');
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
+
+  await expect(page.getByTestId('no-data-placeholder')).toBeVisible();
+  await expect(page.getByTestId('add-contract-button')).toBeVisible();
+
+  await page.getByTestId('add-contract-button').click();
+
+  await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+  await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
 };

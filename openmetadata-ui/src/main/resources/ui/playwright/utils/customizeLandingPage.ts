@@ -260,6 +260,8 @@ export const removeAndVerifyWidget = async (
 
   await redirectToHomePage(page);
 
+  await waitForAllLoadersToDisappear(page);
+
   await expect(page.getByTestId(widgetKey)).not.toBeVisible();
 };
 
@@ -292,6 +294,7 @@ export const addAndVerifyWidget = async (
   await redirectToHomePage(page);
 
   await waitForAllLoadersToDisappear(page);
+  await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   await expect(
     page.getByTestId('page-layout-v1').getByTestId(widgetKey)
@@ -484,6 +487,7 @@ export const verifyWidgetEntityNavigation = async (
   await response;
 
   // Wait for loaders after navigation
+  await waitForAllLoadersToDisappear(page);
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   // Get widget after navigation to home page

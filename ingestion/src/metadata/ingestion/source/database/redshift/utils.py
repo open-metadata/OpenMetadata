@@ -413,7 +413,8 @@ def get_view_definition(self, connection, view_name, schema=None, **kw):
     view = self._get_redshift_relation(connection, view_name, schema, **kw)
     pattern = re.compile("WITH NO SCHEMA BINDING", re.IGNORECASE)
     view_definition = str(sa.text(pattern.sub("", view.view_definition)))
-    if not view_definition.startswith("create"):
+    create_view_pattern = re.compile(r"CREATE\s+VIEW", re.IGNORECASE)
+    if not create_view_pattern.search(view_definition):
         view_definition = (
             f"CREATE VIEW {view.schema}.{view.relname} AS {view_definition}"
         )

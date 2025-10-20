@@ -569,4 +569,85 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         .deleteFollower(securityContext.getUserPrincipal().getName(), id, UUID.fromString(userId))
         .toResponse();
   }
+
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "getDomainAssets",
+      summary = "Get assets for a domain",
+      description = "Get paginated list of assets belonging to a domain.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(responseCode = "404", description = "Domain for instance {id} is not found")
+      })
+  public Response getAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the domain", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(
+              description =
+                  "Limit the number of results returned. Maximum of 1000 records will be returned in a single request.",
+              schema = @Schema(type = "integer", defaultValue = "10"))
+          @QueryParam("limit")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          int limit,
+      @Parameter(
+              description = "Offset from which to start returning results",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    return Response.ok(repository.getDomainAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{fqn}/assets")
+  @Operation(
+      operationId = "getDomainAssetsByName",
+      summary = "Get assets for a domain by name",
+      description = "Get paginated list of assets belonging to a domain by domain name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(responseCode = "404", description = "Domain for instance {name} is not found")
+      })
+  public Response getAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the domain", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(
+              description =
+                  "Limit the number of results returned. Maximum of 1000 records will be returned in a single request.",
+              schema = @Schema(type = "integer", defaultValue = "10"))
+          @QueryParam("limit")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          int limit,
+      @Parameter(
+              description = "Offset from which to start returning results",
+              schema = @Schema(type = "integer", defaultValue = "0"))
+          @QueryParam("offset")
+          @DefaultValue("0")
+          @Min(0)
+          int offset) {
+    return Response.ok(repository.getDomainAssetsByName(fqn, limit, offset)).build();
+  }
 }

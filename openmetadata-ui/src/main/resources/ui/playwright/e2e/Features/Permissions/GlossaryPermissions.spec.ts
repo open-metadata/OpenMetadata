@@ -17,9 +17,10 @@ import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import {
   assignRoleToUser,
+  cleanupPermissions,
   initializePermissions,
 } from '../../../utils/permission';
 import { sidebarClick } from '../../../utils/sidebar';
@@ -73,6 +74,7 @@ test('Glossary allow operations', async ({ testUserPage, browser }) => {
 
   const page = await browser.newPage();
   await adminUser.login(page);
+  const { apiContext } = await getApiContext(page);
   await initializePermissions(page, 'allow', [
     'EditDescription',
     'EditOwners',
@@ -127,6 +129,7 @@ test('Glossary allow operations', async ({ testUserPage, browser }) => {
       await expect(element).toBeVisible();
     }
   }
+  await cleanupPermissions(apiContext);
 });
 
 test('Glossary deny operations', async ({ testUserPage, browser }) => {
@@ -134,6 +137,7 @@ test('Glossary deny operations', async ({ testUserPage, browser }) => {
 
   // Setup deny permissions
   const page = await browser.newPage();
+  const { apiContext } = await getApiContext(page);
   await adminUser.login(page);
   await initializePermissions(page, 'deny', [
     'EditDescription',
@@ -191,6 +195,7 @@ test('Glossary deny operations', async ({ testUserPage, browser }) => {
       await expect(element).not.toBeVisible();
     }
   }
+  await cleanupPermissions(apiContext);
 });
 
 test.afterAll('Cleanup glossary', async ({ browser }) => {

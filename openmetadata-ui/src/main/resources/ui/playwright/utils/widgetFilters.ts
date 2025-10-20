@@ -28,7 +28,10 @@ export const verifyActivityFeedFilters = async (
   await waitForAllLoadersToDisappear(page, 'entity-list-skeleton');
 
   const myDataFilter = page.waitForResponse(
-    '/api/v1/feed?type=Conversation&filterType=OWNER&*'
+    (response) =>
+      response.url().includes('/api/v1/feed') &&
+      response.url().includes('type=Conversation') &&
+      response.url().includes('filterType=OWNER')
   );
   await page
     .getByTestId(widgetKey)
@@ -38,7 +41,10 @@ export const verifyActivityFeedFilters = async (
   await myDataFilter;
 
   const followingFilter = page.waitForResponse(
-    '/api/v1/feed?type=Conversation&filterType=FOLLOWS&*'
+    (response) =>
+      response.url().includes('/api/v1/feed') &&
+      response.url().includes('type=Conversation') &&
+      response.url().includes('filterType=FOLLOWS')
   );
   await page
     .getByTestId(widgetKey)
@@ -48,7 +54,9 @@ export const verifyActivityFeedFilters = async (
   await followingFilter;
 
   const allActivityFilter = page.waitForResponse(
-    '/api/v1/feed?type=Conversation&*'
+    (response) =>
+      response.url().includes('/api/v1/feed') &&
+      response.url().includes('type=Conversation')
   );
   await page
     .getByTestId(widgetKey)
@@ -74,7 +82,11 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
     .getByTestId('widget-sort-by-dropdown')
     .click();
   const aToZFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword*&sort_order=asc*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=all') &&
+      response.url().includes('sort_field=name.keyword') &&
+      response.url().includes('sort_order=asc')
   );
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
@@ -84,13 +96,21 @@ export const verifyDataFilters = async (page: Page, widgetKey: string) => {
     .getByTestId('widget-sort-by-dropdown')
     .click();
   const zToAFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=name.keyword*&sort_order=desc*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=all') &&
+      response.url().includes('sort_field=name.keyword') &&
+      response.url().includes('sort_order=desc')
   );
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
 
   const latestFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=all*&sort_field=updatedAt*&sort_order=desc*'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=all') &&
+      response.url().includes('sort_field=updatedAt') &&
+      response.url().includes('sort_order=desc')
   );
   await page
     .getByTestId(widgetKey)
@@ -111,7 +131,14 @@ export const verifyTotalDataAssetsFilters = async (
   ).toBeVisible();
 
   const last14DaysFilter = page.waitForResponse(
-    '/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data?start=*&end=*'
+    (response) =>
+      response
+        .url()
+        .includes(
+          '/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data'
+        ) &&
+      response.url().includes('start=') &&
+      response.url().includes('end=')
   );
   await page
     .getByTestId(widgetKey)
@@ -121,7 +148,14 @@ export const verifyTotalDataAssetsFilters = async (
   await last14DaysFilter;
 
   const last7DaysFilter = page.waitForResponse(
-    '/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data?start=*&end=*'
+    (response) =>
+      response
+        .url()
+        .includes(
+          '/api/v1/analytics/dataInsights/system/charts/name/total_data_assets/data'
+        ) &&
+      response.url().includes('start=') &&
+      response.url().includes('end=')
   );
 
   await page
@@ -145,21 +179,33 @@ export const verifyDataProductsFilters = async (
   await expect(sortDropdown).toBeVisible();
 
   const aToZFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=data_product*&sort_field=name.keyword&sort_order=asc'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=data_product') &&
+      response.url().includes('sort_field=name.keyword') &&
+      response.url().includes('sort_order=asc')
   );
   await sortDropdown.click();
   await page.getByRole('menuitem', { name: 'A to Z' }).click();
   await aToZFilter;
 
   const zToAFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=data_product*&sort_field=name.keyword&sort_order=desc'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=data_product') &&
+      response.url().includes('sort_field=name.keyword') &&
+      response.url().includes('sort_order=desc')
   );
   await sortDropdown.click();
   await page.getByRole('menuitem', { name: 'Z to A' }).click();
   await zToAFilter;
 
   const latestFilter = page.waitForResponse(
-    '/api/v1/search/query?q=*&index=data_product*&sort_field=updatedAt&sort_order=desc'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=data_product') &&
+      response.url().includes('sort_field=updatedAt') &&
+      response.url().includes('sort_order=desc')
   );
   await sortDropdown.click();
   await page.getByRole('menuitem', { name: 'Latest' }).click();
@@ -174,7 +220,11 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   ).toBeVisible();
 
   const aToZFilter = page.waitForResponse(
-    'api/v1/search/query?q=*&index=domain_search_index&*&sort_field=name.keyword&sort_order=asc'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=domain_search_index') &&
+      response.url().includes('sort_field=name.keyword') &&
+      response.url().includes('sort_order=asc')
   );
   await page
     .getByTestId(widgetKey)
@@ -184,7 +234,11 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   await aToZFilter;
 
   const zToAFilter = page.waitForResponse(
-    'api/v1/search/query?q=*&index=domain_search_index&*&sort_field=name.keyword&sort_order=desc'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=domain_search_index') &&
+      response.url().includes('sort_field=name.keyword') &&
+      response.url().includes('sort_order=desc')
   );
   await page
     .getByTestId(widgetKey)
@@ -194,7 +248,11 @@ export const verifyDomainsFilters = async (page: Page, widgetKey: string) => {
   await zToAFilter;
 
   const latestFilter = page.waitForResponse(
-    'api/v1/search/query?q=*&index=domain_search_index&*&sort_field=updatedAt&sort_order=desc'
+    (response) =>
+      response.url().includes('/api/v1/search/query') &&
+      response.url().includes('index=domain_search_index') &&
+      response.url().includes('sort_field=updatedAt') &&
+      response.url().includes('sort_order=desc')
   );
   await page
     .getByTestId(widgetKey)
@@ -212,7 +270,10 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   ).toBeVisible();
 
   const mentionsTaskFilter = page.waitForResponse(
-    '/api/v1/feed?type=Task&filterType=MENTIONS&*'
+    (response) =>
+      response.url().includes('/api/v1/feed') &&
+      response.url().includes('type=Task') &&
+      response.url().includes('filterType=MENTIONS')
   );
   await page
     .getByTestId(widgetKey)
@@ -222,7 +283,10 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   await mentionsTaskFilter;
 
   const assignedTasksFilter = page.waitForResponse(
-    '/api/v1/feed?type=Task&filterType=ASSIGNED_TO&*'
+    (response) =>
+      response.url().includes('/api/v1/feed') &&
+      response.url().includes('type=Task') &&
+      response.url().includes('filterType=ASSIGNED_TO')
   );
   await page
     .getByTestId(widgetKey)
@@ -232,7 +296,10 @@ export const verifyTaskFilters = async (page: Page, widgetKey: string) => {
   await assignedTasksFilter;
 
   const allTasksFilter = page.waitForResponse(
-    '/api/v1/feed?type=Task&filterType=OWNER_OR_FOLLOWS&*'
+    (response) =>
+      response.url().includes('/api/v1/feed') &&
+      response.url().includes('type=Task') &&
+      response.url().includes('filterType=OWNER_OR_FOLLOWS')
   );
   await page
     .getByTestId(widgetKey)

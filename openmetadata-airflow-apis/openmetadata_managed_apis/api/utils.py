@@ -53,6 +53,16 @@ def clean_dag_id(raw_dag_id: Optional[str]) -> Optional[str]:
     return re.sub("[^0-9a-zA-Z-_]+", "_", raw_dag_id) if raw_dag_id else None
 
 
+def sanitize_task_id(raw_task_id: Optional[str]) -> Optional[str]:
+    """
+    Sanitize task_id to prevent path traversal attacks.
+    Only allows alphanumeric characters, dashes, and underscores.
+    :param raw_task_id: Raw task ID from user input
+    :return: Sanitized task ID safe for file path construction
+    """
+    return re.sub("[^0-9a-zA-Z-_]+", "_", raw_task_id) if raw_task_id else None
+
+
 def get_request_arg(req, arg, raise_missing: bool = True) -> Optional[str]:
     """
     Pick up the `arg` from the flask `req`.

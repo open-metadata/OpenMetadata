@@ -41,4 +41,5 @@ export interface EntityDataClassCreationConfig {
   file?: boolean;
   spreadsheet?: boolean;
   worksheet?: boolean;
+  tier?: boolean;
 }

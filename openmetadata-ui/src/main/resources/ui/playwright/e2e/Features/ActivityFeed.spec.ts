@@ -21,7 +21,6 @@ import {
   navigateToCustomizeLandingPage,
   setUserDefaultPersona,
 } from '../../utils/customizeLandingPage';
-import { updateDescription } from '../../utils/entity';
 
 const test = base;
 
@@ -382,7 +381,6 @@ test.describe('FeedWidget on landing page', () => {
 test.describe('Mention notifications in Notification Box', () => {
   const adminUser = new UserClass();
   const user1 = new UserClass();
-  const entity = new TableClass();
 
   const test = base.extend<{
     adminPage: Page;
@@ -405,14 +403,11 @@ test.describe('Mention notifications in Notification Box', () => {
   test.beforeAll('Setup entities and users', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    try {
-      await adminUser.create(apiContext);
-      await adminUser.setAdminRole(apiContext);
-      await user1.create(apiContext);
-      await entity.create(apiContext);
-    } finally {
-      await afterAction();
-    }
+    await adminUser.create(apiContext);
+    await adminUser.setAdminRole(apiContext);
+    await user1.create(apiContext);
+    await entity.create(apiContext);
+    await afterAction();
   });
 
   test('Mention notification shows correct user details in Notification box', async ({
@@ -421,54 +416,17 @@ test.describe('Mention notifications in Notification Box', () => {
   }) => {
     test.slow();
 
+    const entityFQN = 'sample_data.ecommerce_db.shopify.performance_test_table';
+
     await test.step(
       'Admin user creates a conversation on an entity',
       async () => {
-        await entity.visitEntityPage(adminPage);
+        await adminPage.goto(`/table/${entityFQN}`);
 
         await adminPage.waitForLoadState('networkidle');
         await adminPage.waitForSelector('[data-testid="loader"]', {
           state: 'detached',
         });
-
-        await updateDescription(
-          adminPage,
-          'update the old description with new one'
-        );
-
-        await adminPage.reload();
-        await adminPage.waitForLoadState('networkidle');
-        await adminPage.waitForSelector('[data-testid="loader"]', {
-          state: 'detached',
-        });
-
-        let count = 0;
-        let iterations = 0;
-        const maxIterations = 20;
-        const delayMs = 5000;
-
-        while (iterations < maxIterations) {
-          const countElement = adminPage
-            .getByTestId('activity_feed')
-            .getByTestId('filter-count');
-
-          const countText = await countElement.textContent();
-          count = parseInt(countText ?? '0', 10);
-
-          if (count > 0) {
-            break;
-          }
-
-          iterations++;
-          if (iterations < maxIterations) {
-            await adminPage.waitForTimeout(delayMs);
-            await adminPage.reload();
-            await adminPage.waitForLoadState('networkidle');
-            await adminPage.waitForSelector('[data-testid="loader"]', {
-              state: 'detached',
-            });
-          }
-        }
 
         await adminPage.getByTestId('activity_feed').click();
         await adminPage.waitForLoadState('networkidle');
@@ -504,7 +462,11 @@ test.describe('Mention notifications in Notification Box', () => {
     );
 
     await test.step('User1 mentions admin user in a reply', async () => {
-      await entity.visitEntityPage(user1Page);
+      await user1Page.goto(`/table/${entityFQN}`);
+      await user1Page.waitForLoadState('networkidle');
+      await user1Page.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
 
       await user1Page.getByTestId('activity_feed').click();
       await user1Page.waitForLoadState('networkidle');
@@ -574,8 +536,7 @@ test.describe('Mention notifications in Notification Box', () => {
         const mentionsFeedResponse = adminPage.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/feed') &&
-            response.url().includes('filterType=MENTIONS') &&
-            response.url().includes('type=Conversation')
+            response.url().includes('filterType=MENTIONS')
         );
 
         await mentionsTab.click();

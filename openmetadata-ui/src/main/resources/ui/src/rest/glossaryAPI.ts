@@ -318,7 +318,7 @@ export const searchGlossaryTermsPaginated = async (
   offset = 0,
   fields?: string
 ) => {
-  const params: Record<string, any> = {
+  const params: Record<string, number | string> = {
     limit,
     offset,
   };

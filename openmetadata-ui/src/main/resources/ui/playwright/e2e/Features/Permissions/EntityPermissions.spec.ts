@@ -97,6 +97,7 @@ Object.entries(entityConfig).forEach(([, config]) => {
 
     test.afterAll('Cleanup entity', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await EntityDataClass.postRequisitesForTests(apiContext);
       await entity.delete(apiContext);
       await afterAction();
     });

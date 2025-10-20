@@ -253,7 +253,7 @@ class OMetaTestsMixin:
         }
 
         resp = self.client.get(
-            f"{self.get_suffix(TestCaseResult)}/{test_case_fqn}",
+            f"{self.get_suffix(TestCaseResult)}/{quote(test_case_fqn)}",
             params,
         )
 

@@ -61,6 +61,7 @@ import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.*;
@@ -1235,5 +1236,49 @@ public class TagResourceTest extends EntityResourceTest<Tag, CreateTag> {
         parentWithoutFields.getClassification().getId(),
         "Parent tag classification should match");
     assertNull(parentWithoutFields.getParent(), "Parent tag should not have a parent");
+  }
+
+  @Test
+  void test_getTagAssetsAPI(TestInfo test) throws IOException {
+    Classification classification = createClassification(getEntityName(test) + "_Classification");
+    Tag tag = createTag(getEntityName(test), classification.getName(), null);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateTable createTable1 =
+        tableTest
+            .createRequest(getEntityName(test, 1))
+            .withTags(List.of(new TagLabel().withTagFQN(tag.getFullyQualifiedName())));
+    Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest
+            .createRequest(getEntityName(test, 2))
+            .withTags(List.of(new TagLabel().withTagFQN(tag.getFullyQualifiedName())));
+    Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        tableTest
+            .createRequest(getEntityName(test, 3))
+            .withTags(List.of(new TagLabel().withTagFQN(tag.getFullyQualifiedName())));
+    Table table3 = tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(tag.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    ResultList<EntityReference> assetsByName =
+        getAssetsByName(tag.getFullyQualifiedName(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    ResultList<EntityReference> page1 = getAssets(tag.getId(), 2, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    ResultList<EntityReference> page2 = getAssets(tag.getId(), 2, 2, ADMIN_AUTH_HEADERS);
+    assertFalse(page2.getData().isEmpty());
   }
 }

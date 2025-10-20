@@ -260,6 +260,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "tags": {
         "properties": {
           "tagFQN": {

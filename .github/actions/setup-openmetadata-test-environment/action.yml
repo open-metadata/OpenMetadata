@@ -5,6 +5,12 @@ inputs:
   python-version:
     description: Python Version to install
     required: true
+  java-version:
+    description: Java Version to install
+    default: '21'
+  npm-version:
+    description: NPM Version to install
+    default: 'v22.x'
   args:
     description: Arguments to pass to run_local_docker.sh
     required: false
@@ -26,11 +32,22 @@ runs:
     # ------------------------------------------------------------------------------
 
     # ---- Setup Java --------------------------------------------------------------
-    - name: Setup JDK 21
+    - name: Setup JDK ${{ inputs.java-version }}
       uses: actions/setup-java@v4
       with:
-        java-version: '21'
+        java-version: ${{ inputs.java-version }}
         distribution: 'temurin'
+    # ------------------------------------------------------------------------------
+
+    # ---- Setup Node --------------------------------------------------------------
+    - name: Use Node.js ${{ inputs.npm-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.npm-version }}
+
+    - name: Install yarn
+      run: npm install -g yarn
+      shell: bash
     # ------------------------------------------------------------------------------
 
     # ---- Setup Python Test Environment -------------------------------------------

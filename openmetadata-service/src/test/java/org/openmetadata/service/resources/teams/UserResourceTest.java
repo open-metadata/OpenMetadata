@@ -38,6 +38,7 @@ import static org.openmetadata.csv.EntityCsvTest.assertRows;
 import static org.openmetadata.csv.EntityCsvTest.assertSummary;
 import static org.openmetadata.csv.EntityCsvTest.createCsv;
 import static org.openmetadata.csv.EntityCsvTest.getFailedRecord;
+import static org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP;
 import static org.openmetadata.service.Entity.FIELD_DOMAINS;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.PASSWORD_INVALID_FORMAT;
@@ -99,6 +100,7 @@ import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.csv.EntityCsvTest;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -112,6 +114,7 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RegistrationRequest;
 import org.openmetadata.schema.auth.RevokePersonalTokenRequest;
 import org.openmetadata.schema.auth.RevokeTokenRequest;
+import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism.AuthType;
@@ -143,6 +146,7 @@ import org.openmetadata.service.jdbi3.UserRepository.UserCsv;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.resources.EntityResourceTest;
 import org.openmetadata.service.resources.bots.BotResourceTest;
+import org.openmetadata.service.resources.databases.DatabaseSchemaResourceTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.resources.teams.UserResource.UserList;
 import org.openmetadata.service.security.AuthenticationException;
@@ -2612,5 +2616,99 @@ public class UserResourceTest extends EntityResourceTest<User, CreateUser> {
 
     // Clean up
     deleteEntity(targetUser.getId(), ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void test_getUserAssetsAPI(TestInfo test) throws IOException {
+    Team team = TEAM_TEST.createEntity(TEAM_TEST.createRequest(test), ADMIN_AUTH_HEADERS);
+    User user =
+        createEntity(createRequest(test, 1).withTeams(List.of(team.getId())), ADMIN_AUTH_HEADERS);
+
+    TableResourceTest tableTest = new TableResourceTest();
+    CreateTable createTable1 =
+        tableTest
+            .createRequest(getEntityName(test, 2))
+            .withOwners(List.of(user.getEntityReference()));
+    Table table1 = tableTest.createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 =
+        tableTest
+            .createRequest(getEntityName(test, 3))
+            .withOwners(List.of(team.getEntityReference()));
+    Table table2 = tableTest.createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 =
+        tableTest
+            .createRequest(getEntityName(test, 4))
+            .withOwners(List.of(user.getEntityReference()));
+    Table table3 = tableTest.createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    // Test getting assets by user ID
+    ResultList<EntityReference> assets = getAssets(user.getId(), 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertTrue(assets.getPaging().getTotal() >= 3);
+    assertTrue(assets.getData().size() >= 3);
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table3.getId())));
+
+    // Test getting assets by user name
+    ResultList<EntityReference> assetsByName =
+        getAssetsByName(user.getName(), 10, 0, ADMIN_AUTH_HEADERS);
+    assertTrue(assetsByName.getPaging().getTotal() >= 3);
+    assertTrue(assetsByName.getData().size() >= 3);
+
+    // Test pagination - page 1
+    ResultList<EntityReference> page1 = getAssets(user.getId(), 2, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(2, page1.getData().size());
+
+    // Test pagination - page 2
+    ResultList<EntityReference> page2 = getAssets(user.getId(), 2, 2, ADMIN_AUTH_HEADERS);
+    assertFalse(page2.getData().isEmpty());
+  }
+
+  @Test
+  void test_userAssetsAndAssetsCountWithAssetInheritance(TestInfo test) throws IOException {
+    // Tests assets API includes parent entity and all child entities when owner is assigned
+    // Create a new isolated team for this test to ensure no interference from other tests
+    CreateTeam createTeam =
+        TEAM_TEST.createRequest(getEntityName(test) + "_" + UUID.randomUUID()).withTeamType(GROUP);
+    Team team = TEAM_TEST.createEntity(createTeam, ADMIN_AUTH_HEADERS);
+    User user =
+        createEntity(createRequest(test, 1).withTeams(List.of(team.getId())), ADMIN_AUTH_HEADERS);
+
+    DatabaseSchemaResourceTest schemaTest = new DatabaseSchemaResourceTest();
+    TableResourceTest tableTest = new TableResourceTest();
+
+    DatabaseSchema schema =
+        schemaTest.createEntity(
+            schemaTest.createRequest(getEntityName(test, 2)).withOwners(null), ADMIN_AUTH_HEADERS);
+
+    Table table1 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 3))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(null),
+            ADMIN_AUTH_HEADERS);
+    Table table2 =
+        tableTest.createEntity(
+            tableTest
+                .createRequest(getEntityName(test, 4))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withOwners(null),
+            ADMIN_AUTH_HEADERS);
+
+    String json = JsonUtils.pojoToJson(schema);
+    schema.withOwners(List.of(user.getEntityReference()));
+    schemaTest.patchEntity(schema.getId(), json, schema, ADMIN_AUTH_HEADERS);
+
+    ResultList<EntityReference> assets = getAssets(user.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertEquals(
+        3, assets.getData().size(), "User should have 1 schema + 2 inherited tables from schema");
+    assertEquals(3, assets.getPaging().getTotal());
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(schema.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table1.getId())));
+    assertTrue(assets.getData().stream().anyMatch(a -> a.getId().equals(table2.getId())));
   }
 }

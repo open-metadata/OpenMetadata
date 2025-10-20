@@ -418,14 +418,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         logic on how to handle table types, e.g., material views,...
         """
 
-        if self.incremental.enabled:
-            view_names = [
-                view_name
-                for view_name in view_names
-                if view_name
-                in self.incremental_table_processor.get_not_deleted(schema_name)
-            ]
-
         table_name_and_types = []
         for table_type, query in {
             TableType.View: BIGQUERY_GET_VIEW_NAMES,

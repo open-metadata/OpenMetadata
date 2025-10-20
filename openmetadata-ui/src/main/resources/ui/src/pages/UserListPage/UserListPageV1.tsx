@@ -14,7 +14,7 @@
 import { Button, Col, Modal, Row, Space, Switch, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import { capitalize, isEmpty, noop } from 'lodash';
+import { capitalize, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
@@ -48,12 +48,13 @@ import { useAuth } from '../../hooks/authHooks';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useTableFilters } from '../../hooks/useTableFilters';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
 import { getUsers, restoreUser, UsersQueryParams } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/CommonUtils';
 import { getEntityName } from '../../utils/EntityUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { commonUserDetailColumns } from '../../utils/Users.util';
@@ -137,26 +138,26 @@ const UserListPageV1 = () => {
     isAdmin = false,
     isDeleted = false
   ) => {
-    let filters = 'isAdmin:false isBot:false';
-    if (isAdmin) {
-      filters = 'isAdmin:true isBot:false';
-    }
-
     return new Promise<Array<User>>((resolve) => {
-      searchData(
-        text,
-        currentPage,
+      const searchText = text === WILD_CARD_CHAR ? text : `*${text}*`;
+
+      const queryFilter = getTermQuery({
+        isAdmin: String(isAdmin),
+        isBot: 'false',
+      });
+
+      searchQuery({
+        query: searchText,
+        pageNumber: currentPage,
         pageSize,
-        filters,
-        '',
-        '',
-        SearchIndex.USER,
-        isDeleted
-      )
+        queryFilter,
+        searchIndex: SearchIndex.USER,
+        includeDeleted: isDeleted,
+      })
         .then((res) => {
-          const data = res.data.hits.hits.map(({ _source }) => _source);
+          const data = res.hits.hits.map(({ _source }) => _source);
           handlePagingChange({
-            total: res.data.hits.total.value,
+            total: res.hits.total.value,
           });
           resolve(data);
         })
@@ -216,11 +217,14 @@ const UserListPageV1 = () => {
     setFilters({ isDeleted: value || null, user: null });
   };
 
-  const handleSearch = (value: string) => {
-    handlePageChange(INITIAL_PAGING_VALUE);
+  const handleSearch = useCallback(
+    (value: string) => {
+      handlePageChange(INITIAL_PAGING_VALUE);
 
-    setFilters({ user: isEmpty(value) ? null : value });
-  };
+      setFilters({ user: isEmpty(value) ? null : value });
+    },
+    [handlePageChange, setFilters]
+  );
 
   useEffect(() => {
     // Perform reset
@@ -425,10 +429,21 @@ const UserListPageV1 = () => {
     emptyPlaceHolderText,
   ]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: `${t('label.search-for-type', {
+        type: t('label.user'),
+      })}...`,
+      searchValue: searchValue,
+      typingInterval: 400,
+      urlSearchKey: 'user',
+      onSearch: handleSearch,
+    }),
+    [searchValue, handleSearch]
+  );
+
   if (
-    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(
-      tab as GlobalSettingOptions
-    )
+    ![GlobalSettingOptions.USERS, GlobalSettingOptions.ADMINS].includes(tab)
   ) {
     // This component is not accessible for the given tab
     return <Navigate to={ROUTES.NOT_FOUND} />;
@@ -497,15 +512,7 @@ const UserListPageV1 = () => {
             }}
             pagination={false}
             rowKey="id"
-            searchProps={{
-              placeholder: `${t('label.search-for-type', {
-                type: t('label.user'),
-              })}...`,
-              value: searchValue,
-              typingInterval: 400,
-              urlSearchKey: 'user',
-              onSearch: noop,
-            }}
+            searchProps={searchProps}
             size="small"
           />
         </Col>

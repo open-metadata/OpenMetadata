@@ -40,7 +40,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import '../domain.less';
-import DomainDetailsPage from '../DomainDetailsPage/DomainDetailsPage.component';
+import DomainDetails from '../DomainDetails/DomainDetails.component';
 
 const DomainDetailPage = () => {
   const { fqn: domainFqn } = useFqn();
@@ -87,7 +87,7 @@ const DomainDetailPage = () => {
     }
   };
 
-  const handleDomainDelete = (id: string) => {
+  const handleDomainDelete = () => {
     // Navigate back to domains listing page after deletion
     navigate(ROUTES.DOMAIN);
   };
@@ -213,7 +213,7 @@ const DomainDetailPage = () => {
   }
 
   return (
-    <DomainDetailsPage
+    <DomainDetails
       domain={activeDomain}
       handleFollowingClick={handleFollowingClick}
       isFollowing={isFollowing}

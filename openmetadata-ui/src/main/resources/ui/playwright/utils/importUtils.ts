@@ -94,7 +94,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    '/api/v1/search/query?q=&index=user_search_index&*'
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
@@ -502,6 +502,13 @@ export const createColumnRowDetails = () => {
     arrayDataType: 'INT',
     dataLength: '10',
     entityType: 'Column',
+  };
+};
+
+export const createColumnRowDetailsWithEncloseDot = () => {
+  return {
+    ...createColumnRowDetails(),
+    name: `"playwright.column ${uuid()}"`,
   };
 };
 

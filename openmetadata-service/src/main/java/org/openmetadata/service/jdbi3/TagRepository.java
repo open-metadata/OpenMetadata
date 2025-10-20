@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -70,6 +71,10 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.tags.TagResource;
+import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
+import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -77,6 +82,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
+  private InheritedFieldEntitySearch inheritedFieldEntitySearch;
+
   public TagRepository() {
     super(
         TagResource.TAG_COLLECTION_PATH,
@@ -87,6 +94,40 @@ public class TagRepository extends EntityRepository<Tag> {
         "");
     supportsSearch = true;
     renameAllowed = true;
+
+    // Initialize inherited field search
+    if (searchRepository != null) {
+      inheritedFieldEntitySearch = new DefaultInheritedFieldEntitySearch(searchRepository);
+    }
+  }
+
+  public ResultList<EntityReference> getTagAssets(UUID tagId, int limit, int offset) {
+    Tag tag = get(null, tagId, getFields("id,fullyQualifiedName"));
+
+    if (inheritedFieldEntitySearch == null) {
+      LOG.warn("Search is unavailable for tag assets. Returning empty list.");
+      return new ResultList<>(new ArrayList<>(), null, null, 0);
+    }
+
+    InheritedFieldQuery query =
+        InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), offset, limit);
+
+    InheritedFieldResult result =
+        inheritedFieldEntitySearch.getEntitiesForField(
+            query,
+            () -> {
+              LOG.warn(
+                  "Search fallback for tag {} assets. Returning empty list.",
+                  tag.getFullyQualifiedName());
+              return new InheritedFieldResult(new ArrayList<>(), 0);
+            });
+
+    return new ResultList<>(result.entities(), null, null, result.total());
+  }
+
+  public ResultList<EntityReference> getTagAssetsByName(String tagName, int limit, int offset) {
+    Tag tag = getByName(null, tagName, getFields("id,fullyQualifiedName"));
+    return getTagAssets(tag.getId(), limit, offset);
   }
 
   @Override

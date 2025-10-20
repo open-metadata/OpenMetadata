@@ -35,7 +35,6 @@ export const useTreeKeyboardNavigation = ({
   getVisibleNodes,
   expandedNodes,
   toggleNodeExpansion,
-  treeData,
   inputRef,
   handleNodeClick,
   onOpenDropdown,

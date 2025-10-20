@@ -34,4 +34,8 @@ public class SearchConstants {
       "Failed to Create Index for entity {} due to ";
 
   public static final String DATA_ASSET = "dataAsset";
+
+  // Default sorting configuration
+  public static final String DEFAULT_SORT_FIELD = "_score";
+  public static final String DEFAULT_SORT_ORDER = "desc";
 }

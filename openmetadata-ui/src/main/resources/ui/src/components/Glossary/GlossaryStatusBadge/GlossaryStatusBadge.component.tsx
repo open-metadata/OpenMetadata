@@ -19,7 +19,10 @@ export const GlossaryStatusBadge = ({ status }: { status: EntityStatus }) => {
   return (
     <Space>
       <Divider className="m-x-xs h-6" type="vertical" />
-      <StatusBadge label={status} status={StatusClass[status]} />
+      <StatusBadge
+        label={status}
+        status={StatusClass[status as keyof typeof StatusClass]}
+      />
     </Space>
   );
 };

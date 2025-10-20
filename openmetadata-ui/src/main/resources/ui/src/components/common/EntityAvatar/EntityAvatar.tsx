@@ -33,6 +33,7 @@ export interface EntityAvatarProps {
   };
   size?: number;
   className?: string;
+  sx?: Record<string, unknown>;
 }
 
 /**
@@ -43,6 +44,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
   entity,
   size = 40,
   className = 'entity-avatar',
+  sx: customSx,
 }) => {
   const theme = useTheme();
   const bgColor = entity.style?.color || theme.palette.allShades.brand[600];
@@ -69,6 +71,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
             width: size * 0.6,
             height: size * 0.6,
           },
+          ...customSx,
         }}
       />
     );
@@ -89,6 +92,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
           height: size,
           backgroundColor: bgColor,
           color: theme.palette.allShades.white,
+          ...customSx,
         }}>
         <IconComponent size={size * 0.6} style={{ strokeWidth: 1.5 }} />
       </Avatar>
@@ -107,6 +111,7 @@ export const EntityAvatar: FC<EntityAvatarProps> = ({
         height: size,
         backgroundColor: bgColor,
         color: theme.palette.allShades.white,
+        ...customSx,
       }}>
       <DefaultIcon size={size * 0.6} style={{ strokeWidth: 1.5 }} />
     </Avatar>

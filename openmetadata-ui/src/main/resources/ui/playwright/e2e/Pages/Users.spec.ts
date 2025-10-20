@@ -124,6 +124,16 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+test.afterAll('Cleanup', async ({ browser }) => {
+  const { apiContext, afterAction } = await performAdminLogin(browser);
+  await dataStewardUser.delete(apiContext);
+  await policy.delete(apiContext);
+  await role.delete(apiContext);
+  await persona1.delete(apiContext);
+  await persona2.delete(apiContext);
+  await afterAction();
+});
+
 test.describe('User with Admin Roles', () => {
   test.slow(true);
 
@@ -495,6 +505,9 @@ test.describe('User Profile Feed Interactions', () => {
     // Click with force to handle pointer event interception
     await userNameElement.click({ force: true });
 
+    await userDetailsResponse;
+    await userFeedResponse;
+
     const [response] = await Promise.all([
       userDetailsResponse,
       userFeedResponse,
@@ -532,6 +545,8 @@ test.describe('User Profile Feed Interactions', () => {
 
 test.describe('User Profile Dropdown Persona Interactions', () => {
   test.beforeAll('Prerequisites', async ({ adminPage }) => {
+    test.slow(true);
+
     // First, add personas to the user profile for testing
     await visitOwnProfilePage(adminPage);
     await adminPage.waitForSelector('[data-testid="persona-details-card"]');
@@ -704,7 +719,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
         .allTextContents();
 
       // Verify first one contains the default persona name
-      expect(personaTexts[0]).toContain(persona1.data.displayName);
+      expect(personaTexts[0]).toContain(persona1.responseData.displayName);
     }
   });
 
@@ -876,7 +891,7 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       .locator('.ant-typography')
       .textContent();
 
-    expect(newDefaultPersonaText).toContain(persona2.data.displayName);
+    expect(newDefaultPersonaText).toContain(persona2.responseData.displayName);
     expect(newDefaultPersonaText).not.toBe(originalDefaultPersonaText);
 
     await expect(
@@ -948,9 +963,42 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
 });
 
 test.describe('User Profile Persona Interactions', () => {
+  test.beforeEach(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    // Patch admin user to add personas
+    await adminUser.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'add',
+          path: '/personas',
+          value: [
+            {
+              id: persona1.responseData.id,
+              type: 'persona',
+              name: persona1.responseData.name,
+              fullyQualifiedName: persona1.responseData.fullyQualifiedName,
+            },
+            {
+              id: persona2.responseData.id,
+              type: 'persona',
+              name: persona2.responseData.name,
+              fullyQualifiedName: persona2.responseData.fullyQualifiedName,
+            },
+          ],
+        },
+      ],
+    });
+
+    await afterAction();
+  });
+
   test('Should add, remove, and navigate to persona pages for Personas section', async ({
     adminPage,
   }) => {
+    test.slow(true);
+
     await redirectToHomePage(adminPage);
     await visitOwnProfilePage(adminPage);
 
@@ -1021,6 +1069,8 @@ test.describe('User Profile Persona Interactions', () => {
   test('Should add, remove, and navigate to persona pages for Default Persona section', async ({
     adminPage,
   }) => {
+    test.slow(true);
+
     await redirectToHomePage(adminPage);
     await visitOwnProfilePage(adminPage);
 
@@ -1052,7 +1102,7 @@ test.describe('User Profile Persona Interactions', () => {
 
       // Select specific persona for default - try test ID first, fallback to role selector
       const defaultPersonaOptionTestId = adminPage.getByTestId(
-        `${persona1.data.displayName}-option`
+        `${persona1.responseData.displayName}-option`
       );
 
       await defaultPersonaOptionTestId.click();
@@ -1068,7 +1118,7 @@ test.describe('User Profile Persona Interactions', () => {
       // Check that success notification appears with correct message
       await toastNotification(
         adminPage,
-        `Your Default Persona changed to ${persona1.data.displayName}`
+        `Your Default Persona changed to ${persona1.responseData.displayName}`
       );
 
       await adminPage.waitForSelector(
