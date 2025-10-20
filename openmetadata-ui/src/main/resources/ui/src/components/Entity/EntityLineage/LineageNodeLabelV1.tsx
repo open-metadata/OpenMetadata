@@ -11,26 +11,34 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Space, Typography } from 'antd';
-import { Fragment, useMemo } from 'react';
+import { Box, Button } from '@mui/material';
+import { Col, Space, Typography } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
+import { ReactComponent as MappingIcon } from '../../../assets/svg/node-mapping.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
-import {
-  getBreadcrumbsFromFqn,
-  getEntityName,
-} from '../../../utils/EntityUtils';
-import { getServiceIcon } from '../../../utils/TableUtils';
+import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityTypeIcon, getServiceIcon } from '../../../utils/TableUtils';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import './lineage-node-label.less';
+import { capitalize } from 'lodash';
 
 interface LineageNodeLabelProps {
   node: SourceType;
 }
 
-const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
+interface LineageNodeLabelPropsExtended
+  extends Omit<LineageNodeLabelProps, 'node'> {
+  node: LineageNodeLabelProps['node'] & {
+    serviceType?: string;
+    columnNames?: string[];
+  };
+}
+
+const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -42,18 +50,25 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   }, [node]);
 
   return (
-    <Row className="items-center" wrap={false}>
+    <Col className="items-center entity-label-container">
       <Col className="d-flex items-center" flex="auto">
         <div className="d-flex entity-button-icon m-r-xs">
           {getServiceIcon(node)}
         </div>
         <Space align="start" direction="vertical" size={0}>
-          <Typography.Text
-            className="m-b-0 d-block text-left text-grey-muted w-54"
-            data-testid="entity-header-name"
-            ellipsis={{ tooltip: true }}>
-            {node.name}
-          </Typography.Text>
+          <Space
+            align="start"
+            className="entity-header-name"
+            direction="horizontal"
+            size={6}>
+            <Typography.Text className="m-b-0 d-flex text-left text-grey-muted node-service-type">
+              {node.serviceType}
+            </Typography.Text>
+            {getEntityTypeIcon(node.entityType)}
+            <Typography.Text className="m-b-0 d-flex text-left text-grey-muted node-entity-type">
+              {capitalize(node.entityType)}
+            </Typography.Text>
+          </Space>
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
             data-testid="entity-header-display-name"
@@ -74,39 +89,45 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
           </div>
         )}
       </Col>
-    </Row>
+    </Col>
+  );
+};
+
+const EntityFooter = ({ node }: LineageNodeLabelPropsExtended) => {
+  const { t } = useTranslation();
+
+  const columnsCount = node.columnNames?.length ?? 0;
+  const columnsInfoDropdownLabel = `${columnsCount} ${t(
+    columnsCount === 1 ? 'label.column' : 'label.column-plural'
+  )}`;
+
+  const handleClickColumnInfoDropdown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  const handleClickNodeMapping = (e: React.MouseEvent) => {
+    e.stopPropagation();
+  };
+
+  return (
+    <Box className="m-t-xs flex justify-between entity-footer">
+      <Button
+        className="columns-info-dropdown-label"
+        variant="outlined"
+        onClick={handleClickColumnInfoDropdown}>
+        {columnsInfoDropdownLabel}
+      </Button>
+      <MappingIcon className="mapping-icon" onClick={handleClickNodeMapping} />
+    </Box>
   );
 };
 
 const LineageNodeLabelV1 = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
-  const { t } = useTranslation();
-  const breadcrumbs = getBreadcrumbsFromFqn(node.fullyQualifiedName ?? '');
-
   return (
-    <div className="custom-node-label-container">
-      <div className="w-full m-0 p-x-md p-y-xs">
-        {breadcrumbs.length > 0 && (
-          <div className="d-flex gap-2 items-center m-b-xs lineage-breadcrumb">
-            {breadcrumbs.map((breadcrumb, index) => (
-              <Fragment key={breadcrumb.name}>
-                <Typography.Text
-                  className="text-grey-muted lineage-breadcrumb-item"
-                  ellipsis={{ tooltip: true }}>
-                  {breadcrumb.name}
-                </Typography.Text>
-                {index !== breadcrumbs.length - 1 && (
-                  <Typography.Text className="text-xss">
-                    {t('label.slash-symbol')}
-                  </Typography.Text>
-                )}
-              </Fragment>
-            ))}
-          </div>
-        )}
-
-        <EntityLabel node={node} />
-      </div>
-    </div>
+    <Box className="custom-node-label-container m-0 p-x-md p-y-xs">
+      <EntityLabel node={node} />
+      <EntityFooter node={node} />
+    </Box>
   );
 };
 
