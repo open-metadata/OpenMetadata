@@ -24,8 +24,8 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import { ReactComponent as AddItemIcon } from '../../../../assets/svg/add-item-icon.svg';
+import { ReactComponent as SuccessTicketIcon } from '../../../../assets/svg/ic-dq-success-widget.svg';
 import { ReactComponent as RedCircleIcon } from '../../../../assets/svg/red-circle-with-dash.svg';
-import { ReactComponent as SuccessTicketIcon } from '../../../../assets/svg/success-ticket-with-check.svg';
 import { ReactComponent as YellowCalendarIcon } from '../../../../assets/svg/yellow-calendar.icon.svg';
 import { mockDatasetData } from '../../../../constants/mockTourData.constants';
 import { DEFAULT_SORT_ORDER } from '../../../../constants/profiler.constant';

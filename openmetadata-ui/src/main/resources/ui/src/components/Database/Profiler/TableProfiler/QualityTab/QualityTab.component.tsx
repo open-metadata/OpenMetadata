@@ -17,10 +17,10 @@ import QueryString from 'qs';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as AddItemIcon } from '../../../../../assets/svg/add-item-icon.svg';
-import { ReactComponent as RedCircleIcon } from '../../../../../assets/svg/red-circle-with-dash.svg';
-import { ReactComponent as SuccessTicketIcon } from '../../../../../assets/svg/success-ticket-with-check.svg';
-import { ReactComponent as YellowCalendarIcon } from '../../../../../assets/svg/yellow-calendar.icon.svg';
+import { ReactComponent as YellowCalendarIcon } from '../../../../../assets/svg/ic-dq-aborted-widget.svg';
+import { ReactComponent as RedCircleIcon } from '../../../../../assets/svg/ic-dq-failed-widget.svg';
+import { ReactComponent as SuccessTicketIcon } from '../../../../../assets/svg/ic-dq-success-widget.svg';
+import { ReactComponent as AddItemIcon } from '../../../../../assets/svg/ic-dq-total-test-widget.svg';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
 import {
   DEFAULT_SORT_ORDER,
@@ -326,7 +326,7 @@ export const QualityTab = () => {
           <Grid key={summary.title} size="grow">
             <SummaryCardV1
               icon={summary.icon}
-              isLoading={isTestsLoading}
+              isLoading={false}
               title={summary.title}
               value={summary.value}
             />

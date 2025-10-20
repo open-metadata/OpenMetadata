@@ -99,18 +99,6 @@ const IncidentManager = ({
   const { activeDomain } = useDomainStore();
   const theme = useTheme();
 
-  const searchParams = useMemo(() => {
-    const param = location.search;
-    const searchData = QueryString.parse(
-      param.startsWith('?') ? param.substring(1) : param
-    );
-    const data = isUndefined(searchData)
-      ? {}
-      : omit(searchData, ['key', 'title']);
-
-    return data as Partial<TestCaseIncidentStatusParams>;
-  }, [location.search]);
-
   const defaultRange = useMemo(
     () => ({
       key: 'last30days',
@@ -118,25 +106,73 @@ const IncidentManager = ({
     }),
     []
   );
+
+  const allParams = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return isUndefined(searchData) ? {} : searchData;
+  }, [location.search]);
+
+  const filters = useMemo(() => {
+    const urlParams = omit(allParams, ['key', 'title']);
+
+    const params = {
+      startTs: getStartOfDayInMillis(
+        getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
+      ),
+      endTs: getEndOfDayInMillis(getCurrentMillis()),
+      ...urlParams,
+    };
+
+    if (params.startTs && typeof params.startTs === 'string') {
+      params.startTs = parseInt(params.startTs, 10);
+    }
+    if (params.endTs && typeof params.endTs === 'string') {
+      params.endTs = parseInt(params.endTs, 10);
+    }
+
+    return params as TestCaseIncidentStatusParams;
+  }, [allParams]);
+
+  const dateRangeKey = useMemo(() => {
+    if (allParams.key) {
+      return {
+        key: allParams.key as string,
+        title: allParams.title as string,
+        startTs: filters.startTs,
+        endTs: filters.endTs,
+      };
+    }
+
+    return {
+      ...defaultRange,
+      startTs: filters.startTs,
+      endTs: filters.endTs,
+    };
+  }, [allParams, defaultRange, filters.startTs, filters.endTs]);
+
   const [testCaseListData, setTestCaseListData] =
     useState<TestCaseIncidentStatusData>({
       data: [],
       isLoading: true,
     });
-  const [filters, setFilters] = useState<TestCaseIncidentStatusParams>({
-    startTs: getStartOfDayInMillis(
-      getEpochMillisForPastDays(PROFILER_FILTER_RANGE.last30days.days)
-    ),
-    endTs: getEndOfDayInMillis(getCurrentMillis()),
-    ...searchParams,
-  });
   const [users, setUsers] = useState<{
     options: Option[];
-    selected: Option[];
   }>({
     options: [],
-    selected: [],
   });
+
+  const selectedAssignees = useMemo(() => {
+    if (!filters.assignee) {
+      return [];
+    }
+    const option = users.options.find((opt) => opt.name === filters.assignee);
+
+    return option ? [option] : [];
+  }, [filters.assignee, users.options]);
 
   const { getEntityPermissionByFqn, permissions } = usePermissionProvider();
   const { testCase: commonTestCasePermission } = permissions;
@@ -311,20 +347,42 @@ const IncidentManager = ({
     }
   };
 
+  const updateFilters = useCallback(
+    (
+      newFilters: Partial<TestCaseIncidentStatusParams>,
+      dateRangeParams?: { key: string; title: string }
+    ) => {
+      const updatedFilters = { ...filters, ...newFilters };
+      const allUpdatedParams = dateRangeParams
+        ? { ...updatedFilters, ...dateRangeParams }
+        : { ...allParams, ...updatedFilters };
+
+      navigate(
+        {
+          search: QueryString.stringify(allUpdatedParams),
+        },
+        {
+          replace: true,
+        }
+      );
+    },
+    [filters, allParams, navigate]
+  );
+
   const handleAssigneeChange = (value?: Option[]) => {
-    setUsers((pre) => ({ ...pre, selected: value ?? [] }));
-    setFilters((pre) => ({
-      ...pre,
-      assignee: value ? value[0]?.name : value,
-    }));
+    updateFilters({ assignee: value ? value[0]?.name : value });
   };
 
   const handleDateRangeChange = (value: DateRangeObject) => {
     const updatedFilter = pick(value, ['startTs', 'endTs']);
     const existingFilters = pick(filters, ['startTs', 'endTs']);
+    const dateRangeParams = pick(value, ['key', 'title']) as {
+      key: string;
+      title: string;
+    };
 
     if (!isEqual(existingFilters, updatedFilter)) {
-      setFilters((pre) => ({ ...pre, ...updatedFilter }));
+      updateFilters(updatedFilter, dateRangeParams);
     }
   };
 
@@ -376,16 +434,6 @@ const IncidentManager = ({
       commonTestCasePermission?.ViewBasic
     ) {
       fetchTestCaseIncidents(filters);
-      if (searchParams) {
-        navigate(
-          {
-            search: QueryString.stringify(filters),
-          },
-          {
-            replace: true,
-          }
-        );
-      }
     } else {
       setTestCaseListData((prev) => ({ ...prev, isLoading: false }));
     }
@@ -581,12 +629,7 @@ const IncidentManager = ({
             placeholder={t('label.test-case')}
             suffixIcon={undefined}
             value={filters.testCaseFQN}
-            onChange={(value) =>
-              setFilters((pre) => ({
-                ...pre,
-                testCaseFQN: value,
-              }))
-            }
+            onChange={(value) => updateFilters({ testCaseFQN: value })}
           />
           <Box display="flex" gap={5}>
             <Form.Item className="m-b-0" label={t('label.assignee')}>
@@ -597,7 +640,7 @@ const IncidentManager = ({
                 className="w-min-10"
                 options={users.options}
                 placeholder={t('label.assignee')}
-                value={users.selected}
+                value={selectedAssignees}
                 onChange={handleAssigneeChange}
                 onSearch={(query) => fetchUserFilterOptions(query)}
               />
@@ -610,10 +653,7 @@ const IncidentManager = ({
                 placeholder={t('label.status')}
                 value={filters.testCaseResolutionStatusType}
                 onChange={(value) =>
-                  setFilters((pre) => ({
-                    ...pre,
-                    testCaseResolutionStatusType: value,
-                  }))
+                  updateFilters({ testCaseResolutionStatusType: value })
                 }>
                 {Object.values(TestCaseResolutionStatusTypes).map((value) => (
                   <Select.Option key={value}>{startCase(value)}</Select.Option>
@@ -625,7 +665,7 @@ const IncidentManager = ({
         {isDateRangePickerVisible && (
           <DatePickerMenu
             showSelectedCustomRange
-            defaultDateRange={defaultRange}
+            defaultDateRange={dateRangeKey}
             handleDateRangeChange={handleDateRangeChange}
             size="small"
           />

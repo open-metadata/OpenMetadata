@@ -32,6 +32,8 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
           handleDateRangeChange({
             startTs: 1709556624254,
             endTs: 1710161424255,
+            key: 'last7days',
+            title: 'Last 7 days',
           })
         }>
         time filter
@@ -154,6 +156,8 @@ describe('IncidentManagerPage', () => {
       limit: 10,
       startTs: 1709556624254,
       include: 'non-deleted',
+      domain: undefined,
+      originEntityFQN: undefined,
     });
   });
 
@@ -176,6 +180,8 @@ describe('IncidentManagerPage', () => {
       limit: 10,
       startTs: 1709556624254,
       include: 'deleted',
+      domain: undefined,
+      originEntityFQN: undefined,
     });
   });
 
