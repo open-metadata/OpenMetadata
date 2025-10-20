@@ -124,19 +124,27 @@ jest.mock('antd', () => ({
 
 // Mock child components
 jest.mock('../../../common/DataQualitySection', () => {
-  return jest.fn().mockImplementation(({ tests, totalTests, onEdit }) => (
-    <div data-testid="data-quality-section">
-      <div data-testid="total-tests">{totalTests}</div>
-      {tests.map((test: any, index: number) => (
-        <div data-testid={`test-${test.type}`} key={index}>
-          {test.count}
+  return jest
+    .fn()
+    .mockImplementation(
+      ({ tests, totalTests, onEdit, onFilterChange, activeFilter }) => (
+        <div data-testid="data-quality-section">
+          <div data-testid="total-tests">{totalTests}</div>
+          {tests.map((test: any, index: number) => (
+            <div
+              data-testid={`test-${test.type}`}
+              key={index}
+              role="button"
+              onClick={() => onFilterChange?.(test.type)}>
+              {test.count}
+            </div>
+          ))}
+          <button data-testid="edit-button" onClick={onEdit}>
+            Edit
+          </button>
         </div>
-      ))}
-      <button data-testid="edit-button" onClick={onEdit}>
-        Edit
-      </button>
-    </div>
-  ));
+      )
+    );
 });
 
 jest.mock('../../../common/Loader/Loader', () => {
@@ -390,13 +398,13 @@ describe('DataQualityTab', () => {
       expect(screen.getByText('Test Case 1')).toBeInTheDocument();
 
       // Click on failed filter to see failed test cases
-      const failedButton = screen.getByText('label.failed');
+      const failedButton = screen.getByTestId('test-failed');
       fireEvent.click(failedButton);
 
       expect(screen.getByText('Test Case 2')).toBeInTheDocument();
 
       // Click on aborted filter to see aborted test cases
-      const abortedButton = screen.getByText('label.aborted');
+      const abortedButton = screen.getByTestId('test-aborted');
       fireEvent.click(abortedButton);
 
       expect(screen.getByText('Test Case 3')).toBeInTheDocument();
@@ -407,7 +415,7 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      // By default, all test cases are shown (filter is 'all')
+      // By default, only success test cases are shown (filter is 'success')
       // Look for status badges within test case cards specifically
       const statusBadges = screen.getAllByTestId('status-badge');
 
@@ -419,10 +427,10 @@ describe('DataQualityTab', () => {
         return card !== null;
       });
 
-      expect(testCaseStatusBadges).toHaveLength(3); // All 3 test cases should be visible
+      expect(testCaseStatusBadges).toHaveLength(1); // By default, only success test cases are shown
 
       // Click on failed filter to see failed test cases
-      const failedButton = screen.getByText('label.failed');
+      const failedButton = screen.getByTestId('test-failed');
       fireEvent.click(failedButton);
 
       // Wait for the filter to apply
@@ -447,13 +455,13 @@ describe('DataQualityTab', () => {
       expect(screen.getByText('column1')).toBeInTheDocument();
 
       // Click on failed filter to see failed test cases
-      const failedButton = screen.getByText('label.failed');
+      const failedButton = screen.getByTestId('test-failed');
       fireEvent.click(failedButton);
 
       expect(screen.getByText('column2')).toBeInTheDocument();
 
       // Click on aborted filter to see aborted test cases
-      const abortedButton = screen.getByText('label.aborted');
+      const abortedButton = screen.getByTestId('test-aborted');
       fireEvent.click(abortedButton);
 
       expect(screen.getByText('column3')).toBeInTheDocument();
@@ -465,7 +473,7 @@ describe('DataQualityTab', () => {
       });
 
       // Click on failed filter to see failed test cases (which have incidents)
-      const failedButton = screen.getByText('label.failed');
+      const failedButton = screen.getByTestId('test-failed');
       fireEvent.click(failedButton);
 
       expect(screen.getByText('ASSIGNED')).toBeInTheDocument();
@@ -490,13 +498,13 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      // Default filter is 'all', so all test cases should be visible initially
+      // Default filter is 'success', so only success test cases are visible initially
       expect(screen.getByText('Test Case 1')).toBeInTheDocument();
-      expect(screen.getByText('Test Case 2')).toBeInTheDocument();
-      expect(screen.getByText('Test Case 3')).toBeInTheDocument();
+      expect(screen.queryByText('Test Case 2')).not.toBeInTheDocument();
+      expect(screen.queryByText('Test Case 3')).not.toBeInTheDocument();
 
       // Click on success filter to see only success test cases
-      const successButton = screen.getByText('label.success');
+      const successButton = screen.getByTestId('test-success');
       fireEvent.click(successButton);
 
       // Wait for the filter to apply and then check results
@@ -512,7 +520,7 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const failedButton = screen.getByText('label.failed');
+      const failedButton = screen.getByTestId('test-failed');
       fireEvent.click(failedButton);
 
       expect(screen.queryByText('Test Case 1')).not.toBeInTheDocument();
@@ -525,7 +533,7 @@ describe('DataQualityTab', () => {
         expect(screen.getByTestId('data-quality-section')).toBeInTheDocument();
       });
 
-      const abortedButton = screen.getByText('label.aborted');
+      const abortedButton = screen.getByTestId('test-aborted');
       fireEvent.click(abortedButton);
 
       expect(screen.queryByText('Test Case 1')).not.toBeInTheDocument();
@@ -571,10 +579,9 @@ describe('DataQualityTab', () => {
       });
 
       // Click on failed filter - should show no results message
-      const failedButtons = screen.getAllByText('label.failed');
+      const failedButtons = screen.getAllByTestId('test-failed');
       const failedButtonWithZeroCount = failedButtons.find(
-        (button) =>
-          button.querySelector('.test-case-count')?.textContent === '0'
+        (button) => button.textContent === '0'
       );
       fireEvent.click(failedButtonWithZeroCount!);
 
@@ -618,7 +625,7 @@ describe('DataQualityTab', () => {
       fireEvent.click(incidentsTab);
 
       expect(
-        screen.getByText('label.incident-plural', { selector: 'h1' })
+        screen.getByText('label.new', { selector: '.stat-label.new' })
       ).toBeInTheDocument();
     });
 
@@ -659,10 +666,9 @@ describe('DataQualityTab', () => {
     });
 
     it('should render incidents summary section', () => {
-      expect(
-        screen.getByText('label.incident-plural', { selector: 'h1' })
-      ).toBeInTheDocument();
-      expect(screen.getByText('2')).toBeInTheDocument(); // Total incidents
+      expect(screen.getByText('label.new')).toBeInTheDocument();
+      expect(screen.getByText('label.acknowledged')).toBeInTheDocument();
+      expect(screen.getByText('label.assigned')).toBeInTheDocument();
     });
 
     it('should render incident status counts', () => {
@@ -677,29 +683,27 @@ describe('DataQualityTab', () => {
 
     it('should render incident filter buttons', () => {
       expect(
-        screen.getByText('label.new', { selector: 'button' })
+        screen.getByRole('button', { name: /label.new/ })
       ).toBeInTheDocument();
       expect(
-        screen.getByText('label.ack', { selector: 'button' })
+        screen.getByRole('button', { name: /label.acknowledged/ })
       ).toBeInTheDocument();
       expect(
-        screen.getByText('label.assigned', { selector: 'button' })
+        screen.getByRole('button', { name: /label.assigned/ })
       ).toBeInTheDocument();
-      expect(
-        screen.getByText('label.resolved', { selector: 'button' })
-      ).toBeInTheDocument();
+      expect(screen.getByText(/label.resolved/)).toBeInTheDocument();
     });
 
     it('should filter incidents by new status', () => {
-      const newButton = screen.getByText('label.new', { selector: 'button' });
+      const newButton = screen.getByRole('button', { name: /label.new/ });
       fireEvent.click(newButton);
 
       expect(screen.getByText('Test Case 1')).toBeInTheDocument();
     });
 
     it('should filter incidents by assigned status', () => {
-      const assignedButton = screen.getByText('label.assigned', {
-        selector: 'button',
+      const assignedButton = screen.getByRole('button', {
+        name: /label.assigned/,
       });
       fireEvent.click(assignedButton);
 
@@ -707,8 +711,8 @@ describe('DataQualityTab', () => {
     });
 
     it('should render assignee information for assigned incidents', () => {
-      const assignedButton = screen.getByText('label.assigned', {
-        selector: 'button',
+      const assignedButton = screen.getByRole('button', {
+        name: /label.assigned/,
       });
       fireEvent.click(assignedButton);
 
@@ -717,7 +721,7 @@ describe('DataQualityTab', () => {
     });
 
     it('should render severity information for incidents', () => {
-      const newButton = screen.getByText('label.new', { selector: 'button' });
+      const newButton = screen.getByRole('button', { name: /label.new/ });
       fireEvent.click(newButton);
 
       expect(screen.getByText('SEVERITY - Severity1')).toBeInTheDocument();
@@ -844,8 +848,8 @@ describe('DataQualityTab', () => {
         const incidentsTab = screen.getByTestId('tab-incidents');
         fireEvent.click(incidentsTab);
 
-        const assignedButton = screen.getByText('label.assigned', {
-          selector: 'button',
+        const assignedButton = screen.getByRole('button', {
+          name: /label.assigned/,
         });
         fireEvent.click(assignedButton);
 
