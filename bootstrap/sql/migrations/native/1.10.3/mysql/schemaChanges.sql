@@ -14,16 +14,16 @@ ADD INDEX idx_glossary_term_name (name);
 ALTER TABLE glossary_term_entity
 ADD INDEX idx_glossary_term_deleted (deleted);
 
--- Add composite index for common query patterns (glossary + status + deleted)
+-- Add generated columns for efficient querying without JSON_EXTRACT
 ALTER TABLE glossary_term_entity
-ADD INDEX idx_glossary_term_composite (
-  CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.glossary.fullyQualifiedName')) AS CHAR(255)),
-  CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.status')) AS CHAR(50)),
-  deleted
-);
+ADD COLUMN glossary_fqn VARCHAR(255) AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.glossary.fullyQualifiedName'))) STORED,
+ADD COLUMN status VARCHAR(50) AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.status'))) STORED,
+ADD COLUMN parent_fqn VARCHAR(255) AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.parent.fullyQualifiedName'))) STORED;
 
--- Add index for parent FQN to speed up hierarchy queries
+-- Add composite index for common query patterns using generated columns
 ALTER TABLE glossary_term_entity
-ADD INDEX idx_glossary_term_parent (
-  CAST(JSON_UNQUOTE(JSON_EXTRACT(json, '$.parent.fullyQualifiedName')) AS CHAR(255))
-);
+ADD INDEX idx_glossary_term_composite (glossary_fqn, status, deleted);
+
+-- Add index for parent FQN to speed up hierarchy queries using generated column
+ALTER TABLE glossary_term_entity
+ADD INDEX idx_glossary_term_parent (parent_fqn);

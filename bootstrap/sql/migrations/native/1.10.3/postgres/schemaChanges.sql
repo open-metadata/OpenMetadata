@@ -14,16 +14,16 @@ ON glossary_term_entity (name);
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_glossary_term_deleted
 ON glossary_term_entity (deleted);
 
--- Add index for parent FQN to speed up hierarchy queries (using GIN for JSON)
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_glossary_term_parent
-ON glossary_term_entity USING GIN (
-  (json ->> 'parent') jsonb_path_ops
-);
+-- Add generated columns for efficient querying without JSON extraction
+ALTER TABLE glossary_term_entity
+ADD COLUMN glossary_fqn VARCHAR(255) GENERATED ALWAYS AS (json #>> '{glossary,fullyQualifiedName}') STORED,
+ADD COLUMN status VARCHAR(50) GENERATED ALWAYS AS (json ->> 'status') STORED,
+ADD COLUMN parent_fqn VARCHAR(255) GENERATED ALWAYS AS (json #>> '{parent,fullyQualifiedName}') STORED;
 
--- Add composite index for common query patterns (glossary + status + deleted)
+-- Add index for parent FQN using generated column
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_glossary_term_parent
+ON glossary_term_entity (parent_fqn);
+
+-- Add composite index for common query patterns using generated columns
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_glossary_term_composite
-ON glossary_term_entity (
-  (json ->> 'glossary'),
-  (json ->> 'status'),
-  deleted
-);
+ON glossary_term_entity (glossary_fqn, status, deleted);
