@@ -177,6 +177,7 @@
     "azure-config-source": "Azure設定ソース",
     "back": "戻る",
     "back-to-login-lowercase": "ログインに戻る",
+    "base": "ベース",
     "basic-configuration": "基本設定",
     "batch-size": "バッチサイズ",
     "before-number-of-day-plural": "{{numberOfDays}}日前より前",

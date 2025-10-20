@@ -177,6 +177,7 @@
     "azure-config-source": "Configuración de origen de Azure",
     "back": "Volver",
     "back-to-login-lowercase": "volver a iniciar sesión",
+    "base": "Base",
     "basic-configuration": "Configuración básica",
     "batch-size": "Tamaño del lote",
     "before-number-of-day-plural": "Antes de {{numberOfDays}} días",

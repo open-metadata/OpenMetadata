@@ -177,6 +177,7 @@
     "azure-config-source": "Azure कॉन्फिग स्रोत",
     "back": "मागे",
     "back-to-login-lowercase": "लॉगिन करण्यासाठी परत",
+    "base": "बेस",
     "basic-configuration": "मूलभूत संरचना",
     "batch-size": "बॅच आकार",
     "before-number-of-day-plural": "{{numberOfDays}} दिवसांपूर्वी",

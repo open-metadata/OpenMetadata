@@ -177,6 +177,7 @@
     "azure-config-source": "แหล่งที่มาของการกำหนดค่าของ Azure",
     "back": "กลับ",
     "back-to-login-lowercase": "กลับสู่หน้าล็อกอิน",
+    "base": "ฐาน",
     "basic-configuration": "การกำหนดค่าพื้นฐาน",
     "batch-size": "ขนาดชุดข้อมูล",
     "before-number-of-day-plural": "ก่อน {{numberOfDays}} วัน",

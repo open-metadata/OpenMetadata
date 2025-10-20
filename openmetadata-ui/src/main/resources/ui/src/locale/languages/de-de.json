@@ -177,6 +177,7 @@
     "azure-config-source": "Azure-Konfigurationsquelle",
     "back": "Zurück",
     "back-to-login-lowercase": "Zurück zur Anmeldeseite",
+    "base": "Basis",
     "basic-configuration": "Grundkonfiguration",
     "batch-size": "Batchgröße",
     "before-number-of-day-plural": "Vor {{numberOfDays}} Tagen",

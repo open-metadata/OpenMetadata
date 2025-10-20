@@ -177,6 +177,7 @@
     "azure-config-source": "Source de Configuration Azure",
     "back": "Retour",
     "back-to-login-lowercase": "Retour à la Page de Connexion",
+    "base": "Base",
     "basic-configuration": "Configuration de Base",
     "batch-size": "Taille du Lot",
     "before-number-of-day-plural": "Avant {{numberOfDays}} jours",
