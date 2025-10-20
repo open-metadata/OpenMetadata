@@ -13,7 +13,6 @@
 
 import { expect, Page, test as base } from '@playwright/test';
 import { SidebarItem } from '../../../constant/sidebar';
-import { EntityDataClass } from '../../../support/entity/EntityDataClass';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -64,7 +63,6 @@ const glossary = new Glossary();
 
 test.beforeAll('Setup glossary', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
-  await EntityDataClass.preRequisitesForTests(apiContext);
   await glossary.create(apiContext);
   await afterAction();
 });
@@ -201,7 +199,6 @@ test('Glossary deny operations', async ({ testUserPage, browser }) => {
 test.afterAll('Cleanup glossary', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await glossary.delete(apiContext);
-  await EntityDataClass.postRequisitesForTests(apiContext);
   await afterAction();
 });
 

@@ -98,7 +98,6 @@ entities.forEach((EntityClass) => {
         ],
       });
 
-      await EntityDataClass.preRequisitesForTests(apiContext);
       await entity.create(apiContext);
       await afterAction();
     });
@@ -228,7 +227,6 @@ entities.forEach((EntityClass) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await user.delete(apiContext);
       await entity.delete(apiContext);
-      await EntityDataClass.postRequisitesForTests(apiContext);
       await afterAction();
     });
   });
