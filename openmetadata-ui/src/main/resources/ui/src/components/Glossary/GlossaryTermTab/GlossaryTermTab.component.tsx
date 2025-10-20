@@ -50,7 +50,7 @@ import {
   API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_MEDIUM,
+  PAGE_SIZE_LARGE,
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
@@ -166,84 +166,196 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
 
-  const fetchAllTerms = async (loadChildren = false) => {
-    setIsTableLoading(true);
+  const { paging, handlePagingChange } = usePaging(PAGE_SIZE_LARGE);
+  const [loadingChildren, setLoadingChildren] = useState<
+    Record<string, boolean>
+  >({});
+
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [previousGlossaryFQN, setPreviousGlossaryFQN] = useState<
+    string | undefined
+  >(undefined);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [searchPaging, setSearchPaging] = useState<{
+    offset: number;
+    total?: number;
+    hasMore: boolean;
+  }>({ offset: 0, total: undefined, hasMore: true });
+  const [isExpandingAll, setIsExpandingAll] = useState(false);
+  const [toggleExpandBtn, setToggleExpandBtn] = useState(false);
+
+  const { ref: infiniteScrollRef, inView } = useInView({
+    threshold: 0.1,
+    rootMargin: '50px',
+    trackVisibility: true,
+    delay: 100,
+  });
+  // handle search
+  const handleSearch = useCallback(async (value: string) => {
+    setSearchTerm(value);
+  }, []);
+
+  const debouncedSetSearchTerm = useCallback(debounce(handleSearch, 500), [
+    handleSearch,
+  ]);
+
+  const fetchChildTerms = async (parentFQN: string) => {
+    setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
     try {
-      const key = isGlossary ? 'glossary' : 'parent';
-      // For initial load, only fetch root level terms to improve performance
-      const limit = loadChildren ? API_RES_MAX_SIZE : PAGE_SIZE_MEDIUM;
-      const { data } = await getGlossaryTerms({
-        [key]: activeGlossary?.id || '',
-        limit,
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.PARENT,
-          TabSpecificField.CHILDREN,
-        ],
-      });
+      const { data } = await getGlossaryTermChildrenLazy(parentFQN, 1000); // Get all children
 
-      // Build tree structure
-      const treeData = buildTree(data) as ModifiedGlossary[];
-      setGlossaryChildTerms(treeData);
+      // Validate glossaryChildTerms is an array
+      if (!Array.isArray(glossaryChildTerms)) {
+        return;
+      }
 
-      // Only auto-expand keys for smaller datasets to prevent UI freezing
-      const keys = data.length < 500 ? data.reduce((prev, curr) => {
-        if (curr.children?.length && curr.children.length < 50) {
-          prev.push(curr.fullyQualifiedName ?? '');
-        }
-        return prev;
-      }, [] as string[]) : [];
-
-      setExpandedRowKeys(keys);
-    } catch (error) {
-      console.error('Failed to fetch glossary terms:', error);
-      showErrorToast(
-        `Failed to load glossary terms. ${
-          error instanceof Error ? error.message : 'Please try again or contact support.'
-        }`
-      );
-    } finally {
-      setIsTableLoading(false);
-    }
-  };
-
-  // Lazy loading function for child terms to improve performance
-  const fetchChildTermsOnDemand = async (parentTermId: string) => {
-    try {
-      const { data } = await getGlossaryTerms({
-        parent: parentTermId,
-        limit: PAGE_SIZE_MEDIUM,
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.PARENT,
-          TabSpecificField.CHILDREN,
-        ],
-      });
-
-      // Update the tree structure with the loaded children
-      const updateTermsWithChildren = (terms: ModifiedGlossary[]): ModifiedGlossary[] => {
+      // Recursive function to update nested terms
+      const updateNestedTerms = (
+        terms: ModifiedGlossary[]
+      ): ModifiedGlossary[] => {
         return terms.map((term) => {
-          if (term.id === parentTermId) {
+          if (term.fullyQualifiedName === parentFQN) {
             return {
               ...term,
-              children: data as GlossaryTerm[],
-              childrenCount: data.length,
-            };
-          } else if (term.children?.length) {
-            return {
-              ...term,
-              children: updateTermsWithChildren(term.children as ModifiedGlossary[]),
+              children: data as GlossaryTermWithChildren[],
             };
           }
+
+          // Check if this term has children and recursively update them
+          if (term.children && term.children.length > 0) {
+            return {
+              ...term,
+              children: updateNestedTerms(
+                term.children as ModifiedGlossary[]
+              ) as ModifiedGlossaryTerm[],
+            };
+          }
+
           return term;
         });
       };
 
-      setGlossaryChildTerms(updateTermsWithChildren);
+      const updatedTerms = updateNestedTerms(glossaryChildTerms);
+      setGlossaryChildTerms(updatedTerms);
     } catch (error) {
-      console.error('Failed to fetch child terms:', error);
-      showErrorToast('Failed to load child terms. Please try again.');
+      showErrorToast(error as AxiosError);
+    } finally {
+      setLoadingChildren((prev) => ({ ...prev, [parentFQN]: false }));
     }
+  };
+
+  const fetchAllTerms = async (loadMore = false) => {
+    if (!loadMore) {
+      setIsTableLoading(true);
+      if (searchTerm) {
+        setSearchPaging({ offset: 0, total: undefined, hasMore: true });
+      } else {
+        handlePagingChange((prev) => ({ ...prev, after: undefined }));
+      }
+    } else {
+      setIsLoadingMore(true);
+    }
+
+    try {
+      let data;
+      let pagingResponse: Paging | undefined;
+
+      // Use search API if search term is present
+      if (searchTerm) {
+        const currentOffset = loadMore ? searchPaging.offset : 0;
+        const response = await searchGlossaryTermsPaginated(
+          searchTerm,
+          undefined,
+          activeGlossary?.fullyQualifiedName,
+          undefined,
+          undefined,
+          PAGE_SIZE_LARGE,
+          currentOffset,
+          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount'
+        );
+        data = response.data;
+        pagingResponse = response.paging;
+
+        // Update search pagination state
+        const newOffset = currentOffset + PAGE_SIZE_LARGE;
+        const hasMore =
+          data.length === PAGE_SIZE_LARGE &&
+          (pagingResponse?.total === undefined ||
+            newOffset < pagingResponse?.total);
+        setSearchPaging({
+          offset: newOffset,
+          total: pagingResponse?.total,
+          hasMore,
+        });
+      } else {
+        // Use regular listing API when no search term
+        const response = await getFirstLevelGlossaryTermsPaginated(
+          activeGlossary?.fullyQualifiedName || '',
+          PAGE_SIZE_LARGE,
+          loadMore ? paging.after : undefined
+        );
+        data = response.data;
+        pagingResponse = response.paging;
+
+        // Update regular paging state for next page
+        handlePagingChange((prev) => ({
+          ...prev,
+          after: pagingResponse?.after,
+          total: pagingResponse?.total || prev.total,
+        }));
+      }
+
+      if (!data || !Array.isArray(data)) {
+        return;
+      }
+
+      const newTerms = data as ModifiedGlossary[];
+
+      if (loadMore && Array.isArray(glossaryChildTerms)) {
+        // Use unionBy to append new terms while avoiding duplicates
+        const mergedTerms = [...glossaryChildTerms, ...newTerms];
+
+        setGlossaryChildTerms(mergedTerms);
+      } else {
+        // Replace terms
+        setGlossaryChildTerms(data as ModifiedGlossary[]);
+        // Start with all terms collapsed
+        setExpandedRowKeys([]);
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsTableLoading(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  const fetchExpadedTree = async () => {
+    setIsTableLoading(true);
+    setIsExpandingAll(true);
+    const key = isGlossary ? 'glossary' : 'parent';
+    const { data } = await getGlossaryTerms({
+      [key]: activeGlossary?.id || '',
+      limit: API_RES_MAX_SIZE,
+      fields: [
+        TabSpecificField.OWNERS,
+        TabSpecificField.PARENT,
+        TabSpecificField.CHILDREN,
+      ],
+    });
+    setGlossaryChildTerms(buildTree(data) as ModifiedGlossary[]);
+    const keys = data.reduce((prev, curr) => {
+      if (curr.children?.length) {
+        prev.push(curr.fullyQualifiedName ?? '');
+      }
+
+      return prev;
+    }, [] as string[]);
+
+    setExpandedRowKeys(keys);
+    setIsTableLoading(false);
+    setIsExpandingAll(false);
   };
   const fetchAllTasks = useCallback(async () => {
     if (!activeGlossary?.fullyQualifiedName) {
