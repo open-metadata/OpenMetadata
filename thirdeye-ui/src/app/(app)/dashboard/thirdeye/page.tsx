@@ -131,12 +131,6 @@ export default function ThirdEyeDashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {useMockData && (
-            <Alert className="w-auto inline-flex items-center gap-2 py-2 px-4">
-              <AlertCircle className="h-4 w-4" />
-              <span className="text-sm">Using Mock Data</span>
-            </Alert>
-          )}
           <Button onClick={handleRetry} variant="outline" size="sm" disabled={isLoading}>
             <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
             {isLoading ? 'Loading...' : 'Refresh'}
