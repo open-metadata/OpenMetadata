@@ -175,23 +175,34 @@ export default function ThirdEyeDashboardPage() {
       <div className="grid gap-4 md:grid-cols-3">
         {isLoading ? (
           <>
-            <Skeleton className="h-[100px]" />
-            <Skeleton className="h-[100px]" />
-            <Skeleton className="h-[100px]" />
+            <Skeleton className="h-[120px]" />
+            <Skeleton className="h-[120px]" />
+            <Skeleton className="h-[120px]" />
           </>
         ) : dashboardData?.metadata ? (
           <>
-            <div className="rounded-lg border bg-card p-4">
+            <div className="rounded-lg border bg-card p-4 space-y-2">
               <p className="text-sm text-muted-foreground">Total Tables</p>
               <p className="text-2xl font-bold">{dashboardData.metadata.total_tables.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground pt-1 border-t">
+                💡 Complete inventory of all tables across your data infrastructure
+              </p>
             </div>
-            <div className="rounded-lg border bg-card p-4">
+            <div className="rounded-lg border bg-card p-4 space-y-2">
               <p className="text-sm text-muted-foreground">Active Tables</p>
               <p className="text-2xl font-bold">{dashboardData.metadata.active_tables.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground pt-1 border-t">
+                💡 Tables with recent activity (queries or data updates in last 30 days)
+              </p>
             </div>
-            <div className="rounded-lg border bg-card p-4">
+            <div className="rounded-lg border bg-card p-4 space-y-2">
               <p className="text-sm text-muted-foreground">Inactive %</p>
               <p className="text-2xl font-bold">{dashboardData.metadata.inactive_percentage.toFixed(1)}%</p>
+              <p className="text-xs text-muted-foreground pt-1 border-t">
+                💡 {dashboardData.metadata.inactive_percentage > 40 
+                  ? 'High inactive rate indicates significant optimization opportunity'
+                  : 'Healthy activity rate - well-maintained infrastructure'}
+              </p>
             </div>
           </>
         ) : null}

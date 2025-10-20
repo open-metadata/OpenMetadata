@@ -86,6 +86,17 @@ export default function BudgetForecast({
               </span>
             </div>
           </div>
+          
+          {/* Insight Text */}
+          <div className="pt-2 space-y-1">
+            <p className="text-xs text-muted-foreground">
+              💡 By implementing recommended optimizations, you can reduce your monthly infrastructure 
+              cost from {formatCurrency(total_monthly_cost_usd)} to {formatCurrency(forecastedCost)}.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              🎯 Focus on high-priority action items to achieve maximum savings impact.
+            </p>
+          </div>
         </div>
       </div>
     </Card>

@@ -105,15 +105,25 @@ export default function ZIScoreGauge({
         </div>
 
         {/* Breakdown */}
-        <div className="grid grid-cols-2 gap-3">
-          {breakdownData.map((metric) => (
-            <div key={metric.label} className="flex items-center gap-2">
-              <div className={cn('w-2 h-2 rounded-full', metric.color)} />
-              <span className="text-sm text-muted-foreground">
-                {metric.label}: <span className="font-medium text-foreground">{metric.value}%</span>
-              </span>
-            </div>
-          ))}
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            {breakdownData.map((metric) => (
+              <div key={metric.label} className="flex items-center gap-2">
+                <div className={cn('w-2 h-2 rounded-full', metric.color)} />
+                <span className="text-sm text-muted-foreground">
+                  {metric.label}: <span className="font-medium text-foreground">{metric.value}%</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          
+          {/* Insight Text */}
+          <p className="text-xs text-muted-foreground pt-2 border-t">
+            💡 {score >= 80 ? 'Excellent! Your infrastructure is highly optimized.' : 
+                score >= 60 ? 'Good health. Minor optimizations can boost your score.' :
+                score >= 40 ? 'Improvement needed. Review high-priority action items.' :
+                'Critical attention required. Immediate optimization recommended.'}
+          </p>
         </div>
 
         {/* Learn More */}

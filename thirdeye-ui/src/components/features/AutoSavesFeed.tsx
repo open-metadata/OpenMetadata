@@ -90,6 +90,15 @@ export default function AutoSavesFeed({
             <p className="text-lg font-semibold">{pendingReviews}</p>
           </div>
         </div>
+        
+        {/* Insight Text */}
+        <div className="pt-3 border-t">
+          <p className="text-xs text-muted-foreground">
+            💡 {isActive 
+              ? `${automatedActions} optimization actions are running autonomously, with ${pendingReviews} awaiting manual approval.`
+              : 'Automation is paused. Enable ZeroOps to start autonomous optimization.'}
+          </p>
+        </div>
       </div>
     </Card>
   );
