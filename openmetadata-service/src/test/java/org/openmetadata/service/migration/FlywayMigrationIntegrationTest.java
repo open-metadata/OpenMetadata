@@ -40,7 +40,7 @@ public class FlywayMigrationIntegrationTest extends OpenMetadataApplicationTest 
     migrationDAO = jdbi.onDemand(MigrationDAO.class);
     connectionType =
         ConnectionType.from(APP.getConfiguration().getDataSourceFactory().getDriverClass());
-    migrationUtil = new MigrationUtil(connectionType);
+    migrationUtil = new MigrationUtil(connectionType, null);
   }
 
   @Test
