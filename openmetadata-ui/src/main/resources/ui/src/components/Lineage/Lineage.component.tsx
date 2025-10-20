@@ -12,8 +12,8 @@
  */
 import { Card } from 'antd';
 import classNames from 'classnames';
-import { DragEvent, useCallback, useEffect, useRef } from 'react';
-import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
+import { DragEvent, useCallback, useEffect, useRef, useState } from 'react';
+import ReactFlow, { Background, Edge, MiniMap, Node, Panel } from 'reactflow';
 import {
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
@@ -37,12 +37,13 @@ import { LineageProps } from './Lineage.interface';
 
 const Lineage = ({
   deleted,
-  hasEditAccess,
   entity,
   entityType,
   isPlatformLineage,
+  hasEditAccess,
 }: LineageProps) => {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [showMiniMap, setShowMiniMap] = useState(true);
 
   const {
     nodes,
@@ -71,7 +72,7 @@ const Lineage = ({
 
   // Memoize callback for onEdgeClick to prevent unnecessary re-renders
   const handleEdgeClick = useCallback(
-    (_e: React.MouseEvent, data: any) => {
+    (_e: React.MouseEvent, data: Edge) => {
       onEdgeClick(data);
       _e.stopPropagation();
     },
@@ -80,7 +81,7 @@ const Lineage = ({
 
   // Memoize callback for onNodeClick to prevent unnecessary re-renders
   const handleNodeClick = useCallback(
-    (_e: React.MouseEvent, node: any) => {
+    (_e: React.MouseEvent, node: Node) => {
       onNodeClick(node);
       _e.stopPropagation();
     },
@@ -98,6 +99,10 @@ const Lineage = ({
     [onNodeDrop, reactFlowWrapper]
   );
 
+  const toggleMiniMapVisibility = useCallback(() => {
+    setShowMiniMap((show) => !show);
+  }, []);
+
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.
   return (
@@ -110,7 +115,10 @@ const Lineage = ({
             className={classNames('lineage-header', {
               'lineage-header-edit-mode': isEditMode,
             })}>
-            <CustomControlsComponent />
+            <CustomControlsComponent
+              deleted={Boolean(deleted)}
+              hasEditAccess={hasEditAccess}
+            />
           </div>
         )
       }>
@@ -122,11 +130,6 @@ const Lineage = ({
           ref={reactFlowWrapper}>
           {init ? (
             <>
-              <LineageControlButtons
-                deleted={deleted}
-                entityType={entityType}
-                hasEditAccess={hasEditAccess}
-              />
               <ReactFlow
                 elevateEdgesOnSelect
                 className="custom-react-flow"
@@ -161,10 +164,20 @@ const Lineage = ({
                 onNodesChange={onNodesChange}
                 onPaneClick={onPaneClick}>
                 <Background gap={12} size={1} />
-                <MiniMap pannable zoomable position="bottom-right" />
+                {showMiniMap && (
+                  <MiniMap pannable zoomable position="bottom-right" />
+                )}
 
-                <Panel position="bottom-left">
+                <Panel
+                  className={classNames({ 'edit-mode': isEditMode })}
+                  position="bottom-left">
                   <LineageLayers entity={entity} entityType={entityType} />
+                </Panel>
+                <Panel position="bottom-right">
+                  <LineageControlButtons
+                    miniMapVisible={showMiniMap}
+                    onToggleMiniMap={toggleMiniMapVisibility}
+                  />
                 </Panel>
               </ReactFlow>
             </>
