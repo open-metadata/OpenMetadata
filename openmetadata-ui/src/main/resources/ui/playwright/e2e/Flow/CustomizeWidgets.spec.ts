@@ -147,6 +147,7 @@ test.beforeAll('Setup pre-requests', async ({ browser }) => {
 test.afterAll('Cleanup entity', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await EntityDataClass.postRequisitesForTests(apiContext);
+  await persona.delete(apiContext);
   await afterAction();
 });
 

@@ -20,10 +20,6 @@ export interface Domain {
      */
     assets?: EntityReference[];
     /**
-     * Count of data assets that are part of this domain (including inherited from sub-domains).
-     */
-    assetsCount?: number;
-    /**
      * Change that lead to this version of the entity.
      */
     changeDescription?: ChangeDescription;
@@ -67,6 +63,10 @@ export interface Domain {
      * Unique ID of the Domain
      */
     id: string;
+    /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
     /**
      * Change that lead to this version of the entity.
      */
