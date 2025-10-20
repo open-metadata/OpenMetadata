@@ -115,6 +115,8 @@ def get_matched_column_name(table_entity: Table, dbt_node):
             if col.name.root.lower() == dbt_column_name.lower():
                 return col.name.root
         logger.warning(f"No Matching Column found for {dbt_column_name}")
+        # Fall back to the original DBT column name when no match is found
+        return dbt_column_name
     return None
 
 
