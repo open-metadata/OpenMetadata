@@ -19,6 +19,7 @@
       "enum": [
         "Airflow",
         "GluePipeline",
+        "KinesisFirehose",
         "Airbyte",
         "Fivetran",
         "Flink",
@@ -36,7 +37,8 @@
         "Stitch",
         "DataFactory",
         "Wherescape",
-        "SSIS"
+        "SSIS",
+        "Snowplow"
       ],
       "javaEnums": [
         {
@@ -44,6 +46,9 @@
         },
         {
           "name": "GluePipeline"
+        },
+        {
+          "name": "KinesisFirehose"
         },
         {
           "name": "Airbyte"
@@ -98,6 +103,9 @@
         },
         {
           "name": "SSIS"
+        },
+        {
+          "name": "Snowplow"
         }
       ]
     },
@@ -123,6 +131,9 @@
             },
             {
               "$ref": "./connections/pipeline/gluePipelineConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/kinesisFirehoseConnection.json"
             },
             {
               "$ref": "./connections/pipeline/airbyteConnection.json"
@@ -171,6 +182,9 @@
             },
             {
               "$ref": "./connections/pipeline/stitchConnection.json"
+            },
+            {
+              "$ref": "./connections/pipeline/snowplowConnection.json"
             }
           ]
         }
@@ -214,6 +228,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "testConnectionResult": {
       "description": "Last test connection results for this service",

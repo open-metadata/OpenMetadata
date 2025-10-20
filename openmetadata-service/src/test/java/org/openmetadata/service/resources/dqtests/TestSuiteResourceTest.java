@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.EntityResourceTest;
@@ -68,7 +69,6 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.teams.TeamResourceTest;
 import org.openmetadata.service.resources.teams.UserResourceTest;
 import org.openmetadata.service.security.SecurityUtil;
-import org.openmetadata.service.util.ResultList;
 import org.openmetadata.service.util.TestUtils;
 import org.testcontainers.shaded.org.apache.commons.lang3.RandomStringUtils;
 
@@ -938,12 +938,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public void addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
       throws IOException {
+    addTestCasesToLogicalTestSuite(testSuite, testCaseIds, ADMIN_AUTH_HEADERS);
+  }
+
+  public void addTestCasesToLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds, Map<String, String> authHeaders)
+      throws IOException {
     WebTarget target = getResource("dataQuality/testCases/logicalTestCases");
     CreateLogicalTestCases createLogicalTestCases =
         new CreateLogicalTestCases()
             .withTestSuiteId(testSuite.getId())
             .withTestCaseIds(testCaseIds);
-    TestUtils.put(target, createLogicalTestCases, Response.Status.OK, ADMIN_AUTH_HEADERS);
+    TestUtils.put(target, createLogicalTestCases, Response.Status.OK, authHeaders);
   }
 
   public void deleteBasicTestSuite(

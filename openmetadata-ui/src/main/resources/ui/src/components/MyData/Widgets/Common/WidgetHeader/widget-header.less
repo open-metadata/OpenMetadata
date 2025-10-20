@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-@import (reference) url('../../../../../styles/variables.less');
+@import (reference) '../../../../../styles/variables.less';
 
 .widget-header {
   padding: 12px 20px 12px 20px;
@@ -65,15 +65,10 @@
   }
 
   .drag-widget-icon {
-    visibility: hidden;
     cursor: grab;
     user-select: none;
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
-
-    &:active {
-      cursor: grabbing;
-    }
   }
 }

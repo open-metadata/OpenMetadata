@@ -12,37 +12,49 @@
  */
 
 import { AxiosError } from 'axios';
+import { lazy, Suspense } from 'react';
 import { ActivityFeedTab } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { CustomPropertyTable } from '../components/common/CustomPropertyTable/CustomPropertyTable';
+import Loader from '../components/common/Loader/Loader';
 import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { DashboardChartTable } from '../components/Dashboard/DashboardChartTable/DashboardChartTable';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import Lineage from '../components/Lineage/Lineage.component';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
-import LineageProvider from '../context/LineageProvider/LineageProvider';
 import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs, EntityType, TabSpecificField } from '../enums/entity.enum';
 import { Dashboard } from '../generated/entity/data/dashboard';
 import { PageType } from '../generated/system/ui/page';
+import { Include } from '../generated/type/include';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { ChartType } from '../pages/DashboardDetailsPage/DashboardDetailsPage.component';
 import { getChartById } from '../rest/chartAPI';
 import { DashboardDetailsTabsProps } from './DashboardDetailsClassBase';
 import { t } from './i18next/LocalUtil';
+const EntityLineageTab = lazy(() =>
+  import('../components/Lineage/EntityLineageTab/EntityLineageTab').then(
+    (module) => ({ default: module.EntityLineageTab })
+  )
+);
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.DOMAINS},${TabSpecificField.OWNERS}, ${TabSpecificField.FOLLOWERS}, ${TabSpecificField.TAGS}, ${TabSpecificField.CHARTS},${TabSpecificField.VOTES},${TabSpecificField.DATA_PRODUCTS},${TabSpecificField.EXTENSION}`;
 
-export const fetchCharts = async (charts: Dashboard['charts']) => {
+export const fetchCharts = async (
+  charts: Dashboard['charts'],
+  showDeleted = false
+) => {
   let chartsData: ChartType[] = [];
   let promiseArr: Array<Promise<ChartType>> = [];
   try {
     if (charts?.length) {
       promiseArr = charts.map((chart) =>
-        getChartById(chart.id, { fields: TabSpecificField.TAGS })
+        getChartById(chart.id, {
+          fields: TabSpecificField.TAGS,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
+        })
       );
       const res = await Promise.allSettled(promiseArr);
 
@@ -106,14 +118,14 @@ export const getDashboardDetailPageTabs = ({
       label: <TabsLabel id={EntityTabs.LINEAGE} name={t('label.lineage')} />,
       key: EntityTabs.LINEAGE,
       children: (
-        <LineageProvider>
-          <Lineage
-            deleted={deleted}
+        <Suspense fallback={<Loader />}>
+          <EntityLineageTab
+            deleted={Boolean(deleted)}
             entity={dashboardDetails as SourceType}
             entityType={EntityType.DASHBOARD}
             hasEditAccess={editLineagePermission}
           />
-        </LineageProvider>
+        </Suspense>
       ),
     },
     {

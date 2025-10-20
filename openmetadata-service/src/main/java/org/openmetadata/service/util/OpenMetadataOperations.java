@@ -66,11 +66,13 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -99,11 +101,15 @@ import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.util.jdbi.DatabaseAuthenticationProviderFactory;
 import org.openmetadata.service.util.jdbi.JdbiUtils;
@@ -145,8 +151,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer call() {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
-            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes'");
+            + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -430,17 +436,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      initializeCollectionRegistry();
+      initializeSecurityConfig();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
       }
-      initializeCollectionRegistry();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       try {
         userRepository.getByEmail(null, email, EntityUtil.Fields.EMPTY_FIELDS);
-        LOG.error("User {} already exists.", email);
-        return 1;
+        LOG.info("User {} already exists.", email);
+        return 0;
       } catch (EntityNotFoundException ex) {
         // Expected – continue to create the user.
       }
@@ -471,6 +478,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
     }
   }
 
+  private void initializeSecurityConfig() {
+    try {
+      var authConfig =
+          Entity.getSystemRepository()
+              .getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+      if (authConfig != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(
+                JsonUtils.convertValue(
+                    authConfig.getConfigValue(),
+                    org.openmetadata.schema.api.security.AuthenticationConfiguration.class));
+      } else if (config.getAuthenticationConfiguration() != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
+      }
+    } catch (Exception e) {
+      if (config.getAuthenticationConfiguration() != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
+      }
+    }
+  }
+
   private boolean isAppInstalled(AppRepository appRepository, String appName) {
     try {
       appRepository.findByName(appName, Include.NON_DELETED);
@@ -496,7 +526,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
 
     JWTTokenGenerator.getInstance()
         .init(
-            config.getAuthenticationConfiguration().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getInstance()
+                .getCurrentAuthConfig()
+                .getTokenValidationAlgorithm(),
             config.getJwtTokenConfiguration());
 
     AppMarketPlaceMapper mapper = new AppMarketPlaceMapper(pipelineServiceClient);
@@ -585,7 +617,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       parseConfig();
       CollectionRegistry.initialize();
 
-      AuthProvider authProvider = config.getAuthenticationConfiguration().getProvider();
+      AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
       // Only Basic Auth provider is supported for password reset
       if (!authProvider.equals(AuthProvider.BASIC)) {
@@ -1274,6 +1306,80 @@ public class OpenMetadataOperations implements Callable<Integer> {
     return !nullOrEmpty(appRunRecord.getExecutionTime());
   }
 
+  @Command(name = "reindex-rdf", description = "Re-index all entities into RDF triple store.")
+  public Integer reIndexRdf(
+      @Option(
+              names = {"-r", "--recreate"},
+              defaultValue = "true",
+              description = "Clear and recreate all RDF data.")
+          boolean recreate,
+      @Option(
+              names = {"-e", "--entity-type"},
+              description =
+                  "Specific entity type to process (optional). Use 'all' for all entities.")
+          String entityType,
+      @Option(
+              names = {"-b", "--batch-size"},
+              defaultValue = "100",
+              description = "Number of records to process in each batch.")
+          int batchSize) {
+    try {
+      LOG.info("Starting RDF reindexing...");
+      parseConfig();
+
+      // Check if RDF is enabled
+      if (config.getRdfConfiguration() == null
+          || !Boolean.TRUE.equals(config.getRdfConfiguration().getEnabled())) {
+        LOG.error("RDF is not enabled in configuration. Please set rdf.enabled=true");
+        return 1;
+      }
+
+      // Get entities to process
+      Set<String> entities = new HashSet<>();
+      if (entityType == null || "all".equalsIgnoreCase(entityType)) {
+        entities.add("all");
+      } else {
+        entities.add(entityType);
+      }
+
+      return executeRdfReindexApp(entities, batchSize, recreate);
+    } catch (Exception e) {
+      LOG.error("Failed to reindex RDF due to", e);
+      return 1;
+    }
+  }
+
+  private int executeRdfReindexApp(Set<String> entities, int batchSize, boolean recreateIndexes) {
+    try {
+      AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
+      App app = appRepository.getByName(null, "RdfIndexApp", appRepository.getFields("id"));
+
+      EventPublisherJob config =
+          new EventPublisherJob()
+              .withEntities(entities)
+              .withBatchSize(batchSize)
+              .withRecreateIndex(recreateIndexes);
+
+      LOG.info("Triggering RDF reindex application");
+      LOG.info("  Entities: {}", entities);
+      LOG.info("  Batch size: {}", batchSize);
+      LOG.info("  Recreate indexes: {}", recreateIndexes);
+
+      // Trigger Application
+      long currentTime = System.currentTimeMillis();
+      AppScheduler.getInstance().triggerOnDemandApplication(app, JsonUtils.getMap(config));
+
+      // Wait for completion and return status
+      return waitAndReturnReindexingAppStatus(app, currentTime, null);
+    } catch (EntityNotFoundException e) {
+      LOG.error("RdfIndexApp not found. Please ensure the RDF indexing application is registered.");
+      return 1;
+    } catch (Exception e) {
+      LOG.error("Failed to execute RDF reindex app", e);
+      return 1;
+    }
+  }
+
   @Command(name = "deploy-pipelines", description = "Deploy all the service pipelines.")
   public Integer deployPipelines() {
     try {
@@ -1325,14 +1431,206 @@ public class OpenMetadataOperations implements Callable<Integer> {
     try {
       LOG.info("Dropping all indexes from search engine...");
       parseConfig();
+
+      // Drop regular search repository indexes
       for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
         LOG.info("Dropping index for entity type: {}", entityType);
-        searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
+        IndexMapping entityIndexMapping = searchRepository.getIndexMapping(entityType);
+        Set<String> allEntityIndices =
+            searchRepository
+                .getSearchClient()
+                .listIndicesByPrefix(
+                    entityIndexMapping.getIndexName(searchRepository.getClusterAlias()));
+        for (String oldIndex : allEntityIndices) {
+          try {
+            if (searchRepository.getSearchClient().indexExists(oldIndex)) {
+              searchRepository.getSearchClient().deleteIndex(oldIndex);
+              LOG.info("Cleaned up old index '{}' for entity '{}'.", oldIndex, entityType);
+            }
+          } catch (Exception deleteEx) {
+            LOG.warn(
+                "Failed to delete old index '{}' for entity '{}'.", oldIndex, entityType, deleteEx);
+          }
+        }
       }
+
+      // Drop data streams and data quality indexes created by DataInsightsApp
+      dropDataInsightsIndexes();
+
       LOG.info("All indexes dropped successfully.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop indexes due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "create-indexes", description = "Creates Indexes for Elastic/OpenSearch")
+  public Integer createIndexes() {
+    try {
+      LOG.info("Creating indexes for search engine...");
+      parseConfig();
+      searchRepository.createIndexes();
+      createDataInsightsIndexes();
+      Entity.cleanup();
+      LOG.info("All indexes created successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to drop create due to ", e);
+      return 1;
+    }
+  }
+
+  private void dropDataInsightsIndexes() {
+    try {
+      LOG.info("Dropping Data Insights data streams and indexes...");
+
+      // Create a DataInsightsApp instance to access its cleanup methods
+      DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
+
+      // Drop data assets data streams
+      LOG.info("Dropping data assets data streams...");
+      dataInsightsApp.deleteDataAssetsDataStream();
+
+      // Drop data quality indexes
+      LOG.info("Dropping data quality indexes...");
+      dataInsightsApp.deleteDataQualityDataIndex();
+
+      LOG.info("Data Insights indexes and data streams dropped successfully.");
+    } catch (Exception e) {
+      LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
+      LOG.debug("Data Insights index cleanup error details: ", e);
+    }
+  }
+
+  private void createDataInsightsIndexes() {
+    try {
+      LOG.info("Create Data Insights data streams and indexes...");
+
+      // Create a DataInsightsApp instance to access its cleanup methods
+      DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
+
+      // Drop data assets data streams
+      LOG.info("Create/Update data assets data streams...");
+      dataInsightsApp.createOrUpdateDataAssetsDataStream();
+
+      // Drop data quality indexes
+      LOG.info("Create/Updated data quality indexes...");
+      dataInsightsApp.createDataQualityDataIndex();
+
+      LOG.info("Data Insights indexes and data streams created successfully.");
+    } catch (Exception e) {
+      LOG.warn("Failed to create some Data Insights indexes: {}", e.getMessage());
+      LOG.debug("Data Insights index creation error details: ", e);
+    }
+  }
+
+  private Set<String> getAllIndices() {
+    Set<String> indices = new HashSet<>();
+    try {
+      SearchClient<?> searchClient = searchRepository.getSearchClient();
+
+      if (searchClient instanceof ElasticSearchClient) {
+        es.org.elasticsearch.client.Request request =
+            new es.org.elasticsearch.client.Request("GET", "/_cat/indices?format=json");
+        es.org.elasticsearch.client.RestClient lowLevelClient =
+            (es.org.elasticsearch.client.RestClient) searchClient.getLowLevelClient();
+        es.org.elasticsearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      } else if (searchClient instanceof OpenSearchClient) {
+        os.org.opensearch.client.Request request =
+            new os.org.opensearch.client.Request("GET", "/_cat/indices?format=json");
+        os.org.opensearch.client.RestClient lowLevelClient =
+            (os.org.opensearch.client.RestClient) searchClient.getLowLevelClient();
+        os.org.opensearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve all indices", e);
+    }
+    return indices;
+  }
+
+  @Command(
+      name = "remove-security-config",
+      description =
+          "Remove security configuration (authentication and authorization) from the database. "
+              + "WARNING: This will delete all authentication and authorization settings!")
+  public Integer removeSecurityConfig(
+      @Option(
+              names = {"--force"},
+              description = "Force removal without confirmation prompt.",
+              defaultValue = "false")
+          boolean force) {
+    try {
+      if (!force) {
+        LOG.warn(
+            "WARNING: This will remove all authentication and authorization configuration from the database!");
+        LOG.warn("This includes authenticationConfiguration and authorizerConfiguration settings.");
+        LOG.info("Use --force to skip this confirmation.");
+
+        Scanner scanner = new Scanner(System.in);
+        LOG.info("Enter 'DELETE' to confirm removal of security configuration: ");
+        String input = scanner.next();
+        if (!input.equals("DELETE")) {
+          LOG.info("Operation cancelled.");
+          return 0;
+        }
+      }
+
+      LOG.info("Removing security configuration from database...");
+      parseConfig();
+
+      SystemRepository systemRepository = Entity.getSystemRepository();
+
+      // Remove authentication configuration
+      try {
+        Settings authenticationSettings =
+            systemRepository.getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+        if (authenticationSettings != null) {
+          systemRepository.deleteSettings(SettingsType.AUTHENTICATION_CONFIGURATION);
+          LOG.info("Removed authenticationConfiguration from database.");
+        } else {
+          LOG.info("No authenticationConfiguration found in database.");
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to remove authenticationConfiguration: {}", e.getMessage());
+      }
+
+      // Remove authorizer configuration
+      try {
+        Settings authorizerSettings =
+            systemRepository.getConfigWithKey(SettingsType.AUTHORIZER_CONFIGURATION.value());
+        if (authorizerSettings != null) {
+          systemRepository.deleteSettings(SettingsType.AUTHORIZER_CONFIGURATION);
+          LOG.info("Removed authorizerConfiguration from database.");
+        } else {
+          LOG.info("No authorizerConfiguration found in database.");
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to remove authorizerConfiguration: {}", e.getMessage());
+      }
+
+      LOG.info("Security configuration removal completed.");
+      LOG.info(
+          "Note: You will need to restart the OpenMetadata service for changes to take effect.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to remove security configuration due to ", e);
       return 1;
     }
   }
@@ -1502,7 +1800,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
             jdbi, nativeSQLScriptRootPath, connType, extensionSQLScriptRootPath, config, force);
     workflow.loadMigrations();
     workflow.printMigrationInfo();
-    workflow.runMigrationWorkflows();
+    workflow.runMigrationWorkflows(true);
   }
 
   private void initOrganization() {

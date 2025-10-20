@@ -85,19 +85,21 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
 
   await expect(page.getByTestId('select-owner-tabs')).toBeVisible();
 
-  await page.waitForLoadState('networkidle');
-
-  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
-
   await expect(
     page.locator('.ant-tabs-tab-active').getByText('Teams')
   ).toBeVisible();
 
+  await page.waitForLoadState('networkidle');
+
+  await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
+
   const userListResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+    '/api/v1/search/query?q=&index=user_search_index&*'
   );
   await page.getByRole('tab', { name: 'Users' }).click();
   await userListResponse;
+
+  await page.waitForLoadState('networkidle');
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
   await page.waitForSelector('[data-testid="owner-select-users-search-bar"]', {
@@ -113,6 +115,7 @@ export const fillOwnerDetails = async (page: Page, owners: string[]) => {
     await page.locator('[data-testid="owner-select-users-search-bar"]').clear();
     await page.fill('[data-testid="owner-select-users-search-bar"]', owner);
     await searchOwner;
+    await page.waitForLoadState('networkidle');
     await page.waitForSelector(
       '[data-testid="select-owner-tabs"] [data-testid="loader"]',
       { state: 'detached' }
@@ -387,6 +390,21 @@ export const fillGlossaryRowDetails = async (
     .locator(RDG_ACTIVE_CELL_SELECTOR)
     .press('ArrowRight', { delay: 100 });
 
+  await fillTextInputDetails(page, '#ccc');
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
+  const base64Src =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+  await fillTextInputDetails(page, base64Src);
+
+  await page
+    .locator(RDG_ACTIVE_CELL_SELECTOR)
+    .press('ArrowRight', { delay: 100 });
+
   if (propertyListName) {
     await fillCustomPropertyDetails(page, propertyListName);
   }
@@ -484,6 +502,13 @@ export const createColumnRowDetails = () => {
     arrayDataType: 'INT',
     dataLength: '10',
     entityType: 'Column',
+  };
+};
+
+export const createColumnRowDetailsWithEncloseDot = () => {
+  return {
+    ...createColumnRowDetails(),
+    name: `"playwright.column ${uuid()}"`,
   };
 };
 
@@ -1045,4 +1070,27 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
   await expect(
     page.getByRole('gridcell', { name: 'Playwright,Database', exact: true })
   ).not.toBeVisible(); // Display Name cell should be deleted
+};
+
+export const performBulkDownload = async (page: Page, fileName: string) => {
+  const downloadPromise = page.waitForEvent('download');
+
+  await page.click('[data-testid="manage-button"]');
+  await page.waitForSelector('[data-testid="manage-dropdown-list-container"]', {
+    state: 'visible',
+  });
+  await page.click('[data-testid="export-button-title"]');
+
+  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+
+  await page.fill('#fileName', fileName);
+  await page.click('#submit-button');
+
+  await page.waitForSelector('.message-banner-wrapper', {
+    state: 'detached',
+  });
+  const download = await downloadPromise;
+
+  // Wait for the download process to complete and save the downloaded file somewhere.
+  await download.saveAs('downloads/' + download.suggestedFilename());
 };

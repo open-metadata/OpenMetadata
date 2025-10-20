@@ -85,7 +85,13 @@
         }
       },
       "domainType": {
-        "type": "text"
+        "type": "text",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "ignore_above": 256
+          }
+        }
       },
       "name": {
         "type": "text",
@@ -139,7 +145,14 @@
         "term_vector": "with_positions_offsets"
       },
       "entityType": {
-        "type": "keyword"
+        "type": "keyword",
+        "fields": {
+          "keyword": {
+            "type": "keyword",
+            "normalizer": "lowercase_normalizer",
+            "ignore_above": 256
+          }
+        }
       },
       "version": {
         "type": "float"
@@ -247,10 +260,14 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "tier": {
         "properties": {
           "tagFQN": {
             "type": "keyword",
+            "normalizer": "lowercase_normalizer",
             "fields": {
               "text": {
                 "type": "text",

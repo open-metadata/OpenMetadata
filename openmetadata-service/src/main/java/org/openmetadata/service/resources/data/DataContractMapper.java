@@ -34,7 +34,7 @@ public class DataContractMapper {
             .withDisplayName(create.getDisplayName())
             .withDescription(create.getDescription())
             .withEntity(entity)
-            .withStatus(create.getStatus())
+            .withEntityStatus(create.getEntityStatus())
             .withSchema(create.getSchema())
             .withSemantics(create.getSemantics())
             .withQualityExpectations(create.getQualityExpectations())
@@ -43,6 +43,10 @@ public class DataContractMapper {
             .withEffectiveFrom(create.getEffectiveFrom())
             .withEffectiveUntil(create.getEffectiveUntil())
             .withSourceUrl(create.getSourceUrl())
+            .withTermsOfUse(create.getTermsOfUse())
+            .withSecurity(create.getSecurity())
+            .withSla(create.getSla())
+            .withExtension(create.getExtension())
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
 

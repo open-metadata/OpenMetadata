@@ -724,6 +724,9 @@ public class DatabaseSchemaRepository extends EntityRepository<DatabaseSchema> {
     protected void createEntityWithRecursion(CSVPrinter printer, List<CSVRecord> csvRecords)
         throws IOException {
       CSVRecord csvRecord = getNextRecord(printer, csvRecords);
+      if (csvRecord == null) {
+        return; // Error has already been logged by getNextRecord, just skip this record
+      }
 
       // Get entityType and fullyQualifiedName if provided
       String entityType = csvRecord.size() > 12 ? csvRecord.get(12) : TABLE;

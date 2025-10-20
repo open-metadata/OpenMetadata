@@ -16,7 +16,7 @@ public class DefaultPromptsContext {
     return getPrompts(promptFilePath);
   }
 
-  public WrappedGetPromptResult callPrompt(
+  public McpSchema.GetPromptResult callPrompt(
       JwtFilter jwtFilter, String promptName, McpSchema.GetPromptRequest promptRequest) {
     Map<String, Object> params = promptRequest.arguments();
     CatalogSecurityContext securityContext =
@@ -25,7 +25,7 @@ public class DefaultPromptsContext {
         "Catalog Principal: {} is trying to call the prompt: {}",
         securityContext.getUserPrincipal().getName(),
         promptName);
-    WrappedGetPromptResult result;
+    McpSchema.GetPromptResult result;
     try {
       switch (promptName) {
         case "create-greeting":
@@ -35,17 +35,14 @@ public class DefaultPromptsContext {
           result = new SearchPrompt().callPrompt(promptRequest);
           break;
         default:
-          return new WrappedGetPromptResult(
-              new McpSchema.GetPromptResult("error", new ArrayList<>()), true);
+          return new McpSchema.GetPromptResult("error", new ArrayList<>());
       }
 
       return result;
     } catch (Exception ex) {
       LOG.error("Error executing tool: {}", ex.getMessage());
-      return new WrappedGetPromptResult(
-          new McpSchema.GetPromptResult(
-              String.format("Error executing tool: %s", ex.getMessage()), new ArrayList<>()),
-          false);
+      return new McpSchema.GetPromptResult(
+          String.format("Error executing tool: %s", ex.getMessage()), new ArrayList<>());
     }
   }
 }

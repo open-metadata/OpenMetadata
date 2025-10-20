@@ -38,18 +38,9 @@ from metadata.utils.logger import profiler_interface_registry_logger
 logger = profiler_interface_registry_logger()
 
 
-@inject
-def get_row_count_metric(metrics: Inject[Type[MetricRegistry]] = None):
-    if metrics is None:
-        raise DependencyNotFoundError(
-            "MetricRegistry dependency not found. Please ensure the MetricRegistry is properly registered."
-        )
-    return metrics.ROW_COUNT().name()
-
-
 COLUMN_COUNT = "columnCount"
 COLUMN_NAMES = "columnNames"
-ROW_COUNT = get_row_count_metric()
+ROW_COUNT = "rowCount"
 SIZE_IN_BYTES = "sizeInBytes"
 CREATE_DATETIME = "createDateTime"
 
@@ -313,8 +304,7 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
         ]
 
         where_clause = [
-            Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.root,
+            Column("project_id") == self._entity.database.name,
             Column("table_schema") == self.schema_name,
             Column("table_name") == self.table_name,
         ]
@@ -347,17 +337,14 @@ class BigQueryTableMetricComputer(BaseTableMetricComputer):
             *self._get_col_names_and_count(),
         ]
         where_clause = [
-            Column("project_id")
-            == self.conn_config.credentials.gcpConfig.projectId.root,
+            Column("project_id") == self._entity.database.name,
             Column("dataset_id") == self.schema_name,
             Column("table_id") == self.table_name,
         ]
         schema = (
-            self.schema_name.startswith(
-                f"{self.conn_config.credentials.gcpConfig.projectId.root}."
-            )
+            self.schema_name.startswith(f"{self._entity.database.name}.")
             and self.schema_name
-            or f"{self.conn_config.credentials.gcpConfig.projectId.root}.{self.schema_name}"
+            or f"{self._entity.database.name}.{self.schema_name}"
         )
         query = self._build_query(
             columns,

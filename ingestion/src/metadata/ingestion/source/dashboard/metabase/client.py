@@ -48,6 +48,7 @@ PASSWORD_HEADER = "password"
 SESSION_HEADERS = {"Content-Type": "application/json", "Accept": "*/*"}
 DEFAULT_TIMEOUT = 30
 METABASE_SESSION_HEADER = "X-Metabase-Session"
+METABASE_API_HEADER = "X-API-KEY"
 API_VERSION = "api"
 
 
@@ -56,8 +57,13 @@ class MetabaseClient:
     Client Handling API communication with Metabase
     """
 
-    def _get_metabase_session(self) -> str:
+    def _get_metabase_session(self) -> Optional[str]:
         try:
+            # If API token is provided, return None as we don't need a session
+            if self.config.apiKey:
+                return None
+
+            # Otherwise use username/password authentication
             params = {USERNAME_HEADER: self.config.username}
             if self.config.password:
                 params[PASSWORD_HEADER] = self.config.password.get_secret_value()
@@ -82,14 +88,30 @@ class MetabaseClient:
         config: MetabaseConnection,
     ):
         self.config = config
-        session_token = self._get_metabase_session()
-        client_config: ClientConfig = ClientConfig(
-            base_url=clean_uri(str(self.config.hostPort)),
-            api_version=API_VERSION,
-            auth_header=AUTHORIZATION_HEADER,
-            auth_token=lambda: (NO_ACCESS_TOKEN, 0),
-            extra_headers={METABASE_SESSION_HEADER: session_token},
-        )
+
+        # Determine authentication method and set headers accordingly
+        if self.config.apiKey:
+            # Use API token authentication
+            client_config: ClientConfig = ClientConfig(
+                base_url=clean_uri(str(self.config.hostPort)),
+                api_version=API_VERSION,
+                auth_header=AUTHORIZATION_HEADER,
+                auth_token=lambda: (NO_ACCESS_TOKEN, 0),
+                extra_headers={
+                    METABASE_API_HEADER: self.config.apiKey.get_secret_value()
+                },
+            )
+        else:
+            # Use session-based authentication
+            session_token = self._get_metabase_session()
+            client_config: ClientConfig = ClientConfig(
+                base_url=clean_uri(str(self.config.hostPort)),
+                api_version=API_VERSION,
+                auth_header=AUTHORIZATION_HEADER,
+                auth_token=lambda: (NO_ACCESS_TOKEN, 0),
+                extra_headers={METABASE_SESSION_HEADER: session_token},
+            )
+
         self.client = REST(client_config)
 
     def get_dashboards_list(
@@ -160,9 +182,9 @@ class MetabaseClient:
                     chart = MetabaseChart.model_validate(chart_data)
                     charts_dict[chart.id] = chart
             return charts_dict
-        except Exception:
+        except Exception as e:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to fetch the cards")
+            logger.warning(f"Failed to fetch the cards : {e}")
         return {}
 
     def _create_default_dashboard_details(

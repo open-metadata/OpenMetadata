@@ -43,8 +43,8 @@ import { ResourceEntity } from '../../../context/PermissionProvider/PermissionPr
 import { EntityType } from '../../../enums/entity.enum';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import {
+  EntityStatus,
   GlossaryTerm,
-  Status,
 } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Style } from '../../../generated/type/tagLabel';
@@ -154,9 +154,9 @@ const GlossaryHeader = ({
     }
   };
 
-  const glossaryTermStatus: Status | null = useMemo(() => {
+  const glossaryTermStatus: EntityStatus | null = useMemo(() => {
     if (!isGlossary) {
-      return selectedData.status ?? Status.Approved;
+      return selectedData.entityStatus ?? EntityStatus.Approved;
     }
 
     return null;
@@ -430,7 +430,7 @@ const GlossaryHeader = ({
 
   const statusBadge = useMemo(() => {
     if (!isGlossary) {
-      const entityStatus = selectedData.status ?? Status.Approved;
+      const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
 
       return <GlossaryStatusBadge status={entityStatus} />;
     }
@@ -451,7 +451,7 @@ const GlossaryHeader = ({
         </Button>
       ) : (
         <>
-          {glossaryTermStatus && glossaryTermStatus === Status.Approved && (
+          {glossaryTermStatus && glossaryTermStatus === EntityStatus.Approved && (
             <Dropdown
               className="m-l-xs h-10"
               menu={{

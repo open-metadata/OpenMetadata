@@ -19,20 +19,19 @@ import { UIThemePreference } from '../generated/configuration/uiThemePreference'
 import { User } from '../generated/entity/teams/user';
 import { EntityReference } from '../generated/entity/type';
 import { ApplicationStore } from '../interface/store.interface';
-import { getOidcToken } from '../utils/LocalStorageUtils';
+import { getOidcToken } from '../utils/SwTokenStorageUtils';
 import { getThemeConfig } from '../utils/ThemeUtils';
-
-export const OM_SESSION_KEY = 'om-session';
 
 export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   isApplicationLoading: false,
+  isAuthenticating: true, // Loading until auth state is determined
   theme: getThemeConfig(),
   applicationConfig: {
     customTheme: getThemeConfig(),
   } as UIThemePreference,
   currentUser: undefined,
   newUser: undefined,
-  isAuthenticated: Boolean(getOidcToken()),
+  isAuthenticated: false,
   authConfig: undefined,
   authorizerConfig: undefined,
   isSigningUp: false,
@@ -46,6 +45,42 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   applications: [],
   appPreferences: {},
   appVersion: undefined,
+  rdfEnabled: false,
+
+  initializeAuthState: async () => {
+    try {
+      let token = '';
+
+      if ('serviceWorker' in navigator && 'indexedDB' in window) {
+        try {
+          token = await getOidcToken();
+        } catch {
+          try {
+            // Wait for the service worker to be ready before getting the token
+            const { waitForServiceWorkerReady } = await import(
+              '../utils/SwMessenger'
+            );
+            await waitForServiceWorkerReady();
+            token = await getOidcToken();
+          } catch {
+            token = '';
+          }
+        }
+      } else {
+        token = '';
+      }
+
+      set({
+        isAuthenticated: Boolean(token),
+        isAuthenticating: false,
+      });
+    } catch {
+      set({
+        isAuthenticated: false,
+        isAuthenticating: false,
+      });
+    }
+  },
 
   setInlineAlertDetails: (inlineAlertDetails) => {
     set({ inlineAlertDetails });
@@ -151,5 +186,8 @@ export const useApplicationStore = create<ApplicationStore>()((set, get) => ({
   },
   setAppVersion: (version: string) => {
     set({ appVersion: version });
+  },
+  setRdfEnabled: (enabled: boolean) => {
+    set({ rdfEnabled: enabled });
   },
 }));

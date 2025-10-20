@@ -47,6 +47,7 @@ export const INITIAL_PAGING_VALUE = 1;
 export const JSON_TAB_SIZE = 2;
 export const KNOWLEDGE_LIST_LENGTH = 8;
 export const PAGE_SIZE = 10;
+export const TABLE_CARD_PAGE_SIZE = 9;
 export const PAGE_SIZE_BASE = 15;
 export const PAGE_SIZE_MEDIUM = 25;
 export const PAGE_SIZE_LARGE = 50;
@@ -211,6 +212,9 @@ export const ROUTES = {
 
   ADD_DOMAIN: '/domain/add',
 
+  DATA_PRODUCT: '/dataProduct',
+  ADD_DATA_PRODUCT: '/dataProduct/add',
+
   GLOSSARY: '/glossary',
   ADD_GLOSSARY: '/glossary/add',
   GLOSSARY_DETAILS: `/glossary/${PLACEHOLDER_ROUTE_FQN}`,
@@ -300,6 +304,9 @@ export const ROUTES = {
   // Entity Bulk Edit
   BULK_EDIT_ENTITY: `/bulk/edit`,
   BULK_EDIT_ENTITY_WITH_FQN: `/bulk/edit/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}`,
+
+  // Settings
+  SETTINGS_SSO: '/settings/sso',
 };
 
 export const SOCKET_EVENTS = {
@@ -349,6 +356,10 @@ export const ENTITY_PATH = {
   testCases: 'testCase',
   domains: 'domain',
   charts: 'chart',
+  directories: 'directory',
+  files: 'file',
+  spreadsheets: 'spreadsheet',
+  worksheets: 'worksheet',
 };
 
 export const VALIDATION_MESSAGES = {
@@ -434,7 +445,13 @@ export const INITIAL_TABLE_FILTERS = {
   showDeletedTables: false,
 };
 
+export const INITIAL_CHART_FILTERS = {
+  showDeletedCharts: false,
+};
+
 export const MAX_VISIBLE_OWNERS_FOR_FEED_TAB = 4;
 export const MAX_VISIBLE_OWNERS_FOR_FEED_CARD = 2;
 
 export const BREADCRUMB_SEPARATOR = '/';
+
+export const FULLSCREEN_QUERY_PARAM_KEY = 'fullscreen';

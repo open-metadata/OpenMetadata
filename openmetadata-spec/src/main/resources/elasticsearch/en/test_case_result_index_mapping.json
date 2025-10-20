@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "priority": 500
+    },
     "analysis": {
       "tokenizer": {
         "edge_ngram_tokenizer": {
@@ -298,6 +301,32 @@
                 "type": "keyword"
               }
             }
+          },
+          "tier": {
+            "properties": {
+              "tagFQN": {
+                "type": "keyword",
+                "normalizer": "lowercase_normalizer",
+                "fields": {
+                  "text": {
+                    "type": "text",
+                    "analyzer": "om_analyzer"
+                  }
+                }
+              },
+              "labelType": {
+                "type": "keyword"
+              },
+              "description": {
+                "type": "text"
+              },
+              "source": {
+                "type": "keyword"
+              },
+              "state": {
+                "type": "keyword"
+              }
+            }
           }
         }
       },
@@ -470,6 +499,5 @@
         }
       }
     }
-  },
-  "priority": 500
+  }
 }

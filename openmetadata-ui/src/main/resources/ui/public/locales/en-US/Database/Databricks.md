@@ -1,10 +1,10 @@
 # Databricks
 
-In this section, we provide guides and references to use the Databricks connector. You can view the full documentation for Databricks [here](https://docs.open-metadata.org/connectors/database/databricks).
+In this section, we provide guides and references to use the Databricks connector. You can view the full documentation for Databricks <a href="https://docs.open-metadata.org/connectors/database/databricks" target="_blank">here</a>.
 
 ## Requirements
 
-To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these [docs](https://docs.open-metadata.org/connectors/database/databricks/troubleshooting).
+To learn more about the Databricks Connection Details (`hostPort`,`token`, `http_path`) information visit these <a href="https://docs.open-metadata.org/connectors/database/databricks/troubleshooting" target="_blank">docs</a>.
 
 $$note
 We support Databricks runtime version 9 and above.
@@ -16,7 +16,7 @@ $$note
 To get Query Usage and Lineage details, you need a Databricks Premium account, since we will be extracting this information from your SQL Warehouse's history API.
 $$
 
-You can find further information on the Databricks connector in the [docs](https://docs.open-metadata.org/connectors/database/databricks).
+You can find further information on the Databricks connector in the <a href="https://docs.open-metadata.org/connectors/database/databricks" target="_blank">docs</a>.
 
 ## Connection Details
 
@@ -33,8 +33,48 @@ If you are running the OpenMetadata ingestion in a docker and your services are 
 $$
 
 $$section
+### Authentication Type $(id="authType")
+Select the authentication method to connect to your Databricks workspace.
+
+- **Personal Access Token**: Generated Personal Access Token for Databricks workspace authentication.
+
+- **Databricks OAuth**: OAuth2 Machine-to-Machine authentication using a Service Principal.
+
+- **Azure AD Setup**: Specifically for Azure Databricks workspaces that use Azure Active Directory for identity management. Uses Azure Service Principal authentication through Azure AD.
+$$
+
+$$section
 ### Token $(id="token")
-Generated Token to connect to Databricks. E.g., `dapw488e89a7176f7eb39bbc718617891564`.
+Personal Access Token (PAT) for authenticating with Databricks workspace.
+(e.g., `dapi1234567890abcdef`)
+$$
+
+$$section
+### Client ID $(id="clientId")
+The Application ID of your Databricks Service Principal for OAuth2 authentication.
+(e.g., `12345678-1234-1234-1234-123456789abc`)
+$$
+
+$$section
+### Client Secret $(id="clientSecret")
+OAuth secret for the Databricks Service Principal.
+$$
+
+$$section
+### Azure Client ID $(id="azureClientId")
+Azure Active Directory Application (client) ID for Azure Databricks authentication.
+(e.g., `a1b2c3d4-e5f6-7890-abcd-ef1234567890`)
+$$
+
+$$section
+### Azure Client Secret $(id="azureClientSecret")
+Secret key for the Azure AD Application.
+$$
+
+$$section
+### Azure Tenant ID $(id="azureTenantId")
+Your Azure Active Directory tenant identifier.
+(e.g., `98765432-dcba-4321-abcd-1234567890ab`)
 $$
 
 $$section
