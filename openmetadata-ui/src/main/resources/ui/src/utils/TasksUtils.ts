@@ -64,6 +64,7 @@ import {
   getDatabaseSchemaDetailsByFQN,
 } from '../rest/databaseAPI';
 import { getDataModelByFqn } from '../rest/dataModelsAPI';
+import { getDataProductByName } from '../rest/dataProductAPI';
 import { getGlossariesByName, getGlossaryTermByFQN } from '../rest/glossaryAPI';
 import { getMetricByFqn } from '../rest/metricsAPI';
 import { getUserAndTeamSearch } from '../rest/miscAPI';
@@ -374,6 +375,7 @@ export const TASK_ENTITIES = [
   EntityType.API_COLLECTION,
   EntityType.API_ENDPOINT,
   EntityType.METRIC,
+  EntityType.DATA_PRODUCT,
 ];
 
 export const getBreadCrumbList = (
@@ -522,6 +524,16 @@ export const getBreadCrumbList = (
       ];
     }
 
+    case EntityType.DATA_PRODUCT: {
+      return [
+        {
+          name: t('label.data-product-plural'),
+          url: ROUTES.DATA_PRODUCT,
+        },
+        activeEntity,
+      ];
+    }
+
     default:
       return [];
   }
@@ -622,6 +634,21 @@ export const fetchEntityDetail = (
       getSearchIndexDetailsByFQN(entityFQN)
         .then((res) => {
           setEntityData(res);
+        })
+        .catch((err: AxiosError) => showErrorToast(err));
+
+      break;
+    case EntityType.DATA_PRODUCT:
+      getDataProductByName(entityFQN, {
+        fields: [
+          TabSpecificField.OWNERS,
+          TabSpecificField.TAGS,
+          TabSpecificField.DOMAINS,
+          TabSpecificField.EXTENSION,
+        ].join(','),
+      })
+        .then((res) => {
+          setEntityData(res as EntityData);
         })
         .catch((err: AxiosError) => showErrorToast(err));
 
