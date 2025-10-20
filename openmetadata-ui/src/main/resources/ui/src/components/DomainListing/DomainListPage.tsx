@@ -14,7 +14,7 @@
 import { Box, Paper, TableContainer, useTheme } from '@mui/material';
 import { useForm } from 'antd/lib/form/Form';
 import { useSnackbar } from 'notistack';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
@@ -38,6 +38,7 @@ import { useCardView } from '../common/atoms/table/useCardView';
 import { useDataTable } from '../common/atoms/table/useDataTable';
 import AddDomainForm from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormType } from '../Domain/DomainPage.interface';
+import DomainTreeView from './components/DomainTreeView';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
 const DomainListPage = () => {
@@ -48,6 +49,7 @@ const DomainListPage = () => {
   const [form] = useForm();
   const [isLoading, setIsLoading] = useState(false);
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const [treeRefreshToken, setTreeRefreshToken] = useState(0);
 
   // Use the simplified domain filters configuration
   const { quickFilters, defaultFilters } = useDomainFilters({
@@ -93,7 +95,7 @@ const DomainListPage = () => {
               patchEntity: patchDomains,
               onSuccess: () => {
                 closeDrawer();
-                domainListing.refetch();
+                refreshAllDomains();
               },
               enqueueSnackbar,
               closeSnackbar,
@@ -139,7 +141,9 @@ const DomainListPage = () => {
     initialSearchQuery: domainListing.urlState.searchQuery,
   });
 
-  const { view, viewToggle } = useViewToggle();
+  const { view, viewToggle, isTreeView } = useViewToggle({
+    views: ['table', 'card', 'tree'],
+  });
   const { domainCardTemplate } = useDomainCardTemplates();
 
   const { dataTable } = useDataTable({
@@ -162,6 +166,13 @@ const DomainListPage = () => {
     loading: domainListing.loading,
   });
 
+  const { refetch: refetchDomainListing } = domainListing;
+
+  const refreshAllDomains = useCallback(() => {
+    refetchDomainListing();
+    setTreeRefreshToken((prev) => prev + 1);
+  }, [refetchDomainListing]);
+
   // Map selected IDs to actual entities for the delete hook
   const selectedDomainEntities = useMemo(
     () =>
@@ -177,7 +188,7 @@ const DomainListPage = () => {
     selectedEntities: selectedDomainEntities,
     onDeleteComplete: () => {
       domainListing.clearSelection();
-      domainListing.refetch();
+      refreshAllDomains();
     },
   });
 
@@ -208,9 +219,19 @@ const DomainListPage = () => {
           {filterSelectionDisplay}
         </Box>
 
-        {view === 'table' ? dataTable : cardView}
-
-        {paginationControls}
+        {isTreeView ? (
+          <Box sx={{ px: 6, pb: 6 }}>
+            <DomainTreeView
+              refreshToken={treeRefreshToken}
+              onDomainMutated={refreshAllDomains}
+            />
+          </Box>
+        ) : (
+          <>
+            {view === 'table' ? dataTable : cardView}
+            {paginationControls}
+          </>
+        )}
       </TableContainer>
       {deleteModal}
       {formDrawer}

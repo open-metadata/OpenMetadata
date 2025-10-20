@@ -21,7 +21,7 @@ import { cloneDeep, isEmpty, isEqual, toString } from 'lodash';
 import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
@@ -51,7 +51,6 @@ import { PageType } from '../../../generated/system/ui/page';
 import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
-import { useFqn } from '../../../hooks/useFqn';
 import {
   addDataProducts,
   patchDataProduct,
@@ -87,9 +86,9 @@ import {
 import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   escapeESReservedCharacters,
+  getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringsUtils';
-import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';
@@ -116,17 +115,43 @@ const DomainDetails = ({
   isFollowing,
   isFollowingLoading,
   handleFollowingClick,
+  activeTab: activeTabOverride,
+  onActiveTabChange,
+  domainFqnOverride,
+  onNavigate,
 }: DomainDetailsProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const { getEntityPermission, permissions } = usePermissionProvider();
-  const navigate = useNavigate();
-  const { tab: activeTab, version } = useRequiredParams<{
-    tab: EntityTabs;
-    version: string;
-  }>();
-  const { fqn: domainFqn } = useFqn();
+  const routeParams =
+    useParams<{ fqn?: string; tab?: string; version?: string }>();
+  const reactNavigate = useNavigate();
+  const navigate = useCallback(
+    (path: string) => {
+      if (onNavigate) {
+        onNavigate(path);
+      } else {
+        reactNavigate(path);
+      }
+    },
+    [onNavigate, reactNavigate]
+  );
+  const domainFqn = useMemo(
+    () =>
+      domainFqnOverride ??
+      domain.fullyQualifiedName ??
+      (routeParams.fqn ? getDecodedFqn(routeParams.fqn) : ''),
+    [domainFqnOverride, domain.fullyQualifiedName, routeParams.fqn]
+  );
+  const activeTab = useMemo(
+    () =>
+      (activeTabOverride ??
+        (routeParams.tab as EntityTabs) ??
+        EntityTabs.DOCUMENTATION) as EntityTabs,
+    [activeTabOverride, routeParams.tab]
+  );
+  const { version } = routeParams;
   const { currentUser } = useApplicationStore();
 
   const assetTabRef = useRef<AssetsTabRef>(null);
@@ -196,12 +221,16 @@ const DomainDetails = ({
   };
 
   const handleTabChange = (activeKey: string) => {
-    if (activeKey === 'assets') {
+    if (activeKey === EntityTabs.ASSETS) {
       // refresh domain count when assets tab is selected
       fetchDomainAssets();
     }
     if (activeKey !== activeTab) {
-      navigate(getDomainDetailsPath(domainFqn, activeKey));
+      if (onActiveTabChange) {
+        onActiveTabChange(activeKey as EntityTabs);
+      } else if (domainFqn) {
+        navigate(getDomainDetailsPath(domainFqn, activeKey));
+      }
     }
   };
 
@@ -480,6 +509,9 @@ const DomainDetails = ({
   );
 
   const handleVersionClick = async () => {
+    if (!domainFqn) {
+      return;
+    }
     const path = isVersionsView
       ? getDomainPath(domainFqn)
       : getDomainVersionsPath(domainFqn, toString(domain.version));
@@ -663,7 +695,7 @@ const DomainDetails = ({
       handleAssetSave: () => {
         fetchDomainAssets();
         assetTabRef.current?.refreshAssets();
-        activeTab !== 'assets' && handleTabChange('assets');
+        activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
       },
       setShowAddSubDomainModal: openSubDomainDrawer,
       onAddSubDomain: addSubDomain,
@@ -910,7 +942,7 @@ const DomainDetails = ({
         onSave={() => {
           fetchDomainAssets();
           assetTabRef.current?.refreshAssets();
-          activeTab !== 'assets' && handleTabChange('assets');
+          activeTab !== EntityTabs.ASSETS && handleTabChange(EntityTabs.ASSETS);
         }}
       />
 
