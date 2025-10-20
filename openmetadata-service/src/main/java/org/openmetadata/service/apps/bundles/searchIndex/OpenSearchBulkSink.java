@@ -17,7 +17,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.SearchIndexException;
-import org.openmetadata.service.search.RecreateIndexHandler;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import os.org.opensearch.action.bulk.BackoffPolicy;
@@ -222,7 +222,7 @@ public class OpenSearchBulkSink implements BulkSink {
               indexName,
               recreateIndex,
               (contextData.containsKey(RECREATE_CONTEXT)
-                  ? (RecreateIndexHandler.ReindexContext) contextData.get(RECREATE_CONTEXT)
+                  ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
                   : null),
               embeddingsEnabled);
         }
@@ -247,7 +247,7 @@ public class OpenSearchBulkSink implements BulkSink {
       EntityInterface entity,
       String indexName,
       boolean recreateIndex,
-      RecreateIndexHandler.ReindexContext reindexContext,
+      ReindexContext reindexContext,
       boolean embeddingsEnabled) {
     // Build the search index document using the proper transformation
     String entityType = Entity.getEntityTypeFromObject(entity);
@@ -369,5 +369,5 @@ public class OpenSearchBulkSink implements BulkSink {
       BulkProcessor bulkProcessor,
       EntityInterface entity,
       boolean recreateIndex,
-      RecreateIndexHandler.ReindexContext reindexContext) {}
+      ReindexContext reindexContext) {}
 }

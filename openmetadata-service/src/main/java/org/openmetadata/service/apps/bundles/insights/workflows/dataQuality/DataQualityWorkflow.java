@@ -135,10 +135,7 @@ public class DataQualityWorkflow {
     try {
       searchRepository
           .getSearchClient()
-          .deleteByQuery(
-              indexName,
-              String.format(
-                  "{\"@timestamp\": {\"gte\": %s, \"lte\": %s}}", startTimestamp, endTimestamp));
+          .deleteByRangeQuery(indexName, "@timestamp", null, startTimestamp, null, endTimestamp);
     } catch (Exception rx) {
       throw new SearchIndexException(new IndexingError().withMessage(rx.getMessage()));
     }
