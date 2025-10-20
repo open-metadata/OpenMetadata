@@ -14,6 +14,9 @@ Snowflake constants
 
 from sqlalchemy.sql.sqltypes import BOOLEANTYPE, VARCHAR
 
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedureType
+from metadata.generated.schema.entity.data.table import TableType
+
 DEFAULT_STREAM_COLUMNS = [
     {
         "name": "METADATA$ACTION",
@@ -46,3 +49,21 @@ DEFAULT_STREAM_COLUMNS = [
         "primary_key": False,
     },
 ]
+
+SNOWFLAKE_TAG_DESCRIPTION = "SNOWFLAKE TAG VALUE"
+SNOWFLAKE_CLASSIFICATION_DESCRIPTION = "SNOWFLAKE TAG NAME"
+
+TABLE_TYPE_URL_MAP = {
+    TableType.Regular: "table",
+    TableType.Transient: "table",
+    TableType.Dynamic: "dynamic-table",
+    TableType.External: "external-table",
+    TableType.View: "view",
+    TableType.MaterializedView: "materialized-view",
+    TableType.Stream: "stream",
+}
+
+PROCEDURE_TYPE_URL_MAP = {
+    StoredProcedureType.StoredProcedure: "procedure",
+    StoredProcedureType.UDF: "user-function",
+}

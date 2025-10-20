@@ -94,6 +94,10 @@ export interface AppMarketPlaceDefinition {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -135,6 +139,10 @@ export interface AppMarketPlaceDefinition {
      * Support Email for the application
      */
     supportEmail?: string;
+    /**
+     * If the app support execution through the external runner.
+     */
+    supportsIngestionRunner?: boolean;
     /**
      * If the app run can be interrupted as part of the execution.
      */
@@ -312,13 +320,19 @@ export interface CollateAIAppConfig {
  * Action to take on those entities. E.g., propagate description through lineage, auto
  * tagging, etc.
  *
- * Apply Tags to the selected assets.
+ * Apply Classification Tags to the selected assets.
  *
- * Remove Tags Action Type
+ * Remove Classification Tags Action Type
+ *
+ * Apply Glossary Terms to the selected assets.
+ *
+ * Remove Glossary Terms Action Type
  *
  * Add domains to the selected assets.
  *
  * Remove domains from the selected assets.
+ *
+ * Apply Tags to the selected assets.
  *
  * Add a Custom Property to the selected assets.
  *
@@ -350,6 +364,12 @@ export interface Action {
      * Remove tags from the children of the selected assets. E.g., columns, tasks, topic
      * fields,...
      *
+     * Apply terms to the children of the selected assets that match the criteria. E.g.,
+     * columns, tasks, topic fields,...
+     *
+     * Remove terms from the children of the selected assets. E.g., columns, tasks, topic
+     * fields,...
+     *
      * Apply the description to the children of the selected assets that match the criteria.
      * E.g., columns, tasks, topic fields,...
      *
@@ -364,6 +384,9 @@ export interface Action {
     /**
      * Update tags even if they are already defined in the asset. By default, incoming tags are
      * merged with the existing ones.
+     *
+     * Update terms even if they are already defined in the asset. By default, incoming terms
+     * are merged with the existing ones.
      *
      * Update the domains even if they are defined in the asset. By default, we will only apply
      * the domains to assets without domains.
@@ -393,9 +416,9 @@ export interface Action {
      */
     overwriteMetadata?: boolean;
     /**
-     * Tags to apply
+     * Classification Tags to apply (source must be 'Classification')
      *
-     * Tags to remove
+     * Classification Tags to remove (source must be 'Classification')
      */
     tags?: TagElement[];
     /**
@@ -405,13 +428,23 @@ export interface Action {
     /**
      * Remove tags from all the children and parent of the selected assets.
      *
+     * Remove terms from all the children and parent of the selected assets.
+     *
      * Remove descriptions from all the children and parent of the selected assets.
      */
     applyToAll?: boolean;
     /**
      * Remove tags by its label type
+     *
+     * Remove terms by its label type
      */
     labels?: LabelElement[];
+    /**
+     * Glossary Terms to apply
+     *
+     * Glossary Terms to remove
+     */
+    terms?: TagElement[];
     /**
      * Domains to apply
      */
@@ -552,6 +585,8 @@ export interface EntityReference {
 
 /**
  * Remove tags by its label type
+ *
+ * Remove terms by its label type
  */
 export enum LabelElement {
     Automated = "Automated",
@@ -636,6 +671,10 @@ export interface TagLabel {
      */
     name?: string;
     /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
+    /**
      * Label is from Tags or Glossary.
      */
     source?: TagSource;
@@ -714,9 +753,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -749,6 +810,10 @@ export interface TagElement {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -807,7 +872,11 @@ export interface TestCaseParameterValue {
  *
  * Add Tags action type.
  *
- * Remove Tags Action Type.
+ * Remove Classification Tags Action Type.
+ *
+ * Add Terms action type.
+ *
+ * Remove Terms Action Type.
  *
  * Add Domain Action Type.
  *
@@ -848,6 +917,7 @@ export enum ActionType {
     AddDomainAction = "AddDomainAction",
     AddOwnerAction = "AddOwnerAction",
     AddTagsAction = "AddTagsAction",
+    AddTermsAction = "AddTermsAction",
     AddTestCaseAction = "AddTestCaseAction",
     AddTierAction = "AddTierAction",
     LineagePropagationAction = "LineagePropagationAction",
@@ -858,6 +928,7 @@ export enum ActionType {
     RemoveDomainAction = "RemoveDomainAction",
     RemoveOwnerAction = "RemoveOwnerAction",
     RemoveTagsAction = "RemoveTagsAction",
+    RemoveTermsAction = "RemoveTermsAction",
     RemoveTestCaseAction = "RemoveTestCaseAction",
     RemoveTierAction = "RemoveTierAction",
 }
@@ -988,6 +1059,7 @@ export interface Resource {
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 
@@ -1164,6 +1236,11 @@ export interface Destination {
     category: SubscriptionCategory;
     config?:  Webhook;
     /**
+     * Maximum depth for downstream stakeholder notification traversal. If null, traverses
+     * without depth limit (with cycle protection).
+     */
+    downstreamDepth?: number | null;
+    /**
      * Is the subscription enabled.
      */
     enabled?: boolean;
@@ -1171,6 +1248,12 @@ export interface Destination {
      * Unique identifier that identifies this Event Subscription.
      */
     id?: string;
+    /**
+     * Enable notification of downstream entity stakeholders. When true, notifications will
+     * traverse lineage to include stakeholders of entities that consume data from the affected
+     * entity.
+     */
+    notifyDownstream?: boolean;
     /**
      * Read timeout in seconds. (Default 12s).
      */

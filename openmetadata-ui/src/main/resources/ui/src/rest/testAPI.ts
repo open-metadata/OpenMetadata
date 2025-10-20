@@ -72,6 +72,7 @@ export type ListTestCaseParamsBySearch = ListTestCaseParams & {
   tier?: string;
   serviceName?: string;
   dataQualityDimension?: string;
+  followedBy?: string;
 };
 
 export type ListTestDefinitionsParams = ListParams & {

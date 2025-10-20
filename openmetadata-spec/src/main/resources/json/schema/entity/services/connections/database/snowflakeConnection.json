@@ -90,7 +90,7 @@
       "title": "Include Transient Tables",
       "description": "Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the TRANSIENT tables.",
       "type": "boolean",
-      "default": false
+      "default": true
     },
     "includeStreams": {
       "title": "Include Streams",
@@ -181,6 +181,12 @@
       "description": "Cost of credit for the Snowflake account.",
       "type": "number",
       "default": 3.3
+    },
+    "snowflakeSourceHost": {
+      "title": "Snowflake Source Host",
+      "description": "Snowflake source host for the Snowflake account.",
+      "type": "string",
+      "default": "app.snowflake.com"
     }
   },
   "additionalProperties": false,

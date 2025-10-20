@@ -104,6 +104,11 @@
     "fieldValue": {
       "description": "Field Value in case of Aggregations.",
       "type": "string"
+    },
+    "semanticSearch": {
+      "description": "Enable semantic search using embeddings and RDF context. When true, combines vector similarity with traditional BM25 scoring.",
+      "type": "boolean",
+      "default": false
     }
   },
   "additionalProperties": false

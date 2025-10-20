@@ -47,7 +47,7 @@ export const COMMON_DROPDOWN_ITEMS = [
 export const DATA_ASSET_DROPDOWN_ITEMS = [
   {
     label: t('label.data-asset-plural'),
-    key: EntityFields.ENTITY_TYPE,
+    key: EntityFields.ENTITY_TYPE_KEYWORD,
   },
   {
     label: t('label.domain-plural'),
@@ -301,6 +301,13 @@ export const TEXT_FIELD_OPERATORS = [
   'is_not_null',
 ];
 
+export const TEXT_FIELD_DESCRIPTION_OPERATORS = [
+  'like',
+  'not_like',
+  'is_null',
+  'is_not_null',
+];
+
 export const RANGE_FIELD_OPERATORS = ['between', 'not_between'];
 
 export const LIST_VALUE_OPERATORS = ['select_equals', 'select_not_equals'];
@@ -338,7 +345,9 @@ export const CURATED_ASSETS_LIST = [
   EntityType.DASHBOARD_DATA_MODEL,
   EntityType.DATABASE,
   EntityType.DATABASE_SCHEMA,
+  EntityType.DATA_PRODUCT,
   EntityType.GLOSSARY_TERM,
+  EntityType.KNOWLEDGE_PAGE,
   EntityType.METRIC,
   EntityType.MLMODEL,
   EntityType.PIPELINE,

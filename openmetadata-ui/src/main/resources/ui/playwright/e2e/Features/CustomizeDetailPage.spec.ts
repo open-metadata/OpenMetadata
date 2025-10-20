@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,
@@ -32,6 +32,7 @@ import {
   checkDefaultStateForNavigationTree,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
 const persona = new PersonaClass();
@@ -145,12 +146,12 @@ test.describe('Persona customize UI tab', async () => {
     await redirectToHomePage(adminPage);
 
     // Navigate to persona page
+    const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-    await adminPage.waitForLoadState('networkidle');
-    await adminPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-    await adminPage.getByText(persona.responseData.displayName).click();
+    await personaListResponse;
+
+    // Need to find persona card and click as the list might get paginated
+    await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
   });
 
@@ -345,11 +346,18 @@ test.describe('Persona customization', () => {
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
         async () => {
+          const personaListResponse =
+            adminPage.waitForResponse(`/api/v1/personas?*`);
           await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-          await adminPage.waitForLoadState('networkidle');
-          await adminPage
-            .getByTestId(`persona-details-card-${persona.data.name}`)
-            .click();
+          await personaListResponse;
+
+          // Need to find persona card and click as the list might get paginated
+          await navigateToPersonaWithPagination(
+            adminPage,
+            persona.data.name,
+            true
+          );
+
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
           await adminPage.waitForLoadState('networkidle');
           await adminPage.getByText('Data Assets').click();
@@ -388,7 +396,7 @@ test.describe('Persona customization', () => {
           .getByTestId('remove-widget-button')
           .click();
 
-        await adminPage.getByTestId('tab-Custom Properties').click();
+        await adminPage.getByTestId('tab-custom_properties').click();
         await adminPage.getByText('Hide', { exact: true }).click();
 
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
@@ -422,7 +430,9 @@ test.describe('Persona customization', () => {
           state: 'detached',
         });
 
-        expect(userPage.getByRole('tab', { name: 'New Tab' })).toBeVisible();
+        await expect(
+          userPage.getByRole('tab', { name: 'New Tab' })
+        ).toBeVisible();
 
         await userPage.getByRole('tab', { name: 'New Tab' }).click();
 
@@ -445,11 +455,17 @@ test.describe('Persona customization', () => {
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
         async () => {
+          const personaListResponse =
+            adminPage.waitForResponse(`/api/v1/personas?*`);
           await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-          await adminPage.waitForLoadState('networkidle');
-          await adminPage
-            .getByTestId(`persona-details-card-${persona.data.name}`)
-            .click();
+          await personaListResponse;
+
+          // Need to find persona card and click as the list might get paginated
+          await navigateToPersonaWithPagination(
+            adminPage,
+            persona.data.name,
+            true
+          );
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
           await adminPage.waitForLoadState('networkidle');
           await adminPage.getByText('Governance').click();
@@ -470,9 +486,9 @@ test.describe('Persona customization', () => {
 
           for (const tabName of expectedTabs) {
             await expect(
-              adminPage.getByTestId('customize-tab-card').getByRole('button', {
-                name: tabName,
-              })
+              adminPage
+                .getByTestId('customize-tab-card')
+                .getByTestId(`tab-${tabName}`)
             ).toBeVisible();
           }
         }
@@ -489,6 +505,9 @@ test.describe('Persona customization', () => {
           .click();
 
         await adminPage.getByRole('button', { name: 'Add tab' }).click();
+
+        await expect(adminPage.getByRole('dialog')).toBeVisible();
+
         await adminPage
           .getByRole('dialog')
           .getByRole('button', { name: 'Add' })
@@ -537,11 +556,13 @@ test.describe('Persona customization', () => {
     test.slow();
 
     await test.step('apply customization', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
       await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-      await adminPage.waitForLoadState('networkidle');
-      await adminPage
-        .getByTestId(`persona-details-card-${persona.data.name}`)
-        .click();
+      await personaListResponse;
+
+      // Need to find persona card and click as the list might get paginated
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.waitForLoadState('networkidle');
       await adminPage.getByText('Governance').click();
@@ -551,8 +572,8 @@ test.describe('Persona customization', () => {
         state: 'detached',
       });
 
-      const dragElement = adminPage.getByTestId('tab-Overview');
-      const dropTarget = adminPage.getByTestId('tab-Custom Properties');
+      const dragElement = adminPage.getByTestId('tab-overview');
+      const dropTarget = adminPage.getByTestId('tab-custom_properties');
 
       await dragElement.dragTo(dropTarget);
 
@@ -578,23 +599,123 @@ test.describe('Persona customization', () => {
         state: 'detached',
       });
 
-      expect(userPage.getByRole('tab', { name: 'Overview' })).toBeVisible();
-      expect(
+      await expect(
+        userPage.getByRole('tab', { name: 'Overview' })
+      ).toBeVisible();
+      await expect(
         userPage.getByRole('tab', { name: 'Glossary Terms' })
       ).toBeVisible();
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Overview' }).click();
 
-      expect(userPage.getByTestId('asset-description-container')).toBeVisible();
+      await expect(
+        userPage.getByTestId('asset-description-container')
+      ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
 
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
     });
+  });
+
+  test("customize tab label should only render if it's customize by user", async ({
+    adminPage,
+    userPage,
+  }) => {
+    await test.step('apply tab label customization for Table', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
+      await settingClick(adminPage, GlobalSettingOptions.PERSONA);
+      await personaListResponse;
+
+      // Need to find persona card and click as the list might get paginated
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
+      await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
+      await adminPage.waitForLoadState('networkidle');
+      await adminPage.getByText('Data Assets').click();
+      await adminPage.getByText('Table', { exact: true }).click();
+
+      await adminPage.waitForSelector('[data-testid="loader"]', {
+        state: 'detached',
+      });
+
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-sample_data`)
+      ).toBeVisible();
+
+      await adminPage
+        .getByTestId('customize-tab-card')
+        .getByTestId(`tab-sample_data`)
+        .click();
+
+      await adminPage.getByRole('menuitem', { name: 'Rename' }).click();
+
+      await expect(adminPage.getByRole('dialog')).toBeVisible();
+
+      await adminPage.getByRole('dialog').getByRole('textbox').clear();
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('textbox')
+        .fill('Sample Data Updated');
+
+      await adminPage
+        .getByRole('dialog')
+        .getByRole('button', { name: 'Ok' })
+        .click();
+
+      await expect(
+        adminPage
+          .getByTestId('customize-tab-card')
+          .getByTestId(`tab-sample_data`)
+      ).toHaveText('Sample Data Updated');
+
+      await adminPage.getByTestId('save-button').click();
+
+      await toastNotification(
+        adminPage,
+        /^Page layout (created|updated) successfully\.$/
+      );
+    });
+
+    await test.step(
+      'validate applied label change and language support for page',
+      async () => {
+        await redirectToHomePage(userPage);
+
+        const entity = getCustomizeDetailsEntity(ECustomizedDataAssets.TABLE);
+        await entity.visitEntityPage(userPage);
+        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        // Change language to French
+        await userPage.getByRole('button', { name: 'EN' }).click();
+        await userPage.getByRole('menuitem', { name: 'Français - FR' }).click();
+        await userPage.waitForLoadState('networkidle');
+        await userPage.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
+
+        await expect(
+          userPage.getByRole('tab', { name: 'Sample Data Updated' })
+        ).toBeVisible();
+        // Overview tab in French, only customized tab should be non-localized rest should be localized
+        await expect(
+          userPage.getByRole('tab', { name: 'Colonnes' })
+        ).toBeVisible();
+
+        await expect(
+          userPage.getByRole('tab', { name: "Flux d'Activité & Tâches" })
+        ).toBeVisible();
+      }
+    );
   });
 });

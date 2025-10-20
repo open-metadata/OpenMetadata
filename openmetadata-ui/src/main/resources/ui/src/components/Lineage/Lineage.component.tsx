@@ -10,26 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Card, RadioChangeEvent } from 'antd';
-import Qs from 'qs';
-import {
-  DragEvent,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { Card } from 'antd';
+import classNames from 'classnames';
+import { DragEvent, useCallback, useEffect, useRef } from 'react';
 import ReactFlow, { Background, MiniMap, Panel } from 'reactflow';
 import {
-  LINEAGE_TAB_VIEW,
   MAX_ZOOM_VALUE,
   MIN_ZOOM_VALUE,
 } from '../../constants/Lineage.constants';
 import { useLineageProvider } from '../../context/LineageProvider/LineageProvider';
-import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import {
   customEdges,
   dragHandle,
@@ -39,15 +28,12 @@ import {
   onNodeMouseLeave,
   onNodeMouseMove,
 } from '../../utils/EntityLineageUtils';
-import { getEntityBreadcrumbs } from '../../utils/EntityUtils';
 import Loader from '../common/Loader/Loader';
-import TitleBreadcrumb from '../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
 import LineageControlButtons from '../Entity/EntityLineage/LineageControlButtons/LineageControlButtons';
 import LineageLayers from '../Entity/EntityLineage/LineageLayers/LineageLayers';
 import { SourceType } from '../SearchedData/SearchedData.interface';
 import { LineageProps } from './Lineage.interface';
-import LineageTable from './LineageTable/LineageTable.component';
 
 const Lineage = ({
   deleted,
@@ -56,14 +42,8 @@ const Lineage = ({
   entityType,
   isPlatformLineage,
 }: LineageProps) => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [activeViewTab, setActiveViewTab] = useState<LINEAGE_TAB_VIEW>(
-    LINEAGE_TAB_VIEW.DIAGRAM_VIEW
-  );
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
-  const location = useCustomLocation();
   const {
     nodes,
     edges,
@@ -78,48 +58,12 @@ const Lineage = ({
     onConnect,
     onInitReactFlow,
     updateEntityData,
-    onCloseDrawer,
   } = useLineageProvider();
-
-  const queryParams = new URLSearchParams(location.search);
-  const isFullScreen = queryParams.get('fullscreen') === 'true';
-
-  const onFullScreenClick = useCallback(() => {
-    navigate({
-      search: Qs.stringify({ fullscreen: true }),
-    });
-  }, []);
-
-  const onExitFullScreenViewClick = useCallback(() => {
-    navigate({
-      search: '',
-    });
-  }, []);
-
-  const handleActiveViewTabChange = useCallback((event: RadioChangeEvent) => {
-    setActiveViewTab(event.target.value);
-    onCloseDrawer();
-  }, []);
 
   const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
   }, []);
-
-  const breadcrumbs = useMemo(
-    () =>
-      entity
-        ? [
-            ...getEntityBreadcrumbs(entity, entityType),
-            {
-              name: t('label.lineage'),
-              url: '',
-              activeTitle: true,
-            },
-          ]
-        : [],
-    [entity]
-  );
 
   useEffect(() => {
     updateEntityData(entityType, entity as SourceType, isPlatformLineage);
@@ -158,24 +102,19 @@ const Lineage = ({
   // considerably. So added an init state for showing loader.
   return (
     <Card
-      className="lineage-card border-none card-padding-0"
+      className="lineage-card card-padding-0"
       data-testid="lineage-details"
       title={
         isPlatformLineage ? null : (
-          <>
-            {isFullScreen && breadcrumbs.length > 0 && (
-              <TitleBreadcrumb className="p-b-lg" titleLinks={breadcrumbs} />
-            )}
-
-            <CustomControlsComponent
-              activeViewTab={activeViewTab}
-              handleActiveViewTabChange={handleActiveViewTabChange}
-              onlyShowTabSwitch={activeViewTab === LINEAGE_TAB_VIEW.TABLE_VIEW}
-            />
-          </>
+          <div
+            className={classNames('lineage-header', {
+              'lineage-header-edit-mode': isEditMode,
+            })}>
+            <CustomControlsComponent />
+          </div>
         )
       }>
-      {activeViewTab === LINEAGE_TAB_VIEW.DIAGRAM_VIEW ? (
+      {
         <div
           className="h-full relative lineage-container"
           data-testid="lineage-container"
@@ -186,13 +125,7 @@ const Lineage = ({
               <LineageControlButtons
                 deleted={deleted}
                 entityType={entityType}
-                handleFullScreenViewClick={
-                  !isFullScreen ? onFullScreenClick : undefined
-                }
                 hasEditAccess={hasEditAccess}
-                onExitFullScreenViewClick={
-                  isFullScreen ? onExitFullScreenViewClick : undefined
-                }
               />
               <ReactFlow
                 elevateEdgesOnSelect
@@ -241,9 +174,7 @@ const Lineage = ({
             </div>
           )}
         </div>
-      ) : (
-        <LineageTable />
-      )}
+      }
     </Card>
   );
 };

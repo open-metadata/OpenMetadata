@@ -90,6 +90,10 @@ export interface NaturalLanguageSearch {
      */
     bedrock?: Bedrock;
     /**
+     * Embedding generation using Deep Java Library (DJL)
+     */
+    djl?: Djl;
+    /**
      * The provider to use for generating vector embeddings (e.g., bedrock, openai).
      */
     embeddingProvider?: string;
@@ -138,11 +142,22 @@ export interface Bedrock {
 }
 
 /**
+ * Embedding generation using Deep Java Library (DJL)
+ */
+export interface Djl {
+    /**
+     * DJL model name for embedding generation
+     */
+    embeddingModel?: string;
+}
+
+/**
  * This schema defines the language options available for search index mappings.
  */
 export enum SearchIndexMappingLanguage {
     En = "EN",
     Jp = "JP",
+    Ru = "RU",
     Zh = "ZH",
 }
 

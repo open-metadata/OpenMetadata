@@ -28,10 +28,30 @@
       "title": "Connection Arguments",
       "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
     },
+    "directoryFilterPattern": {
+      "title": "Default Directory Filter Pattern",
+      "description": "Regex to only include/exclude directories that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "fileFilterPattern": {
+      "title": "Default File Filter Pattern",
+      "description": "Regex to only include/exclude files that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "spreadsheetFilterPattern": {
+      "title": "Default Spreadsheet Filter Pattern",
+      "description": "Regex to only include/exclude spreadsheets that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "worksheetFilterPattern": {
+      "title": "Default Worksheet Filter Pattern",
+      "description": "Regex to only include/exclude worksheets that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
       "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": true
 }

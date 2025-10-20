@@ -41,6 +41,11 @@ let mockGetApplicationRuns = jest.fn().mockReturnValue({
 const mockShowErrorToast = jest.fn();
 const mockNavigate = jest.fn();
 
+jest.mock('../../../../constants/LeftSidebar.constants', () => ({
+  SIDEBAR_NESTED_KEYS: {},
+  SIDEBAR_LIST: [],
+}));
+
 jest.mock('../../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
@@ -105,10 +110,11 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 
     return 'formatDateTime';
   }),
+  getCurrentMillis: jest.fn().mockReturnValue(1234567890000),
   getEpochMillisForPastDays: jest.fn().mockReturnValue('startDay'),
   getIntervalInMilliseconds: jest.fn().mockReturnValue('interval'),
   formatDuration: jest.fn().mockReturnValue('formatDuration'),
-  formatDurationToHHMMSS: jest.fn().mockImplementation((_ms) => {
+  formatDurationToHHMMSS: jest.fn().mockImplementation(() => {
     // Return a consistent formatted duration for all cases
     return '02:30:15';
   }),

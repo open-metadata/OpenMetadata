@@ -58,6 +58,10 @@ export interface DatabaseService {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -174,7 +178,7 @@ export interface FieldChange {
  * Database Connection.
  */
 export interface DatabaseConnection {
-    config?: ConfigClass;
+    config?: ConfigObject;
 }
 
 /**
@@ -215,6 +219,8 @@ export interface DatabaseConnection {
  * Oracle Database Connection Config
  *
  * Postgres Database Connection Config
+ *
+ * TimescaleDB Database Connection Config
  *
  * Presto Database Connection Config
  *
@@ -270,8 +276,10 @@ export interface DatabaseConnection {
  * SSAS Metadata Database Connection Config
  *
  * Epic FHIR Connection Config
+ *
+ * ServiceNow Connection Config
  */
-export interface ConfigClass {
+export interface ConfigObject {
     /**
      * Billing Project ID
      */
@@ -322,6 +330,8 @@ export interface ConfigClass {
      *
      * Host and port of the source service.
      *
+     * Host and port of the TimescaleDB service.
+     *
      * Host and port of the Presto service.
      *
      * Host and port of the Redshift service.
@@ -349,8 +359,14 @@ export interface ConfigClass {
      * Host and port of the Azure Synapse service.
      *
      * Host and port of the Cockrooach service.
+     *
+     * ServiceNow instance URL (e.g., https://your-instance.service-now.com)
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Option to include policy tags as part of column description.
+     */
+    includePolicyTags?:       boolean;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -470,6 +486,9 @@ export interface ConfigClass {
      * Ingest data from all databases in Postgres. You can use databaseFilterPattern on top of
      * this.
      *
+     * Ingest data from all databases in TimescaleDB. You can use databaseFilterPattern on top
+     * of this.
+     *
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
      *
@@ -530,6 +549,8 @@ export interface ConfigClass {
      * Password to connect to Exasol.
      *
      * Password
+     *
+     * Password to connect to ServiceNow.
      */
     password?: string;
     /**
@@ -566,6 +587,9 @@ export interface ConfigClass {
      *
      * Username to connect to Postgres. This user should have privileges to read all the
      * metadata in Postgres.
+     *
+     * Username to connect to TimescaleDB. This user should have privileges to read all the
+     * metadata in TimescaleDB.
      *
      * Username to connect to Presto. This user should have privileges to read all the metadata
      * in Postgres.
@@ -621,6 +645,9 @@ export interface ConfigClass {
      * metadata in Cockroach.
      *
      * Username
+     *
+     * Username to connect to ServiceNow. This user should have read access to sys_db_object and
+     * sys_dictionary tables.
      */
     username?: string;
     /**
@@ -653,6 +680,12 @@ export interface ConfigClass {
      */
     secure?: boolean;
     /**
+     * Choose between different authentication types for Databricks.
+     *
+     * Choose Auth Config Type.
+     */
+    authType?: AuthenticationType | NoConfigAuthenticationTypes;
+    /**
      * Catalog of the data source(Example: hive_metastore). This is optional parameter, if you
      * would like to restrict the metadata reading to a single catalog. When left blank,
      * OpenMetadata Ingestion attempts to scan all the catalog.
@@ -676,10 +709,6 @@ export interface ConfigClass {
      * Table name to fetch the query history.
      */
     queryHistoryTable?: string;
-    /**
-     * Generated Token to connect to Databricks.
-     */
-    token?: string;
     /**
      * CLI Driver version to connect to DB2. If not provided, the latest version will be used.
      */
@@ -718,21 +747,20 @@ export interface ConfigClass {
      */
     metastoreConnection?: HiveMetastoreConnectionDetails;
     /**
-     * Authentication mode to connect to Impala.
+     * SSL Configuration details.
      */
-    authMechanism?: AuthMechanismEnum;
+    sslConfig?: Config;
     /**
+     * Enable SSL connection to Hive server. When enabled, SSL transport will be used for secure
+     * communication.
+     *
      * Establish secure connection with Impala
      */
     useSSL?: boolean;
     /**
-     * Choose Auth Config Type.
+     * Authentication mode to connect to Impala.
      */
-    authType?: AuthConfigurationType | NoConfigAuthenticationTypes;
-    /**
-     * SSL Configuration details.
-     */
-    sslConfig?: Config;
+    authMechanism?: AuthMechanismEnum;
     /**
      * Use slow logs to extract lineage.
      */
@@ -753,6 +781,8 @@ export interface ConfigClass {
     oracleConnectionType?: OracleConnectionType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
+     *
+     * Custom OpenMetadata Classification name for TimescaleDB policy tags.
      */
     classificationName?: string;
     sslMode?:            SSLMode;
@@ -834,6 +864,10 @@ export interface ConfigClass {
      * Snowflake Passphrase Key used with Private Key
      */
     snowflakePrivatekeyPassphrase?: string;
+    /**
+     * Snowflake source host for the Snowflake account.
+     */
+    snowflakeSourceHost?: string;
     /**
      * Snowflake warehouse.
      */
@@ -972,6 +1006,17 @@ export interface ConfigClass {
      * FHIR specification version (R4, STU3, DSTU2)
      */
     fhirVersion?: FHIRVersion;
+    /**
+     * If true, ServiceNow application scopes will be imported as database schemas. Otherwise, a
+     * single default schema will be used.
+     */
+    includeScopes?: boolean;
+    /**
+     * If true, both admin and system tables (sys_* tables) will be fetched. If false, only
+     * admin tables will be fetched.
+     */
+    includeSystemTables?: boolean;
+    [property: string]: any;
 }
 
 /**
@@ -1001,6 +1046,16 @@ export enum AuthMechanismEnum {
 }
 
 /**
+ * Choose between different authentication types for Databricks.
+ *
+ * Personal Access Token authentication for Databricks.
+ *
+ * OAuth2 Machine-to-Machine authentication using Service Principal credentials for
+ * Databricks.
+ *
+ * Azure Active Directory authentication for Azure Databricks workspaces using Service
+ * Principal.
+ *
  * Choose Auth Config Type.
  *
  * Common Database Connection Config
@@ -1011,7 +1066,34 @@ export enum AuthMechanismEnum {
  *
  * Configuration for connecting to DataStax Astra DB in the cloud.
  */
-export interface AuthConfigurationType {
+export interface AuthenticationType {
+    /**
+     * Generated Personal Access Token for Databricks workspace authentication. This token is
+     * created from User Settings -> Developer -> Access Tokens in your Databricks workspace.
+     */
+    token?: string;
+    /**
+     * Service Principal Application ID created in your Databricks Account Console for OAuth
+     * Machine-to-Machine authentication.
+     */
+    clientId?: string;
+    /**
+     * OAuth Secret generated for the Service Principal in Databricks Account Console. Used for
+     * secure OAuth2 authentication.
+     */
+    clientSecret?: string;
+    /**
+     * Azure Service Principal Application (client) ID registered in your Azure Active Directory.
+     */
+    azureClientId?: string;
+    /**
+     * Azure Service Principal client secret created in Azure AD for authentication.
+     */
+    azureClientSecret?: string;
+    /**
+     * Azure Active Directory Tenant ID where your Service Principal is registered.
+     */
+    azureTenantId?: string;
     /**
      * Password to connect to source.
      */
@@ -1747,7 +1829,7 @@ export interface HiveMetastoreConnectionDetails {
     /**
      * Choose Auth Config Type.
      */
-    authType?: HiveMetastoreConnectionDetailsAuthConfigurationType;
+    authType?: AuthConfigurationType;
     /**
      * Custom OpenMetadata Classification name for Postgres policy tags.
      */
@@ -1839,7 +1921,7 @@ export interface HiveMetastoreConnectionDetails {
  *
  * Azure Database Connection Config
  */
-export interface HiveMetastoreConnectionDetailsAuthConfigurationType {
+export interface AuthConfigurationType {
     /**
      * Password to connect to source.
      */
@@ -2115,11 +2197,13 @@ export enum ConfigType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
@@ -2236,11 +2320,13 @@ export enum DatabaseServiceType {
     Salesforce = "Salesforce",
     SapERP = "SapErp",
     SapHana = "SapHana",
+    ServiceNow = "ServiceNow",
     SingleStore = "SingleStore",
     Snowflake = "Snowflake",
     Ssas = "SSAS",
     Synapse = "Synapse",
     Teradata = "Teradata",
+    Timescale = "Timescale",
     Trino = "Trino",
     UnityCatalog = "UnityCatalog",
     Vertica = "Vertica",
@@ -2274,6 +2360,10 @@ export interface TagLabel {
      * Name of the tag or glossary term.
      */
     name?: string;
+    /**
+     * An explanation of why this tag was proposed, specially for autoclassification tags
+     */
+    reason?: string;
     /**
      * Label is from Tags or Glossary.
      */
@@ -2329,9 +2419,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**

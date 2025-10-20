@@ -13,9 +13,12 @@ Handle FQN building and splitting logic.
 Filter information has been taken from the
 ES indexes definitions
 """
+from __future__ import annotations
+
 import hashlib
 import re
-from typing import Dict, List, Optional, Type, TypeVar, Union
+import traceback
+from typing import TYPE_CHECKING, Dict, List, Optional, Type, TypeVar, Union
 
 from antlr4.CommonTokenStream import CommonTokenStream
 from antlr4.error.ErrorStrategy import BailErrorStrategy
@@ -50,9 +53,14 @@ from metadata.generated.schema.entity.teams.team import Team
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.dispatch import class_register
 from metadata.utils.elasticsearch import get_entity_from_es_result
+from metadata.utils.logger import utils_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+logger = utils_logger()
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -144,12 +152,32 @@ def build(
     :param kwargs: required to build the FQN
     :return: FQN as a string
     """
-    func = fqn_build_registry.registry.get(entity_type.__name__)
-    if not func:
-        raise FQNBuildingException(
-            f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
+    # Transform table_name and column_name if they exist and contain special characters
+    if kwargs.get("table_name") or kwargs.get("column_name"):
+        from metadata.ingestion.models.custom_basemodel_validation import (  # pylint: disable=import-outside-toplevel
+            replace_separators,
         )
-    return func(metadata, **kwargs)
+
+        table_name = kwargs.get("table_name")
+        if table_name and isinstance(table_name, str):
+            kwargs["table_name"] = replace_separators(table_name)
+
+        column_name = kwargs.get("column_name")
+        if column_name and isinstance(column_name, str):
+            kwargs["column_name"] = replace_separators(column_name)
+
+    func = fqn_build_registry.registry.get(entity_type.__name__)
+    try:
+        if not func:
+            raise FQNBuildingException(
+                f"Invalid Entity Type {entity_type.__name__}. FQN builder not implemented."
+            )
+        return func(metadata, **kwargs)
+    except Exception as e:
+        logger.debug(traceback.format_exc())
+        raise FQNBuildingException(
+            f"Error building FQN for {entity_type.__name__}: {e}"
+        )
 
 
 @fqn_build_registry.add(Table)
@@ -842,3 +870,56 @@ def get_query_checksum(query: str) -> str:
     The checksum is used as the query's name.
     """
     return hashlib.md5(query.encode()).hexdigest()
+
+
+# Not adding container since children can have recursive slots: service.container1.container2...
+FQN_ENTITY_SLOTS = {
+    Table.__name__: 4,
+    DatabaseSchema.__name__: 3,
+    Database.__name__: 2,
+    Dashboard.__name__: 2,
+    APICollection.__name__: 2,
+    Chart.__name__: 2,
+    MlModel.__name__: 2,
+    Topic.__name__: 2,
+    SearchIndex.__name__: 2,
+    Tag.__name__: 2,
+    DataModel.__name__: 2,
+    StoredProcedure.__name__: 4,
+    Pipeline.__name__: 2,
+}
+
+
+def prefix_entity_for_wildcard_search(entity_type: Type[T], fqn: str) -> str:
+    """
+    Given an entity type and an FQN, return the FQN prefixed with wildcards
+    to match any parent hierarchy leading to that entity.
+
+    For example, for a Topic with FQN "potato", return "*.potato" to match
+    the topic in any service. For a Table with FQN "schema.table", return
+    "*.*.schema.table" to match the table in any service and database.
+
+    Args:
+        entity_type: The entity type to match.
+        fqn: The FQN to prefix.
+
+    Returns:
+        The prefixed FQN with wildcards for missing parent levels.
+    """
+    slots = FQN_ENTITY_SLOTS.get(entity_type.__name__)
+    if not slots:
+        raise FQNBuildingException(
+            f"Entity type {entity_type.__name__} not supported for wildcard search"
+        )
+
+    parts = split(fqn)
+    if len(parts) > slots:
+        raise FQNBuildingException(
+            f"FQN {fqn} has too many parts ({len(parts)})"
+            f"for entity type {entity_type.__name__} (expected {slots} or fewer)"
+        )
+
+    # Add wildcards for missing parent levels
+    wildcards_needed = slots - len(parts)
+    prefixed_parts = ["*"] * wildcards_needed + parts
+    return _build(*prefixed_parts, quote=True)

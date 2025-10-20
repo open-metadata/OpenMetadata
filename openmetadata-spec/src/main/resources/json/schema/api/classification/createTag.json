@@ -55,6 +55,29 @@
     "owners": {
       "description": "Owners of this glossary term.",
       "$ref": "../../type/entityReferenceList.json"
+    },
+    "reviewers": {
+      "description": "User references of the reviewers for this tag.",
+      "$ref": "../../type/entityReferenceList.json"
+    },
+    "recognizers": {
+      "description": "List of recognizers configured for automatic detection of this tag",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/recognizer.json"
+      }
+    },
+    "autoClassificationEnabled": {
+      "description": "Whether automatic classification is enabled for this tag",
+      "type": "boolean",
+      "default": false
+    },
+    "autoClassificationPriority": {
+      "description": "Priority for conflict resolution when multiple tags match (higher number = higher priority)",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100,
+      "default": 50
     }
   },
   "required": ["name", "description"],

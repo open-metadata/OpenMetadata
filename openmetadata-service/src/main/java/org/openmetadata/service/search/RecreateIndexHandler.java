@@ -7,5 +7,7 @@ import java.util.Set;
  * This allows for different implementations to be provided for different deployment tiers.
  */
 public interface RecreateIndexHandler {
-  void reCreateIndexes(Set<String> entities);
+  ReindexContext reCreateIndexes(Set<String> entities);
+
+  default void finalizeReindex(EntityReindexContext entityReindexContext, boolean reindexSuccess) {}
 }
