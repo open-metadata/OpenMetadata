@@ -12,6 +12,7 @@
  */
 
 import { queryByAttribute, render, screen } from '@testing-library/react';
+import '../../../../test/unit/mocks/mui.mock';
 import '../../../../test/unit/mocks/recharts.mock';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from './ProfilerDetailsCard';
@@ -21,10 +22,13 @@ jest.mock('../../../../utils/ChartUtils', () => ({
   axisTickFormatter: jest.fn(),
   tooltipFormatter: jest.fn(),
   updateActiveChartFilter: jest.fn(),
+  createHorizontalGridLineRenderer: jest.fn(() => jest.fn()),
 }));
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   formatDateTimeLong: jest.fn(),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
+  getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
 }));
 
 // Existing mocks
@@ -42,6 +46,11 @@ jest.mock('../../../../utils/DataInsightUtils', () => ({
 jest.mock('../../../../constants/profiler.constant', () => {
   return {
     PROFILER_CHART_DATA_SIZE: 500,
+    DEFAULT_SELECTED_RANGE: {
+      key: 'last7Days',
+      title: 'Last 7 days',
+      days: 7,
+    },
   };
 });
 
