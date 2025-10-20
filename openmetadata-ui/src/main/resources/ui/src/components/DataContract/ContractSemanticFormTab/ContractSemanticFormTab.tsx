@@ -13,7 +13,16 @@
 
 import Icon from '@ant-design/icons';
 import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
-import { Button, Col, Form, Input, Row, Switch, Typography } from 'antd';
+import {
+  Button,
+  Col,
+  Form,
+  FormListFieldData,
+  Input,
+  Row,
+  Switch,
+  Typography,
+} from 'antd';
 import Card from 'antd/lib/card/Card';
 import TextArea from 'antd/lib/input/TextArea';
 import classNames from 'classnames';
@@ -31,6 +40,7 @@ import {
   SemanticsRule,
 } from '../../../generated/entity/data/dataContract';
 import { getSematicRuleFields } from '../../../utils/DataContract/DataContractUtils';
+import jsonLogicSearchClassBase from '../../../utils/JSONLogicSearchClassBase';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import QueryBuilderWidgetV1 from '../../common/QueryBuilderWidgetV1/QueryBuilderWidgetV1';
@@ -82,6 +92,42 @@ export const ContractSemanticFormTab: React.FC<{
   const handleAddNewRule = useCallback(() => {
     queryBuilderAddRule?.addRule([]);
   }, [queryBuilderAddRule]);
+
+  const handleQueryBuilderChange = (
+    field: FormListFieldData,
+    rule: string,
+    tree?: JsonTree
+  ) => {
+    const modifyRule = JSON.stringify(
+      jsonLogicSearchClassBase.getNegativeQueryForNotContainsReverserOperation(
+        JSON.parse(rule)
+      )
+    );
+    form.setFields([
+      {
+        name: ['semantics', field.name, 'rule'],
+        value: modifyRule,
+        errors: modifyRule
+          ? []
+          : [
+              t('message.field-text-is-required', {
+                fieldText: t('label.rule'),
+              }),
+            ],
+      },
+    ]);
+    form.setFieldsValue({
+      semantics: semanticsFormData?.map((item, idx) =>
+        idx === field.name
+          ? {
+              ...item,
+              rule: modifyRule,
+              jsonTree: tree && JSON.stringify(tree),
+            }
+          : item
+      ),
+    });
+  };
 
   useEffect(() => {
     if (!isEmpty(initialValues?.semantics)) {
@@ -157,9 +203,7 @@ export const ContractSemanticFormTab: React.FC<{
           <Form.List name="semantics">
             {(fields, { add }) => {
               // Store the add function so it can be used outside
-              if (!addFunctionRef.current) {
-                addFunctionRef.current = add;
-              }
+              addFunctionRef.current ??= add;
 
               return fields.map((field) => {
                 return (
@@ -236,7 +280,14 @@ export const ContractSemanticFormTab: React.FC<{
                                   required: true,
                                 },
                               ]}>
-                              <Input />
+                              <Input
+                                placeholder={t(
+                                  'label.please-enter-entity-name',
+                                  {
+                                    entity: t('label.semantic'),
+                                  }
+                                )}
+                              />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -249,7 +300,12 @@ export const ContractSemanticFormTab: React.FC<{
                                   required: true,
                                 },
                               ]}>
-                              <TextArea rows={4} />
+                              <TextArea
+                                placeholder={t('label.please-enter-value', {
+                                  name: t('label.description'),
+                                })}
+                                rows={4}
+                              />
                             </Form.Item>
                           </Col>
                           <Col span={24}>
@@ -258,7 +314,7 @@ export const ContractSemanticFormTab: React.FC<{
                               fields={queryBuilderFields}
                               getQueryActions={handleAddQueryBuilderRule}
                               key={field.name}
-                              label="Rule"
+                              label={t('label.rule')}
                               outputType={SearchOutputType.JSONLogic}
                               tree={
                                 editFieldData?.jsonTree
@@ -266,34 +322,9 @@ export const ContractSemanticFormTab: React.FC<{
                                   : undefined
                               }
                               value={editFieldData?.rule ?? ''}
-                              onChange={(rule: string, tree?: JsonTree) => {
-                                form.setFields([
-                                  {
-                                    name: ['semantics', field.name, 'rule'],
-                                    value: rule,
-                                    errors: rule
-                                      ? []
-                                      : [
-                                          t('message.field-text-is-required', {
-                                            fieldText: t('label.rule'),
-                                          }),
-                                        ],
-                                  },
-                                ]);
-                                form.setFieldsValue({
-                                  semantics: semanticsFormData?.map(
-                                    (item, idx) =>
-                                      idx === field.name
-                                        ? {
-                                            ...item,
-                                            rule,
-                                            jsonTree:
-                                              tree && JSON.stringify(tree),
-                                          }
-                                        : item
-                                  ),
-                                });
-                              }}
+                              onChange={(rule: string, tree?: JsonTree) =>
+                                handleQueryBuilderChange(field, rule, tree)
+                              }
                             />
                           </Col>
                         </Row>

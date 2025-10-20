@@ -30,6 +30,7 @@
   <url>https://github.com/open-metadata/OpenMetadata</url>
   <modules>
     <module>openmetadata-spec</module>
+    <module>openmetadata-sdk</module>
     <module>common</module>
     <module>openmetadata-shaded-deps</module>
     <module>openmetadata-service</module>
@@ -113,10 +114,11 @@
     <httpasyncclient.version>4.1.5</httpasyncclient.version>
     <openapiswagger.version>2.2.25</openapiswagger.version>
     <httpclient.version>4.5.14</httpclient.version>
-    <spring.version>6.2.10</spring.version>
+    <spring.version>6.2.11</spring.version>
     <log4j.version>2.21.0</log4j.version>
     <org.junit.jupiter.version>5.9.3</org.junit.jupiter.version>
     <dropwizard-health.version>4.0.14</dropwizard-health.version>
+    <handlebars.version>4.5.0</handlebars.version>
     <fernet.version>1.5.0</fernet.version>
     <antlr.version>4.13.2</antlr.version>
 
@@ -158,10 +160,16 @@
     <jakarta-el.version>5.0.0-M1</jakarta-el.version>
     <mcp-sdk.version>0.11.2</mcp-sdk.version>
     <lettuce.version>6.7.1.RELEASE</lettuce.version>
+    <angus-mail.version>2.0.4</angus-mail.version>
   </properties>
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>org.eclipse.angus</groupId>
+        <artifactId>angus-mail</artifactId>
+        <version>${angus-mail.version}</version>
+      </dependency>
       <dependency>
         <groupId>org.antlr</groupId>
         <artifactId>antlr4-runtime</artifactId>
@@ -608,6 +616,11 @@
       <groupId>com.github.java-json-tools</groupId>
       <artifactId>json-patch</artifactId>
       <version>${json-patch.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.github.jknack</groupId>
+      <artifactId>handlebars</artifactId>
+      <version>${handlebars.version}</version>
     </dependency>
       <dependency>
         <groupId>com.microsoft.azure</groupId>

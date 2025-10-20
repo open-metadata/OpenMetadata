@@ -5,18 +5,16 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
 import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
-import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -30,14 +28,14 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
-import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import os.org.opensearch.action.bulk.BulkRequest;
 import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
-public interface SearchClient<T> {
+public interface SearchClient<T>
+    extends IndexManagementClient, EntityManagementClient, GenericClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
@@ -113,6 +111,27 @@ public interface SearchClient<T> {
               ctx._source.tags[i].source == 'Glossary' &&
               ctx._source.tags[i].tagFQN.startsWith(params.oldParentFQN)) {
             ctx._source.tags[i].tagFQN = ctx._source.tags[i].tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+          }
+        }
+      }
+      """;
+
+  String UPDATE_FQN_PREFIX_SCRIPT =
+      """
+      String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+      ctx._source.fullyQualifiedName = updatedFQN;
+      ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
+      if (ctx._source.containsKey('parent')) {
+        if (ctx._source.parent.containsKey('fullyQualifiedName')) {
+          String parentFQN = ctx._source.parent.fullyQualifiedName;
+          ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+        }
+      }
+      if (ctx._source.containsKey('tags')) {
+        for (int i = 0; i < ctx._source.tags.size(); i++) {
+          if (ctx._source.tags[i].containsKey('tagFQN')) {
+            String tagFQN = ctx._source.tags[i].tagFQN;
+            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
           }
         }
       }
@@ -231,6 +250,53 @@ public interface SearchClient<T> {
       }
       """;
 
+  // Script for propagating followers to TestCases from their parent tables.
+  // TestCases can only have inherited followers (no direct followers allowed),
+  // so we always replace the entire followers list when propagating.
+  // Followers are stored as UUID strings in the search index for efficiency.
+  // This script only applies to TestCases - does nothing for other entity types.
+  String ADD_FOLLOWERS_SCRIPT =
+      """
+      if (ctx._source.containsKey('entityType') && ctx._source.entityType == 'testCase') {
+        // TestCases can only have inherited followers - always replace
+        if (params.containsKey('updatedFollowers') && params.updatedFollowers != null) {
+          List followerIds = new ArrayList();
+          for (def follower : params.updatedFollowers) {
+            if (follower != null && follower.containsKey('id')) {
+              followerIds.add(follower.id.toString());
+            }
+          }
+          ctx._source.followers = followerIds;
+        }
+      }
+      // Do nothing for other entity types
+      """;
+
+  // Script for removing followers from TestCases when removed from their parent tables.
+  // TestCases can only have inherited followers, so when the parent loses followers,
+  // we need to update the TestCase's follower list accordingly.
+  // Note: deletedFollowers contains the REMAINING followers after deletion, not the deleted ones.
+  // This script only applies to TestCases - does nothing for other entity types.
+  String REMOVE_FOLLOWERS_SCRIPT =
+      """
+      if (ctx._source.containsKey('entityType') && ctx._source.entityType == 'testCase') {
+        // For TestCases, replace with the updated follower list (already has removed followers filtered out)
+        if (params.containsKey('deletedFollowers') && params.deletedFollowers != null) {
+          List followerIds = new ArrayList();
+          for (def follower : params.deletedFollowers) {
+            if (follower != null && follower.containsKey('id')) {
+              followerIds.add(follower.id.toString());
+            }
+          }
+          ctx._source.followers = followerIds;
+        } else {
+          // If no followers remain, clear the list
+          ctx._source.followers = new ArrayList();
+        }
+      }
+      // Do nothing for other entity types
+      """;
+
   String UPDATE_TAGS_FIELD_SCRIPT =
       """
       if (ctx._source.tags != null) {
@@ -334,19 +400,9 @@ public interface SearchClient<T> {
 
   boolean isClientAvailable();
 
+  boolean isNewClientAvailable();
+
   ElasticSearchConfiguration.SearchType getSearchType();
-
-  boolean indexExists(String indexName);
-
-  void createIndex(IndexMapping indexMapping, String indexMappingContent);
-
-  void updateIndex(IndexMapping indexMapping, String indexMappingContent);
-
-  void deleteIndex(IndexMapping indexMapping);
-
-  void createAliases(IndexMapping indexMapping);
-
-  void addIndexAlias(IndexMapping indexMapping, String... aliasName);
 
   Response previewSearch(
       SearchRequest request, SubjectContext subjectContext, SearchSettings searchSettings)
@@ -358,8 +414,6 @@ public interface SearchClient<T> {
 
   Response searchWithDirectQuery(SearchRequest request, SubjectContext subjectContext)
       throws IOException;
-
-  Response getDocByID(String indexName, String entityId) throws IOException;
 
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
@@ -390,6 +444,18 @@ public interface SearchClient<T> {
   SearchLineageResult searchLineage(SearchLineageRequest lineageRequest) throws IOException;
 
   SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
+      throws IOException;
+
+  LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException;
+
+  SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
       throws IOException;
 
   SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
@@ -445,57 +511,8 @@ public interface SearchClient<T> {
   DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
-  void createEntity(String indexName, String docId, String doc);
-
-  void createEntities(String indexName, List<Map<String, String>> docsAndIds) throws IOException;
-
-  void createTimeSeriesEntity(String indexName, String docId, String doc);
-
-  void updateEntity(String indexName, String docId, Map<String, Object> doc, String scriptTxt);
-
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
-
-  void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params);
-
-  void deleteEntity(String indexName, String docId);
-
-  void deleteEntityByFields(List<String> indexName, List<Pair<String, String>> fieldAndValue);
-
-  void deleteEntityByFQNPrefix(String indexName, String fqnPrefix);
-
-  void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt);
-
-  void softDeleteOrRestoreChildren(
-      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue);
-
-  void updateChildren(
-      String indexName,
-      Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates);
-
-  void updateByFqnPrefix(
-      String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition);
-
-  void updateChildren(
-      List<String> indexName,
-      Pair<String, String> fieldAndValue,
-      Pair<String, Map<String, Object>> updates);
-
-  void updateLineage(
-      String indexName, Pair<String, String> fieldAndValue, EsLineageData lineageData);
-
-  void updateEntityRelationship(
-      String indexName,
-      Pair<String, String> fieldAndValue,
-      Map<String, Object> entityRelationshipData);
-
-  void reindexWithEntityIds(
-      List<String> sourceIndices,
-      String destinationIndex,
-      String pipelineName,
-      String entityType,
-      List<UUID> entityIds);
 
   Response listDataInsightChartResult(
       Long startTs,
@@ -508,11 +525,6 @@ public interface SearchClient<T> {
       String queryFilter,
       String dataReportIndex)
       throws IOException;
-
-  // TODO: Think if it makes sense to have this or maybe a specific deleteByRange
-  void deleteByQuery(String index, String query);
-
-  void deleteByRangeAndTerm(String index, String rangeQueryStr, String termKey, String termValue);
 
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
@@ -549,73 +561,7 @@ public interface SearchClient<T> {
 
   T getHighLevelClient();
 
-  SearchHealthStatus getSearchHealthStatus() throws IOException;
-
   QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
-
-  /**
-   * Get a list of data stream names that match the given prefix.
-   */
-  default List<String> getDataStreams(String prefix) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Delete data streams that match the given name or pattern.
-   */
-  default void deleteDataStream(String dataStreamName) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Delete an Index Lifecycle Management (ILM) policy.
-   */
-  default void deleteILMPolicy(String policyName) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Delete an index template.
-   */
-  default void deleteIndexTemplate(String templateName) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Delete a component template.
-   */
-  default void deleteComponentTemplate(String componentTemplateName) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Detach an ILM policy from indexes matching the given pattern.
-   */
-  default void dettachIlmPolicyFromIndexes(String indexPattern) throws IOException {
-    throw new CustomExceptionMessage(
-        Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
-  }
-
-  /**
-   * Removes ILM policy from a component template while preserving all other settings.
-   * This is only implemented for Elasticsearch as OpenSearch handles ILM differently.
-   */
-  default void removeILMFromComponentTemplate(String componentTemplateName) throws IOException {
-    // Default implementation does nothing as this is only needed for Elasticsearch
-  }
-
-  void updateGlossaryTermByFqnPrefix(
-      String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition);
-
-  void updateColumnsInUpstreamLineage(
-      String indexName, HashMap<String, String> originalUpdatedColumnFqnMap);
-
-  void deleteColumnsInUpstreamLineage(String indexName, List<String> deletedColumns);
 
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;

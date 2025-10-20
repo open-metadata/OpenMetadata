@@ -10,6 +10,8 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_CONFI
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.WEBSOCKET_STATUS_CHANNEL;
 import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_BROADCAST_CHANNEL;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isDataInsightIndex;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -19,6 +21,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
@@ -60,7 +63,9 @@ import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.search.EntityReindexContext;
 import org.openmetadata.service.search.RecreateIndexHandler;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchClusterMetrics;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
@@ -130,6 +135,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
   private BulkSink searchIndexSink;
   private RecreateIndexHandler recreateIndexHandler;
+  private ReindexContext recreateContext;
 
   @Getter private EventPublisherJob jobData;
   private ExecutorService producerExecutor;
@@ -201,6 +207,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     consecutiveSuccesses.set(0);
     lastBackpressureTime = 0;
     originalBatchSize.set(0);
+    recreateContext = null;
   }
 
   private void initializeJobData(JobExecutionContext jobExecutionContext) {
@@ -232,23 +239,46 @@ public class SearchIndexApp extends AbstractNativeApplication {
   }
 
   private void runReindexing(JobExecutionContext jobExecutionContext) throws Exception {
-    setupEntities();
-    LOG.info(
-        "Search Index Job Started for Entities: {}, RecreateIndex: {}",
-        jobData.getEntities(),
-        jobData.getRecreateIndex());
+    boolean success = false;
+    try {
+      setupEntities();
+      LOG.info(
+          "Search Index Job Started for Entities: {}, RecreateIndex: {}",
+          jobData.getEntities(),
+          jobData.getRecreateIndex());
 
-    SearchClusterMetrics clusterMetrics = initializeJob(jobExecutionContext);
+      SearchClusterMetrics clusterMetrics = initializeJob(jobExecutionContext);
 
-    if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
-      recreateIndicesIfNeeded();
+      if (Boolean.TRUE.equals(jobData.getRecreateIndex())) {
+        recreateIndicesIfNeeded();
+      }
+
+      updateJobStatus(EventPublisherJob.Status.RUNNING);
+      reIndexFromStartToEnd(clusterMetrics);
+      closeSinkIfNeeded();
+      updateFinalJobStatus();
+      success = jobData != null && jobData.getStatus() == EventPublisherJob.Status.COMPLETED;
+      handleJobCompletion();
+    } finally {
+      finalizeAllEntityReindex(success);
     }
+  }
 
-    updateJobStatus(EventPublisherJob.Status.RUNNING);
-    reIndexFromStartToEnd(clusterMetrics);
-    closeSinkIfNeeded();
-    updateFinalJobStatus();
-    handleJobCompletion();
+  private void finalizeAllEntityReindex(boolean finalSuccess) {
+    try {
+      recreateContext
+          .getEntities()
+          .forEach(
+              entityType -> {
+                try {
+                  finalizeEntityReindex(entityType, finalSuccess);
+                } catch (Exception ex) {
+                  LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
+                }
+              });
+    } finally {
+      recreateContext = null;
+    }
   }
 
   private void setupEntities() {
@@ -265,7 +295,7 @@ public class SearchIndexApp extends AbstractNativeApplication {
     if (jobLogger != null) {
       jobLogger.addInitDetail(RECREATING_INDICES, "Yes");
     }
-    reCreateIndexes(jobData.getEntities());
+    recreateContext = reCreateIndexes(jobData.getEntities());
   }
 
   private void closeSinkIfNeeded() throws IOException {
@@ -339,6 +369,56 @@ public class SearchIndexApp extends AbstractNativeApplication {
 
     if (stopped && jobExecutionContext != null) {
       updateStoppedStatusInJobDataMap(jobExecutionContext);
+    }
+  }
+
+  private Optional<String> getTargetIndexForEntity(String entityType) {
+    if (recreateContext == null) {
+      return Optional.empty();
+    }
+
+    Optional<String> stagedIndex = recreateContext.getStagedIndex(entityType);
+    if (stagedIndex.isPresent()) {
+      return stagedIndex;
+    }
+
+    if (QUERY_COST_RESULT_INCORRECT.equals(entityType)) {
+      return recreateContext.getStagedIndex(QUERY_COST_RECORD);
+    }
+
+    return Optional.empty();
+  }
+
+  private void finalizeEntityReindex(String entityType, boolean success) {
+    if (recreateIndexHandler == null || recreateContext == null) {
+      return;
+    }
+
+    String originalIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+    String canonicalIndex = recreateContext.getCanonicalIndex(entityType).orElse(null);
+    String activeIndex = recreateContext.getOriginalIndex(entityType).orElse(null);
+    String stagedIndex = recreateContext.getStagedIndex(entityType).orElse(null);
+    String canonicalAlias = recreateContext.getCanonicalAlias(entityType).orElse(null);
+    Set<String> existingAliases = recreateContext.getExistingAliases(entityType);
+    Set<String> parentAliases =
+        new HashSet<>(listOrEmpty(recreateContext.getParentAliases(entityType)));
+
+    EntityReindexContext entityReindexContext =
+        EntityReindexContext.builder()
+            .entityType(entityType)
+            .originalIndex(originalIndex)
+            .canonicalIndex(canonicalIndex)
+            .activeIndex(activeIndex)
+            .stagedIndex(stagedIndex)
+            .canonicalAliases(canonicalAlias)
+            .existingAliases(existingAliases)
+            .parentAliases(parentAliases)
+            .build();
+
+    try {
+      recreateIndexHandler.finalizeReindex(entityReindexContext, success);
+    } catch (Exception ex) {
+      LOG.error("Failed to finalize index recreation flow", ex);
     }
   }
 
@@ -1307,8 +1387,11 @@ public class SearchIndexApp extends AbstractNativeApplication {
     }
   }
 
-  private void reCreateIndexes(Set<String> entities) {
-    recreateIndexHandler.reCreateIndexes(entities);
+  private ReindexContext reCreateIndexes(Set<String> entities) {
+    if (recreateIndexHandler == null) {
+      return null;
+    }
+    return recreateIndexHandler.reCreateIndexes(entities);
   }
 
   private Source<?> createSource(String entityType) {
@@ -1509,6 +1592,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
     Map<String, Object> contextData = new HashMap<>();
     contextData.put(ENTITY_TYPE_KEY, entityType);
     contextData.put(RECREATE_INDEX, jobData.getRecreateIndex());
+    contextData.put(RECREATE_CONTEXT, recreateContext);
+    getTargetIndexForEntity(entityType)
+        .ifPresent(index -> contextData.put(TARGET_INDEX_KEY, index));
     return contextData;
   }
 

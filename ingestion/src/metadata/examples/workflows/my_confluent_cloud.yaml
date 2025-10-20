@@ -1,0 +1,49 @@
+source:
+  type: kafkaconnect
+  serviceName: confluent_cloud_cdc
+  serviceConnection:
+    config:
+      type: KafkaConnect
+      # IMPORTANT: Use the Kafka Connect API endpoint, NOT the Kafka broker endpoint
+      # Format: https://api.confluent.cloud/connect/v1/environments/{ENV_ID}/clusters/{CLUSTER_ID}
+      # Example: https://api.confluent.cloud/connect/v1/environments/env-abc123/clusters/lkc-xyz789
+      hostPort: https://api.confluent.cloud/connect/v1/environments/YOUR_ENV_ID/clusters/YOUR_CONNECT_CLUSTER_ID
+
+      # Use Kafka Connect API Key (NOT Kafka broker API key)
+      KafkaConnectConfig:
+        username: YOUR_KAFKA_CONNECT_API_KEY
+        password: YOUR_KAFKA_CONNECT_API_SECRET
+
+      verifySSL: true
+
+      # REQUIRED for Confluent Cloud: Specify your Kafka messaging service
+      # This should match the service name you used when ingesting Kafka topics
+      messagingServiceName: confluent_kafka_cloud
+
+      # Optional: Filter specific connectors
+      # pipelineFilterPattern:
+      #   includes:
+      #     - "mysql-cdc-.*"
+      #     - "postgres-sink-.*"
+
+  sourceConfig:
+    config:
+      type: PipelineMetadata
+      # Specify the database services where your tables are ingested
+      lineageInformation:
+        dbServiceNames:
+          - local_mysql        # Replace with your MySQL service name
+          - local_postgres     # Replace with your Postgres service name
+        storageServiceNames: []  # Add S3/GCS service names if using sink connectors to storage
+
+sink:
+  type: metadata-rest
+  config: {}
+
+workflowConfig:
+  loggerLevel: DEBUG  # Use DEBUG to see detailed connection info
+  openMetadataServerConfig:
+    hostPort: http://localhost:8585/api
+    authProvider: openmetadata
+    securityConfig:
+      jwtToken: eyJraWQiOiJHYjM4OWEtOWY3Ni1nZGpzLWE5MmotMDI0MmJrOTQzNTYiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzQm90IjpmYWxzZSwiaXNzIjoib3Blbi1tZXRhZGF0YS5vcmciLCJpYXQiOjE2NjM5Mzg0NjIsImVtYWlsIjoiYWRtaW5Ab3Blbm1ldGFkYXRhLm9yZyJ9.tS8um_5DKu7HgzGBzS1VTA5uUjKWOCU0B_j08WXBiEC0mr0zNREkqVfwFDD-d24HlNEbrqioLsBuFRiwIWKc1m_ZlVQbG7P36RUxhuv2vbSp80FKyNM-Tj93FDzq91jsyNmsQhyNv_fNr3TXfzzSPjHt8Go0FMMP66weoKMgW2PbXlhVKwEuXUHyakLLzewm9UMeQaEiRzhiTMU3UkLXcKbYEJJvfNFcLwSl9W8JCO_l0Yj3ud-qt_nQYEZwqW6u5nfdQllN133iikV4fM5QZsMCnm8Rq1mvLR0y9bmJiD7fwM1tmJ791TUWqmKaTnP49U493VanKpUAfzIiOiIbhg

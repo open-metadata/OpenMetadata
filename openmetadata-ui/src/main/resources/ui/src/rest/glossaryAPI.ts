@@ -318,7 +318,7 @@ export const searchGlossaryTermsPaginated = async (
   offset = 0,
   fields?: string
 ) => {
-  const params: Record<string, any> = {
+  const params: Record<string, number | string> = {
     limit,
     offset,
   };
@@ -354,26 +354,6 @@ export const searchGlossaryTermsPaginated = async (
 
 export type GlossaryTermWithChildren = Omit<GlossaryTerm, 'children'> & {
   children?: GlossaryTerm[];
-};
-
-export const getFirstLevelGlossaryTerms = async (parentFQN: string) => {
-  const apiUrl = `/glossaryTerms`;
-
-  const { data } = await APIClient.get<
-    PagingResponse<GlossaryTermWithChildren[]>
-  >(apiUrl, {
-    params: {
-      directChildrenOf: parentFQN,
-      fields: [
-        TabSpecificField.CHILDREN_COUNT,
-        TabSpecificField.OWNERS,
-        TabSpecificField.REVIEWERS,
-      ],
-      limit: 100000,
-    },
-  });
-
-  return data;
 };
 
 export const getFirstLevelGlossaryTermsPaginated = async (

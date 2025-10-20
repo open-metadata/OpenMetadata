@@ -4185,4 +4185,615 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
           "Incident should no longer have an assigned status after user deletion");
     }
   }
+
+  @Test
+  void test_testCaseFollowerInheritance(TestInfo testInfo)
+      throws IOException, InterruptedException {
+    // Create a table with a follower
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    // Add USER1 as follower to the table
+    tableResourceTest.addFollower(table.getId(), USER1_REF.getId(), OK, ADMIN_AUTH_HEADERS);
+
+    // Create a test case for this table
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("10").withName("minValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Wait for search index sync
+    Map<String, Object> sourceAsMap =
+        waitForSyncAndGetFromSearchIndex(
+            testCase.getUpdatedAt(), testCase.getId(), Entity.TEST_CASE);
+
+    // Verify the test case inherited the follower from the table
+    List<String> followers = (List<String>) sourceAsMap.get("followers");
+    assertNotNull(followers);
+    assertEquals(1, followers.size());
+    assertEquals(USER1.getId().toString(), followers.get(0));
+  }
+
+  @Test
+  void test_listTestCasesWithFollowedByFilter(TestInfo testInfo)
+      throws IOException, InterruptedException {
+    // Create two tables with different followers
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq1 =
+        tableResourceTest
+            .createRequest(testInfo, 1)
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table1 = tableResourceTest.createAndCheckEntity(tableReq1, ADMIN_AUTH_HEADERS);
+
+    CreateTable tableReq2 =
+        tableResourceTest
+            .createRequest(testInfo, 2)
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table2 = tableResourceTest.createAndCheckEntity(tableReq2, ADMIN_AUTH_HEADERS);
+
+    // Add USER1 as follower to table1
+    tableResourceTest.addFollower(table1.getId(), USER1_REF.getId(), OK, ADMIN_AUTH_HEADERS);
+
+    // Add USER2 as follower to table2
+    tableResourceTest.addFollower(table2.getId(), USER2_REF.getId(), OK, ADMIN_AUTH_HEADERS);
+
+    // Create test cases for both tables
+    CreateTestCase create1 =
+        createRequest(testInfo, 1)
+            .withEntityLink(String.format("<#E::table::%s>", table1.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("10").withName("minValue")));
+    TestCase testCase1 = createAndCheckEntity(create1, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase create2 =
+        createRequest(testInfo, 2)
+            .withEntityLink(String.format("<#E::table::%s>", table2.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("10").withName("minValue")));
+    TestCase testCase2 = createAndCheckEntity(create2, ADMIN_AUTH_HEADERS);
+
+    // Wait for test cases to be properly indexed with their inherited followers
+    // TestCase1 should inherit USER1 from table1
+    waitForFieldInSearchIndex(
+        testCase1.getId(), Entity.TEST_CASE, "followers", List.of(USER1.getId().toString()));
+
+    // TestCase2 should inherit USER2 from table2
+    waitForFieldInSearchIndex(
+        testCase2.getId(), Entity.TEST_CASE, "followers", List.of(USER2.getId().toString()));
+
+    // Test filtering by USER1
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("followedBy", USER1.getName());
+    ResultList<TestCase> results = listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    // Should find test cases from table1 (followed by USER1)
+    assertTrue(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase1.getFullyQualifiedName())),
+        "TestCase1 should be found when filtering by USER1");
+    assertFalse(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase2.getFullyQualifiedName())),
+        "TestCase2 should not be found when filtering by USER1");
+
+    // Test filtering by USER2
+    queryParams.put("followedBy", USER2.getName());
+    results = listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    // Should find test cases from table2 (followed by USER2)
+    assertFalse(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase1.getFullyQualifiedName())),
+        "TestCase1 should not be found when filtering by USER2");
+    assertTrue(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase2.getFullyQualifiedName())),
+        "TestCase2 should be found when filtering by USER2");
+  }
+
+  @Test
+  void test_followerInheritanceAfterTableUpdate(TestInfo testInfo)
+      throws IOException, InterruptedException {
+    // Create a table without followers
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(testInfo)
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    // Create a test case for this table
+    CreateTestCase create =
+        createRequest(testInfo)
+            .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+            .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withValue("10").withName("minValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Wait for initial sync
+    waitForSyncAndGetFromSearchIndex(testCase.getUpdatedAt(), testCase.getId(), Entity.TEST_CASE);
+
+    // Now add USER1 as follower to the table
+    tableResourceTest.addFollower(table.getId(), USER1_REF.getId(), OK, ADMIN_AUTH_HEADERS);
+
+    // Wait for the follower to propagate to the test case in the search index
+    List<String> expectedFollowers = List.of(USER1.getId().toString());
+    waitForFieldInSearchIndex(testCase.getId(), Entity.TEST_CASE, "followers", expectedFollowers);
+
+    // Verify test cases now show up when filtering by USER1
+    Map<String, String> queryParams = new HashMap<>();
+    queryParams.put("followedBy", USER1.getName());
+    ResultList<TestCase> results = listTestCasesFromSearch(queryParams, 10, 0, ADMIN_AUTH_HEADERS);
+
+    assertTrue(
+        results.getData().stream()
+            .anyMatch(tc -> tc.getFullyQualifiedName().equals(testCase.getFullyQualifiedName())),
+        "Test case should be found after table follower update");
+  }
+
+  @Test
+  void test_entityStatusUpdateAndPatch(TestInfo test) throws IOException {
+    // Create a test case with UNPROCESSED status by default
+    CreateTestCase createTestCase = createRequest(getEntityName(test));
+    TestCase testCase = createEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    // Verify the test case is created with UNPROCESSED status
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        testCase.getEntityStatus(),
+        "TestCase should be created with UNPROCESSED status");
+
+    // Update the entityStatus using PATCH operation
+    String originalJson = JsonUtils.pojoToJson(testCase);
+    testCase.setEntityStatus(EntityStatus.IN_REVIEW);
+
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
+    TestCase updatedTestCase =
+        patchEntityAndCheck(testCase, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify the entityStatus was updated correctly
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        updatedTestCase.getEntityStatus(),
+        "TestCase should be updated to IN_REVIEW status");
+
+    // Get the test case again to confirm the status is persisted
+    TestCase retrievedTestCase = getEntity(updatedTestCase.getId(), ADMIN_AUTH_HEADERS);
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        retrievedTestCase.getEntityStatus(),
+        "Retrieved test case should maintain IN_REVIEW status");
+
+    // Test changing to DRAFT status
+    originalJson = JsonUtils.pojoToJson(updatedTestCase);
+    updatedTestCase.setEntityStatus(EntityStatus.DRAFT);
+    change = getChangeDescription(updatedTestCase, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.IN_REVIEW, EntityStatus.DRAFT);
+    TestCase draftTestCase =
+        patchEntityAndCheck(
+            updatedTestCase, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(
+        EntityStatus.DRAFT,
+        draftTestCase.getEntityStatus(),
+        "TestCase should be updated to DRAFT status");
+  }
+
+  @Test
+  void test_reviewersField(TestInfo test) throws IOException {
+    // Create a test case without reviewers
+    CreateTestCase createTestCase = createRequest(getEntityName(test));
+    TestCase testCase = createEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    // Verify the test case is created without reviewers
+    assertTrue(nullOrEmpty(testCase.getReviewers()), "TestCase should have no reviewers initially");
+
+    // Add reviewer USER1 in PATCH request
+    String origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER1.getEntityReference()));
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER1.getEntityReference()));
+    testCase = patchEntityAndCheck(testCase, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    assertEquals(1, testCase.getReviewers().size(), "TestCase should have one reviewer");
+    assertEquals(
+        USER1.getId(), testCase.getReviewers().getFirst().getId(), "Reviewer should match USER1");
+
+    // Add reviewer USER2 in PATCH request
+    // Changes from this PATCH is consolidated with the previous changes
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER1.getEntityReference(), USER2.getEntityReference()));
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER2.getEntityReference()));
+    testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
+
+    // Verify that the test case has both reviewers
+    assertNotNull(testCase);
+    assertNotNull(testCase.getReviewers(), "TestCase should have reviewers");
+    assertEquals(2, testCase.getReviewers().size(), "TestCase should have two reviewers");
+    assertTrue(
+        testCase.getReviewers().stream().anyMatch(r -> r.getId().equals(USER1.getId())),
+        "TestCase should have USER1 as a reviewer");
+    assertTrue(
+        testCase.getReviewers().stream().anyMatch(r -> r.getId().equals(USER2.getId())),
+        "TestCase should have USER2 as a reviewer");
+
+    // Remove reviewer USER1 in PATCH request
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER2.getEntityReference()));
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldDeleted(change, "reviewers", List.of(USER1.getEntityReference()));
+    testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
+
+    assertEquals(
+        1, testCase.getReviewers().size(), "TestCase should have one reviewer after removal");
+    assertEquals(
+        USER2.getId(),
+        testCase.getReviewers().getFirst().getId(),
+        "TestCase should only have USER2 as a reviewer");
+  }
+
+  @Test
+  void test_entityStatusAndReviewersCombination(TestInfo test) throws IOException {
+    // Create a test case without any reviewers initially
+    CreateTestCase createTestCase = createRequest(getEntityName(test));
+    TestCase testCase = createEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    // Verify initial state
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        testCase.getEntityStatus(),
+        "TestCase should be created with UNPROCESSED status");
+    assertTrue(nullOrEmpty(testCase.getReviewers()), "TestCase should have no reviewers initially");
+
+    // Add reviewers using PATCH
+    String origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER1_REF));
+    ChangeDescription change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER1_REF));
+    testCase = patchEntityAndCheck(testCase, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify reviewers were added
+    assertNotNull(testCase.getReviewers(), "TestCase should have reviewers");
+    assertEquals(1, testCase.getReviewers().size(), "TestCase should have one reviewer");
+    assertEquals(
+        USER1.getId(), testCase.getReviewers().getFirst().getId(), "Reviewer should be USER1");
+
+    // Update entityStatus
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withEntityStatus(EntityStatus.IN_REVIEW);
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.UNPROCESSED, EntityStatus.IN_REVIEW);
+    testCase = patchEntityAndCheck(testCase, origJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify entityStatus was updated
+    assertEquals(
+        EntityStatus.IN_REVIEW,
+        testCase.getEntityStatus(),
+        "TestCase should be updated to IN_REVIEW status");
+
+    // Update reviewers
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withReviewers(List.of(USER2.getEntityReference()));
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldUpdated(change, "reviewers", List.of(USER1_REF), List.of(USER2.getEntityReference()));
+    testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
+
+    // Verify reviewer was updated
+    assertNotNull(testCase);
+    assertEquals(1, testCase.getReviewers().size(), "TestCase should still have one reviewer");
+    assertEquals(
+        USER2.getId(),
+        testCase.getReviewers().getFirst().getId(),
+        "Reviewer should be updated to USER2");
+
+    // Test clearing reviewers and updating status back to APPROVED
+    origJson = JsonUtils.pojoToJson(testCase);
+    testCase.withEntityStatus(EntityStatus.UNPROCESSED).withReviewers(null);
+    change = getChangeDescription(testCase, MINOR_UPDATE);
+    fieldUpdated(change, "entityStatus", EntityStatus.IN_REVIEW, EntityStatus.UNPROCESSED);
+    fieldDeleted(change, "reviewers", List.of(USER2.getEntityReference()));
+    testCase = patchEntity(testCase.getId(), origJson, testCase, ADMIN_AUTH_HEADERS, null);
+
+    // Verify final state
+    assertNotNull(testCase);
+    assertEquals(
+        EntityStatus.UNPROCESSED,
+        testCase.getEntityStatus(),
+        "TestCase should be updated to APPROVED status");
+    assertTrue(
+        nullOrEmpty(testCase.getReviewers()), "TestCase should have no reviewers after approval");
+  }
+
+  @Test
+  void test_bundleTestSuiteEditAllPermission(TestInfo test) throws Exception {
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+
+    CreateTestSuite createLogicalTestSuite = testSuiteResourceTest.createRequest(test);
+    TestSuite logicalTestSuite =
+        testSuiteResourceTest.createEntity(createLogicalTestSuite, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase = createRequest(getEntityName(test));
+    TestCase testCase = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    String testSuiteOwnerUsername = "test-suite-owner";
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser =
+        userResourceTest
+            .createRequest(testSuiteOwnerUsername)
+            .withRoles(List.of(DATA_CONSUMER_ROLE.getId()));
+    User testSuiteOwner = userResourceTest.createEntity(createUser, ADMIN_AUTH_HEADERS);
+
+    String originalTestSuiteJson = JsonUtils.pojoToJson(logicalTestSuite);
+    logicalTestSuite.setOwners(List.of(testSuiteOwner.getEntityReference()));
+    testSuiteResourceTest.patchEntity(
+        logicalTestSuite.getId(), originalTestSuiteJson, logicalTestSuite, ADMIN_AUTH_HEADERS);
+
+    PolicyResourceTest policyResourceTest = new PolicyResourceTest();
+    Rule testSuiteEditAllRule =
+        new Rule()
+            .withName("testSuiteEditAllRule")
+            .withDescription("Allow EDIT_ALL on TEST_SUITE entities owned by user")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
+            .withResources(List.of(Entity.TEST_SUITE))
+            .withCondition("isOwner()");
+
+    Policy testSuiteEditAllPolicy =
+        policyResourceTest.createEntity(
+            new CreatePolicy()
+                .withName("Policy_TestSuiteEditAll_" + test.getDisplayName())
+                .withDescription("Policy that allows TEST_SUITE:EDIT_ALL for owners")
+                .withRules(List.of(testSuiteEditAllRule)),
+            ADMIN_AUTH_HEADERS);
+
+    RoleResourceTest roleResourceTest = new RoleResourceTest();
+    Role testSuiteEditAllRole =
+        roleResourceTest.createEntity(
+            new CreateRole()
+                .withName("Role_TestSuiteEditAll_" + test.getDisplayName())
+                .withPolicies(List.of(testSuiteEditAllPolicy.getFullyQualifiedName())),
+            ADMIN_AUTH_HEADERS);
+
+    String testSuiteOwnerJson = JsonUtils.pojoToJson(testSuiteOwner);
+    testSuiteOwner.setRoles(
+        List.of(
+            DATA_CONSUMER_ROLE.getEntityReference(), testSuiteEditAllRole.getEntityReference()));
+    userResourceTest.patchEntity(
+        testSuiteOwner.getId(), testSuiteOwnerJson, testSuiteOwner, ADMIN_AUTH_HEADERS);
+
+    Map<String, String> ownerAuthHeaders = authHeaders(testSuiteOwnerUsername);
+
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(
+        logicalTestSuite, List.of(testCase.getId()), ownerAuthHeaders);
+
+    UUID testCaseIdToDelete = testCase.getId();
+    deleteLogicalTestCase(logicalTestSuite, testCaseIdToDelete, ownerAuthHeaders);
+
+    Map<String, String> unauthorizedUserHeaders = authHeaders(USER2.getName());
+    TestCase anotherTestCase =
+        createAndCheckEntity(createRequest("another_test"), ADMIN_AUTH_HEADERS);
+    assertResponse(
+        () ->
+            testSuiteResourceTest.addTestCasesToLogicalTestSuite(
+                logicalTestSuite, List.of(anotherTestCase.getId()), unauthorizedUserHeaders),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+  }
+
+  @Test
+  void test_reviewerInheritanceFromTestSuite(TestInfo test) throws IOException {
+    // Create a test suite first without reviewers
+    TestSuiteResourceTest testSuiteResourceTest = new TestSuiteResourceTest();
+    CreateTestSuite createTestSuite = testSuiteResourceTest.createRequest(test.getDisplayName());
+    TestSuite testSuite = testSuiteResourceTest.createEntity(createTestSuite, ADMIN_AUTH_HEADERS);
+
+    // Add reviewers to the test suite using PATCH
+    String testSuiteJson = JsonUtils.pojoToJson(testSuite);
+    testSuite.setReviewers(List.of(USER1_REF, USER2.getEntityReference()));
+    ChangeDescription change = getChangeDescription(testSuite, MINOR_UPDATE);
+    fieldAdded(change, "reviewers", List.of(USER1_REF, USER2.getEntityReference()));
+    testSuite =
+        testSuiteResourceTest.patchEntityAndCheck(
+            testSuite, testSuiteJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+
+    // Verify test suite has reviewers
+    assertNotNull(testSuite.getReviewers(), "TestSuite should have reviewers");
+    assertEquals(2, testSuite.getReviewers().size(), "TestSuite should have two reviewers");
+
+    // Create a test case under this test suite (without explicit reviewers)
+    CreateTestCase createTestCase = createRequest(getEntityName(test));
+    createTestCase.withEntityLink(
+        String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName()));
+    TestCase testCase = createEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
+    // Add the test case to the test suite to establish the parent-child relationship
+    testSuiteResourceTest.addTestCasesToLogicalTestSuite(testSuite, List.of(testCase.getId()));
+
+    // Fetch the test case with testSuite and reviewers fields
+    // We need testSuite field to be populated for reviewer inheritance to work
+    TestCase retrievedTestCase =
+        getEntity(testCase.getId(), "testSuite,reviewers", ADMIN_AUTH_HEADERS);
+
+    // Verify that the test case inherited reviewers from test suite
+    assertNotNull(
+        retrievedTestCase.getReviewers(),
+        "TestCase should have inherited reviewers from TestSuite");
+    assertEquals(
+        2, retrievedTestCase.getReviewers().size(), "TestCase should have inherited two reviewers");
+
+    // Verify the inherited reviewers match the test suite's reviewers
+    Set<UUID> testSuiteReviewerIds =
+        testSuite.getReviewers().stream().map(EntityReference::getId).collect(Collectors.toSet());
+    Set<UUID> testCaseReviewerIds =
+        retrievedTestCase.getReviewers().stream()
+            .map(EntityReference::getId)
+            .collect(Collectors.toSet());
+    assertEquals(
+        testSuiteReviewerIds,
+        testCaseReviewerIds,
+        "TestCase reviewers should match TestSuite reviewers");
+
+    // Verify that inherited reviewers are marked as inherited
+    assertTrue(
+        retrievedTestCase.getReviewers().stream()
+            .allMatch(reviewer -> reviewer.getInherited() != null && reviewer.getInherited()),
+        "All inherited reviewers should be marked as inherited");
+
+    // Update test suite reviewers
+    testSuiteJson = JsonUtils.pojoToJson(testSuite);
+    testSuite.setReviewers(List.of(USER2.getEntityReference()));
+    change = getChangeDescription(testSuite, MINOR_UPDATE);
+    fieldUpdated(
+        change,
+        "reviewers",
+        List.of(USER1_REF, USER2.getEntityReference()),
+        List.of(USER2.getEntityReference()));
+    testSuite =
+        testSuiteResourceTest.patchEntity(
+            testSuite.getId(), testSuiteJson, testSuite, ADMIN_AUTH_HEADERS);
+
+    // Verify test suite reviewers were updated
+    assertEquals(
+        1, testSuite.getReviewers().size(), "TestSuite should have one reviewer after update");
+    assertEquals(
+        USER2.getId(),
+        testSuite.getReviewers().getFirst().getId(),
+        "TestSuite reviewer should be USER2");
+
+    // Get the test case again to verify inherited reviewers were updated
+    retrievedTestCase = getEntity(testCase.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        retrievedTestCase.getReviewers(), "TestCase should still have inherited reviewers");
+    assertEquals(
+        1,
+        retrievedTestCase.getReviewers().size(),
+        "TestCase should have one inherited reviewer after update");
+    assertEquals(
+        USER2.getId(),
+        retrievedTestCase.getReviewers().getFirst().getId(),
+        "TestCase reviewer should be USER2 after update");
+    assertTrue(
+        retrievedTestCase.getReviewers().getFirst().getInherited(),
+        "Reviewer should still be marked as inherited");
+
+    // Create a test case with explicit reviewers (should not inherit)
+    CreateTestCase createTestCaseWithReviewers = createRequest(getEntityName(test) + "_explicit");
+    createTestCaseWithReviewers.withEntityLink(
+        String.format("<#E::table::%s>", TEST_TABLE1.getFullyQualifiedName()));
+    createTestCaseWithReviewers.withReviewers(List.of(USER1_REF));
+    TestCase testCaseWithExplicitReviewers =
+        createEntity(createTestCaseWithReviewers, ADMIN_AUTH_HEADERS);
+
+    // Verify explicit reviewers are not overridden
+    TestCase retrievedExplicitTestCase =
+        getEntity(testCaseWithExplicitReviewers.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        retrievedExplicitTestCase.getReviewers(), "TestCase should have explicit reviewers");
+    assertEquals(
+        1,
+        retrievedExplicitTestCase.getReviewers().size(),
+        "TestCase should have one explicit reviewer");
+    assertEquals(
+        USER1.getId(),
+        retrievedExplicitTestCase.getReviewers().getFirst().getId(),
+        "TestCase should have USER1 as reviewer");
+    assertNull(
+        retrievedExplicitTestCase.getReviewers().getFirst().getInherited(),
+        "Explicit reviewer should not be marked as inherited");
+
+    // Clear test suite reviewers and verify test cases no longer inherit
+    testSuiteJson = JsonUtils.pojoToJson(testSuite);
+    testSuite.setReviewers(null);
+    change = getChangeDescription(testSuite, MINOR_UPDATE);
+    fieldDeleted(change, "reviewers", List.of(USER2.getEntityReference()));
+    testSuite =
+        testSuiteResourceTest.patchEntity(
+            testSuite.getId(), testSuiteJson, testSuite, ADMIN_AUTH_HEADERS);
+
+    // Verify test suite has no reviewers
+    assertTrue(
+        nullOrEmpty(testSuite.getReviewers()), "TestSuite should have no reviewers after clearing");
+
+    // Verify test case no longer inherits reviewers
+    retrievedTestCase = getEntity(testCase.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    assertTrue(
+        nullOrEmpty(retrievedTestCase.getReviewers()),
+        "TestCase should have no inherited reviewers when TestSuite has none");
+
+    // Verify test case with explicit reviewers still has them
+    retrievedExplicitTestCase =
+        getEntity(testCaseWithExplicitReviewers.getId(), "reviewers", ADMIN_AUTH_HEADERS);
+    assertNotNull(
+        retrievedExplicitTestCase.getReviewers(),
+        "TestCase with explicit reviewers should still have them");
+    assertEquals(
+        1,
+        retrievedExplicitTestCase.getReviewers().size(),
+        "TestCase should still have one explicit reviewer");
+    assertEquals(
+        USER1.getId(),
+        retrievedExplicitTestCase.getReviewers().getFirst().getId(),
+        "TestCase should still have USER1 as reviewer");
+  }
+
+  private ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusWithFQN(
+      String testCaseFQN, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target =
+        getResource("dataQuality/testCases/testCaseIncidentStatus")
+            .queryParam("testCaseFQN", testCaseFQN)
+            .queryParam("startTs", 0)
+            .queryParam("endTs", System.currentTimeMillis());
+    return TestUtils.get(
+        target,
+        TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class,
+        authHeaders);
+  }
+
+  private ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusWithId(
+      UUID testCaseId, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target =
+        getResource("dataQuality/testCases/testCaseIncidentStatus")
+            .queryParam("testCaseId", testCaseId)
+            .queryParam("startTs", 0)
+            .queryParam("endTs", System.currentTimeMillis());
+    return TestUtils.get(
+        target,
+        TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class,
+        authHeaders);
+  }
+
+  private ResultList<TestCaseResolutionStatus> listTestCaseFailureStatusWithOriginFQN(
+      String originEntityFQN, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target =
+        getResource("dataQuality/testCases/testCaseIncidentStatus")
+            .queryParam("originEntityFQN", originEntityFQN)
+            .queryParam("startTs", 0)
+            .queryParam("endTs", System.currentTimeMillis());
+    return TestUtils.get(
+        target,
+        TestCaseResolutionStatusResource.TestCaseResolutionStatusResultList.class,
+        authHeaders);
+  }
+
+  private TestCaseResolutionStatus getTestCaseFailureStatus(
+      UUID id, Map<String, String> authHeaders) throws HttpResponseException {
+    WebTarget target = getResource("dataQuality/testCases/testCaseIncidentStatus/" + id);
+    return TestUtils.get(target, TestCaseResolutionStatus.class, authHeaders);
+  }
 }

@@ -204,7 +204,7 @@ export const addTeamAsReviewer = async (
   isSelectableInsideForm = false
 ) => {
   const teamsResponse = page.waitForResponse(
-    '/api/v1/search/query?q=*&from=0&size=*&index=team_search_index&deleted=false&sort_field=displayName.keyword&sort_order=asc'
+    '/api/v1/search/query?q=&index=team_search_index&from=0&size=*&sort_field=displayName.keyword&sort_order=asc'
   );
 
   const teamsSearchResponse = page.waitForResponse(
@@ -718,7 +718,9 @@ export const validateGlossaryTerm = async (
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
   } else {
+    await expect(page.locator(termSelector)).toBeVisible();
     await expect(page.locator(termSelector)).toContainText(term.name);
+    await expect(page.locator(statusSelector)).toBeVisible();
     await expect(page.locator(statusSelector)).toContainText(status);
   }
 };
@@ -1681,4 +1683,14 @@ export const setupGlossaryDenyPermissionTest = async (
     dataConsumerRole,
     cleanup,
   };
+};
+
+export const performExpandAll = async (page: Page) => {
+  const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
+  await page.getByTestId('expand-collapse-all-button').click();
+  await termRes;
+
+  await page.waitForSelector('[data-testid="loader"]', {
+    state: 'detached',
+  });
 };
