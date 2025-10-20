@@ -40,6 +40,8 @@ import static org.openmetadata.service.jdbi3.TestCaseRepository.FAILED_ROWS_SAMP
 import static org.openmetadata.service.security.SecurityUtil.authHeaders;
 import static org.openmetadata.service.security.SecurityUtil.getPrincipalName;
 import static org.openmetadata.service.security.mask.PIIMasker.MASKED_VALUE;
+import static org.openmetadata.service.util.EntityUtil.fieldAdded;
+import static org.openmetadata.service.util.EntityUtil.fieldDeleted;
 import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
 import static org.openmetadata.service.util.TestUtils.INGESTION_BOT;
@@ -56,13 +58,24 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
 import jakarta.ws.rs.client.WebTarget;
 import java.io.IOException;
 import java.text.ParseException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -117,6 +130,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataQualityDimensions;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableData;
@@ -182,6 +196,8 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
         "dataQuality/testCases",
         TestCaseResource.FIELDS);
     supportsTags = false; // Test cases do not support setting tags directly (inherits from Entity)
+    supportsFollowers =
+        false; // Test cases do not support setting followers directly (inherits from parent table)
     testCaseResultsCollectionName = "dataQuality/testCases/testCaseResults";
     supportsEtag = false;
   }
@@ -1616,7 +1632,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     // Get the test case resolution by FQN
     Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("testCaseFQN", TEST_TABLE1.getFullyQualifiedName());
+    queryParams.put("testCaseFQN", testCaseEntity2.getFullyQualifiedName());
     storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
     assertTrue(
         storedTestCaseResolutions.getData().stream()
@@ -1624,7 +1640,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                 t ->
                     t.getTestCaseReference()
                         .getFullyQualifiedName()
-                        .equals(testCaseEntity1.getFullyQualifiedName())));
+                        .equals(testCaseEntity2.getFullyQualifiedName())));
 
     // Get the test case resolution by origin entity FQN
     queryParams.clear();
@@ -1639,8 +1655,10 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     }
 
     queryParams.put("originEntityFQN", "IDONOTEXIST123");
-    storedTestCaseResolutions = getTestCaseFailureStatus(startTs, endTs, null, null, queryParams);
-    assertEquals(0, storedTestCaseResolutions.getData().size());
+    assertResponse(
+        () -> getTestCaseFailureStatus(startTs, endTs, null, null, queryParams),
+        NOT_FOUND,
+        "table instance for IDONOTEXIST123 not found");
 
     // Delete test case recursively and check that the test case resolution status is also deleted
     // 1. soft delete - should not delete the test case resolution status
@@ -1729,32 +1747,91 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
-  void patch_TestCaseResultFailure(TestInfo test) throws HttpResponseException {
-    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+  void patch_TestCaseResultFailure(TestInfo test) throws IOException {
+    // Create a table owned by USER_TABLE_OWNER to test owner permissions
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("ownerAuthTestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)))
+            .withOwners(List.of(USER_TABLE_OWNER.getEntityReference()));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    CreateTestCase createTestCase = createRequest(test);
+    createTestCase
+        .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")))
+        .withOwners(List.of(USER_TABLE_OWNER.getEntityReference()));
+    TestCase testCaseEntity = createAndCheckEntity(createTestCase, ADMIN_AUTH_HEADERS);
+
     CreateTestCaseResolutionStatus createTestCaseFailureStatus =
         new CreateTestCaseResolutionStatus()
             .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
             .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack)
             .withSeverity(Severity.Severity2)
             .withTestCaseResolutionStatusDetails(null);
+
+    // Test 1: Admin can create incident status
     TestCaseResolutionStatus testCaseFailureStatus =
         createTestCaseFailureStatus(createTestCaseFailureStatus);
+
+    // Test 2: USER_TABLE_OWNER (owner with EDIT_TESTS via isOwner() policy) can patch
     String original = JsonUtils.pojoToJson(testCaseFailureStatus);
     String updated =
         JsonUtils.pojoToJson(
             testCaseFailureStatus
                 .withUpdatedAt(System.currentTimeMillis())
-                .withUpdatedBy(USER1_REF)
+                .withUpdatedBy(USER_TABLE_OWNER.getEntityReference())
                 .withSeverity(Severity.Severity1));
     JsonNode patch = TestUtils.getJsonPatch(original, updated);
     TestCaseResolutionStatus patched =
-        patchTestCaseResultFailureStatus(testCaseFailureStatus.getId(), patch);
+        patchTestCaseResultFailureStatus(
+            testCaseFailureStatus.getId(), patch, authHeaders(USER_TABLE_OWNER.getName()));
     TestCaseResolutionStatus stored = getTestCaseFailureStatus(testCaseFailureStatus.getId());
 
     // check our patch fields have been updated
     assertEquals(patched.getUpdatedAt(), stored.getUpdatedAt());
     assertEquals(patched.getUpdatedBy(), stored.getUpdatedBy());
-    assertEquals(patched.getSeverity(), stored.getSeverity());
+    assertEquals(Severity.Severity1, stored.getSeverity());
+
+    // Test 3: USER_NO_PERMISSIONS cannot patch (not owner, no EDIT_ALL)
+    String updatedForNoPerms =
+        JsonUtils.pojoToJson(
+            stored
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_NO_PERMISSIONS.getEntityReference())
+                .withSeverity(Severity.Severity3));
+    JsonNode patchForNoPerms =
+        TestUtils.getJsonPatch(JsonUtils.pojoToJson(stored), updatedForNoPerms);
+    assertResponse(
+        () ->
+            patchTestCaseResultFailureStatus(
+                stored.getId(), patchForNoPerms, authHeaders(USER_NO_PERMISSIONS.getName())),
+        FORBIDDEN,
+        "User does not have ANY of the required permissions.");
+
+    // Test 4: CREATE_ALL_OPS_USER (with EDIT_ALL on TEST_CASE) can patch even if not owner
+    String updatedForAllOps =
+        JsonUtils.pojoToJson(
+            stored
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(CREATE_ALL_OPS_USER.getEntityReference())
+                .withSeverity(Severity.Severity4));
+    JsonNode patchForAllOps =
+        TestUtils.getJsonPatch(
+            JsonUtils.pojoToJson(
+                stored.withSeverity(
+                    Severity.Severity3)), // restore to previous state as modified ln 1823
+            updatedForAllOps);
+    TestCaseResolutionStatus patchedByAllOps =
+        patchTestCaseResultFailureStatus(
+            stored.getId(), patchForAllOps, authHeaders(CREATE_ALL_OPS_USER.getName()));
+    assertEquals(Severity.Severity4, patchedByAllOps.getSeverity());
   }
 
   @Test
@@ -2123,6 +2200,216 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
                       MessageParser.EntityLink.parse(t.getEntityLink());
                   return entityLink.getFieldName() == null; // should be empty for table test cases
                 }));
+  }
+
+  @Test
+  void test_incidentStatusPermissions(TestInfo test) throws IOException, ParseException {
+    // Create a table without specific ownership for testing permissions
+    TableResourceTest tableResourceTest = new TableResourceTest();
+    CreateTable tableReq =
+        tableResourceTest
+            .createRequest(test)
+            .withName("permissionTestTable")
+            .withDatabaseSchema(DATABASE_SCHEMA.getFullyQualifiedName())
+            .withColumns(
+                List.of(new Column().withName(C1).withDisplayName("c1").withDataType(BIGINT)));
+    Table table = tableResourceTest.createAndCheckEntity(tableReq, ADMIN_AUTH_HEADERS);
+
+    // Create a test case for the table
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(String.format("<#E::table::%s>", table.getFullyQualifiedName()))
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add a failed test result to create an incident
+    postTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    CreateTestCaseResolutionStatus createIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
+
+    // Test 1: User with EDIT_TESTS permission on Table should be able to create incident
+    TestCaseResolutionStatus incident1 =
+        createTestCaseFailureStatus(createIncident, authHeaders(USER_TABLE_EDIT_TESTS.getName()));
+    assertNotNull(incident1);
+    assertEquals(
+        TestCaseResolutionStatusTypes.Assigned, incident1.getTestCaseResolutionStatusType());
+
+    // Test 2: User with EDIT_TESTS permission on Table should be able to update incident
+    String original1 = JsonUtils.pojoToJson(incident1);
+    String updated1 =
+        JsonUtils.pojoToJson(
+            incident1
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_TABLE_EDIT_TESTS.getEntityReference())
+                .withSeverity(Severity.Severity1));
+    JsonNode patch1 = TestUtils.getJsonPatch(original1, updated1);
+    TestCaseResolutionStatus patched1 =
+        patchTestCaseResultFailureStatus(
+            incident1.getId(), patch1, authHeaders(USER_TABLE_EDIT_TESTS.getName()));
+    assertEquals(Severity.Severity1, patched1.getSeverity());
+
+    // Test 3: User with EDIT_ALL permission on TestCase should be able to create incident
+    CreateTestCaseResolutionStatus createIncident2 =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+            .withTestCaseResolutionStatusDetails(new Resolved());
+
+    TestCaseResolutionStatus incident2 =
+        createTestCaseFailureStatus(createIncident2, authHeaders(USER_TEST_CASE_UPDATE.getName()));
+    assertNotNull(incident2);
+    assertEquals(
+        TestCaseResolutionStatusTypes.Resolved, incident2.getTestCaseResolutionStatusType());
+
+    // Test 4: User with EDIT_ALL permission on TestCase should be able to update incident
+    String original2 = JsonUtils.pojoToJson(incident2);
+    String updated2 =
+        JsonUtils.pojoToJson(
+            incident2
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_TEST_CASE_UPDATE.getEntityReference())
+                .withSeverity(Severity.Severity2));
+    JsonNode patch2 = TestUtils.getJsonPatch(original2, updated2);
+    TestCaseResolutionStatus patched2 =
+        patchTestCaseResultFailureStatus(
+            incident2.getId(), patch2, authHeaders(USER_TEST_CASE_UPDATE.getName()));
+    assertEquals(Severity.Severity2, patched2.getSeverity());
+
+    // Test 5: User with ALL permissions should be able to create incident
+    TestCaseResolutionStatus incident3 =
+        createTestCaseFailureStatus(createIncident, authHeaders(CREATE_ALL_OPS_USER.getName()));
+    assertNotNull(incident3);
+
+    // Test 6: User with ALL permissions should be able to update incident
+    String original3 = JsonUtils.pojoToJson(incident3);
+    String updated3 =
+        JsonUtils.pojoToJson(
+            incident3
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(CREATE_ALL_OPS_USER.getEntityReference())
+                .withSeverity(Severity.Severity3));
+    JsonNode patch3 = TestUtils.getJsonPatch(original3, updated3);
+    TestCaseResolutionStatus patched3 =
+        patchTestCaseResultFailureStatus(
+            incident3.getId(), patch3, authHeaders(CREATE_ALL_OPS_USER.getName()));
+    assertEquals(Severity.Severity3, patched3.getSeverity());
+
+    // Test 7: User without required permissions should NOT be able to create incident
+    assertThrows(
+        HttpResponseException.class,
+        () ->
+            createTestCaseFailureStatus(createIncident, authHeaders(USER_NO_PERMISSIONS.getName())),
+        "User without permissions should not be able to create incident status");
+
+    // Test 8: User without required permissions should NOT be able to update incident
+    String originalNoPerms = JsonUtils.pojoToJson(incident1);
+    String updatedNoPerms =
+        JsonUtils.pojoToJson(
+            incident1
+                .withUpdatedAt(System.currentTimeMillis())
+                .withUpdatedBy(USER_NO_PERMISSIONS.getEntityReference())
+                .withSeverity(Severity.Severity4));
+    JsonNode patchNoPerms = TestUtils.getJsonPatch(originalNoPerms, updatedNoPerms);
+
+    assertThrows(
+        HttpResponseException.class,
+        () ->
+            patchTestCaseResultFailureStatus(
+                incident1.getId(), patchNoPerms, authHeaders(USER_NO_PERMISSIONS.getName())),
+        "User without permissions should not be able to update incident status");
+  }
+
+  @Test
+  void test_getTestCaseResolutionStatusPermissions(TestInfo test)
+      throws IOException, ParseException {
+    // Create a test case to test TestCaseResolutionStatus GET permissions
+    CreateTestCase create = createRequest(test);
+    create
+        .withEntityLink(TABLE_LINK)
+        .withTestDefinition(TEST_DEFINITION4.getFullyQualifiedName())
+        .withParameterValues(
+            List.of(new TestCaseParameterValue().withValue("100").withName("maxValue")));
+    TestCase testCase = createAndCheckEntity(create, ADMIN_AUTH_HEADERS);
+
+    // Add a failed test result to create an incident
+    postTestCaseResult(
+        testCase.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("failed")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    // Create a test case resolution status (incident)
+    CreateTestCaseResolutionStatus createIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(USER1_REF));
+    TestCaseResolutionStatus incident =
+        createTestCaseFailureStatus(createIncident, ADMIN_AUTH_HEADERS);
+
+    // Test GET by ID endpoint permissions for TestCaseResolutionStatus
+    // Admin should be able to retrieve test case resolution status
+    TestCaseResolutionStatus retrievedIncident1 =
+        getTestCaseFailureStatus(incident.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(retrievedIncident1);
+
+    // Data consumer should be able to view test case resolution status (has VIEW permissions)
+    TestCaseResolutionStatus retrievedIncident2 =
+        getTestCaseFailureStatus(incident.getId(), authHeaders(DATA_CONSUMER.getName()));
+    assertNotNull(retrievedIncident2);
+
+    // Data steward should be able to view test case resolution status (has VIEW permissions)
+    TestCaseResolutionStatus retrievedIncident3 =
+        getTestCaseFailureStatus(incident.getId(), authHeaders(DATA_STEWARD.getName()));
+    assertNotNull(retrievedIncident3);
+
+    // Test GET list endpoint permissions for TestCaseResolutionStatus with testCaseFQN parameter
+    // Admin should be able to list test case resolution statuses
+    ResultList<TestCaseResolutionStatus> listResult1 =
+        listTestCaseFailureStatusWithFQN(testCase.getFullyQualifiedName(), ADMIN_AUTH_HEADERS);
+    assertNotNull(listResult1);
+
+    // Data consumer should be able to list test case resolution statuses
+    ResultList<TestCaseResolutionStatus> listResult2 =
+        listTestCaseFailureStatusWithFQN(
+            testCase.getFullyQualifiedName(), authHeaders(DATA_CONSUMER.getName()));
+    assertNotNull(listResult2);
+
+    // Data steward should be able to list test case resolution statuses
+    ResultList<TestCaseResolutionStatus> listResult3 =
+        listTestCaseFailureStatusWithFQN(
+            testCase.getFullyQualifiedName(), authHeaders(DATA_STEWARD.getName()));
+    assertNotNull(listResult3);
+
+    // Test GET list endpoint permissions for TestCaseResolutionStatus with testCaseId parameter
+    // Admin should be able to list test case resolution statuses by test case ID
+    ResultList<TestCaseResolutionStatus> listResult4 =
+        listTestCaseFailureStatusWithId(testCase.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(listResult4);
+
+    // Data consumer should be able to list test case resolution statuses by test case ID
+    ResultList<TestCaseResolutionStatus> listResult5 =
+        listTestCaseFailureStatusWithId(testCase.getId(), authHeaders(DATA_CONSUMER.getName()));
+    assertNotNull(listResult5);
+
+    // Data steward should be able to list test case resolution statuses by test case ID
+    ResultList<TestCaseResolutionStatus> listResult6 =
+        listTestCaseFailureStatusWithId(testCase.getId(), authHeaders(DATA_STEWARD.getName()));
+    assertNotNull(listResult6);
   }
 
   @Test
@@ -3142,6 +3429,21 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
     return TestUtils.get(target, TestCaseResultResource.TestCaseResultList.class, authHeader);
   }
 
+  public ResultList<TestCase> listTestCasesFromSearch(
+      Map<String, String> queryParams,
+      Integer limit,
+      Integer offset,
+      Map<String, String> authHeader)
+      throws HttpResponseException {
+    WebTarget target = getCollection().path("/search/list");
+    for (Map.Entry<String, String> entry : queryParams.entrySet()) {
+      target = target.queryParam(entry.getKey(), entry.getValue());
+    }
+    target = limit != null ? target.queryParam("limit", limit) : target;
+    target = offset != null ? target.queryParam("offset", offset) : target;
+    return TestUtils.get(target, TestCaseResource.TestCaseList.class, authHeader);
+  }
+
   protected void validateListTestCaseResultsFromSearchWithPagination(
       Map<String, String> queryParams, Integer maxEntities, String path) throws IOException {
     // List all entities and use it for checking pagination
@@ -3250,11 +3552,16 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   private void deleteLogicalTestCase(TestSuite testSuite, UUID testCaseId) throws IOException {
+    deleteLogicalTestCase(testSuite, testCaseId, ADMIN_AUTH_HEADERS);
+  }
+
+  private void deleteLogicalTestCase(
+      TestSuite testSuite, UUID testCaseId, Map<String, String> authHeaders) throws IOException {
     WebTarget target =
         getCollection()
             .path(
                 "/logicalTestCases/" + testSuite.getId().toString() + "/" + testCaseId.toString());
-    TestUtils.delete(target, ADMIN_AUTH_HEADERS);
+    TestUtils.delete(target, authHeaders);
   }
 
   private boolean assertTestCaseIdNotInList(
@@ -3640,19 +3947,27 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
   private TestCaseResolutionStatus createTestCaseFailureStatus(
       CreateTestCaseResolutionStatus createTestCaseFailureStatus) throws HttpResponseException {
+    return createTestCaseFailureStatus(createTestCaseFailureStatus, ADMIN_AUTH_HEADERS);
+  }
+
+  private TestCaseResolutionStatus createTestCaseFailureStatus(
+      CreateTestCaseResolutionStatus createTestCaseFailureStatus, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus");
     return TestUtils.post(
-        target,
-        createTestCaseFailureStatus,
-        TestCaseResolutionStatus.class,
-        200,
-        ADMIN_AUTH_HEADERS);
+        target, createTestCaseFailureStatus, TestCaseResolutionStatus.class, 200, authHeaders);
   }
 
   private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
       UUID testCaseFailureStatusId, JsonNode patch) throws HttpResponseException {
+    return patchTestCaseResultFailureStatus(testCaseFailureStatusId, patch, ADMIN_AUTH_HEADERS);
+  }
+
+  private TestCaseResolutionStatus patchTestCaseResultFailureStatus(
+      UUID testCaseFailureStatusId, JsonNode patch, Map<String, String> authHeaders)
+      throws HttpResponseException {
     WebTarget target = getCollection().path("/testCaseIncidentStatus/" + testCaseFailureStatusId);
-    return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, ADMIN_AUTH_HEADERS);
+    return TestUtils.patch(target, patch, TestCaseResolutionStatus.class, authHeaders);
   }
 
   private TestCaseResolutionStatus getTestCaseFailureStatus(UUID testCaseFailureStatusId)
@@ -4124,66 +4439,6 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
 
     assertNull(nullValueResult.getPassedRows(), "Passed rows should be null when not set");
     assertNull(nullValueResult.getFailedRows(), "Failed rows should be null when not set");
-  }
-
-  @Test
-  void test_userAssignmentRemovedAfterUserDeletion(TestInfo test)
-      throws HttpResponseException, ParseException {
-    // Create a test user
-    UserResourceTest userResourceTest = new UserResourceTest();
-    CreateUser createUser = userResourceTest.createRequest("testAssigneeUser" + UUID.randomUUID());
-    User testUser = userResourceTest.createAndCheckEntity(createUser, ADMIN_AUTH_HEADERS);
-    EntityReference testUserRef = testUser.getEntityReference();
-
-    // Create a test case
-    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
-
-    // Add a failed test case result, which will create a NEW incident
-    postTestCaseResult(
-        testCaseEntity.getFullyQualifiedName(),
-        new CreateTestCaseResult()
-            .withResult("test failure result")
-            .withTestCaseStatus(TestCaseStatus.Failed)
-            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
-        ADMIN_AUTH_HEADERS);
-
-    // Assign the test user to the test case incident
-    CreateTestCaseResolutionStatus createAssignedIncident =
-        new CreateTestCaseResolutionStatus()
-            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
-            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
-            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(testUserRef));
-
-    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
-
-    // Verify the user is assigned to the incident
-    assertNotNull(assignedIncident.getTestCaseResolutionStatusDetails());
-    assertTrue(assignedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned);
-    Assigned assignedDetails = (Assigned) assignedIncident.getTestCaseResolutionStatusDetails();
-    assertEquals(testUserRef.getId(), assignedDetails.getAssignee().getId());
-    assertEquals(testUserRef.getName(), assignedDetails.getAssignee().getName());
-
-    // Delete the user
-    userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
-
-    // Retrieve the incident status and verify the user assignment is removed after user deletion
-    TestCaseResolutionStatus retrievedIncident = getTestCaseFailureStatus(assignedIncident.getId());
-
-    // The user should no longer be assigned to the incident after deletion
-    // The incident should either have no assignee or the assignee reference should be null
-    if (retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned) {
-      Assigned retrievedAssignedDetails =
-          (Assigned) retrievedIncident.getTestCaseResolutionStatusDetails();
-      assertNull(
-          retrievedAssignedDetails.getAssignee(),
-          "User should no longer be assigned after deletion");
-    } else {
-      // The incident status type may have changed from Assigned to something else after user
-      // deletion
-      assertFalse(
-          retrievedIncident.getTestCaseResolutionStatusDetails() instanceof Assigned,
-          "Incident should no longer have an assigned status after user deletion");
-    }
   }
 
   @Test
@@ -4795,5 +5050,48 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("dataQuality/testCases/testCaseIncidentStatus/" + id);
     return TestUtils.get(target, TestCaseResolutionStatus.class, authHeaders);
+  }
+
+  @Test
+  void test_userAssignmentRemovedAfterUserDeletion(TestInfo test)
+      throws IOException, ParseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser = userResourceTest.createRequest("testAssigneeUser" + UUID.randomUUID());
+    User testUser = userResourceTest.createAndCheckEntity(createUser, ADMIN_AUTH_HEADERS);
+    EntityReference testUserRef = testUser.getEntityReference();
+
+    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+
+    postTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("test failure result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    CreateTestCaseResolutionStatus createAssignedIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(testUserRef));
+
+    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
+
+    assertNotNull(assignedIncident.getTestCaseResolutionStatusDetails());
+    ObjectMapper mapper = new ObjectMapper();
+    Assigned assignedDetails =
+        mapper.convertValue(assignedIncident.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertEquals(testUserRef.getId(), assignedDetails.getAssignee().getId());
+    assertEquals(testUserRef.getName(), assignedDetails.getAssignee().getName());
+
+    userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
+
+    TestCaseResolutionStatus retrievedIncident = getTestCaseFailureStatus(assignedIncident.getId());
+
+    Assigned retrievedAssignedDetails =
+        mapper.convertValue(retrievedIncident.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertNull(
+        retrievedAssignedDetails.getAssignee(), "User should no longer be assigned after deletion");
   }
 }
