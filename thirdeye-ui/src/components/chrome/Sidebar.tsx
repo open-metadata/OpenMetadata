@@ -51,7 +51,7 @@ export default function Sidebar() {
               {/* Brand */}
               <div className="p-4">
                 <Link href="/dashboard/thirdeye" className="flex items-center">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                  <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
                     ZeroHuman
                   </h1>
                 </Link>
