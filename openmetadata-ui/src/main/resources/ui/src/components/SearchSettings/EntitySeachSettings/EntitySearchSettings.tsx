@@ -39,6 +39,7 @@ import {
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
+import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import {
   getSettingsByType,
   restoreSettingsConfig,
@@ -97,6 +98,9 @@ const EntitySearchSettings = () => {
     FieldValueBoost | undefined
   >();
   const [allowedFields, setAllowedFields] = useState<AllowedSearchFields[]>([]);
+  const [customProperties, setCustomProperties] = useState<AllowedFieldField[]>(
+    []
+  );
   const [activeKey, setActiveKey] = useState<string>('1');
   const [lastAddedSearchField, setLastAddedSearchField] = useState<
     string | null
@@ -144,11 +148,13 @@ const EntitySearchSettings = () => {
       allowedFields.find((field) => field.entityType === entityType)?.fields ??
       [];
 
-    return currentEntityFields.map((field) => ({
+    const regularFields = currentEntityFields.map((field) => ({
       name: field.name,
       description: field.description,
     }));
-  }, [allowedFields, entityType]);
+
+    return [...regularFields, ...customProperties];
+  }, [allowedFields, entityType, customProperties]);
 
   const fieldValueBoostOptions = useMemo(() => {
     if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
@@ -494,6 +500,25 @@ const EntitySearchSettings = () => {
     setActiveKey(Array.isArray(key) ? key[0] : key);
   };
 
+  const fetchCustomProperties = async () => {
+    try {
+      const properties = await getCustomPropertiesByEntityType(entityType);
+
+      const formattedProperties: AllowedFieldField[] = properties.map(
+        (prop) => ({
+          name: `extension.${prop.name}`,
+          description: `${
+            prop.description ?? prop.displayName
+          } (Custom Property)`,
+        })
+      );
+
+      setCustomProperties(formattedProperties);
+    } catch (error) {
+      setCustomProperties([]);
+    }
+  };
+
   useEffect(() => {
     fetchSearchConfig();
   }, []);
@@ -503,6 +528,12 @@ const EntitySearchSettings = () => {
       setAllowedFields(searchConfig?.allowedFields ?? []);
     }
   }, [searchConfig]);
+
+  useEffect(() => {
+    if (entityType) {
+      fetchCustomProperties();
+    }
+  }, [entityType]);
 
   useEffect(() => {
     if (getEntityConfiguration) {
