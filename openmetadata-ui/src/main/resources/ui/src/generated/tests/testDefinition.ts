@@ -422,7 +422,7 @@ export enum DataType {
  * This schema defines the platform where tests are defined and ran.
  */
 export enum TestPlatform {
-    Dbt = "dbt",
+    Dbt = "DBT",
     Deequ = "Deequ",
     GreatExpectations = "GreatExpectations",
     OpenMetadata = "OpenMetadata",
