@@ -55,13 +55,7 @@ if [ ! -f "$ROOT_DIR/thirdeye-ui/.env.local" ]; then
         cp "$ROOT_DIR/thirdeye-ui/env.production.template" "$ROOT_DIR/thirdeye-ui/.env.local"
         echo -e "${GREEN}✓ Created .env.local${NC}"
         echo ""
-        echo -e "${YELLOW}IMPORTANT: Update JWT_SECRET in .env.local${NC}"
-        echo "Run this command to generate a secure secret:"
-        echo "  node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\""
-        echo ""
-        echo "Then update the JWT_SECRET in: $ROOT_DIR/thirdeye-ui/.env.local"
-        echo ""
-        read -p "Press Enter once you've updated the JWT_SECRET..."
+        echo -e "${GREEN}✓ JWT_SECRET already configured in template${NC}"
     else
         echo -e "${RED}ERROR: Template file not found!${NC}"
         exit 1
