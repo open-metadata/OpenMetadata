@@ -53,6 +53,8 @@ export function middleware(request: NextRequest) {
     '/api/auth/signup',     // Sign up API
     '/api/auth/reset-password', // Password reset API
     '/api/auth/verify-email',   // Email verification API
+    '/api/auth/google',     // Google OAuth initiation
+    '/api/auth/google/callback', // Google OAuth callback
     '/api/auth/logout',     // Logout API
     '/api/auth/me',         // User info API
     '/api/connection',      // Connection API

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, Suspense } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -16,6 +16,7 @@ function SigninContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const message = searchParams.get('message');
+  const error = searchParams.get('error');
   
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -24,6 +25,18 @@ function SigninContent() {
     password: '',
     rememberMe: false
   });
+
+  // Show OAuth errors if present
+  useEffect(() => {
+    if (error) {
+      const errorMessages: Record<string, string> = {
+        'missing_token': 'Authentication failed: No token received',
+        'authentication_failed': 'Google authentication failed. Please try again.',
+        'access_denied': 'Access denied. You cancelled the login.',
+      };
+      toast.error(errorMessages[error] || 'Authentication error occurred');
+    }
+  }, [error]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -52,8 +65,9 @@ function SigninContent() {
   };
 
   const handleGoogleSignin = () => {
-    // Implement Google OAuth
-    toast.info('Google signin coming soon!');
+    // Redirect to Google OAuth endpoint
+    const callbackUrl = searchParams.get('callbackUrl') || '/dashboard/thirdeye';
+    window.location.href = `/api/auth/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
   };
 
   const handleSnowflakeSignin = () => {
