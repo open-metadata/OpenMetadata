@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { 
   ArrowRight, BarChart3, Search, Bot, Shield, Database, Zap, 
   Clock, Layers, ShieldAlert, Network, Eye, Lock, 
@@ -149,13 +148,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-3">
             <div className="flex items-center">
-              <Image
-                src="/logo.png"
-                alt="ZeroHuman"
-                width={140}
-                height={36}
-                className="h-9 w-auto"
-              />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                ThirdEye
+              </h1>
             </div>
             <div className="flex items-center space-x-3">
               <Link href="/auth/signin">
@@ -393,13 +388,9 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center">
-              <Image
-                src="/logo.png"
-                alt="ZeroHuman"
-                width={120}
-                height={32}
-                className="h-8 w-auto"
-              />
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                ThirdEye
+              </h1>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-600">
               <Link href="#" className="hover:text-indigo-600 transition-colors">Try ZeroHuman Sandbox</Link>

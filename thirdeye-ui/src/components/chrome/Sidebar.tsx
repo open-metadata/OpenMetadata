@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Settings,
@@ -52,13 +51,9 @@ export default function Sidebar() {
               {/* Brand */}
               <div className="p-4">
                 <Link href="/dashboard/thirdeye" className="flex items-center">
-                  <Image
-                    src="/logo.png"
-                    alt="ZeroHuman"
-                    width={120}
-                    height={32}
-                    className="h-8 w-auto"
-                  />
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+                    ThirdEye
+                  </h1>
                 </Link>
               </div>
 

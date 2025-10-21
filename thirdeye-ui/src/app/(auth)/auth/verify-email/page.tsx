@@ -2,7 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle, XCircle, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -51,13 +50,9 @@ function VerifyEmailContent() {
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <div className="flex justify-center mb-4">
-            <Image
-              src="/logo.png"
-              alt="ZeroHuman"
-              width={160}
-              height={42}
-              className="h-10 w-auto"
-            />
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+              ThirdEye
+            </h1>
           </div>
           <p className="text-sm text-gray-600">
             Email Verification
