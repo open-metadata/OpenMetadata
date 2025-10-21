@@ -57,10 +57,15 @@ cd /path/to/OpenMetadata
 git pull origin feat/thirdeye-service-internal
 ```
 
-**Option A: Use Automated Script (Recommended)**
+**Option A: Use Automated Scripts (Recommended)**
 ```bash
+# Step 1: Deploy Google OAuth configuration
 chmod +x deployment/deploy-google-oauth.sh
 ./deployment/deploy-google-oauth.sh
+
+# Step 2: Start ThirdEye UI
+chmod +x deployment/run-thirdeye-ui.sh
+./deployment/run-thirdeye-ui.sh
 ```
 
 **Option B: Manual Deployment**
@@ -193,7 +198,8 @@ sudo systemctl stop nginx
 - **GOOGLE_OAUTH_SERVER_SETUP.md** - Complete setup guide
 - **GOOGLE_OAUTH_QUICK_REFERENCE.md** - Quick command reference
 - **thirdeye-ui/PORT_80_SETUP.md** - Port 80 configuration guide
-- **deployment/deploy-google-oauth.sh** - Automated deployment script
+- **deployment/deploy-google-oauth.sh** - Automated OAuth configuration script
+- **deployment/run-thirdeye-ui.sh** - ThirdEye UI start script
 
 ---
 

@@ -113,65 +113,35 @@ else
 fi
 echo ""
 
-# Build and deploy ThirdEye UI
-echo -e "${YELLOW}Step 7: Deploying ThirdEye UI...${NC}"
-cd "$ROOT_DIR/thirdeye-ui"
-
-# Check if node_modules exists
-if [ ! -d "node_modules" ]; then
-    echo "Installing dependencies..."
-    npm install
-fi
-
-echo "Building production bundle..."
-npm run build
-
-# Setup port 80 permissions
-echo "Setting up permissions for port 80..."
-if command -v setcap &> /dev/null; then
-    echo "Using setcap to allow Node.js to bind to port 80..."
-    sudo setcap 'cap_net_bind_service=+ep' $(which node) || true
-    echo -e "${GREEN}✓ Port 80 permissions configured${NC}"
-else
-    echo -e "${YELLOW}Warning: setcap not found. You may need to run with sudo${NC}"
-fi
-
-# Check if PM2 is installed
-if command -v pm2 &> /dev/null; then
-    echo "Using PM2 to start ThirdEye UI on port 80..."
-    pm2 delete thirdeye-ui 2>/dev/null || true
-    PORT=80 pm2 start npm --name "thirdeye-ui" -- run start
-    pm2 save
-    echo -e "${GREEN}✓ ThirdEye UI started with PM2 on port 80${NC}"
-else
-    echo -e "${YELLOW}PM2 not installed. Starting with npm...${NC}"
-    echo "For production, consider installing PM2:"
-    echo "  npm install -g pm2"
-    echo ""
-    echo "Starting ThirdEye UI on port 80..."
-    PORT=80 npm run start &
-    echo -e "${GREEN}✓ ThirdEye UI started on port 80${NC}"
-fi
+# ThirdEye UI setup complete
+echo -e "${YELLOW}Step 7: ThirdEye UI Configuration${NC}"
+echo -e "${GREEN}✓ Environment file ready for ThirdEye UI${NC}"
+echo ""
+echo -e "${YELLOW}To start ThirdEye UI, run:${NC}"
+echo "  ./deployment/run-thirdeye-ui.sh"
 echo ""
 
 # Summary
 echo "========================================="
-echo -e "${GREEN}Deployment Complete!${NC}"
+echo -e "${GREEN}Google OAuth Configuration Complete!${NC}"
 echo "========================================="
 echo ""
-echo "URLs:"
-echo "  OpenMetadata: http://coming.live:8585"
-echo "  ThirdEye UI:  http://coming.live"
-echo "  Sign In:      http://coming.live/auth/signin"
+echo "OpenMetadata with Google OAuth:"
+echo "  URL:  http://coming.live:8585"
+echo "  Logs: docker-compose logs -f openmetadata-server"
 echo ""
 echo "Next Steps:"
-echo "  1. Open http://coming.live/auth/signin in your browser"
-echo "  2. Click 'Continue with Google'"
-echo "  3. Complete Google authentication"
-echo "  4. You should be redirected to the ThirdEye dashboard"
+echo "  1. Start ThirdEye UI:"
+echo "     ./deployment/run-thirdeye-ui.sh"
 echo ""
-echo "Logs:"
-echo "  OpenMetadata: docker-compose logs -f openmetadata-server"
-echo "  ThirdEye UI:  pm2 logs thirdeye-ui  (if using PM2)"
+echo "  2. Test Google OAuth:"
+echo "     - Open http://coming.live/auth/signin"
+echo "     - Click 'Continue with Google'"
+echo "     - Complete authentication"
+echo "     - You should be redirected to the ThirdEye dashboard"
+echo ""
+echo "Configuration files:"
+echo "  OpenMetadata: docker/docker-compose-quickstart/docker-compose.yml"
+echo "  ThirdEye UI:  thirdeye-ui/.env.local"
 echo ""
 
