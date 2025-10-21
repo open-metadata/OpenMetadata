@@ -20,7 +20,10 @@ class TestOwnerResolver(unittest.TestCase):
 
         # Mock successful owner lookup
         mock_owner = EntityReference(
-            id="owner-id", type="user", name="test-user", fullyQualifiedName="test-user"
+            id="123e4567-e89b-12d3-a456-426614174000",
+            type="user",
+            name="test-user",
+            fullyQualifiedName="test-user",
         )
         self.mock_owner_list = EntityReferenceList(root=[mock_owner])
 
@@ -232,30 +235,30 @@ class TestOwnerResolver(unittest.TestCase):
         )
 
     def test_multiple_owners_array(self):
-        """Test multiple owners specified as array"""
+        """Test multiple owners specified as array (users, not teams)"""
         config = {
             "default": "default-team",
-            "table": {"orders": ["sales-team", "finance-team"]},
+            "table": {"orders": ["john.doe", "jane.smith"]},
         }
 
-        mock_sales_owner = EntityReference(
-            id="sales-id",
-            type="team",
-            name="sales-team",
-            fullyQualifiedName="sales-team",
+        mock_john_owner = EntityReference(
+            id="923e4567-e89b-12d3-a456-426614174008",
+            type="user",
+            name="john.doe",
+            fullyQualifiedName="john.doe",
         )
-        mock_finance_owner = EntityReference(
-            id="finance-id",
-            type="team",
-            name="finance-team",
-            fullyQualifiedName="finance-team",
+        mock_jane_owner = EntityReference(
+            id="a23e4567-e89b-12d3-a456-426614174009",
+            type="user",
+            name="jane.smith",
+            fullyQualifiedName="jane.smith",
         )
 
         def mock_get_reference(name, is_owner=False):
-            if name == "sales-team":
-                return EntityReferenceList(root=[mock_sales_owner])
-            elif name == "finance-team":
-                return EntityReferenceList(root=[mock_finance_owner])
+            if name == "john.doe":
+                return EntityReferenceList(root=[mock_john_owner])
+            elif name == "jane.smith":
+                return EntityReferenceList(root=[mock_jane_owner])
             return None
 
         self.mock_metadata.get_reference_by_name.side_effect = mock_get_reference
@@ -265,33 +268,31 @@ class TestOwnerResolver(unittest.TestCase):
 
         self.assertIsNotNone(result)
         self.assertEqual(len(result.root), 2)
-        self.assertEqual(result.root[0].name, "sales-team")
-        self.assertEqual(result.root[1].name, "finance-team")
+        self.assertEqual(result.root[0].name, "john.doe")
+        self.assertEqual(result.root[1].name, "jane.smith")
 
     def test_multiple_owners_partial_success(self):
-        """Test that partial success works when some owners are not found"""
-        config = {
-            "table": {"orders": ["sales-team", "nonexistent-team", "finance-team"]}
-        }
+        """Test that partial success works when some owners are not found (users)"""
+        config = {"table": {"orders": ["john.doe", "nonexistent-user", "jane.smith"]}}
 
-        mock_sales_owner = EntityReference(
-            id="sales-id",
-            type="team",
-            name="sales-team",
-            fullyQualifiedName="sales-team",
+        mock_john_owner = EntityReference(
+            id="423e4567-e89b-12d3-a456-426614174003",
+            type="user",
+            name="john.doe",
+            fullyQualifiedName="john.doe",
         )
-        mock_finance_owner = EntityReference(
-            id="finance-id",
-            type="team",
-            name="finance-team",
-            fullyQualifiedName="finance-team",
+        mock_jane_owner = EntityReference(
+            id="523e4567-e89b-12d3-a456-426614174004",
+            type="user",
+            name="jane.smith",
+            fullyQualifiedName="jane.smith",
         )
 
         def mock_get_reference(name, is_owner=False):
-            if name == "sales-team":
-                return EntityReferenceList(root=[mock_sales_owner])
-            elif name == "finance-team":
-                return EntityReferenceList(root=[mock_finance_owner])
+            if name == "john.doe":
+                return EntityReferenceList(root=[mock_john_owner])
+            elif name == "jane.smith":
+                return EntityReferenceList(root=[mock_jane_owner])
             return None
 
         self.mock_metadata.get_reference_by_name.side_effect = mock_get_reference
@@ -328,27 +329,27 @@ class TestOwnerResolver(unittest.TestCase):
         )
 
     def test_multiple_owners_with_fqn(self):
-        """Test multiple owners with FQN matching"""
-        config = {"table": {"sales_db.public.orders": ["sales-team", "audit-team"]}}
+        """Test multiple owners with FQN matching (users)"""
+        config = {"table": {"sales_db.public.orders": ["john.doe", "jane.smith"]}}
 
-        mock_sales_owner = EntityReference(
-            id="sales-id",
-            type="team",
-            name="sales-team",
-            fullyQualifiedName="sales-team",
+        mock_john_owner = EntityReference(
+            id="623e4567-e89b-12d3-a456-426614174005",
+            type="user",
+            name="john.doe",
+            fullyQualifiedName="john.doe",
         )
-        mock_audit_owner = EntityReference(
-            id="audit-id",
-            type="team",
-            name="audit-team",
-            fullyQualifiedName="audit-team",
+        mock_jane_owner = EntityReference(
+            id="723e4567-e89b-12d3-a456-426614174006",
+            type="user",
+            name="jane.smith",
+            fullyQualifiedName="jane.smith",
         )
 
         def mock_get_reference(name, is_owner=False):
-            if name == "sales-team":
-                return EntityReferenceList(root=[mock_sales_owner])
-            elif name == "audit-team":
-                return EntityReferenceList(root=[mock_audit_owner])
+            if name == "john.doe":
+                return EntityReferenceList(root=[mock_john_owner])
+            elif name == "jane.smith":
+                return EntityReferenceList(root=[mock_jane_owner])
             return None
 
         self.mock_metadata.get_reference_by_name.side_effect = mock_get_reference
@@ -369,7 +370,10 @@ class TestGetOwnerFromConfig(unittest.TestCase):
         """Set up test fixtures"""
         self.mock_metadata = MagicMock()
         mock_owner = EntityReference(
-            id="owner-id", type="user", name="test-user", fullyQualifiedName="test-user"
+            id="823e4567-e89b-12d3-a456-426614174007",
+            type="user",
+            name="test-user",
+            fullyQualifiedName="test-user",
         )
         self.mock_owner_list = EntityReferenceList(root=[mock_owner])
 
