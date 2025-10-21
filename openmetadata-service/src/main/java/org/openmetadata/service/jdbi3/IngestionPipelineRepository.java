@@ -54,6 +54,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
 import org.openmetadata.service.secrets.SecretsManager;
@@ -384,9 +385,16 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         addPipelineStatusChangeDescription(
             ingestionPipeline.getVersion(), pipelineStatus, storedPipelineStatus);
     ingestionPipeline.setPipelineStatuses(pipelineStatus);
+    ingestionPipeline.setChangeDescription(change);
+
+    // Ensure entity reference is set before firing lifecycle event
+    setFullyQualifiedName(ingestionPipeline);
 
     // Update ES Indexes
     searchRepository.updateEntityIndex(ingestionPipeline);
+
+    // Fire lifecycle event for handlers (e.g., TestSuitePipelineStatusHandler)
+    EntityLifecycleEventDispatcher.getInstance().onEntityUpdated(ingestionPipeline, change, null);
 
     ChangeEvent changeEvent =
         getChangeEvent(

@@ -25,7 +25,6 @@ import { DetailPageWidgetKeys } from '../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../enums/entity.enum';
 import { Table } from '../generated/entity/data/table';
 import { Tab } from '../generated/system/ui/uiCustomization';
-import { TestSummary } from '../generated/tests/testCase';
 import { FeedCounts } from '../interface/feed.interface';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import i18n from './i18next/LocalUtil';
@@ -49,7 +48,6 @@ export interface TableDetailPageTabProps {
   editCustomAttributePermission: boolean;
   deleted?: boolean;
   tableDetails?: Table;
-  testCaseSummary?: TestSummary;
   getEntityFeedCount: () => void;
   fetchTableDetails: () => Promise<void>;
   handleFeedCount: (data: FeedCounts) => void;

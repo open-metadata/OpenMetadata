@@ -12,8 +12,8 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Form } from 'antd';
-import React from 'react';
 import { Domain } from '../../../generated/entity/domains/domain';
+import '../../../test/unit/mocks/mui.mock';
 import { DomainFormType } from '../DomainPage.interface';
 import AddDomainForm from './AddDomainForm.component';
 
@@ -35,40 +35,6 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
 jest.mock('../../../utils/formUtils', () => ({
   generateFormFields: jest.fn().mockReturnValue(null),
   getField: jest.fn().mockReturnValue(null),
-}));
-
-// Mock MUI components comprehensively
-jest.mock('@mui/material', () => ({
-  Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  styled:
-    () =>
-    () =>
-    ({ children }: { children: React.ReactNode }) =>
-      <div>{children}</div>,
-  IconButton: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-  } & React.ButtonHTMLAttributes<HTMLButtonElement>) => (
-    <button {...props}>{children}</button>
-  ),
-  ToggleButtonGroup: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-  Menu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  MenuItem: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
-  Paper: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  ThemeProvider: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
-  createTheme: () => ({}),
-  useTheme: () => ({
-    palette: { mode: 'light' },
-    transitions: { duration: { shortest: 150 } },
-  }),
 }));
 
 const mockOnCancel = jest.fn();

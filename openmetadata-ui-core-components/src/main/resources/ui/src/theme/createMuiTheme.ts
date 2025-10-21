@@ -11,24 +11,24 @@
  *  limitations under the License.
  */
 
-import type { Shadows } from '@mui/material/styles';
-import { createTheme } from '@mui/material/styles';
-import { defaultColors } from '../colors/defaultColors';
-import { generateAllMuiPalettes } from '../colors/generateMuiPalettes';
-import type { CustomColors, ThemeColors } from '../types';
-import { buttonTheme } from './button-theme';
-import { dataDisplayTheme } from './data-display-theme';
-import { formTheme } from './form-theme';
-import './mui-theme-types';
-import { navigationTheme } from './navigation-theme';
-import { shadows } from './shadows';
+import type { Shadows } from "@mui/material/styles";
+import { createTheme } from "@mui/material/styles";
+import { defaultColors } from "../colors/defaultColors";
+import { generateAllMuiPalettes } from "../colors/generateMuiPalettes";
+import type { CustomColors, ThemeColors } from "../types";
+import { buttonTheme } from "./button-theme";
+import { dataDisplayTheme } from "./data-display-theme";
+import { formTheme } from "./form-theme";
+import "./mui-theme-types";
+import { navigationTheme } from "./navigation-theme";
+import { shadows } from "./shadows";
 import {
   BODY_FONT_SIZES,
   BODY_LINE_HEIGHTS,
   HEADING_FONT_SIZES,
   HEADING_LINE_HEIGHTS,
   ROOT_FONT_SIZE,
-} from './typography-constants';
+} from "./typography-constants";
 
 /**
  * Creates dynamic MUI theme with user customizations or default colors
@@ -142,82 +142,82 @@ export const createMuiTheme = (
         fontSize: HEADING_FONT_SIZES.H1,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H1,
-        letterSpacing: '-1.2px',
-        color: 'var(--color-text-primary)',
+        letterSpacing: "-1.2px",
+        color: "var(--color-text-primary)",
       },
       h2: {
         fontSize: HEADING_FONT_SIZES.H2,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H2,
-        letterSpacing: '-0.96px',
-        color: 'var(--color-text-primary)',
+        letterSpacing: "-0.96px",
+        color: "var(--color-text-primary)",
       },
       h3: {
         fontSize: HEADING_FONT_SIZES.H3,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H3,
-        letterSpacing: '-0.72px',
-        color: 'var(--color-text-primary)',
+        letterSpacing: "-0.72px",
+        color: "var(--color-text-primary)",
       },
       h4: {
         fontSize: HEADING_FONT_SIZES.H4,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H4,
-        color: 'var(--color-text-primary)',
+        color: "var(--color-text-primary)",
       },
       h5: {
         fontSize: HEADING_FONT_SIZES.H5,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H5,
-        color: 'var(--color-text-primary)',
+        color: "var(--color-text-primary)",
       },
       h6: {
         fontSize: HEADING_FONT_SIZES.H6,
         fontWeight: 600,
         lineHeight: HEADING_LINE_HEIGHTS.H6,
-        color: 'var(--color-text-primary)',
+        color: "var(--color-text-primary)",
       },
       subtitle1: {
         fontSize: BODY_FONT_SIZES.SUBTITLE1,
         lineHeight: BODY_LINE_HEIGHTS.SUBTITLE1,
         fontWeight: 400,
-        color: 'var(--color-text-secondary)',
+        color: "var(--color-text-secondary)",
       },
       subtitle2: {
         fontSize: BODY_FONT_SIZES.SUBTITLE2,
         lineHeight: BODY_LINE_HEIGHTS.SUBTITLE2,
         fontWeight: 500,
-        color: 'var(--color-text-secondary)',
+        color: "var(--color-text-secondary)",
       },
       body1: {
         fontSize: BODY_FONT_SIZES.BODY1,
         lineHeight: BODY_LINE_HEIGHTS.BODY1,
         fontWeight: 400,
-        color: 'var(--color-text-tertiary)',
+        color: "var(--color-text-tertiary)",
       },
       body2: {
         fontSize: BODY_FONT_SIZES.BODY2,
         lineHeight: BODY_LINE_HEIGHTS.BODY2,
         fontWeight: 400,
-        color: 'var(--color-text-tertiary)',
+        color: "var(--color-text-tertiary)",
       },
       caption: {
         fontSize: BODY_FONT_SIZES.CAPTION,
         lineHeight: BODY_LINE_HEIGHTS.CAPTION,
         fontWeight: 400,
-        color: 'var(--color-text-quaternary)',
+        color: "var(--color-text-quaternary)",
       },
       overline: {
         fontSize: BODY_FONT_SIZES.CAPTION,
         lineHeight: BODY_LINE_HEIGHTS.CAPTION,
         fontWeight: 600,
-        textTransform: 'uppercase' as const,
-        letterSpacing: '0.5px',
-        color: 'var(--color-text-quaternary)',
+        textTransform: "uppercase" as const,
+        letterSpacing: "0.5px",
+        color: "var(--color-text-quaternary)",
       },
       button: {
         fontSize: BODY_FONT_SIZES.BUTTON,
-        textTransform: 'none' as const,
+        textTransform: "none" as const,
         fontWeight: 600,
       },
     },
@@ -226,32 +226,32 @@ export const createMuiTheme = (
       borderRadius: 8,
     },
     shadows: [
-      'none',
+      "none",
       shadows.xs,
       shadows.sm,
       shadows.md,
       shadows.lg,
       shadows.xl,
-      shadows['2xl'],
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
+      shadows["2xl"],
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
       // Additional shadows for MUI's 25-shadow requirement
-      '0px 1px 3px rgba(10, 13, 18, 0.1), 0px 1px 2px -1px rgba(10, 13, 18, 0.1)',
-      '0px 4px 6px -1px rgba(10, 13, 18, 0.1), 0px 2px 4px -2px rgba(10, 13, 18, 0.06)',
-      '0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)',
-      '0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)',
-      '0px 20px 24px -4px rgba(10, 13, 18, 0.08), 0px 8px 8px -4px rgba(10, 13, 18, 0.03), 0px 3px 3px -1.5px rgba(10, 13, 18, 0.04)',
-      '0px 20px 24px -4px rgba(10, 13, 18, 0.08), 0px 8px 8px -4px rgba(10, 13, 18, 0.03), 0px 3px 3px -1.5px rgba(10, 13, 18, 0.04)',
-      '0px 24px 48px -12px rgba(10, 13, 18, 0.18), 0px 4px 4px -2px rgba(10, 13, 18, 0.04)',
-      '0px 24px 48px -12px rgba(10, 13, 18, 0.18), 0px 4px 4px -2px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
-      '0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)',
+      "0px 1px 3px rgba(10, 13, 18, 0.1), 0px 1px 2px -1px rgba(10, 13, 18, 0.1)",
+      "0px 4px 6px -1px rgba(10, 13, 18, 0.1), 0px 2px 4px -2px rgba(10, 13, 18, 0.06)",
+      "0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)",
+      "0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)",
+      "0px 20px 24px -4px rgba(10, 13, 18, 0.08), 0px 8px 8px -4px rgba(10, 13, 18, 0.03), 0px 3px 3px -1.5px rgba(10, 13, 18, 0.04)",
+      "0px 20px 24px -4px rgba(10, 13, 18, 0.08), 0px 8px 8px -4px rgba(10, 13, 18, 0.03), 0px 3px 3px -1.5px rgba(10, 13, 18, 0.04)",
+      "0px 24px 48px -12px rgba(10, 13, 18, 0.18), 0px 4px 4px -2px rgba(10, 13, 18, 0.04)",
+      "0px 24px 48px -12px rgba(10, 13, 18, 0.18), 0px 4px 4px -2px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
+      "0px 32px 64px -12px rgba(10, 13, 18, 0.14), 0px 5px 5px -2.5px rgba(10, 13, 18, 0.04)",
     ] as Shadows,
     components: componentThemes,
   });
