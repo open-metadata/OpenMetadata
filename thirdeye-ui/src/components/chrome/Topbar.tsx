@@ -8,7 +8,7 @@ import ThemeToggle from '@/components/ui/ThemeToggle';
 
 export default function Topbar() {
   return (
-    <header className="h-14 border-b bg-white/70 backdrop-blur flex items-center px-4 gap-4">
+    <header className="h-14 border-b bg-white/70 dark:bg-gray-900/70 backdrop-blur flex items-center px-4 gap-4">
       {/* Search */}
       <div className="relative flex-1 max-w-md">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
