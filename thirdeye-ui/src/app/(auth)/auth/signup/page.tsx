@@ -71,8 +71,9 @@ export default function SignupPage() {
   };
 
   const handleGoogleSignup = () => {
-    // Implement Google OAuth
-    toast.info('Google signup coming soon!');
+    // Redirect to Google OAuth endpoint (same as signin - auto-creates account on first login)
+    const callbackUrl = '/dashboard/thirdeye';
+    window.location.href = `/api/auth/google?callbackUrl=${encodeURIComponent(callbackUrl)}`;
   };
 
   const handleSnowflakeSignup = () => {
