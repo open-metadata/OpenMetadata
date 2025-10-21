@@ -4,10 +4,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Home,
-  Search,
-  BarChart3,
-  Bot,
   Settings,
   User,
   LogOut,
@@ -20,14 +16,6 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useSession } from '@/hooks/useSession';
 import Footer from './Footer';
-
-const navigation = [
-  { name: 'Dashboard', href: '/dashboard', icon: Home },
-  { name: 'Explore', href: '/dashboard/explore', icon: Search },
-  { name: 'Insights', href: '/dashboard/insights', icon: BarChart3 },
-  { name: 'Rule Agent', href: '/dashboard/rule-agent', icon: Bot },
-  { name: 'Settings', href: '/dashboard/settings', icon: Settings },
-];
 
 const zeroHumanNavigation = [
   { name: 'ZeroInsight Home', href: '/dashboard/thirdeye', icon: Sparkles },
@@ -63,7 +51,7 @@ export default function Sidebar() {
     <div className="flex h-full flex-col w-64 bg-sidebar border-r">
               {/* Brand */}
               <div className="p-4">
-                <Link href="/dashboard" className="flex items-center">
+                <Link href="/dashboard/thirdeye" className="flex items-center">
                   <Image
                     src="/logo.png"
                     alt="ZeroHuman"
@@ -76,32 +64,8 @@ export default function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
-        {/* Main Navigation */}
-        <div className="space-y-1">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                  'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
-                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
-                  isActive 
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground' 
-                    : 'text-sidebar-foreground'
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.name}
-              </Link>
-            );
-          })}
-        </div>
-
         {/* Zero-Human Intelligence Section */}
-        <div className="pt-4 mt-4 border-t">
+        <div className="pt-2">
           <div className="px-3 py-2 text-xs font-semibold text-sidebar-foreground/70 uppercase tracking-wider">
             Zero-Human Intelligence
           </div>
@@ -129,6 +93,24 @@ export default function Sidebar() {
           </div>
         </div>
       </nav>
+
+      {/* Settings Menu at Bottom */}
+      <div className="px-3 pb-3">
+        <Link
+          href="/dashboard/settings"
+          className={cn(
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+            'hover:bg-sidebar-accent hover:text-sidebar-accent-foreground',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring',
+            pathname === '/dashboard/settings'
+              ? 'bg-sidebar-primary text-sidebar-primary-foreground' 
+              : 'text-sidebar-foreground'
+          )}
+        >
+          <Settings className="h-4 w-4" />
+          Settings
+        </Link>
+      </div>
 
       {/* User block */}
       <div className="p-3 border-t">

@@ -22,8 +22,8 @@ export default function LandingPage() {
       try {
         const response = await fetch('/api/auth/me');
         if (response.ok) {
-          // User is authenticated, redirect to dashboard
-          router.push('/dashboard');
+          // User is authenticated, redirect to thirdeye dashboard
+          router.push('/dashboard/thirdeye');
           return;
         }
       } catch (error) {

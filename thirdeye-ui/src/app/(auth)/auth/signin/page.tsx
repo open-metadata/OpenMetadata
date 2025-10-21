@@ -43,7 +43,7 @@ function SigninContent() {
       }
 
       toast.success('Welcome back!');
-      router.push('/dashboard');
+      router.push('/dashboard/thirdeye');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Sign in failed');
     } finally {
@@ -83,7 +83,7 @@ function SigninContent() {
           <CardHeader>
             <CardTitle>Welcome Back</CardTitle>
             <CardDescription>
-              Sign in to access your ZeroHuman dashboard connected to OpenMetadata
+              Sign in to access your ZeroHuman Intelligence Layer
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">

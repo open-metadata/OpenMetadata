@@ -88,7 +88,7 @@ export function middleware(request: NextRequest) {
     console.log(`❌ No auth token found for protected route: ${pathname}`);
     // Redirect to signin page if no token
     const signinUrl = new URL('/auth/signin', request.url);
-    signinUrl.searchParams.set('callbackUrl', pathname === '/' ? '/dashboard' : pathname);
+    signinUrl.searchParams.set('callbackUrl', pathname === '/' ? '/dashboard/thirdeye' : pathname);
     return NextResponse.redirect(signinUrl);
   }
 
