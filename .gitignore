@@ -179,3 +179,4 @@ hive-mind-prompt-*.txt
 .claude-flow/
 docs
 memory
+.bmad-core

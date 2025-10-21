@@ -473,6 +473,27 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     validateColumnTestCase(entityLink, testDefinition.getEntityType());
   }
 
+  @Override
+  protected void setDefaultStatus(TestCase entity, boolean update) {
+    if (!update
+        || entity.getEntityStatus() == null
+        || entity.getEntityStatus() == EntityStatus.UNPROCESSED) {
+      List<EntityReference> reviewers = entity.getReviewers();
+
+      if (nullOrEmpty(reviewers)) {
+        List<TestSuite> testSuites = getTestSuites(entity);
+        for (TestSuite testSuite : testSuites) {
+          if (!nullOrEmpty(testSuite.getReviewers())) {
+            reviewers = testSuite.getReviewers();
+            break;
+          }
+        }
+      }
+
+      entity.setEntityStatus(!nullOrEmpty(reviewers) ? EntityStatus.DRAFT : EntityStatus.APPROVED);
+    }
+  }
+
   /*
    * Get the test suite for a test case. We'll use the entity linked to the test case
    * to find the basic test suite. If it doesn't exist, create a new one.
@@ -1312,10 +1333,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public static void checkUpdatedByReviewer(TestCase testCase, String updatedBy) {
-    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
     List<EntityReference> reviewers = testCase.getReviewers();
+    Table table =
+        Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), FIELD_OWNERS, Include.ALL);
+    TestSuite testSuite = Entity.getEntity(testCase.getTestSuite(), FIELD_OWNERS, Include.ALL);
+    reviewers = EntityUtil.mergeReviewers(reviewers, table);
     if (!nullOrEmpty(reviewers)) {
-      // Updating user must be one of the reviewers
       boolean isReviewer =
           reviewers.stream()
               .anyMatch(

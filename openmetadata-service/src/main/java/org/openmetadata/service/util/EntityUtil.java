@@ -834,6 +834,36 @@ public final class EntityUtil {
     return result.stream().toList();
   }
 
+  /**
+   * Merges owners from the entity into the provided reference list, adding only unique owners
+   * that are not already present. Uses entityReferenceMatch to compare EntityReference objects by ID and type.
+   *
+   * @param entity The entity interface containing owners
+   * @param refs The list of entity references to merge into
+   * @return Combined list with refs plus any unique owners from entity
+   */
+  public static List<EntityReference> mergeReviewers(
+          List<EntityReference> refs, EntityInterface entity) {
+    if (entity == null) {
+      return refs;
+    }
+
+    List<EntityReference> reviewers = entity.getReviewers();
+    if (nullOrEmpty(reviewers)) {
+      return refs;
+    }
+
+    if (nullOrEmpty(refs)) {
+      return reviewers;
+    }
+
+      reviewers.stream()
+        .filter(owner -> refs.stream().noneMatch(ref -> entityReferenceMatch.test(owner, ref)))
+        .forEach(refs::add);
+
+    return refs;
+  }
+
   public static void addDomainQueryParam(
       SecurityContext securityContext, ListFilter filter, String entityType) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
