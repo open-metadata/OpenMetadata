@@ -13,9 +13,12 @@ export async function GET(req: NextRequest) {
     
     // Store the callback URL in a cookie for after authentication
     const cookieStore = await cookies();
+    // Only use secure flag if HTTPS is available
+    const isSecure = req.url.startsWith('https://');
+    
     cookieStore.set('oauth-callback-url', callbackUrl, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       path: '/',
       maxAge: 600 // 10 minutes

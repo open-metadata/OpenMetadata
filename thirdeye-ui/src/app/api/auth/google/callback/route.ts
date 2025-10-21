@@ -121,9 +121,12 @@ export async function GET(req: NextRequest) {
         );
         
         // Set HTTP-only cookies
+        // Only use secure flag if HTTPS is available (check protocol)
+        const isSecure = req.url.startsWith('https://');
+        
         cookieStore.set('auth-token', sessionToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
+          secure: isSecure,
           sameSite: 'lax',
           path: '/',
           maxAge: 7 * 24 * 60 * 60 // 7 days
@@ -131,7 +134,7 @@ export async function GET(req: NextRequest) {
         
         cookieStore.set('metadata-access-token', omAccessToken, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
+          secure: isSecure,
           sameSite: 'lax',
           path: '/',
           maxAge: 7 * 24 * 60 * 60 // 7 days

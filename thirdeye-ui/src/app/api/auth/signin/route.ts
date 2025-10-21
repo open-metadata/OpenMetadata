@@ -57,9 +57,12 @@ export async function POST(req: NextRequest) {
 
     // Set HTTP-only cookie
     const cookieStore = await cookies();
+    // Only use secure flag if HTTPS is available
+    const isSecure = req.url.startsWith('https://');
+    
     cookieStore.set('auth-token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       path: '/',
       maxAge: validatedData.rememberMe ? 30 * 24 * 60 * 60 : 7 * 24 * 60 * 60 // 30 days or 7 days
@@ -68,7 +71,7 @@ export async function POST(req: NextRequest) {
     // Also store the OpenMetadata access token
     cookieStore.set('metadata-access-token', authData.accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 // 7 days
