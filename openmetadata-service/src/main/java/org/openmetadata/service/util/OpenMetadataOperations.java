@@ -66,6 +66,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -100,8 +101,11 @@ import org.openmetadata.service.resources.apps.AppMapper;
 import org.openmetadata.service.resources.apps.AppMarketPlaceMapper;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.search.IndexMappingVersionTracker;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
@@ -148,7 +152,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Subcommand needed: 'info', 'validate', 'repair', 'check-connection', "
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reindex-rdf', 'deploy-pipelines', "
-            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config'");
+            + "'dbServiceCleanup', 'relationshipCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     return 0;
@@ -432,17 +436,18 @@ public class OpenMetadataOperations implements Callable<Integer> {
         throw new IllegalArgumentException("Invalid email address: " + email);
       }
       parseConfig();
+      initializeCollectionRegistry();
+      initializeSecurityConfig();
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
       if (!authProvider.equals(AuthProvider.BASIC)) {
         LOG.error("Authentication is not set to basic. User creation is not supported.");
         return 1;
       }
-      initializeCollectionRegistry();
       UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
       try {
         userRepository.getByEmail(null, email, EntityUtil.Fields.EMPTY_FIELDS);
-        LOG.error("User {} already exists.", email);
-        return 1;
+        LOG.info("User {} already exists.", email);
+        return 0;
       } catch (EntityNotFoundException ex) {
         // Expected – continue to create the user.
       }
@@ -470,6 +475,29 @@ public class OpenMetadataOperations implements Callable<Integer> {
     } finally {
       // Restore the original logging level.
       rootLogger.setLevel(originalLevel);
+    }
+  }
+
+  private void initializeSecurityConfig() {
+    try {
+      var authConfig =
+          Entity.getSystemRepository()
+              .getConfigWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+      if (authConfig != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(
+                JsonUtils.convertValue(
+                    authConfig.getConfigValue(),
+                    org.openmetadata.schema.api.security.AuthenticationConfiguration.class));
+      } else if (config.getAuthenticationConfiguration() != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
+      }
+    } catch (Exception e) {
+      if (config.getAuthenticationConfiguration() != null) {
+        SecurityConfigurationManager.getInstance()
+            .setCurrentAuthConfig(config.getAuthenticationConfiguration());
+      }
     }
   }
 
@@ -1407,7 +1435,23 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Drop regular search repository indexes
       for (String entityType : searchRepository.getEntityIndexMap().keySet()) {
         LOG.info("Dropping index for entity type: {}", entityType);
-        searchRepository.deleteIndex(searchRepository.getIndexMapping(entityType));
+        IndexMapping entityIndexMapping = searchRepository.getIndexMapping(entityType);
+        Set<String> allEntityIndices =
+            searchRepository
+                .getSearchClient()
+                .listIndicesByPrefix(
+                    entityIndexMapping.getIndexName(searchRepository.getClusterAlias()));
+        for (String oldIndex : allEntityIndices) {
+          try {
+            if (searchRepository.getSearchClient().indexExists(oldIndex)) {
+              searchRepository.getSearchClient().deleteIndex(oldIndex);
+              LOG.info("Cleaned up old index '{}' for entity '{}'.", oldIndex, entityType);
+            }
+          } catch (Exception deleteEx) {
+            LOG.warn(
+                "Failed to delete old index '{}' for entity '{}'.", oldIndex, entityType, deleteEx);
+          }
+        }
       }
 
       // Drop data streams and data quality indexes created by DataInsightsApp
@@ -1417,6 +1461,22 @@ public class OpenMetadataOperations implements Callable<Integer> {
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to drop indexes due to ", e);
+      return 1;
+    }
+  }
+
+  @Command(name = "create-indexes", description = "Creates Indexes for Elastic/OpenSearch")
+  public Integer createIndexes() {
+    try {
+      LOG.info("Creating indexes for search engine...");
+      parseConfig();
+      searchRepository.createIndexes();
+      createDataInsightsIndexes();
+      Entity.cleanup();
+      LOG.info("All indexes created successfully.");
+      return 0;
+    } catch (Exception e) {
+      LOG.error("Failed to drop create due to ", e);
       return 1;
     }
   }
@@ -1441,6 +1501,68 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
       LOG.debug("Data Insights index cleanup error details: ", e);
     }
+  }
+
+  private void createDataInsightsIndexes() {
+    try {
+      LOG.info("Create Data Insights data streams and indexes...");
+
+      // Create a DataInsightsApp instance to access its cleanup methods
+      DataInsightsApp dataInsightsApp = new DataInsightsApp(collectionDAO, searchRepository);
+
+      // Drop data assets data streams
+      LOG.info("Create/Update data assets data streams...");
+      dataInsightsApp.createOrUpdateDataAssetsDataStream();
+
+      // Drop data quality indexes
+      LOG.info("Create/Updated data quality indexes...");
+      dataInsightsApp.createDataQualityDataIndex();
+
+      LOG.info("Data Insights indexes and data streams created successfully.");
+    } catch (Exception e) {
+      LOG.warn("Failed to create some Data Insights indexes: {}", e.getMessage());
+      LOG.debug("Data Insights index creation error details: ", e);
+    }
+  }
+
+  private Set<String> getAllIndices() {
+    Set<String> indices = new HashSet<>();
+    try {
+      SearchClient<?> searchClient = searchRepository.getSearchClient();
+
+      if (searchClient instanceof ElasticSearchClient) {
+        es.org.elasticsearch.client.Request request =
+            new es.org.elasticsearch.client.Request("GET", "/_cat/indices?format=json");
+        es.org.elasticsearch.client.RestClient lowLevelClient =
+            (es.org.elasticsearch.client.RestClient) searchClient.getLowLevelClient();
+        es.org.elasticsearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      } else if (searchClient instanceof OpenSearchClient) {
+        os.org.opensearch.client.Request request =
+            new os.org.opensearch.client.Request("GET", "/_cat/indices?format=json");
+        os.org.opensearch.client.RestClient lowLevelClient =
+            (os.org.opensearch.client.RestClient) searchClient.getLowLevelClient();
+        os.org.opensearch.client.Response response = lowLevelClient.performRequest(request);
+        String responseBody =
+            org.apache.http.util.EntityUtils.toString(response.getEntity(), StandardCharsets.UTF_8);
+
+        com.fasterxml.jackson.databind.JsonNode root = JsonUtils.readTree(responseBody);
+        for (com.fasterxml.jackson.databind.JsonNode node : root) {
+          String indexName = node.get("index").asText();
+          indices.add(indexName);
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to retrieve all indices", e);
+    }
+    return indices;
   }
 
   @Command(

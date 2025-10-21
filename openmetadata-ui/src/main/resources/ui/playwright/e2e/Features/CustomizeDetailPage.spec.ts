@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { test as base, expect, Page } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import {
   ECustomizedDataAssets,
   ECustomizedGovernance,
@@ -146,12 +146,12 @@ test.describe('Persona customize UI tab', async () => {
     await redirectToHomePage(adminPage);
 
     // Navigate to persona page
+    const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-    await adminPage.waitForLoadState('networkidle');
-    await adminPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-    await adminPage.getByText(persona.responseData.displayName).click();
+    await personaListResponse;
+
+    // Need to find persona card and click as the list might get paginated
+    await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
   });
 
@@ -355,8 +355,7 @@ test.describe('Persona customization', () => {
           await navigateToPersonaWithPagination(
             adminPage,
             persona.data.name,
-            true,
-            3
+            true
           );
 
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
@@ -465,8 +464,7 @@ test.describe('Persona customization', () => {
           await navigateToPersonaWithPagination(
             adminPage,
             persona.data.name,
-            true,
-            3
+            true
           );
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
           await adminPage.waitForLoadState('networkidle');
@@ -564,12 +562,7 @@ test.describe('Persona customization', () => {
       await personaListResponse;
 
       // Need to find persona card and click as the list might get paginated
-      await navigateToPersonaWithPagination(
-        adminPage,
-        persona.data.name,
-        true,
-        3
-      );
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.waitForLoadState('networkidle');
       await adminPage.getByText('Governance').click();
@@ -606,21 +599,25 @@ test.describe('Persona customization', () => {
         state: 'detached',
       });
 
-      expect(userPage.getByRole('tab', { name: 'Overview' })).toBeVisible();
-      expect(
+      await expect(
+        userPage.getByRole('tab', { name: 'Overview' })
+      ).toBeVisible();
+      await expect(
         userPage.getByRole('tab', { name: 'Glossary Terms' })
       ).toBeVisible();
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Overview' }).click();
 
-      expect(userPage.getByTestId('asset-description-container')).toBeVisible();
+      await expect(
+        userPage.getByTestId('asset-description-container')
+      ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
 
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
     });
@@ -637,12 +634,7 @@ test.describe('Persona customization', () => {
       await personaListResponse;
 
       // Need to find persona card and click as the list might get paginated
-      await navigateToPersonaWithPagination(
-        adminPage,
-        persona.data.name,
-        true,
-        3
-      );
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.waitForLoadState('networkidle');
       await adminPage.getByText('Data Assets').click();

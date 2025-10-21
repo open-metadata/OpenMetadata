@@ -18,10 +18,14 @@ import {
   supersetFormDetails3,
   supersetFormDetails4,
 } from '../../constant/serviceForm';
-import { redirectToHomePage } from '../../utils/common';
+import { redirectToHomePage, uuid } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { fillSupersetFormDetails } from '../../utils/serviceFormUtils';
 import { test } from '../fixtures/pages';
+
+const NEW_SERVICE = {
+  name: `PlaywrightService_${uuid()}`,
+};
 
 test.describe('Service form functionality', async () => {
   test.beforeEach(async ({ page }) => {
@@ -67,9 +71,12 @@ test.describe('Service form functionality', async () => {
         .getByRole('button', { name: 'OK' })
         .click();
 
-      await page.waitForSelector('[data-testid="test-connection-modal"]', {
-        state: 'hidden',
-      });
+      await page.waitForSelector(
+        '[data-testid="test-connection-modal"] .ant-modal-mask',
+        {
+          state: 'detached',
+        }
+      );
 
       // Fill superset form details - 2
       await fillSupersetFormDetails({ page, ...supersetFormDetails2 });
@@ -98,9 +105,12 @@ test.describe('Service form functionality', async () => {
         .getByRole('button', { name: 'OK' })
         .click();
 
-      await page.waitForSelector('[data-testid="test-connection-modal"]', {
-        state: 'hidden',
-      });
+      await page.waitForSelector(
+        '[data-testid="test-connection-modal"] .ant-modal-mask',
+        {
+          state: 'detached',
+        }
+      );
 
       // Fill superset form details - 3
       await fillSupersetFormDetails({ page, ...supersetFormDetails3 });
@@ -135,9 +145,12 @@ test.describe('Service form functionality', async () => {
         .getByRole('button', { name: 'OK' })
         .click();
 
-      await page.waitForSelector('[data-testid="test-connection-modal"]', {
-        state: 'hidden',
-      });
+      await page.waitForSelector(
+        '[data-testid="test-connection-modal"] .ant-modal-mask',
+        {
+          state: 'detached',
+        }
+      );
 
       // Fill superset form details - 4
       await fillSupersetFormDetails({ page, ...supersetFormDetails4 });
@@ -163,6 +176,66 @@ test.describe('Service form functionality', async () => {
       expect(
         testConnection4.request.connection.config.connection.scheme
       ).toEqual(supersetFormDetails4.connection.scheme);
+    });
+  });
+
+  test.describe('Database service', () => {
+    test('Verify service name field validation errors', async ({ page }) => {
+      test.slow();
+
+      await page.goto('/databaseServices/add-service');
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await page.getByTestId('BigQuery').click();
+      await page.getByTestId('next-button').click();
+      await page.getByTestId('next-button').click();
+
+      await expect(page.locator('#name_help')).toContainText(
+        'Name is required'
+      );
+
+      await page.getByTestId('service-name').click();
+      await page.getByTestId('service-name').fill(`${NEW_SERVICE.name}`);
+      await page.getByTestId('next-button').click();
+      await page.getByTestId('submit-btn').click();
+      await page.getByTestId('submit-btn').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('entity-header-title')).toBeVisible();
+
+      await page.getByRole('link', { name: 'Database Services' }).click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId('add-service-button').click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId('Databricks').click();
+      await page.getByTestId('next-button').click();
+
+      await page.getByTestId('service-name').click();
+      await page.getByTestId('service-name').fill(`${NEW_SERVICE.name}`);
+      await page.waitForLoadState('networkidle');
+
+      await expect(page.locator('#name_help')).toContainText(
+        'Name already exists.'
+      );
+
+      await page.getByRole('link', { name: 'Database Services' }).click();
+      await page.waitForLoadState('networkidle');
+      await waitForAllLoadersToDisappear(page);
+      await page.getByTestId(`service-name-${NEW_SERVICE.name}`).click();
+      await page.waitForLoadState('networkidle');
+      await page.getByTestId('manage-button').click();
+      await page.getByTestId('delete-button-title').click();
+      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await page.getByTestId('confirm-button').click();
+      await page.waitForLoadState('networkidle');
+
+      await expect(page.getByTestId('alert-message')).toContainText(
+        `Delete operation initiated for ${NEW_SERVICE.name}`
+      );
     });
   });
 });

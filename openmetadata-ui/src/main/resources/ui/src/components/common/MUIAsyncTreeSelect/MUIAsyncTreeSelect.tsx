@@ -15,13 +15,13 @@ import { Box, useAutocomplete, useTheme } from '@mui/material';
 import { useTreeViewApiRef } from '@mui/x-tree-view/hooks';
 import { debounce } from 'lodash';
 import {
-    FC,
-    memo,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
+  FC,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
 } from 'react';
 import { TreeNode } from '../atoms/asyncTreeSelect/types';
 import { useAsyncTreeSelect } from '../atoms/asyncTreeSelect/useAsyncTreeSelect';
@@ -30,9 +30,9 @@ import { TreeDropdown } from './atoms/TreeDropdown';
 import { TreeNodeItem } from './atoms/TreeNodeItem';
 import { TreeSearchInput } from './atoms/TreeSearchInput';
 import {
-    useTreeDropdown,
-    useTreeFocusManagement,
-    useTreeKeyboardNavigation
+  useTreeDropdown,
+  useTreeFocusManagement,
+  useTreeKeyboardNavigation,
 } from './hooks';
 import { MUIAsyncTreeSelectProps } from './MUIAsyncTreeSelect.interface';
 
@@ -499,22 +499,25 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
   );
 
   // Handle input blur to restore selected value if no new selection
-  const handleInputBlur = useCallback(
-    (e: React.FocusEvent) => {
-      // Restore selected value in single-select if no new selection
-      if (!multiple && selectedOptions.length > 0) {
-        const selectedLabel = selectedOptions[0].label;
-        if (inputValue !== selectedLabel) {
-          setInputValue(selectedLabel);
-          debouncedSetSearchTerm(''); // Clear search to show all options
-        }
+  const handleInputBlur = useCallback(() => {
+    // Restore selected value in single-select if no new selection
+    if (!multiple && selectedOptions.length > 0) {
+      const selectedLabel = selectedOptions[0].label;
+      if (inputValue !== selectedLabel) {
+        setInputValue(selectedLabel);
+        debouncedSetSearchTerm(''); // Clear search to show all options
       }
+    }
 
-      // Call existing blur handler for dropdown management
-      handleBlur(e);
-    },
-    [multiple, selectedOptions, inputValue, handleBlur, debouncedSetSearchTerm]
-  );
+    // Call existing blur handler for dropdown management
+    handleBlur();
+  }, [
+    multiple,
+    selectedOptions,
+    inputValue,
+    handleBlur,
+    debouncedSetSearchTerm,
+  ]);
 
   // Calculate if has clearable value
   const hasClearableValue = multiple

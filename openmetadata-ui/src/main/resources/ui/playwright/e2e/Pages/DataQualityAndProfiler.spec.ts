@@ -131,7 +131,7 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   await visitDataQualityTab(page, table1);
 
   await page.click('[data-testid="profiler-add-table-test-btn"]');
-  await page.click('[data-testid="table"]');
+  await page.getByRole('menuitem', { name: 'Test case' }).click();
 
   await test.step('Create', async () => {
     await page.fill('[data-testid="test-case-name"]', NEW_TABLE_TEST_CASE.name);
@@ -191,6 +191,9 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   });
 
   await test.step('Edit', async () => {
+    await page
+      .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
+      .click();
     await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
     await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
@@ -247,6 +250,10 @@ test('Table test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
       state: 'detached',
     });
 
+    await page
+      .getByTestId(`action-dropdown-${NEW_TABLE_TEST_CASE.name}`)
+      .click();
+
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions/*'
     );
@@ -282,7 +289,8 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
 
   await visitDataQualityTab(page, table1);
   await page.click('[data-testid="profiler-add-table-test-btn"]');
-  await page.click('[data-testid="column"]');
+  await page.getByRole('menuitem', { name: 'Test case' }).click();
+  await page.getByTestId('select-table-card').getByText('Column Level').click();
 
   await test.step('Create', async () => {
     const testDefinitionResponse = page.waitForResponse(
@@ -351,6 +359,9 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
   });
 
   await test.step('Edit', async () => {
+    await page
+      .getByTestId(`action-dropdown-${NEW_COLUMN_TEST_CASE.name}`)
+      .click();
     await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
     await page.waitForSelector('#tableTestForm_params_minLength');
     await page.locator('#tableTestForm_params_minLength').clear();
@@ -398,6 +409,10 @@ test('Column test case', PLAYWRIGHT_INGESTION_TAG_OBJ, async ({ page }) => {
     await page.getByTestId('update-btn').click();
     await updateTestCaseResponse;
     await toastNotification(page, 'Test case updated successfully.');
+
+    await page
+      .getByTestId(`action-dropdown-${NEW_COLUMN_TEST_CASE.name}`)
+      .click();
 
     const testDefinitionResponse = page.waitForResponse(
       '/api/v1/dataQuality/testDefinitions/*'
@@ -459,7 +474,7 @@ test(
         '/api/v1/tables/name/*/columns?*'
       );
       await page
-        .getByRole('menuitem', {
+        .getByRole('tab', {
           name: 'Column Profile',
         })
         .click();
@@ -530,6 +545,9 @@ test(
         await expect(
           page.locator(`[data-testid="${testCaseName}"]`)
         ).toBeVisible();
+
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+
         await expect(
           page.locator(`[data-testid="edit-${testCaseName}"]`)
         ).toBeVisible();
@@ -588,6 +606,8 @@ test(
         ])
       );
 
+      await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+
       // Edit test case description
       const testDefinitionResponse = page.waitForResponse(
         '/api/v1/dataQuality/testDefinitions/*'
@@ -617,6 +637,8 @@ test(
           },
         ])
       );
+
+      await page.getByTestId(`action-dropdown-${testCaseName}`).click();
 
       // Edit test case parameter values
       const testDefinitionResponse3 = page.waitForResponse(
@@ -668,6 +690,8 @@ test(
           state: 'detached',
         });
 
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
         await expect(
@@ -709,17 +733,14 @@ test(
 
     await table1.visitEntityPage(page);
     await page.getByTestId('profiler').click();
-    await page
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Data Quality')
-      .click();
+    await page.getByRole('tab', { name: 'Data Quality' }).click();
 
     await page.reload();
     await page.waitForLoadState('networkidle');
 
     await test.step('Update profiler setting', async () => {
       await page.click('[data-testid="profiler-setting-btn"]');
-      await page.waitForSelector('.ant-modal-body');
+      await page.waitForSelector('[data-testid="profiler-settings-modal"]');
 
       await page.locator('[data-testid="slider-input"]').clear();
       await page
@@ -795,7 +816,7 @@ test(
 
     await test.step('Reset profile sample type', async () => {
       await page.click('[data-testid="profiler-setting-btn"]');
-      await page.waitForSelector('.ant-modal-body');
+      await page.waitForSelector('[data-testid="profiler-settings-modal"]');
 
       await expect(
         page.locator('[data-testid="profile-sample"]')
@@ -832,13 +853,13 @@ test(
         })
       );
 
-      await page.waitForSelector('.ant-modal-body', {
+      await page.waitForSelector('[data-testid="profiler-settings-modal"]', {
         state: 'detached',
       });
 
       // Validate the profiler setting is updated
       await page.click('[data-testid="profiler-setting-btn"]');
-      await page.waitForSelector('.ant-modal-body');
+      await page.waitForSelector('[data-testid="profiler-settings-modal"]');
 
       await expect(
         page.locator('[data-testid="profile-sample"]')

@@ -131,11 +131,10 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       await page.click('[data-menu-id*="dbt"]');
 
       await page.waitForSelector('#root\\/dbtConfigSource__oneof_select');
-      await page
-        .getByTestId('select-widget-root/dbtConfigSource__oneof_select')
-        .getByRole('combobox')
-        .click({ force: true });
-      await page.click('.ant-select-dropdown:visible [title="DBT S3 Config"]');
+      await page.selectOption(
+        '#root\\/dbtConfigSource__oneof_select',
+        'DBT S3 Config'
+      );
       await page.fill(
         '#root\\/dbtConfigSource\\/dbtSecurityConfig\\/awsAccessKeyId',
         process.env.PLAYWRIGHT_S3_STORAGE_ACCESS_KEY_ID ?? ''
@@ -256,8 +255,7 @@ class RedshiftWithDBTIngestionClass extends ServiceBaseClass {
       // Verify Data Quality
       await page.click('[data-testid="profiler"]');
 
-      await page.waitForSelector('[data-testid="profiler-tab-left-panel"]');
-      await page.getByRole('menuitem', { name: 'Data Quality' }).click();
+      await page.getByRole('tab', { name: 'Data Quality' }).click();
 
       await expect(page.getByTestId(DBT.dataQualityTest1)).toHaveText(
         DBT.dataQualityTest1
