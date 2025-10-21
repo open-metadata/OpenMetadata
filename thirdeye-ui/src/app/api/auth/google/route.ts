@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
         
         // Check if Google OAuth is configured
         if (authConfig.provider === 'google' || authConfig.provider === 'Google') {
-          const frontendUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+          const frontendUrl = process.env.NEXTAUTH_URL || 'http://coming.live';
           
           // Build Google OAuth URL
           const googleAuthUrl = new URL(`${authConfig.authority}/o/oauth2/v2/auth`);
@@ -55,14 +55,16 @@ export async function GET(req: NextRequest) {
     }
     
     // If Google OAuth is not configured, return an error
+    const frontendUrl = process.env.NEXTAUTH_URL || 'http://coming.live';
     return NextResponse.redirect(
-      new URL(`/auth/signin?error=${encodeURIComponent('Google OAuth is not configured in OpenMetadata. Please set AUTHENTICATION_PROVIDER=google')}`, req.url)
+      `${frontendUrl}/auth/signin?error=${encodeURIComponent('Google OAuth is not configured in OpenMetadata. Please set AUTHENTICATION_PROVIDER=google')}`
     );
     
   } catch (error) {
     console.error('Google OAuth initialization error:', error);
+    const frontendUrl = process.env.NEXTAUTH_URL || 'http://coming.live';
     return NextResponse.redirect(
-      new URL('/auth/signin?error=oauth_init_failed', req.url)
+      `${frontendUrl}/auth/signin?error=oauth_init_failed`
     );
   }
 }

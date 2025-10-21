@@ -21,8 +21,9 @@ export async function GET(req: NextRequest) {
       console.error('OAuth error:', error);
       // Clear the callback cookie
       cookieStore.delete('oauth-callback-url');
+      const frontendUrl = process.env.NEXTAUTH_URL || 'http://coming.live';
       return NextResponse.redirect(
-        new URL(`/auth/signin?error=${encodeURIComponent(error)}`, req.url)
+        `${frontendUrl}/auth/signin?error=${encodeURIComponent(error)}`
       );
     }
     
@@ -139,8 +140,13 @@ export async function GET(req: NextRequest) {
         // Clear the callback URL cookie
         cookieStore.delete('oauth-callback-url');
         
-        // Redirect to the original callback URL
-        return NextResponse.redirect(new URL(callbackUrl, req.url));
+        // Redirect to the original callback URL using the configured frontend URL
+        const frontendUrl = process.env.NEXTAUTH_URL || req.url;
+        const redirectUrl = callbackUrl.startsWith('http') 
+          ? callbackUrl 
+          : `${frontendUrl}${callbackUrl.startsWith('/') ? '' : '/'}${callbackUrl}`;
+        
+        return NextResponse.redirect(redirectUrl);
         
       } catch (tokenError) {
         console.error('Token processing error:', tokenError);
@@ -154,8 +160,9 @@ export async function GET(req: NextRequest) {
     console.error('Google OAuth callback error:', error);
     const cookieStore = await cookies();
     cookieStore.delete('oauth-callback-url');
+    const frontendUrl = process.env.NEXTAUTH_URL || 'http://coming.live';
     return NextResponse.redirect(
-      new URL('/auth/signin?error=authentication_failed', req.url)
+      `${frontendUrl}/auth/signin?error=authentication_failed`
     );
   }
 }
