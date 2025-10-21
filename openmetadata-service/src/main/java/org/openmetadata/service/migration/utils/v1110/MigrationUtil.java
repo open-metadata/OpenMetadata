@@ -6,31 +6,40 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.jdbi.v3.core.Handle;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.QueryStatus;
-import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
 @Slf4j
-public abstract class MigrationProcessBase extends MigrationProcessImpl {
+public class MigrationUtil {
   private static final Map<String, String> PATH_BY_TAG =
       Map.of(
           "PII.Sensitive", "data/tags/Sensitive.json",
           "PII.NonSensitive", "data/tags/NonSensitive.json");
+  private final MigrationFile migrationFile;
 
-  public MigrationProcessBase(MigrationFile migrationFile) {
-    super(migrationFile);
+  public MigrationUtil(MigrationFile migrationFile) {
+    this.migrationFile = migrationFile;
   }
 
-  @Override
-  public Map<String, QueryStatus> runPostDDLScripts(boolean isForceMigration) {
-    Map<String, QueryStatus> result = super.runPostDDLScripts(isForceMigration);
-
+  public Map<String, QueryStatus> setRecognizersForSensitiveTags(
+      String queryTemplate, Handle handle, MigrationDAO migrationDAO, boolean isForceMigration) {
+    Map<String, QueryStatus> result = new HashMap<>();
     PATH_BY_TAG.forEach(
         (tagFqn, relativePath) -> {
           try {
-            updateTagRecognizers(tagFqn, relativePath, result, isForceMigration);
+            updateTagRecognizers(
+                handle,
+                migrationDAO,
+                tagFqn,
+                relativePath,
+                result,
+                queryTemplate,
+                isForceMigration);
           } catch (Exception e) {
             LOG.error("Failed to update recognizers for tag: {}", tagFqn, e);
           }
@@ -40,12 +49,15 @@ public abstract class MigrationProcessBase extends MigrationProcessImpl {
   }
 
   private void updateTagRecognizers(
+      Handle handle,
+      MigrationDAO migrationDAO,
       String tagFqn,
       String relativePath,
       Map<String, QueryStatus> results,
+      String queryTemplate,
       Boolean isForceMigration)
       throws IOException {
-    Path dataPath = Paths.get(this.getMigrationsDir(), relativePath);
+    Path dataPath = Paths.get(migrationFile.getDirPath(), relativePath);
 
     if (!Files.exists(dataPath)) {
       LOG.warn("Tag data file not found: {}", dataPath);
@@ -54,14 +66,14 @@ public abstract class MigrationProcessBase extends MigrationProcessImpl {
 
     String jsonContent = Files.readString(dataPath);
 
-    String queryFormat = getQueryFormat();
-    String updateQuery = String.format(queryFormat, jsonContent.replace("'", "''"), tagFqn);
+    String updateQuery = String.format(queryTemplate, jsonContent.replace("'", "''"), tagFqn);
 
-    String truncatedQuery = String.format(queryFormat, "[ ... data truncated  ... ]", tagFqn);
+    String truncatedQuery = String.format(queryTemplate, "[ ... data truncated  ... ]", tagFqn);
 
     try {
       handle.execute(updateQuery);
-      migrationDAO.upsertServerMigrationSQL(getVersion(), truncatedQuery, hash(truncatedQuery));
+      migrationDAO.upsertServerMigrationSQL(
+          migrationFile.version, truncatedQuery, hash(truncatedQuery));
       results.put(
           updateQuery, new QueryStatus(QueryStatus.Status.SUCCESS, "Successfully Executed Query"));
     } catch (Exception e) {
@@ -72,6 +84,4 @@ public abstract class MigrationProcessBase extends MigrationProcessImpl {
       }
     }
   }
-
-  protected abstract String getQueryFormat();
 }

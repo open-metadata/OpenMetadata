@@ -247,8 +247,6 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
             ? testCase.getTestSuites().stream().map(TestSuite::getFullyQualifiedName).toList()
             : null;
     TestSuiteRepository testSuiteRepository = new TestSuiteRepository();
-    DataContractRepository dataContractRepository =
-        (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
     if (fqns != null) {
       for (String fqn : fqns) {
         TestSuite testSuite = Entity.getEntityByName(TEST_SUITE, fqn, "*", Include.ALL);
@@ -283,10 +281,6 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
               testSuiteRepository.getUpdater(
                   original, testSuite, EntityRepository.Operation.PATCH, null);
           entityUpdater.update();
-          // Propagate test results to the data contract if it exists
-          if (testSuite.getDataContract() != null) {
-            dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
-          }
         }
       }
     }

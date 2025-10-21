@@ -72,6 +72,10 @@
       "type": "string",
       "format": "date"
     },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "type": "string"
+    },
     "dateTime": {
       "description": "Date and time in ISO 8601 format. Example - '2018-11-13T20:20:39+00:00'.",
       "type": "string",

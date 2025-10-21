@@ -134,7 +134,7 @@ import TabsLabel from '../components/common/TabsLabel/TabsLabel.component';
 import { TabProps } from '../components/common/TabsLabel/TabsLabel.interface';
 import { GenericTab } from '../components/Customization/GenericTab/GenericTab';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
-import TableProfiler from '../components/Database/Profiler/TableProfiler/TableProfiler';
+import DataObservabilityTab from '../components/Database/Profiler/DataObservability/DataObservabilityTab';
 import SampleDataTableComponent from '../components/Database/SampleDataTable/SampleDataTable.component';
 import SchemaTable from '../components/Database/SchemaTable/SchemaTable.component';
 import TableQueries from '../components/Database/TableQueries/TableQueries';
@@ -786,7 +786,6 @@ export const getTableDetailPageBaseTabs = ({
   viewQueriesPermission,
   editLineagePermission,
   fetchTableDetails,
-  testCaseSummary,
   isViewTableType,
   labelMap,
 }: TableDetailPageTabProps): TabProps[] => {
@@ -901,10 +900,9 @@ export const getTableDetailPageBaseTabs = ({
       ),
       key: EntityTabs.PROFILER,
       children: (
-        <TableProfiler
+        <DataObservabilityTab
           permissions={tablePermissions}
           table={tableDetails}
-          testCaseSummary={testCaseSummary}
         />
       ),
     },
