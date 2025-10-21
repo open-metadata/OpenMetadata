@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { DatabasesClient } from '@/lib/connectorsClient';
@@ -22,7 +22,7 @@ export interface DatabaseService {
 
 export type ConnectorType = 'snowflake' | 'dbt' | '';
 
-const ConnectorsPage = () => {
+const ConnectorsPageContent = () => {
   const searchParams = useSearchParams();
   const connectorType = searchParams.get('type') as ConnectorType || '';
   
@@ -134,6 +134,22 @@ const ConnectorsPage = () => {
         </div>
       </div>
     </div>
+  );
+};
+
+const ConnectorsPage = () => {
+  return (
+    <Suspense fallback={
+      <div className="space-y-6">
+        <Skeleton className="h-8 w-96" />
+        <div className="grid gap-6 md:grid-cols-1 lg:grid-cols-2">
+          <Skeleton className="h-96 w-full" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    }>
+      <ConnectorsPageContent />
+    </Suspense>
   );
 };
 
