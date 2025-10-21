@@ -1,6 +1,8 @@
 """Simplified Data Quality as Code API for OpenMetadata SDK."""
 
+from metadata.sdk.data_quality.models.validation_result import ValidationResult
 from metadata.sdk.data_quality.runner import TestRunner
+from metadata.sdk.data_quality.streaming_runner import StreamingRunner
 from metadata.sdk.data_quality.tests.base_tests import BaseTest, ColumnTest, TableTest
 from metadata.sdk.data_quality.tests.column_tests import (
     ColumnValueLengthsToBeBetween,
@@ -36,6 +38,8 @@ __all__ = [
     "BaseTest",
     "ColumnTest",
     "ColumnValueLengthsToBeBetween",
+    "StreamingRunner",
+    "ValidationResult",
     "ColumnValueMaxToBeBetween",
     "ColumnValueMeanToBeBetween",
     "ColumnValueMedianToBeBetween",
