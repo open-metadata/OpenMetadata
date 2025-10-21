@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import { ExpandCircleDownOutlined } from '@mui/icons-material';
 import { Box, Chip, Typography, useTheme } from '@mui/material';
-import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
+import { SimpleTreeView, TreeItem, treeItemClasses } from '@mui/x-tree-view';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -53,6 +52,10 @@ const DomainTreeView = ({
   refreshToken = 0,
 }: DomainTreeViewProps) => {
   const theme = useTheme();
+  const outlineColor =
+    theme.palette.allShades?.gray?.[200] ?? theme.palette.grey[300];
+  const childIndent = theme.spacing(2);
+  const connectorOffset = theme.spacing(1.5);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -418,14 +421,11 @@ const DomainTreeView = ({
                 sx={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 1.5,
-                  py: 0.5,
+                  gap: 2,
                 }}>
-                <EntityAvatar entity={node} size={28} />
+                <EntityAvatar entity={node} size={24} variant="rounded" />
                 <Typography
                   sx={{
-                    fontSize: '0.875rem',
-                    fontWeight: 500,
                     color: 'text.primary',
                   }}>
                   {getEntityName(node)}
@@ -435,7 +435,6 @@ const DomainTreeView = ({
                     label={childDomains.length}
                     size="small"
                     sx={{
-                      fontSize: '0.75rem',
                       height: 20,
                       backgroundColor: theme.palette.allShades?.gray?.[100],
                       color: theme.palette.allShades?.gray?.[700],
@@ -448,7 +447,7 @@ const DomainTreeView = ({
           </TreeItem>
         );
       }),
-    [theme.palette.allShades?.gray]
+    [childIndent, connectorOffset, outlineColor, theme.palette.allShades?.gray]
   );
 
   return (
@@ -480,12 +479,64 @@ const DomainTreeView = ({
             expandedItems={expandedItems}
             selectedItems={selectedFqn}
             slots={{
-              expandIcon: ChevronRightIcon,
-              collapseIcon: ExpandMoreIcon,
+              expandIcon: ExpandCircleDownOutlined,
+              collapseIcon: ExpandCircleDownOutlined,
             }}
             sx={{
+              // CSS variable: distance from the bottom of the group to where vertical line should stop.
+              // This should equal half of the tree item height (center of item). Adjust if needed.
+              '--tree-item-center': '22px',
+
               '& .MuiTreeItem-content': {
                 borderRadius: 0.5,
+                gap: 3,
+                p: 1,
+                mb: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                position: 'relative', // needed for content ::before horizontal
+                // horizontal connector for the child item
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  left: '-20px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: '12px', // horizontal length
+                  height: '1px', // thickness of horizontal line
+                  background: theme.palette.allShades?.gray?.[200],
+                  zIndex: 0,
+                },
+              },
+
+              // Hide empty icon container (from previous)
+              '& .MuiTreeItem-iconContainer:empty': {
+                display: 'none',
+              },
+
+              // Group container: vertical connector that stops above the child's center
+              // so the child's horizontal connector can join it.
+              [`& .${treeItemClasses.groupTransition}`]: {
+                ml: 3,
+                pl: 5,
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  left: 0, // x position of the vertical line
+                  top: 0,
+                  bottom: '22px', // stop above the child's center
+                  width: '1px',
+                  background: theme.palette.allShades?.gray?.[200],
+                  zIndex: 0,
+                },
+              },
+
+              '& > .MuiTreeItem-root:last-of-type': {
+                marginBottom: 0,
+              },
+              '& .MuiTreeItem-group > .MuiTreeItem-root:last-of-type': {
+                marginBottom: 0,
               },
             }}
             onExpandedItemsChange={handleExpandedChange}
@@ -500,6 +551,7 @@ const DomainTreeView = ({
           flex: 1,
           overflowY: 'auto',
           maxHeight: 'calc(80vh - 160px)',
+          pt: 3,
         }}>
         {isDomainLoading ? (
           <Loader />

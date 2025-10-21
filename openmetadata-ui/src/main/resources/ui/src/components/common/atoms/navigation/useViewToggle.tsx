@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import ViewComfyOutlinedIcon from '@mui/icons-material/ViewComfyOutlined';
 import { Button, ButtonGroup, useTheme } from '@mui/material';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
@@ -93,7 +93,7 @@ export const useViewToggle = ({
       case 'card':
         return <Grid01 size={16} />;
       case 'tree':
-        return <AccountTreeIcon fontSize="small" />;
+        return <ViewComfyOutlinedIcon fontSize="small" />;
       case 'table':
       default:
         return <Menu01 size={16} />;
