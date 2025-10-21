@@ -51,7 +51,7 @@ function VerifyEmailContent() {
         <div className="text-center">
           <div className="flex justify-center mb-4">
             <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-              ThirdEye
+              ZeroHuman
             </h1>
           </div>
           <p className="text-sm text-gray-600">

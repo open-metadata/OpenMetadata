@@ -149,7 +149,7 @@ export default function LandingPage() {
           <div className="flex justify-between items-center py-3">
             <div className="flex items-center">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                ThirdEye
+                ZeroHuman
               </h1>
             </div>
             <div className="flex items-center space-x-3">
@@ -389,7 +389,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row justify-between items-center gap-4">
             <div className="flex items-center">
               <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                ThirdEye
+                ZeroHuman
               </h1>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-600">
