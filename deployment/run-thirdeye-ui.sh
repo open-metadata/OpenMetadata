@@ -98,17 +98,40 @@ if command -v pm2 &> /dev/null; then
     echo "Stop app:  pm2 stop thirdeye-ui"
     echo "Restart:   pm2 restart thirdeye-ui"
 else
-    echo -e "${YELLOW}PM2 not installed. Starting with npm...${NC}"
+    echo -e "${YELLOW}PM2 not installed. Starting with nohup in background mode...${NC}"
     echo ""
-    echo -e "${YELLOW}For production, consider installing PM2:${NC}"
-    echo "  npm install -g pm2"
-    echo ""
-    echo "Starting ThirdEye UI..."
-    PORT=${THIRDEYE_UI_PORT} npm run start &
+    
+    # Kill any existing process on port 80
+    EXISTING_PID=$(lsof -ti:${THIRDEYE_UI_PORT} 2>/dev/null)
+    if [ ! -z "$EXISTING_PID" ]; then
+        echo "Stopping existing process on port ${THIRDEYE_UI_PORT} (PID: $EXISTING_PID)..."
+        kill -9 $EXISTING_PID 2>/dev/null || true
+        sleep 2
+    fi
+    
+    # Create logs directory
+    mkdir -p logs
+    
+    # Start with nohup to run in background and persist after terminal closes
+    echo "Starting ThirdEye UI in background mode..."
+    nohup bash -c "PORT=${THIRDEYE_UI_PORT} npm run start" > logs/thirdeye-ui.log 2>&1 &
     APP_PID=$!
-    echo -e "${GREEN}✓ ThirdEye UI started (PID: $APP_PID)${NC}"
+    
+    # Save PID to file for later management
+    echo $APP_PID > logs/thirdeye-ui.pid
+    
+    echo -e "${GREEN}✓ ThirdEye UI started in background (PID: $APP_PID)${NC}"
     echo ""
-    echo "Stop app: kill $APP_PID"
+    echo "Process will continue running even after closing the terminal."
+    echo ""
+    echo "Management commands:"
+    echo "  View logs:  tail -f logs/thirdeye-ui.log"
+    echo "  Stop app:   kill \$(cat logs/thirdeye-ui.pid)"
+    echo "  Check PID:  cat logs/thirdeye-ui.pid"
+    echo ""
+    echo -e "${YELLOW}For production, we recommend installing PM2:${NC}"
+    echo "  npm install -g pm2"
+    echo "  Then re-run this script to use PM2 for better process management"
 fi
 echo ""
 
@@ -141,8 +164,10 @@ if command -v pm2 &> /dev/null; then
     echo "  Restart:    pm2 restart thirdeye-ui"
     echo "  Status:     pm2 status"
 else
-    echo "  Process ID: $APP_PID"
-    echo "  Stop:       kill $APP_PID"
+    echo "  View logs:  tail -f logs/thirdeye-ui.log"
+    echo "  Stop:       kill \$(cat logs/thirdeye-ui.pid)"
+    echo "  Check PID:  cat logs/thirdeye-ui.pid"
+    echo "  Check Port: lsof -i :${THIRDEYE_UI_PORT}"
 fi
 echo ""
 
