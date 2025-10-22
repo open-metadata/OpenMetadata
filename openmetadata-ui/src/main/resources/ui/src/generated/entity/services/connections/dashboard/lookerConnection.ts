@@ -38,7 +38,7 @@ export interface LookerConnection {
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
-    gitCredentials?: GitHubCredentials;
+    gitCredentials?: Credentials | string;
     /**
      * URL to the Looker instance.
      */
@@ -77,9 +77,6 @@ export interface FilterPattern {
 }
 
 /**
- * Credentials to extract the .lkml files from a repository. This is required to get all the
- * lineage and definitions.
- *
  * Do not set any credentials. Note that credentials are required to extract .lkml views and
  * their lineage.
  *
@@ -89,7 +86,15 @@ export interface FilterPattern {
  *
  * Credentials for a Gitlab repository
  */
-export interface GitHubCredentials {
+export interface Credentials {
+    /**
+     * GitHub instance URL. For GitHub.com, use https://github.com
+     *
+     * BitBucket instance URL. For BitBucket Cloud, use https://bitbucket.org
+     *
+     * Gitlab instance URL. For Gitlab.com, use https://gitlab.com
+     */
+    gitHostURL?:      string;
     repositoryName?:  string;
     repositoryOwner?: string;
     token?:           string;
