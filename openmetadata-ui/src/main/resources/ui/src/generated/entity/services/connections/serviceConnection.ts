@@ -377,7 +377,7 @@ export interface ConfigObject {
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
-    gitCredentials?: GitHubCredentials;
+    gitCredentials?: NoGitCredentialsClass | string;
     /**
      * URL to the Looker instance.
      *
@@ -2267,7 +2267,7 @@ export interface OAuth2Credential {
  * Iceberg File System configuration, based on where the Iceberg Warehouse is located.
  */
 export interface IcebergFileSystem {
-    type?: Credentials | null;
+    type?: AWSCredentialsClass | null;
 }
 
 /**
@@ -2279,7 +2279,7 @@ export interface IcebergFileSystem {
  *
  * Azure Credentials
  */
-export interface Credentials {
+export interface AWSCredentialsClass {
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role
@@ -2475,7 +2475,7 @@ export interface DeltaLakeConfigurationSource {
      * Prefix of the data source.
      */
     prefix?:         string;
-    securityConfig?: SecurityConfigClass;
+    securityConfig?: Credentials;
     /**
      * Account Name of your storage account
      */
@@ -2561,7 +2561,7 @@ export interface ConfigSourceConnection {
  *
  * AWS credentials configs.
  */
-export interface SecurityConfigClass {
+export interface Credentials {
     /**
      * Account Name of your storage account
      */
@@ -3251,9 +3251,6 @@ export enum FHIRVersion {
 }
 
 /**
- * Credentials to extract the .lkml files from a repository. This is required to get all the
- * lineage and definitions.
- *
  * Do not set any credentials. Note that credentials are required to extract .lkml views and
  * their lineage.
  *
@@ -3263,14 +3260,22 @@ export enum FHIRVersion {
  *
  * Credentials for a Gitlab repository
  */
-export interface GitHubCredentials {
+export interface NoGitCredentialsClass {
+    /**
+     * GitHub instance URL. For GitHub.com, use https://github.com
+     *
+     * BitBucket instance URL. For BitBucket Cloud, use https://bitbucket.org
+     *
+     * Gitlab instance URL. For Gitlab.com, use https://gitlab.com
+     */
+    gitHostURL?:      string;
     repositoryName?:  string;
     repositoryOwner?: string;
     token?:           string;
     /**
      * Credentials Type
      */
-    type?: GitHubCredentialsType;
+    type?: NoGitCredentialsType;
     /**
      * Main production branch of the repository. E.g., `main`
      */
@@ -3286,7 +3291,7 @@ export interface GitHubCredentials {
  *
  * Gitlab Credentials type
  */
-export enum GitHubCredentialsType {
+export enum NoGitCredentialsType {
     BitBucket = "BitBucket",
     GitHub = "GitHub",
     Gitlab = "Gitlab",
@@ -3541,7 +3546,7 @@ export interface PowerBIPbitFilesSource {
      */
     pbitFilesExtractDir?: string;
     prefixConfig?:        BucketDetails;
-    securityConfig?:      SecurityConfigClass;
+    securityConfig?:      Credentials;
 }
 
 /**
