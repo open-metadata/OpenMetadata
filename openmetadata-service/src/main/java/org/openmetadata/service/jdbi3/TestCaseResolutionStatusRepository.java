@@ -2,7 +2,8 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
-import static org.openmetadata.service.Entity.*;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
+import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
