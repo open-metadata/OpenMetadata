@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -9,7 +10,8 @@ import {
   Lightbulb,
   Shield,
   HelpCircle,
-  Sparkles
+  Sparkles,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -23,7 +25,12 @@ const zeroHumanNavigation = [
   { name: 'ZeroExplain Guide', href: '/dashboard/thirdeye/help', icon: HelpCircle },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+}
+
+export default function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useSession();
@@ -47,15 +54,37 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="flex h-full flex-col w-64 bg-sidebar border-r">
-              {/* Brand */}
-              <div className="p-4">
-                <Link href="/dashboard/thirdeye" className="flex items-center">
-                  <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
-                    ZeroHuman
-                  </h1>
-                </Link>
-              </div>
+    <>
+      {/* Mobile overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <div className={cn(
+        "flex h-full flex-col w-64 bg-sidebar border-r transition-transform duration-300 ease-in-out",
+        "fixed lg:relative z-50 lg:z-auto",
+        !isOpen && "-translate-x-full lg:translate-x-0"
+      )}>
+        {/* Brand & Close Button */}
+        <div className="p-4 flex items-center justify-between">
+          <Link href="/dashboard/thirdeye" className="flex items-center">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-500 to-cyan-500 bg-clip-text text-transparent">
+              ZeroHuman
+            </h1>
+          </Link>
+          {/* Close button for mobile */}
+          <button
+            onClick={onClose}
+            className="lg:hidden p-2 hover:bg-sidebar-accent rounded-md"
+            aria-label="Close sidebar"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
@@ -143,5 +172,6 @@ export default function Sidebar() {
 
       <Footer />
     </div>
+    </>
   );
 }

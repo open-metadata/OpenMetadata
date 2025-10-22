@@ -16,11 +16,40 @@ export async function POST(req: NextRequest) {
     // Validate input
     const validatedData = signinSchema.parse(body);
     
-    // Authenticate with OpenMetadata backend
+    // For server-side calls, use absolute URL to the backend
+    // In development, always use localhost; in production, use configured URL
+    const backendUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:8585'
+      : (process.env.OPENMETADATA_BASE_URL || 'http://localhost:8585');
+    
+    // Check OpenMetadata authentication provider
+    let authConfig;
+    try {
+      const configResponse = await fetch(`${backendUrl}/api/v1/system/config/auth`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store'
+      });
+      
+      if (configResponse.ok) {
+        authConfig = await configResponse.json();
+        console.log('OpenMetadata auth provider:', authConfig.provider);
+      }
+    } catch (configError) {
+      console.warn('Could not fetch auth config, assuming basic auth:', configError);
+    }
+    
+    // If Google OAuth is configured, reject email/password login
+    if (authConfig?.provider === 'google' || authConfig?.provider === 'Google') {
+      return NextResponse.json(
+        { message: 'Please use "Continue with Google" to sign in. Email/password login is not available when Google OAuth is configured.' },
+        { status: 400 }
+      );
+    }
+    
+    // Authenticate with OpenMetadata backend using basic auth
     const encodedPassword = Buffer.from(validatedData.password, 'utf8').toString('base64');
     
-    // For server-side calls, use absolute URL to the backend
-    const backendUrl = process.env.OPENMETADATA_BASE_URL || 'http://localhost:8585';
     const response = await fetch(`${backendUrl}/api/v1/users/login`, {
       method: 'POST',
       headers: {
@@ -34,6 +63,14 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
+      console.error('OpenMetadata login failed:', {
+        status: response.status,
+        statusText: response.statusText,
+        backendUrl,
+        endpoint: `${backendUrl}/api/v1/users/login`,
+        email: validatedData.email,
+        errorData
+      });
       return NextResponse.json(
         { message: errorData.message || 'Invalid email or password' },
         { status: 401 }
@@ -41,6 +78,7 @@ export async function POST(req: NextRequest) {
     }
 
     const authData = await response.json();
+    console.log('OpenMetadata login successful for:', validatedData.email);
     
     // Generate JWT token for our frontend
     const token = jwt.sign(

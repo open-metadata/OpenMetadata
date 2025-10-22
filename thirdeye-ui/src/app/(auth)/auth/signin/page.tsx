@@ -19,11 +19,33 @@ function SigninContent() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authProvider, setAuthProvider] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     rememberMe: false
   });
+
+  // Check auth provider on mount
+  useEffect(() => {
+    const checkAuthProvider = async () => {
+      try {
+        // In development, always use localhost; in production, use configured URL
+        const backendUrl = process.env.NODE_ENV === 'development'
+          ? 'http://localhost:8585'
+          : (process.env.NEXT_PUBLIC_OPENMETADATA_BASE_URL || 'http://localhost:8585');
+        const response = await fetch(`${backendUrl}/api/v1/system/config/auth`);
+        if (response.ok) {
+          const config = await response.json();
+          setAuthProvider(config.provider?.toLowerCase() || 'basic');
+        }
+      } catch (error) {
+        console.log('Could not fetch auth config, defaulting to basic');
+        setAuthProvider('basic');
+      }
+    };
+    checkAuthProvider();
+  }, []);
 
   // Show OAuth errors if present
   useEffect(() => {
@@ -102,7 +124,18 @@ function SigninContent() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Show message for Google OAuth only */}
+            {authProvider === 'google' && (
+              <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-md text-center">
+                <p className="text-sm text-indigo-800">
+                  This system uses Google OAuth for authentication. Please use the "Continue with Google" button below.
+                </p>
+              </div>
+            )}
+
+            {/* Show email/password form only for basic auth */}
+            {authProvider === 'basic' && (
+              <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative">
@@ -168,15 +201,19 @@ function SigninContent() {
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </form>
+            )}
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
+            {/* Show separator only if basic auth is enabled */}
+            {authProvider === 'basic' && (
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-gray-500">Or continue with</span>
+                </div>
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Or continue with</span>
-              </div>
-            </div>
+            )}
 
             <div className="grid grid-cols-1 gap-3">
               <Button
