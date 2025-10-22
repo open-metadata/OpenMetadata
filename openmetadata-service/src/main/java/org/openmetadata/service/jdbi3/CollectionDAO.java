@@ -221,6 +221,9 @@ public interface CollectionDAO {
   TestCaseResultTimeSeriesDAO testCaseResultTimeSeriesDao();
 
   @CreateSqlObject
+  TestCaseDimensionResultTimeSeriesDAO testCaseDimensionResultTimeSeriesDao();
+
+  @CreateSqlObject
   RoleDAO roleDAO();
 
   @CreateSqlObject
@@ -6844,6 +6847,44 @@ public interface CollectionDAO {
     default List<String> listLastTestCaseResultsForTestSuite(UUID testSuiteId) {
       return listLastTestCaseResultsForTestSuite(Map.of("testSuiteId", testSuiteId.toString()));
     }
+  }
+
+  interface TestCaseDimensionResultTimeSeriesDAO extends EntityTimeSeriesDAO {
+    @Override
+    default String getTimeSeriesTableName() {
+      return "test_case_dimension_results_time_series";
+    }
+
+    @SqlQuery(
+        "SELECT json FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND timestamp >= :startTs AND timestamp <= :endTs "
+            + "ORDER BY timestamp DESC")
+    List<String> listTestCaseDimensionResults(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlQuery(
+        "SELECT json FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND dimensionKey = :dimensionKey AND timestamp >= :startTs AND timestamp <= :endTs "
+            + "ORDER BY timestamp DESC")
+    List<String> listTestCaseDimensionResultsByKey(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("dimensionKey") String dimensionKey,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlQuery(
+        "SELECT DISTINCT dimensionKey FROM test_case_dimension_results_time_series "
+            + "WHERE entityFQNHash = :testCaseFQN AND timestamp >= :startTs AND timestamp <= :endTs")
+    List<String> listAvailableDimensionKeys(
+        @BindFQN("testCaseFQN") String testCaseFQN,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs);
+
+    @SqlUpdate(
+        "DELETE FROM test_case_dimension_results_time_series WHERE entityFQNHash = :testCaseFQNHash")
+    void deleteAll(@BindFQN("testCaseFQNHash") String testCaseFQN);
   }
 
   class EntitiesCountRowMapper implements RowMapper<EntitiesCount> {
