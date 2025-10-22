@@ -62,6 +62,9 @@ DIMENSION_VALUE_KEY = "dimension_value"
 DIMENSION_IMPACT_SCORE_KEY = "impact_score"
 DIMENSION_FAILED_COUNT_KEY = "failed_count"
 DIMENSION_TOTAL_COUNT_KEY = "total_count"
+DIMENSION_SUM_VALUE_KEY = (
+    "sum_value"  # For statistical validators weighted calculations
+)
 
 
 class TestEvaluation(TypedDict, total=False):
@@ -443,8 +446,8 @@ class BaseTestValidator(ABC):
         test_case_status: TestCaseStatus,
         result: str,
         test_result_value: List[TestResultValue],
-        total_rows: int,
-        passed_rows: int,
+        total_rows: Optional[int] = None,
+        passed_rows: Optional[int] = None,
         failed_rows: Optional[int] = None,
         impact_score: Optional[float] = None,
     ) -> "DimensionResult":
@@ -455,24 +458,35 @@ class BaseTestValidator(ABC):
             test_case_status: Status of the test for this dimension combination
             result: Details of test case results for this dimension combination
             test_result_value: List of test result values
-            total_rows: Total number of rows in this dimension
-            passed_rows: Number of rows that passed for this dimension
-            failed_rows: Number of rows that failed for this dimension (auto-calculated if None)
+            total_rows: Total number of rows in this dimension (None for statistical validators)
+            passed_rows: Number of rows that passed for this dimension (None for statistical validators)
+            failed_rows: Number of rows that failed for this dimension (auto-calculated if None, None for statistical validators)
             impact_score: Optional impact score for this dimension (0-1 range)
 
         Returns:
             DimensionResult: Dimension result object with calculated percentages
         """
-        if failed_rows is None:
-            failed_rows = total_rows - passed_rows
-
-        # Derive one percentage from the other to ensure they sum to 100%
-        if total_rows > 0:
-            passed_rows_percentage = round(passed_rows / total_rows * 100, 2)
-            failed_rows_percentage = round(100 - passed_rows_percentage, 2)
+        # Handle row counts and percentages for statistical validators
+        if total_rows is None or passed_rows is None:
+            # Statistical validators don't have meaningful row-level pass/fail
+            passed_rows_percentage = None
+            failed_rows_percentage = None
+            if passed_rows is None:
+                passed_rows = None
+            if failed_rows is None:
+                failed_rows = None
         else:
-            passed_rows_percentage = 0
-            failed_rows_percentage = 0
+            # Row-by-row validators: calculate percentages
+            if failed_rows is None:
+                failed_rows = total_rows - passed_rows
+
+            # Derive one percentage from the other to ensure they sum to 100%
+            if total_rows > 0:
+                passed_rows_percentage = round(passed_rows / total_rows * 100, 2)
+                failed_rows_percentage = round(100 - passed_rows_percentage, 2)
+            else:
+                passed_rows_percentage = 0
+                failed_rows_percentage = 0
 
         dimension_values_array = [
             DimensionValue(name=name, value=value)

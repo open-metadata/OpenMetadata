@@ -42,6 +42,12 @@ logger = test_suite_logger()
 CTE_DIMENSION_STATS = "dimension_stats"
 CTE_TOP_DIMENSIONS = "top_dimensions"
 CTE_CATEGORIZED = "categorized"
+CTE_DIMENSION_RAW_METRICS = (
+    "dimension_raw_metrics"  # For statistical validators: raw aggregates
+)
+CTE_DIMENSION_WITH_IMPACT = (
+    "dimension_with_impact"  # For statistical validators: metrics + impact score
+)
 DIMENSION_GROUP_LABEL = "dimension_group"
 
 
@@ -282,6 +288,223 @@ class SQAValidatorMixin:
         )
 
         # Execute and return as list of dicts
+        results = self.runner.session.execute(final_query)
+        return [
+            {col.name: value for col, value in zip(final_query.selected_columns, row)}
+            for row in results
+        ]
+
+    def _execute_with_others_aggregation_statistical(
+        self,
+        dimension_col: Column,
+        metric_expressions: Dict[str, ClauseElement],
+        failed_count_expr_builder: Any,
+        final_metric_builders: Optional[Dict[str, Any]] = None,
+        exclude_from_final: Optional[List[str]] = None,
+        top_dimensions_count: int = DEFAULT_TOP_DIMENSIONS,
+    ) -> List[Dict[str, Any]]:
+        """Execute dimensional query for statistical validators with flexible aggregation
+
+        This specialized method supports both row-by-row and statistical validators by
+        allowing custom aggregation strategies for metrics in the final SELECT.
+
+        Key features:
+        1. Impact score computed in separate CTE after raw aggregates
+        2. Failed count determined via custom builder function
+        3. Final aggregation: default to SUM, override for non-summable metrics
+        4. "Others" uses recomputed/weighted values where specified
+
+        TODO: Once proven stable, consider merging with _execute_with_others_aggregation
+        to provide unified interface for all validators.
+
+        Args:
+            dimension_col: The column to group by
+            metric_expressions: Dict of SQLAlchemy expressions for CTE1 raw aggregates.
+                Keys become CTE column names (use constants!).
+                Must include DIMENSION_TOTAL_COUNT_KEY.
+            failed_count_expr_builder: Callable(cte1) -> ClauseElement that returns
+                expression for failed_count. References CTE1 columns via
+                getattr(cte1.c, KEY_CONSTANT).
+            final_metric_builders: Optional dict of custom aggregation builders for
+                specific metrics. If not provided, metrics default to func.sum().
+                Format: {metric_name: Callable(categorized_cte) -> ClauseElement}
+            exclude_from_final: Optional list of metric names to exclude from final SELECT.
+                Useful for intermediate metrics (e.g., sum_value used only for calculations).
+            top_dimensions_count: Number of top dimensions before Others aggregation
+
+        Returns:
+            List of dicts with dimension results ordered by impact score
+
+        Example - Statistical validator (Mean):
+            metric_expressions = {
+                DIMENSION_SUM_VALUE_KEY: func.sum(column),
+                DIMENSION_TOTAL_COUNT_KEY: func.count(),
+                "mean": func.avg(column),
+            }
+
+            def build_failed_count(cte1):
+                mean_col = getattr(cte1.c, "mean")
+                count_col = getattr(cte1.c, DIMENSION_TOTAL_COUNT_KEY)
+                return func.case(
+                    ((mean_col < min_bound) | (mean_col > max_bound), count_col),
+                    else_=func.literal(0)
+                )
+
+            def build_mean_final(cte):
+                return func.case(
+                    [(getattr(cte.c, DIMENSION_GROUP_LABEL) != DIMENSION_OTHERS_LABEL,
+                      func.max(getattr(cte.c, "mean")))],
+                    else_=(func.sum(getattr(cte.c, DIMENSION_SUM_VALUE_KEY)) /
+                           func.sum(getattr(cte.c, DIMENSION_TOTAL_COUNT_KEY)))
+                )
+
+            results = self._execute_with_others_aggregation_statistical(
+                dimension_col,
+                metric_expressions,
+                build_failed_count,
+                final_metric_builders={"mean": build_mean_final},
+                exclude_from_final=[DIMENSION_SUM_VALUE_KEY],  # Don't output sum_value
+            )
+
+        Example - Row-by-row validator (defaults to SUM):
+            metric_expressions = {
+                DIMENSION_TOTAL_COUNT_KEY: func.count(),
+                "count_in_set": Metrics.COUNT_IN_SET(...).fn(),
+            }
+            # No final_metric_builders needed - everything gets summed
+        """
+        # Validate required metrics
+        if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
+            raise ValueError(
+                f"metric_expressions must contain '{DIMENSION_TOTAL_COUNT_KEY}'"
+            )
+
+        final_metric_builders = final_metric_builders or {}
+        exclude_from_final = exclude_from_final or []
+
+        # CTE 1: Raw aggregates per dimension
+        raw_agg_columns = [dimension_col.label(DIMENSION_VALUE_KEY)]
+        for name, expr in metric_expressions.items():
+            raw_agg_columns.append(expr.label(name))
+
+        raw_aggregates = (
+            select(raw_agg_columns)
+            .select_from(self.runner.dataset)
+            .group_by(dimension_col)
+            .cte(CTE_DIMENSION_RAW_METRICS)
+        )
+
+        # CTE 2: Add failed_count and impact_score
+        failed_count_expr = failed_count_expr_builder(raw_aggregates)
+        total_count_col = getattr(raw_aggregates.c, DIMENSION_TOTAL_COUNT_KEY)
+
+        impact_score_expr = get_impact_score_expression(
+            failed_count_expr, total_count_col
+        )
+
+        # Select all columns from raw_aggregates plus computed columns
+        stats_with_impact_columns = [col for col in raw_aggregates.c]
+        stats_with_impact_columns.append(
+            failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY)
+        )
+        stats_with_impact_columns.append(
+            impact_score_expr.label(DIMENSION_IMPACT_SCORE_KEY)
+        )
+
+        stats_with_impact = (
+            select(stats_with_impact_columns)
+            .select_from(raw_aggregates)
+            .cte(CTE_DIMENSION_WITH_IMPACT)
+        )
+
+        # CTE 3: Top N dimensions by impact score
+        top_dimensions = (
+            select([getattr(stats_with_impact.c, DIMENSION_VALUE_KEY)])
+            .order_by(getattr(stats_with_impact.c, DIMENSION_IMPACT_SCORE_KEY).desc())
+            .limit(top_dimensions_count)
+            .cte(CTE_TOP_DIMENSIONS)
+        )
+
+        # CTE 4: Categorize as top N or "Others"
+        categorized_columns = [
+            case(
+                [
+                    (
+                        getattr(stats_with_impact.c, DIMENSION_VALUE_KEY).in_(
+                            select([getattr(top_dimensions.c, DIMENSION_VALUE_KEY)])
+                        ),
+                        getattr(stats_with_impact.c, DIMENSION_VALUE_KEY),
+                    )
+                ],
+                else_=DIMENSION_OTHERS_LABEL,
+            ).label(DIMENSION_GROUP_LABEL)
+        ]
+
+        # Add all other columns from stats_with_impact
+        for col in stats_with_impact.c:
+            if col.name != DIMENSION_VALUE_KEY:
+                categorized_columns.append(col)
+
+        categorized = (
+            select(categorized_columns)
+            .select_from(stats_with_impact)
+            .cte(CTE_CATEGORIZED)
+        )
+
+        # Final query: Aggregate by dimension_group
+        final_columns = [
+            getattr(categorized.c, DIMENSION_GROUP_LABEL).label(DIMENSION_VALUE_KEY)
+        ]
+
+        # Aggregate metrics: use custom builder or default to SUM
+        # Skip metrics in exclude_from_final (intermediate calculations)
+        for metric_name in metric_expressions.keys():
+            if metric_name in exclude_from_final:
+                continue  # Skip intermediate metrics not needed in output
+
+            if metric_name in final_metric_builders:
+                # Custom aggregation (e.g., weighted mean for "Others")
+                final_columns.append(
+                    final_metric_builders[metric_name](categorized).label(metric_name)
+                )
+            else:
+                # Default: SUM (works for counts, sums, etc.)
+                final_columns.append(
+                    func.sum(getattr(categorized.c, metric_name)).label(metric_name)
+                )
+
+        # Failed count: always sum
+        final_columns.append(
+            func.sum(getattr(categorized.c, DIMENSION_FAILED_COUNT_KEY)).label(
+                DIMENSION_FAILED_COUNT_KEY
+            )
+        )
+
+        # Impact score: preserve for top N, recompute for "Others" automatically
+        final_columns.append(
+            case(
+                [
+                    (
+                        getattr(categorized.c, DIMENSION_GROUP_LABEL)
+                        != DIMENSION_OTHERS_LABEL,
+                        func.max(getattr(categorized.c, DIMENSION_IMPACT_SCORE_KEY)),
+                    )
+                ],
+                else_=get_impact_score_expression(
+                    func.sum(getattr(categorized.c, DIMENSION_FAILED_COUNT_KEY)),
+                    func.sum(getattr(categorized.c, DIMENSION_TOTAL_COUNT_KEY)),
+                ),
+            ).label(DIMENSION_IMPACT_SCORE_KEY)
+        )
+
+        final_query = (
+            select(final_columns)
+            .select_from(categorized)
+            .group_by(getattr(categorized.c, DIMENSION_GROUP_LABEL))
+            .order_by(text(f"{DIMENSION_IMPACT_SCORE_KEY} DESC"))
+        )
+
+        # Execute and return
         results = self.runner.session.execute(final_query)
         return [
             {col.name: value for col, value in zip(final_query.selected_columns, row)}
