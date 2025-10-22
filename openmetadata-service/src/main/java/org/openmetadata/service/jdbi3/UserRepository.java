@@ -43,7 +43,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -91,6 +91,7 @@ import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.auth.UserActivityTracker;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -1064,12 +1065,15 @@ public class UserRepository extends EntityRepository<User> {
     }
     // Remove suggestions
     daoCollection.suggestionDAO().deleteByCreatedBy(entity.getId());
-    CompletableFuture.runAsync(() -> updateIncidentAssignee(entity))
-        .exceptionally(
-            ex -> {
-              LOG.error("Error updating test case incident assignee: ", ex);
-              return null;
-            });
+    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
+    executorService.submit(
+        () -> {
+          try {
+            updateIncidentAssignee(entity);
+          } catch (Exception ex) {
+            LOG.error("Error updating test case incident assignee: ", ex);
+          }
+        });
   }
 
   /** Handles entity updated from PUT and POST operation. */
