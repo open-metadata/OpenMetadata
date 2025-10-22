@@ -23,6 +23,10 @@ export interface LineageSettings {
      */
     lineageLayer: LineageLayer;
     /**
+     * Pipeline View Mode for Lineage.
+     */
+    pipelineViewMode: PipelineViewMode;
+    /**
      * Upstream Depth for Lineage.
      */
     upstreamDepth: number;
@@ -37,4 +41,14 @@ export enum LineageLayer {
     ColumnLevelLineage = "ColumnLevelLineage",
     DataObservability = "DataObservability",
     EntityLineage = "EntityLineage",
+}
+
+/**
+ * Pipeline View Mode for Lineage.
+ *
+ * Determines the view mode for pipelines in lineage.
+ */
+export enum PipelineViewMode {
+    Edge = "Edge",
+    Node = "Node",
 }
