@@ -440,6 +440,7 @@ export const CustomEdge = ({
         markerEnd={markerEnd}
         style={updatedStyle}
       />
+      <path className="react-flow__edge-path-transparent" d={edgePath} />
       {renderIcons}
     </Fragment>
   );
