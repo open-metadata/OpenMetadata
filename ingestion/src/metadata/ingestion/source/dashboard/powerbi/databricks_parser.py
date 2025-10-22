@@ -78,6 +78,8 @@ def parse_databricks_native_query_source(
             parser = LineageParser(
                 parser_query, dialect=Dialect.DATABRICKS, timeout_seconds=30
             )
+            if parser.query_parsing_success is False:
+                raise Exception(parser.query_parsing_failure_reason)
 
         except Exception as parser_exc:
             logger.error(
