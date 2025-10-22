@@ -15,6 +15,7 @@ import traceback
 from datetime import datetime
 from typing import Iterable
 
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -48,10 +49,13 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
         query = None
         try:
             query = self.get_sql_statement()
+            logger.debug(f"Executing usage query: {query}")
             with get_connection(self.service_connection).connect() as conn:
-                rows = conn.execute(query)
+                rows = conn.execute(text(query))
                 queries = []
+                row_count = 0
                 for row in rows:
+                    row_count += 1
                     row = dict(row)
                     try:
                         queries.append(
@@ -70,6 +74,7 @@ class PostgresUsageSource(PostgresQueryParserSource, UsageSource):
                     except Exception as err:
                         logger.debug(traceback.format_exc())
                         logger.error(str(err))
+            logger.info(f"Processed {row_count} query log entries for usage")
             if queries:
                 yield TableQueries(queries=queries)
 
