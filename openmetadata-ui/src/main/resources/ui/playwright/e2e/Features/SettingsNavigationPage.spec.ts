@@ -41,6 +41,12 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+base.afterAll('Cleanup', async ({ browser }) => {
+  const { afterAction, apiContext } = await performAdminLogin(browser);
+  await persona.delete(apiContext);
+  await afterAction();
+});
+
 const navigateToPersonaNavigation = async (page: Page) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
@@ -206,6 +212,7 @@ test.describe('Settings Navigation Page Tests', () => {
     //   Make changes
     const domainSwitch = page
       .locator('.ant-tree-title:has-text("Domains")')
+      .first()
       .locator('.ant-switch');
 
     await domainSwitch.click();

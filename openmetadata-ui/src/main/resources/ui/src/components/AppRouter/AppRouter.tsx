@@ -43,7 +43,7 @@ const AppRouter = () => {
     isApplicationLoading,
     isAuthenticating,
   } = useApplicationStore();
-  const { plugins } = useApplicationsProvider();
+  const { plugins = [] } = useApplicationsProvider();
 
   useEffect(() => {
     const { pathname } = location;
@@ -116,7 +116,7 @@ const AppRouter = () => {
 
       {/* Render APP position plugin routes (they handle their own layouts) */}
       {isAuthenticated &&
-        plugins.flatMap((plugin) => {
+        plugins?.flatMap((plugin) => {
           const routes = plugin.getRoutes?.() || [];
           // Filter routes with APP position
           const appRoutes = routes.filter(

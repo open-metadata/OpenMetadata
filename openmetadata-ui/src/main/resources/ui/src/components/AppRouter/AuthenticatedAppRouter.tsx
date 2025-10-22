@@ -292,7 +292,7 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
 
   // Get all plugin routes that should be in AUTHENTICATED_ROUTE position
   const pluginRoutes = useMemo(() => {
-    return plugins.flatMap((plugin) => {
+    return plugins?.flatMap((plugin) => {
       const routes = plugin.getRoutes?.() || [];
 
       // Filter routes that don't have position or have AUTHENTICATED_ROUTE position

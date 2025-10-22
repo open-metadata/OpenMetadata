@@ -22,10 +22,6 @@ jest.mock('../../utils/i18next/LocalUtil', () => ({
   },
 }));
 
-jest.mock('../Domain/AddDomain/AddDomain.component', () => {
-  return jest.fn().mockReturnValue(<div>AddDomain</div>);
-});
-
 jest.mock('../Domain/DomainDetailPage/DomainDetailPage.component', () => {
   return jest.fn().mockReturnValue(<div>DomainDetailPage</div>);
 });
@@ -54,16 +50,6 @@ jest.mock('../../utils/PermissionsUtils', () => {
 });
 
 describe('DomainRouter', () => {
-  it('should render AddDomain component for the ADD_DOMAIN route', async () => {
-    render(
-      <MemoryRouter initialEntries={['/add']}>
-        <DomainRouter />
-      </MemoryRouter>
-    );
-
-    expect(await screen.findByText('AddDomain')).toBeInTheDocument();
-  });
-
   it('should render DomainPage component for the DOMAIN route when user has domain view permission', async () => {
     render(
       <MemoryRouter initialEntries={['/']}>

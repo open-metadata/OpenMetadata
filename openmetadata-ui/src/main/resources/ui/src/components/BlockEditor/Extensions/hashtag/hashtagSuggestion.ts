@@ -16,7 +16,7 @@ import { isEmpty } from 'lodash';
 import tippy, { Instance, Props } from 'tippy.js';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { searchData } from '../../../../rest/miscAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { buildMentionLink } from '../../../../utils/FeedUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { ExtensionRef } from '../../BlockEditor.interface';
@@ -24,16 +24,13 @@ import HashList from './HashList';
 
 export const hashtagSuggestion = () => ({
   items: async ({ query }: { query: string }) => {
-    const data = await searchData(
-      query ?? '',
-      1,
-      5,
-      '',
-      '',
-      '',
-      SearchIndex.DATA_ASSET
-    );
-    const hits = data.data.hits.hits;
+    const data = await searchQuery({
+      query: query ?? '',
+      pageNumber: 1,
+      pageSize: 5,
+      searchIndex: SearchIndex.DATA_ASSET,
+    });
+    const hits = data.hits.hits;
 
     return hits.map((hit) => ({
       id: hit._id,

@@ -401,7 +401,7 @@ export const applyPipelineFromModal = async (
   await page.locator('[data-testid="add-pipeline"]').dispatchEvent('click');
 
   const waitForSearchResponse = page.waitForResponse(
-    `/api/v1/search/query?q=*&from=0&size=10&*`
+    `/api/v1/search/query?q=*`
   );
 
   await page

@@ -14,7 +14,7 @@
       "enum": [
         "OpenMetadata",
         "GreatExpectations",
-        "DBT",
+        "dbt",
         "Deequ",
         "Soda",
         "Other"

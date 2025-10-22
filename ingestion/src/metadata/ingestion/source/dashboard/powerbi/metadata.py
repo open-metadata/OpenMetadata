@@ -59,6 +59,9 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
+from metadata.ingestion.source.dashboard.powerbi.databricks_parser import (
+    parse_databricks_native_query_source,
+)
 from metadata.ingestion.source.dashboard.powerbi.models import (
     Dataflow,
     Dataset,
@@ -83,6 +86,7 @@ logger = ingestion_logger()
 
 OWNER_ACCESS_RIGHTS_KEYWORDS = ["owner", "write", "admin"]
 SNOWFLAKE_QUERY_EXPRESSION_KW = "Value.NativeQuery(Snowflake.Databases("
+DATABRICKS_QUERY_EXPRESSION_KW = "Value.NativeQuery(Databricks.Catalogs("
 
 
 class PowerbiSource(DashboardServiceSource):
@@ -761,7 +765,7 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
-    def _parse_snowflake_regex_exp(
+    def _parse_expression_regex_exp(
         self, match: re.Match, datamodel_entity: DashboardDataModel
     ) -> Optional[str]:
         """parse snowflake regex expression"""
@@ -959,6 +963,59 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
+    def _parse_catalog_table_definition(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[List[dict]]:
+        """parse catalog table definition"""
+        db_match = re.search(
+            r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression
+        )
+        schema_match = re.search(
+            r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Schema"\]', source_expression
+        )
+        table_match = re.search(
+            r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression
+        )
+        view_match = re.search(
+            r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression
+        )
+        try:
+            database = self._parse_expression_regex_exp(db_match, datamodel_entity)
+            schema = self._parse_expression_regex_exp(schema_match, datamodel_entity)
+            table = self._parse_expression_regex_exp(table_match, datamodel_entity)
+            view = self._parse_expression_regex_exp(view_match, datamodel_entity)
+            if table or view:  # at least table or view should be present
+                return [
+                    {
+                        "database": database,
+                        "schema": schema,
+                        "table": table if table else view,
+                    }
+                ]
+        except Exception as exc:
+            logger.debug(f"Error to parse databricks table source: {exc}")
+            logger.debug(traceback.format_exc())
+        return None
+
+    def _parse_databricks_source(
+        self, source_expression: str, datamodel_entity: DashboardDataModel
+    ) -> Optional[List[dict]]:
+        if "Databricks.Catalogs" not in source_expression:
+            return None
+        dataset = self._fetch_dataset_from_workspace(datamodel_entity.name.root)
+        if dataset and dataset.expressions:
+            try:
+                if DATABRICKS_QUERY_EXPRESSION_KW in source_expression:
+                    return parse_databricks_native_query_source(source_expression)
+                else:
+                    return self._parse_catalog_table_definition(
+                        source_expression, datamodel_entity
+                    )
+            except Exception as exc:
+                logger.debug(f"Error to parse databricks table source: {exc}")
+                logger.debug(traceback.format_exc())
+        return None
+
     def _parse_snowflake_source(
         self, source_expression: str, datamodel_entity: DashboardDataModel
     ) -> Optional[List[dict]]:
@@ -969,33 +1026,9 @@ class PowerbiSource(DashboardServiceSource):
             if SNOWFLAKE_QUERY_EXPRESSION_KW in source_expression:
                 # snowflake query source identified
                 return self._parse_snowflake_query_source(source_expression)
-            db_match = re.search(
-                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Database"\]', source_expression
+            return self._parse_catalog_table_definition(
+                source_expression, datamodel_entity
             )
-            schema_match = re.search(
-                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Schema"\]', source_expression
-            )
-            table_match = re.search(
-                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="Table"\]', source_expression
-            )
-            view_match = re.search(
-                r'\[Name=(?:"([^"]+)"|([^,]+)),Kind="View"\]', source_expression
-            )
-
-            database = self._parse_snowflake_regex_exp(db_match, datamodel_entity)
-            schema = self._parse_snowflake_regex_exp(schema_match, datamodel_entity)
-            table = self._parse_snowflake_regex_exp(table_match, datamodel_entity)
-            view = self._parse_snowflake_regex_exp(view_match, datamodel_entity)
-
-            if table or view:  # atlease table or view should be fetched
-                return [
-                    {
-                        "database": database,
-                        "schema": schema,
-                        "table": table if table else view,
-                    }
-                ]
-            return None
         except Exception as exc:
             logger.debug(f"Error to parse snowflake table source: {exc}")
             logger.debug(traceback.format_exc())
@@ -1021,6 +1054,12 @@ class PowerbiSource(DashboardServiceSource):
             table_info_list = self._parse_redshift_source(source_expression)
             if isinstance(table_info_list, List):
                 return table_info_list
+
+            # parse databricks source
+            table_info_list = self._parse_databricks_source(source_expression)
+            if isinstance(table_info_list, List):
+                return table_info_list
+
             return None
         except Exception as exc:
             logger.debug(f"Error to parse table source: {exc}")

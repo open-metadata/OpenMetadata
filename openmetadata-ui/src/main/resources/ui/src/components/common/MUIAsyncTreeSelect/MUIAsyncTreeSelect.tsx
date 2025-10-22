@@ -499,22 +499,25 @@ const MUIAsyncTreeSelect: FC<MUIAsyncTreeSelectProps> = ({
   );
 
   // Handle input blur to restore selected value if no new selection
-  const handleInputBlur = useCallback(
-    (e: React.FocusEvent) => {
-      // Restore selected value in single-select if no new selection
-      if (!multiple && selectedOptions.length > 0) {
-        const selectedLabel = selectedOptions[0].label;
-        if (inputValue !== selectedLabel) {
-          setInputValue(selectedLabel);
-          debouncedSetSearchTerm(''); // Clear search to show all options
-        }
+  const handleInputBlur = useCallback(() => {
+    // Restore selected value in single-select if no new selection
+    if (!multiple && selectedOptions.length > 0) {
+      const selectedLabel = selectedOptions[0].label;
+      if (inputValue !== selectedLabel) {
+        setInputValue(selectedLabel);
+        debouncedSetSearchTerm(''); // Clear search to show all options
       }
+    }
 
-      // Call existing blur handler for dropdown management
-      handleBlur(e);
-    },
-    [multiple, selectedOptions, inputValue, handleBlur, debouncedSetSearchTerm]
-  );
+    // Call existing blur handler for dropdown management
+    handleBlur();
+  }, [
+    multiple,
+    selectedOptions,
+    inputValue,
+    handleBlur,
+    debouncedSetSearchTerm,
+  ]);
 
   // Calculate if has clearable value
   const hasClearableValue = multiple

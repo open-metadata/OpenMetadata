@@ -11,8 +11,10 @@
 """
 Announce method deprecation
 """
-import warnings
+import logging
 from functools import wraps
+
+from metadata.utils.logger import METADATA_LOGGER
 
 
 def deprecated(message: str, release: str):
@@ -21,12 +23,13 @@ def deprecated(message: str, release: str):
     def _deprecated(fn):
         @wraps(fn)
         def inner(*args, **kwargs):
-            warnings.simplefilter("always", DeprecationWarning)
-            warnings.warn(
-                f"[{fn.__name__}] will be deprecated in the release [{release}]: {message}",
-                category=DeprecationWarning,
+            # Get the metadata logger
+            logger = logging.getLogger(METADATA_LOGGER)
+            # Log deprecation warning using the logging system
+            # This will respect the loggerLevel configuration
+            logger.warning(
+                f"[{fn.__name__}] will be deprecated in the release [{release}]: {message}"
             )
-            warnings.simplefilter("default", DeprecationWarning)
 
             return fn(*args, **kwargs)
 

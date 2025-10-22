@@ -1,0 +1,44 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/kinesisFirehoseConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "KinesisFirehoseConnection",
+  "description": "AWS Kinesis Firehose Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.KinesisFirehoseConnection",
+  "definitions": {
+    "kinesisFirehoseType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["KinesisFirehose"],
+      "default": "KinesisFirehose"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/kinesisFirehoseType",
+      "default": "KinesisFirehose"
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "messagingServiceName": {
+      "title": "Kafka Service Name",
+      "description": "Name of the Kafka Messaging Service associated with this Firehose Pipeline Service. e.g. local_kafka",
+      "type": "string"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Default Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["awsConfig"]
+}

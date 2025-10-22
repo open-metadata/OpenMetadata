@@ -32,7 +32,8 @@
         "QlikCloud",
         "Sigma",
         "ThoughtSpot",
-        "Grafana"
+        "Grafana",
+        "Hex"
       ],
       "javaEnums": [
         {
@@ -88,6 +89,9 @@
         },
         {
           "name": "Grafana"
+        },
+        {
+          "name": "Hex"
         }
       ]
     },
@@ -155,6 +159,9 @@
             },
             {
               "$ref": "./connections/dashboard/grafanaConnection.json"
+            },
+            {
+              "$ref": "./connections/dashboard/hexConnection.json"
             }
           ]
         }
@@ -221,6 +228,10 @@
     "updatedBy": {
       "description": "User who made the update.",
       "type": "string"
+    },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
     },
     "href": {
       "description": "Link to the resource corresponding to this dashboard service.",

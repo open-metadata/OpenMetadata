@@ -61,6 +61,7 @@ const mockShowErrorToast = jest.fn();
 const mockOnMarkTaskNotificationRead = jest.fn();
 
 const mockProps = {
+  activeTab: ThreadType.Task,
   hasMentionNotification: true,
   hasTaskNotification: true,
   onMarkMentionsNotificationRead: jest.fn(),

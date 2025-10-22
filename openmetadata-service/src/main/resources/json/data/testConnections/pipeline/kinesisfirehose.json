@@ -1,0 +1,14 @@
+{
+    "name": "KinesisFirehose",
+    "displayName": "Kinesis Firehose Test Connection",
+    "description": "This Test Connection validates the access against AWS Firehose and basic metadata extraction of delivery streams.",
+    "steps": [
+        {
+            "name": "GetPipelines",
+            "description": "List all the delivery streams available to the user, user must have access to `firehose:ListDeliveryStreams` permission",
+            "errorMessage": "Failed to fetch delivery streams, please validate the AWS credentials or validate if the IAM role has access to `firehose:ListDeliveryStreams`",
+            "shortCircuit": true,
+            "mandatory": true
+        }
+    ]
+}

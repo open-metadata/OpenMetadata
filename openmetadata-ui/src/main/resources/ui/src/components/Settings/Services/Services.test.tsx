@@ -163,6 +163,7 @@ jest.mock('../../../utils/PermissionsUtils', () => ({
 
 jest.mock('../../../utils/ServiceUtils', () => ({
   getOptionalFields: jest.fn(),
+  getSearchIndexFromService: jest.fn(),
   getResourceEntityFromServiceCategory: jest.fn(),
   getServiceTypesFromServiceCategory: jest.fn(),
 }));

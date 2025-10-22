@@ -23,13 +23,13 @@ export interface TreeContentProps {
   error: string | null;
   hasData: boolean;
   children: ReactNode;
-  selectedItems?: string[] | null;
+  selectedItems?: string | null;
   expandedItems?: string[];
   focusedItem?: string;
   apiRef?: MutableRefObject<any>;
   loadingMessage?: string;
   noDataMessage?: string;
-  onNodeToggle?: SimpleTreeViewProps['onExpandedItemsChange'];
+  onNodeToggle?: SimpleTreeViewProps<boolean>['onExpandedItemsChange'];
   onFocusedItemChange?: (event: React.SyntheticEvent, itemId: string) => void;
   onItemClick?: (event: React.MouseEvent, itemId: string) => void;
 }

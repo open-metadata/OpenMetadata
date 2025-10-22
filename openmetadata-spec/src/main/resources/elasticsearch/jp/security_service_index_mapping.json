@@ -193,7 +193,7 @@
                             }
                         }
                     },
-                    "owner": {
+                    "owners": {
                         "properties": {
                             "id": {
                                 "type": "keyword",
@@ -293,7 +293,7 @@
                     }
                 }
             },
-            "owner": {
+            "owners": {
                 "properties": {
                     "id": {
                         "type": "keyword",

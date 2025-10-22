@@ -150,6 +150,10 @@ export class EntityDataClass {
           ]
         : [];
 
+    if (creationConfig?.all || creationConfig?.tier) {
+      promises.push(this.tierTag1.create(apiContext));
+    }
+
     if (creationConfig?.all || creationConfig?.table) {
       promises.push(this.table1.create(apiContext));
       promises.push(this.table2.create(apiContext));
@@ -293,6 +297,10 @@ export class EntityDataClass {
             this.dataProduct3.delete(apiContext),
           ]
         : [];
+
+    if (creationConfig?.all || creationConfig?.tier) {
+      promises.push(this.tierTag1.delete(apiContext));
+    }
 
     if (creationConfig?.all || creationConfig?.table) {
       promises.push(this.table1.delete(apiContext));

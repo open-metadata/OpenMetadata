@@ -197,18 +197,34 @@ test.describe('Search Preview test', () => {
     // Get the search result cards
     const searchCards = searchResultsContainer.locator('.search-card');
 
-    // Check the first card has table1's display name using data-testid
-    const firstCard = searchCards.nth(0);
+    // Find the card where the title exactly matches the entity name
+    const matchedCard = searchCards.filter({
+      has: page.getByTestId('entity-header-display-name').filter({
+        hasText: table1.entity.name,
+      }),
+    });
 
+    // Assert that it exists
+    await expect(matchedCard).toHaveCount(1);
+
+    // Optionally, check the description inside that card
     await expect(
-      firstCard.getByTestId('entity-header-display-name')
+      matchedCard.getByTestId('entity-header-display-name')
     ).toHaveText(table1.entity.name);
 
-    // Check the second card has table2's description using data-testid
-    const secondCard = searchCards.nth(1);
+    // Find the card where the description matches table2's entity description
+    const cardWithDescription = searchCards.filter({
+      has: page.getByTestId('description-text').filter({
+        hasText: table2.entity.description,
+      }),
+    });
 
-    await expect(secondCard.getByTestId('description-text')).toContainText(
-      table2.entity.description
-    );
+    // Assert that such a card exists
+    await expect(cardWithDescription).toHaveCount(1);
+
+    // Optionally, verify the description text
+    await expect(
+      cardWithDescription.getByTestId('description-text')
+    ).toHaveText(table2.entity.description);
   });
 });

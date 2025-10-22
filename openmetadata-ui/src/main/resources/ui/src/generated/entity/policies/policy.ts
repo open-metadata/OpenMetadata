@@ -64,6 +64,10 @@ export interface Policy {
      */
     id: string;
     /**
+     * Bot user that performed the action on behalf of the actual user.
+     */
+    impersonatedBy?: string;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -331,6 +335,7 @@ export enum Operation {
     EditUsage = "EditUsage",
     EditUsers = "EditUsers",
     GenerateToken = "GenerateToken",
+    Impersonate = "Impersonate",
     Kill = "Kill",
     Trigger = "Trigger",
     ViewAll = "ViewAll",

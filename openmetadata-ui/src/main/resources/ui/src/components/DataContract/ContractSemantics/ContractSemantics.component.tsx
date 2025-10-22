@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Col, Row, Typography } from 'antd';
+import { Typography } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FailIcon } from '../../../assets/svg/ic-fail.svg';
@@ -22,6 +22,7 @@ import { DataContractResult } from '../../../generated/entity/datacontract/dataC
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
+import './contract-semantics.less';
 
 const ContractSemantics: React.FC<{
   semantics: SemanticsRule[];
@@ -47,48 +48,44 @@ const ContractSemantics: React.FC<{
   };
 
   return (
-    <Row className="contract-semantic-component-container" gutter={[20, 0]}>
-      <Col span={18}>
-        <div className="rule-item-container">
-          {semantics.map((item) => (
-            <div className="rule-item" key={item.rule}>
-              <Icon
-                className={classNames('rule-icon', {
-                  'rule-icon-default': !latestContractResults,
-                })}
-                component={getSemanticIconPerLastExecution(item.name)}
-              />
-              <div className="rule-item-content">
-                <Typography.Text className="rule-name">
-                  {item.name}
-                </Typography.Text>
-                <Typography.Text className="rule-description">
-                  <RichTextEditorPreviewerNew
-                    enableSeeMoreVariant
-                    markdown={item.description}
-                    maxLineLength="3"
-                  />
-                </Typography.Text>
-              </div>
-            </div>
-          ))}
-        </div>
-      </Col>
-      <Col className="d-flex justify-end" span={6}>
-        {contractStatus && (
-          <div className="contract-status-container">
-            <Typography.Text>{`${t('label.entity-status', {
-              entity: t('label.schema'),
-            })} :`}</Typography.Text>
-            <StatusBadgeV2
-              dataTestId="contract-status-card-item-semantics-status"
-              label={contractStatus}
-              status={getContractStatusType(contractStatus)}
+    <div className="contract-semantic-component-container">
+      <div className="rule-item-container">
+        {semantics.map((item) => (
+          <div className="rule-item" key={item.rule}>
+            <Icon
+              className={classNames('rule-icon', {
+                'rule-icon-default': !latestContractResults,
+              })}
+              component={getSemanticIconPerLastExecution(item.name)}
             />
+            <div className="rule-item-content">
+              <Typography.Text className="rule-name">
+                {item.name}
+              </Typography.Text>
+              <Typography.Text className="rule-description">
+                <RichTextEditorPreviewerNew
+                  enableSeeMoreVariant
+                  markdown={item.description}
+                  maxLineLength="3"
+                />
+              </Typography.Text>
+            </div>
           </div>
-        )}
-      </Col>
-    </Row>
+        ))}
+      </div>
+      {contractStatus && (
+        <div className="contract-status-container">
+          <Typography.Text>{`${t('label.entity-status', {
+            entity: t('label.semantic-plural'),
+          })} :`}</Typography.Text>
+          <StatusBadgeV2
+            dataTestId="contract-status-card-item-semantics-status"
+            label={contractStatus}
+            status={getContractStatusType(contractStatus)}
+          />
+        </div>
+      )}
+    </div>
   );
 };
 

@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
@@ -236,10 +237,36 @@ public class SearchRepository {
 
   public void createIndexes() {
     RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
-    RecreateIndexHandler.ReindexContext context =
-        recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    ReindexContext context = recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
     if (context != null) {
-      recreateIndexHandler.finalizeReindex(context, true);
+      for (String entityType : context.getEntities()) {
+        try {
+          String originalIndex = context.getOriginalIndex(entityType).orElse(null);
+          String canonicalIndex = context.getCanonicalIndex(entityType).orElse(null);
+          String activeIndex = context.getOriginalIndex(entityType).orElse(null);
+          String stagedIndex = context.getStagedIndex(entityType).orElse(null);
+          String canonicalAlias = context.getCanonicalAlias(entityType).orElse(null);
+          Set<String> existingAliases = context.getExistingAliases(entityType);
+          Set<String> parentAliases =
+              new HashSet<>(listOrEmpty(context.getParentAliases(entityType)));
+
+          EntityReindexContext entityReindexContext =
+              EntityReindexContext.builder()
+                  .entityType(entityType)
+                  .originalIndex(originalIndex)
+                  .canonicalIndex(canonicalIndex)
+                  .activeIndex(activeIndex)
+                  .stagedIndex(stagedIndex)
+                  .canonicalAliases(canonicalAlias)
+                  .existingAliases(existingAliases)
+                  .parentAliases(parentAliases)
+                  .build();
+          recreateIndexHandler.finalizeReindex(entityReindexContext, true);
+
+        } catch (Exception ex) {
+          LOG.error("Failed to recreate index for entity {}", entityType, ex);
+        }
+      }
     }
   }
 
@@ -557,7 +584,8 @@ public class SearchRepository {
       String entityId,
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
-      EntityInterface entity) {
+      EntityInterface entity)
+      throws IOException {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates =
           getInheritedFieldChanges(changeDescription, entity);
@@ -1065,7 +1093,8 @@ public class SearchRepository {
     }
   }
 
-  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping) {
+  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping)
+      throws IOException {
     String docId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     switch (entityType) {
@@ -1130,7 +1159,8 @@ public class SearchRepository {
   }
 
   public void softDeleteOrRestoredChildren(
-      EntityReference entityReference, IndexMapping indexMapping, boolean delete) {
+      EntityReference entityReference, IndexMapping indexMapping, boolean delete)
+      throws IOException {
     String docId = entityReference.getId().toString();
     String entityType = entityReference.getType();
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);

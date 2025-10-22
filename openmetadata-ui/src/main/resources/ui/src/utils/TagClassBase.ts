@@ -10,10 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
 import { PAGE_SIZE } from '../constants/constants';
 import { queryFilterToRemoveSomeClassification } from '../constants/Tag.constants';
 import { SearchIndex } from '../enums/search.enum';
 import { searchQuery } from '../rest/searchAPI';
+import { getTermQuery } from './SearchUtils';
 import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
 
 class TagClassBase {
@@ -24,14 +26,33 @@ class TagClassBase {
   ) {
     // this is to escape and encode any chars which is known by ES search internally
     const encodedValue = getEncodedFqn(escapeESReservedCharacters(searchText));
+
+    // Build the queryFilter by merging disabled:false with any existing filters
+    const disabledFilter = getTermQuery({ disabled: 'false' });
+
+    let mergedQueryFilter = {};
+    if (emptyQueryFilter) {
+      // If emptyQueryFilter is true, only use the disabled filter
+      mergedQueryFilter = disabledFilter;
+    } else if (!isEmpty(queryFilterToRemoveSomeClassification)) {
+      // Merge both filters: disabled:false (must) + classification exclusions (must_not)
+      mergedQueryFilter = {
+        query: {
+          bool: {
+            must: disabledFilter.query.bool.must,
+            must_not: queryFilterToRemoveSomeClassification.query.bool.must_not,
+          },
+        },
+      };
+    } else {
+      mergedQueryFilter = disabledFilter;
+    }
+
     const res = await searchQuery({
       query: `*${encodedValue}*`,
-      filters: 'disabled:false',
       pageNumber: page,
       pageSize: PAGE_SIZE,
-      queryFilter: emptyQueryFilter
-        ? {}
-        : queryFilterToRemoveSomeClassification,
+      queryFilter: mergedQueryFilter,
       searchIndex: SearchIndex.TAG,
     });
 

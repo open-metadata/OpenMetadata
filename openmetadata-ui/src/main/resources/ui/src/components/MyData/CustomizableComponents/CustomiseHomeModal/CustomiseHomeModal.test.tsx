@@ -49,7 +49,7 @@ jest.mock('antd', () => {
 
   return {
     ...antd,
-    Modal: ({ children, open, onCancel, ...props }: any) =>
+    Modal: ({ children, open, ...props }: any) =>
       open ? (
         <div data-testid="modal" {...props}>
           {children}

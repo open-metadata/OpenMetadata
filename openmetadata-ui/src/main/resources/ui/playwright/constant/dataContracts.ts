@@ -41,7 +41,7 @@ export const DATA_CONTRACT_SEMANTICS2 = {
   description: 'new data contract semantic description 2',
   rules: [
     {
-      field: 'Name',
+      field: 'Display Name',
       operator: 'Is Set',
     },
   ],
@@ -204,4 +204,21 @@ export const DATA_CONTRACT_SECURITY_CONSUMER_DETAILS = {
       values: ['column_value_3', 'column_value_4'],
     },
   ],
+};
+
+export const DATA_CONTRACT_SEMANTIC_OPERATIONS = {
+  is: 'Is',
+  is_not: 'Is Not',
+  any_in: 'Any in',
+  not_in: 'Not in',
+  is_set: 'Is Set',
+  is_not_set: 'Is Not Set',
+  less: '<',
+  greater: '>',
+  less_equal: '<=',
+  greater_equal: '>=',
+  contains: 'Contains',
+  not_contains: 'Not contains',
+  between: 'Between',
+  not_between: 'Not between',
 };

@@ -128,14 +128,6 @@ export const addMentionCommentInFeed = async (
 
   await page.waitForSelector('[data-testid="loader"]', { state: 'detached' });
 
-  const firstMessage = getNthFeedMessage(page, 0);
-
-  await expect(firstMessage).toBeVisible();
-
-  await firstMessage.locator('[data-testid="reply-count"]').click();
-  await page.waitForSelector('.ant-drawer-content', {
-    state: 'visible',
-  });
   await page.getByTestId('comments-input-field').click();
 
   const userSuggestionsResponse = page.waitForResponse(

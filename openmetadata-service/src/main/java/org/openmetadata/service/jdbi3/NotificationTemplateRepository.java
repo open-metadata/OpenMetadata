@@ -14,6 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
@@ -24,6 +25,7 @@ import org.openmetadata.schema.entity.events.NotificationTemplate;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.events.NotificationTemplateResource;
 import org.openmetadata.service.template.NotificationTemplateProcessor;
@@ -62,29 +64,23 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
   @Override
   public void prepare(NotificationTemplate entity, boolean update) {
-    // Validate template if body is present
-    if (entity.getTemplateBody() != null) {
-      NotificationTemplateValidationRequest request = new NotificationTemplateValidationRequest();
-      request.setTemplateBody(entity.getTemplateBody());
-      request.setTemplateSubject(entity.getTemplateSubject());
+    NotificationTemplateValidationRequest request = new NotificationTemplateValidationRequest();
+    request.setTemplateBody(entity.getTemplateBody());
+    request.setTemplateSubject(entity.getTemplateSubject());
 
-      NotificationTemplateValidationResponse response = templateProcessor.validate(request);
+    NotificationTemplateValidationResponse response = templateProcessor.validate(request);
 
-      // Check for validation errors
-      StringBuilder errors = new StringBuilder();
-      if (response.getTemplateBody() != null && !response.getTemplateBody().getPassed()) {
-        errors.append("Template body: ").append(response.getTemplateBody().getError());
-      }
-      if (response.getTemplateSubject() != null && !response.getTemplateSubject().getPassed()) {
-        if (errors.length() > 0) {
-          errors.append("; ");
-        }
-        errors.append("Template subject: ").append(response.getTemplateSubject().getError());
-      }
+    // Check for validation errors
+    List<String> errors = new ArrayList<>();
+    if (response.getTemplateBody() != null && !response.getTemplateBody().getPassed()) {
+      errors.add("Template body: " + response.getTemplateBody().getError());
+    }
+    if (response.getTemplateSubject() != null && !response.getTemplateSubject().getPassed()) {
+      errors.add("Template subject: " + response.getTemplateSubject().getError());
+    }
 
-      if (errors.length() > 0) {
-        throw new IllegalArgumentException("Invalid template: " + errors);
-      }
+    if (!errors.isEmpty()) {
+      throw new IllegalArgumentException("Invalid template: " + String.join("; ", errors));
     }
   }
 
@@ -119,70 +115,80 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
     for (NotificationTemplate seedTemplate : seedTemplates) {
       String fqn = seedTemplate.getFullyQualifiedName();
       NotificationTemplate existing = findByNameOrNull(fqn, Include.ALL);
-      String seedChecksum = calculateTemplateChecksum(seedTemplate);
 
       if (existing == null) {
-        seedTemplate.withIsModifiedFromDefault(false).withDefaultTemplateChecksum(seedChecksum);
-        initializeEntity(seedTemplate);
-        LOG.info("Created new system template {}", fqn);
-        continue;
+        createSystemTemplateFromSeed(seedTemplate, fqn);
+      } else if (shouldUpdateSystemTemplate(existing, seedTemplate)) {
+        updateSystemTemplateFromSeed(existing, seedTemplate, fqn);
+      } else {
+        LOG.debug("Skipping template {} - user template or modified system template", fqn);
       }
+    }
+  }
 
-      if (ProviderType.SYSTEM.equals(existing.getProvider())
-          && Boolean.FALSE.equals(existing.getIsModifiedFromDefault())
-          && !Objects.equals(seedChecksum, existing.getDefaultTemplateChecksum())) {
-        // Only update functional fields for unmodified templates (hybrid approach)
-        // This preserves any user-customized displayName or description
-        existing
-            .withTemplateBody(seedTemplate.getTemplateBody())
-            .withTemplateSubject(seedTemplate.getTemplateSubject())
-            .withDefaultTemplateChecksum(seedChecksum);
-        store(existing, true);
-        LOG.info("Updated system template {} to new version", existing.getFullyQualifiedName());
-        continue;
-      }
+  private void createSystemTemplateFromSeed(NotificationTemplate seedTemplate, String fqn)
+      throws IOException {
+    seedTemplate.withIsModifiedFromDefault(false);
+    try {
+      initializeEntity(seedTemplate);
+    } catch (IllegalArgumentException e) {
+      throw new IOException(
+          String.format("Failed to validate seed template '%s': %s", fqn, e.getMessage()), e);
+    }
+  }
 
-      LOG.debug(
-          "Skipping template {} - either user template or modified system template",
-          existing.getFullyQualifiedName());
+  private boolean shouldUpdateSystemTemplate(
+      NotificationTemplate existing, NotificationTemplate seedTemplate) {
+    // Update only if system template has not been update and seed content differs from current
+    // content
+    return ProviderType.SYSTEM.equals(existing.getProvider())
+        && Boolean.FALSE.equals(existing.getIsModifiedFromDefault())
+        && !Objects.equals(
+            calculateTemplateChecksum(seedTemplate), calculateTemplateChecksum(existing));
+  }
+
+  private void updateSystemTemplateFromSeed(
+      NotificationTemplate existing, NotificationTemplate seedTemplate, String fqn)
+      throws IOException {
+    existing
+        .withTemplateBody(seedTemplate.getTemplateBody())
+        .withTemplateSubject(seedTemplate.getTemplateSubject());
+    try {
+      prepare(existing, true);
+      store(existing, true);
+    } catch (IllegalArgumentException e) {
+      throw new IOException(
+          String.format("Failed to validate seed template '%s': %s", fqn, e.getMessage()), e);
     }
   }
 
   public void resetToDefault(String fqn) {
     try {
-      NotificationTemplate template = getByName(null, fqn, getFields("*"));
-      if (template == null) {
+      NotificationTemplate original = getByName(null, fqn, getFields("*"));
+      if (original == null) {
         throw new IllegalArgumentException("NotificationTemplate not found: " + fqn);
       }
 
-      if (!ProviderType.SYSTEM.equals(template.getProvider())) {
+      if (!ProviderType.SYSTEM.equals(original.getProvider())) {
         throw new IllegalArgumentException(
             "Cannot reset template: only SYSTEM templates can be reset to default");
       }
 
-      String seedPath =
-          ResourcePathResolver.getResourcePath(NotificationTemplateResourcePathProvider.class);
-      List<NotificationTemplate> defaultTemplates = getEntitiesFromSeedData(seedPath);
-      NotificationTemplate defaultTemplate =
-          defaultTemplates.stream()
-              .filter(t -> fqn.equals(t.getFullyQualifiedName()))
-              .findFirst()
-              .orElseThrow(
-                  () ->
-                      new IllegalArgumentException(
-                          "Default template not found in seed data: " + fqn));
-
-      template
+      NotificationTemplate defaultTemplate = getDefaultTemplateFromSeed(fqn);
+      NotificationTemplate updated = JsonUtils.deepCopy(original, NotificationTemplate.class);
+      updated
           .withTemplateBody(defaultTemplate.getTemplateBody())
           .withTemplateSubject(defaultTemplate.getTemplateSubject())
           .withDescription(defaultTemplate.getDescription())
-          .withDisplayName(defaultTemplate.getDisplayName())
-          .withIsModifiedFromDefault(false)
-          .withDefaultTemplateChecksum(calculateTemplateChecksum(defaultTemplate));
+          .withDisplayName(defaultTemplate.getDisplayName());
 
-      store(template, true);
+      EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
+      entityUpdater.update();
 
       LOG.info("Reset NotificationTemplate {} to default", fqn);
+    } catch (IllegalArgumentException e) {
+      LOG.error("Failed to reset template: {}", e.getMessage(), e);
+      throw e;
     } catch (IOException e) {
       LOG.error("Failed to load seed data for reset operation", e);
       throw new RuntimeException("Failed to reset template due to seed data loading error", e);
@@ -199,6 +205,17 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
   public NotificationTemplateValidationResponse validate(
       NotificationTemplateValidationRequest request) {
     return templateProcessor.validate(request);
+  }
+
+  private NotificationTemplate getDefaultTemplateFromSeed(String fqn) throws IOException {
+    String seedPath =
+        ResourcePathResolver.getResourcePath(NotificationTemplateResourcePathProvider.class);
+    List<NotificationTemplate> defaultTemplates = getEntitiesFromSeedData(seedPath);
+    return defaultTemplates.stream()
+        .filter(t -> fqn.equals(t.getFullyQualifiedName()))
+        .findFirst()
+        .orElseThrow(
+            () -> new IllegalArgumentException("Default template not found in seed data: " + fqn));
   }
 
   private String calculateTemplateChecksum(NotificationTemplate template) {
@@ -221,18 +238,21 @@ public class NotificationTemplateRepository extends EntityRepository<Notificatio
 
     @Override
     protected void entitySpecificUpdate(boolean consolidatingChanges) {
-      // Record template-specific content changes for versioning and rollback
       recordChange("templateBody", original.getTemplateBody(), updated.getTemplateBody());
       recordChange("templateSubject", original.getTemplateSubject(), updated.getTemplateSubject());
 
-      // Update modification tracking WITHOUT recording (metadata management)
       if (ProviderType.SYSTEM.equals(original.getProvider())) {
-        // Calculate current template checksum
-        String currentChecksum = calculateTemplateChecksum(updated);
-        String defaultChecksum = original.getDefaultTemplateChecksum();
+        try {
+          NotificationTemplate defaultTemplate =
+              getDefaultTemplateFromSeed(original.getFullyQualifiedName());
 
-        // Set modification status based on checksum comparison
-        updated.setIsModifiedFromDefault(!Objects.equals(currentChecksum, defaultChecksum));
+          String currentChecksum = calculateTemplateChecksum(updated);
+          String defaultChecksum = calculateTemplateChecksum(defaultTemplate);
+
+          updated.setIsModifiedFromDefault(!Objects.equals(currentChecksum, defaultChecksum));
+        } catch (IOException | IllegalArgumentException e) {
+          LOG.warn("Failed to load seed data for modification tracking", e);
+        }
       }
     }
   }

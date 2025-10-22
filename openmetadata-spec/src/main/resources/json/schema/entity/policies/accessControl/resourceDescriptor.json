@@ -58,7 +58,8 @@
         "EditScim",
         "CreateScim",
         "DeleteScim",
-        "ViewScim"
+        "ViewScim",
+        "Impersonate"
       ]
     }
   },

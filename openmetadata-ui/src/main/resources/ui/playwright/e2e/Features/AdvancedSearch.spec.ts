@@ -40,6 +40,7 @@ const creationConfig: EntityDataClassCreationConfig = {
   searchIndex: true,
   container: true,
   entityDetails: true,
+  tier: true,
 };
 
 const user = new UserClass();
@@ -293,6 +294,13 @@ test.describe('Advanced Search', { tag: '@advanced-search' }, () => {
         EntityDataClass.dataProduct3.data.displayName,
       ],
     };
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    await EntityDataClass.postRequisitesForTests(apiContext, creationConfig);
 
     await afterAction();
   });

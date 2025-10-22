@@ -254,6 +254,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "domains": {
         "properties": {
           "id": {

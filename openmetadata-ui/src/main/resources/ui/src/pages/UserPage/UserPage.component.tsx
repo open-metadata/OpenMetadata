@@ -30,6 +30,7 @@ import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import { getUserByName, updateUserDetail } from '../../rest/userAPI';
 import { Transi18next } from '../../utils/CommonUtils';
+import { getTermQuery } from '../../utils/SearchUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const UserPage = () => {
@@ -73,20 +74,16 @@ const UserPage = () => {
     }
   };
 
-  const myDataQueryFilter = useMemo(() => {
+  const myDataQueryFilter: Record<string, unknown> = useMemo(() => {
     const teamsIds = (userData.teams ?? []).map((team) => team.id);
-    const mergedIds = [
-      ...teamsIds.map((id) => `owners.id:${id}`),
-      `owners.id:${userData.id}`,
-    ].join(' OR ');
+    const ownerIds = [...teamsIds, userData.id];
 
-    return `(${mergedIds})`;
+    return getTermQuery({ 'owners.id': ownerIds }, 'should', 1);
   }, [userData]);
 
-  const followingQueryFilter = useMemo(
-    () => `followers:${userData.id}`,
-    [userData.id]
-  );
+  const followingQueryFilter: Record<string, unknown> = useMemo(() => {
+    return getTermQuery({ followers: userData.id }, 'should', 1);
+  }, [userData.id]);
 
   const handleEntityPaginate = (page: string | number) => {
     navigate({

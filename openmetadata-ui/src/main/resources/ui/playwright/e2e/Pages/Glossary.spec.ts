@@ -752,7 +752,7 @@ test.describe('Glossary tests', () => {
 
         await page.click('[data-testid="overview"]');
         const queryRes = page.waitForResponse(
-          '/api/v1/search/query?q=*&index=all&from=0&size=15'
+          '/api/v1/search/query?q=*&index=all&from=0&*'
         );
         await page.getByTestId('assets').click();
         await queryRes;
@@ -776,7 +776,7 @@ test.describe('Glossary tests', () => {
         await renameGlossaryTerm(page, glossaryTerm1, newName);
         await page.click('[data-testid="overview"]');
         const queryRes = page.waitForResponse(
-          '/api/v1/search/query?q=*&index=all&from=0&size=15'
+          '/api/v1/search/query?q=*&index=all&from=0&*'
         );
         await page.getByTestId('assets').click();
         await queryRes;

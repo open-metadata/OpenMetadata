@@ -12,10 +12,12 @@
 Test deprecation warnings
 """
 
-import warnings
+import logging
+from io import StringIO
 from unittest import TestCase
 
 from metadata.utils.deprecation import deprecated
+from metadata.utils.logger import set_loggers_level
 
 
 class TestDeprecationWarning(TestCase):
@@ -26,14 +28,53 @@ class TestDeprecationWarning(TestCase):
         """Sample method"""
 
     def test_deprecation_warning(self) -> None:
-        """Validate warning"""
+        """Test that deprecation warnings are controlled by logger level."""
+        logger_levels = [
+            logging.DEBUG,
+            logging.INFO,
+            logging.WARN,
+            logging.ERROR,
+        ]
+        log_counts = []
 
-        with warnings.catch_warnings(record=True) as warn:
-            # Trigger the warning
-            self.deprecated_call()
+        for level in logger_levels:
+            # Set logger level
+            set_loggers_level(level)
 
-            # Verify the result
-            self.assertEqual(len(warn), 1)
-            self.assertTrue(issubclass(warn[0].category, DeprecationWarning))
-            self.assertTrue("This is a deprecation" in str(warn[0].message))
-            self.assertTrue("x.y.z" in str(warn[0].message))
+            # Capture logging output
+            log_capture = StringIO()
+            handler = logging.StreamHandler(log_capture)
+            metadata_logger = logging.getLogger("metadata")
+            metadata_logger.addHandler(handler)
+
+            # Create and call a deprecated function
+            @deprecated("This is a test deprecated function", "1.5.0")
+            def test_deprecated_function():
+                return "deprecated_function_result"
+
+            result = test_deprecated_function()
+            self.assertEqual(result, "deprecated_function_result")
+
+            # Count deprecation log messages
+            log_output = log_capture.getvalue()
+            log_lines = [
+                line for line in log_output.split("\n") if "will be deprecated" in line
+            ]
+            log_counts.append(len(log_lines))
+
+            # Clean up
+            metadata_logger.removeHandler(handler)
+
+        # ERROR level should suppress deprecation warnings, others should show them
+        expected_logs = [
+            1,
+            1,
+            1,
+            0,
+        ]  # DEBUG, INFO, WARN show warnings, ERROR suppresses them
+
+        self.assertEqual(
+            log_counts,
+            expected_logs,
+            f"Expected {expected_logs} deprecation warnings for each level, got: {log_counts}",
+        )

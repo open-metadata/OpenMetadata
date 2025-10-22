@@ -325,15 +325,15 @@ describe('EntityUtils unit tests', () => {
       { text: null, searchText: 'test', expected: '' },
       { text: 'mockText', searchText: null, expected: 'mockText' },
       { text: null, searchText: null, expected: '' },
-      { text: 0 as any, searchText: '', expected: 0 },
-      { text: false as any, searchText: '', expected: false },
+      { text: 0, searchText: '', expected: 0 },
+      { text: false, searchText: '', expected: false },
     ];
 
     it.each(falsyTestCases)(
       'should return expected when text or searchText is null or falsy',
       ({ text, searchText, expected }) => {
         const result = highlightSearchText(
-          text ?? undefined,
+          (text as string) ?? undefined,
           searchText ?? undefined
         );
 

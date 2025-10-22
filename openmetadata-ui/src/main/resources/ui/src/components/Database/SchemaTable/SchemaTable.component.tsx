@@ -496,7 +496,7 @@ const SchemaTable = () => {
                   {stringToHTML(highlightSearchText(name, searchText))}
                 </Typography.Text>
               </div>
-              {!isEmpty(displayName) ? (
+              {isEmpty(displayName) ? null : (
                 // It will render displayName fallback to name
                 <Typography.Text
                   className="m-b-0 d-block break-word"
@@ -505,7 +505,7 @@ const SchemaTable = () => {
                     highlightSearchText(getEntityName(record), searchText)
                   )}
                 </Typography.Text>
-              ) : null}
+              )}
 
               {editDisplayNamePermission && (
                 <Tooltip placement="right" title={t('label.edit')}>
@@ -679,7 +679,6 @@ const SchemaTable = () => {
         setSearchText(value);
         handlePageChange(1);
       },
-      onClear: () => setSearchText(''),
     }),
     [searchText, handlePageChange]
   );

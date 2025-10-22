@@ -351,7 +351,13 @@ export const CommonWidgets = ({
         showActions={!deleted}
         onDescriptionUpdate={async (value: string) => {
           if (value !== description) {
-            await onUpdate({ ...data, description: value });
+            await onUpdate(
+              {
+                ...data,
+                description: value === '' ? undefined : value, // To remove the entire value and should present with empty quotes
+              },
+              'description'
+            );
           }
         }}
       />

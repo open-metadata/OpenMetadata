@@ -20,7 +20,7 @@ import {
   buildMustEsFilterForOwner,
   buildMustEsFilterForTags,
 } from '../utils/DataQuality/DataQualityUtils';
-import { getDataQualityReport } from './testAPI';
+import { DataQualityReportParamsType, getDataQualityReport } from './testAPI';
 
 export const fetchEntityCoveredWithDQ = (
   filters?: DataQualityDashboardChartFilters,
@@ -107,13 +107,9 @@ export const fetchTestCaseSummaryByNoDimension = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags([
-        ...(filters?.tags ?? []),
-        ...(filters?.tier ?? []),
-      ])
-    );
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags));
   }
 
   return getDataQualityReport({
@@ -139,13 +135,10 @@ export const fetchCountOfIncidentStatusTypeByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
   }
 
   return getDataQualityReport({
@@ -181,13 +174,10 @@ export const fetchIncidentTimeMetrics = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
   }
 
   return getDataQualityReport({
@@ -232,13 +222,10 @@ export const fetchTestCaseStatusMetricsByDays = (
   if (filters?.ownerFqn) {
     mustFilter.push(buildMustEsFilterForOwner(filters.ownerFqn, true));
   }
-  if (filters?.tags || filters?.tier) {
-    mustFilter.push(
-      buildMustEsFilterForTags(
-        [...(filters?.tags ?? []), ...(filters?.tier ?? [])],
-        true
-      )
-    );
+  // Tags and tier are both nested in testCase.tags array (tier is inherited from parent table)
+  const combinedTags = [...(filters?.tags ?? []), ...(filters?.tier ?? [])];
+  if (combinedTags.length > 0) {
+    mustFilter.push(buildMustEsFilterForTags(combinedTags, true));
   }
   if (filters?.entityFQN) {
     mustFilter.push({
@@ -273,4 +260,60 @@ export const fetchTestCaseStatusMetricsByDays = (
     aggregationQuery:
       'bucketName=byDay:aggType=date_histogram:field=timestamp&calendar_interval=day,bucketName=newIncidents:aggType=cardinality:field=testCase.fullyQualifiedName',
   });
+};
+
+export const fetchTestCaseResultByTestSuiteId = (
+  testSuiteId: string,
+  status?: TestCaseStatus
+) => {
+  const params: DataQualityReportParamsType = {
+    q: JSON.stringify({
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: [
+                  {
+                    nested: {
+                      path: 'testSuites',
+                      query: {
+                        term: {
+                          'testSuites.id': testSuiteId,
+                        },
+                      },
+                    },
+                  },
+                  {
+                    term: {
+                      'testSuite.id': testSuiteId,
+                    },
+                  },
+                ],
+              },
+            },
+            {
+              term: {
+                deleted: false,
+              },
+            },
+            ...(status
+              ? [
+                  {
+                    term: {
+                      'testCaseResult.testCaseStatus': status,
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      },
+    }),
+    aggregationQuery:
+      'bucketName=entityLinks:aggType=terms:field=entityFQN,bucketName=status_counts:aggType=terms:field=testCaseResult.testCaseStatus',
+    index: 'testCase',
+  };
+
+  return getDataQualityReport(params);
 };

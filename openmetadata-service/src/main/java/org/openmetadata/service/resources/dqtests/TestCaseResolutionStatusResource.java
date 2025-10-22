@@ -449,6 +449,8 @@ public class TestCaseResolutionStatusResource
     searchListFilter.addQueryParam("testCaseFqn", testCaseFQN);
     searchListFilter.addQueryParam("originEntityFQN", originEntityFQN);
     searchListFilter.addQueryParam("domains", domain);
+    searchListFilter.addQueryParam("startTimestamp", String.valueOf(startTs));
+    searchListFilter.addQueryParam("endTimestamp", String.valueOf(endTs));
 
     ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
     ResourceContextInterface entityResourceContext =

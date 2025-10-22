@@ -13,56 +13,173 @@
 
 import { Box, Breadcrumbs, Link, Typography, useTheme } from '@mui/material';
 import { ChevronRight, Home02 } from '@untitledui/icons';
-import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
+import { useCallback, useMemo } from 'react';
+import { Link as RouterLink } from 'react-router-dom';
 
-interface BreadcrumbsConfig {
-  entityLabelKey: string;
-  basePath?: string;
-  currentEntityName?: string;
+/**
+ * Represents a single breadcrumb item in the navigation hierarchy
+ */
+export interface BreadcrumbItem {
+  /** Display name for the breadcrumb */
+  name: string;
+  /** Navigation URL for the breadcrumb (use url OR onClick, not both) */
+  url?: string;
+  /** Click handler for the breadcrumb (use url OR onClick, not both) */
+  onClick?: () => void;
+  /** Optional: Mark as active/current item (renders as Typography instead of Link) */
+  isActive?: boolean;
 }
 
+/**
+ * Configuration for home icon breadcrumb
+ */
+export interface HomeBreadcrumbConfig {
+  /** URL for home navigation */
+  url?: string;
+  /** Click handler for home icon */
+  onClick?: () => void;
+  /** If false, home icon will not be displayed */
+  show?: boolean;
+}
+
+/**
+ * Configuration for breadcrumb navigation
+ */
+interface BreadcrumbsConfig {
+  /** Breadcrumb items to display after home icon */
+  items: BreadcrumbItem[];
+  /** Optional: Home icon configuration (default: { url: '/', show: true }) */
+  home?: HomeBreadcrumbConfig;
+}
+
+// Style constants
+const BREADCRUMB_STYLES = {
+  container: { px: 0, py: 0, mb: 3 },
+  link: {
+    fontSize: '14px',
+    lineHeight: '20px',
+    textDecoration: 'none',
+  },
+  buttonBase: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+  },
+} as const;
+
 export const useBreadcrumbs = (config: BreadcrumbsConfig) => {
-  const { t } = useTranslation();
-  const navigate = useNavigate();
   const theme = useTheme();
 
-  const navigateHome = () => navigate('/');
-  const navigateToListing = () =>
-    navigate(config.basePath || `/${config.entityLabelKey}`);
+  // Default home config
+  const homeConfig = useMemo(
+    () => ({
+      url: '/',
+      show: true,
+      ...config.home,
+    }),
+    [config.home]
+  );
 
-  const displayLabel = t(config.entityLabelKey);
+  const renderHomeIcon = useCallback(() => {
+    if (!homeConfig.show) {
+      return null;
+    }
 
-  // Inline implementation copying exact EntityBreadcrumbs styling
+    const iconElement = (
+      <Home02
+        className="h-5 w-5"
+        strokeWidth="1px"
+        style={{ color: theme.palette.allShades?.gray?.[600] }}
+      />
+    );
+
+    const linkSx = {
+      alignItems: 'center',
+      display: 'flex',
+      ...(homeConfig.onClick && {
+        ...BREADCRUMB_STYLES.buttonBase,
+        padding: 0,
+      }),
+    };
+
+    return homeConfig.onClick ? (
+      <Link
+        component="button"
+        data-testid="breadcrumb-link"
+        sx={linkSx}
+        onClick={homeConfig.onClick}>
+        {iconElement}
+      </Link>
+    ) : (
+      <Link
+        component={RouterLink}
+        data-testid="breadcrumb-link"
+        sx={linkSx}
+        to={homeConfig.url || '/'}>
+        {iconElement}
+      </Link>
+    );
+  }, [homeConfig, theme]);
+
+  const renderBreadcrumbItem = useCallback(
+    (crumb: BreadcrumbItem, index: number) => {
+      const isLastItem = index === config.items.length - 1;
+      const shouldBeActive =
+        crumb.isActive !== undefined ? crumb.isActive : isLastItem;
+      const key = crumb.url || `breadcrumb-${index}`;
+
+      const linkSx = {
+        color: theme.palette.allShades?.brand?.[700],
+        ...BREADCRUMB_STYLES.link,
+        ...(crumb.onClick && BREADCRUMB_STYLES.buttonBase),
+      };
+
+      if (shouldBeActive) {
+        return (
+          <Typography data-testid="breadcrumb-link" key={key} sx={linkSx}>
+            {crumb.name}
+          </Typography>
+        );
+      }
+
+      if (crumb.onClick) {
+        return (
+          <Link
+            component="button"
+            data-testid="breadcrumb-link"
+            key={key}
+            sx={linkSx}
+            onClick={crumb.onClick}>
+            {crumb.name}
+          </Link>
+        );
+      }
+
+      return (
+        <Link
+          component={RouterLink}
+          data-testid="breadcrumb-link"
+          key={key}
+          sx={linkSx}
+          to={crumb.url || '/'}>
+          {crumb.name}
+        </Link>
+      );
+    },
+    [config.items.length, theme]
+  );
+
   const breadcrumbs = useMemo(
     () => (
-      <Box sx={{ px: 0, py: 0, mb: 5 }}>
+      <Box data-testid="breadcrumb" sx={BREADCRUMB_STYLES.container}>
         <Breadcrumbs separator={<ChevronRight className="h-3 w-3" />}>
-          <Link href="/" sx={{ display: 'flex', alignItems: 'center' }}>
-            <Home02
-              className="h-5 w-5"
-              strokeWidth="1px"
-              style={{ color: theme.palette.allShades?.gray?.[600] }}
-            />
-          </Link>
-          <Typography
-            sx={{
-              color: theme.palette.allShades?.brand?.[700],
-              fontSize: '14px',
-              lineHeight: '20px',
-            }}>
-            {displayLabel}
-          </Typography>
+          {renderHomeIcon()}
+          {config.items.map(renderBreadcrumbItem)}
         </Breadcrumbs>
       </Box>
     ),
-    [displayLabel, theme]
+    [config.items, renderHomeIcon, renderBreadcrumbItem]
   );
 
-  return {
-    breadcrumbs,
-    navigateHome,
-    navigateToListing,
-  };
+  return { breadcrumbs };
 };

@@ -36,7 +36,7 @@ export const updateLineageEdge = async (edge: AddLineage) => {
 
 export const exportLineageAsync = async (
   fqn: string,
-  entityType: string,
+  entityType?: string,
   config?: LineageConfig,
   queryFilter?: string
 ) => {

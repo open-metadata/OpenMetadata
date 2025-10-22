@@ -215,7 +215,7 @@ SALESFORCE_FIELDS = [
             ("htmlFormatted", False),
             ("idLookup", False),
             ("inlineHelpText", None),
-            ("label", "Contact Description"),
+            ("label", "Contact Label"),
             ("length", 32000),
             ("mask", None),
             ("maskType", None),
@@ -453,7 +453,9 @@ class SalesforceUnitTest(TestCase):
         "metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.get_table_column_description"
     )
     def test_table_column(self, get_table_column_description):
-        get_table_column_description.return_value = None
+        get_table_column_description.return_value = [
+            {"QualifiedApiName": "Description", "Description": "Contact Description"}
+        ]
         result = self.salesforce_source.get_columns("TEST_TABLE", SALESFORCE_FIELDS)
         assert EXPECTED_COLUMN_VALUE == result
 

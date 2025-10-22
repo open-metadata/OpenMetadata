@@ -185,6 +185,11 @@ export const removeAssetsFromTag = async (
   await assetsRemoveRes;
 
   await page.waitForLoadState('networkidle');
+  await page.reload();
+  await page.waitForSelector(
+    '[data-testid="tags-container"] [data-testid="loader"]',
+    { state: 'detached' }
+  );
   await checkAssetsCount(page, 0);
 };
 
