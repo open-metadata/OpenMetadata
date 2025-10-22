@@ -273,7 +273,7 @@ public class PipelineResourceTest extends EntityResourceTest<Pipeline, CreatePip
             EntityInterfaceUtil.quoteName(AIRFLOW_REFERENCE.getName()),
             EntityInterfaceUtil.quoteName(pipeline.getName()));
     assertEquals(pipelineURL, pipeline.getSourceUrl());
-    assertEquals(startDate, pipeline.getStartDate());
+    assertEquals(startDate.getTime(), pipeline.getStartDate());
     assertEquals(pipelineConcurrency, pipeline.getConcurrency());
     assertEquals(expectedFQN, pipeline.getFullyQualifiedName());
   }
