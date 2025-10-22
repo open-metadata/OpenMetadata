@@ -29,7 +29,15 @@ interface LineageNodeLabelProps {
   node: SourceType;
 }
 
-const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
+interface LineageNodeLabelPropsExtended
+  extends Omit<LineageNodeLabelProps, 'node'> {
+  node: LineageNodeLabelProps['node'] & {
+    serviceType?: string;
+    columnNames?: string[];
+  };
+}
+
+const EntityLabel = ({ node }: LineageNodeLabelPropsExtended) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -50,7 +58,7 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
           <Typography.Text
             className="m-b-0 d-flex text-left text-grey-muted w-54 entity-header-name"
             data-testid="entity-header-name">
-            {node.name}
+            {node.serviceType}
           </Typography.Text>
           <Typography.Text
             className="m-b-0 d-block text-left entity-header-display-name text-md font-medium w-54"
@@ -76,11 +84,7 @@ const EntityLabel = ({ node }: Pick<LineageNodeLabelProps, 'node'>) => {
   );
 };
 
-const EntityFooter = ({
-  node,
-}: Pick<LineageNodeLabelProps, 'node'> & {
-  node: LineageNodeLabelProps['node'] & { columnNames?: string[] };
-}) => {
+const EntityFooter = ({ node }: LineageNodeLabelPropsExtended) => {
   const { t } = useTranslation();
 
   const columnsCount = node.columnNames?.length ?? 0;
