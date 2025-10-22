@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography, styled } from '@mui/material';
+import { styled, Typography } from '@mui/material';
 
 export const RequiredLabel = styled(Typography)(({ theme }) => ({
   fontSize: 13,

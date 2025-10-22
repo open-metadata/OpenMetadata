@@ -216,7 +216,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
     def get_tasks(self, pipeline_details: DataBrickPipelineDetails) -> List[Task]:
         try:
             if not pipeline_details.settings or not pipeline_details.settings.tasks:
-                return None
+                return []
 
             job_url = f"https://{self.service_connection.hostPort}/#job/{pipeline_details.job_id}"
 
@@ -237,7 +237,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to get tasks list due to : {exc}")
-        return None
+        return []
 
     def yield_pipeline_status(
         self, pipeline_details: DataBrickPipelineDetails
@@ -523,7 +523,7 @@ class DatabrickspipelineSource(PipelineServiceSource):
         """
         Find Kafka topic in OpenMetadata using Elasticsearch search
 
-        Handles topic names with dots (e.g., "dev.ern.cashout.moneyRequest_v1")
+        Handles topic names with dots (e.g., "dev.example.transactions.customerEvent_v1")
         by searching with wildcard pattern: *.topic_name
 
         Topic FQN format: MessagingServiceName.TopicName
@@ -896,14 +896,11 @@ class DatabrickspipelineSource(PipelineServiceSource):
                                     f"   ✓ Topic found: {kafka_topic.fullyQualifiedName.root if hasattr(kafka_topic.fullyQualifiedName, 'root') else kafka_topic.fullyQualifiedName}"
                                 )
 
-                                # Find tables that read directly from Kafka OR from an external source view
+                                # Find tables that read DIRECTLY from Kafka
+                                # Only create Kafka -> table lineage for direct consumers
+                                # Downstream tables get table -> table lineage in Step 2
                                 for dep in dlt_dependencies:
-                                    is_kafka_consumer = dep.reads_from_kafka or any(
-                                        src in external_sources_map
-                                        for src in dep.depends_on
-                                    )
-
-                                    if is_kafka_consumer:
+                                    if dep.reads_from_kafka:
                                         logger.info(
                                             f"   🔍 Processing table: {dep.table_name}"
                                         )

@@ -548,4 +548,46 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           .build();
     }
   }
+
+  @GET
+  @Path("/name/{entityType}/customProperties")
+  @Operation(
+      operationId = "getCustomPropertiesByEntityType",
+      summary = "Get custom properties for an entity type",
+      description = "Get custom properties defined for a specific entity type by name.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of custom properties for the entity type",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = CustomProperty.class))),
+        @ApiResponse(responseCode = "404", description = "Entity type {entityType} is not found")
+      })
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getCustomPropertiesByEntityType(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the entity type", schema = @Schema(type = "string"))
+          @PathParam("entityType")
+          String entityType,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities.",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    try {
+      Fields fieldsParam = new Fields(Set.of("customProperties"));
+      Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
+      List<CustomProperty> customProperties = listOrEmpty(typeEntity.getCustomProperties());
+      return Response.ok(customProperties).type(MediaType.APPLICATION_JSON).build();
+    } catch (Exception e) {
+      LOG.error("Error fetching custom properties for entity type: {}", entityType, e);
+      return Response.status(Response.Status.NOT_FOUND)
+          .entity("Entity type '" + entityType + "' not found or has no custom properties")
+          .build();
+    }
+  }
 }

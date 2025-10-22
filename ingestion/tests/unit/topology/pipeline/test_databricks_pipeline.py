@@ -370,23 +370,30 @@ class DatabricksPipelineTests(TestCase):
                         ("column_1", "column_2"),
                         ("column_3", "column_4"),
                     ]
-                    lineage_details = list(
-                        self.databricks.yield_pipeline_lineage_details(
-                            DataBrickPipelineDetails(**mock_data[0])
+                    # Mock get_pipeline_details for Kafka lineage extraction
+                    # Return None since this is a regular job, not a DLT pipeline
+                    with patch.object(
+                        self.databricks.client, "get_pipeline_details"
+                    ) as mock_get_pipeline_details:
+                        mock_get_pipeline_details.return_value = None
+
+                        lineage_details = list(
+                            self.databricks.yield_pipeline_lineage_details(
+                                DataBrickPipelineDetails(**mock_data[0])
+                            )
+                        )[0].right
+                        self.assertEqual(
+                            lineage_details.edge.fromEntity.id,
+                            EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
                         )
-                    )[0].right
-                    self.assertEqual(
-                        lineage_details.edge.fromEntity.id,
-                        EXPECTED_PIPELINE_LINEAGE.edge.fromEntity.id,
-                    )
-                    self.assertEqual(
-                        lineage_details.edge.toEntity.id,
-                        EXPECTED_PIPELINE_LINEAGE.edge.toEntity.id,
-                    )
-                    self.assertEqual(
-                        lineage_details.edge.lineageDetails.columnsLineage,
-                        EXPECTED_PIPELINE_LINEAGE.edge.lineageDetails.columnsLineage,
-                    )
+                        self.assertEqual(
+                            lineage_details.edge.toEntity.id,
+                            EXPECTED_PIPELINE_LINEAGE.edge.toEntity.id,
+                        )
+                        self.assertEqual(
+                            lineage_details.edge.lineageDetails.columnsLineage,
+                            EXPECTED_PIPELINE_LINEAGE.edge.lineageDetails.columnsLineage,
+                        )
 
         with patch.object(self.databricks.metadata, "get_by_name") as mock_get_by_name:
 

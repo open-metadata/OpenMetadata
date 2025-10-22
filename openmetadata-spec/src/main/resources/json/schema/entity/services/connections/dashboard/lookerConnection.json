@@ -17,6 +17,12 @@
       "description": "Do not set any credentials. Note that credentials are required to extract .lkml views and their lineage.",
       "type": "object",
       "additionalProperties": false
+    },
+    "localRepositoryPath": {
+      "title": "Local Path",
+      "type": "string",
+      "description": "Local path to get the repository from the file system.",
+      "default": null
     }
   },
   "properties": {
@@ -50,6 +56,9 @@
       "oneOf": [
         {
           "$ref": "#/definitions/noGitCredentials"
+        },
+        {
+          "$ref": "#/definitions/localRepositoryPath"
         },
         {
           "$ref": "../../../../security/credentials/githubCredentials.json"
