@@ -388,13 +388,21 @@ public class FormatterUtil {
 
   private static ChangeEvent getChangeEventForThread(
       String updateBy, EventType eventType, String entityType, Thread thread) {
-    return new ChangeEvent()
-        .withId(UUID.randomUUID())
-        .withEventType(eventType)
-        .withEntityId(thread.getId())
-        .withDomains(thread.getDomains())
-        .withEntityType(entityType)
-        .withUserName(updateBy)
-        .withTimestamp(thread.getUpdatedAt());
+    ChangeEvent changeEvent =
+        new ChangeEvent()
+            .withId(UUID.randomUUID())
+            .withEventType(eventType)
+            .withEntityId(thread.getId())
+            .withDomains(thread.getDomains())
+            .withEntityType(entityType)
+            .withUserName(updateBy)
+            .withTimestamp(thread.getUpdatedAt());
+
+    // Include changeDescription if present
+    if (thread.getChangeDescription() != null) {
+      changeEvent.withChangeDescription(thread.getChangeDescription());
+    }
+
+    return changeEvent;
   }
 }
