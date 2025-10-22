@@ -25,6 +25,7 @@ export interface TreeNode<T = unknown> {
   parent?: string;
   allowSelection?: boolean;
   lazyLoad?: boolean;
+  hasChildren?: boolean;
 }
 
 export interface TreeDataFetcherParams {

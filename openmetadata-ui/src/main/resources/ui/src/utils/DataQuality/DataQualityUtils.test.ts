@@ -39,6 +39,18 @@ jest.mock('../../constants/profiler.constant', () => ({
     tags: 'tags',
     service: 'serviceName',
   },
+  DEFAULT_SELECTED_RANGE: {
+    key: 'last7Days',
+    title: 'Last 7 days',
+    days: 7,
+  },
+  PROFILER_CHART_DATA_SIZE: 500,
+}));
+
+jest.mock('../date-time/DateTimeUtils', () => ({
+  formatDateTimeLong: jest.fn(),
+  getEpochMillisForPastDays: jest.fn().mockReturnValue(1609459200000),
+  getCurrentMillis: jest.fn().mockReturnValue(1640995200000),
 }));
 
 jest.mock('../TableUtils', () => ({
