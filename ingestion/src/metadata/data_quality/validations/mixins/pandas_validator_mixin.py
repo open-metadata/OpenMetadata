@@ -15,6 +15,9 @@ Validator Mixin for Pandas based tests cases
 
 from typing import Optional
 
+import pandas as pd
+
+from metadata.data_quality.validations.base_test_handler import DIMENSION_NULL_LABEL
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.utils.datalake.datalake_utils import GenericDataFrameColumnParser
@@ -70,3 +73,17 @@ class PandasValidatorMixin:
             column (SQALikeColumn): column to compute row count for
         """
         return self.run_dataframe_results(runner, Metrics.ROW_COUNT, column, **kwargs)
+
+    @staticmethod
+    def format_dimension_value(value) -> str:
+        """Format a dimension value, handling NULL/NA values consistently
+
+        Args:
+            value: Raw dimension value from pandas groupby
+
+        Returns:
+            str: Formatted dimension value ("NULL" for NA/None values, str() for others)
+        """
+        if pd.isna(value):
+            return DIMENSION_NULL_LABEL
+        return str(value)

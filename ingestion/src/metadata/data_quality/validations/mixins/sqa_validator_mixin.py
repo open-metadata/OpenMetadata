@@ -13,11 +13,23 @@
 Validator Mixin for SQA tests cases
 """
 
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import Column
+from sqlalchemy import Column, case, func, select, text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.sql.expression import ClauseElement
 
+from metadata.data_quality.validations.base_test_handler import (
+    DIMENSION_FAILED_COUNT_KEY,
+    DIMENSION_IMPACT_SCORE_KEY,
+    DIMENSION_OTHERS_LABEL,
+    DIMENSION_TOTAL_COUNT_KEY,
+    DIMENSION_VALUE_KEY,
+)
+from metadata.data_quality.validations.impact_score import (
+    DEFAULT_TOP_DIMENSIONS,
+    get_impact_score_expression,
+)
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.runner import QueryRunner
@@ -25,6 +37,12 @@ from metadata.utils.entity_link import get_decoded_column
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
+# CTE names for dimensional queries
+CTE_DIMENSION_STATS = "dimension_stats"
+CTE_TOP_DIMENSIONS = "top_dimensions"
+CTE_CATEGORIZED = "categorized"
+DIMENSION_GROUP_LABEL = "dimension_group"
 
 
 class SQAValidatorMixin:
@@ -126,3 +144,146 @@ class SQAValidatorMixin:
             column (SQALikeColumn): column to compute row count for
         """
         return self.run_query_results(runner, Metrics.ROW_COUNT, column, **kwargs)
+
+    def _execute_with_others_aggregation(
+        self,
+        dimension_col: Column,
+        metric_expressions: Dict[str, ClauseElement],
+        top_dimensions_count: int = DEFAULT_TOP_DIMENSIONS,
+    ) -> List[Dict[str, Any]]:
+        """Execute dimensional query with CTE-based Others aggregation and impact scoring.
+
+        This shared method is used by all dimensional validators to:
+        1. Calculate dimension stats with impact scores
+        2. Select top N dimensions by impact score
+        3. Aggregate remaining dimensions as "Others"
+
+        NOTE: The metric_expressions dict MUST contain:
+        - DIMENSION_TOTAL_COUNT_KEY: Expression for total count
+        - DIMENSION_FAILED_COUNT_KEY: Expression for failed count
+        These are used for impact score calculation.
+
+        Args:
+            dimension_col: The column to group by
+            metric_expressions: Dict mapping metric names to SQLAlchemy expressions
+                                Must include 'total_count' and 'failed_count' keys
+            top_dimensions_count: Number of top dimensions to keep before aggregating
+
+        Returns:
+            List of dicts with dimension results ordered by impact score
+        """
+        # Validate required metrics are present
+        if DIMENSION_TOTAL_COUNT_KEY not in metric_expressions:
+            raise ValueError(
+                f"metric_expressions must contain '{DIMENSION_TOTAL_COUNT_KEY}' key"
+            )
+        if DIMENSION_FAILED_COUNT_KEY not in metric_expressions:
+            raise ValueError(
+                f"metric_expressions must contain '{DIMENSION_FAILED_COUNT_KEY}' key"
+            )
+
+        # Build expressions using dictionary iteration
+        select_expressions = {
+            DIMENSION_VALUE_KEY: dimension_col,
+        }
+
+        # Add all metric expressions from the dictionary
+        select_expressions.update(metric_expressions)
+
+        # Add impact scoring expression
+        select_expressions[DIMENSION_IMPACT_SCORE_KEY] = get_impact_score_expression(
+            metric_expressions[DIMENSION_FAILED_COUNT_KEY],
+            metric_expressions[DIMENSION_TOTAL_COUNT_KEY],
+        )
+
+        # CTE 1: Calculate all dimension stats
+        dimension_stats_columns = [
+            expr.label(name) for name, expr in select_expressions.items()
+        ]
+
+        dimension_stats = (
+            select(dimension_stats_columns)
+            .select_from(self.runner.dataset)
+            .group_by(dimension_col)
+            .cte(CTE_DIMENSION_STATS)
+        )
+
+        # CTE 2: Get top N dimensions by impact score
+        top_dimensions = (
+            select([dimension_stats.c.dimension_value])
+            .order_by(dimension_stats.c.impact_score.desc())
+            .limit(top_dimensions_count)
+            .cte(CTE_TOP_DIMENSIONS)
+        )
+
+        # CTE 3: Categorize as top N or "Others"
+        categorized_columns = [
+            case(
+                [
+                    (
+                        dimension_stats.c.dimension_value.in_(
+                            select([top_dimensions.c.dimension_value])
+                        ),
+                        dimension_stats.c.dimension_value,
+                    )
+                ],
+                else_=DIMENSION_OTHERS_LABEL,
+            ).label(DIMENSION_GROUP_LABEL)
+        ]
+
+        # Add all metric columns from dimension_stats
+        for name in select_expressions.keys():
+            if name != DIMENSION_VALUE_KEY:
+                categorized_columns.append(getattr(dimension_stats.c, name))
+
+        categorized = (
+            select(categorized_columns)
+            .select_from(dimension_stats)
+            .cte(CTE_CATEGORIZED)
+        )
+
+        # Final query: Aggregate by dimension_group
+        final_columns = [
+            getattr(categorized.c, DIMENSION_GROUP_LABEL).label(DIMENSION_VALUE_KEY)
+        ]
+
+        # Aggregate numeric columns
+        for name in select_expressions.keys():
+            if name == DIMENSION_VALUE_KEY:
+                continue
+            elif name == DIMENSION_IMPACT_SCORE_KEY:
+                # Recalculate impact score for aggregated "Others"
+                final_columns.append(
+                    case(
+                        [
+                            (
+                                getattr(categorized.c, DIMENSION_GROUP_LABEL)
+                                != DIMENSION_OTHERS_LABEL,
+                                func.max(getattr(categorized.c, name)),
+                            )
+                        ],
+                        else_=get_impact_score_expression(
+                            func.sum(
+                                getattr(categorized.c, DIMENSION_FAILED_COUNT_KEY)
+                            ),
+                            func.sum(getattr(categorized.c, DIMENSION_TOTAL_COUNT_KEY)),
+                        ),
+                    ).label(name)
+                )
+            else:
+                # Sum all other metrics
+                final_columns.append(func.sum(getattr(categorized.c, name)).label(name))
+
+        final_query = (
+            select(final_columns)
+            .select_from(categorized)
+            .group_by(getattr(categorized.c, DIMENSION_GROUP_LABEL))
+            .order_by(text(f"{DIMENSION_IMPACT_SCORE_KEY} DESC"))
+        )
+
+        # Execute and return as list of dicts
+        results = self.runner.session.execute(final_query)
+        return [
+            {col.name: value for col, value in zip(final_query.selected_columns, row)}
+            for row in results
+        ]
