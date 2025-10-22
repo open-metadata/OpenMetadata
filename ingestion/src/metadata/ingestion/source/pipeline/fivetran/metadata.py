@@ -13,7 +13,7 @@ Fivetran source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional, Union, cast
+from typing import Iterable, List, Optional, cast
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -22,7 +22,6 @@ from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.pipeline.fivetranConnection import (
     FivetranConnection,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
@@ -116,35 +115,46 @@ class FivetranSource(PipelineServiceSource):
     ) -> Optional[Iterable[Either[OMetaPipelineStatus]]]:
         """Method to get task & pipeline status"""
 
+    def _get_table_fqn(
+        self, table_details: TableDetails, service_name: Optional[str] = None
+    ) -> Optional[str]:
+        try:
+            if self.get_db_service_names():
+                return self._get_table_fqn_from_om(table_details)
+
+            return fqn.build(
+                metadata=self.metadata,
+                entity_type=Table,
+                service_name=service_name or "*",
+                database_name=table_details.database,
+                schema_name=table_details.schema,
+                table_name=table_details.name,
+            )
+        except FQNNotFoundException:
+            return None
+
     def fetch_column_lineage(
-        self, pipeline_details: FivetranPipelineDetails, schema, schema_data, table
+        self,
+        pipeline_details: FivetranPipelineDetails,
+        schema,
+        schema_data,
+        table,
+        from_entity_fqn: Optional[str],
+        to_entity_fqn: Optional[str],
     ) -> List[Optional[ColumnLineage]]:
         col_details = self.client.get_connector_column_lineage(
             pipeline_details.connector_id, schema_name=schema, table_name=table
         )
         col_lineage_arr = []
-        try:
-            from_entity_fqn: Optional[str] = self._get_table_fqn_from_om(
-                table_details=TableDetails(schema=schema, name=table)
-            )
-            to_entity_fqn: Optional[str] = self._get_table_fqn_from_om(
-                table_details=TableDetails(
-                    schema=schema_data.get("name_in_destination"),
-                    name=schema_data["tables"][table]["name_in_destination"],
-                )
-            )
-        except FQNNotFoundException:
-            to_entity_fqn = ""
-            from_entity_fqn = ""
 
         if from_entity_fqn and to_entity_fqn:
             to_table_entity = self.metadata.get_by_name(entity=Table, fqn=to_entity_fqn)
             from_table_entity = self.metadata.get_by_name(
                 entity=Table, fqn=from_entity_fqn
             )
-            for key, value in col_details.items():
-                if value["enabled"] == True:
-                    if from_table_entity and to_table_entity:
+            if from_table_entity and to_table_entity:
+                for key, value in col_details.items():
+                    if value["enabled"] == True:
                         from_col = get_column_fqn(
                             table_entity=from_table_entity, column=key
                         )
@@ -152,13 +162,13 @@ class FivetranSource(PipelineServiceSource):
                             table_entity=to_table_entity,
                             column=value.get("name_in_destination"),
                         )
-                    col_lineage_arr.append(
-                        ColumnLineage(
-                            toColumn=to_col,
-                            fromColumns=[from_col],
-                            function=None,
+                        col_lineage_arr.append(
+                            ColumnLineage(
+                                toColumn=to_col,
+                                fromColumns=[from_col],
+                                function=None,
+                            )
                         )
-                    )
         return col_lineage_arr if col_lineage_arr else []
 
     def yield_pipeline_lineage_details(
@@ -170,66 +180,83 @@ class FivetranSource(PipelineServiceSource):
         :return: Lineage from inlets and outlets
         """
         self.client = cast(FivetranClient, self.client)
-        source_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=pipeline_details.source.get("schema")
-        )
-        if not source_service:
-            es_resp: Union[
-                List[DatabaseService], None
-            ] = self.metadata.es_search_from_fqn(
-                DatabaseService, pipeline_details.source.get("schema", "")
-            )
-            if es_resp and len(es_resp) > 0 and es_resp[0].fullyQualifiedName:
-                source_service = self.metadata.get_by_name(
-                    entity=DatabaseService,
-                    fqn=(es_resp[0].fullyQualifiedName.root),
-                )
-        destination_service = self.metadata.get_by_name(
-            entity=DatabaseService, fqn=pipeline_details.group.get("name")
-        )
-
-        if not source_service or not destination_service:
-            return
+        pipeline_name = self.get_pipeline_name(pipeline_details)
 
         for schema, schema_data in self.client.get_connector_schema_details(
             connector_id=pipeline_details.source.get("id")
         ).items():
+            if not schema_data.get("enabled"):
+                logger.debug(
+                    f"Skipping schema [{schema}] for pipeline [{pipeline_name}] - schema is disabled"
+                )
+                continue
 
-            for table in schema_data.get("tables", {}).keys():
+            for table, table_data in schema_data.get("tables", {}).items():
+                if not table_data.get("enabled"):
+                    logger.debug(
+                        f"Skipping table [{schema}].[{table}] for pipeline [{pipeline_name}] - table is disabled"
+                    )
+                    continue
+
+                source_table_details = TableDetails(
+                    database=pipeline_details.source.get("config", {}).get("database"),
+                    schema=schema,
+                    name=table,
+                )
+                destination_table_details = TableDetails(
+                    database=pipeline_details.destination.get("config", {}).get(
+                        "database"
+                    ),
+                    schema=schema_data.get("name_in_destination"),
+                    name=table_data["name_in_destination"],
+                )
+
+                from_fqn = self._get_table_fqn(source_table_details)
+                to_fqn = self._get_table_fqn(destination_table_details)
+
+                if not from_fqn:
+                    logger.debug(
+                        f"While extracting lineage: [{pipeline_name}],"
+                        f" source table: [{source_table_details.database or '*'}]"
+                        f".[{source_table_details.schema}].[{source_table_details.name}]"
+                        f" not found in openmetadata"
+                    )
+                    continue
+                if not to_fqn:
+                    logger.debug(
+                        f"While extracting lineage: [{pipeline_name}],"
+                        f" destination table: [{destination_table_details.database or '*'}]"
+                        f".[{destination_table_details.schema}].[{destination_table_details.name}]"
+                        f" not found in openmetadata"
+                    )
+                    continue
+
+                from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
+                to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
+
+                if not from_entity:
+                    logger.debug(
+                        f"While extracting lineage: [{pipeline_name}],"
+                        f" source table (fqn: [{from_fqn}]) not found"
+                        " in openmetadata"
+                    )
+                    continue
+                if not to_entity:
+                    logger.debug(
+                        f"While extracting lineage: [{pipeline_name}],"
+                        f" destination table (fqn: [{to_fqn}]) not found"
+                        " in openmetadata"
+                    )
+                    continue
+
                 col_lineage_arr = self.fetch_column_lineage(
                     pipeline_details=pipeline_details,
                     schema=schema,
                     schema_data=schema_data,
                     table=table,
+                    from_entity_fqn=from_fqn,
+                    to_entity_fqn=to_fqn,
                 )
-
-                from_fqn = fqn.build(
-                    metadata=self.metadata,
-                    entity_type=Table,
-                    table_name=table,
-                    database_name=pipeline_details.source.get("config", {}).get(
-                        "database"
-                    ),
-                    schema_name=schema,
-                    service_name=pipeline_details.source.get("schema"),
-                )
-
-                to_fqn = fqn.build(
-                    self.metadata,
-                    Table,
-                    table_name=table,
-                    database_name=pipeline_details.destination.get("config", {}).get(
-                        "database"
-                    ),
-                    schema_name=f"{pipeline_details.source.get('schema')}_{schema}",
-                    service_name=pipeline_details.group.get("name"),
-                )
-
-                from_entity = self.metadata.get_by_name(entity=Table, fqn=from_fqn)
-                to_entity = self.metadata.get_by_name(entity=Table, fqn=to_fqn)
-                if not from_entity or not to_entity:
-                    logger.info(f"Lineage Skipped for {from_fqn} - {to_fqn}")
-                    continue
                 pipeline_fqn = fqn.build(
                     metadata=self.metadata,
                     entity_type=Pipeline,
