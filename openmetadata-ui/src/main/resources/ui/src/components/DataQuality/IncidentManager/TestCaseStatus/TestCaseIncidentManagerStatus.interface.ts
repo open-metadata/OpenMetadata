@@ -19,4 +19,11 @@ export interface TestCaseStatusIncidentManagerProps {
   hasPermission?: boolean;
   newLook?: boolean;
   headerName?: string;
+  isInline?: boolean;
+}
+
+export interface InlineTestCaseIncidentStatusProps {
+  data: TestCaseStatusIncidentManagerProps['data'];
+  hasEditPermission: boolean;
+  onSubmit: TestCaseStatusIncidentManagerProps['onSubmit'];
 }

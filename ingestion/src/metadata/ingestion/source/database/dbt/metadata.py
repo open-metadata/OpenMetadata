@@ -1155,7 +1155,7 @@ class DbtSource(DbtServiceSource):
                             name=manifest_node.name,
                             description=manifest_node.description,
                             entityType=entity_type,
-                            testPlatforms=[TestPlatform.DBT],
+                            testPlatforms=[TestPlatform.dbt],
                             parameterDefinition=create_test_case_parameter_definitions(
                                 manifest_node
                             ),
