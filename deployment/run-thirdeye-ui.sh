@@ -18,8 +18,8 @@ NC='\033[0m' # No Color
 
 # Configuration
 OM_DOMAIN="coming.live"
-THIRDEYE_UI_PORT="80"
-THIRDEYE_UI_URL="http://${OM_DOMAIN}"
+THIRDEYE_UI_PORT="3000"
+THIRDEYE_UI_URL="https://${OM_DOMAIN}"
 
 # Get the root directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
