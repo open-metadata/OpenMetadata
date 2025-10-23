@@ -59,3 +59,11 @@ SET json = JSON_SET(
     0.2
 )
 WHERE name = 'tableDiff';
+
+UPDATE installed_apps
+SET json = JSON_SET(
+    json,
+    '$.appConfiguration.testCaseResultsRetentionPeriod', 1440,
+    '$.appConfiguration.profileDataRetentionPeriod', 1440
+)
+WHERE JSON_EXTRACT(json, '$.name') = 'DataRetentionApplication';

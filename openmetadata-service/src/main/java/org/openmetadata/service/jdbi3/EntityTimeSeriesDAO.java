@@ -543,6 +543,17 @@ public interface EntityTimeSeriesDAO {
     }
   }
 
+  @SqlUpdate(
+      """
+            DELETE FROM <table> WHERE timestamp < :cutoffTs LIMIT :limit
+            """)
+  int deleteTestCaseResultsBeforeCutOff(
+      @Define("table") String table, @Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
+
+  default int deleteTestCaseResultsBeforeCutOff(long cutoffTs, int limit) {
+    return deleteTestCaseResultsBeforeCutOff(getTimeSeriesTableName(), cutoffTs, limit);
+  }
+
   /** @deprecated */
   @SqlQuery(
       "SELECT DISTINCT entityFQN FROM <table> WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
