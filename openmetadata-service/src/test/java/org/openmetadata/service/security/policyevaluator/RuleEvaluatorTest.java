@@ -51,6 +51,7 @@ import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.springframework.expression.EvaluationContext;
@@ -328,11 +329,9 @@ class RuleEvaluatorTest {
 
   @Test
   void test_isReviewer() {
-    // Mock Glossary repository
     GlossaryRepository glossaryRepository = mock(GlossaryRepository.class);
     Entity.registerEntity(Glossary.class, Entity.GLOSSARY, glossaryRepository);
 
-    // Create reviewer user
     User reviewer = new User().withId(UUID.randomUUID()).withName("reviewerUser");
     EntityReference reviewerRef =
         new EntityReference()
@@ -340,34 +339,29 @@ class RuleEvaluatorTest {
             .withType(Entity.USER)
             .withName("reviewerUser");
 
-    // Create Glossary entity with reviewer
     Glossary glossary =
         new Glossary()
             .withId(UUID.randomUUID())
             .withName("testGlossary")
             .withReviewers(List.of(reviewerRef));
 
-    // Register glossary
     EntityRepository.CACHE_WITH_ID.put(
         new ImmutablePair<>(Entity.GLOSSARY, glossary.getId()), glossary);
 
-    // Set subject context (current user)
     SubjectContext subjectContext = new SubjectContext(reviewer, null);
 
-    // Create resource context with glossary
     ResourceContext<Glossary> glossaryResourceContext =
         new ResourceContext<>(Entity.GLOSSARY, glossary, glossaryRepository);
 
-    // Build evaluator
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, glossaryResourceContext);
     EvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
 
-    // Test isReviewer()
+
     assertTrue(
         parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
         "Reviewer user should return true for isReviewer()");
 
-    // Test negative case (different user)
+
     User otherUser = new User().withId(UUID.randomUUID()).withName("otherUser");
     SubjectContext otherSubjectContext = new SubjectContext(otherUser, null);
     ruleEvaluator = new RuleEvaluator(null, otherSubjectContext, glossaryResourceContext);
