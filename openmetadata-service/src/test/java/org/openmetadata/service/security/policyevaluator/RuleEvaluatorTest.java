@@ -49,9 +49,9 @@ import org.openmetadata.service.jdbi3.DatabaseRepository;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TeamRepository;
-import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.springframework.expression.EvaluationContext;
@@ -356,11 +356,9 @@ class RuleEvaluatorTest {
     RuleEvaluator ruleEvaluator = new RuleEvaluator(null, subjectContext, glossaryResourceContext);
     EvaluationContext evaluationContext = new StandardEvaluationContext(ruleEvaluator);
 
-
     assertTrue(
         parseExpression("isReviewer()").getValue(evaluationContext, Boolean.class),
         "Reviewer user should return true for isReviewer()");
-
 
     User otherUser = new User().withId(UUID.randomUUID()).withName("otherUser");
     SubjectContext otherSubjectContext = new SubjectContext(otherUser, null);
