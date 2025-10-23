@@ -403,3 +403,28 @@ export const getGlossaryTermChildrenLazy = async (
 
   return data;
 };
+
+export const getGlossaryTermChildrenPaginated = async (
+  parentFQN: string,
+  limit = 50,
+  after?: string
+) => {
+  const apiUrl = `/glossaryTerms`;
+
+  const { data } = await APIClient.get<
+    PagingResponse<GlossaryTermWithChildren[]>
+  >(apiUrl, {
+    params: {
+      directChildrenOf: parentFQN,
+      fields: [
+        TabSpecificField.CHILDREN_COUNT,
+        TabSpecificField.OWNERS,
+        TabSpecificField.REVIEWERS,
+      ],
+      limit,
+      after,
+    },
+  });
+
+  return data;
+};
