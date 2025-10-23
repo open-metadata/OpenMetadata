@@ -9,6 +9,7 @@ import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.JsonpMapper;
 import es.co.elastic.clients.util.NamedValue;
+import jakarta.json.JsonObject;
 import jakarta.json.spi.JsonProvider;
 import jakarta.json.stream.JsonParser;
 import jakarta.ws.rs.core.Response;
@@ -18,10 +19,16 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.AggregationManagementClient;
+import org.openmetadata.service.search.SearchAggregation;
+import org.openmetadata.service.search.SearchIndexUtils;
+import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 
 @Slf4j
 public class ElasticSearchAggregationManager implements AggregationManagementClient {
@@ -142,6 +149,197 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
       return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
+    } catch (Exception e) {
+      LOG.error("Failed to execute aggregation", e);
+      throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public DataQualityReport genericAggregation(
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot perform aggregation.");
+      throw new IOException("ElasticSearch client is not available");
+    }
+
+    try {
+      ElasticAggregationsBuilder aggregationsBuilder =
+          new ElasticAggregationsBuilder(client._transport().jsonpMapper());
+      Map<String, Aggregation> aggregations =
+          aggregationsBuilder.buildAggregations(aggregationMetadata.getAggregationTree());
+
+      SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder();
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
+      searchRequestBuilder.index(indexName);
+
+      if (query != null) {
+        JsonpMapper mapper = client._transport().jsonpMapper();
+        JsonProvider provider = mapper.jsonProvider();
+
+        // Check if query string contains outer "query" wrapper and extract inner query
+        String queryToProcess = query;
+        if (query.trim().startsWith("{")) {
+          try {
+            JsonObject jsonObject = JsonUtils.readJson(query).asJsonObject();
+            if (jsonObject.containsKey("query")) {
+              // Extract the inner query object
+              queryToProcess = jsonObject.getJsonObject("query").toString();
+            }
+          } catch (Exception e) {
+            // If parsing fails, use original query string
+          }
+        }
+
+        JsonParser parser = provider.createParser(new StringReader(queryToProcess));
+        Query parsedQuery = Query._DESERIALIZER.deserialize(parser, mapper);
+        searchRequestBuilder.query(parsedQuery);
+      }
+
+      searchRequestBuilder.aggregations(aggregations);
+      searchRequestBuilder.size(0);
+      searchRequestBuilder.timeout("30s");
+
+      SearchResponse<JsonData> searchResponse =
+          client.search(searchRequestBuilder.build(), JsonData.class);
+
+      // Extract aggregations directly from the response
+      Map<String, es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate>
+          aggregationsMap = searchResponse.aggregations();
+
+      if (aggregationsMap == null || aggregationsMap.isEmpty()) {
+        return SearchIndexUtils.parseAggregationResults(
+            Optional.empty(), aggregationMetadata.getAggregationMetadata());
+      }
+
+      // Serialize aggregations to JSON for parsing
+      JsonpMapper mapper = client._transport().jsonpMapper();
+      jakarta.json.spi.JsonProvider provider = mapper.jsonProvider();
+      java.io.StringWriter stringWriter = new java.io.StringWriter();
+      jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
+
+      generator.writeStartObject();
+      generator.writeKey("aggregations");
+      generator.writeStartObject();
+      for (Map.Entry<String, es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate>
+          entry : aggregationsMap.entrySet()) {
+        generator.writeKey(entry.getKey());
+        entry.getValue().serialize(generator, mapper);
+      }
+      generator.writeEnd();
+      generator.writeEnd();
+      generator.close();
+
+      String aggregationsJson = stringWriter.toString();
+      JsonObject jsonResponse = JsonUtils.readJson(aggregationsJson).asJsonObject();
+      Optional<JsonObject> aggregationResults =
+          Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
+      return SearchIndexUtils.parseAggregationResults(
+          aggregationResults, aggregationMetadata.getAggregationMetadata());
+    } catch (Exception e) {
+      LOG.error("Failed to execute generic aggregation", e);
+      throw new IOException("Failed to execute generic aggregation: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filter)
+      throws IOException {
+    if (!isClientAvailable) {
+      LOG.error("ElasticSearch client is not available. Cannot perform aggregation.");
+      throw new IOException("ElasticSearch client is not available");
+    }
+
+    if (searchAggregation == null) {
+      return null;
+    }
+
+    try {
+      ElasticAggregationsBuilder aggregationsBuilder =
+          new ElasticAggregationsBuilder(client._transport().jsonpMapper());
+      Map<String, Aggregation> aggregations =
+          aggregationsBuilder.buildAggregations(searchAggregation.getAggregationTree());
+
+      SearchRequest.Builder searchRequestBuilder = new SearchRequest.Builder();
+      String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
+      searchRequestBuilder.index(indexName);
+
+      Query parsedQuery = null;
+      if (query != null) {
+        JsonpMapper mapper = client._transport().jsonpMapper();
+        JsonProvider provider = mapper.jsonProvider();
+
+        // Check if query string contains outer "query" wrapper and extract inner query
+        String queryToProcess = query;
+        if (query.trim().startsWith("{")) {
+          try {
+            JsonObject jsonObject = JsonUtils.readJson(query).asJsonObject();
+            if (jsonObject.containsKey("query")) {
+              // Extract the inner query object
+              queryToProcess = jsonObject.getJsonObject("query").toString();
+            }
+          } catch (Exception e) {
+            // If parsing fails, use original query string
+          }
+        }
+
+        JsonParser parser = provider.createParser(new StringReader(queryToProcess));
+        parsedQuery = Query._DESERIALIZER.deserialize(parser, mapper);
+      }
+
+      Query filterQuery = null;
+      if (filter != null && !filter.isEmpty() && !filter.equals("{}")) {
+        JsonpMapper mapper = client._transport().jsonpMapper();
+        JsonProvider provider = mapper.jsonProvider();
+        JsonParser parser = provider.createParser(new StringReader(filter));
+        filterQuery = Query._DESERIALIZER.deserialize(parser, mapper);
+      }
+
+      final Query finalParsedQuery = parsedQuery;
+      final Query finalFilterQuery = filterQuery;
+
+      if (finalParsedQuery != null && finalFilterQuery != null) {
+        searchRequestBuilder.query(
+            q -> q.bool(b -> b.must(finalParsedQuery).filter(finalFilterQuery)));
+      } else if (finalParsedQuery != null) {
+        searchRequestBuilder.query(finalParsedQuery);
+      } else if (finalFilterQuery != null) {
+        searchRequestBuilder.query(q -> q.bool(b -> b.filter(finalFilterQuery)));
+      }
+
+      searchRequestBuilder.aggregations(aggregations);
+      searchRequestBuilder.size(0);
+      searchRequestBuilder.timeout("30s");
+
+      SearchResponse<JsonData> searchResponse =
+          client.search(searchRequestBuilder.build(), JsonData.class);
+
+      // Extract aggregations directly from the response
+      Map<String, es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate>
+          aggregationsMap = searchResponse.aggregations();
+
+      if (aggregationsMap == null || aggregationsMap.isEmpty()) {
+        return null;
+      }
+
+      // Serialize aggregations to JSON for parsing
+      JsonpMapper mapper = client._transport().jsonpMapper();
+      jakarta.json.spi.JsonProvider provider = mapper.jsonProvider();
+      java.io.StringWriter stringWriter = new java.io.StringWriter();
+      jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
+
+      generator.writeStartObject();
+      for (Map.Entry<String, es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate>
+          entry : aggregationsMap.entrySet()) {
+        generator.writeKey(entry.getKey());
+        entry.getValue().serialize(generator, mapper);
+      }
+      generator.writeEnd();
+      generator.close();
+
+      String aggregationsJson = stringWriter.toString();
+      return JsonUtils.readJson(aggregationsJson).asJsonObject();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);

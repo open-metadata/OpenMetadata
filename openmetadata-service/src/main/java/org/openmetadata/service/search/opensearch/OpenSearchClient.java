@@ -89,12 +89,9 @@ import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.nlq.NLQService;
-import org.openmetadata.service.search.opensearch.aggregations.OpenAggregations;
-import org.openmetadata.service.search.opensearch.aggregations.OpenAggregationsBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilderFactory;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -1458,86 +1455,14 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
-    List<OpenAggregations> aggregationBuilder =
-        OpenAggregationsBuilder.buildAggregation(
-            aggregationMetadata.getAggregationTree(), null, new ArrayList<>());
-
-    // Create search request
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-
-    // Create search source builder
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    if (query != null) {
-      XContentParser queryParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
-      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
-      searchSourceBuilder.query(boolQueryBuilder);
-    }
-    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    for (OpenAggregations aggregation : aggregationBuilder) {
-      if (!aggregation.isPipelineAggregation()) {
-        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
-      } else {
-        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
-      }
-    }
-
-    searchRequest.source(searchSourceBuilder);
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
-    Optional<JsonObject> aggregationResults =
-        Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
-    return SearchIndexUtils.parseAggregationResults(
-        aggregationResults, aggregationMetadata.getAggregationMetadata());
+    return aggregationManagementClient.genericAggregation(query, index, aggregationMetadata);
   }
 
   @Override
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
-    if (searchAggregation == null) {
-      return null;
-    }
-
-    List<OpenAggregations> aggregationBuilder =
-        OpenAggregationsBuilder.buildAggregation(
-            searchAggregation.getAggregationTree(), null, new ArrayList<>());
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    if (query != null) {
-      XContentParser queryParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(OsUtils.osXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-      QueryBuilder parsedQuery = SearchSourceBuilder.fromXContent(queryParser).query();
-      BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery().must(parsedQuery);
-      searchSourceBuilder.query(boolQueryBuilder);
-    }
-    getSearchFilter(filter, searchSourceBuilder);
-
-    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    for (OpenAggregations aggregation : aggregationBuilder) {
-      if (!aggregation.isPipelineAggregation()) {
-        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
-      } else {
-        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
-      }
-    }
-
-    searchRequest.source(searchSourceBuilder);
-
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
-    return jsonResponse.getJsonObject("aggregations");
+    return aggregationManagementClient.aggregate(query, index, searchAggregation, filter);
   }
 
   @SneakyThrows

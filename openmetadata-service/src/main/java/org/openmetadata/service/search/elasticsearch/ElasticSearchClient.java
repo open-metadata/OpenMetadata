@@ -118,11 +118,8 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -1366,90 +1363,14 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
-    List<ElasticAggregations> aggregationBuilder =
-        ElasticAggregationsBuilder.buildAggregation(
-            aggregationMetadata.getAggregationTree(), null, new ArrayList<>());
-
-    // Create search request
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-
-    // Create search source builder
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    if (query != null) {
-      XContentParser queryParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-      es.org.elasticsearch.index.query.QueryBuilder parsedQuery =
-          SearchSourceBuilder.fromXContent(queryParser).query();
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery().must(parsedQuery);
-      searchSourceBuilder.query(boolQueryBuilder);
-    }
-    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    for (ElasticAggregations aggregation : aggregationBuilder) {
-      if (!aggregation.isPipelineAggregation()) {
-        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
-      } else {
-        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
-      }
-    }
-
-    searchRequest.source(searchSourceBuilder);
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
-    Optional<JsonObject> aggregationResults =
-        Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
-    return SearchIndexUtils.parseAggregationResults(
-        aggregationResults, aggregationMetadata.getAggregationMetadata());
+    return aggregationManager.genericAggregation(query, index, aggregationMetadata);
   }
 
   @Override
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
-    if (searchAggregation == null) {
-      return null;
-    }
-
-    List<ElasticAggregations> aggregationBuilder =
-        ElasticAggregationsBuilder.buildAggregation(
-            searchAggregation.getAggregationTree(), null, new ArrayList<>());
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    if (query != null) {
-      XContentParser queryParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-      es.org.elasticsearch.index.query.QueryBuilder parsedQuery =
-          SearchSourceBuilder.fromXContent(queryParser).query();
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery().must(parsedQuery);
-      searchSourceBuilder.query(boolQueryBuilder);
-    }
-    getSearchFilter(filter, searchSourceBuilder);
-
-    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    for (ElasticAggregations aggregation : aggregationBuilder) {
-      if (!aggregation.isPipelineAggregation()) {
-        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
-      } else {
-        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
-      }
-    }
-
-    searchRequest.source(searchSourceBuilder);
-
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
-    return jsonResponse.getJsonObject("aggregations");
+    return aggregationManager.aggregate(query, index, searchAggregation, filter);
   }
 
   @Override

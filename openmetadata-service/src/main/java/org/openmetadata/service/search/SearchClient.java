@@ -2,7 +2,6 @@ package org.openmetadata.service.search;
 
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMPLEMENTED_METHOD;
 
-import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.Set;
@@ -17,7 +16,6 @@ import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
-import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.exception.CustomExceptionMessage;
@@ -496,14 +494,7 @@ public interface SearchClient<T>
   Response searchByField(String fieldName, String fieldValue, String index, Boolean deleted)
       throws IOException;
 
-  JsonObject aggregate(
-      String query, String index, SearchAggregation searchAggregation, String filters)
-      throws IOException;
-
   Response getEntityTypeCounts(SearchRequest request, String index) throws IOException;
-
-  DataQualityReport genericAggregation(
-      String query, String index, SearchAggregation aggregationMetadata) throws IOException;
 
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);

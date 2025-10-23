@@ -1,8 +1,10 @@
 package org.openmetadata.service.search;
 
+import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.tests.DataQualityReport;
 
 /**
  * Interface for search aggregation operations.
@@ -19,4 +21,30 @@ public interface AggregationManagementClient {
    * @throws IOException if the aggregation operation fails
    */
   Response aggregate(AggregationRequest request) throws IOException;
+
+  /**
+   * Execute a generic aggregation for data quality reporting.
+   *
+   * @param query the search query
+   * @param index the index to search
+   * @param aggregationMetadata the aggregation metadata
+   * @return the data quality report
+   * @throws IOException if the aggregation operation fails
+   */
+  DataQualityReport genericAggregation(
+      String query, String index, SearchAggregation aggregationMetadata) throws IOException;
+
+  /**
+   * Execute an aggregation query and return aggregation results.
+   *
+   * @param query the search query
+   * @param index the index to search
+   * @param searchAggregation the search aggregation configuration
+   * @param filter additional filter query
+   * @return the aggregation results as JsonObject
+   * @throws IOException if the aggregation operation fails
+   */
+  JsonObject aggregate(
+      String query, String index, SearchAggregation searchAggregation, String filter)
+      throws IOException;
 }

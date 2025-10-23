@@ -1,42 +1,55 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
+import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-import os.org.opensearch.search.aggregations.AggregationBuilder;
-import os.org.opensearch.search.aggregations.AggregationBuilders;
-import os.org.opensearch.search.aggregations.PipelineAggregationBuilder;
-import os.org.opensearch.search.aggregations.bucket.histogram.DateHistogramInterval;
+import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.CalendarInterval;
+import os.org.opensearch.client.opensearch._types.aggregations.DateHistogramAggregation;
 
 @Setter
 @Getter
 public class OpenDateHistogramAggregations implements OpenAggregations {
   static final String aggregationType = "date_histogram";
-  AggregationBuilder elasticAggregationBuilder;
+  private String aggregationName;
+  private Aggregation aggregation;
+  private Map<String, Aggregation> subAggregations = new HashMap<>();
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
+    this.aggregationName = node.getName();
+
+    String field = params.get("field");
     String calendarInterval = params.get("calendar_interval");
-    AggregationBuilder aggregationBuilder =
-        AggregationBuilders.dateHistogram(node.getName())
-            .field(params.get("field"))
-            .calendarInterval(new DateHistogramInterval(calendarInterval));
-    setElasticAggregationBuilder(aggregationBuilder);
+
+    this.aggregation =
+        Aggregation.of(
+            a ->
+                a.dateHistogram(
+                    DateHistogramAggregation.of(
+                        dh ->
+                            dh.field(field)
+                                .calendarInterval(mapCalendarInterval(calendarInterval)))));
+  }
+
+  private CalendarInterval mapCalendarInterval(String interval) {
+    return switch (interval) {
+      case "1m", "minute" -> CalendarInterval.Minute;
+      case "1h", "hour" -> CalendarInterval.Hour;
+      case "1d", "day" -> CalendarInterval.Day;
+      case "1w", "week" -> CalendarInterval.Week;
+      case "1M", "month" -> CalendarInterval.Month;
+      case "1q", "quarter" -> CalendarInterval.Quarter;
+      case "1Y", "year" -> CalendarInterval.Year;
+      default -> throw new IllegalArgumentException("Unsupported calendar interval: " + interval);
+    };
   }
 
   @Override
-  public void setSubAggregation(PipelineAggregationBuilder aggregation) {
-    if (elasticAggregationBuilder != null) {
-      elasticAggregationBuilder.subAggregation(aggregation);
-    }
-  }
-
-  @Override
-  public void setSubAggregation(AggregationBuilder aggregation) {
-    if (elasticAggregationBuilder != null) {
-      elasticAggregationBuilder.subAggregation(aggregation);
-    }
+  public void setSubAggregations(Map<String, Aggregation> subAggregations) {
+    this.subAggregations = subAggregations;
   }
 }
