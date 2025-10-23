@@ -177,6 +177,7 @@
     "azure-config-source": "منبع پیکربندی Azure",
     "back": "بازگشت",
     "back-to-login-lowercase": "بازگشت به ورود",
+    "base": "پایه",
     "basic-configuration": "پیکربندی پایه",
     "batch-size": "اندازه دسته",
     "before-number-of-day-plural": "قبل از {{ numberOfDays}} روز",

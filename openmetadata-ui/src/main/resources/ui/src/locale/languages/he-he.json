@@ -177,6 +177,7 @@
     "azure-config-source": "מקור תצורת Azure",
     "back": "חזור",
     "back-to-login-lowercase": "חזור להתחברות",
+    "base": "בסיס",
     "basic-configuration": "תצורה בסיסית",
     "batch-size": "גודל סדרה",
     "before-number-of-day-plural": "לפני {{numberOfDays}} ימים",

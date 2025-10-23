@@ -177,6 +177,7 @@
     "azure-config-source": "Azure Config-bron",
     "back": "Terug",
     "back-to-login-lowercase": "terug naar inloggen",
+    "base": "Basis",
     "basic-configuration": "Basisconfiguratie",
     "batch-size": "Batchgrootte",
     "before-number-of-day-plural": "Voor {{numberOfDays}} dagen",

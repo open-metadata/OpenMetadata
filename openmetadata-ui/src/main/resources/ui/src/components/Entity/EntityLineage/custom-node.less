@@ -22,8 +22,8 @@
 }
 
 .lineage-expand-icon {
-  width: 16px;
-  height: 16px;
+  width: 12px;
+  height: 12px;
   color: inherit;
 }
 
@@ -157,6 +157,12 @@
 .react-flow__node-load-more.selectable:focus-visible {
   .lineage-node {
     border-color: @primary-color !important;
+    background-color: @blue-4;
+
+    .lineage-node-badge-container {
+      border-color: @primary-color;
+      background-color: @blue-4;
+    }
   }
 
   .lineage-node-handle {
@@ -168,7 +174,10 @@
   }
 
   .label-container {
-    background: @primary-1;
+    background: @blue-4;
+    .entity-label-container::after {
+      background: @primary-1;
+    }
   }
 
   .column-container {
@@ -217,13 +226,19 @@
 }
 
 .custom-node-header-active {
+  background-color: @blue-4;
+
   .label-container {
-    background: @primary-1;
+    background: @blue-4;
   }
 
   .column-container {
     background: @primary-1;
     border-top: 1px solid @border-color;
+  }
+
+  &.lineage-base-node .lineage-node-badge-container {
+    background: @blue-4;
   }
 }
 
@@ -244,22 +259,21 @@
 
 .react-flow {
   .lineage-node-handle.react-flow__handle-left {
-    left: -22px;
+    left: -10px;
   }
 
   .lineage-node-handle.react-flow__handle-right {
-    right: -22px;
+    right: -10px;
   }
 }
 
 .react-flow .lineage-node-handle {
-  width: 35px !important;
-  min-width: 35px !important;
-  height: 35px !important;
-  border-radius: 50% !important;
+  width: 20px !important;
+  min-width: 20px !important;
+  height: 20px !important;
+  border-radius: 20% !important;
   border-color: @lineage-border !important;
   background: @white !important;
-  top: 43px !important; // Need to show handles on top half
 
   svg {
     color: @text-grey-muted;

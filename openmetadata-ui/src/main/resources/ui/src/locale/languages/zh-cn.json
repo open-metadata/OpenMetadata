@@ -177,6 +177,7 @@
     "azure-config-source": "Azure 配置源",
     "back": "返回",
     "back-to-login-lowercase": "返回登录",
+    "base": "基础",
     "basic-configuration": "基本配置",
     "batch-size": "批大小",
     "before-number-of-day-plural": "{{numberOfDays}}天前",

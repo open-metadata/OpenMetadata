@@ -177,6 +177,7 @@
     "azure-config-source": "Источник конфигурации Azure",
     "back": "Назад",
     "back-to-login-lowercase": "Вернуться на страницу входа",
+    "base": "База",
     "basic-configuration": "Базовая конфигурация",
     "batch-size": "Размер пакета",
     "before-number-of-day-plural": "За {{numberOfDays}} дня/дней",
