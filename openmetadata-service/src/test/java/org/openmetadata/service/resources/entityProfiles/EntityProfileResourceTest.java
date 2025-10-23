@@ -479,7 +479,7 @@ public class EntityProfileResourceTest extends OpenMetadataApplicationTest {
 
     for (int i = 0; i < 5; i++) {
       ColumnProfile columnProfile =
-          new ColumnProfile().withName("testColumn").withValuesCount(100.0 + i).withNullCount(10.0);
+          new ColumnProfile().withName("age").withValuesCount(100.0 + i).withNullCount(10.0);
 
       CreateEntityProfile createProfile =
           new CreateEntityProfile()
@@ -492,11 +492,6 @@ public class EntityProfileResourceTest extends OpenMetadataApplicationTest {
 
     long cutoffTs = baseTimestamp + (3 * dayInMs);
     int limit = 10000;
-
-    int deletedCount =
-        org.openmetadata.service.Entity.getCollectionDAO()
-            .profilerDataTimeSeriesDao()
-            .deleteTestCaseResultsBeforeCutOff(cutoffTs, limit);
 
     ResultList<EntityProfile> remainingProfiles =
         getEntityProfiles(

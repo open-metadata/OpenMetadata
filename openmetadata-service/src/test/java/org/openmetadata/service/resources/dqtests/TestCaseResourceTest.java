@@ -4582,6 +4582,7 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
   }
 
   @Test
+  @Order(999)
   void delete_testCaseResults_verifyDeletionByTimestamp(TestInfo testInfo)
       throws IOException, ParseException {
     CreateTestCase create =
