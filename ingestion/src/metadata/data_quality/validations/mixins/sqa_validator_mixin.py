@@ -402,7 +402,6 @@ class SQAValidatorMixin:
             failed_count_expr, total_count_col
         )
 
-        # Select all columns from raw_aggregates plus computed columns
         stats_with_impact_columns = [col for col in raw_aggregates.c]
         stats_with_impact_columns.append(
             failed_count_expr.label(DIMENSION_FAILED_COUNT_KEY)
@@ -440,7 +439,6 @@ class SQAValidatorMixin:
             ).label(DIMENSION_GROUP_LABEL)
         ]
 
-        # Add all other columns from stats_with_impact
         for col in stats_with_impact.c:
             if col.name != DIMENSION_VALUE_KEY:
                 categorized_columns.append(col)
@@ -451,29 +449,23 @@ class SQAValidatorMixin:
             .cte(CTE_CATEGORIZED)
         )
 
-        # Final query: Aggregate by dimension_group
         final_columns = [
             getattr(categorized.c, DIMENSION_GROUP_LABEL).label(DIMENSION_VALUE_KEY)
         ]
 
-        # Aggregate metrics: use custom builder or default to SUM
-        # Skip metrics in exclude_from_final (intermediate calculations)
         for metric_name in metric_expressions.keys():
             if metric_name in exclude_from_final:
-                continue  # Skip intermediate metrics not needed in output
+                continue
 
             if metric_name in final_metric_builders:
-                # Custom aggregation (e.g., weighted mean for "Others")
                 final_columns.append(
                     final_metric_builders[metric_name](categorized).label(metric_name)
                 )
             else:
-                # Default: SUM (works for counts, sums, etc.)
                 final_columns.append(
                     func.sum(getattr(categorized.c, metric_name)).label(metric_name)
                 )
 
-        # Failed count: always sum
         final_columns.append(
             func.sum(getattr(categorized.c, DIMENSION_FAILED_COUNT_KEY)).label(
                 DIMENSION_FAILED_COUNT_KEY

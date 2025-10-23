@@ -468,13 +468,8 @@ class BaseTestValidator(ABC):
         """
         # Handle row counts and percentages for statistical validators
         if total_rows is None or passed_rows is None:
-            # Statistical validators don't have meaningful row-level pass/fail
             passed_rows_percentage = None
             failed_rows_percentage = None
-            if passed_rows is None:
-                passed_rows = None
-            if failed_rows is None:
-                failed_rows = None
         else:
             # Row-by-row validators: calculate percentages
             if failed_rows is None:
