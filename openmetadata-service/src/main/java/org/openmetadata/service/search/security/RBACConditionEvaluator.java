@@ -307,7 +307,7 @@ public class RBACConditionEvaluator {
     collector.addMustNot(existsQuery); // Wrap existsQuery in a List
   }
 
-  public void isReviewer (User user, ConditionCollector collector) {
+  public void isReviewer(User user, ConditionCollector collector) {
     List<OMQueryBuilder> reviewerQueries = new ArrayList<>();
     // Reviewer is the user
     reviewerQueries.add(queryBuilderFactory.termQuery("reviewers.id", user.getId().toString()));

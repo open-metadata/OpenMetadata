@@ -160,30 +160,28 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
   @Test
   void testIsReviewer() {
-      // Setup a mock policy with the 'isReviewer()' condition
-      setupMockPolicies("isReviewer()", "ALLOW");
+    // Setup a mock policy with the 'isReviewer()' condition
+    setupMockPolicies("isReviewer()", "ALLOW");
 
-      // Create a mock user and reviewer reference
-      UUID reviewerId = UUID.randomUUID();
-      when(mockUser.getId()).thenReturn(reviewerId);
+    // Create a mock user and reviewer reference
+    UUID reviewerId = UUID.randomUUID();
+    when(mockUser.getId()).thenReturn(reviewerId);
 
-      EntityReference reviewerRef = new EntityReference();
-      reviewerRef.setId(reviewerId);
-      reviewerRef.setType(Entity.USER);
-      when(mockUser.getEntityReference()).thenReturn(reviewerRef);
+    EntityReference reviewerRef = new EntityReference();
+    reviewerRef.setId(reviewerId);
+    reviewerRef.setType(Entity.USER);
+    when(mockUser.getEntityReference()).thenReturn(reviewerRef);
 
-      // Evaluate the condition through RBAC evaluator
-      OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
-      QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
-      String generatedQuery = elasticQuery.toString();
+    // Evaluate the condition through RBAC evaluator
+    OMQueryBuilder finalQuery = evaluator.evaluateConditions(mockSubjectContext);
+    QueryBuilder elasticQuery = ((ElasticQueryBuilder) finalQuery).build();
+    String generatedQuery = elasticQuery.toString();
 
-      // Verify that the generated query correctly contains reviewer information
-      assertTrue(
-              generatedQuery.contains("reviewers.id"),
-              "The query should contain 'reviewers.id'.");
-      assertTrue(
-              generatedQuery.contains(reviewerId.toString()),
-              "The query should contain the user's reviewer ID.");
+    // Verify that the generated query correctly contains reviewer information
+    assertTrue(generatedQuery.contains("reviewers.id"), "The query should contain 'reviewers.id'.");
+    assertTrue(
+        generatedQuery.contains(reviewerId.toString()),
+        "The query should contain the user's reviewer ID.");
   }
 
   @Test
