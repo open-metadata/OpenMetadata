@@ -211,6 +211,76 @@ class BaseTestValidator(ABC):
         """
         return []
 
+    def _get_test_parameters(self) -> Optional[dict]:
+        """Get test-specific parameters from test case
+
+        Default implementation returns None. Override in child classes
+        that need to extract and process test parameters.
+
+        Returns:
+            Optional[dict]: Test parameters, or None if validator has no parameters.
+        """
+        return None
+
+    def _evaluate_test_condition(
+        self, metric_values: dict, test_params: Optional[dict] = None
+    ) -> TestEvaluation:
+        """Evaluate the test condition based on computed metrics
+
+        This is the core logic that determines if the test passes or fails.
+        Override in child classes to implement test-specific evaluation logic.
+
+        Default implementation raises NotImplementedError. Validators that have been
+        migrated to the new pattern should override this method.
+
+        Args:
+            metric_values: Dictionary with Metrics enum names as keys
+                          e.g., {"COUNT": 100, "MEAN": 42.5}
+            test_params: Optional test parameters (bounds, allowed values, etc.)
+                        Some validators don't need parameters (e.g., uniqueness test)
+
+        Returns:
+            TestEvaluation: TypedDict with keys:
+                - matched: bool - whether test passed
+                - passed_rows: Optional[int] - number of passing rows (None for statistical tests)
+                - failed_rows: Optional[int] - number of failing rows (None for statistical tests)
+                - total_rows: Optional[int] - total row count (None for statistical tests)
+
+        Raises:
+            NotImplementedError: If child class doesn't override this method
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement _evaluate_test_condition()"
+        )
+
+    def _format_result_message(
+        self,
+        metric_values: dict,
+        dimension_info: Optional[DimensionInfo] = None,
+        test_params: Optional[dict] = None,
+    ) -> str:
+        """Format the result message for the test
+
+        Override in child classes to provide human-readable test results.
+
+        Default implementation raises NotImplementedError. Validators that have been
+        migrated to the new pattern should override this method.
+
+        Args:
+            metric_values: Dictionary with Metrics enum names as keys
+            dimension_info: Optional dimension details for dimensional results
+            test_params: Optional test parameters (for displaying bounds, thresholds, etc.)
+
+        Returns:
+            str: Formatted result message
+
+        Raises:
+            NotImplementedError: If child class doesn't override this method
+        """
+        raise NotImplementedError(
+            f"{self.__class__.__name__} must implement _format_result_message()"
+        )
+
     def _extract_dimension_value(self, row: dict) -> str:
         """Extract and format dimension value from result row
 
@@ -281,6 +351,7 @@ class BaseTestValidator(ABC):
                 dimension_name=dimension_col_name,
                 dimension_value=dimension_value,
             ),
+            test_params=test_params,
         )
 
         test_result_values = self._get_test_result_values(metric_values)

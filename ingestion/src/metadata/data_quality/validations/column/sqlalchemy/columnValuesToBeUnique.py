@@ -113,7 +113,11 @@ class ColumnValuesToBeUniqueValidator(
         return self.value.get(metric.name)
 
     def _execute_dimensional_validation(
-        self, column: Column, dimension_col: Column, metrics_to_compute: dict
+        self,
+        column: Column,
+        dimension_col: Column,
+        metrics_to_compute: dict,
+        test_params: Optional[dict] = None,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation
 
@@ -124,6 +128,7 @@ class ColumnValuesToBeUniqueValidator(
             column: The column being validated
             dimension_col: Single Column object corresponding to the dimension column
             metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
+            test_params: Optional test parameters (empty dict for uniqueness validator)
 
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
@@ -164,15 +169,15 @@ class ColumnValuesToBeUniqueValidator(
             for row in result_rows:
                 # Build metric_values dict using helper method
                 metric_values = self._build_metric_values_from_row(
-                    row, metrics_to_compute
+                    row, metrics_to_compute, test_params
                 )
 
                 # Evaluate test condition
-                evaluation = self._evaluate_test_condition(metric_values)
+                evaluation = self._evaluate_test_condition(metric_values, test_params)
 
                 # Create dimension result using helper method
                 dimension_result = self._create_dimension_result(
-                    row, dimension_col.name, metric_values, evaluation
+                    row, dimension_col.name, metric_values, evaluation, test_params
                 )
 
                 dimension_results.append(dimension_result)

@@ -36,8 +36,6 @@ from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
-MEAN_METRIC_NAME = "mean"
-
 
 class ColumnValueMeanToBeBetweenValidator(
     BaseColumnValueMeanToBeBetweenValidator, SQAValidatorMixin
@@ -104,11 +102,11 @@ class ColumnValueMeanToBeBetweenValidator(
             metric_expressions = {
                 DIMENSION_SUM_VALUE_KEY: func.sum(column),
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
-                MEAN_METRIC_NAME: func.avg(column),
+                Metrics.MEAN.name: func.avg(column),
             }
 
             def build_failed_count(cte1):
-                mean_col = getattr(cte1.c, MEAN_METRIC_NAME)
+                mean_col = getattr(cte1.c, Metrics.MEAN.name)
                 count_col = getattr(cte1.c, DIMENSION_TOTAL_COUNT_KEY)
                 return case(
                     ((mean_col < min_bound) | (mean_col > max_bound), count_col),
@@ -121,7 +119,7 @@ class ColumnValueMeanToBeBetweenValidator(
                         (
                             getattr(cte.c, DIMENSION_GROUP_LABEL)
                             != DIMENSION_OTHERS_LABEL,
-                            func.max(getattr(cte.c, MEAN_METRIC_NAME)),
+                            func.max(getattr(cte.c, Metrics.MEAN.name)),
                         )
                     ],
                     else_=(
@@ -134,13 +132,13 @@ class ColumnValueMeanToBeBetweenValidator(
                 dimension_col,
                 metric_expressions,
                 build_failed_count,
-                final_metric_builders={MEAN_METRIC_NAME: build_mean_final},
+                final_metric_builders={Metrics.MEAN.name: build_mean_final},
                 exclude_from_final=[DIMENSION_SUM_VALUE_KEY],
                 top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
             )
 
             for row in result_rows:
-                mean_value = row.get(MEAN_METRIC_NAME)
+                mean_value = row.get(Metrics.MEAN.name)
 
                 if mean_value is None:
                     continue
@@ -151,11 +149,8 @@ class ColumnValueMeanToBeBetweenValidator(
 
                 evaluation = self._evaluate_test_condition(metric_values, test_params)
 
-                row_with_mean = dict(row)
-                row_with_mean[Metrics.MEAN.name] = mean_value
-
                 dimension_result = self._create_dimension_result(
-                    row_with_mean,
+                    row,
                     dimension_col.name,
                     metric_values,
                     evaluation,

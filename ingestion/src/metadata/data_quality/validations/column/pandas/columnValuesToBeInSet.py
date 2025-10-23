@@ -20,6 +20,7 @@ import pandas as pd
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
+    DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeInSet import (
     BaseColumnValuesToBeInSetValidator,
@@ -125,14 +126,13 @@ class ColumnValuesToBeInSetValidator(
 
                 count_in_set = group_df[column.name].isin(allowed_values).sum()
 
-                # Use enum names as keys
                 if match_enum:
                     row_count = len(group_df)
                     failed_count = row_count - count_in_set
 
                     results_data.append(
                         {
-                            "dimension": dimension_value,
+                            DIMENSION_VALUE_KEY: dimension_value,
                             Metrics.COUNT_IN_SET.name: count_in_set,
                             Metrics.ROW_COUNT.name: row_count,
                             DIMENSION_TOTAL_COUNT_KEY: row_count,
@@ -142,7 +142,7 @@ class ColumnValuesToBeInSetValidator(
                 else:
                     results_data.append(
                         {
-                            "dimension": dimension_value,
+                            DIMENSION_VALUE_KEY: dimension_value,
                             Metrics.COUNT_IN_SET.name: count_in_set,
                             DIMENSION_TOTAL_COUNT_KEY: count_in_set,
                             DIMENSION_FAILED_COUNT_KEY: 0,
@@ -160,14 +160,11 @@ class ColumnValuesToBeInSetValidator(
 
                 results_df = aggregate_others_pandas(
                     results_df,
-                    dimension_column="dimension",
+                    dimension_column=DIMENSION_VALUE_KEY,
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 
                 for row_dict in results_df.to_dict("records"):
-                    # Rename dimension column to dimension_value for helper methods
-                    row_dict["dimension_value"] = row_dict.pop("dimension")
-
                     # Build metric_values dict using helper method
                     metric_values = self._build_metric_values_from_row(
                         row_dict, metrics_to_compute, test_params

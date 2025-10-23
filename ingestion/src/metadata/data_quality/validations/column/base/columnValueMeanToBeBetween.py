@@ -36,8 +36,6 @@ from metadata.utils.sqa_like_column import SQALikeColumn
 
 logger = test_suite_logger()
 
-MEAN = "mean"
-
 
 class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
     """Validator for column value mean to be between test case"""
@@ -69,11 +67,13 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
                 self.execution_date,
                 TestCaseStatus.Aborted,
                 msg,
-                [TestResultValue(name=MEAN, value=None)],
+                [TestResultValue(name=Metrics.MEAN.name, value=None)],
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(metric_values)
+        result_message = self._format_result_message(
+            metric_values, test_params=test_params
+        )
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -191,20 +191,29 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
         }
 
     def _format_result_message(
-        self, metric_values: dict, dimension_info: Optional[DimensionInfo] = None
+        self,
+        metric_values: dict,
+        dimension_info: Optional[DimensionInfo] = None,
+        test_params: Optional[dict] = None,
     ) -> str:
         """Format the result message for mean-to-be-between test
 
         Args:
             metric_values: Dictionary with Metrics enum names as keys
             dimension_info: Optional DimensionInfo with dimension details
+            test_params: Test parameters with min/max bounds. Required for this test.
 
         Returns:
             str: Formatted result message
         """
+        if test_params is None:
+            raise ValueError(
+                "test_params is required for columnValueMeanToBeBetween._format_result_message"
+            )
+
         mean_value = metric_values[Metrics.MEAN.name]
-        min_bound = self.get_min_bound("minValueForMeanInCol")
-        max_bound = self.get_max_bound("maxValueForMeanInCol")
+        min_bound = test_params["minValueForMeanInCol"]
+        max_bound = test_params["maxValueForMeanInCol"]
 
         if dimension_info:
             return (
@@ -225,13 +234,13 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
         """
         return [
             TestResultValue(
-                name=MEAN,
+                name=Metrics.MEAN.name,
                 value=str(metric_values[Metrics.MEAN.name]),
             ),
         ]
 
     @abstractmethod
-    def _get_column_name(self, column_name: str = None):
+    def _get_column_name(self, column_name: Optional[str] = None):
         """Get column object from entity link or column name
 
         Args:

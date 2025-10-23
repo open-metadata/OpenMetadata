@@ -21,6 +21,7 @@ import pandas as pd
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
+    DIMENSION_VALUE_KEY,
 )
 from metadata.data_quality.validations.column.base.columnValuesToBeUnique import (
     BaseColumnValuesToBeUniqueValidator,
@@ -46,7 +47,7 @@ class ColumnValuesToBeUniqueValidator(
     """Validator for column values to be unique test case"""
 
     def _get_column_name(self, column_name: Optional[str] = None) -> SQALikeColumn:
-        """Get column name from the test case entity link
+        """Get column object for the given column name
 
         If column_name is None, returns the main column being validated.
         If column_name is provided, returns the column object for that specific column.
@@ -55,7 +56,7 @@ class ColumnValuesToBeUniqueValidator(
             column_name: Optional column name. If None, returns the main validation column.
 
         Returns:
-            SQALikeColumn: column
+            SQALikeColumn: Column object
         """
         if column_name is None:
             return self.get_column_name(
@@ -88,6 +89,7 @@ class ColumnValuesToBeUniqueValidator(
         column: SQALikeColumn,
         dimension_col: SQALikeColumn,
         metrics_to_compute: dict,
+        test_params: Optional[dict] = None,
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
@@ -115,10 +117,9 @@ class ColumnValuesToBeUniqueValidator(
                 unique_count = group_df[column.name].nunique()
                 duplicate_count = total_count - unique_count
 
-                # Use enum names as keys
                 results_data.append(
                     {
-                        "dimension": dimension_value,
+                        DIMENSION_VALUE_KEY: dimension_value,
                         Metrics.COUNT.name: total_count,
                         Metrics.UNIQUE_COUNT.name: unique_count,
                         DIMENSION_TOTAL_COUNT_KEY: total_count,
@@ -137,25 +138,28 @@ class ColumnValuesToBeUniqueValidator(
 
                 results_df = aggregate_others_pandas(
                     results_df,
-                    dimension_column="dimension",
+                    dimension_column=DIMENSION_VALUE_KEY,
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 
                 for row_dict in results_df.to_dict("records"):
-                    # Rename dimension column to dimension_value for helper methods
-                    row_dict["dimension_value"] = row_dict.pop("dimension")
-
                     # Build metric_values dict using helper method
                     metric_values = self._build_metric_values_from_row(
-                        row_dict, metrics_to_compute
+                        row_dict, metrics_to_compute, test_params
                     )
 
                     # Evaluate test condition
-                    evaluation = self._evaluate_test_condition(metric_values)
+                    evaluation = self._evaluate_test_condition(
+                        metric_values, test_params
+                    )
 
                     # Create dimension result using helper method
                     dimension_result = self._create_dimension_result(
-                        row_dict, dimension_col.name, metric_values, evaluation
+                        row_dict,
+                        dimension_col.name,
+                        metric_values,
+                        evaluation,
+                        test_params,
                     )
 
                     dimension_results.append(dimension_result)
