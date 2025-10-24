@@ -64,7 +64,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
   @Test
   public void testFieldChartRequestCount() throws IOException {
     String cardString1 =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}\n";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}}";
     Map<String, Object> summaryCard1 = new LinkedHashMap<>();
     Map<String, Object> metricMapSummary = new LinkedHashMap<>();
     summaryCard1.put("type", "SummaryCard");
@@ -74,7 +74,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(cardString1, summaryCard1));
 
     String lineString =
-        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}\n";
+        "{\"size\":0,\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"aggregations\":{\"metric_1\":{\"date_histogram\":{\"field\":\"@timestamp\",\"calendar_interval\":\"day\"},\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}}}}}";
     Map<String, Object> lineChart = new LinkedHashMap<>();
     lineChart.put("type", "LineChart");
 
@@ -99,7 +99,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"query_string\":{\"query\":\"{\\\"query\\\":{\\\"bool\\\":{\\\"must\\\":[{\\\"bool\\\":{\\\"must\\\":[{\\\"term\\\":{\\\"owner.displayName.keyword\\\":\\\"admin\\\"}}]}}]}}}\"}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -168,7 +168,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString3, lineChart3));
 
     String lineString4 =
-        "{\"aggregations\":{\"term_1\":{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter0\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"query_string\":{\"query\":\"hasDescription: 1\"}}},\"filter1\":{\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"query_string\":{\"query\":\"owner.name.keyword: *\"}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
+        "{\"aggregations\":{\"term_1\":{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter0\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"query_string\":{\"lenient\":true,\"query\":\"hasDescription: 1\"}}},\"filter1\":{\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"query_string\":{\"lenient\":true,\"query\":\"owner.name.keyword: *\"}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart4 = new LinkedHashMap<>();
     lineChart4.put("type", "LineChart");
     Map<String, Object> metricMap4 = new LinkedHashMap<>();
@@ -188,7 +188,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString4, lineChart41));
 
     String lineString5 =
-        "{\"aggregations\":{\"term_1\":{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter0\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"hasDescription: 1\"}},{\"query_string\":{\"query\":\"{\\\"query\\\":{\\\"bool\\\":{\\\"must\\\":[{\\\"bool\\\":{\\\"should\\\":[{\\\"term\\\":{\\\"owners.displayName.keyword\\\":\\\"admin\\\"}}]}}]}}}\"}}]}}},\"filter1\":{\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"query\":\"owner.name.keyword: *\"}},{\"query_string\":{\"query\":\"{\\\"query\\\":{\\\"bool\\\":{\\\"must\\\":[{\\\"bool\\\":{\\\"should\\\":[{\\\"term\\\":{\\\"owners.displayName.keyword\\\":\\\"admin\\\"}}]}}]}}}\"}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
+        "{\"aggregations\":{\"term_1\":{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter0\":{\"aggregations\":{\"id.keyword0\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"lenient\":true,\"query\":\"hasDescription: 1\"}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}]}}},\"filter1\":{\"aggregations\":{\"id.keyword1\":{\"value_count\":{\"field\":\"id.keyword\"}}},\"filter\":{\"bool\":{\"must\":[{\"query_string\":{\"lenient\":true,\"query\":\"owner.name.keyword: *\"}},{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"owners.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"terms\":{\"field\":\"entityType.keyword\",\"size\":1000}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart5 = new LinkedHashMap<>();
     lineChart5.put("type", "LineChart");
     Map<String, Object> metricMap5 = new LinkedHashMap<>();
@@ -250,7 +250,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}},\"filter\":{\"query_string\":{\"query\":\"{\\\"query\\\":{\\\"bool\\\":{\\\"must\\\":[{\\\"bool\\\":{\\\"must\\\":[{\\\"term\\\":{\\\"owner.displayName.keyword\\\":\\\"admin\\\"}}]}}]}}}\"}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"sum\":{\"field\":\"version\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -297,7 +297,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}},\"filter\":{\"query_string\":{\"query\":\"{\\\"query\\\":{\\\"bool\\\":{\\\"must\\\":[{\\\"bool\\\":{\\\"must\\\":[{\\\"term\\\":{\\\"owner.displayName.keyword\\\":\\\"admin\\\"}}]}}]}}}\"}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"avg\":{\"field\":\"version\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -344,7 +344,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}},\"filter\":{\"query_string\":{\"query\":\"{\\\"query\\\":{\\\"bool\\\":{\\\"must\\\":[{\\\"bool\\\":{\\\"must\\\":[{\\\"term\\\":{\\\"owner.displayName.keyword\\\":\\\"admin\\\"}}]}}]}}}\"}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"min\":{\"field\":\"version\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();
@@ -391,7 +391,7 @@ public class ElasticSearchDynamicChartAggregatorTest extends OpenMetadataApplica
     assertTrue(compareRequest(lineString1, lineChart1));
 
     String lineString2 =
-        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}},\"filter\":{\"query_string\":{\"query\":\"{\\\"query\\\":{\\\"bool\\\":{\\\"must\\\":[{\\\"bool\\\":{\\\"must\\\":[{\\\"term\\\":{\\\"owner.displayName.keyword\\\":\\\"admin\\\"}}]}}]}}}\"}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
+        "{\"aggregations\":{\"metric_1\":{\"aggregations\":{\"filter\":{\"aggregations\":{\"version0\":{\"max\":{\"field\":\"version\"}}},\"filter\":{\"bool\":{\"must\":[{\"bool\":{\"must\":[{\"term\":{\"owner.displayName.keyword\":{\"value\":\"admin\"}}}]}}]}}}},\"date_histogram\":{\"calendar_interval\":\"day\",\"field\":\"@timestamp\"}}},\"query\":{\"range\":{\"@timestamp\":{\"gte\":1721082271000,\"lte\":1721592271000}}},\"size\":0}";
     Map<String, Object> lineChart2 = new LinkedHashMap<>();
     lineChart2.put("type", "LineChart");
     Map<String, Object> metricMap2 = new LinkedHashMap<>();

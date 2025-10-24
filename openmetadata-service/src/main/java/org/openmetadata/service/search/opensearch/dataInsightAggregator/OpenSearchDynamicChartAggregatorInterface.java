@@ -1,12 +1,16 @@
 package org.openmetadata.service.search.opensearch.dataInsightAggregator;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.jena.atlas.logging.Log;
 import org.jetbrains.annotations.NotNull;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResult;
@@ -28,6 +32,7 @@ import os.org.opensearch.client.opensearch.core.SearchResponse;
 
 public interface OpenSearchDynamicChartAggregatorInterface {
   long MILLISECONDS_IN_DAY = 24L * 60 * 60 * 1000;
+  ObjectMapper mapper = new ObjectMapper();
 
   private static Aggregation getSubAggregationsByFunction(
       Function function, String field, int index) {
@@ -91,10 +96,14 @@ public interface OpenSearchDynamicChartAggregatorInterface {
                   q ->
                       q.bool(
                           b ->
-                              b.must(Query.of(mq -> mq.queryString(qs -> qs.query(queryString))))
+                              b.must(
+                                      Query.of(
+                                          mq ->
+                                              mq.queryString(
+                                                  qs -> qs.query(queryString).lenient(true))))
                                   .must(filter)));
         } else {
-          queryBuilder = Query.of(q -> q.queryString(qs -> qs.query(queryString)));
+          queryBuilder = Query.of(q -> q.queryString(qs -> qs.query(queryString).lenient(true)));
         }
         Map<String, Aggregation> subAggMap = new HashMap<>();
         subAggMap.put(field + index, subAgg);
@@ -183,8 +192,17 @@ public interface OpenSearchDynamicChartAggregatorInterface {
       List<FormulaHolder> formulas) {
     if (formula != null) {
       if (filter != null && !filter.equals("{}")) {
-        Query queryFilter = Query.of(q -> q.queryString(qs -> qs.query(filter)));
-        getDateHistogramByFormula(formula, queryFilter, aggregations, aggregationName, formulas);
+        try {
+          JsonNode rootNode = mapper.readTree(filter);
+          JsonNode queryNode = rootNode.get("query");
+          String base64Query = Base64.getEncoder().encodeToString(queryNode.toString().getBytes());
+          Query queryFilter = Query.of(q -> q.wrapper(w -> w.query(base64Query)));
+
+          getDateHistogramByFormula(formula, queryFilter, aggregations, aggregationName, formulas);
+        } catch (Exception e) {
+          Log.error("Error while parsing query string so using fallback: {}", e.getMessage(), e);
+          getDateHistogramByFormula(formula, null, aggregations, aggregationName, formulas);
+        }
       } else {
         getDateHistogramByFormula(formula, null, aggregations, aggregationName, formulas);
       }
@@ -194,11 +212,20 @@ public interface OpenSearchDynamicChartAggregatorInterface {
     // process non formula date histogram
     Aggregation subAgg = getSubAggregationsByFunction(function, field, 0);
     if (filter != null && !filter.equals("{}")) {
-      Query queryFilter = Query.of(q -> q.queryString(qs -> qs.query(filter)));
-      Map<String, Aggregation> subAggMap = new HashMap<>();
-      subAggMap.put(field + "0", subAgg);
-      aggregations.put(
-          "filter", Aggregation.of(a -> a.filter(queryFilter).aggregations(subAggMap)));
+      try {
+        JsonNode rootNode = mapper.readTree(filter);
+        JsonNode queryNode = rootNode.get("query");
+        String base64Query = Base64.getEncoder().encodeToString(queryNode.toString().getBytes());
+        Query queryFilter = Query.of(q -> q.wrapper(w -> w.query(base64Query)));
+
+        Map<String, Aggregation> subAggMap = new HashMap<>();
+        subAggMap.put(field + "0", subAgg);
+        aggregations.put(
+            "filter", Aggregation.of(a -> a.filter(queryFilter).aggregations(subAggMap)));
+      } catch (Exception e) {
+        Log.error("Error while parsing query string so using fallback: {}", e.getMessage(), e);
+        aggregations.put(field + "0", subAgg);
+      }
     } else {
       aggregations.put(field + "0", subAgg);
     }
