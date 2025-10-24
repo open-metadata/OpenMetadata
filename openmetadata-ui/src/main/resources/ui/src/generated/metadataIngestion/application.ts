@@ -20,9 +20,13 @@ export interface Application {
      */
     appConfig?: any[] | boolean | number | null | CollateAIAppConfig | string;
     /**
+     * Fully Qualified Name (FQN) of the application
+     */
+    applicationFqn?: string;
+    /**
      * External Application Private configuration
      */
-    appPrivateConfig?: PrivateConfig;
+    appPrivateConfig?: CollateAIAppPrivateConfig | string;
     /**
      * Enable streaming logs to a remote log storage via the OpenMetadata Server
      */
@@ -946,11 +950,9 @@ export enum Type {
 }
 
 /**
- * External Application Private configuration
- *
  * Private Configuration for the CollateAI External Application.
  */
-export interface PrivateConfig {
+export interface CollateAIAppPrivateConfig {
     /**
      * Collate Server public URL. WAII will use this information to interact with the server.
      * E.g., https://sandbox.getcollate.io

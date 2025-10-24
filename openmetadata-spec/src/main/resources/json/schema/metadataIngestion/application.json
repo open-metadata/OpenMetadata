@@ -22,6 +22,10 @@
       "$ref": "../entity/applications/configuration/applicationConfig.json#/definitions/privateConfig",
       "description": "External Application Private configuration"
     },
+    "applicationFqn": {
+      "description": "Fully Qualified Name (FQN) of the application",
+      "$ref": "../type/basic.json#/definitions/fullyQualifiedEntityName"
+    },
     "ingestionPipelineFQN": {
       "description": "Fully qualified name of ingestion pipeline, used to identify the current ingestion pipeline",
       "type": "string"
