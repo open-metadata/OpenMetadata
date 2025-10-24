@@ -89,10 +89,44 @@ SNOWFLAKE_INCREMENTAL_CONFIGURATION = {
     },
 }
 
+SNOWFLAKE_CONFIGURATION_INGEST_ALL_DATABASES_FALSE = {
+    **SNOWFLAKE_CONFIGURATION,
+    **{
+        "source": {
+            **SNOWFLAKE_CONFIGURATION["source"],
+            "serviceConnection": {
+                **SNOWFLAKE_CONFIGURATION["source"]["serviceConnection"],
+                "config": {
+                    **SNOWFLAKE_CONFIGURATION["source"]["serviceConnection"]["config"],
+                    "ingestAllDatabases": False,
+                },
+            },
+        }
+    },
+}
+
+SNOWFLAKE_CONFIGURATION_INGEST_ALL_DATABASES_TRUE = {
+    **SNOWFLAKE_CONFIGURATION,
+    **{
+        "source": {
+            **SNOWFLAKE_CONFIGURATION["source"],
+            "serviceConnection": {
+                **SNOWFLAKE_CONFIGURATION["source"]["serviceConnection"],
+                "config": {
+                    **SNOWFLAKE_CONFIGURATION["source"]["serviceConnection"]["config"],
+                    "ingestAllDatabases": True,
+                },
+            },
+        }
+    },
+}
+
 SNOWFLAKE_CONFIGURATIONS = {
     "incremental": SNOWFLAKE_INCREMENTAL_CONFIGURATION,
     "not_incremental": SNOWFLAKE_CONFIGURATION,
     "custom_host": SNOWFLAKE_CONFIGURATION_CUSTOM_HOST,
+    "ingest_all_false": SNOWFLAKE_CONFIGURATION_INGEST_ALL_DATABASES_FALSE,
+    "ingest_all_true": SNOWFLAKE_CONFIGURATION_INGEST_ALL_DATABASES_TRUE,
 }
 
 MOCK_PIPELINE_STATUSES = [
@@ -206,6 +240,25 @@ def get_snowflake_sources():
                 config.workflowConfig.openMetadataServerConfig,
                 SNOWFLAKE_CONFIGURATIONS["incremental"]["ingestionPipelineFQN"],
             )
+
+        # Create sources for ingestAllDatabases tests
+        config_ingest_all_false = OpenMetadataWorkflowConfig.model_validate(
+            SNOWFLAKE_CONFIGURATIONS["ingest_all_false"]
+        )
+        sources["ingest_all_false"] = SnowflakeSource.create(
+            SNOWFLAKE_CONFIGURATIONS["ingest_all_false"]["source"],
+            config_ingest_all_false.workflowConfig.openMetadataServerConfig,
+            SNOWFLAKE_CONFIGURATIONS["ingest_all_false"]["ingestionPipelineFQN"],
+        )
+
+        config_ingest_all_true = OpenMetadataWorkflowConfig.model_validate(
+            SNOWFLAKE_CONFIGURATIONS["ingest_all_true"]
+        )
+        sources["ingest_all_true"] = SnowflakeSource.create(
+            SNOWFLAKE_CONFIGURATIONS["ingest_all_true"]["source"],
+            config_ingest_all_true.workflowConfig.openMetadataServerConfig,
+            SNOWFLAKE_CONFIGURATIONS["ingest_all_true"]["ingestionPipelineFQN"],
+        )
     return sources
 
 
@@ -558,3 +611,98 @@ class SnowflakeUnitTest(TestCase):
             tag_fqns = [tag.tagFQN.root for tag in table_labels]
             self.assertIn("SnowflakeTag.SCHEMA_TAG", tag_fqns)
             self.assertIn("SnowflakeTag.TABLE_TAG", tag_fqns)
+
+    def test_ingest_all_databases_false_with_database_provided(self):
+        """
+        Test behavior when ingestAllDatabases=False and database is provided:
+        Should ingest only the specified database
+        """
+        source = self.sources["ingest_all_false"]
+
+        # Test get_configured_database method
+        self.assertEqual(source.get_configured_database(), "database")
+
+        # Mock the database names iteration
+        with (
+            patch.object(source, "set_inspector") as mock_set_inspector,
+            patch.object(source, "set_session_query_tag") as mock_set_session_query_tag,
+            patch.object(source, "set_partition_details") as mock_set_partition_details,
+            patch.object(
+                source, "set_schema_description_map"
+            ) as mock_set_schema_description_map,
+            patch.object(
+                source, "set_database_description_map"
+            ) as mock_set_database_description_map,
+            patch.object(
+                source, "set_external_location_map"
+            ) as mock_set_external_location_map,
+            patch.object(source, "set_schema_tags_map") as mock_set_schema_tags_map,
+        ):
+
+            # Test that only the configured database is yielded
+            database_names = list(source.get_database_names())
+            self.assertEqual(len(database_names), 1)
+            self.assertEqual(database_names[0], "database")
+
+            # Verify that setup methods are called for the configured database
+            mock_set_inspector.assert_called_once_with("database")
+            mock_set_session_query_tag.assert_called_once()
+            mock_set_partition_details.assert_called_once()
+            mock_set_schema_description_map.assert_called_once()
+            mock_set_database_description_map.assert_called_once()
+            mock_set_external_location_map.assert_called_once_with("database")
+            mock_set_schema_tags_map.assert_called_once_with("database")
+
+    def test_ingest_all_databases_true_with_database_provided(self):
+        """
+        Test behavior when ingestAllDatabases=True and database is provided:
+        Should ingest all databases (including the provided one)
+        """
+        source = self.sources["ingest_all_true"]
+
+        # Test get_configured_database method - should return None when ingestAllDatabases=True
+        self.assertIsNone(source.get_configured_database())
+
+        # Mock the get_database_names_raw method to return multiple databases
+        # Note: The provided database "database" should be included in the list
+        mock_databases = ["database", "database1", "database2", "database3"]
+
+        source.context.get().database_service = "local_snowflake"
+        with (
+            patch.object(
+                source, "get_database_names_raw", return_value=mock_databases
+            ) as mock_get_raw,
+            patch.object(source, "set_inspector") as mock_set_inspector,
+            patch.object(source, "set_session_query_tag") as mock_set_session_query_tag,
+            patch.object(source, "set_partition_details") as mock_set_partition_details,
+            patch.object(
+                source, "set_schema_description_map"
+            ) as mock_set_schema_description_map,
+            patch.object(
+                source, "set_database_description_map"
+            ) as mock_set_database_description_map,
+            patch.object(
+                source, "set_external_location_map"
+            ) as mock_set_external_location_map,
+            patch.object(source, "set_schema_tags_map") as mock_set_schema_tags_map,
+        ):
+
+            # Test that all databases are yielded (including the provided one)
+            database_names = list(source.get_database_names())
+            self.assertEqual(len(database_names), 4)
+            self.assertEqual(set(database_names), set(mock_databases))
+
+            # Verify that the provided database is included
+            self.assertIn("database", database_names)
+
+            # Verify that get_database_names_raw was called
+            mock_get_raw.assert_called_once()
+
+            # Verify that setup methods are called for each database
+            self.assertEqual(mock_set_inspector.call_count, 4)
+            self.assertEqual(mock_set_session_query_tag.call_count, 4)
+            self.assertEqual(mock_set_partition_details.call_count, 4)
+            self.assertEqual(mock_set_schema_description_map.call_count, 4)
+            self.assertEqual(mock_set_database_description_map.call_count, 4)
+            self.assertEqual(mock_set_external_location_map.call_count, 4)
+            self.assertEqual(mock_set_schema_tags_map.call_count, 4)

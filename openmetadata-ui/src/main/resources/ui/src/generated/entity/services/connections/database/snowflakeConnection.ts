@@ -54,6 +54,11 @@ export interface SnowflakeConnection {
      */
     includeTransientTables?: boolean;
     /**
+     * Ingest data from all databases in Snowflake. You can use databaseFilterPattern on top of
+     * this.
+     */
+    ingestAllDatabases?: boolean;
+    /**
      * Password to connect to Snowflake.
      */
     password?: string;

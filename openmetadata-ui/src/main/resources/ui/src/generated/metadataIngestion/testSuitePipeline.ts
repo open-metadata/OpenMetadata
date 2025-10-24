@@ -1131,6 +1131,9 @@ export interface ConfigObject {
      * Ingest data from all databases in Redshift. You can use databaseFilterPattern on top of
      * this.
      *
+     * Ingest data from all databases in Snowflake. You can use databaseFilterPattern on top of
+     * this.
+     *
      * Ingest data from all databases in Greenplum. You can use databaseFilterPattern on top of
      * this.
      *
