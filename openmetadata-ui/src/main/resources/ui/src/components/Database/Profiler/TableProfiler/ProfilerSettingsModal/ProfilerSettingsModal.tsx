@@ -15,9 +15,9 @@ import { PlusOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
 import {
   Button,
+  Drawer,
   Input,
   InputNumber,
-  Modal,
   Select,
   Space,
   Switch,
@@ -40,6 +40,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as CloseIcon } from '../../../../../assets/svg/close.svg';
 import { ReactComponent as IconDelete } from '../../../../../assets/svg/ic-delete.svg';
 import {
   DEFAULT_INCLUDE_PROFILE,
@@ -431,511 +432,533 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     }
   }, [tableId]);
 
-  return (
-    <Modal
-      centered
-      destroyOnClose
-      bodyStyle={{
-        maxHeight: 600,
-        overflowY: 'scroll',
-      }}
-      cancelButtonProps={{
-        type: 'link',
-      }}
-      closable={false}
-      confirmLoading={isLoading}
-      data-testid="profiler-settings-modal"
-      maskClosable={false}
-      okButtonProps={{
-        form: 'profiler-setting-form',
-        htmlType: 'submit',
-      }}
-      okText={t('label.save')}
-      open={visible}
-      title={t('label.setting-plural')}
-      width={630}
-      onCancel={handleCancel}>
-      {isDataLoading ? (
-        <Loader />
-      ) : (
-        <Row gutter={[16, 16]}>
-          <Col data-testid="profile-sample-container" span={24}>
-            <Form<ProfilerForm>
-              data-testid="configure-ingestion-container"
-              form={form}
-              initialValues={{
-                profileSampleType: state?.selectedProfileSampleType,
-                profileSamplePercentage: state?.profileSample || 100,
-                sampleDataCount: state?.sampleDataCount,
-              }}
-              layout="vertical">
+  const drawerFooter = (
+    <div className="drawer-footer-actions">
+      <Space size={16}>
+        <Button type="link" onClick={handleCancel}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          form="profiler-setting-form"
+          htmlType="submit"
+          loading={isLoading}
+          type="primary">
+          {t('label.save')}
+        </Button>
+      </Space>
+    </div>
+  );
+
+  const renderContent = isDataLoading ? (
+    <div className="profiler-settings-loader">
+      <Loader />
+    </div>
+  ) : (
+    <div className="profiler-settings-drawer-content new-form-style">
+      <Row gutter={[16, 16]}>
+        <Col data-testid="profile-sample-container" span={24}>
+          <Form<ProfilerForm>
+            className="profiler-settings-form new-form-style"
+            data-testid="configure-ingestion-container"
+            form={form}
+            initialValues={{
+              profileSampleType: state?.selectedProfileSampleType,
+              profileSamplePercentage: state?.profileSample || 100,
+              sampleDataCount: state?.sampleDataCount,
+            }}
+            layout="vertical">
+            <Form.Item
+              label={t('label.profile-sample-type', {
+                type: '',
+              })}
+              name="profileSampleType">
+              <Select
+                allowClear
+                autoFocus
+                className="w-full"
+                data-testid="profile-sample"
+                options={PROFILE_SAMPLE_OPTIONS}
+                placeholder={t('label.please-select-entity', {
+                  entity: t('label.profile-sample-type', {
+                    type: '',
+                  }),
+                })}
+                onChange={handleProfileSampleType}
+              />
+            </Form.Item>
+
+            {state?.selectedProfileSampleType ===
+              ProfileSampleType.Percentage && (
               <Form.Item
                 label={t('label.profile-sample-type', {
-                  type: '',
+                  type: t('label.value'),
                 })}
-                name="profileSampleType">
-                <Select
-                  allowClear
-                  autoFocus
-                  className="w-full"
-                  data-testid="profile-sample"
-                  options={PROFILE_SAMPLE_OPTIONS}
-                  placeholder={t('label.please-select-entity', {
-                    entity: t('label.profile-sample-type', {
-                      type: '',
-                    }),
-                  })}
-                  onChange={handleProfileSampleType}
+                name="profileSamplePercentage">
+                <SliderWithInput
+                  className="p-x-xs"
+                  value={state?.profileSample}
+                  onChange={handleProfileSample}
                 />
               </Form.Item>
+            )}
 
-              {state?.selectedProfileSampleType ===
-                ProfileSampleType.Percentage && (
-                <Form.Item
-                  label={t('label.profile-sample-type', {
-                    type: t('label.value'),
-                  })}
-                  name="profileSamplePercentage">
-                  <SliderWithInput
-                    className="p-x-xs"
-                    value={state?.profileSample}
-                    onChange={handleProfileSample}
-                  />
-                </Form.Item>
-              )}
-
-              {state?.selectedProfileSampleType === ProfileSampleType.Rows && (
-                <Form.Item
-                  label={t('label.profile-sample-type', {
-                    type: t('label.value'),
-                  })}
-                  name="profileSampleRows">
-                  <InputNumber
-                    className="w-full"
-                    data-testid="metric-number-input"
-                    min={0}
-                    placeholder={t('label.please-enter-value', {
-                      name: t('label.row-count-lowercase'),
-                    })}
-                  />
-                </Form.Item>
-              )}
+            {state?.selectedProfileSampleType === ProfileSampleType.Rows && (
               <Form.Item
-                className="m-b-0"
-                label={t('label.sample-data-count')}
-                name="sampleDataCount">
+                label={t('label.profile-sample-type', {
+                  type: t('label.value'),
+                })}
+                name="profileSampleRows">
                 <InputNumber
                   className="w-full"
-                  data-testid="sample-data-count-input"
+                  data-testid="metric-number-input"
                   min={0}
                   placeholder={t('label.please-enter-value', {
-                    name: t('label.sample-data-count-lowercase'),
+                    name: t('label.row-count-lowercase'),
                   })}
                 />
               </Form.Item>
-            </Form>
-          </Col>
-          <Col data-testid="sql-editor-container" span={24}>
-            <p className="m-b-xs">
-              {t('label.profile-sample-type', {
-                type: t('label.query'),
-              })}{' '}
-            </p>
+            )}
+            <Form.Item
+              className="m-b-0"
+              label={t('label.sample-data-count')}
+              name="sampleDataCount">
+              <InputNumber
+                className="w-full"
+                data-testid="sample-data-count-input"
+                min={0}
+                placeholder={t('label.please-enter-value', {
+                  name: t('label.sample-data-count-lowercase'),
+                })}
+              />
+            </Form.Item>
+          </Form>
+        </Col>
+        <Col data-testid="sql-editor-container" span={24}>
+          <p className="m-b-xs">
+            {t('label.profile-sample-type', {
+              type: t('label.query'),
+            })}{' '}
+          </p>
 
-            <SchemaEditor
-              className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
-              data-testid="profiler-setting-sql-editor"
-              mode={{ name: CSMode.SQL }}
-              refreshEditor={visible}
-              value={state?.sqlQuery ?? ''}
-              onChange={handleCodeMirrorChange}
-            />
-          </Col>
-          <Col data-testid="exclude-column-container" span={24}>
-            <Typography.Paragraph>
-              {t('message.enable-column-profile')}
-            </Typography.Paragraph>
-            <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
-            <Select
-              allowClear
-              className="w-full"
-              data-testid="exclude-column-select"
-              dropdownStyle={{ maxHeight: 200, overflowY: 'auto' }}
-              mode="multiple"
-              options={columnOptions}
-              placeholder={t('label.select-column-plural-to-exclude')}
-              size="middle"
-              value={state?.excludeCol}
-              onChange={handleExcludeCol}
-            />
-          </Col>
+          <SchemaEditor
+            className="custom-query-editor query-editor-h-200 custom-code-mirror-theme"
+            data-testid="profiler-setting-sql-editor"
+            mode={{ name: CSMode.SQL }}
+            refreshEditor={visible}
+            value={state?.sqlQuery ?? ''}
+            onChange={handleCodeMirrorChange}
+          />
+        </Col>
+        <Col data-testid="exclude-column-container" span={24}>
+          <Typography.Paragraph>
+            {t('message.enable-column-profile')}
+          </Typography.Paragraph>
+          <p className="text-xs m-b-xss">{t('label.exclude')}:</p>
+          <Select
+            allowClear
+            className="w-full"
+            data-testid="exclude-column-select"
+            dropdownStyle={{ maxHeight: 200, overflowY: 'auto' }}
+            mode="multiple"
+            options={columnOptions}
+            placeholder={t('label.select-column-plural-to-exclude')}
+            size="middle"
+            value={state?.excludeCol}
+            onChange={handleExcludeCol}
+          />
+        </Col>
 
-          <Col span={24}>
-            <Form<ProfilerForm>
-              autoComplete="off"
-              form={form}
-              id="profiler-setting-form"
-              initialValues={{
-                includeColumns: state?.includeCol,
-                partitionData: [''],
-                ...state?.data?.partitioning,
-              }}
-              layout="vertical"
-              name="includeColumnsProfiler"
-              onFinish={handleSave}
-              onValuesChange={handleIncludeColumnsProfiler}>
-              <List name="includeColumns">
-                {(fields, { add, remove }) => (
-                  <>
-                    <div className="d-flex items-center m-b-xss">
-                      <p className="w-form-label text-xs m-r-xs">
-                        {`${t('label.include')}:`}
-                      </p>
-                      <Button
-                        className="include-columns-add-button flex-center"
-                        icon={<PlusOutlined />}
-                        size="small"
-                        type="primary"
-                        onClick={() => add({ metrics: ['all'] })}
-                      />
-                    </div>
-                    <div
-                      className={classNames({
-                        'h-max-40 overflow-y-auto':
-                          state?.includeCol.length > 1,
-                      })}
-                      data-testid="include-column-container">
-                      {fields.map(({ key, name, ...restField }) => (
-                        <Row gutter={16} key={key}>
-                          <Col span={12}>
-                            <Form.Item
-                              className="w-full m-b-md"
-                              {...restField}
-                              name={[name, 'columnName']}>
-                              <Select
-                                allowClear
-                                showSearch
-                                className="w-full"
-                                data-testid="include-column-select"
-                                options={columnWithAllOption}
-                                placeholder={t(
-                                  'label.select-column-plural-to-include'
-                                )}
-                                size="middle"
-                              />
-                            </Form.Item>
-                          </Col>
-                          <Col className="flex" span={12}>
-                            <Form.Item
-                              className="w-full m-b-md"
-                              {...restField}
-                              name={[name, 'metrics']}>
-                              <TreeSelect
-                                treeCheckable
-                                className="w-full"
-                                maxTagCount={2}
-                                placeholder={t('label.please-select')}
-                                showCheckedStrategy="SHOW_PARENT"
-                                treeData={metricsOptions}
-                              />
-                            </Form.Item>
-                            <Button
-                              icon={
-                                <Icon
-                                  className="align-middle"
-                                  component={IconDelete}
-                                  style={{ fontSize: '16px' }}
-                                />
-                              }
-                              type="text"
-                              onClick={() => remove(name)}
+        <Col span={24}>
+          <Form<ProfilerForm>
+            autoComplete="off"
+            className="new-form-style"
+            form={form}
+            id="profiler-setting-form"
+            initialValues={{
+              includeColumns: state?.includeCol,
+              partitionData: [''],
+              ...state?.data?.partitioning,
+            }}
+            layout="vertical"
+            name="includeColumnsProfiler"
+            onFinish={handleSave}
+            onValuesChange={handleIncludeColumnsProfiler}>
+            <List name="includeColumns">
+              {(fields, { add, remove }) => (
+                <>
+                  <div className="d-flex items-center m-b-xss">
+                    <p className="w-form-label text-xs m-r-xs">
+                      {`${t('label.include')}:`}
+                    </p>
+                    <Button
+                      className="include-columns-add-button flex-center"
+                      icon={<PlusOutlined />}
+                      size="small"
+                      type="primary"
+                      onClick={() => add({ metrics: ['all'] })}
+                    />
+                  </div>
+                  <div
+                    className={classNames({
+                      'h-max-40 overflow-y-auto': state?.includeCol.length > 1,
+                    })}
+                    data-testid="include-column-container">
+                    {fields.map(({ key, name, ...restField }) => (
+                      <Row gutter={16} key={key}>
+                        <Col span={12}>
+                          <Form.Item
+                            className="w-full m-b-md"
+                            {...restField}
+                            name={[name, 'columnName']}>
+                            <Select
+                              allowClear
+                              showSearch
+                              className="w-full"
+                              data-testid="include-column-select"
+                              options={columnWithAllOption}
+                              placeholder={t(
+                                'label.select-column-plural-to-include'
+                              )}
+                              size="middle"
                             />
-                          </Col>
-                        </Row>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </List>
-              <Row gutter={[16, 16]}>
-                <Col span={24}>
-                  <Space align="center" size={12}>
-                    <p>{t('label.enable-partition')}</p>
-                    <Form.Item className="m-b-0" name="enablePartitioning">
-                      <Switch
-                        checked={state?.enablePartition}
-                        data-testid="enable-partition-switch"
-                        onChange={handleEnablePartition}
+                          </Form.Item>
+                        </Col>
+                        <Col className="flex" span={12}>
+                          <Form.Item
+                            className="w-full m-b-md"
+                            {...restField}
+                            name={[name, 'metrics']}>
+                            <TreeSelect
+                              treeCheckable
+                              className="w-full"
+                              maxTagCount={2}
+                              placeholder={t('label.please-select')}
+                              showCheckedStrategy="SHOW_PARENT"
+                              treeData={metricsOptions}
+                            />
+                          </Form.Item>
+                          <Button
+                            className="delete-btn"
+                            icon={
+                              <Icon
+                                className="align-middle"
+                                component={IconDelete}
+                                style={{ fontSize: '16px' }}
+                              />
+                            }
+                            type="text"
+                            onClick={() => remove(name)}
+                          />
+                        </Col>
+                      </Row>
+                    ))}
+                  </div>
+                </>
+              )}
+            </List>
+            <Row gutter={[16, 16]}>
+              <Col span={24}>
+                <Space align="center" size={12}>
+                  <p>{t('label.enable-partition')}</p>
+                  <Form.Item className="m-b-0" name="enablePartitioning">
+                    <Switch
+                      checked={state?.enablePartition}
+                      data-testid="enable-partition-switch"
+                      onChange={handleEnablePartition}
+                    />
+                  </Form.Item>
+                </Space>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  className="m-b-0"
+                  label={
+                    <span className="text-xs">{t('label.interval-type')}</span>
+                  }
+                  labelCol={PROFILER_MODAL_LABEL_STYLE}
+                  name="partitionIntervalType"
+                  rules={[
+                    {
+                      required: state?.enablePartition,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.interval-type'),
+                      }),
+                    },
+                  ]}>
+                  <Select
+                    allowClear
+                    className="w-full"
+                    data-testid="interval-type"
+                    disabled={!state?.enablePartition}
+                    options={INTERVAL_TYPE_OPTIONS}
+                    placeholder={t('message.select-interval-type')}
+                    size="middle"
+                  />
+                </Form.Item>
+              </Col>
+              <Col span={12}>
+                <Form.Item
+                  className="m-b-0"
+                  label={
+                    <span className="text-xs">
+                      {t('label.column-entity', {
+                        entity: t('label.name'),
+                      })}
+                    </span>
+                  }
+                  labelCol={PROFILER_MODAL_LABEL_STYLE}
+                  name="partitionColumnName"
+                  rules={[
+                    {
+                      required: state?.enablePartition,
+                      message: t('message.field-text-is-required', {
+                        fieldText: t('label.column-entity', {
+                          entity: t('label.name'),
+                        }),
+                      }),
+                    },
+                  ]}>
+                  <Select
+                    allowClear
+                    showSearch
+                    className="w-full"
+                    data-testid="column-name"
+                    disabled={!state?.enablePartition}
+                    options={partitionColumnOptions}
+                    placeholder={t('message.select-column-name')}
+                    size="middle"
+                  />
+                </Form.Item>
+              </Col>
+              {partitionIntervalType &&
+              TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
+                <>
+                  <Col span={12}>
+                    <Form.Item
+                      className="m-b-0"
+                      label={
+                        <span className="text-xs">{t('label.interval')}</span>
+                      }
+                      labelCol={PROFILER_MODAL_LABEL_STYLE}
+                      name="partitionInterval"
+                      rules={[
+                        {
+                          required: state?.enablePartition,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.interval'),
+                          }),
+                        },
+                      ]}>
+                      <InputNumber
+                        className="w-full"
+                        data-testid="interval-required"
+                        disabled={!state?.enablePartition}
+                        placeholder={t('message.enter-interval')}
+                        size="middle"
                       />
                     </Form.Item>
-                  </Space>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    className="m-b-0"
-                    label={
-                      <span className="text-xs">
-                        {t('label.interval-type')}
-                      </span>
-                    }
-                    labelCol={PROFILER_MODAL_LABEL_STYLE}
-                    name="partitionIntervalType"
-                    rules={[
-                      {
-                        required: state?.enablePartition,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.interval-type'),
-                        }),
-                      },
-                    ]}>
-                    <Select
-                      allowClear
-                      className="w-full"
-                      data-testid="interval-type"
-                      disabled={!state?.enablePartition}
-                      options={INTERVAL_TYPE_OPTIONS}
-                      placeholder={t('message.select-interval-type')}
-                      size="middle"
-                    />
-                  </Form.Item>
-                </Col>
-                <Col span={12}>
-                  <Form.Item
-                    className="m-b-0"
-                    label={
-                      <span className="text-xs">
-                        {t('label.column-entity', {
-                          entity: t('label.name'),
-                        })}
-                      </span>
-                    }
-                    labelCol={PROFILER_MODAL_LABEL_STYLE}
-                    name="partitionColumnName"
-                    rules={[
-                      {
-                        required: state?.enablePartition,
-                        message: t('message.field-text-is-required', {
-                          fieldText: t('label.column-entity', {
-                            entity: t('label.name'),
-                          }),
-                        }),
-                      },
-                    ]}>
-                    <Select
-                      allowClear
-                      showSearch
-                      className="w-full"
-                      data-testid="column-name"
-                      disabled={!state?.enablePartition}
-                      options={partitionColumnOptions}
-                      placeholder={t('message.select-column-name')}
-                      size="middle"
-                    />
-                  </Form.Item>
-                </Col>
-                {partitionIntervalType &&
-                TIME_BASED_PARTITION.includes(partitionIntervalType) ? (
-                  <>
-                    <Col span={12}>
-                      <Form.Item
-                        className="m-b-0"
-                        label={
-                          <span className="text-xs">{t('label.interval')}</span>
-                        }
-                        labelCol={PROFILER_MODAL_LABEL_STYLE}
-                        name="partitionInterval"
-                        rules={[
-                          {
-                            required: state?.enablePartition,
-                            message: t('message.field-text-is-required', {
-                              fieldText: t('label.interval'),
-                            }),
-                          },
-                        ]}>
-                        <InputNumber
-                          className="w-full"
-                          data-testid="interval-required"
-                          disabled={!state?.enablePartition}
-                          placeholder={t('message.enter-interval')}
-                          size="middle"
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item
-                        className="m-b-0"
-                        label={
-                          <span className="text-xs">
-                            {t('label.interval-unit')}
-                          </span>
-                        }
-                        labelCol={PROFILER_MODAL_LABEL_STYLE}
-                        name="partitionIntervalUnit"
-                        rules={[
-                          {
-                            required: state?.enablePartition,
-                            message: t('message.field-text-is-required', {
-                              fieldText: t('label.interval-unit'),
-                            }),
-                          },
-                        ]}>
-                        <Select
-                          allowClear
-                          className="w-full"
-                          data-testid="select-interval-unit"
-                          disabled={!state?.enablePartition}
-                          options={INTERVAL_UNIT_OPTIONS}
-                          placeholder={t('message.select-interval-unit')}
-                          size="middle"
-                        />
-                      </Form.Item>
-                    </Col>
-                  </>
-                ) : null}
-                {PartitionIntervalTypes.IntegerRange ===
-                partitionIntervalType ? (
-                  <>
-                    <Col span={12}>
-                      <Form.Item
-                        className="m-b-0"
-                        label={
-                          <span className="text-xs">
-                            {t('label.start-entity', {
-                              entity: t('label.range'),
-                            })}
-                          </span>
-                        }
-                        labelCol={PROFILER_MODAL_LABEL_STYLE}
-                        name="partitionIntegerRangeStart"
-                        rules={[
-                          {
-                            required: state?.enablePartition,
-                            message: t('message.field-text-is-required', {
-                              fieldText: t('label.start-entity', {
-                                entity: t('label.range'),
-                              }),
-                            }),
-                          },
-                        ]}>
-                        <InputNumber
-                          className="w-full"
-                          data-testid="start-range"
-                          placeholder={t('message.enter-a-field', {
-                            field: t('label.start-entity', {
-                              entity: t('label.range'),
-                            }),
-                          })}
-                          size="middle"
-                        />
-                      </Form.Item>
-                    </Col>
-                    <Col span={12}>
-                      <Form.Item
-                        className="m-b-0"
-                        label={
-                          <span className="text-xs">
-                            {t('label.end-entity', {
-                              entity: t('label.range'),
-                            })}
-                          </span>
-                        }
-                        labelCol={PROFILER_MODAL_LABEL_STYLE}
-                        name="partitionIntegerRangeEnd"
-                        rules={[
-                          {
-                            required: state?.enablePartition,
-                            message: t('message.field-text-is-required', {
-                              fieldText: t('label.end-entity', {
-                                entity: t('label.range'),
-                              }),
-                            }),
-                          },
-                        ]}>
-                        <InputNumber
-                          className="w-full"
-                          data-testid="end-range"
-                          placeholder={t('message.enter-a-field', {
-                            field: t('label.end-entity', {
-                              entity: t('label.range'),
-                            }),
-                          })}
-                          size="middle"
-                        />
-                      </Form.Item>
-                    </Col>
-                  </>
-                ) : null}
-
-                {PartitionIntervalTypes.ColumnValue ===
-                partitionIntervalType ? (
-                  <Col span={24}>
-                    <List name="partitionValues">
-                      {(fields, { add, remove }) => (
-                        <>
-                          <div className="flex items-center m-b-xs">
-                            <p className="w-form-label text-xs m-r-sm">
-                              {`${t('label.value')}:`}
-                            </p>
-                            <Button
-                              className="include-columns-add-button flex-center"
-                              icon={<PlusOutlined />}
-                              size="small"
-                              type="primary"
-                              onClick={() => add()}
-                            />
-                          </div>
-
-                          {fields.map(({ key, name, ...restField }) => (
-                            <Row gutter={16} key={key}>
-                              <Col className="flex" span={24}>
-                                <Form.Item
-                                  className="w-full m-b-md"
-                                  {...restField}
-                                  name={name}
-                                  rules={[
-                                    {
-                                      required: state?.enablePartition,
-                                      message: t(
-                                        'message.field-text-is-required',
-                                        {
-                                          fieldText: t('label.value'),
-                                        }
-                                      ),
-                                    },
-                                  ]}>
-                                  <Input
-                                    className="w-full"
-                                    data-testid="partition-value"
-                                    placeholder={t('message.enter-a-field', {
-                                      field: t('label.value'),
-                                    })}
-                                  />
-                                </Form.Item>
-                                <Button
-                                  icon={
-                                    <Icon
-                                      className="align-middle"
-                                      component={IconDelete}
-                                      style={{ fontSize: '16px' }}
-                                    />
-                                  }
-                                  type="text"
-                                  onClick={() => remove(name)}
-                                />
-                              </Col>
-                            </Row>
-                          ))}
-                        </>
-                      )}
-                    </List>
                   </Col>
-                ) : null}
-              </Row>
-            </Form>
-          </Col>
-        </Row>
-      )}
-    </Modal>
+                  <Col span={12}>
+                    <Form.Item
+                      className="m-b-0"
+                      label={
+                        <span className="text-xs">
+                          {t('label.interval-unit')}
+                        </span>
+                      }
+                      labelCol={PROFILER_MODAL_LABEL_STYLE}
+                      name="partitionIntervalUnit"
+                      rules={[
+                        {
+                          required: state?.enablePartition,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.interval-unit'),
+                          }),
+                        },
+                      ]}>
+                      <Select
+                        allowClear
+                        className="w-full"
+                        data-testid="select-interval-unit"
+                        disabled={!state?.enablePartition}
+                        options={INTERVAL_UNIT_OPTIONS}
+                        placeholder={t('message.select-interval-unit')}
+                        size="middle"
+                      />
+                    </Form.Item>
+                  </Col>
+                </>
+              ) : null}
+              {PartitionIntervalTypes.IntegerRange === partitionIntervalType ? (
+                <>
+                  <Col span={12}>
+                    <Form.Item
+                      className="m-b-0"
+                      label={
+                        <span className="text-xs">
+                          {t('label.start-entity', {
+                            entity: t('label.range'),
+                          })}
+                        </span>
+                      }
+                      labelCol={PROFILER_MODAL_LABEL_STYLE}
+                      name="partitionIntegerRangeStart"
+                      rules={[
+                        {
+                          required: state?.enablePartition,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.start-entity', {
+                              entity: t('label.range'),
+                            }),
+                          }),
+                        },
+                      ]}>
+                      <InputNumber
+                        className="w-full"
+                        data-testid="start-range"
+                        disabled={!state?.enablePartition}
+                        placeholder={t('message.enter-a-field', {
+                          field: t('label.start-entity', {
+                            entity: t('label.range'),
+                          }),
+                        })}
+                        size="middle"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col span={12}>
+                    <Form.Item
+                      className="m-b-0"
+                      label={
+                        <span className="text-xs">
+                          {t('label.end-entity', {
+                            entity: t('label.range'),
+                          })}
+                        </span>
+                      }
+                      labelCol={PROFILER_MODAL_LABEL_STYLE}
+                      name="partitionIntegerRangeEnd"
+                      rules={[
+                        {
+                          required: state?.enablePartition,
+                          message: t('message.field-text-is-required', {
+                            fieldText: t('label.end-entity', {
+                              entity: t('label.range'),
+                            }),
+                          }),
+                        },
+                      ]}>
+                      <InputNumber
+                        className="w-full"
+                        data-testid="end-range"
+                        disabled={!state?.enablePartition}
+                        placeholder={t('message.enter-a-field', {
+                          field: t('label.end-entity', {
+                            entity: t('label.range'),
+                          }),
+                        })}
+                        size="middle"
+                      />
+                    </Form.Item>
+                  </Col>
+                </>
+              ) : null}
+
+              {PartitionIntervalTypes.ColumnValue === partitionIntervalType ? (
+                <Col span={24}>
+                  <List name="partitionValues">
+                    {(fields, { add, remove }) => (
+                      <>
+                        <div className="flex items-center m-b-xs">
+                          <p className="w-form-label text-xs m-r-sm">
+                            {`${t('label.value')}:`}
+                          </p>
+                          <Button
+                            className="include-columns-add-button flex-center"
+                            icon={<PlusOutlined />}
+                            size="small"
+                            type="primary"
+                            onClick={() => add()}
+                          />
+                        </div>
+
+                        {fields.map(({ key, name, ...restField }) => (
+                          <Row gutter={16} key={key}>
+                            <Col className="flex" span={24}>
+                              <Form.Item
+                                className="w-full m-b-md"
+                                {...restField}
+                                name={name}
+                                rules={[
+                                  {
+                                    required: state?.enablePartition,
+                                    message: t(
+                                      'message.field-text-is-required',
+                                      {
+                                        fieldText: t('label.value'),
+                                      }
+                                    ),
+                                  },
+                                ]}>
+                                <Input
+                                  className="w-full"
+                                  data-testid="partition-value"
+                                  disabled={!state?.enablePartition}
+                                  placeholder={t('message.enter-a-field', {
+                                    field: t('label.value'),
+                                  })}
+                                />
+                              </Form.Item>
+                              <Button
+                                className="delete-btn"
+                                icon={
+                                  <Icon
+                                    className="align-middle"
+                                    component={IconDelete}
+                                    style={{ fontSize: '16px' }}
+                                  />
+                                }
+                                type="text"
+                                onClick={() => remove(name)}
+                              />
+                            </Col>
+                          </Row>
+                        ))}
+                      </>
+                    )}
+                  </List>
+                </Col>
+              ) : null}
+            </Row>
+          </Form>
+        </Col>
+      </Row>
+    </div>
+  );
+
+  return (
+    <Drawer
+      destroyOnClose
+      className="custom-drawer-style profiler-settings-drawer"
+      closable={false}
+      data-testid="profiler-settings-modal"
+      extra={
+        <Button
+          className="drawer-close-icon flex-center"
+          icon={<CloseIcon />}
+          type="link"
+          onClick={handleCancel}
+        />
+      }
+      footer={drawerFooter}
+      maskClosable={false}
+      open={visible}
+      placement="right"
+      title={t('label.setting-plural')}
+      width="40%"
+      onClose={handleCancel}>
+      {renderContent}
+    </Drawer>
   );
 };
 
