@@ -1,56 +1,54 @@
 package org.openmetadata.service.search.elasticsearch.aggregations;
 
-import es.org.elasticsearch.common.xcontent.LoggingDeprecationHandler;
-import es.org.elasticsearch.index.query.QueryBuilder;
-import es.org.elasticsearch.search.aggregations.AggregationBuilder;
-import es.org.elasticsearch.search.aggregations.AggregationBuilders;
-import es.org.elasticsearch.search.aggregations.PipelineAggregationBuilder;
-import es.org.elasticsearch.xcontent.XContentType;
+import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.json.JsonpMapper;
+import jakarta.json.spi.JsonProvider;
+import jakarta.json.stream.JsonParser;
+import java.io.StringReader;
+import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
 import org.openmetadata.service.search.SearchAggregationNode;
-import org.openmetadata.service.search.elasticsearch.EsUtils;
 
 @Setter
 @Getter
 public class ElasticFilterAggregations implements ElasticAggregations {
-  static final String aggregationType = "filter";
-  AggregationBuilder elasticAggregationBuilder;
+  private String aggregationName;
+  private Aggregation aggregation;
+  private Map<String, Aggregation> subAggregations = new HashMap<>();
+  private JsonpMapper mapper;
+
+  public ElasticFilterAggregations() {}
+
+  public ElasticFilterAggregations(JsonpMapper mapper) {
+    this.mapper = mapper;
+  }
 
   @Override
   public void createAggregation(SearchAggregationNode node) {
     Map<String, String> params = node.getValue();
     String queryJson = params.get("query");
+    this.aggregationName = node.getName();
 
     try {
-      var queryParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(
-                  EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, queryJson);
-      QueryBuilder filterQuery =
-          es.org.elasticsearch.index.query.AbstractQueryBuilder.parseInnerQueryBuilder(queryParser);
+      if (mapper == null) {
+        throw new IllegalStateException("JsonpMapper is required for filter aggregations");
+      }
 
-      AggregationBuilder aggregationBuilders =
-          AggregationBuilders.filter(node.getName(), filterQuery);
-      setElasticAggregationBuilder(aggregationBuilders);
+      JsonProvider provider = mapper.jsonProvider();
+      JsonParser parser = provider.createParser(new StringReader(queryJson));
+      Query filterQuery = Query._DESERIALIZER.deserialize(parser, mapper);
+
+      this.aggregation = Aggregation.of(a -> a.filter(filterQuery));
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid filter query JSON: " + queryJson, e);
     }
   }
 
   @Override
-  public void setSubAggregation(PipelineAggregationBuilder aggregation) {
-    if (elasticAggregationBuilder != null) {
-      elasticAggregationBuilder.subAggregation(aggregation);
-    }
-  }
-
-  @Override
-  public void setSubAggregation(AggregationBuilder aggregation) {
-    if (elasticAggregationBuilder != null) {
-      elasticAggregationBuilder.subAggregation(aggregation);
-    }
+  public void setSubAggregations(Map<String, Aggregation> subAggregations) {
+    this.subAggregations = subAggregations;
   }
 }
