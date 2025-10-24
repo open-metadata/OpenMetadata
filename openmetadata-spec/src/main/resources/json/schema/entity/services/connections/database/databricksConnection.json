@@ -41,9 +41,15 @@
       "description": "Host and port of the Databricks service.",
       "type": "string"
     },
+    "credentialsRef": {
+      "title": "Credentials Reference",
+      "description": "Reference to stored credentials entity for authentication",
+      "$ref": "../../../../type/entityReference.json"
+    },
     "authType": {
-      "title": "Authentication Type",
-      "description": "Choose between different authentication types for Databricks.",
+      "title": "Authentication Type (Legacy)",
+      "description": "Choose between different authentication types for Databricks - Use credentialsRef instead for new configurations",
+      "deprecated": true,
       "oneOf": [
         {
           "title": "Personal Access Token",
@@ -154,7 +160,10 @@
   "additionalProperties": false,
   "required": [
     "hostPort",
-    "httpPath",
-    "authType"
+    "httpPath"
+  ],
+  "anyOf": [
+    {"required": ["credentialsRef"]},
+    {"required": ["authType"]}
   ]
 }

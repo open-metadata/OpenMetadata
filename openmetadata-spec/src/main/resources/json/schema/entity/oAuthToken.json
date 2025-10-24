@@ -1,0 +1,107 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/oAuthToken.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OAuth Token",
+  "description": "User-specific OAuth tokens for credentials that require per-user authentication",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.entity.OAuthToken",
+  "definitions": {
+    "tokenStatus": {
+      "description": "Status of the OAuth token",
+      "type": "string",
+      "enum": ["Active", "Expired", "Revoked", "Refresh_Failed"],
+      "javaInterfaces": ["org.openmetadata.schema.EnumInterface"],
+      "javaEnums": [
+        {"name": "Active"},
+        {"name": "Expired"},
+        {"name": "Revoked"},
+        {"name": "Refresh_Failed"}
+      ]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Unique identifier of the OAuth token entity instance.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "userId": {
+      "description": "Reference to the user who owns this token.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "credentialsId": {
+      "description": "Reference to the credentials entity this token belongs to.",
+      "$ref": "../type/basic.json#/definitions/uuid"
+    },
+    "accessToken": {
+      "description": "OAuth access token (encrypted).",
+      "type": "string",
+      "format": "password"
+    },
+    "refreshToken": {
+      "description": "OAuth refresh token (encrypted).",
+      "type": "string",
+      "format": "password"
+    },
+    "tokenType": {
+      "description": "Type of the token (typically 'Bearer').",
+      "type": "string",
+      "default": "Bearer"
+    },
+    "expiresAt": {
+      "description": "Token expiration timestamp in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "scopes": {
+      "description": "OAuth scopes granted for this token.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "description": "Current status of the OAuth token.",
+      "$ref": "#/definitions/tokenStatus",
+      "default": "Active"
+    },
+    "lastRefreshedAt": {
+      "description": "Timestamp when the token was last refreshed.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "refreshFailureCount": {
+      "description": "Number of consecutive refresh failures.",
+      "type": "integer",
+      "default": 0
+    },
+    "refreshFailureReason": {
+      "description": "Reason for the last refresh failure.",
+      "type": "string"
+    },
+    "authorizationCode": {
+      "description": "Original authorization code used to obtain this token (temporary, cleared after use).",
+      "type": "string"
+    },
+    "state": {
+      "description": "OAuth state parameter used during authorization (temporary, cleared after use).",
+      "type": "string"
+    },
+    "createdAt": {
+      "description": "Creation time of the token in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "updatedAt": {
+      "description": "Last update time of the token in Unix epoch time milliseconds.",
+      "$ref": "../type/basic.json#/definitions/timestamp"
+    },
+    "version": {
+      "description": "Metadata version of the entity.",
+      "$ref": "../type/entityHistory.json#/definitions/entityVersion"
+    },
+    "deleted": {
+      "description": "When true indicates the entity has been soft deleted.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": ["id", "userId", "credentialsId", "accessToken"],
+  "additionalProperties": false
+}

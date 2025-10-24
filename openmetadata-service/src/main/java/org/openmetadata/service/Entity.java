@@ -241,6 +241,7 @@ public final class Entity {
   public static final String SUGGESTION = "SUGGESTION";
   public static final String WORKFLOW = "workflow";
   public static final String WORKFLOW_DEFINITION = "workflowDefinition";
+  public static final String CREDENTIALS = "credentials";
 
   //
   // Time series entities
