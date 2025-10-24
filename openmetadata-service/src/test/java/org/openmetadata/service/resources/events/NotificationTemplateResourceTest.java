@@ -757,7 +757,6 @@ public class NotificationTemplateResourceTest
             + "{{#each entity.tags as |tag|}}"
             + "<span class='tag'>{{tag.tagFQN}}</span>"
             + "{{/each}}"
-            + "{{joinList entity.columns 'name' ', '}}"
             + "{{formatDate entity.updatedAt 'yyyy-MM-dd'}}";
 
     NotificationTemplateValidationRequest request =
