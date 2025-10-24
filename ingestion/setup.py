@@ -64,6 +64,7 @@ VERSIONS = {
     "cassandra": "cassandra-driver>=3.28.0",
     "opensearch": "opensearch-py~=2.4.0",
     "pydoris": "pydoris==1.0.2",
+    "starrocks": "starrocks==1.0.6",
     "pyiceberg": "pyiceberg==0.5.1",
     "google-cloud-bigtable": "google-cloud-bigtable>=2.0.0",
     "pyathena": "pyathena~=3.0",
@@ -250,6 +251,7 @@ plugins: Dict[str, Set[str]] = {
     "deltalake-spark": {"delta-spark>=3.0.0,<4.0.0", "pyspark==3.5.6"},
     "domo": {VERSIONS["pydomo"]},
     "doris": {"pydoris==1.0.2"},
+    "starrocks": {"starrocks==1.0.6"},
     "druid": {"pydruid>=0.6.5"},
     "dynamodb": {VERSIONS["boto3"]},
     "elasticsearch": {
@@ -435,6 +437,7 @@ test = {
     VERSIONS["neo4j"],
     VERSIONS["cockroach"],
     VERSIONS["pydoris"],
+    VERSIONS["starrocks"],
     VERSIONS["pyiceberg"],
     "testcontainers==3.7.1;python_version<'3.9'",
     "testcontainers~=4.8.0;python_version>='3.9'",

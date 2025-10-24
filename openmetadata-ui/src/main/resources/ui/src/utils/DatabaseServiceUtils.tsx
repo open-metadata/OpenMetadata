@@ -37,6 +37,7 @@ import db2Connection from '../jsons/connectionSchemas/connections/database/db2Co
 import deltaLakeConnection from '../jsons/connectionSchemas/connections/database/deltaLakeConnection.json';
 import domoDatabaseConnection from '../jsons/connectionSchemas/connections/database/domoDatabaseConnection.json';
 import dorisConnection from '../jsons/connectionSchemas/connections/database/dorisConnection.json';
+import starrocksConnection from '../jsons/connectionSchemas/connections/database/starrocksConnection.json';
 import druidConnection from '../jsons/connectionSchemas/connections/database/druidConnection.json';
 import dynamoDBConnection from '../jsons/connectionSchemas/connections/database/dynamoDBConnection.json';
 import exasolConnection from '../jsons/connectionSchemas/connections/database/exasolConnection.json';
@@ -127,6 +128,11 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
     }
     case DatabaseServiceType.Doris: {
       schema = dorisConnection;
+
+      break;
+    }
+    case DatabaseServiceType.StarRocks: {
+      schema = starrocksConnection;
 
       break;
     }
@@ -312,64 +318,64 @@ export const getDatabaseConfig = (type: DatabaseServiceType) => {
 };
 
 export const ExtraDatabaseServiceDropdownOptions = (
-  fqn: string,
-  permission: OperationPermission,
-  deleted: boolean,
-  navigate: NavigateFunction
+    fqn: string,
+    permission: OperationPermission,
+    deleted: boolean,
+    navigate: NavigateFunction
 ) => {
   const { showModal } = useEntityExportModalProvider();
   const { ViewAll, EditAll } = permission;
 
   return [
     ...(EditAll && !deleted
-      ? [
+        ? [
           {
             label: (
-              <ManageButtonItemLabel
-                description={t('message.import-entity-help', {
-                  entity: t('label.entity-service', {
-                    entity: t('label.database'),
-                  }),
-                })}
-                icon={ImportIcon}
-                id="import-button"
-                name={t('label.import')}
-                onClick={() =>
-                  navigate(
-                    getEntityImportPath(EntityType.DATABASE_SERVICE, fqn)
-                  )
-                }
-              />
+                <ManageButtonItemLabel
+                    description={t('message.import-entity-help', {
+                      entity: t('label.entity-service', {
+                        entity: t('label.database'),
+                      }),
+                    })}
+                    icon={ImportIcon}
+                    id="import-button"
+                    name={t('label.import')}
+                    onClick={() =>
+                        navigate(
+                            getEntityImportPath(EntityType.DATABASE_SERVICE, fqn)
+                        )
+                    }
+                />
             ),
             key: 'import-button',
           },
         ]
-      : []),
+        : []),
     ...(ViewAll && !deleted
-      ? [
+        ? [
           {
             label: (
-              <ManageButtonItemLabel
-                description={t('message.export-entity-help', {
-                  entity: t('label.entity-service', {
-                    entity: t('label.database'),
-                  }),
-                })}
-                icon={ExportIcon}
-                id="export-button"
-                name={t('label.export')}
-                onClick={() =>
-                  showModal({
-                    name: fqn,
-                    onExport: exportDatabaseServiceDetailsInCSV,
-                    exportTypes: [ExportTypes.CSV],
-                  })
-                }
-              />
+                <ManageButtonItemLabel
+                    description={t('message.export-entity-help', {
+                      entity: t('label.entity-service', {
+                        entity: t('label.database'),
+                      }),
+                    })}
+                    icon={ExportIcon}
+                    id="export-button"
+                    name={t('label.export')}
+                    onClick={() =>
+                        showModal({
+                          name: fqn,
+                          onExport: exportDatabaseServiceDetailsInCSV,
+                          exportTypes: [ExportTypes.CSV],
+                        })
+                    }
+                />
             ),
             key: 'export-button',
           },
         ]
-      : []),
+        : []),
   ];
 };
