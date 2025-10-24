@@ -77,6 +77,13 @@ export interface Connection {
     connectionArguments?: { [key: string]: any };
     connectionOptions?:   { [key: string]: string };
     /**
+     * Console EndPoint URL for S3-compatible services. Provide the base console path (e.g.,
+     * 'http://localhost:9001/browser/' for MinIO). Leave empty for AWS S3 - it will be
+     * auto-generated. The bucket name will be appended to this URL to generate clickable links
+     * in the OpenMetadata UI.
+     */
+    consoleEndpointURL?: string;
+    /**
      * Regex to only fetch containers that matches the pattern.
      */
     containerFilterPattern?:     FilterPattern;
