@@ -1,5 +1,10 @@
 """Simplified Data Quality as Code API for OpenMetadata SDK."""
 
+from metadata.sdk.data_quality.dataframes.dataframe_validator import DataFrameValidator
+from metadata.sdk.data_quality.dataframes.validation_results import (
+    TestValidationResult,
+    ValidationResult,
+)
 from metadata.sdk.data_quality.runner import TestRunner
 from metadata.sdk.data_quality.tests.base_tests import BaseTest, ColumnTest, TableTest
 from metadata.sdk.data_quality.tests.column_tests import (
@@ -51,6 +56,7 @@ __all__ = [
     "ColumnValuesToBeUnique",
     "ColumnValuesToMatchRegex",
     "ColumnValuesToNotMatchRegex",
+    "DataFrameValidator",
     "TableColumnCountToBeBetween",
     "TableColumnCountToEqual",
     "TableColumnNameToExist",
@@ -62,4 +68,6 @@ __all__ = [
     "TableRowInsertedCountToBeBetween",
     "TableTest",
     "TestRunner",
+    "TestValidationResult",
+    "ValidationResult",
 ]
