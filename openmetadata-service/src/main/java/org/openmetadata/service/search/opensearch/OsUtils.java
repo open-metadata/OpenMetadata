@@ -8,7 +8,10 @@ import static org.openmetadata.service.search.SearchUtils.DOWNSTREAM_ENTITY_RELA
 import static org.openmetadata.service.search.SearchUtils.getLineageDirectionAggregationField;
 
 import com.nimbusds.jose.util.Pair;
+import jakarta.json.spi.JsonProvider;
+import jakarta.json.stream.JsonParser;
 import java.io.IOException;
+import java.io.StringReader;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +25,8 @@ import org.openmetadata.service.Entity;
 import os.org.opensearch.action.search.SearchResponse;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestHighLevelClient;
+import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.mapping.FieldType;
 import os.org.opensearch.common.settings.Settings;
 import os.org.opensearch.common.xcontent.LoggingDeprecationHandler;
 import os.org.opensearch.common.xcontent.NamedXContentRegistry;
@@ -34,8 +39,6 @@ import os.org.opensearch.search.SearchHit;
 import os.org.opensearch.search.SearchModule;
 import os.org.opensearch.search.aggregations.AggregationBuilders;
 import os.org.opensearch.search.builder.SearchSourceBuilder;
-import os.org.opensearch.search.sort.FieldSortBuilder;
-import os.org.opensearch.search.sort.SortOrder;
 
 @Slf4j
 public class OsUtils {
@@ -280,25 +283,56 @@ public class OsUtils {
     }
   }
 
-  public static SearchResponse searchEntitiesWithLimitOffset(
-      String index, String queryFilter, int offset, int limit, boolean deleted) throws IOException {
-    os.org.opensearch.action.search.SearchRequest searchRequest =
-        new os.org.opensearch.action.search.SearchRequest(index);
-    os.org.opensearch.search.builder.SearchSourceBuilder searchSourceBuilder =
-        new os.org.opensearch.search.builder.SearchSourceBuilder();
-    searchSourceBuilder.from(offset).size(limit);
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
-    FieldSortBuilder nameSort =
-        new FieldSortBuilder("name.keyword").order(SortOrder.ASC).unmappedType("keyword");
-    searchSourceBuilder.sort(nameSort);
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder);
+  public static os.org.opensearch.client.opensearch.core.SearchResponse<
+          os.org.opensearch.client.json.JsonData>
+      searchEntitiesWithLimitOffset(
+          os.org.opensearch.client.opensearch.OpenSearchClient client,
+          String index,
+          String queryFilter,
+          int offset,
+          int limit,
+          boolean deleted)
+          throws IOException {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query baseQuery =
+        os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+            q ->
+                q.term(
+                    t ->
+                        t.field("deleted")
+                            .value(FieldValue.of(!CommonUtil.nullOrEmpty(deleted) && deleted))));
 
-    // Execute the search
-    RestHighLevelClient client =
-        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
-    return client.search(searchRequest, RequestOptions.DEFAULT);
+    os.org.opensearch.client.opensearch.core.SearchRequest.Builder searchRequestBuilder =
+        new os.org.opensearch.client.opensearch.core.SearchRequest.Builder()
+            .index(index)
+            .from(offset)
+            .size(limit)
+            .query(baseQuery)
+            .sort(
+                s ->
+                    s.field(
+                        f ->
+                            f.field("name.keyword")
+                                .order(os.org.opensearch.client.opensearch._types.SortOrder.Asc)
+                                .unmappedType(FieldType.Keyword)));
+
+    // Apply query filter if present
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        JsonProvider provider = JsonProvider.provider();
+        JsonParser parser = provider.createParser(new StringReader(queryFilter));
+        os.org.opensearch.client.opensearch._types.query_dsl.Query filterQuery =
+            client
+                ._transport()
+                .jsonpMapper()
+                .deserialize(
+                    parser, os.org.opensearch.client.opensearch._types.query_dsl.Query.class);
+        searchRequestBuilder.query(q -> q.bool(b -> b.must(baseQuery).filter(filterQuery)));
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    return client.search(
+        searchRequestBuilder.build(), os.org.opensearch.client.json.JsonData.class);
   }
 }

@@ -1413,6 +1413,143 @@ class OpenSearchEntityManagerIntegrationTest extends OpenMetadataApplicationTest
         });
   }
 
+  @Test
+  void testGetSchemaEntityRelationship() throws Exception {
+    String indexName = testIndexPrefix + "_schema_er_test";
+    String schemaFqn = "service.database.schema";
+
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+
+    createTestIndex(actualIndexName);
+
+    String table1Doc =
+        """
+        {
+          "id": "table-1",
+          "name": "Table 1",
+          "fullyQualifiedName": "service.database.schema.table1",
+          "entityType": "table",
+          "deleted": false
+        }
+        """;
+
+    String table2Doc =
+        """
+        {
+          "id": "table-2",
+          "name": "Table 2",
+          "fullyQualifiedName": "service.database.schema.table2",
+          "entityType": "table",
+          "deleted": false
+        }
+        """;
+
+    String table3Doc =
+        """
+        {
+          "id": "table-3",
+          "name": "Table 3",
+          "fullyQualifiedName": "service.database.otherschema.table3",
+          "entityType": "table",
+          "deleted": false
+        }
+        """;
+
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("table-1")
+                .document(JsonData.of(parseJson(table1Doc)))
+                .refresh(Refresh.True));
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("table-2")
+                .document(JsonData.of(parseJson(table2Doc)))
+                .refresh(Refresh.True));
+    client.index(
+        i ->
+            i.index(actualIndexName)
+                .id("table-3")
+                .document(JsonData.of(parseJson(table3Doc)))
+                .refresh(Refresh.True));
+
+    Thread.sleep(1000);
+
+    org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult result =
+        entityManager.getSchemaEntityRelationship(schemaFqn, null, null, 0, 10, 0, 10, false);
+
+    assertNotNull(result);
+    assertNotNull(result.getData());
+    assertNotNull(result.getPaging());
+    assertEquals(0, result.getPaging().getOffset());
+    assertEquals(10, result.getPaging().getLimit());
+  }
+
+  @Test
+  void testGetSchemaEntityRelationship_WithPagination() throws Exception {
+    String indexName = testIndexPrefix + "_schema_er_pagination_test";
+    String schemaFqn = "service.database.testschema";
+
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+
+    createTestIndex(actualIndexName);
+
+    for (int i = 1; i <= 5; i++) {
+      final String tableId = "table-" + i;
+      final String tableFqn = "service.database.testschema.table" + i;
+      final String tableDoc =
+          String.format(
+              """
+              {
+                "id": "%s",
+                "name": "Table %d",
+                "fullyQualifiedName": "%s",
+                "entityType": "table",
+                "deleted": false
+              }
+              """,
+              tableId, i, tableFqn);
+
+      client.index(
+          idx ->
+              idx.index(actualIndexName)
+                  .id(tableId)
+                  .document(JsonData.of(parseJson(tableDoc)))
+                  .refresh(Refresh.True));
+    }
+
+    Thread.sleep(1000);
+
+    org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult result =
+        entityManager.getSchemaEntityRelationship(schemaFqn, null, null, 0, 2, 0, 10, false);
+
+    assertNotNull(result);
+    assertNotNull(result.getPaging());
+    assertEquals(0, result.getPaging().getOffset());
+    assertEquals(2, result.getPaging().getLimit());
+  }
+
+  @Test
+  void testGetSchemaEntityRelationship_EmptyResults() throws Exception {
+    String indexName = testIndexPrefix + "_schema_er_empty_test";
+    String schemaFqn = "service.database.nonexistent";
+
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+
+    createTestIndex(actualIndexName);
+
+    Thread.sleep(500);
+
+    org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult result =
+        entityManager.getSchemaEntityRelationship(schemaFqn, null, null, 0, 10, 0, 10, false);
+
+    assertNotNull(result);
+    assertNotNull(result.getData());
+    assertNotNull(result.getPaging());
+    assertEquals(0, result.getPaging().getTotal());
+  }
+
   private void createTestIndex(String indexName) {
     try {
       CreateIndexRequest request =

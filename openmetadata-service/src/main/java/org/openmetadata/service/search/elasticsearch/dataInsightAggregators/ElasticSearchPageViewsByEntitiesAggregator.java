@@ -1,53 +1,73 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import es.org.elasticsearch.search.aggregations.Aggregations;
-import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import es.org.elasticsearch.search.aggregations.metrics.Sum;
-import java.time.ZonedDateTime;
+import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
+import es.co.elastic.clients.elasticsearch._types.aggregations.DateHistogramBucket;
+import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.openmetadata.service.dataInsight.PageViewsByEntitiesAggregator;
 
 public class ElasticSearchPageViewsByEntitiesAggregator
-    extends PageViewsByEntitiesAggregator<
-        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
+    extends PageViewsByEntitiesAggregator<Map<String, Aggregate>, Object, Aggregate, Aggregate> {
 
-  public ElasticSearchPageViewsByEntitiesAggregator(Aggregations aggregations) {
+  public ElasticSearchPageViewsByEntitiesAggregator(Map<String, Aggregate> aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Double getValue(Sum key) {
-    return key != null ? key.getValue() : null;
+  protected Double getValue(Aggregate key) {
+    return key != null && key.isSum() ? key.sum().value() : null;
   }
 
   @Override
-  protected Sum getSumAggregations(MultiBucketsAggregation.Bucket bucket, String key) {
-    return bucket.getAggregations().get(key);
+  protected Aggregate getSumAggregations(Object bucket, String key) {
+    if (bucket instanceof DateHistogramBucket) {
+      return ((DateHistogramBucket) bucket).aggregations().get(key);
+    } else if (bucket instanceof StringTermsBucket) {
+      return ((StringTermsBucket) bucket).aggregations().get(key);
+    }
+    return null;
   }
 
   @Override
-  protected MultiBucketsAggregation getEntityBuckets(MultiBucketsAggregation.Bucket bucket) {
-    return bucket.getAggregations().get("entityType");
+  protected Aggregate getEntityBuckets(Object bucket) {
+    if (bucket instanceof DateHistogramBucket) {
+      Aggregate aggregate = ((DateHistogramBucket) bucket).aggregations().get("entityType");
+      return (aggregate != null && aggregate.isSterms()) ? aggregate : null;
+    }
+    return null;
   }
 
   @Override
-  protected String getKeyAsString(MultiBucketsAggregation.Bucket bucket) {
-    return bucket.getKeyAsString();
+  protected String getKeyAsString(Object bucket) {
+    if (bucket instanceof StringTermsBucket) {
+      return ((StringTermsBucket) bucket).key().stringValue();
+    }
+    return null;
   }
 
   @Override
-  protected long getKeyAsEpochTimestamp(MultiBucketsAggregation.Bucket bucket) {
-    return ((ZonedDateTime) bucket.getKey()).toInstant().toEpochMilli();
+  protected long getKeyAsEpochTimestamp(Object bucket) {
+    if (bucket instanceof DateHistogramBucket) {
+      return ((DateHistogramBucket) bucket).key();
+    }
+    return 0;
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
-      MultiBucketsAggregation multiBucketsAggregation) {
-    return multiBucketsAggregation.getBuckets();
+  protected List<Object> getBuckets(Aggregate aggregate) {
+    List<Object> buckets = new ArrayList<>();
+    if (aggregate.isDateHistogram()) {
+      buckets.addAll(aggregate.dateHistogram().buckets().array());
+    } else if (aggregate.isSterms()) {
+      buckets.addAll(aggregate.sterms().buckets().array());
+    }
+    return buckets;
   }
 
   @Override
-  protected MultiBucketsAggregation getTimestampBuckets(Aggregations aggregations) {
+  protected Aggregate getTimestampBuckets(Map<String, Aggregate> aggregations) {
     return aggregations.get(TIMESTAMP);
   }
 }

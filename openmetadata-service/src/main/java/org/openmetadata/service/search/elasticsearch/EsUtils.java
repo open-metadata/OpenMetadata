@@ -8,6 +8,7 @@ import static org.openmetadata.service.search.SearchUtils.DOWNSTREAM_ENTITY_RELA
 import static org.openmetadata.service.search.SearchUtils.getLineageDirectionAggregationField;
 
 import com.nimbusds.jose.util.Pair;
+import es.co.elastic.clients.elasticsearch._types.mapping.FieldType;
 import es.org.elasticsearch.action.search.SearchResponse;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestHighLevelClient;
@@ -20,8 +21,6 @@ import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchModule;
 import es.org.elasticsearch.search.aggregations.AggregationBuilders;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
-import es.org.elasticsearch.search.sort.FieldSortBuilder;
-import es.org.elasticsearch.search.sort.SortOrder;
 import es.org.elasticsearch.xcontent.NamedXContentRegistry;
 import es.org.elasticsearch.xcontent.XContentParser;
 import es.org.elasticsearch.xcontent.XContentType;
@@ -280,25 +279,48 @@ public class EsUtils {
     }
   }
 
-  public static SearchResponse searchEntitiesWithLimitOffset(
-      String index, String queryFilter, int offset, int limit, boolean deleted) throws IOException {
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(index);
-    es.org.elasticsearch.search.builder.SearchSourceBuilder searchSourceBuilder =
-        new es.org.elasticsearch.search.builder.SearchSourceBuilder();
-    searchSourceBuilder.from(offset).size(limit);
-    searchSourceBuilder.query(
-        QueryBuilders.boolQuery()
-            .must(QueryBuilders.termQuery("deleted", !nullOrEmpty(deleted) && deleted)));
-    FieldSortBuilder nameSort =
-        new FieldSortBuilder("name.keyword").order(SortOrder.ASC).unmappedType("keyword");
-    searchSourceBuilder.sort(nameSort);
-    buildSearchSourceFilter(queryFilter, searchSourceBuilder);
-    searchRequest.source(searchSourceBuilder);
+  public static es.co.elastic.clients.elasticsearch.core.SearchResponse<
+          es.co.elastic.clients.json.JsonData>
+      searchEntitiesWithLimitOffset(
+          es.co.elastic.clients.elasticsearch.ElasticsearchClient client,
+          String index,
+          String queryFilter,
+          int offset,
+          int limit,
+          boolean deleted)
+          throws IOException {
+    es.co.elastic.clients.elasticsearch._types.query_dsl.Query baseQuery =
+        es.co.elastic.clients.elasticsearch._types.query_dsl.Query.of(
+            q -> q.term(t -> t.field("deleted").value(!nullOrEmpty(deleted) && deleted)));
 
-    // Execute the search
-    RestHighLevelClient client =
-        (RestHighLevelClient) Entity.getSearchRepository().getSearchClient().getClient();
-    return client.search(searchRequest, RequestOptions.DEFAULT);
+    es.co.elastic.clients.elasticsearch.core.SearchRequest.Builder searchRequestBuilder =
+        new es.co.elastic.clients.elasticsearch.core.SearchRequest.Builder()
+            .index(index)
+            .from(offset)
+            .size(limit)
+            .query(baseQuery)
+            .sort(
+                s ->
+                    s.field(
+                        f ->
+                            f.field("name.keyword")
+                                .order(es.co.elastic.clients.elasticsearch._types.SortOrder.Asc)
+                                .unmappedType(FieldType.Keyword)));
+
+    // Apply query filter if present
+    if (!nullOrEmpty(queryFilter) && !queryFilter.equals("{}")) {
+      try {
+        searchRequestBuilder.query(
+            q ->
+                q.bool(
+                    b ->
+                        b.must(baseQuery)
+                            .filter(f -> f.withJson(new java.io.StringReader(queryFilter)))));
+      } catch (Exception ex) {
+        LOG.warn("Error parsing query_filter from query parameters, ignoring filter", ex);
+      }
+    }
+
+    return client.search(searchRequestBuilder.build(), es.co.elastic.clients.json.JsonData.class);
   }
 }
