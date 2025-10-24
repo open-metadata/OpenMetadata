@@ -74,7 +74,7 @@ export interface CreatePipeline {
     /**
      * Start date of the workflow
      */
-    startDate?: Date;
+    startDate?: number;
     /**
      * State of the pipeline.
      */

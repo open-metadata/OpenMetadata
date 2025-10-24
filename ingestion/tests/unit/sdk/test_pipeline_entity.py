@@ -15,6 +15,7 @@ from metadata.generated.schema.entity.data.pipeline import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.sdk import Pipelines
+from metadata.utils.helpers import datetime_to_ts
 
 
 class TestPipelineEntity(unittest.TestCase):
@@ -258,7 +259,7 @@ class TestPipelineEntity(unittest.TestCase):
             name="scheduled-pipeline",
             service="airflow-prod",
             scheduleInterval="0 0 * * *",  # Daily at midnight
-            startDate=datetime.now(),
+            startDate=datetime_to_ts(datetime.now()),
         )
 
         expected_pipeline = MagicMock(spec=PipelineEntity)
