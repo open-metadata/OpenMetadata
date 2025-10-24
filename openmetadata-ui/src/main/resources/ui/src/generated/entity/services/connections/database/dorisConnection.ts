@@ -55,6 +55,9 @@ export interface DorisConnection {
     supportsMetadataExtraction?: boolean;
     supportsProfiler?:           boolean;
     supportsQueryComment?:       boolean;
+    supportsUsageExtraction?:    boolean;
+    supportsLineageExtraction?:  boolean;
+    supportsViewLineageExtraction?: boolean;
     /**
      * Regex to only include/exclude tables that matches the pattern.
      */
