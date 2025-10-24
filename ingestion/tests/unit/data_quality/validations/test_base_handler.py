@@ -17,6 +17,8 @@ from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
+EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
+
 
 @pytest.mark.parametrize(
     "param_values, name, type_, default, expected",
