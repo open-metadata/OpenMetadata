@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
   PAGE_SIZE,
 } from '../../../../constants/constants';
 import { DATABASE_SCHEMAS_DUMMY_DATA } from '../../../../constants/Database.constants';
@@ -41,11 +42,13 @@ import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useTableFilters } from '../../../../hooks/useTableFilters';
 import {
   getDatabaseSchemas,
   patchDatabaseSchemaDetails,
 } from '../../../../rest/databaseAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
+import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import {
@@ -54,7 +57,6 @@ import {
 } from '../../../../utils/EntityUtils';
 import { t } from '../../../../utils/i18next/LocalUtil';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getTermQuery } from '../../../../utils/SearchUtils';
 import { stringToHTML } from '../../../../utils/StringsUtils';
 import {
   dataProductTableObject,
@@ -83,8 +85,12 @@ export const DatabaseSchemaTable = ({
   const { permissions } = usePermissionProvider();
   const [schemas, setSchemas] = useState<DatabaseSchema[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [showDeletedSchemas, setShowDeletedSchemas] = useState<boolean>(false);
+
   const { data } = useGenericContext<Database>();
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
+  const { showDeletedTables: showDeletedSchemas } = tableFilters;
 
   const { deleted: isDatabaseDeleted } = data ?? {};
 
@@ -142,46 +148,38 @@ export const DatabaseSchemaTable = ({
     [pageSize, decodedDatabaseFQN, showDeletedSchemas]
   );
 
-  const searchSchema = async (
-    searchValue: string,
-    pageNumber = INITIAL_PAGING_VALUE
-  ) => {
-    setIsLoading(true);
-    try {
-      const response = await searchQuery({
-        query: '',
-        pageNumber,
-        pageSize: PAGE_SIZE,
-        queryFilter: getTermQuery(
-          { 'database.fullyQualifiedName': decodedDatabaseFQN },
-          'must',
-          undefined,
-          searchValue
-            ? {
-                wildcardShouldQueries: {
-                  'name.keyword': `*${searchValue}*`,
-                  'description.keyword': `*${searchValue}*`,
-                },
-              }
-            : undefined
-        ),
-        searchIndex: SearchIndex.DATABASE_SCHEMA,
-        includeDeleted: showDeletedSchemas,
-        trackTotalHits: true,
-      });
-      const data = response.hits.hits.map((schema) => schema._source);
-      const total = response.hits.total.value;
-      setSchemas(data);
-      handlePagingChange({ total });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const searchSchema = useCallback(
+    async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
+      setIsLoading(true);
+      try {
+        const response = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: PAGE_SIZE,
+          queryFilter: buildSchemaQueryFilter(
+            'database.fullyQualifiedName',
+            decodedDatabaseFQN,
+            searchValue
+          ),
+          searchIndex: SearchIndex.DATABASE_SCHEMA,
+          includeDeleted: showDeletedSchemas,
+          trackTotalHits: true,
+        });
+        const data = response.hits.hits.map((schema) => schema._source);
+        const total = response.hits.total.value;
+        setSchemas(data);
+        handlePagingChange({ total });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [decodedDatabaseFQN, showDeletedSchemas, handlePagingChange]
+  );
 
   const handleShowDeletedSchemas = useCallback((value: boolean) => {
-    setShowDeletedSchemas(value);
+    setFilters({ showDeletedTables: value });
     handlePageChange(INITIAL_PAGING_VALUE);
   }, []);
 
@@ -197,18 +195,18 @@ export const DatabaseSchemaTable = ({
     [paging, fetchDatabaseSchema, searchSchema, searchValue]
   );
 
-  const onSchemaSearch = (value: string) => {
-    navigate({
-      search: QueryString.stringify({
-        schema: isEmpty(value) ? undefined : value,
-      }),
-    });
-    if (value) {
-      searchSchema(value);
-    } else {
-      fetchDatabaseSchema();
-    }
-  };
+  const onSchemaSearch = useCallback(
+    (value: string) => {
+      setFilters({ schema: isEmpty(value) ? undefined : value });
+      if (value) {
+        searchSchema(value);
+      } else {
+        fetchDatabaseSchema();
+        handlePageChange(INITIAL_PAGING_VALUE);
+      }
+    },
+    [setFilters, searchSchema, fetchDatabaseSchema]
+  );
 
   const handleDisplayNameUpdate = useCallback(
     async (data: EntityName, id?: string) => {
@@ -315,6 +313,17 @@ export const DatabaseSchemaTable = ({
     isCustomizationPage,
   ]);
 
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('label.search-for-type', {
+        type: t('label.schema'),
+      }),
+      typingInterval: 500,
+      onSearch: onSchemaSearch,
+    }),
+    [onSchemaSearch]
+  );
+
   return (
     <Table
       columns={schemaTableColumns}
@@ -356,14 +365,7 @@ export const DatabaseSchemaTable = ({
       pagination={false}
       rowKey="id"
       scroll={TABLE_SCROLL_VALUE}
-      searchProps={{
-        placeholder: t('label.search-for-type', {
-          type: t('label.schema'),
-        }),
-        value: searchValue,
-        typingInterval: 500,
-        onSearch: onSchemaSearch,
-      }}
+      searchProps={searchProps}
       size="small"
       staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
     />

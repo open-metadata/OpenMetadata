@@ -36,6 +36,7 @@ import { exportDatabaseSchemaDetailsInCSV } from '../rest/databaseAPI';
 import { DatabaseSchemaPageTabProps } from './DatabaseSchemaClassBase';
 import { getEntityImportPath } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
+import { getTermQuery } from './SearchUtils';
 
 // eslint-disable-next-line max-len
 export const defaultFields = `${TabSpecificField.TAGS},${TabSpecificField.OWNERS},${TabSpecificField.USAGE_SUMMARY},${TabSpecificField.DOMAINS},${TabSpecificField.DATA_PRODUCTS}`;
@@ -203,3 +204,23 @@ export const getDatabaseSchemaWidgetsFromKey = (widgetConfig: WidgetConfig) => {
     />
   );
 };
+
+export function buildSchemaQueryFilter(
+  field: string,
+  fieldValue: string,
+  searchValue?: string
+) {
+  return getTermQuery(
+    { [field]: fieldValue },
+    'must',
+    undefined,
+    searchValue
+      ? {
+          wildcardShouldQueries: {
+            'name.keyword': `*${searchValue}*`,
+            'description.keyword': `*${searchValue}*`,
+          },
+        }
+      : undefined
+  );
+}
