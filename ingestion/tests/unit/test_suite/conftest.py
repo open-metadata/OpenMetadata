@@ -875,3 +875,18 @@ def test_case_column_value_mean_to_be_between_dimensional():
         dimensionColumns=["name"],
         computePassedFailedRowCount=True,
     )  # type: ignore
+
+
+@pytest.fixture
+def test_case_column_value_mean_to_be_between_dimensional_without_max():
+    return TestCase(
+        name=TEST_CASE_NAME,
+        entityLink=ENTITY_LINK_AGE,
+        testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
+        testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
+        parameterValues=[
+            TestCaseParameterValue(name="minValueForMeanInCol", value="31"),
+        ],
+        dimensionColumns=["name"],
+        computePassedFailedRowCount=True,
+    )  # type: ignore

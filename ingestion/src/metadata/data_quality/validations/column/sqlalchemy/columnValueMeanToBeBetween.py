@@ -13,9 +13,10 @@
 Validator for column value mean to be between test case
 """
 
+import math
 from typing import List, Optional
 
-from sqlalchemy import Column, case, func, inspect, literal
+from sqlalchemy import Column, case, func, inspect, literal, or_
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_SUM_VALUE_KEY,
@@ -108,8 +109,20 @@ class ColumnValueMeanToBeBetweenValidator(
             def build_failed_count(cte1):
                 mean_col = getattr(cte1.c, Metrics.MEAN.name)
                 count_col = getattr(cte1.c, DIMENSION_TOTAL_COUNT_KEY)
+
+                conditions = []
+                if not math.isinf(min_bound):
+                    conditions.append(mean_col < min_bound)
+                if not math.isinf(max_bound):
+                    conditions.append(mean_col > max_bound)
+
+                if not conditions:
+                    return literal(0)
+
+                violation = or_(*conditions) if len(conditions) > 1 else conditions[0]
+
                 return case(
-                    ((mean_col < min_bound) | (mean_col > max_bound), count_col),
+                    (violation, count_col),
                     else_=literal(0),
                 )
 
