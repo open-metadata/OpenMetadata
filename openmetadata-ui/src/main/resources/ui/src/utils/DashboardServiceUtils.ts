@@ -20,7 +20,7 @@ import {
 import customDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/customDashboardConnection.json';
 import domoDashboardConnection from '../jsons/connectionSchemas/connections/dashboard/domoDashboardConnection.json';
 import grafanaConnection from '../jsons/connectionSchemas/connections/dashboard/grafanaConnection.json';
-import hexConnection from '../jsons/connectionSchemas/connections/dashboard/hexConnection.json';
+// import hexConnection from '../jsons/connectionSchemas/connections/dashboard/hexConnection.json';
 import lightdashConnection from '../jsons/connectionSchemas/connections/dashboard/lightdashConnection.json';
 import lookerConnection from '../jsons/connectionSchemas/connections/dashboard/lookerConnection.json';
 import metabaseConnection from '../jsons/connectionSchemas/connections/dashboard/metabaseConnection.json';
@@ -133,7 +133,7 @@ export const getDashboardConfig = (type: DashboardServiceType) => {
     }
 
     case DashboardServiceType.Hex: {
-      schema = hexConnection;
+      // schema = hexConnection;
 
       break;
     }
