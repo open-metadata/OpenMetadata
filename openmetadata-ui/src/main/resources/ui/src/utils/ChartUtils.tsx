@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { isString } from 'lodash';
+import { isNumber, isString } from 'lodash';
+import type { SVGProps } from 'react';
+import type { Props as CartesianGridProps } from 'recharts/types/cartesian/CartesianGrid';
 import { digitFormatter, getStatisticsDisplayValue } from './CommonUtils';
 
 export const tooltipFormatter = (
@@ -45,4 +47,51 @@ export const updateActiveChartFilter = (
 
 export const percentageFormatter = (value?: number) => {
   return value ? `${value}%` : '';
+};
+
+type HorizontalGridLineProps = SVGProps<SVGLineElement> & {
+  y?: number;
+  height?: number;
+};
+
+/**
+ * Builds a renderer that hides the outermost horizontal grid lines while keeping Recharts types happy.
+ */
+export const createHorizontalGridLineRenderer = (
+  epsilon = 0.5
+): NonNullable<CartesianGridProps['horizontal']> => {
+  return (gridLineProps) => {
+    const { x1, x2, y1, y2, y, height, stroke, key, strokeDasharray } =
+      gridLineProps as HorizontalGridLineProps & {
+        x1?: number;
+        x2?: number;
+        index?: number;
+        key?: string | number;
+        strokeDasharray?: string;
+      };
+
+    const isTopBoundary =
+      isNumber(y1) && isNumber(y) && Math.abs(y1 - y) < epsilon;
+
+    const isBottomBoundary =
+      isNumber(y1) &&
+      isNumber(y) &&
+      isNumber(height) &&
+      Math.abs(y1 - (y + height)) < epsilon;
+
+    const nextStroke = isTopBoundary || isBottomBoundary ? 'none' : stroke;
+
+    return (
+      <line
+        fill="none"
+        key={key}
+        stroke={nextStroke}
+        strokeDasharray={strokeDasharray}
+        x1={x1}
+        x2={x2}
+        y1={y1}
+        y2={y2}
+      />
+    );
+  };
 };
