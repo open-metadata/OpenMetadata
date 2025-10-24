@@ -23,12 +23,21 @@
     }
   }
 
+  .widget-header-left-col {
+    min-width: 0;
+  }
+
   .widget-title {
     margin: 0;
     font-weight: 500;
     font-size: 16px;
     line-height: 24px;
     color: @grey-700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
   }
 
   .widget-header-options {

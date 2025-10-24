@@ -59,7 +59,6 @@ const WidgetHeader = ({
   sortOptions,
   title,
   widgetKey,
-  widgetWidth = 2,
 }: WidgetHeaderProps) => {
   const handleSortByClick = (e: MenuInfo) => {
     onSortChange?.(e.key);
@@ -90,7 +89,9 @@ const WidgetHeader = ({
       className={`widget-header h-15 ${className}`}
       data-testid="widget-header"
       justify="space-between">
-      <Col className="d-flex items-center h-full min-h-8">
+      <Col
+        className="d-flex items-center h-full min-h-8 widget-header-left-col"
+        flex="1">
         {icon && (
           <div className="d-flex h-6 w-6 m-r-xs header-title-icon">{icon}</div>
         )}
@@ -98,16 +99,13 @@ const WidgetHeader = ({
           className="widget-title cursor-pointer"
           data-testid="widget-title"
           ellipsis={{ tooltip: true }}
-          style={{
-            maxWidth: widgetWidth === 1 ? '145px' : '525px',
-          }}
           onClick={onTitleClick}>
           {title}
         </Typography.Paragraph>
       </Col>
 
-      <Col>
-        <div style={{ display: 'flex', gap: '8px' }}>
+      <Col flex="none">
+        <div className="flex gap-2">
           {isEditView ? (
             <>
               <DragOutlined
