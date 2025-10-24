@@ -1,2 +1,1 @@
-"""Tests for ThirdEye Analytics Service."""
-
+"""Test suite for ThirdEye service."""

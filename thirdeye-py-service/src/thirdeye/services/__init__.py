@@ -1,8 +1,5 @@
-"""
-Business logic services for ThirdEye.
-"""
+"""Business logic services."""
 
-from . import zi_score
+from .zi_score import ZIScoreService
 
-__all__ = ["zi_score"]
-
+__all__ = ["ZIScoreService"]

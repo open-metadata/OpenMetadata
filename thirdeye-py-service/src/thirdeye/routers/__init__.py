@@ -1,8 +1,5 @@
-"""
-API Routers for ThirdEye service.
-"""
+"""API routers for ThirdEye service."""
 
-from . import health, dashboard, action_items, insights, techniques
+from . import health, dashboard
 
-__all__ = ["health", "dashboard", "action_items", "insights", "techniques"]
-
+__all__ = ["health", "dashboard"]

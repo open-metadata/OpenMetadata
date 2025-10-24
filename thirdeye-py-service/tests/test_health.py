@@ -1,54 +1,49 @@
-"""Tests for health check endpoints."""
+"""Tests for health check endpoint."""
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 from thirdeye.app import app
 
 
 @pytest.mark.asyncio
-async def test_health_endpoint():
-    """Test basic health check endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        response = await client.get("/health")
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "ok"
-        assert data["service"] == "thirdeye-analytics"
-        assert "timestamp" in data
-
-
-@pytest.mark.asyncio
-async def test_health_v1_endpoint():
-    """Test API v1 health check endpoint."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+async def test_health_check():
+    """Test that health endpoint returns 200 OK with correct response."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/api/v1/thirdeye/health")
         
         assert response.status_code == 200
+        
         data = response.json()
         assert data["status"] == "ok"
-
-
-@pytest.mark.asyncio
-async def test_liveness_probe():
-    """Test Kubernetes liveness probe."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
-        response = await client.get("/api/v1/thirdeye/health/live")
-        
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "alive"
+        assert data["service"] == "thirdeye-py-service"
+        assert data["version"] == "0.1.0"
+        assert "timestamp" in data
+        assert "environment" in data
 
 
 @pytest.mark.asyncio
 async def test_root_endpoint():
-    """Test root endpoint returns service info."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    """Test that root endpoint returns service information."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
         response = await client.get("/")
         
         assert response.status_code == 200
+        
         data = response.json()
-        assert data["service"] == "ThirdEye Analytics Service"
-        assert data["status"] == "running"
-        assert "version" in data
+        assert data["service"] == "thirdeye-py-service"
+        assert "health" in data
+        assert "metrics" in data
 
+
+@pytest.mark.asyncio
+async def test_metrics_endpoint():
+    """Test that Prometheus metrics endpoint is available."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get("/metrics")
+        
+        # Metrics endpoint returns plain text, not JSON
+        assert response.status_code == 200
+        assert "text/plain" in response.headers.get("content-type", "")

@@ -1,14 +1,7 @@
-"""
-ThirdEye Analytics Service
+"""ThirdEye Python GraphQL Service.
 
-Internal microservice for OpenMetadata providing:
-- ZI Score calculation (data infrastructure health score)
-- Action Items management
-- Opportunity Campaigns
-- Cost tracking and optimization recommendations
-- Analytics reports and insights
+Internal microservice for analytics and optimization capabilities,
+accessed via OpenMetadata proxy at /api/v1/thirdeye/**.
 """
 
 __version__ = "0.1.0"
-__author__ = "OpenMetadata Team"
-
