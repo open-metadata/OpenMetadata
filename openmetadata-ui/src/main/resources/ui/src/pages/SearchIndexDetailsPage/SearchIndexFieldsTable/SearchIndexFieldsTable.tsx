@@ -362,7 +362,7 @@ const SearchIndexFieldsTable = ({
         scroll={TABLE_SCROLL_VALUE}
         searchProps={{
           placeholder: `${t('message.find-in-table')}`,
-          value: searchText,
+          searchValue: searchText,
           typingInterval: 500,
           onSearch: handleSearchAction,
         }}

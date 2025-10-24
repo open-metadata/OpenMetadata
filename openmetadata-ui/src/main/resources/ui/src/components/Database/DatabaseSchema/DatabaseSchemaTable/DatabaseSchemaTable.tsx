@@ -360,7 +360,7 @@ export const DatabaseSchemaTable = ({
         placeholder: t('label.search-for-type', {
           type: t('label.schema'),
         }),
-        value: searchValue,
+        searchValue: searchValue,
         typingInterval: 500,
         onSearch: onSchemaSearch,
       }}
