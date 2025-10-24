@@ -95,6 +95,11 @@ const MyFeedWidgetInternal = ({
     [entityThread, loading]
   );
 
+  const userActivityFeedLink = useMemo(
+    () => getUserPath(currentUser?.name ?? '', EntityTabs.ACTIVITY_FEED),
+    [currentUser?.name]
+  );
+
   const emptyState = useMemo(() => {
     return (
       <WidgetEmptyState
@@ -156,7 +161,7 @@ const MyFeedWidgetInternal = ({
         widgetKey={widgetKey}
         widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange(key)}
-        onTitleClick={() => navigate(ROUTES.EXPLORE)}
+        onTitleClick={() => navigate(userActivityFeedLink)}
       />
     ),
     [
@@ -181,10 +186,7 @@ const MyFeedWidgetInternal = ({
         <div className="feed-content flex-1">
           {widgetBody}
           <WidgetFooter
-            moreButtonLink={getUserPath(
-              currentUser?.name ?? '',
-              EntityTabs.ACTIVITY_FEED
-            )}
+            moreButtonLink={userActivityFeedLink}
             moreButtonText={t('label.view-more')}
             showMoreButton={showWidgetFooterMoreButton}
           />
