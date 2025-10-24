@@ -280,9 +280,9 @@ class SnowflakeSource(
         results = self.engine.execute(SNOWFLAKE_GET_CLUSTER_KEY).all()
         for row in results:
             if row.CLUSTERING_KEY:
-                self.partition_details[
-                    f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
-                ] = row.CLUSTERING_KEY
+                self.partition_details[f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"] = (
+                    row.CLUSTERING_KEY
+                )
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
@@ -346,7 +346,9 @@ class SnowflakeSource(
         return self.database_desc_map.get(database_name)
 
     def get_configured_database(self) -> Optional[str]:
-        return self.service_connection.database
+        if not self.service_connection.ingestAllDatabases:
+            return self.service_connection.database
+        return None
 
     def get_database_names_raw(self) -> Iterable[str]:
         results = self.connection.execute(SNOWFLAKE_GET_DATABASES)
@@ -356,7 +358,10 @@ class SnowflakeSource(
 
     def get_database_names(self) -> Iterable[str]:
         configured_db = self.config.serviceConnection.root.config.database
-        if configured_db:
+        if (
+            not self.config.serviceConnection.root.config.ingestAllDatabases
+            and configured_db
+        ):
             self.set_inspector(configured_db)
             self.set_session_query_tag()
             self.set_partition_details()

@@ -9,13 +9,17 @@
     "snowflakeType": {
       "description": "Service type.",
       "type": "string",
-      "enum": ["Snowflake"],
+      "enum": [
+        "Snowflake"
+      ],
       "default": "Snowflake"
     },
     "snowflakeScheme": {
       "description": "SQLAlchemy driver scheme options.",
       "type": "string",
-      "enum": ["snowflake"],
+      "enum": [
+        "snowflake"
+      ],
       "default": "snowflake"
     }
   },
@@ -57,6 +61,12 @@
       "title": "Database",
       "description": "Database of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, OpenMetadata Ingestion attempts to scan all the databases.",
       "type": "string"
+    },
+    "ingestAllDatabases": {
+      "title": "Ingest All Databases",
+      "description": "Ingest data from all databases in Snowflake. You can use databaseFilterPattern on top of this.",
+      "type": "boolean",
+      "default": false
     },
     "warehouse": {
       "title": "Warehouse",
@@ -118,7 +128,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^information_schema$"]
+        "excludes": [
+          "^information_schema$"
+        ]
       }
     },
     "tableFilterPattern": {
@@ -132,7 +144,9 @@
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
       "default": {
         "includes": [],
-        "excludes": ["^snowflake$"]
+        "excludes": [
+          "^snowflake$"
+        ]
       }
     },
     "supportsMetadataExtraction": {
@@ -190,5 +204,9 @@
     }
   },
   "additionalProperties": false,
-  "required": ["username", "account", "warehouse"]
+  "required": [
+    "username",
+    "account",
+    "warehouse"
+  ]
 }

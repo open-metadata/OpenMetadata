@@ -98,7 +98,13 @@ $$
 $$section
 ### Database $(id="database")
 
-Database of the data source. This is an optional parameter, if you would like to restrict the metadata reading to a single database. When left blank, the OpenMetadata Ingestion attempts to scan all the databases.
+Initial Snowflake database to connect to. If you want to ingest all databases, set `ingestAllDatabases` to true.
+$$
+
+$$section
+### Ingest All Databases $(id="ingestAllDatabases")
+
+If ticked, the workflow will be able to ingest all database in the cluster. If not ticked, the workflow will only ingest tables from the database set above.
 $$
 
 $$section
