@@ -161,17 +161,15 @@ describe('checkIfUpdateRequired', () => {
     expect(updatedUserDetails).toEqual(existingUserDetails);
   });
 
-  it('should call updateUserDetail with correct payload', async () => {
-    // Import the module containing the function
-
+  it('should call updateUserDetail with correct partial payload', async () => {
     const existingUserDetails: User = {
       email: 'a@a.com',
       id: '1',
       name: 'user',
       isBot: false,
     };
-    // Spy on the function within the module
-    jest
+
+    const updateUserDetailSpy = jest
       .spyOn(userAPI, 'updateUserDetail')
       .mockResolvedValue(existingUserDetails);
 
@@ -188,5 +186,7 @@ describe('checkIfUpdateRequired', () => {
     };
 
     await checkIfUpdateRequired(existingUserDetails, newUser);
+
+    expect(updateUserDetailSpy).toHaveBeenCalled();
   });
 });

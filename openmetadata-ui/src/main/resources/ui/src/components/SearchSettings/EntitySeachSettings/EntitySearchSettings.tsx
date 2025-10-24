@@ -14,6 +14,7 @@ import Icon from '@ant-design/icons/lib/components/Icon';
 import { Col, Collapse, Row, Select, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, startCase } from 'lodash';
+import type { MenuInfo } from 'rc-menu/lib/interface';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ENTITY_PATH } from '../../../constants/constants';
@@ -24,13 +25,17 @@ import {
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   AllowedFieldField,
+  AllowedFieldValueBoostField,
   AllowedSearchFields,
+  AssetTypeConfiguration,
   BoostMode,
+  FieldBoost,
   FieldValueBoost,
   ScoreMode,
   SearchSettings,
   TermBoost,
 } from '../../../generated/configuration/searchSettings';
+import { CustomProperty } from '../../../generated/entity/type';
 import {
   MatchType,
   Settings,
@@ -126,7 +131,7 @@ const EntitySearchSettings = () => {
       return [];
     }
 
-    return searchSettings.searchFields.map((field) => ({
+    return searchSettings.searchFields.map((field: FieldBoost) => ({
       fieldName: field.field,
       weight: field.boost ?? 0,
       matchType: field.matchType || MatchType.Standard,
@@ -145,13 +150,16 @@ const EntitySearchSettings = () => {
 
   const entityFields: AllowedFieldField[] = useMemo(() => {
     const currentEntityFields =
-      allowedFields.find((field) => field.entityType === entityType)?.fields ??
-      [];
+      allowedFields.find(
+        (field: AllowedSearchFields) => field.entityType === entityType
+      )?.fields ?? [];
 
-    const regularFields = currentEntityFields.map((field) => ({
-      name: field.name,
-      description: field.description,
-    }));
+    const regularFields = currentEntityFields.map(
+      (field: AllowedFieldField) => ({
+        name: field.name,
+        description: field.description,
+      })
+    );
 
     return [...regularFields, ...customProperties];
   }, [allowedFields, entityType, customProperties]);
@@ -159,30 +167,12 @@ const EntitySearchSettings = () => {
   const fieldValueBoostOptions = useMemo(() => {
     if (!isEmpty(searchConfig?.allowedFieldValueBoosts)) {
       return searchConfig?.allowedFieldValueBoosts?.[0].fields?.map(
-        (field) => field.name
+        (field: AllowedFieldValueBoostField) => field.name
       );
     }
 
     return [];
   }, [searchConfig]);
-
-  const menuItems = useMemo(() => {
-    return entityFields
-      .filter(
-        (field) =>
-          !searchSettings.searchFields?.some(
-            (searchField) => searchField.field === field.name
-          )
-      )
-      .map((field) => ({
-        key: field.name,
-        label: field.name,
-        onClick: (e: any) => {
-          e.domEvent.stopPropagation();
-          handleFieldSelection(field.name);
-        },
-      }));
-  }, [entityFields, searchSettings.searchFields]);
 
   const handleFieldSelection = (fieldName: string) => {
     setActiveKey('1');
@@ -217,6 +207,24 @@ const EntitySearchSettings = () => {
     });
   };
 
+  const menuItems = useMemo(() => {
+    return entityFields
+      .filter(
+        (field: AllowedFieldField) =>
+          !searchSettings.searchFields?.some(
+            (searchField: FieldBoost) => searchField.field === field.name
+          )
+      )
+      .map((field: AllowedFieldField) => ({
+        key: field.name,
+        label: field.name,
+        onClick: (e: MenuInfo) => {
+          e.domEvent.stopPropagation();
+          handleFieldSelection(field.name);
+        },
+      }));
+  }, [entityFields, searchSettings.searchFields]);
+
   const fetchSearchConfig = async () => {
     try {
       if (searchConfig) {
@@ -243,7 +251,7 @@ const EntitySearchSettings = () => {
       const updatedConfig = {
         ...searchConfig,
         assetTypeConfigurations: searchConfig.assetTypeConfigurations?.map(
-          (config) =>
+          (config: AssetTypeConfiguration) =>
             config.assetType === entityType
               ? { ...config, ...updatedData }
               : config
@@ -321,7 +329,7 @@ const EntitySearchSettings = () => {
 
   const handleFieldWeightChange = (fieldName: string, value: number) => {
     setSearchSettings((prev) => {
-      const updatedFields = prev.searchFields?.map((field) =>
+      const updatedFields = prev.searchFields?.map((field: FieldBoost) =>
         field.field === fieldName ? { ...field, boost: value } : field
       );
 
@@ -335,7 +343,7 @@ const EntitySearchSettings = () => {
 
   const handleMatchTypeChange = (fieldName: string, matchType: MatchType) => {
     setSearchSettings((prev) => {
-      const updatedFields = prev.searchFields?.map((field) =>
+      const updatedFields = prev.searchFields?.map((field: FieldBoost) =>
         field.field === fieldName ? { ...field, matchType } : field
       );
 
@@ -505,7 +513,7 @@ const EntitySearchSettings = () => {
       const properties = await getCustomPropertiesByEntityType(entityType);
 
       const formattedProperties: AllowedFieldField[] = properties.map(
-        (prop) => ({
+        (prop: CustomProperty) => ({
           name: `extension.${prop.name}`,
           description: `${
             prop.description ?? prop.displayName
@@ -559,7 +567,7 @@ const EntitySearchSettings = () => {
     const updatedConfig: SearchSettings = {
       ...searchConfig,
       assetTypeConfigurations: searchConfig.assetTypeConfigurations?.map(
-        (config) =>
+        (config: AssetTypeConfiguration) =>
           config.assetType === entityType
             ? {
                 ...config,
@@ -635,22 +643,31 @@ const EntitySearchSettings = () => {
               key="1">
               <div className="bg-white configuration-container">
                 <Row className="p-y-xs " data-testid="field-configurations">
-                  {entitySearchFields.map((field, index) => (
-                    <Col className="m-b-sm" key={field.fieldName} span={24}>
-                      <FieldConfiguration
-                        entityFields={entityFields}
-                        field={field}
-                        index={index}
-                        initialOpen={field.fieldName === lastAddedSearchField}
-                        key={field.fieldName}
-                        searchSettings={searchSettings}
-                        onDeleteSearchField={handleDeleteSearchField}
-                        onFieldWeightChange={handleFieldWeightChange}
-                        onHighlightFieldsChange={handleHighlightFieldsChange}
-                        onMatchTypeChange={handleMatchTypeChange}
-                      />
-                    </Col>
-                  ))}
+                  {entitySearchFields.map(
+                    (
+                      field: {
+                        fieldName: string;
+                        weight: number;
+                        matchType?: MatchType;
+                      },
+                      index: number
+                    ) => (
+                      <Col className="m-b-sm" key={field.fieldName} span={24}>
+                        <FieldConfiguration
+                          entityFields={entityFields}
+                          field={field}
+                          index={index}
+                          initialOpen={field.fieldName === lastAddedSearchField}
+                          key={field.fieldName}
+                          searchSettings={searchSettings}
+                          onDeleteSearchField={handleDeleteSearchField}
+                          onFieldWeightChange={handleFieldWeightChange}
+                          onHighlightFieldsChange={handleHighlightFieldsChange}
+                          onMatchTypeChange={handleMatchTypeChange}
+                        />
+                      </Col>
+                    )
+                  )}
                   {/* Score Mode and Boost Mode Section */}
                   <Col className="flex flex-col w-full">
                     <div className="p-y-xs p-x-sm border-radius-card m-b-sm bg-white config-section-content">

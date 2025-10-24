@@ -55,10 +55,7 @@
       "testFilePath": "/Users/shaileshparmar/Desktop/deuex/openmetadata-collate/OpenMetadata/openmetadata-ui/src/main/resources/ui/src/components/Database/Profiler/DataObservability/DataObservabilityTab.test.tsx",
       "testResults": [
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Rendering"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Rendering"],
           "duration": 33,
           "failureDetails": [],
           "failureMessages": [],
@@ -74,10 +71,7 @@
           "title": "should render the component"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Rendering"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Rendering"],
           "duration": 2,
           "failureDetails": [],
           "failureMessages": [],
@@ -93,10 +87,7 @@
           "title": "should render TableProfilerProvider"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Rendering"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Rendering"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -112,10 +103,7 @@
           "title": "should render TabFilters component"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Rendering"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Rendering"],
           "duration": 4,
           "failureDetails": [],
           "failureMessages": [],
@@ -131,10 +119,7 @@
           "title": "should render tabs when activeColumnFqn is not present"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Rendering"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Rendering"],
           "duration": 2,
           "failureDetails": [],
           "failureMessages": [],
@@ -150,10 +135,7 @@
           "title": "should render all tab options"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Rendering"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Rendering"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -169,10 +151,7 @@
           "title": "should render back button when activeColumnFqn is present"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Rendering"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Rendering"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -188,10 +167,7 @@
           "title": "should render active tab component"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Tab Navigation"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Tab Navigation"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -207,10 +183,7 @@
           "title": "should render all tabs"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Tab Navigation"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Tab Navigation"],
           "duration": 2,
           "failureDetails": [],
           "failureMessages": [],
@@ -226,10 +199,7 @@
           "title": "should render correct active tab content"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Tab Navigation"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Tab Navigation"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -245,10 +215,7 @@
           "title": "should have tabs visible when no column is selected"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Back Button"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Back Button"],
           "duration": 3,
           "failureDetails": [],
           "failureMessages": [],
@@ -264,10 +231,7 @@
           "title": "should navigate back when back button is clicked"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Back Button"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Back Button"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -283,10 +247,7 @@
           "title": "should clear activeColumnFqn when navigating back"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Back Button"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Back Button"],
           "duration": 0,
           "failureDetails": [],
           "failureMessages": [],
@@ -302,10 +263,7 @@
           "title": "should render back button with drop-down icon"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Active Tab Content"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Active Tab Content"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -321,10 +279,7 @@
           "title": "should render table-profile content when active"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Active Tab Content"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Active Tab Content"],
           "duration": 0,
           "failureDetails": [],
           "failureMessages": [],
@@ -340,10 +295,7 @@
           "title": "should render column-profile content when active"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Active Tab Content"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Active Tab Content"],
           "duration": 0,
           "failureDetails": [],
           "failureMessages": [],
@@ -359,10 +311,7 @@
           "title": "should render data-quality content when active"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "URL Parameter Handling"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "URL Parameter Handling"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -378,10 +327,7 @@
           "title": "should parse activeColumnFqn from URL"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "URL Parameter Handling"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "URL Parameter Handling"],
           "duration": 3,
           "failureDetails": [],
           "failureMessages": [],
@@ -397,10 +343,7 @@
           "title": "should handle URL without activeColumnFqn"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "URL Parameter Handling"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "URL Parameter Handling"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -416,10 +359,7 @@
           "title": "should handle URL with query params starting with ?"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "URL Parameter Handling"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "URL Parameter Handling"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -435,10 +375,7 @@
           "title": "should handle URL with query params not starting with ?"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Props Handling"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Props Handling"],
           "duration": 0,
           "failureDetails": [],
           "failureMessages": [],
@@ -454,10 +391,7 @@
           "title": "should pass props to TableProfilerProvider"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Props Handling"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Props Handling"],
           "duration": 0,
           "failureDetails": [],
           "failureMessages": [],
@@ -473,10 +407,7 @@
           "title": "should render when table prop is not provided"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Layout"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Layout"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -492,10 +423,7 @@
           "title": "should render Stack component with correct structure"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Layout"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Layout"],
           "duration": 2,
           "failureDetails": [],
           "failureMessages": [],
@@ -511,10 +439,7 @@
           "title": "should render content panel"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Layout"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Layout"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -530,10 +455,7 @@
           "title": "should render content inside content panel"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Integration"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Integration"],
           "duration": 0,
           "failureDetails": [],
           "failureMessages": [],
@@ -549,10 +471,7 @@
           "title": "should render with default props"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Integration"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Integration"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -568,10 +487,7 @@
           "title": "should render all tab options from ProfilerClassBase"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Integration"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Integration"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -587,10 +503,7 @@
           "title": "should render active tab component from ProfilerClassBase"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Accessibility"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Accessibility"],
           "duration": 1,
           "failureDetails": [],
           "failureMessages": [],
@@ -606,10 +519,7 @@
           "title": "should have accessible tab list"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Accessibility"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Accessibility"],
           "duration": 23,
           "failureDetails": [],
           "failureMessages": [],
@@ -625,10 +535,7 @@
           "title": "should have accessible tabs"
         },
         {
-          "ancestorTitles": [
-            "DataObservabilityTab",
-            "Accessibility"
-          ],
+          "ancestorTitles": ["DataObservabilityTab", "Accessibility"],
           "duration": 2,
           "failureDetails": [],
           "failureMessages": [],
