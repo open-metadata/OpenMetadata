@@ -613,8 +613,8 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 0.0,
             ),
             [
-                ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 1000, 0, 100, 0.6667),
-                ("fullname=John Doe", TestCaseStatus.Success, 2000, 0, 100, 0, 0.0),
+                ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 2000, 0, 100, 0.6667),
+                ("fullname=John Doe", TestCaseStatus.Success, 4000, 0, 100, 0, 0.0),
             ],
         ),
         (
@@ -633,7 +633,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             ),
             [
                 ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 0, 0, 0, None),
-                ("fullname=John Doe", TestCaseStatus.Success, 2000, 0, 100, 0, None),
+                ("fullname=John Doe", TestCaseStatus.Success, 4000, 0, 100, 0, None),
             ],
         ),
         (
@@ -642,8 +642,8 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "COLUMN",
             (TestCaseResult, "6000", "0", TestCaseStatus.Failed, 0, 6000, 0.0, 100.0),
             [
-                ("name=Jane", TestCaseStatus.Failed, 1, 999, 0.1, 99.9, 0.6653),
-                ("name=John", TestCaseStatus.Failed, 2, 1998, 0.1, 99.9, 0.6653),
+                ("name=Jane", TestCaseStatus.Failed, 0, 2000, 0.0, 100, 0.6667),
+                ("name=John", TestCaseStatus.Failed, 0, 4000, 0.0, 100, 0.6667),
             ],
         ),
         (

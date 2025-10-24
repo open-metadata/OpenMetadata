@@ -13,6 +13,7 @@
 Validator for column value mean to be between test case
 """
 
+from collections import defaultdict
 from typing import List, Optional
 
 import pandas as pd
@@ -88,10 +89,18 @@ class ColumnValueMeanToBeBetweenValidator(
     ) -> List[DimensionResult]:
         """Execute dimensional validation for mean with proper weighted aggregation
 
+        Follows the iterate pattern from the Mean metric's df_fn method to handle
+        multiple dataframes efficiently without concatenating them in memory.
+
+        Memory-efficient approach: Instead of concatenating all dataframes (which creates
+        a full copy in memory), we iterate over them and accumulate aggregates. This is
+        especially important for large parquet files split across many chunks.
+
         For statistical validators like Mean, we need special handling:
-        1. Compute mean, sum, and count per dimension
-        2. Determine if mean is within bounds (all rows pass/fail together)
-        3. For "Others": recompute weighted mean from aggregated sums/counts
+        1. Iterate over all dataframes and accumulate sums/counts per dimension
+        2. Compute weighted mean across dataframes for each dimension
+        3. Determine if mean is within bounds (all rows pass/fail together)
+        4. For "Others": recompute weighted mean from aggregated sums/counts
 
         Args:
             column: The column being validated
@@ -109,29 +118,53 @@ class ColumnValueMeanToBeBetweenValidator(
             max_bound = test_params["maxValueForMeanInCol"]
 
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
-            df = dfs[0]
 
-            grouped = df.groupby(dimension_col.name, dropna=False)
+            dimension_aggregates = defaultdict(
+                lambda: {"sums": [], "counts": [], "total_counts": []}
+            )
+
+            # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
+            for df in dfs:
+                grouped = df.groupby(dimension_col.name, dropna=False)
+
+                for dimension_value, group_df in grouped:
+                    dimension_value = self.format_dimension_value(dimension_value)
+
+                    # dropna for mean calculation (consistent with pandas .mean())
+                    non_null_values = group_df[column.name].dropna()
+                    dimension_aggregates[dimension_value]["sums"].append(
+                        non_null_values.sum()
+                    )
+                    dimension_aggregates[dimension_value]["counts"].append(
+                        len(non_null_values)
+                    )
+                    dimension_aggregates[dimension_value]["total_counts"].append(
+                        len(group_df)
+                    )
+
             results_data = []
+            for dimension_value, agg in dimension_aggregates.items():
+                total_count = sum(agg["counts"])
+                total_sum = sum(agg["sums"])
+                total_rows = sum(agg["total_counts"])
 
-            for dimension_value, group_df in grouped:
-                dimension_value = self.format_dimension_value(dimension_value)
+                # Skip dimensions with no non-null values
+                if total_count == 0:
+                    continue
 
-                mean_value = group_df[column.name].mean()
-                sum_value = group_df[column.name].sum()
-                total_count = len(group_df)
+                mean_value = total_sum / total_count
 
                 if min_bound <= mean_value <= max_bound:
                     failed_count = 0
                 else:
-                    failed_count = total_count
+                    failed_count = total_rows
 
                 results_data.append(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
                         Metrics.MEAN.name: mean_value,
-                        DIMENSION_SUM_VALUE_KEY: sum_value,
-                        DIMENSION_TOTAL_COUNT_KEY: total_count,
+                        DIMENSION_SUM_VALUE_KEY: total_sum,
+                        DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
                 )

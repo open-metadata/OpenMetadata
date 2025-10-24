@@ -13,6 +13,7 @@
 Validator for column value to be in set test case
 """
 
+from collections import defaultdict
 from typing import List, Optional
 
 import pandas as pd
@@ -100,6 +101,16 @@ class ColumnValuesToBeInSetValidator(
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
+        Follows the iterate pattern from the Mean metric's df_fn method to handle
+        multiple dataframes efficiently without concatenating them in memory.
+
+        Memory-efficient approach: Instead of concatenating all dataframes (which creates
+        a full copy in memory), we iterate over them and accumulate aggregates. This is
+        especially important for large parquet files split across many chunks.
+
+        For in-set validation, we accumulate counts across dataframes to accurately
+        track how many values are in the allowed set per dimension.
+
         Args:
             column: The column being validated
             dimension_col: Single SQALikeColumn object corresponding to the dimension column
@@ -116,18 +127,30 @@ class ColumnValuesToBeInSetValidator(
             match_enum = test_params["match_enum"]
 
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
-            df = dfs[0]
 
-            grouped = df.groupby(dimension_col.name, dropna=False)
+            dimension_aggregates = defaultdict(
+                lambda: {"count_in_set": 0, "row_count": 0}
+            )
+
+            # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
+            for df in dfs:
+                grouped = df.groupby(dimension_col.name, dropna=False)
+
+                for dimension_value, group_df in grouped:
+                    dimension_value = self.format_dimension_value(dimension_value)
+
+                    count_in_set = group_df[column.name].isin(allowed_values).sum()
+                    dimension_aggregates[dimension_value][
+                        "count_in_set"
+                    ] += count_in_set
+                    dimension_aggregates[dimension_value]["row_count"] += len(group_df)
+
             results_data = []
-
-            for dimension_value, group_df in grouped:
-                dimension_value = self.format_dimension_value(dimension_value)
-
-                count_in_set = group_df[column.name].isin(allowed_values).sum()
+            for dimension_value, agg in dimension_aggregates.items():
+                count_in_set = agg["count_in_set"]
+                row_count = agg["row_count"]
 
                 if match_enum:
-                    row_count = len(group_df)
                     failed_count = row_count - count_in_set
 
                     results_data.append(

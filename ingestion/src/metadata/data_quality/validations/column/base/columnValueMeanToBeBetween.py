@@ -144,7 +144,7 @@ class BaseColumnValueMeanToBeBetweenValidator(BaseTestValidator):
             "maxValueForMeanInCol": self.get_max_bound("maxValueForMeanInCol"),
         }
 
-    def _get_metrics_to_compute(self, test_params: dict = None) -> dict:
+    def _get_metrics_to_compute(self, test_params: Optional[dict] = None) -> dict:
         """Get metrics that need to be computed for this test
 
         Args:

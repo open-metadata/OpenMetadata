@@ -14,6 +14,7 @@ Validator for column values to be unique test case
 """
 
 import logging
+from collections import Counter, defaultdict
 from typing import List, Optional
 
 import pandas as pd
@@ -93,10 +94,21 @@ class ColumnValuesToBeUniqueValidator(
     ) -> List[DimensionResult]:
         """Execute dimensional query with impact scoring and Others aggregation for pandas
 
+        Follows the iterate pattern from the Mean metric's df_fn method to handle
+        multiple dataframes efficiently without concatenating them in memory.
+
+        Memory-efficient approach: Instead of concatenating all dataframes (which creates
+        a full copy in memory), we iterate over them and accumulate aggregates. This is
+        especially important for large parquet files split across many chunks.
+
+        For uniqueness validation, we collect all values across dataframes to accurately
+        detect duplicates that may span multiple chunks.
+
         Args:
             column: The column being validated
             dimension_col: Single SQALikeColumn object corresponding to the dimension column
             metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
+            test_params: Optional test parameters (not used by uniqueness validator)
 
         Returns:
             List[DimensionResult]: Top N dimensions by impact score plus "Others"
@@ -105,16 +117,32 @@ class ColumnValuesToBeUniqueValidator(
 
         try:
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
-            df = dfs[0]
 
-            grouped = df.groupby(dimension_col.name, dropna=False)
+            dimension_aggregates = defaultdict(
+                lambda: {"all_values": [], "total_count": 0}
+            )
+
+            # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
+            for df in dfs:
+                grouped = df.groupby(dimension_col.name, dropna=False)
+
+                for dimension_value, group_df in grouped:
+                    dimension_value = self.format_dimension_value(dimension_value)
+
+                    # Collect all values to compute unique count across dataframes
+                    dimension_aggregates[dimension_value]["all_values"].extend(
+                        group_df[column.name].dropna().tolist()
+                    )
+                    dimension_aggregates[dimension_value]["total_count"] += len(
+                        group_df
+                    )
+
             results_data = []
-
-            for dimension_value, group_df in grouped:
-                dimension_value = self.format_dimension_value(dimension_value)
-
-                total_count = len(group_df)
-                unique_count = group_df[column.name].nunique()
+            for dimension_value, agg in dimension_aggregates.items():
+                total_count = agg["total_count"]
+                # Count values appearing exactly once (like UNIQUE_COUNT metric)
+                counter = Counter(agg["all_values"])
+                unique_count = sum(1 for value in counter.values() if value == 1)
                 duplicate_count = total_count - unique_count
 
                 results_data.append(

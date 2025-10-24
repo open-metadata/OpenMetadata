@@ -524,8 +524,8 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "COLUMN",
             (TestCaseResult, "30", "0", TestCaseStatus.Failed, 0.0, 30.0, 0.0, 100.0),
             [
-                ("name=Jane", TestCaseStatus.Failed, 1, 9, 10, 90, 0.027),
-                ("name=John", TestCaseStatus.Failed, 2, 18, 10, 90, 0.054),
+                ("name=Jane", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
+                ("name=John", TestCaseStatus.Failed, 0, 20, 0, 100, 0.0667),
             ],
         ),
         (
