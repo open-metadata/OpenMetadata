@@ -599,21 +599,25 @@ test.describe('Persona customization', () => {
         state: 'detached',
       });
 
-      expect(userPage.getByRole('tab', { name: 'Overview' })).toBeVisible();
-      expect(
+      await expect(
+        userPage.getByRole('tab', { name: 'Overview' })
+      ).toBeVisible();
+      await expect(
         userPage.getByRole('tab', { name: 'Glossary Terms' })
       ).toBeVisible();
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Overview' }).click();
 
-      expect(userPage.getByTestId('asset-description-container')).toBeVisible();
+      await expect(
+        userPage.getByTestId('asset-description-container')
+      ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
 
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
     });

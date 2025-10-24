@@ -388,6 +388,13 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     String assignee = getQueryParam("assignee");
     String testCaseFqn = getQueryParam("testCaseFqn");
     String originEntityFQN = getQueryParam("originEntityFQN");
+    String startTimestamp = getQueryParam("startTimestamp");
+    String endTimestamp = getQueryParam("endTimestamp");
+
+    if (startTimestamp != null && endTimestamp != null) {
+      conditions.add(getTimestampFilter("@timestamp", "gte", Long.parseLong(startTimestamp)));
+      conditions.add(getTimestampFilter("@timestamp", "lte", Long.parseLong(endTimestamp)));
+    }
 
     if (testCaseResolutionStatusType != null) {
       conditions.add(

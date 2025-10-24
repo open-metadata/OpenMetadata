@@ -154,8 +154,7 @@ public final class AlertUtil {
 
     // Test Suite
     if (config.getResources().get(0).equals(TEST_SUITE)) {
-      return event.getEntityType().equals(TEST_SUITE)
-          || event.getEntityType().equals(Entity.TEST_CASE);
+      return event.getEntityType().equals(TEST_SUITE);
     }
 
     // Data Contract
