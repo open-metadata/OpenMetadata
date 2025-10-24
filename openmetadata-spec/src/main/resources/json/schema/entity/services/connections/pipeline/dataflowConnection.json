@@ -1,0 +1,49 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/dataflowConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DataflowConnection",
+  "description": "Google Cloud Dataflow Pipeline Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.pipeline.DataflowConnection",
+  "definitions": {
+    "dataflowType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Dataflow"],
+      "default": "Dataflow"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/dataflowType",
+      "default": "Dataflow"
+    },
+    "projectId": {
+      "title": "GCP Project ID",
+      "description": "Google Cloud project ID",
+      "type": "string"
+    },
+    "gcpConfig": {
+      "title": "GCP Credentials Configuration",
+      "$ref": "../../../../security/credentials/gcpCredentials.json"
+    },
+    "region": {
+      "title": "GCP Region",
+      "description": "GCP region for Dataflow jobs. If not specified, will attempt to discover from jobs.",
+      "type": "string"
+    },
+    "pipelineFilterPattern": {
+      "description": "Regex to exclude pipelines.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "title": "Pipeline Filter Pattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["projectId", "gcpConfig"]
+}
