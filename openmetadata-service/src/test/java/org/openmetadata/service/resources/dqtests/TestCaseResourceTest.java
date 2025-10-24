@@ -58,6 +58,7 @@ import static org.openmetadata.service.util.TestUtils.assertResponseContains;
 import static org.openmetadata.service.util.TestUtils.dateToTimestamp;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.Response;
 import es.org.elasticsearch.client.RestClient;
@@ -67,6 +68,7 @@ import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -75,6 +77,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -159,6 +162,7 @@ import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.TestUtils;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 @Slf4j
@@ -5186,5 +5190,67 @@ public class TestCaseResourceTest extends EntityResourceTest<TestCase, CreateTes
       UUID id, Map<String, String> authHeaders) throws HttpResponseException {
     WebTarget target = getResource("dataQuality/testCases/testCaseIncidentStatus/" + id);
     return TestUtils.get(target, TestCaseResolutionStatus.class, authHeaders);
+  }
+
+  @Test
+  void test_userAssignmentRemovedAfterUserDeletion(TestInfo test)
+      throws IOException, ParseException {
+    UserResourceTest userResourceTest = new UserResourceTest();
+    CreateUser createUser = userResourceTest.createRequest("testAssigneeUser" + UUID.randomUUID());
+    User testUser = userResourceTest.createAndCheckEntity(createUser, ADMIN_AUTH_HEADERS);
+    EntityReference testUserRef = testUser.getEntityReference();
+
+    TestCase testCaseEntity = createEntity(createRequest(getEntityName(test)), ADMIN_AUTH_HEADERS);
+
+    postTestCaseResult(
+        testCaseEntity.getFullyQualifiedName(),
+        new CreateTestCaseResult()
+            .withResult("test failure result")
+            .withTestCaseStatus(TestCaseStatus.Failed)
+            .withTimestamp(TestUtils.dateToTimestamp("2024-01-01")),
+        ADMIN_AUTH_HEADERS);
+
+    CreateTestCaseResolutionStatus createAssignedIncident =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCaseEntity.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+            .withTestCaseResolutionStatusDetails(new Assigned().withAssignee(testUserRef));
+
+    TestCaseResolutionStatus assignedIncident = createTestCaseFailureStatus(createAssignedIncident);
+
+    assertNotNull(assignedIncident.getTestCaseResolutionStatusDetails());
+    ObjectMapper mapper = new ObjectMapper();
+    Assigned assignedDetails =
+        mapper.convertValue(assignedIncident.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertEquals(testUserRef.getId(), assignedDetails.getAssignee().getId());
+    assertEquals(testUserRef.getName(), assignedDetails.getAssignee().getName());
+
+    userResourceTest.deleteEntity(testUser.getId(), ADMIN_AUTH_HEADERS);
+
+    // we should have 3 status when the update has been completed
+    // update is done async, ensure we proceed with the right state
+    Awaitility.await()
+        .atMost(5, TimeUnit.SECONDS)
+        .untilAsserted(
+            () -> {
+              ResultList<TestCaseResolutionStatus> resultList =
+                  getTestCaseFailureStatusByStateId(assignedIncident.getStateId());
+              assertEquals(3, resultList.getData().size());
+            });
+
+    ResultList<TestCaseResolutionStatus> resultList =
+        getTestCaseFailureStatusByStateId(assignedIncident.getStateId());
+    List<TestCaseResolutionStatus> testCaseResolutionStatuses = resultList.getData();
+    assertNotNull(testCaseResolutionStatuses);
+
+    // We get the newest incident created as deletion the user should have created a new assigned
+    // incident with no assignee
+    testCaseResolutionStatuses.sort(
+        Comparator.comparing(TestCaseResolutionStatus::getTimestamp).reversed());
+    TestCaseResolutionStatus newestStatus = testCaseResolutionStatuses.get(0);
+    Assigned retrievedAssignedDetails =
+        mapper.convertValue(newestStatus.getTestCaseResolutionStatusDetails(), Assigned.class);
+    assertNull(
+        retrievedAssignedDetails.getAssignee(), "User should no longer be assigned after deletion");
   }
 }
