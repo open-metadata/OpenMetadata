@@ -14,7 +14,9 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
+import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL_COLUMN;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TABLE_COLUMN;
 import static org.openmetadata.service.events.ChangeEventHandler.copyChangeEvent;
 import static org.openmetadata.service.formatter.util.FormatterUtil.createChangeEventForEntity;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTags;
@@ -140,6 +142,11 @@ public class ColumnRepository {
     } else if (updateColumn.getConstraint() != null) {
       column.setConstraint(updateColumn.getConstraint()); // Set new constraint
     }
+    // Handle extension updates (only for table columns)
+    if (updateColumn.getExtension() != null) {
+      validateColumnExtension(updateColumn.getExtension(), TABLE_COLUMN);
+      column.setExtension(updateColumn.getExtension());
+    }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalTable, updatedTable);
 
@@ -205,6 +212,11 @@ public class ColumnRepository {
       column.setTags(
           addDerivedTags(
               updateColumn.getTags())); // Include Derived Tags, Empty array = remove all tags
+    }
+    // Handle extension updates (only for dashboard data model columns)
+    if (updateColumn.getExtension() != null) {
+      validateColumnExtension(updateColumn.getExtension(), DASHBOARD_DATA_MODEL_COLUMN);
+      column.setExtension(updateColumn.getExtension());
     }
 
     JsonPatch jsonPatch = JsonUtils.getJsonPatch(originalDataModel, updatedDataModel);
@@ -281,5 +293,9 @@ public class ColumnRepository {
     changeEvent = copyChangeEvent(changeEvent);
     changeEvent.setEntity(JsonUtils.pojoToMaskedJson(entity));
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+  }
+
+  private void validateColumnExtension(Object extension, String columnEntityType) {
+    EntityRepository.validateExtension(extension, columnEntityType);
   }
 }
