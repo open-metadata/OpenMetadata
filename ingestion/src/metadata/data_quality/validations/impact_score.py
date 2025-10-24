@@ -59,9 +59,8 @@ Example Scores:
     - 10,000 rows, 1,000 failed (10%): 0.010 (low - minor issue despite volume)
 """
 
-from typing import Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
 
-import pandas as pd
 from sqlalchemy import Float, case, func
 from sqlalchemy.sql.expression import ClauseElement
 
@@ -69,6 +68,9 @@ from metadata.data_quality.validations.base_test_handler import DIMENSION_OTHERS
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # Configuration constants
 DEFAULT_SAMPLE_WEIGHT_THRESHOLD = 100.0  # Samples needed for full weight
@@ -379,7 +381,7 @@ def aggregate_others_statistical_pandas(
     df,
     dimension_column: str,
     final_metric_calculators: Dict[
-        str, Callable[[pd.DataFrame, pd.Series, str], pd.Series]
+        str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]
     ],
     top_n: int = DEFAULT_TOP_DIMENSIONS,
     impact_column: str = "impact_score",
