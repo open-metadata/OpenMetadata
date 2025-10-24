@@ -53,11 +53,14 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.events.EventSubscriptionResourceTest;
 import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
@@ -310,6 +313,9 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
             .filter(t -> t.getTask().getId() != null) // Ensure task has valid ID
             .findFirst()
             .orElseThrow(() -> new AssertionError("No open approval task with valid ID found"));
+
+    // Verify ChangeEvent was created for the workflow-generated approval task
+    verifyChangeEventForTask(taskThread);
 
     // Prepare the resolve payload
     ResolveTask resolveTask = new ResolveTask().withNewValue("approved");
@@ -592,6 +598,31 @@ public class GlossaryApprovalWorkflowTest extends OpenMetadataApplicationTest {
         assertFalse(actualDisplayName.trim().isEmpty(), "DisplayName should not be empty");
       }
     }
+  }
+
+  private void verifyChangeEventForTask(Thread taskThread) {
+    long latestOffset = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    List<String> changeEventJsonList =
+        Entity.getCollectionDAO().changeEventDAO().list(100, Math.max(0, latestOffset - 100));
+
+    ChangeEvent matchingEvent =
+        changeEventJsonList.stream()
+            .map(json -> JsonUtils.readValue(json, ChangeEvent.class))
+            .filter(event -> event.getEntityType().equals(Entity.THREAD))
+            .filter(event -> event.getEntityId().equals(taskThread.getId()))
+            .filter(event -> event.getEventType().equals(EventType.THREAD_CREATED))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(
+        matchingEvent,
+        String.format(
+            "ChangeEvent with type THREAD_CREATED should exist for task thread ID: %s",
+            taskThread.getId()));
+
+    assertNotNull(matchingEvent.getUserName(), "ChangeEvent userName should not be null");
+    assertNotNull(matchingEvent.getTimestamp(), "ChangeEvent timestamp should not be null");
+    assertNotNull(matchingEvent.getEntity(), "ChangeEvent entity should not be null");
   }
 
   private void manuallyTriggerWorkflowSignal(String entityLink) {

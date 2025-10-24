@@ -19,7 +19,9 @@ import org.flowable.identitylink.api.IdentityLink;
 import org.flowable.task.service.delegate.DelegateTask;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskDetails;
 import org.openmetadata.schema.type.TaskStatus;
@@ -150,6 +152,19 @@ public class CreateApprovalTaskImpl implements TaskListener {
               .withUpdatedBy(entity.getUpdatedBy())
               .withUpdatedAt(System.currentTimeMillis());
       feedRepository.create(thread);
+
+      // Create and publish ChangeEvent for notification system
+      ChangeEvent changeEvent =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.THREAD_CREATED)
+              .withEntityId(thread.getId())
+              .withEntityType(Entity.THREAD)
+              .withUserName(entity.getUpdatedBy())
+              .withTimestamp(thread.getUpdatedAt())
+              .withEntity(thread);
+
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
 
       // Send WebSocket Notification
       WebsocketNotificationHandler.handleTaskNotification(thread);
