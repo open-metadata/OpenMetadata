@@ -101,7 +101,8 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       totalUniqueColumns = totals.get("uniqueColumns").intValue();
       totalOccurrences = totals.get("totalOccurrences").intValue();
     } else {
-      // Subsequent pages: use current page counts (will be ignored by frontend since it caches first response)
+      // Subsequent pages: use current page counts (will be ignored by frontend since it caches
+      // first response)
       totalUniqueColumns = columnsByName.size();
       totalOccurrences = gridItems.stream().mapToInt(ColumnGridItem::getTotalOccurrences).sum();
     }
@@ -340,9 +341,7 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     // Script to count total occurrences (sum of array lengths)
     countSource.aggregation(
         AggregationBuilders.sum("total_column_occurrences")
-            .script(
-                new es.org.elasticsearch.script.Script(
-                    "doc['columns.name.keyword'].size()")));
+            .script(new es.org.elasticsearch.script.Script("doc['columns.name.keyword'].size()")));
 
     SearchResponse countResponse = executeSearch(countSource);
 
@@ -359,7 +358,11 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
   }
 
   private ColumnGridResponse buildResponse(
-      List<ColumnGridItem> gridItems, String cursor, boolean hasMore, int totalUniqueColumns, int totalOccurrences) {
+      List<ColumnGridItem> gridItems,
+      String cursor,
+      boolean hasMore,
+      int totalUniqueColumns,
+      int totalOccurrences) {
     ColumnGridResponse response = new ColumnGridResponse();
     response.setColumns(gridItems);
     response.setTotalUniqueColumns(totalUniqueColumns);
