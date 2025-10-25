@@ -974,10 +974,11 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return result;
     }
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
-      Map<String, Object> source = JsonUtils.getMap(hit.source().toJson().asJsonObject());
+      String sourceJson = hit.source().toJson().toString();
+      Map<String, Object> source = JsonUtils.getMapFromJson(sourceJson);
       Object fqn = source.get(SearchClient.FQN_FIELD);
       if (fqn != null) {
-        String fqnString = fqn.toString();
+        String fqnString = String.valueOf(fqn);
         SearchEntityRelationshipRequest request =
             new SearchEntityRelationshipRequest()
                 .withFqn(fqnString)
