@@ -58,6 +58,7 @@ import { ReactComponent as StorageIcon } from '../assets/svg/storage-colored-new
 import { ReactComponent as StoredProcedureIcon } from '../assets/svg/stored-procedures-colored-new.svg';
 import { ReactComponent as TableIcon } from '../assets/svg/table-colored-new.svg';
 import { ReactComponent as TagIcon } from '../assets/svg/tags-colored.svg';
+import { ReactComponent as IconImport } from '../assets/svg/ic-import.svg';
 import { ReactComponent as TeamsIcon } from '../assets/svg/teams-colored.svg';
 import { ReactComponent as AppearanceIcon } from '../assets/svg/theme-colored-new.svg';
 import { ReactComponent as LinkIcon } from '../assets/svg/url-link-colored.svg';
@@ -624,6 +625,13 @@ class GlobalSettingsClassBase {
             key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.DATA_ASSET_RULES}`,
             icon: DataAssetRulesIcon,
             isBeta: true,
+          },
+          {
+            label: t('label.column-bulk-operations'),
+            description: t('message.column-bulk-operations-description'),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.COLUMN_BULK_OPERATIONS}`,
+            icon: IconImport,
           },
         ],
       },
