@@ -19,6 +19,17 @@ database:
   user: test
   password:
   url: jdbc:postgresql://localhost:5432/openmetadata
+  # Optimized for single JVM with method-level parallelization
+  # Dynamic factor 1.0 = ~8 threads on 8-core, need sufficient connections
+  maxSize: 100
+  minSize: 20
+  initialSize: 20
+  checkConnectionWhileIdle: true
+  checkConnectionOnBorrow: true
+  evictionInterval: 30 seconds
+  minIdleTime: 10 seconds
+  validationQuery: "SELECT 1"
+  maxWaitForConnection: 30 seconds
 migrationConfiguration:
   flywayPath: "../bootstrap/sql/migrations/flyway"
   nativePath: "../bootstrap/sql/migrations/native"

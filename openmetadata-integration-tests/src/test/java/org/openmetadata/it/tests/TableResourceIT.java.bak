@@ -16,7 +16,6 @@ import org.openmetadata.it.env.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
-import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
@@ -43,7 +42,6 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
@@ -2114,10 +2112,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // PUT update to add tag
     Table updatedTable = client.tables().update(table.getId().toString(), table);
 
-    // Verify tag was added - need to fetch with explicit fields to get column tags
-    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "columns,tags");
-    assertNotNull(fetchedTable.getColumns());
-    assertNotNull(fetchedTable.getColumns().get(0).getTags(), "Column should have tags");
+    // Verify tag was added
+    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    assertNotNull(fetchedTable.getColumns().get(0).getTags());
     assertEquals(1, fetchedTable.getColumns().get(0).getTags().size());
     assertEquals(
         tag.getFullyQualifiedName(), fetchedTable.getColumns().get(0).getTags().get(0).getTagFQN());
@@ -2192,10 +2189,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table updatedTable = client.tables().update(table.getId().toString(), table);
 
-    // Verify both tags were added - need to fetch with explicit fields to get column tags
-    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "columns,tags");
-    assertNotNull(fetchedTable.getColumns());
-    assertNotNull(fetchedTable.getColumns().get(0).getTags(), "Column should have multiple tags");
+    // Verify both tags were added
+    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    assertNotNull(fetchedTable.getColumns().get(0).getTags());
     assertEquals(2, fetchedTable.getColumns().get(0).getTags().size());
   }
 
@@ -2227,53 +2223,34 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_tableWithTestCase(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Use simple short names for database, schema, and table to avoid FQN > 256 chars
-    // When TestSuite is auto-created, FQN is: service.db.schema.table.testSuite
-    String shortId = UUID.randomUUID().toString().substring(0, 8);
-
-    // Create database with short name
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    CreateDatabase dbReq = new CreateDatabase();
-    dbReq.setName("db_" + shortId);
-    dbReq.setService(service.getFullyQualifiedName());
-    Database database = client.databases().create(dbReq);
-
-    // Create schema with short name
-    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
-    schemaReq.setName("sc_" + shortId);
-    schemaReq.setDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = client.databaseSchemas().create(schemaReq);
-
-    // Create table with short name
-    CreateTable createRequest = new CreateTable();
-    createRequest.setName("tc_" + shortId);
-    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
-    createRequest.setColumns(
-        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    CreateTable createRequest = createRequest(ns.prefix("test_case_table"), ns, client);
     Table table = client.tables().create(createRequest);
 
-    // Create test case - backend will auto-create executable test suite
-    // TestSuite FQN will be constructed from table FQN + ".testSuite"
+    // Create test suite first
+    CreateTestSuite createTestSuite =
+        new CreateTestSuite()
+            .withName(ns.prefix("test_suite_for_case"))
+            .withDescription("Test suite")
+            .withExecutableEntityReference(table.getFullyQualifiedName());
+
+    TestSuite testSuite = client.testSuites().create(createTestSuite);
+
+    // Create test case
     CreateTestCase createTestCase =
         new CreateTestCase()
-            .withName("tc_" + shortId)
+            .withName(ns.prefix("test_case"))
             .withDescription("Test case for column")
             .withEntityLink(
                 "<#E::table::"
                     + table.getFullyQualifiedName()
                     + "::columns::"
                     + table.getColumns().get(0).getName()
-                    + ">")
-            .withTestDefinition("tableRowCountToBeBetween")
-            .withParameterValues(
-                List.of(
-                    new TestCaseParameterValue().withName("minValue").withValue("1"),
-                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+                    + ">");
 
     TestCase testCase = client.testCases().create(createTestCase);
 
     assertNotNull(testCase.getId());
-    assertTrue(testCase.getName().startsWith("tc_"));
+    assertEquals(ns.prefix("test_case"), testCase.getName());
   }
 
   // ===================================================================
@@ -2745,17 +2722,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
 
     // List tables with pagination
-    ListParams params = new ListParams().setLimit(2).setFields("domains");
+    ListParams params = new ListParams().setLimit(2).setFields("domain");
 
     ListResponse<Table> response = client.tables().list(params);
 
-    // Verify pagination works - in parallel tests, other tables may exist
-    // so just verify response structure and pagination limit is respected
+    // Verify pagination works
     assertNotNull(response);
-    assertNotNull(response.getData());
-    assertTrue(
-        response.getData().size() <= 2,
-        "Pagination limit should be respected: got " + response.getData().size());
+    assertTrue(response.getData().size() <= 2);
   }
 
   @Test
@@ -2976,44 +2949,27 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void get_tablesWithTestCases(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Use simple short names for database, schema, and table to avoid FQN > 256 chars
-    String shortId = UUID.randomUUID().toString().substring(0, 8);
-
-    // Create database with short name
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    CreateDatabase dbReq = new CreateDatabase();
-    dbReq.setName("db_" + shortId);
-    dbReq.setService(service.getFullyQualifiedName());
-    Database database = client.databases().create(dbReq);
-
-    // Create schema with short name
-    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
-    schemaReq.setName("sc_" + shortId);
-    schemaReq.setDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = client.databaseSchemas().create(schemaReq);
-
-    // Create table with short name
-    CreateTable req = new CreateTable();
-    req.setName("tct_" + shortId);
-    req.setDatabaseSchema(schema.getFullyQualifiedName());
-    req.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    // Create table
+    CreateTable req = createRequest(ns.prefix("testcase_table"), ns, client);
     Table table = client.tables().create(req);
 
-    // Create test case - backend will auto-create executable test suite
+    // Create test suite
+    CreateTestSuite createTestSuite =
+        new CreateTestSuite()
+            .withName(ns.prefix("test_suite"))
+            .withExecutableEntityReference(table.getFullyQualifiedName());
+    client.testSuites().create(createTestSuite);
+
+    // Create test case
     CreateTestCase createTestCase =
         new CreateTestCase()
-            .withName("tct_" + shortId)
+            .withName(ns.prefix("test_case"))
             .withEntityLink(
                 "<#E::table::"
                     + table.getFullyQualifiedName()
                     + "::columns::"
                     + table.getColumns().get(0).getName()
-                    + ">")
-            .withTestDefinition("tableRowCountToBeBetween")
-            .withParameterValues(
-                List.of(
-                    new TestCaseParameterValue().withName("minValue").withValue("1"),
-                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+                    + ">");
     client.testCases().create(createTestCase);
 
     // List tables (test cases linked via entity link)
@@ -3222,9 +3178,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Search using REST client to Elasticsearch directly
     try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
 
-      // Refresh index to make documents searchable
-      refreshSearchIndex(searchClient);
-
       // Create search request for tables with missing descriptions
       String searchQuery =
           "{"
@@ -3244,7 +3197,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               + "  }"
               + "}";
 
-      Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
+      Request request = new Request("POST", "/table_search_index/_search");
       request.setJsonEntity(searchQuery);
 
       Response response = searchClient.performRequest(request);
@@ -3295,9 +3248,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // Search for tables containing "email" in columns
     try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
 
-      // Refresh index to make documents searchable
-      refreshSearchIndex(searchClient);
-
       String searchQuery =
           "{"
               + "  \"query\": {"
@@ -3314,7 +3264,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               + "  }"
               + "}";
 
-      Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
+      Request request = new Request("POST", "/table_search_index/_search");
       request.setJsonEntity(searchQuery);
 
       Response response = searchClient.performRequest(request);
@@ -3339,154 +3289,131 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_multipleDomainInheritance(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Try to disable multi-domain rule for this test
-    boolean rulesAvailable = false;
-    try {
-      EntityRulesUtil.toggleMultiDomainRule(client, false);
-      rulesAvailable = true;
-    } catch (Exception e) {
-      // Settings API not available during test - skip this test
-      // Multi-domain inheritance is already tested in base entity tests
-      System.out.println("Skipping test - cannot toggle multi-domain rule: " + e.getMessage());
-      return;
-    }
+    // Disable multi-domain rule for this test
+    EntityRulesUtil.toggleMultiDomainRule(client, false);
 
     try {
       // Create two domains
       CreateDomain createDomain1 =
-          new CreateDomain()
-              .withName(ns.prefix("domain1"))
-              .withDomainType(CreateDomain.DomainType.AGGREGATE)
-              .withDescription("First test domain");
-      Domain domain1 = client.domains().create(createDomain1);
+        new CreateDomain()
+            .withName(ns.prefix("domain1"))
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("First test domain");
+    Domain domain1 = client.domains().create(createDomain1);
 
-      CreateDomain createDomain2 =
-          new CreateDomain()
-              .withName(ns.prefix("domain2"))
-              .withDomainType(CreateDomain.DomainType.AGGREGATE)
-              .withDescription("Second test domain");
-      Domain domain2 = client.domains().create(createDomain2);
+    CreateDomain createDomain2 =
+        new CreateDomain()
+            .withName(ns.prefix("domain2"))
+            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDescription("Second test domain");
+    Domain domain2 = client.domains().create(createDomain2);
 
-      // Create database service with 2 domains
-      CreateDatabaseService createService =
-          new CreateDatabaseService()
-              .withName(ns.prefix("multi_domain_service"))
-              .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
-              .withDomains(
-                  List.of(domain1.getFullyQualifiedName(), domain2.getFullyQualifiedName()));
-      DatabaseService service = client.databaseServices().create(createService);
+    // Create database service with 2 domains
+    CreateDatabaseService createService =
+        new CreateDatabaseService()
+            .withName(ns.prefix("multi_domain_service"))
+            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withDomains(List.of(domain1.getFullyQualifiedName(), domain2.getFullyQualifiedName()));
+    DatabaseService service = client.databaseServices().create(createService);
 
-      // Verify service has both domains
-      DatabaseService fetchedService =
-          client.databaseServices().get(service.getId().toString(), "domains");
-      assertNotNull(fetchedService.getDomains());
-      assertEquals(2, fetchedService.getDomains().size());
+    // Verify service has both domains
+    DatabaseService fetchedService =
+        client.databaseServices().get(service.getId().toString(), "domains");
+    assertNotNull(fetchedService.getDomains());
+    assertEquals(2, fetchedService.getDomains().size());
 
-      // Create database (should inherit domains from service)
-      CreateDatabase createDb =
-          new CreateDatabase()
-              .withName(ns.prefix("multi_domain_db"))
-              .withService(service.getFullyQualifiedName());
-      // Explicitly NOT setting domains - should inherit
-      Database db = client.databases().create(createDb);
+    // Create database (should inherit domains from service)
+    CreateDatabase createDb =
+        new CreateDatabase()
+            .withName(ns.prefix("multi_domain_db"))
+            .withService(service.getFullyQualifiedName());
+    // Explicitly NOT setting domains - should inherit
+    Database db = client.databases().create(createDb);
 
-      // Verify database inherited both domains from service
-      Database fetchedDb = client.databases().get(db.getId().toString(), "domains");
-      assertNotNull(fetchedDb.getDomains());
-      assertEquals(
-          2, fetchedDb.getDomains().size(), "Database should inherit 2 domains from service");
-      // Verify domains are marked as inherited
-      assertTrue(
-          fetchedDb.getDomains().stream()
-              .allMatch(d -> d.getInherited() != null && d.getInherited()),
-          "All domains should be marked as inherited");
+    // Verify database inherited both domains from service
+    Database fetchedDb = client.databases().get(db.getId().toString(), "domains");
+    assertNotNull(fetchedDb.getDomains());
+    assertEquals(
+        2, fetchedDb.getDomains().size(), "Database should inherit 2 domains from service");
+    // Verify domains are marked as inherited
+    assertTrue(
+        fetchedDb.getDomains().stream().allMatch(d -> d.getInherited() != null && d.getInherited()),
+        "All domains should be marked as inherited");
 
-      // Create schema (should inherit domains from database)
-      CreateDatabaseSchema createSchema =
-          new CreateDatabaseSchema()
-              .withName(ns.prefix("multi_domain_schema"))
-              .withDatabase(db.getFullyQualifiedName());
-      DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+    // Create schema (should inherit domains from database)
+    CreateDatabaseSchema createSchema =
+        new CreateDatabaseSchema()
+            .withName(ns.prefix("multi_domain_schema"))
+            .withDatabase(db.getFullyQualifiedName());
+    DatabaseSchema schema = client.databaseSchemas().create(createSchema);
 
-      // Verify schema inherited both domains
-      DatabaseSchema fetchedSchema =
-          client.databaseSchemas().get(schema.getId().toString(), "domains");
-      assertNotNull(fetchedSchema.getDomains());
-      assertEquals(
-          2, fetchedSchema.getDomains().size(), "Schema should inherit 2 domains from database");
-      assertTrue(
-          fetchedSchema.getDomains().stream()
-              .allMatch(d -> d.getInherited() != null && d.getInherited()),
-          "All schema domains should be marked as inherited");
+    // Verify schema inherited both domains
+    DatabaseSchema fetchedSchema =
+        client.databaseSchemas().get(schema.getId().toString(), "domains");
+    assertNotNull(fetchedSchema.getDomains());
+    assertEquals(
+        2, fetchedSchema.getDomains().size(), "Schema should inherit 2 domains from database");
+    assertTrue(
+        fetchedSchema.getDomains().stream()
+            .allMatch(d -> d.getInherited() != null && d.getInherited()),
+        "All schema domains should be marked as inherited");
 
-      // Create table (should inherit domains from schema)
-      CreateTable createTable =
-          new CreateTable()
-              .withName(ns.prefix("multi_domain_table"))
-              .withDatabaseSchema(schema.getFullyQualifiedName())
-              .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().build()));
-      Table table = client.tables().create(createTable);
+    // Create table (should inherit domains from schema)
+    CreateTable createTable =
+        new CreateTable()
+            .withName(ns.prefix("multi_domain_table"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().build()));
+    Table table = client.tables().create(createTable);
 
-      // Verify table inherited both domains
-      Table fetchedTable = client.tables().get(table.getId().toString(), "domains");
-      assertNotNull(fetchedTable.getDomains());
-      assertEquals(
-          2, fetchedTable.getDomains().size(), "Table should inherit 2 domains from schema");
-      assertTrue(
-          fetchedTable.getDomains().stream()
-              .allMatch(d -> d.getInherited() != null && d.getInherited()),
-          "All table domains should be marked as inherited");
+    // Verify table inherited both domains
+    Table fetchedTable = client.tables().get(table.getId().toString(), "domains");
+    assertNotNull(fetchedTable.getDomains());
+    assertEquals(2, fetchedTable.getDomains().size(), "Table should inherit 2 domains from schema");
+    assertTrue(
+        fetchedTable.getDomains().stream()
+            .allMatch(d -> d.getInherited() != null && d.getInherited()),
+        "All table domains should be marked as inherited");
 
-      // Wait for Elasticsearch indexing
-      Thread.sleep(2000);
+    // Wait for Elasticsearch indexing
+    Thread.sleep(2000);
 
-      // Verify domains appear in Elasticsearch search
-      try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
+    // Verify domains appear in Elasticsearch search
+    try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
+      // Search for table by ID
+      String tableSearchQuery =
+          "{"
+              + "  \"size\": 1,"
+              + "  \"query\": {"
+              + "    \"bool\": {"
+              + "      \"must\": ["
+              + "        { \"term\": { \"_id\": \""
+              + table.getId().toString()
+              + "\" } }"
+              + "      ]"
+              + "    }"
+              + "  }"
+              + "}";
 
-        // Refresh index to make documents searchable
-        refreshSearchIndex(searchClient);
+      Request request = new Request("POST", "/table_search_index/_search");
+      request.setJsonEntity(tableSearchQuery);
+      Response response = searchClient.performRequest(request);
 
-        // Search for table by ID
-        String tableSearchQuery =
-            "{"
-                + "  \"size\": 1,"
-                + "  \"query\": {"
-                + "    \"bool\": {"
-                + "      \"must\": ["
-                + "        { \"term\": { \"_id\": \""
-                + table.getId().toString()
-                + "\" } }"
-                + "      ]"
-                + "    }"
-                + "  }"
-                + "}";
+      assertEquals(200, response.getStatusLine().getStatusCode());
 
-        Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
-        request.setJsonEntity(tableSearchQuery);
-        Response response = searchClient.performRequest(request);
+      // Parse response to verify domains are in search index
+      String responseBody =
+          new String(
+              response.getEntity().getContent().readAllBytes(),
+              java.nio.charset.StandardCharsets.UTF_8);
 
-        assertEquals(200, response.getStatusLine().getStatusCode());
-
-        // Parse response to verify domains are in search index
-        String responseBody =
-            new String(
-                response.getEntity().getContent().readAllBytes(),
-                java.nio.charset.StandardCharsets.UTF_8);
-
-        // Verify the table appears in search results
-        assertTrue(responseBody.contains(table.getId().toString()));
-        assertTrue(responseBody.contains("\"total\""));
-      }
+      // Verify the table appears in search results
+      assertTrue(responseBody.contains(table.getId().toString()));
+      assertTrue(responseBody.contains("\"total\""));
+    }
     } finally {
-      // Re-enable multi-domain rule after test (only if we successfully disabled it)
-      if (rulesAvailable) {
-        try {
-          EntityRulesUtil.toggleMultiDomainRule(client, true);
-        } catch (Exception e) {
-          // Ignore - test is finishing anyway
-          System.out.println("Could not re-enable multi-domain rule: " + e.getMessage());
-        }
-      }
+      // Re-enable multi-domain rule after test
+      EntityRulesUtil.toggleMultiDomainRule(client, true);
     }
   }
 
@@ -3520,23 +3447,19 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // The result is a CSV string containing status - verify it's not empty
     assertFalse(importResult.isEmpty());
 
-    // Test 2: Import CSV with non-existing column
-    // Note: CSV import only updates existing columns, it does not create new columns
+    // Test 2: Import CSV with non-existing column - should create new column
     String csvWithNewColumn =
         "name,displayName,description,dataTypeDisplay,dataType,arrayDataType,dataLength,tags,glossaryTerms\n"
             + "nonExistingColumn,,,,INT,,,,\n";
 
     String result2 = client.tables().importCsv(tableName, csvWithNewColumn, false);
     assertNotNull(result2);
-    // CSV import succeeds but doesn't create new columns - only updates existing ones
-    assertFalse(result2.isEmpty());
 
-    // Verify column was NOT created (CSV import doesn't create new columns)
+    // Verify new column was created
     Table updated = client.tables().getByName(tableName, "columns");
     boolean foundNewColumn =
         updated.getColumns().stream().anyMatch(c -> c.getName().equals("nonExistingColumn"));
-    assertFalse(
-        foundNewColumn, "CSV import should not create new columns, only update existing ones");
+    assertTrue(foundNewColumn, "New column 'nonExistingColumn' should be created");
   }
 
   @Test
@@ -3607,26 +3530,23 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .findFirst()
             .orElse(null);
     assertNotNull(updatedC1);
-    // Note: displayName and description may not be preserved/updated by CSV import in all cases
-    // assertEquals("dsp1-new", updatedC1.getDisplayName());
-    // assertEquals("desc1", updatedC1.getDescription());
+    assertEquals("dsp1-new", updatedC1.getDisplayName());
+    assertEquals("desc1", updatedC1.getDescription());
 
     // Check c1.c11 nested column was updated
     if (updatedC1.getChildren() != null && !updatedC1.getChildren().isEmpty()) {
       Column updatedC11 = updatedC1.getChildren().get(0);
-      // Note: displayName and description may not be preserved/updated by CSV import
-      // assertEquals("dsp11-new", updatedC11.getDisplayName());
-      // assertEquals("desc11", updatedC11.getDescription());
+      assertEquals("dsp11-new", updatedC11.getDisplayName());
+      assertEquals("desc11", updatedC11.getDescription());
     }
 
-    // Note: CSV import may not apply tags in all scenarios
     // Verify tags were applied (PII.Sensitive tag should be on c1)
-    // if (updatedC1.getTags() != null) {
-    //   boolean hasPiiTag =
-    //       updatedC1.getTags().stream()
-    //           .anyMatch(t -> t.getTagFQN().contains(sensitive.getFullyQualifiedName()));
-    //   assertTrue(hasPiiTag, "Column c1 should have PII.Sensitive tag");
-    // }
+    if (updatedC1.getTags() != null) {
+      boolean hasPiiTag =
+          updatedC1.getTags().stream()
+              .anyMatch(t -> t.getTagFQN().contains(sensitive.getFullyQualifiedName()));
+      assertTrue(hasPiiTag, "Column c1 should have PII.Sensitive tag");
+    }
   }
 
   // ===================================================================
@@ -3685,28 +3605,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     TableData sampleData = new TableData().withColumns(columnNames).withRows(rows);
 
-    Table tableWithSampleData = adminClient.tables().updateSampleData(table.getId(), sampleData);
-    assertNotNull(tableWithSampleData, "updateSampleData should return updated table");
+    Table updated = adminClient.tables().updateSampleData(table.getId(), sampleData);
 
     // Owner client - should see unmasked data
     OpenMetadataClient ownerClient =
         SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
 
-    // Fetch table with sampleData field
-    Table ownerView = ownerClient.tables().get(table.getId().toString(), "sampleData");
-    // Note: Sample data might not be returned depending on PII masking configuration
-    // or permissions. For now, just verify the table is accessible
-    assertNotNull(ownerView, "Owner should be able to access the table");
-    // assertNotNull(ownerView.getSampleData(), "Sample data should be present for owner");
+    Table ownerView = ownerClient.tables().get(updated.getId().toString(), "sampleData");
+    assertNotNull(ownerView.getSampleData());
 
     // Non-owner client - values may be masked depending on PII masking configuration
     OpenMetadataClient nonOwnerClient =
         SdkClients.createClient(nonOwner.getEmail(), nonOwner.getEmail(), new String[] {});
 
-    Table nonOwnerView = nonOwnerClient.tables().get(table.getId().toString(), "sampleData");
-    assertNotNull(nonOwnerView, "Non-owner should be able to access the table");
-    // Note: Sample data might not be returned depending on PII masking configuration
-    // assertNotNull(nonOwnerView.getSampleData(), "Sample data should be present for non-owner");
+    Table nonOwnerView = nonOwnerClient.tables().get(updated.getId().toString(), "sampleData");
+    assertNotNull(nonOwnerView.getSampleData());
 
     // Note: Actual masking behavior depends on PII masker configuration in OpenMetadata
     // This test verifies the data is accessible with proper permissions
@@ -3894,70 +3807,5 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected Table getEntityIncludeDeleted(String id, OpenMetadataClient client) {
     return client.tables().get(id, "owners,tags,columns", "deleted");
-  }
-
-  // ===================================================================
-  // HELPER METHODS FOR ELASTICSEARCH
-  // ===================================================================
-
-  /**
-   * Get the full Elasticsearch index name with cluster alias prefix.
-   * In test environment, cluster alias is "openmetadata" so table index is "openmetadata_table_search_index"
-   */
-  private String getTableSearchIndexName() {
-    return "openmetadata_table_search_index";
-  }
-
-  /**
-   * Ensure Elasticsearch index exists. If not, wait for it to be created by SearchIndexHandler.
-   * The index is created lazily when the first table is indexed.
-   */
-  private void ensureSearchIndexExists(RestClient searchClient) throws Exception {
-    String indexName = getTableSearchIndexName();
-    Request checkRequest = new Request("HEAD", "/" + indexName);
-
-    // Try to check if index exists
-    try {
-      searchClient.performRequest(checkRequest);
-      // Index exists, we're good
-      System.out.println("Index " + indexName + " already exists");
-    } catch (Exception e) {
-      // Index doesn't exist yet - wait for SearchIndexHandler to create it
-      // This happens asynchronously after table creation
-      System.out.println(
-          "Index " + indexName + " doesn't exist yet, waiting up to 30 seconds for creation...");
-
-      // Wait up to 30 seconds for index to be created (SearchIndexHandler processes async)
-      for (int i = 0; i < 60; i++) {
-        Thread.sleep(500);
-        try {
-          searchClient.performRequest(checkRequest);
-          System.out.println("Index " + indexName + " now exists after " + ((i + 1) * 500) + "ms");
-          return;
-        } catch (Exception ignored) {
-          // Still doesn't exist, keep waiting
-          if (i % 10 == 9) {
-            System.out.println(
-                "Still waiting for index creation... (" + ((i + 1) * 500) + "ms elapsed)");
-          }
-        }
-      }
-
-      // If we get here, index still doesn't exist after 30 seconds
-      throw new RuntimeException("Index " + indexName + " was not created after 30 seconds");
-    }
-  }
-
-  /**
-   * Refresh Elasticsearch index to make sure all documents are searchable.
-   * Must be called after creating/updating entities before searching.
-   */
-  private void refreshSearchIndex(RestClient searchClient) throws Exception {
-    // First ensure index exists
-    ensureSearchIndexExists(searchClient);
-
-    // Now refresh it
-    Request refreshRequest = new Request("POST", "/" + getTableSearchIndexName() + "/_refresh");
-    searchClient.performRequest(refreshRequest);
   }
 }

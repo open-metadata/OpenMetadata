@@ -301,6 +301,42 @@ public abstract class EntityServiceBase<T> {
         HttpMethod.DELETE, basePath + "/" + id, null, Void.class, options);
   }
 
+  /**
+   * Restore a soft-deleted entity
+   */
+  public T restore(UUID id) throws OpenMetadataException {
+    return restore(id.toString());
+  }
+
+  /**
+   * Restore a soft-deleted entity
+   */
+  public T restore(String id) throws OpenMetadataException {
+    org.openmetadata.schema.api.data.RestoreEntity restoreEntity =
+        new org.openmetadata.schema.api.data.RestoreEntity();
+    restoreEntity.setId(java.util.UUID.fromString(id));
+    return httpClient.execute(
+        HttpMethod.PUT, basePath + "/restore", restoreEntity, getEntityClass());
+  }
+
+  /**
+   * Restore a soft-deleted entity (async)
+   */
+  public CompletableFuture<T> restoreAsync(UUID id) {
+    return restoreAsync(id.toString());
+  }
+
+  /**
+   * Restore a soft-deleted entity (async)
+   */
+  public CompletableFuture<T> restoreAsync(String id) {
+    org.openmetadata.schema.api.data.RestoreEntity restoreEntity =
+        new org.openmetadata.schema.api.data.RestoreEntity();
+    restoreEntity.setId(java.util.UUID.fromString(id));
+    return httpClient.executeAsync(
+        HttpMethod.PUT, basePath + "/restore", restoreEntity, getEntityClass());
+  }
+
   public String exportCsv(String name) throws OpenMetadataException {
     // Use the proper path with entity name
     String path = basePath + "/name/" + name + "/export";

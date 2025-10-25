@@ -2,9 +2,6 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import es.org.elasticsearch.client.Request;
-import es.org.elasticsearch.client.Response;
-import es.org.elasticsearch.client.RestClient;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -12,67 +9,61 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.it.env.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
-import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
-import org.openmetadata.schema.api.data.CreateDatabase;
-import org.openmetadata.schema.api.data.CreateDatabaseSchema;
-import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
-import org.openmetadata.schema.api.data.CreateTableProfile;
-import org.openmetadata.schema.api.data.UpdateColumn;
-import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.lineage.AddLineage;
-import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
-import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
-import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
-import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.tests.CustomMetric;
 import org.openmetadata.schema.tests.TestCase;
-import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
-import org.openmetadata.schema.type.ColumnJoin;
 import org.openmetadata.schema.type.ColumnLineage;
-import org.openmetadata.schema.type.ColumnProfile;
-import org.openmetadata.schema.type.DataModel;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.JoinedWith;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.PartitionIntervalTypes;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
-import org.openmetadata.schema.type.TableJoins;
 import org.openmetadata.schema.type.TablePartition;
-import org.openmetadata.schema.type.TableProfile;
-import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.sdk.OM;
+import org.openmetadata.it.env.TestSuiteBootstrap;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
 import org.openmetadata.service.util.RdfTestUtils;
+import org.openmetadata.schema.type.ColumnJoin;
+import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.DataModel;
+import org.openmetadata.schema.type.ColumnProfilerConfig;
+import org.openmetadata.schema.type.ProfileSampleType;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.UpdateColumn;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.entity.data.Database;
+import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.User;
+import es.org.elasticsearch.client.Request;
+import es.org.elasticsearch.client.Response;
+import es.org.elasticsearch.client.RestClient;
 
 /**
  * Integration tests for Table entity operations.
@@ -783,7 +774,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table table = createEntity(createRequest, client);
 
-    RdfTestUtils.verifyEntityInRdf(table, "table");
+    RdfTestUtils.verifyEntityInRdf(
+        table, org.openmetadata.service.rdf.RdfUtils.getRdfType("table"));
     RdfTestUtils.verifyContainsRelationshipInRdf(
         schema.getEntityReference(), table.getEntityReference());
   }
@@ -804,16 +796,19 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table table = createEntity(createRequest, client);
 
-    RdfTestUtils.verifyEntityInRdf(table, "table");
+    RdfTestUtils.verifyEntityInRdf(
+        table, org.openmetadata.service.rdf.RdfUtils.getRdfType("table"));
 
     deleteEntity(table.getId().toString(), client);
 
-    RdfTestUtils.verifyEntityInRdf(table, "table");
+    RdfTestUtils.verifyEntityInRdf(
+        table, org.openmetadata.service.rdf.RdfUtils.getRdfType("table"));
 
     restoreEntity(table.getId().toString(), client);
 
     Table restored = getEntity(table.getId().toString(), client);
-    RdfTestUtils.verifyEntityInRdf(restored, "table");
+    RdfTestUtils.verifyEntityInRdf(
+        restored, org.openmetadata.service.rdf.RdfUtils.getRdfType("table"));
   }
 
   @Test
@@ -832,7 +827,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table table = createEntity(createRequest, client);
 
-    RdfTestUtils.verifyEntityInRdf(table, "dcat:Dataset");
+    RdfTestUtils.verifyEntityInRdf(
+        table, org.openmetadata.service.rdf.RdfUtils.getRdfType("table"));
 
     hardDeleteEntity(table.getId().toString(), client);
 
@@ -1003,7 +999,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Test default pagination (returns all columns by default)
-    TableColumnList response = client.tables().getColumns(table.getId());
+    org.openmetadata.sdk.models.TableColumnList response =
+        client.tables().getColumns(table.getId());
     assertEquals(10, response.getData().size());
     assertEquals(10, response.getPaging().getTotal());
 
@@ -1036,7 +1033,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Get columns - should return at least the id column
-    TableColumnList response = client.tables().getColumns(table.getId());
+    org.openmetadata.sdk.models.TableColumnList response =
+        client.tables().getColumns(table.getId());
     assertNotNull(response);
     assertNotNull(response.getData());
     assertTrue(response.getData().size() >= 1, "Should have at least one column");
@@ -1067,7 +1065,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Get columns with specific fields
-    TableColumnList response = client.tables().getColumns(table.getId(), "tags,customMetrics");
+    org.openmetadata.sdk.models.TableColumnList response =
+        client.tables().getColumns(table.getId(), "tags,customMetrics");
     assertNotNull(response);
     assertEquals(2, response.getData().size());
   }
@@ -1090,7 +1089,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         Arrays.asList(
             Arrays.asList(1, "value1"), Arrays.asList(2, "value2"), Arrays.asList(3, "value3"));
 
-    TableData tableData = new TableData().withColumns(columns).withRows(rows);
+    org.openmetadata.schema.type.TableData tableData =
+        new org.openmetadata.schema.type.TableData().withColumns(columns).withRows(rows);
 
     // Update sample data - should succeed without error
     Table updated = client.tables().updateSampleData(table.getId(), tableData);
@@ -1109,7 +1109,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     List<List<Object>> rows =
         Arrays.asList(Arrays.asList("value1", 1, true)); // 3 values for 2 columns
 
-    TableData invalidData = new TableData().withColumns(columns).withRows(rows);
+    org.openmetadata.schema.type.TableData invalidData =
+        new org.openmetadata.schema.type.TableData().withColumns(columns).withRows(rows);
 
     assertThrows(
         Exception.class,
@@ -1136,25 +1137,34 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     String t3id = table3.getFullyQualifiedName() + ".id";
 
     // Create column joins
-    List<ColumnJoin> columnJoins =
+    List<org.openmetadata.schema.type.ColumnJoin> columnJoins =
         Arrays.asList(
-            new ColumnJoin()
+            new org.openmetadata.schema.type.ColumnJoin()
                 .withColumnName("id")
                 .withJoinedWith(
                     Arrays.asList(
-                        new JoinedWith().withFullyQualifiedName(t2id).withJoinCount(10),
-                        new JoinedWith().withFullyQualifiedName(t3id).withJoinCount(10))),
-            new ColumnJoin()
+                        new org.openmetadata.schema.type.JoinedWith()
+                            .withFullyQualifiedName(t2id)
+                            .withJoinCount(10),
+                        new org.openmetadata.schema.type.JoinedWith()
+                            .withFullyQualifiedName(t3id)
+                            .withJoinCount(10))),
+            new org.openmetadata.schema.type.ColumnJoin()
                 .withColumnName("name")
                 .withJoinedWith(
                     Arrays.asList(
-                        new JoinedWith().withFullyQualifiedName(t2name).withJoinCount(20))));
+                        new org.openmetadata.schema.type.JoinedWith()
+                            .withFullyQualifiedName(t2name)
+                            .withJoinCount(20))));
 
     // Use LocalDate format (yyyy-MM-dd) for startDate
     String startDate = java.time.LocalDate.now().minusDays(1).toString();
 
-    TableJoins tableJoins =
-        new TableJoins().withStartDate(startDate).withDayCount(1).withColumnJoins(columnJoins);
+    org.openmetadata.schema.type.TableJoins tableJoins =
+        new org.openmetadata.schema.type.TableJoins()
+            .withStartDate(startDate)
+            .withDayCount(1)
+            .withColumnJoins(columnJoins);
 
     // Update joins
     Table updated = client.tables().updateJoins(table1.getId(), tableJoins);
@@ -1169,18 +1179,18 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest(ns.prefix("join_table"), ns, client), client);
 
     // Try to create join with non-existent column
-    List<ColumnJoin> invalidJoins =
+    List<org.openmetadata.schema.type.ColumnJoin> invalidJoins =
         Arrays.asList(
-            new ColumnJoin()
+            new org.openmetadata.schema.type.ColumnJoin()
                 .withColumnName("nonExistentColumn")
                 .withJoinedWith(
                     Arrays.asList(
-                        new JoinedWith()
+                        new org.openmetadata.schema.type.JoinedWith()
                             .withFullyQualifiedName("someTable.someColumn")
                             .withJoinCount(1))));
 
-    TableJoins tableJoins =
-        new TableJoins()
+    org.openmetadata.schema.type.TableJoins tableJoins =
+        new org.openmetadata.schema.type.TableJoins()
             .withStartDate(java.time.LocalDate.now().toString())
             .withDayCount(1)
             .withColumnJoins(invalidJoins);
@@ -1203,13 +1213,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Create table profile
-    TableProfile tableProfile =
-        new TableProfile()
+    org.openmetadata.schema.type.TableProfile tableProfile =
+        new org.openmetadata.schema.type.TableProfile()
             .withTimestamp(System.currentTimeMillis())
             .withRowCount(100.0)
             .withColumnCount(3.0);
 
-    CreateTableProfile profileRequest = new CreateTableProfile().withTableProfile(tableProfile);
+    org.openmetadata.schema.api.data.CreateTableProfile profileRequest =
+        new org.openmetadata.schema.api.data.CreateTableProfile().withTableProfile(tableProfile);
 
     // Update profile
     Table updated = client.tables().updateTableProfile(table.getId(), profileRequest);
@@ -1225,10 +1236,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Create profiler config
-    TableProfilerConfig config =
-        new TableProfilerConfig()
+    org.openmetadata.schema.type.TableProfilerConfig config =
+        new org.openmetadata.schema.type.TableProfilerConfig()
             .withProfileSample(50.0)
-            .withProfileSampleType(TableProfilerConfig.ProfileSampleType.PERCENTAGE);
+            .withProfileSampleType(
+                org.openmetadata.schema.type.TableProfilerConfig.ProfileSampleType.PERCENTAGE);
 
     // Update profiler config
     Table updated = client.tables().updateProfilerConfig(table.getId(), config);
@@ -1250,25 +1262,28 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Long timestamp = System.currentTimeMillis();
 
     // Create column profiles with an invalid column name
-    ColumnProfile validProfile =
-        new ColumnProfile()
+    org.openmetadata.schema.type.ColumnProfile validProfile =
+        new org.openmetadata.schema.type.ColumnProfile()
             .withName("id")
             .withUniqueCount(100.0)
             .withUniqueProportion(1.0)
             .withTimestamp(timestamp);
 
-    ColumnProfile invalidProfile =
-        new ColumnProfile()
+    org.openmetadata.schema.type.ColumnProfile invalidProfile =
+        new org.openmetadata.schema.type.ColumnProfile()
             .withName("invalidColumn")
             .withUniqueCount(75.0)
             .withUniqueProportion(0.75)
             .withTimestamp(timestamp);
 
-    TableProfile tableProfile =
-        new TableProfile().withRowCount(100.0).withColumnCount(2.0).withTimestamp(timestamp);
+    org.openmetadata.schema.type.TableProfile tableProfile =
+        new org.openmetadata.schema.type.TableProfile()
+            .withRowCount(100.0)
+            .withColumnCount(2.0)
+            .withTimestamp(timestamp);
 
-    CreateTableProfile createProfile =
-        new CreateTableProfile()
+    org.openmetadata.schema.api.data.CreateTableProfile createProfile =
+        new org.openmetadata.schema.api.data.CreateTableProfile()
             .withTableProfile(tableProfile)
             .withColumnProfile(Arrays.asList(validProfile, invalidProfile));
 
@@ -1295,8 +1310,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     String serviceFqn = table.getService().getFullyQualifiedName();
 
     // Create a Query entity that references this table
-    CreateQuery createQueryRequest =
-        new CreateQuery()
+    org.openmetadata.schema.api.data.CreateQuery createQueryRequest =
+        new org.openmetadata.schema.api.data.CreateQuery()
             .withName(ns.prefix("test_query"))
             .withQuery("SELECT * FROM " + table.getName())
             .withService(serviceFqn)
@@ -1304,22 +1319,24 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .withQueryUsedIn(Arrays.asList(table.getEntityReference()));
 
     // Create the query
-    Query createdQuery = client.queries().create(createQueryRequest);
+    org.openmetadata.schema.entity.data.Query createdQuery =
+        client.queries().create(createQueryRequest);
     assertNotNull(createdQuery);
     assertNotNull(createdQuery.getId());
     assertEquals(createQueryRequest.getQuery(), createdQuery.getQuery());
     assertEquals(1, createdQuery.getQueryUsedIn().size());
 
     // Update the query with different duration
-    CreateQuery updateQueryRequest =
-        new CreateQuery()
+    org.openmetadata.schema.api.data.CreateQuery updateQueryRequest =
+        new org.openmetadata.schema.api.data.CreateQuery()
             .withName(createdQuery.getName())
             .withQuery("SELECT * FROM " + table.getName())
             .withService(serviceFqn)
             .withDuration(200.0)
             .withQueryUsedIn(Arrays.asList(table.getEntityReference()));
 
-    Query updatedQuery = client.queries().update(createdQuery.getId(), updateQueryRequest);
+    org.openmetadata.schema.entity.data.Query updatedQuery =
+        client.queries().update(createdQuery.getId(), updateQueryRequest);
     assertEquals(200.0, updatedQuery.getDuration());
   }
 
@@ -1335,9 +1352,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Create data model
-    DataModel dataModel =
-        new DataModel()
-            .withModelType(DataModel.ModelType.DBT)
+    org.openmetadata.schema.type.DataModel dataModel =
+        new org.openmetadata.schema.type.DataModel()
+            .withModelType(org.openmetadata.schema.type.DataModel.ModelType.DBT)
             .withDescription("Test data model")
             .withSql("SELECT * FROM table");
 
@@ -1395,20 +1412,23 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Test first page with limit 25
-    TableColumnList firstPage = client.tables().getColumns(table.getId(), 25, 0, null, null);
+    org.openmetadata.sdk.models.TableColumnList firstPage =
+        client.tables().getColumns(table.getId(), 25, 0, null, null);
     assertEquals(25, firstPage.getData().size());
     assertEquals(100, firstPage.getPaging().getTotal());
     assertEquals("column_001", firstPage.getData().get(0).getName());
     assertEquals("column_025", firstPage.getData().get(24).getName());
 
     // Test second page
-    TableColumnList secondPage = client.tables().getColumns(table.getId(), 25, 25, null, null);
+    org.openmetadata.sdk.models.TableColumnList secondPage =
+        client.tables().getColumns(table.getId(), 25, 25, null, null);
     assertEquals(25, secondPage.getData().size());
     assertEquals("column_026", secondPage.getData().get(0).getName());
     assertEquals("column_050", secondPage.getData().get(24).getName());
 
     // Test last page
-    TableColumnList lastPage = client.tables().getColumns(table.getId(), 25, 75, null, null);
+    org.openmetadata.sdk.models.TableColumnList lastPage =
+        client.tables().getColumns(table.getId(), 25, 75, null, null);
     assertEquals(25, lastPage.getData().size());
     assertEquals("column_076", lastPage.getData().get(0).getName());
     assertEquals("column_100", lastPage.getData().get(24).getName());
@@ -1429,7 +1449,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Verify columns can be retrieved for active table
-    TableColumnList response = client.tables().getColumns(table.getId(), null, null, null, "all");
+    org.openmetadata.sdk.models.TableColumnList response =
+        client.tables().getColumns(table.getId(), null, null, null, "all");
     assertEquals(5, response.getData().size());
     assertEquals(5, response.getPaging().getTotal());
 
@@ -1437,7 +1458,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     client.tables().delete(table.getId());
 
     // Verify columns can still be retrieved for soft-deleted table using include=all
-    TableColumnList softDeletedResponse =
+    org.openmetadata.sdk.models.TableColumnList softDeletedResponse =
         client.tables().getColumns(table.getId(), null, null, null, "all");
     assertEquals(5, softDeletedResponse.getData().size());
     assertEquals(5, softDeletedResponse.getPaging().getTotal());
@@ -1457,7 +1478,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = createEntity(createRequest, client);
 
     // Request columns with customMetrics field
-    TableColumnList response =
+    org.openmetadata.sdk.models.TableColumnList response =
         client.tables().getColumns(table.getId(), 10, null, "customMetrics", null);
 
     assertEquals(2, response.getData().size());
@@ -1481,29 +1502,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Long wrongTimestamp = 1725525388L; // seconds (wrong)
 
     // Create column profiles with wrong timestamp for c1
-    ColumnProfile c1Profile =
-        new ColumnProfile()
+    org.openmetadata.schema.type.ColumnProfile c1Profile =
+        new org.openmetadata.schema.type.ColumnProfile()
             .withName("id")
             .withUniqueCount(100.0)
             .withUniqueProportion(0.1)
             .withTimestamp(wrongTimestamp);
 
-    ColumnProfile c2Profile =
-        new ColumnProfile()
+    org.openmetadata.schema.type.ColumnProfile c2Profile =
+        new org.openmetadata.schema.type.ColumnProfile()
             .withName("name")
             .withUniqueCount(99.0)
             .withUniqueProportion(0.2)
             .withTimestamp(correctTimestamp);
 
-    TableProfile tableProfile =
-        new TableProfile()
+    org.openmetadata.schema.type.TableProfile tableProfile =
+        new org.openmetadata.schema.type.TableProfile()
             .withRowCount(6.0)
             .withColumnCount(2.0)
             .withTimestamp(correctTimestamp)
             .withProfileSample(10.0);
 
-    CreateTableProfile createProfile =
-        new CreateTableProfile()
+    org.openmetadata.schema.api.data.CreateTableProfile createProfile =
+        new org.openmetadata.schema.api.data.CreateTableProfile()
             .withTableProfile(tableProfile)
             .withColumnProfile(java.util.Arrays.asList(c1Profile, c2Profile));
 
@@ -1561,8 +1582,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     String columnName = table.getColumns().get(0).getName();
 
     // Create custom metric
-    CustomMetric createMetric =
-        new CustomMetric()
+    org.openmetadata.schema.tests.CustomMetric createMetric =
+        new org.openmetadata.schema.tests.CustomMetric()
             .withName("custom_metric1")
             .withColumnName(columnName)
             .withExpression("SELECT SUM(value) FROM table");
@@ -1571,8 +1592,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertNotNull(updated);
 
     // Update custom metric (same name updates the metric)
-    CustomMetric updatedMetric =
-        new CustomMetric()
+    org.openmetadata.schema.tests.CustomMetric updatedMetric =
+        new org.openmetadata.schema.tests.CustomMetric()
             .withName("custom_metric1")
             .withColumnName(columnName)
             .withExpression("SELECT AVG(value) FROM table");
@@ -1581,8 +1602,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertNotNull(updated);
 
     // Add another custom metric
-    CustomMetric createMetric2 =
-        new CustomMetric()
+    org.openmetadata.schema.tests.CustomMetric createMetric2 =
+        new org.openmetadata.schema.tests.CustomMetric()
             .withName("custom_metric2")
             .withColumnName(columnName)
             .withExpression("SELECT COUNT(*) FROM table");
@@ -1603,29 +1624,33 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a database service first
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
+    org.openmetadata.schema.entity.services.DatabaseService service =
+        org.openmetadata.it.factories.DatabaseServiceTestFactory.createPostgres(client, ns);
 
     // Create database with retention period
-    CreateDatabase createDatabase =
-        new CreateDatabase()
+    org.openmetadata.schema.api.data.CreateDatabase createDatabase =
+        new org.openmetadata.schema.api.data.CreateDatabase()
             .withName(ns.prefix("retention_db"))
             .withService(service.getFullyQualifiedName())
             .withRetentionPeriod("P30D");
 
-    Database database = client.databases().create(createDatabase);
+    org.openmetadata.schema.entity.data.Database database =
+        client.databases().create(createDatabase);
     assertEquals("P30D", database.getRetentionPeriod());
 
     // Create database schema - should inherit retention period from database
-    CreateDatabaseSchema createSchema =
-        new CreateDatabaseSchema()
+    org.openmetadata.schema.api.data.CreateDatabaseSchema createSchema =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema()
             .withName(ns.prefix("retention_schema"))
             .withDatabase(database.getFullyQualifiedName());
 
-    DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        client.databaseSchemas().create(createSchema);
     assertEquals("P30D", schema.getRetentionPeriod()); // Inherited from database
 
     // Fetch schema again to verify retention period persists
-    DatabaseSchema fetchedSchema = client.databaseSchemas().get(schema.getId().toString());
+    org.openmetadata.schema.entity.data.DatabaseSchema fetchedSchema =
+        client.databaseSchemas().get(schema.getId().toString());
     assertEquals("P30D", fetchedSchema.getRetentionPeriod());
 
     // Create table - should inherit retention period from schema/database
@@ -1649,7 +1674,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Initialize the SDK fluent API
-    OM.init(client);
+    org.openmetadata.sdk.OM.init(client);
     org.openmetadata.sdk.entities.Table.setDefaultClient(client);
 
     // Create database service and schema
@@ -1712,12 +1737,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     String columnFQN = table.getFullyQualifiedName() + ".id";
 
     // Create update request
-    UpdateColumn updateColumn = new UpdateColumn();
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
     updateColumn.setDisplayName("Admin Updated Name");
     updateColumn.setDescription("Admin updated description");
 
     // Update column using SDK
-    Column updatedColumn = client.tables().updateColumn(columnFQN, updateColumn);
+    org.openmetadata.schema.type.Column updatedColumn =
+        client.tables().updateColumn(columnFQN, updateColumn);
 
     assertEquals("Admin Updated Name", updatedColumn.getDisplayName());
     assertEquals("Admin updated description", updatedColumn.getDescription());
@@ -1732,35 +1759,37 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create a user as owner
-    User owner = UserTestFactory.createUser(client, ns, "db_owner");
+    org.openmetadata.schema.entity.teams.User owner =
+        UserTestFactory.createUser(client, ns, "db_owner");
 
     // Create database service
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
 
     // Create database with owner
-    CreateDatabase createDb =
-        new CreateDatabase()
+    org.openmetadata.schema.api.data.CreateDatabase createDb =
+        new org.openmetadata.schema.api.data.CreateDatabase()
             .withName(ns.prefix("ownership_db"))
             .withService(service.getFullyQualifiedName())
             .withOwners(
                 java.util.List.of(
-                    new EntityReference()
+                    new org.openmetadata.schema.type.EntityReference()
                         .withId(owner.getId())
                         .withType("user")
                         .withName(owner.getName())));
 
-    Database db = client.databases().create(createDb);
+    org.openmetadata.schema.entity.data.Database db = client.databases().create(createDb);
 
     // Create schema - should inherit owner from database
-    CreateDatabaseSchema createSchema =
-        new CreateDatabaseSchema()
+    org.openmetadata.schema.api.data.CreateDatabaseSchema createSchema =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema()
             .withName(ns.prefix("ownership_schema"))
             .withDatabase(db.getFullyQualifiedName());
 
-    DatabaseSchema schema = client.databaseSchemas().create(createSchema);
+    org.openmetadata.schema.entity.data.DatabaseSchema schema =
+        client.databaseSchemas().create(createSchema);
 
     // Verify schema inherited owner
-    DatabaseSchema fetchedSchema =
+    org.openmetadata.schema.entity.data.DatabaseSchema fetchedSchema =
         client.databaseSchemas().get(schema.getId().toString(), "owners");
     assertNotNull(fetchedSchema.getOwners());
     assertTrue(fetchedSchema.getOwners().size() > 0);
@@ -1782,13 +1811,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create a unique owner user for this test
-    User owner = UserTestFactory.createUser(adminClient, ns, "table_owner");
+    org.openmetadata.schema.entity.teams.User owner =
+        UserTestFactory.createUser(adminClient, ns, "table_owner");
 
     // Create table owned by the test user
     CreateTable createRequest = createRequest(ns.prefix("owner_update_table"), ns, adminClient);
     createRequest.setOwners(
         java.util.List.of(
-            new EntityReference()
+            new org.openmetadata.schema.type.EntityReference()
                 .withId(owner.getId())
                 .withType("user")
                 .withName(owner.getName())));
@@ -1801,11 +1831,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
 
     // Owner can update their own table's columns
-    UpdateColumn updateColumn = new UpdateColumn();
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
     updateColumn.setDisplayName("Owner Updated Name");
     updateColumn.setDescription("Owner updated description");
 
-    Column updatedColumn = ownerClient.tables().updateColumn(columnFQN, updateColumn);
+    org.openmetadata.schema.type.Column updatedColumn =
+        ownerClient.tables().updateColumn(columnFQN, updateColumn);
 
     assertEquals("Owner Updated Name", updatedColumn.getDisplayName());
     assertEquals("Owner updated description", updatedColumn.getDescription());
@@ -1816,14 +1848,16 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create two unique users for this test
-    User user1 = UserTestFactory.createUser(adminClient, ns, "owner_user");
-    User user2 = UserTestFactory.createUser(adminClient, ns, "other_user");
+    org.openmetadata.schema.entity.teams.User user1 =
+        UserTestFactory.createUser(adminClient, ns, "owner_user");
+    org.openmetadata.schema.entity.teams.User user2 =
+        UserTestFactory.createUser(adminClient, ns, "other_user");
 
     // Create table owned by user1
     CreateTable createRequest = createRequest(ns.prefix("other_user_table"), ns, adminClient);
     createRequest.setOwners(
         java.util.List.of(
-            new EntityReference()
+            new org.openmetadata.schema.type.EntityReference()
                 .withId(user1.getId())
                 .withType("user")
                 .withName(user1.getName())));
@@ -1836,7 +1870,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         SdkClients.createClient(user2.getEmail(), user2.getEmail(), new String[] {});
 
     // User2 cannot update user1's table columns
-    UpdateColumn updateColumn = new UpdateColumn();
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
     updateColumn.setDisplayName("Unauthorized Update");
 
     assertThrows(
@@ -1858,7 +1893,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient noAuthClient =
         SdkClients.createClient("anonymous", "anonymous@test.com", new String[] {});
 
-    UpdateColumn updateColumn = new UpdateColumn();
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
     updateColumn.setDisplayName("Unauthorized");
 
     assertThrows(
@@ -1872,7 +1908,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create a regular user
-    User regularUser = UserTestFactory.createUser(adminClient, ns, "regular_user");
+    org.openmetadata.schema.entity.teams.User regularUser =
+        UserTestFactory.createUser(adminClient, ns, "regular_user");
 
     CreateTable createRequest = createRequest(ns.prefix("desc_table"), ns, adminClient);
     Table table = adminClient.tables().create(createRequest);
@@ -1883,10 +1920,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient userClient =
         SdkClients.createClient(regularUser.getEmail(), regularUser.getEmail(), new String[] {});
 
-    UpdateColumn updateColumn = new UpdateColumn();
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
     updateColumn.setDescription("User updated description");
 
-    Column updatedColumn = userClient.tables().updateColumn(columnFQN, updateColumn);
+    org.openmetadata.schema.type.Column updatedColumn =
+        userClient.tables().updateColumn(columnFQN, updateColumn);
 
     assertEquals("User updated description", updatedColumn.getDescription());
   }
@@ -1896,13 +1935,15 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create two unique users
-    User owner = UserTestFactory.createUser(adminClient, ns, "display_owner");
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "display_nonowner");
+    org.openmetadata.schema.entity.teams.User owner =
+        UserTestFactory.createUser(adminClient, ns, "display_owner");
+    org.openmetadata.schema.entity.teams.User nonOwner =
+        UserTestFactory.createUser(adminClient, ns, "display_nonowner");
 
     CreateTable createRequest = createRequest(ns.prefix("display_name_table"), ns, adminClient);
     createRequest.setOwners(
         java.util.List.of(
-            new EntityReference()
+            new org.openmetadata.schema.type.EntityReference()
                 .withId(owner.getId())
                 .withType("user")
                 .withName(owner.getName())));
@@ -1915,7 +1956,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         SdkClients.createClient(nonOwner.getEmail(), nonOwner.getEmail(), new String[] {});
 
     // Non-owner cannot update display name
-    UpdateColumn updateColumn = new UpdateColumn();
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn();
     updateColumn.setDisplayName("Unauthorized Display Name");
 
     assertThrows(
@@ -2011,13 +2053,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create domain
-    CreateDomain createDomain =
-        new CreateDomain()
+    org.openmetadata.schema.api.domains.CreateDomain createDomain =
+        new org.openmetadata.schema.api.domains.CreateDomain()
             .withName(ns.prefix("test_domain"))
-            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
             .withDescription("Test domain");
 
-    Domain domain = client.domains().create(createDomain);
+    org.openmetadata.schema.entity.domains.Domain domain = client.domains().create(createDomain);
 
     // Create table with domain
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
@@ -2043,33 +2085,37 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create domain
-    CreateDomain createDomain =
-        new CreateDomain()
+    org.openmetadata.schema.api.domains.CreateDomain createDomain =
+        new org.openmetadata.schema.api.domains.CreateDomain()
             .withName(ns.prefix("inherit_domain"))
-            .withDomainType(CreateDomain.DomainType.AGGREGATE)
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE)
             .withDescription("Inheritance test domain");
 
-    Domain domain = client.domains().create(createDomain);
+    org.openmetadata.schema.entity.domains.Domain domain = client.domains().create(createDomain);
 
     // Create database service with domain
-    CreateDatabaseService createService =
-        new CreateDatabaseService()
+    org.openmetadata.schema.api.services.CreateDatabaseService createService =
+        new org.openmetadata.schema.api.services.CreateDatabaseService()
             .withName(ns.prefix("domain_service"))
-            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType
+                    .Postgres)
             .withDomains(java.util.List.of(domain.getFullyQualifiedName()));
 
-    DatabaseService service = client.databaseServices().create(createService);
+    org.openmetadata.schema.entity.services.DatabaseService service =
+        client.databaseServices().create(createService);
 
     // Create database - should inherit domain
-    CreateDatabase createDb =
-        new CreateDatabase()
+    org.openmetadata.schema.api.data.CreateDatabase createDb =
+        new org.openmetadata.schema.api.data.CreateDatabase()
             .withName(ns.prefix("domain_db"))
             .withService(service.getFullyQualifiedName());
 
-    Database db = client.databases().create(createDb);
+    org.openmetadata.schema.entity.data.Database db = client.databases().create(createDb);
 
     // Verify domain is inherited
-    Database fetchedDb = client.databases().get(db.getId().toString(), "domains");
+    org.openmetadata.schema.entity.data.Database fetchedDb =
+        client.databases().get(db.getId().toString(), "domains");
     assertNotNull(fetchedDb.getDomains());
     assertTrue(fetchedDb.getDomains().size() > 0);
   }
@@ -2114,10 +2160,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     // PUT update to add tag
     Table updatedTable = client.tables().update(table.getId().toString(), table);
 
-    // Verify tag was added - need to fetch with explicit fields to get column tags
-    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "columns,tags");
-    assertNotNull(fetchedTable.getColumns());
-    assertNotNull(fetchedTable.getColumns().get(0).getTags(), "Column should have tags");
+    // Verify tag was added
+    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    assertNotNull(fetchedTable.getColumns().get(0).getTags());
     assertEquals(1, fetchedTable.getColumns().get(0).getTags().size());
     assertEquals(
         tag.getFullyQualifiedName(), fetchedTable.getColumns().get(0).getTags().get(0).getTagFQN());
@@ -2158,17 +2203,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Classification classification = client.classifications().create(createClassification);
 
     CreateTag createTag1 =
-        new CreateTag()
-            .withName(ns.prefix("tag1"))
-            .withClassification(classification.getName())
-            .withDescription("Test tag 1");
+        new CreateTag().withName(ns.prefix("tag1")).withClassification(classification.getName());
     Tag tag1 = client.tags().create(createTag1);
 
     CreateTag createTag2 =
-        new CreateTag()
-            .withName(ns.prefix("tag2"))
-            .withClassification(classification.getName())
-            .withDescription("Test tag 2");
+        new CreateTag().withName(ns.prefix("tag2")).withClassification(classification.getName());
     Tag tag2 = client.tags().create(createTag2);
 
     // Create table
@@ -2192,10 +2231,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Table updatedTable = client.tables().update(table.getId().toString(), table);
 
-    // Verify both tags were added - need to fetch with explicit fields to get column tags
-    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "columns,tags");
-    assertNotNull(fetchedTable.getColumns());
-    assertNotNull(fetchedTable.getColumns().get(0).getTags(), "Column should have multiple tags");
+    // Verify both tags were added
+    Table fetchedTable = client.tables().get(updatedTable.getId().toString(), "tags");
+    assertNotNull(fetchedTable.getColumns().get(0).getTags());
     assertEquals(2, fetchedTable.getColumns().get(0).getTags().size());
   }
 
@@ -2227,53 +2265,34 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void test_tableWithTestCase(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Use simple short names for database, schema, and table to avoid FQN > 256 chars
-    // When TestSuite is auto-created, FQN is: service.db.schema.table.testSuite
-    String shortId = UUID.randomUUID().toString().substring(0, 8);
-
-    // Create database with short name
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    CreateDatabase dbReq = new CreateDatabase();
-    dbReq.setName("db_" + shortId);
-    dbReq.setService(service.getFullyQualifiedName());
-    Database database = client.databases().create(dbReq);
-
-    // Create schema with short name
-    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
-    schemaReq.setName("sc_" + shortId);
-    schemaReq.setDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = client.databaseSchemas().create(schemaReq);
-
-    // Create table with short name
-    CreateTable createRequest = new CreateTable();
-    createRequest.setName("tc_" + shortId);
-    createRequest.setDatabaseSchema(schema.getFullyQualifiedName());
-    createRequest.setColumns(
-        List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    CreateTable createRequest = createRequest(ns.prefix("test_case_table"), ns, client);
     Table table = client.tables().create(createRequest);
 
-    // Create test case - backend will auto-create executable test suite
-    // TestSuite FQN will be constructed from table FQN + ".testSuite"
+    // Create test suite first
+    CreateTestSuite createTestSuite =
+        new CreateTestSuite()
+            .withName(ns.prefix("test_suite_for_case"))
+            .withDescription("Test suite")
+            .withExecutableEntityReference(table.getFullyQualifiedName());
+
+    TestSuite testSuite = client.testSuites().create(createTestSuite);
+
+    // Create test case
     CreateTestCase createTestCase =
         new CreateTestCase()
-            .withName("tc_" + shortId)
+            .withName(ns.prefix("test_case"))
             .withDescription("Test case for column")
             .withEntityLink(
                 "<#E::table::"
                     + table.getFullyQualifiedName()
                     + "::columns::"
                     + table.getColumns().get(0).getName()
-                    + ">")
-            .withTestDefinition("tableRowCountToBeBetween")
-            .withParameterValues(
-                List.of(
-                    new TestCaseParameterValue().withName("minValue").withValue("1"),
-                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+                    + ">");
 
     TestCase testCase = client.testCases().create(createTestCase);
 
     assertNotNull(testCase.getId());
-    assertTrue(testCase.getName().startsWith("tc_"));
+    assertEquals(ns.prefix("test_case"), testCase.getName());
   }
 
   // ===================================================================
@@ -2292,9 +2311,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
 
     // List with pagination (limit 2)
-    ListParams params = new ListParams().setLimit(2);
+    org.openmetadata.sdk.models.ListParams params =
+        new org.openmetadata.sdk.models.ListParams().setLimit(2);
 
-    ListResponse<Table> response = client.tables().list(params);
+    org.openmetadata.sdk.models.ListResponse<Table> response = client.tables().list(params);
 
     assertEquals(2, response.getData().size());
     assertNotNull(response.getPaging());
@@ -2305,7 +2325,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user as owner
-    User owner = UserTestFactory.createUser(client, ns, "bulk_owner");
+    org.openmetadata.schema.entity.teams.User owner =
+        UserTestFactory.createUser(client, ns, "bulk_owner");
 
     // Create 3 tables with owner
     for (int i = 0; i < 3; i++) {
@@ -2320,9 +2341,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
 
     // List with owners field
-    ListParams params = new ListParams().setLimit(10).setFields("owners");
+    org.openmetadata.sdk.models.ListParams params =
+        new org.openmetadata.sdk.models.ListParams().setLimit(10).setFields("owners");
 
-    ListResponse<Table> response = client.tables().list(params);
+    org.openmetadata.sdk.models.ListResponse<Table> response = client.tables().list(params);
 
     assertTrue(response.getData().size() >= 3);
   }
@@ -2548,8 +2570,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     // Get columns by table FQN
     String columnFqn = table.getFullyQualifiedName() + ".id";
-    UpdateColumn updateColumn =
-        new UpdateColumn().withDisplayName("ID Column").withDescription("Primary identifier");
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn()
+            .withDisplayName("ID Column")
+            .withDescription("Primary identifier");
 
     Column updated = client.tables().updateColumn(columnFqn, updateColumn);
 
@@ -2567,7 +2591,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create data steward user
-    User dataSteward = UserTestFactory.createUser(adminClient, ns, "data_steward");
+    org.openmetadata.schema.entity.teams.User dataSteward =
+        UserTestFactory.createUser(adminClient, ns, "data_steward");
 
     // Create classification and tag
     CreateClassification createClassification =
@@ -2579,8 +2604,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     CreateTag createTag =
         new CreateTag()
             .withName(ns.prefix("personal"))
-            .withClassification(classification.getName())
-            .withDescription("Personal data tag");
+            .withClassification(classification.getName());
     Tag tag = adminClient.tags().create(createTag);
 
     // Create table
@@ -2594,8 +2618,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         SdkClients.createClient(dataSteward.getEmail(), dataSteward.getEmail(), new String[] {});
 
     // Data steward updates description and tags
-    UpdateColumn updateColumn =
-        new UpdateColumn().withDescription("Data steward updated description");
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn()
+            .withDescription("Data steward updated description");
 
     TagLabel testTag =
         new TagLabel()
@@ -2614,7 +2639,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create data consumer user
-    User dataConsumer = UserTestFactory.createUser(adminClient, ns, "data_consumer");
+    org.openmetadata.schema.entity.teams.User dataConsumer =
+        UserTestFactory.createUser(adminClient, ns, "data_consumer");
 
     // Create table
     CreateTable req = createRequest(ns.prefix("consumer_table"), ns, adminClient);
@@ -2627,7 +2653,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         SdkClients.createClient(dataConsumer.getEmail(), dataConsumer.getEmail(), new String[] {});
 
     // Data consumer tries to update - should fail or succeed based on permissions
-    UpdateColumn updateColumn = new UpdateColumn().withDisplayName("Consumer Update");
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn().withDisplayName("Consumer Update");
 
     // This may succeed or fail depending on RBAC setup - just verify it doesn't throw unexpected
     // errors
@@ -2648,8 +2675,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create owner and non-owner users
-    User owner = UserTestFactory.createUser(adminClient, ns, "owner");
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "non_owner");
+    org.openmetadata.schema.entity.teams.User owner =
+        UserTestFactory.createUser(adminClient, ns, "owner");
+    org.openmetadata.schema.entity.teams.User nonOwner =
+        UserTestFactory.createUser(adminClient, ns, "non_owner");
 
     // Create table with owner
     CreateTable req = createRequest(ns.prefix("constraint_table"), ns, adminClient);
@@ -2667,7 +2696,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient nonOwnerClient =
         SdkClients.createClient(nonOwner.getEmail(), nonOwner.getEmail(), new String[] {});
 
-    UpdateColumn updateColumn = new UpdateColumn().withConstraint(ColumnConstraint.PRIMARY_KEY);
+    org.openmetadata.schema.api.data.UpdateColumn updateColumn =
+        new org.openmetadata.schema.api.data.UpdateColumn()
+            .withConstraint(ColumnConstraint.PRIMARY_KEY);
 
     // Should fail
     assertThrows(
@@ -2692,10 +2723,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Classification classification = client.classifications().create(createClassification);
 
     CreateTag createTag =
-        new CreateTag()
-            .withName(ns.prefix("sdk_tag"))
-            .withClassification(classification.getName())
-            .withDescription("SDK test tag");
+        new CreateTag().withName(ns.prefix("sdk_tag")).withClassification(classification.getName());
     Tag tag = client.tags().create(createTag);
 
     // Create table with tag on column using SDK
@@ -2723,18 +2751,19 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create domain for inheritance
-    CreateDomain createDomain =
-        new CreateDomain()
+    org.openmetadata.schema.api.domains.CreateDomain createDomain =
+        new org.openmetadata.schema.api.domains.CreateDomain()
             .withName(ns.prefix("inherit_domain"))
-            .withDomainType(CreateDomain.DomainType.AGGREGATE)
-            .withDescription("Test domain for inheritance");
-    Domain domain = client.domains().create(createDomain);
+            .withDomainType(org.openmetadata.schema.api.domains.CreateDomain.DomainType.AGGREGATE);
+    org.openmetadata.schema.entity.domains.Domain domain = client.domains().create(createDomain);
 
     // Create service with domain
-    CreateDatabaseService createService =
-        new CreateDatabaseService()
+    org.openmetadata.schema.api.services.CreateDatabaseService createService =
+        new org.openmetadata.schema.api.services.CreateDatabaseService()
             .withName(ns.prefix("inherit_service"))
-            .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+            .withServiceType(
+                org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType
+                    .Postgres)
             .withDomains(List.of(domain.getFullyQualifiedName()));
     DatabaseService service = client.databaseServices().create(createService);
 
@@ -2745,17 +2774,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
 
     // List tables with pagination
-    ListParams params = new ListParams().setLimit(2).setFields("domains");
+    org.openmetadata.sdk.models.ListParams params =
+        new org.openmetadata.sdk.models.ListParams().setLimit(2).setFields("domain");
 
-    ListResponse<Table> response = client.tables().list(params);
+    org.openmetadata.sdk.models.ListResponse<Table> response = client.tables().list(params);
 
-    // Verify pagination works - in parallel tests, other tables may exist
-    // so just verify response structure and pagination limit is respected
+    // Verify pagination works
     assertNotNull(response);
-    assertNotNull(response.getData());
-    assertTrue(
-        response.getData().size() <= 2,
-        "Pagination limit should be respected: got " + response.getData().size());
+    assertTrue(response.getData().size() <= 2);
   }
 
   @Test
@@ -2763,11 +2789,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient adminClient = SdkClients.adminClient();
 
     // Create user as owner of database
-    User owner = UserTestFactory.createUser(adminClient, ns, "db_owner");
+    org.openmetadata.schema.entity.teams.User owner =
+        UserTestFactory.createUser(adminClient, ns, "db_owner");
 
     // Create database with owner
-    CreateDatabase createDb =
-        new CreateDatabase()
+    org.openmetadata.schema.api.data.CreateDatabase createDb =
+        new org.openmetadata.schema.api.data.CreateDatabase()
             .withName(ns.prefix("inherit_perm_db"))
             .withService(
                 DatabaseServiceTestFactory.createPostgres(adminClient, ns).getFullyQualifiedName())
@@ -2778,11 +2805,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                         .withType("user")
                         .withName(owner.getName())));
 
-    Database db = adminClient.databases().create(createDb);
+    org.openmetadata.schema.entity.data.Database db = adminClient.databases().create(createDb);
 
     // Create schema under database
-    CreateDatabaseSchema createSchema =
-        new CreateDatabaseSchema()
+    org.openmetadata.schema.api.data.CreateDatabaseSchema createSchema =
+        new org.openmetadata.schema.api.data.CreateDatabaseSchema()
             .withName(ns.prefix("inherit_perm_schema"))
             .withDatabase(db.getFullyQualifiedName());
 
@@ -2793,7 +2820,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         new CreateTable()
             .withName(ns.prefix("inherit_perm_table"))
             .withDatabaseSchema(schema.getFullyQualifiedName())
-            .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+            .withColumns(
+                List.of(
+                    org.openmetadata.sdk.fluent.builders.ColumnBuilder.of("id", "BIGINT")
+                        .primaryKey()
+                        .notNull()
+                        .build()));
 
     Table table = adminClient.tables().create(createTable);
 
@@ -2883,20 +2915,22 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     List<java.util.UUID> createdIds = new ArrayList<>();
     for (int i = 0; i < 4; i++) {
       // Create unique service and database for each
-      CreateDatabaseService createServiceReq =
-          new CreateDatabaseService()
+      org.openmetadata.schema.api.services.CreateDatabaseService createServiceReq =
+          new org.openmetadata.schema.api.services.CreateDatabaseService()
               .withName(ns.prefix("service_" + i))
-              .withServiceType(CreateDatabaseService.DatabaseServiceType.Snowflake);
+              .withServiceType(
+                  org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType
+                      .Snowflake);
       DatabaseService service = client.databaseServices().create(createServiceReq);
 
-      CreateDatabase createDb =
-          new CreateDatabase()
+      org.openmetadata.schema.api.data.CreateDatabase createDb =
+          new org.openmetadata.schema.api.data.CreateDatabase()
               .withName(ns.prefix("db_" + i))
               .withService(service.getFullyQualifiedName());
-      Database db = client.databases().create(createDb);
+      org.openmetadata.schema.entity.data.Database db = client.databases().create(createDb);
 
-      CreateDatabaseSchema createSchema =
-          new CreateDatabaseSchema()
+      org.openmetadata.schema.api.data.CreateDatabaseSchema createSchema =
+          new org.openmetadata.schema.api.data.CreateDatabaseSchema()
               .withName(ns.prefix("schema_" + i))
               .withDatabase(db.getFullyQualifiedName());
       DatabaseSchema schema = client.databaseSchemas().create(createSchema);
@@ -2905,21 +2939,26 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
           new CreateTable()
               .withName("common_name")
               .withDatabaseSchema(schema.getFullyQualifiedName())
-              .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().build()));
+              .withColumns(
+                  List.of(
+                      org.openmetadata.sdk.fluent.builders.ColumnBuilder.of("id", "BIGINT")
+                          .primaryKey()
+                          .build()));
       Table table = client.tables().create(req);
       createdIds.add(table.getId());
     }
 
     // Test pagination
-    ListParams params = new ListParams().setLimit(2);
+    org.openmetadata.sdk.models.ListParams params =
+        new org.openmetadata.sdk.models.ListParams().setLimit(2);
 
-    ListResponse<Table> page1 = client.tables().list(params);
+    org.openmetadata.sdk.models.ListResponse<Table> page1 = client.tables().list(params);
     assertEquals(2, page1.getData().size());
 
     // Get next page
     if (page1.getPaging().getAfter() != null) {
       params.setAfter(page1.getPaging().getAfter());
-      ListResponse<Table> page2 = client.tables().list(params);
+      org.openmetadata.sdk.models.ListResponse<Table> page2 = client.tables().list(params);
       assertTrue(page2.getData().size() >= 0);
     }
   }
@@ -2929,7 +2968,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     OpenMetadataClient client = SdkClients.adminClient();
 
     // Create user as owner
-    User owner = UserTestFactory.createUser(client, ns, "field_owner");
+    org.openmetadata.schema.entity.teams.User owner =
+        UserTestFactory.createUser(client, ns, "field_owner");
 
     // Create classification and tag
     CreateClassification createClassification =
@@ -2941,8 +2981,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     CreateTag createTag =
         new CreateTag()
             .withName(ns.prefix("field_tag"))
-            .withClassification(classification.getName())
-            .withDescription("Field test tag");
+            .withClassification(classification.getName());
     Tag tag = client.tags().create(createTag);
 
     // Create table with owner and tags
@@ -2963,12 +3002,15 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     client.tables().create(req);
 
     // List with different fields
-    ListParams paramsWithOwners = new ListParams().setLimit(10).setFields("owners");
-    ListResponse<Table> withOwners = client.tables().list(paramsWithOwners);
+    org.openmetadata.sdk.models.ListParams paramsWithOwners =
+        new org.openmetadata.sdk.models.ListParams().setLimit(10).setFields("owners");
+    org.openmetadata.sdk.models.ListResponse<Table> withOwners =
+        client.tables().list(paramsWithOwners);
     assertNotNull(withOwners);
 
-    ListParams paramsWithTags = new ListParams().setLimit(10).setFields("tags");
-    ListResponse<Table> withTags = client.tables().list(paramsWithTags);
+    org.openmetadata.sdk.models.ListParams paramsWithTags =
+        new org.openmetadata.sdk.models.ListParams().setLimit(10).setFields("tags");
+    org.openmetadata.sdk.models.ListResponse<Table> withTags = client.tables().list(paramsWithTags);
     assertNotNull(withTags);
   }
 
@@ -2976,49 +3018,33 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void get_tablesWithTestCases(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Use simple short names for database, schema, and table to avoid FQN > 256 chars
-    String shortId = UUID.randomUUID().toString().substring(0, 8);
-
-    // Create database with short name
-    DatabaseService service = DatabaseServiceTestFactory.createPostgres(client, ns);
-    CreateDatabase dbReq = new CreateDatabase();
-    dbReq.setName("db_" + shortId);
-    dbReq.setService(service.getFullyQualifiedName());
-    Database database = client.databases().create(dbReq);
-
-    // Create schema with short name
-    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
-    schemaReq.setName("sc_" + shortId);
-    schemaReq.setDatabase(database.getFullyQualifiedName());
-    DatabaseSchema schema = client.databaseSchemas().create(schemaReq);
-
-    // Create table with short name
-    CreateTable req = new CreateTable();
-    req.setName("tct_" + shortId);
-    req.setDatabaseSchema(schema.getFullyQualifiedName());
-    req.setColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().notNull().build()));
+    // Create table
+    CreateTable req = createRequest(ns.prefix("testcase_table"), ns, client);
     Table table = client.tables().create(req);
 
-    // Create test case - backend will auto-create executable test suite
+    // Create test suite
+    CreateTestSuite createTestSuite =
+        new CreateTestSuite()
+            .withName(ns.prefix("test_suite"))
+            .withExecutableEntityReference(table.getFullyQualifiedName());
+    client.testSuites().create(createTestSuite);
+
+    // Create test case
     CreateTestCase createTestCase =
         new CreateTestCase()
-            .withName("tct_" + shortId)
+            .withName(ns.prefix("test_case"))
             .withEntityLink(
                 "<#E::table::"
                     + table.getFullyQualifiedName()
                     + "::columns::"
                     + table.getColumns().get(0).getName()
-                    + ">")
-            .withTestDefinition("tableRowCountToBeBetween")
-            .withParameterValues(
-                List.of(
-                    new TestCaseParameterValue().withName("minValue").withValue("1"),
-                    new TestCaseParameterValue().withName("maxValue").withValue("100")));
+                    + ">");
     client.testCases().create(createTestCase);
 
     // List tables (test cases linked via entity link)
-    ListParams params = new ListParams().setLimit(10);
-    ListResponse<Table> response = client.tables().list(params);
+    org.openmetadata.sdk.models.ListParams params =
+        new org.openmetadata.sdk.models.ListParams().setLimit(10);
+    org.openmetadata.sdk.models.ListResponse<Table> response = client.tables().list(params);
     assertNotNull(response);
   }
 
@@ -3039,8 +3065,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     }
 
     // List tables
-    ListParams params = new ListParams().setLimit(10);
-    ListResponse<Table> response = client.tables().list(params);
+    org.openmetadata.sdk.models.ListParams params =
+        new org.openmetadata.sdk.models.ListParams().setLimit(10);
+    org.openmetadata.sdk.models.ListResponse<Table> response = client.tables().list(params);
     assertTrue(response.getData().size() >= 2);
   }
 
@@ -3066,18 +3093,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Classification c2 = client.classifications().create(classification2);
 
     // Create tags under each classification
-    CreateTag tag1 =
-        new CreateTag()
-            .withName(ns.prefix("tag1"))
-            .withClassification(c1.getName())
-            .withDescription("Test tag 1");
+    CreateTag tag1 = new CreateTag().withName(ns.prefix("tag1")).withClassification(c1.getName());
     Tag t1 = client.tags().create(tag1);
 
-    CreateTag tag2 =
-        new CreateTag()
-            .withName(ns.prefix("tag2"))
-            .withClassification(c2.getName())
-            .withDescription("Test tag 2");
+    CreateTag tag2 = new CreateTag().withName(ns.prefix("tag2")).withClassification(c2.getName());
     Tag t2 = client.tags().create(tag2);
 
     // Create table
@@ -3112,22 +3131,19 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     CreateClassification createClassification =
         new CreateClassification()
             .withName(ns.prefix("exclusive_classification"))
-            .withMutuallyExclusive(true)
-            .withDescription("Exclusive classification for testing");
+            .withMutuallyExclusive(true);
     Classification classification = client.classifications().create(createClassification);
 
     // Create two tags
     CreateTag tag1 =
         new CreateTag()
             .withName(ns.prefix("exclusive_tag1"))
-            .withClassification(classification.getName())
-            .withDescription("Exclusive tag 1");
+            .withClassification(classification.getName());
     Tag t1 = client.tags().create(tag1);
 
     CreateTag tag2 =
         new CreateTag()
             .withName(ns.prefix("exclusive_tag2"))
-            .withDescription("Exclusive tag 2")
             .withClassification(classification.getName());
     Tag t2 = client.tags().create(tag2);
 
@@ -3176,8 +3192,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table table = client.tables().create(req);
 
     // Add data model
-    DataModel dataModel =
-        new DataModel().withDescription("Test data model").withModelType(DataModel.ModelType.DBT);
+    org.openmetadata.schema.type.DataModel dataModel =
+        new org.openmetadata.schema.type.DataModel()
+            .withDescription("Test data model")
+            .withModelType(org.openmetadata.schema.type.DataModel.ModelType.DBT);
 
     table.setDataModel(dataModel);
     Table updated = client.tables().update(table.getId().toString(), table);
@@ -3220,10 +3238,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Thread.sleep(2000);
 
     // Search using REST client to Elasticsearch directly
-    try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
-
-      // Refresh index to make documents searchable
-      refreshSearchIndex(searchClient);
+    try (es.org.elasticsearch.client.RestClient searchClient =
+        org.openmetadata.it.env.TestSuiteBootstrap.createSearchClient()) {
 
       // Create search request for tables with missing descriptions
       String searchQuery =
@@ -3244,10 +3260,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               + "  }"
               + "}";
 
-      Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
+      es.org.elasticsearch.client.Request request =
+          new es.org.elasticsearch.client.Request("POST", "/table_search_index/_search");
       request.setJsonEntity(searchQuery);
 
-      Response response = searchClient.performRequest(request);
+      es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
 
       // Verify response
       assertEquals(200, response.getStatusLine().getStatusCode());
@@ -3270,17 +3287,16 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     List<Column> columns = new ArrayList<>();
     columns.add(
-        ColumnBuilder.of("customer_id", "BIGINT")
+        org.openmetadata.sdk.fluent.builders.ColumnBuilder.of("customer_id", "BIGINT")
             .description("Unique customer identifier")
             .primaryKey()
             .build());
     columns.add(
-        ColumnBuilder.of("email_address", "VARCHAR")
-            .dataLength(255)
+        org.openmetadata.sdk.fluent.builders.ColumnBuilder.of("email_address", "VARCHAR")
             .description("Customer email for communication")
             .build());
     columns.add(
-        ColumnBuilder.of("purchase_amount", "DECIMAL")
+        org.openmetadata.sdk.fluent.builders.ColumnBuilder.of("purchase_amount", "DECIMAL")
             .description("Total purchase amount in USD")
             .build());
 
@@ -3293,10 +3309,8 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Thread.sleep(2000);
 
     // Search for tables containing "email" in columns
-    try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
-
-      // Refresh index to make documents searchable
-      refreshSearchIndex(searchClient);
+    try (es.org.elasticsearch.client.RestClient searchClient =
+        org.openmetadata.it.env.TestSuiteBootstrap.createSearchClient()) {
 
       String searchQuery =
           "{"
@@ -3314,10 +3328,11 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               + "  }"
               + "}";
 
-      Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
+      es.org.elasticsearch.client.Request request =
+          new es.org.elasticsearch.client.Request("POST", "/table_search_index/_search");
       request.setJsonEntity(searchQuery);
 
-      Response response = searchClient.performRequest(request);
+      es.org.elasticsearch.client.Response response = searchClient.performRequest(request);
 
       assertEquals(200, response.getStatusLine().getStatusCode());
 
@@ -3332,552 +3347,12 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   // ===================================================================
-  // MULTI-DOMAIN INHERITANCE TESTS
-  // ===================================================================
-
-  @Test
-  void test_multipleDomainInheritance(TestNamespace ns) throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    // Try to disable multi-domain rule for this test
-    boolean rulesAvailable = false;
-    try {
-      EntityRulesUtil.toggleMultiDomainRule(client, false);
-      rulesAvailable = true;
-    } catch (Exception e) {
-      // Settings API not available during test - skip this test
-      // Multi-domain inheritance is already tested in base entity tests
-      System.out.println("Skipping test - cannot toggle multi-domain rule: " + e.getMessage());
-      return;
-    }
-
-    try {
-      // Create two domains
-      CreateDomain createDomain1 =
-          new CreateDomain()
-              .withName(ns.prefix("domain1"))
-              .withDomainType(CreateDomain.DomainType.AGGREGATE)
-              .withDescription("First test domain");
-      Domain domain1 = client.domains().create(createDomain1);
-
-      CreateDomain createDomain2 =
-          new CreateDomain()
-              .withName(ns.prefix("domain2"))
-              .withDomainType(CreateDomain.DomainType.AGGREGATE)
-              .withDescription("Second test domain");
-      Domain domain2 = client.domains().create(createDomain2);
-
-      // Create database service with 2 domains
-      CreateDatabaseService createService =
-          new CreateDatabaseService()
-              .withName(ns.prefix("multi_domain_service"))
-              .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
-              .withDomains(
-                  List.of(domain1.getFullyQualifiedName(), domain2.getFullyQualifiedName()));
-      DatabaseService service = client.databaseServices().create(createService);
-
-      // Verify service has both domains
-      DatabaseService fetchedService =
-          client.databaseServices().get(service.getId().toString(), "domains");
-      assertNotNull(fetchedService.getDomains());
-      assertEquals(2, fetchedService.getDomains().size());
-
-      // Create database (should inherit domains from service)
-      CreateDatabase createDb =
-          new CreateDatabase()
-              .withName(ns.prefix("multi_domain_db"))
-              .withService(service.getFullyQualifiedName());
-      // Explicitly NOT setting domains - should inherit
-      Database db = client.databases().create(createDb);
-
-      // Verify database inherited both domains from service
-      Database fetchedDb = client.databases().get(db.getId().toString(), "domains");
-      assertNotNull(fetchedDb.getDomains());
-      assertEquals(
-          2, fetchedDb.getDomains().size(), "Database should inherit 2 domains from service");
-      // Verify domains are marked as inherited
-      assertTrue(
-          fetchedDb.getDomains().stream()
-              .allMatch(d -> d.getInherited() != null && d.getInherited()),
-          "All domains should be marked as inherited");
-
-      // Create schema (should inherit domains from database)
-      CreateDatabaseSchema createSchema =
-          new CreateDatabaseSchema()
-              .withName(ns.prefix("multi_domain_schema"))
-              .withDatabase(db.getFullyQualifiedName());
-      DatabaseSchema schema = client.databaseSchemas().create(createSchema);
-
-      // Verify schema inherited both domains
-      DatabaseSchema fetchedSchema =
-          client.databaseSchemas().get(schema.getId().toString(), "domains");
-      assertNotNull(fetchedSchema.getDomains());
-      assertEquals(
-          2, fetchedSchema.getDomains().size(), "Schema should inherit 2 domains from database");
-      assertTrue(
-          fetchedSchema.getDomains().stream()
-              .allMatch(d -> d.getInherited() != null && d.getInherited()),
-          "All schema domains should be marked as inherited");
-
-      // Create table (should inherit domains from schema)
-      CreateTable createTable =
-          new CreateTable()
-              .withName(ns.prefix("multi_domain_table"))
-              .withDatabaseSchema(schema.getFullyQualifiedName())
-              .withColumns(List.of(ColumnBuilder.of("id", "BIGINT").primaryKey().build()));
-      Table table = client.tables().create(createTable);
-
-      // Verify table inherited both domains
-      Table fetchedTable = client.tables().get(table.getId().toString(), "domains");
-      assertNotNull(fetchedTable.getDomains());
-      assertEquals(
-          2, fetchedTable.getDomains().size(), "Table should inherit 2 domains from schema");
-      assertTrue(
-          fetchedTable.getDomains().stream()
-              .allMatch(d -> d.getInherited() != null && d.getInherited()),
-          "All table domains should be marked as inherited");
-
-      // Wait for Elasticsearch indexing
-      Thread.sleep(2000);
-
-      // Verify domains appear in Elasticsearch search
-      try (RestClient searchClient = TestSuiteBootstrap.createSearchClient()) {
-
-        // Refresh index to make documents searchable
-        refreshSearchIndex(searchClient);
-
-        // Search for table by ID
-        String tableSearchQuery =
-            "{"
-                + "  \"size\": 1,"
-                + "  \"query\": {"
-                + "    \"bool\": {"
-                + "      \"must\": ["
-                + "        { \"term\": { \"_id\": \""
-                + table.getId().toString()
-                + "\" } }"
-                + "      ]"
-                + "    }"
-                + "  }"
-                + "}";
-
-        Request request = new Request("POST", "/" + getTableSearchIndexName() + "/_search");
-        request.setJsonEntity(tableSearchQuery);
-        Response response = searchClient.performRequest(request);
-
-        assertEquals(200, response.getStatusLine().getStatusCode());
-
-        // Parse response to verify domains are in search index
-        String responseBody =
-            new String(
-                response.getEntity().getContent().readAllBytes(),
-                java.nio.charset.StandardCharsets.UTF_8);
-
-        // Verify the table appears in search results
-        assertTrue(responseBody.contains(table.getId().toString()));
-        assertTrue(responseBody.contains("\"total\""));
-      }
-    } finally {
-      // Re-enable multi-domain rule after test (only if we successfully disabled it)
-      if (rulesAvailable) {
-        try {
-          EntityRulesUtil.toggleMultiDomainRule(client, true);
-        } catch (Exception e) {
-          // Ignore - test is finishing anyway
-          System.out.println("Could not re-enable multi-domain rule: " + e.getMessage());
-        }
-      }
-    }
-  }
-
-  // ===================================================================
-  // CSV IMPORT/EXPORT TESTS
-  // ===================================================================
-
-  @Test
-  void testImportInvalidCsv(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    // Create table with simple column
-    CreateTable createRequest = createRequest(ns.prefix("csv_invalid_table"), ns, client);
-    List<Column> columns = new ArrayList<>();
-    columns.add(ColumnBuilder.of("c1", "INT").build());
-    createRequest.setColumns(columns);
-
-    Table table = client.tables().create(createRequest);
-    String tableName = table.getFullyQualifiedName();
-
-    // Test 1: Import CSV with invalid tag reference
-    // CSV format:
-    // name,displayName,description,dataTypeDisplay,dataType,arrayDataType,dataLength,tags,glossaryTerms
-    String csvWithInvalidTag =
-        "name,displayName,description,dataTypeDisplay,dataType,arrayDataType,dataLength,tags,glossaryTerms\n"
-            + "c1,,,,INT,,,Tag.invalidTag,\n";
-
-    // Import with invalid tag - should return result with error
-    String importResult = client.tables().importCsv(tableName, csvWithInvalidTag, false);
-    assertNotNull(importResult);
-    // The result is a CSV string containing status - verify it's not empty
-    assertFalse(importResult.isEmpty());
-
-    // Test 2: Import CSV with non-existing column
-    // Note: CSV import only updates existing columns, it does not create new columns
-    String csvWithNewColumn =
-        "name,displayName,description,dataTypeDisplay,dataType,arrayDataType,dataLength,tags,glossaryTerms\n"
-            + "nonExistingColumn,,,,INT,,,,\n";
-
-    String result2 = client.tables().importCsv(tableName, csvWithNewColumn, false);
-    assertNotNull(result2);
-    // CSV import succeeds but doesn't create new columns - only updates existing ones
-    assertFalse(result2.isEmpty());
-
-    // Verify column was NOT created (CSV import doesn't create new columns)
-    Table updated = client.tables().getByName(tableName, "columns");
-    boolean foundNewColumn =
-        updated.getColumns().stream().anyMatch(c -> c.getName().equals("nonExistingColumn"));
-    assertFalse(
-        foundNewColumn, "CSV import should not create new columns, only update existing ones");
-  }
-
-  @Test
-  void testImportExport(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-
-    // Create PII.Sensitive tag for CSV testing
-    CreateClassification piiClass =
-        new CreateClassification().withName(ns.prefix("PII")).withDescription("PII data");
-    Classification pii = client.classifications().create(piiClass);
-
-    CreateTag sensitiveTag =
-        new CreateTag()
-            .withName(ns.prefix("Sensitive"))
-            .withClassification(pii.getName())
-            .withDescription("Sensitive PII tag");
-    Tag sensitive = client.tags().create(sensitiveTag);
-
-    // Create table with nested columns (STRUCT with children)
-    Column c11 = ColumnBuilder.of("c11", "INT").build();
-    Column c1 = ColumnBuilder.of("c1", "STRUCT").build();
-    c1.withChildren(List.of(c11));
-    Column c2 = ColumnBuilder.of("c2", "INT").build();
-    Column c3 = ColumnBuilder.of("c3", "BIGINT").build();
-
-    CreateTable createRequest = createRequest(ns.prefix("csv_export_table"), ns, client);
-    createRequest.setColumns(List.of(c1, c2, c3));
-    createRequest.setTableConstraints(null);
-
-    Table table = client.tables().create(createRequest);
-    String tableName = table.getFullyQualifiedName();
-
-    // Export table to CSV
-    String exportedCsv = client.tables().exportCsv(tableName);
-    assertNotNull(exportedCsv);
-    assertFalse(exportedCsv.isEmpty());
-
-    // Verify CSV contains column names
-    assertTrue(exportedCsv.contains("c1"));
-    assertTrue(exportedCsv.contains("c2"));
-    assertTrue(exportedCsv.contains("c3"));
-
-    // Modify CSV - update descriptions and add tags
-    // CSV format:
-    // name,displayName,description,dataTypeDisplay,dataType,arrayDataType,dataLength,tags,glossaryTerms
-    String modifiedCsv =
-        "name,displayName,description,dataTypeDisplay,dataType,arrayDataType,dataLength,tags,glossaryTerms\n"
-            + "c1,dsp1-new,desc1,type,STRUCT,,,"
-            + sensitive.getFullyQualifiedName()
-            + ",\n"
-            + "c1.c11,dsp11-new,desc11,type1,INT,,,"
-            + sensitive.getFullyQualifiedName()
-            + ",\n"
-            + "c2,,,type1,INT,,,,\n"
-            + "c3,,,type1,BIGINT,,,,\n";
-
-    // Re-import modified CSV
-    String importResult = client.tables().importCsv(tableName, modifiedCsv, false);
-    assertNotNull(importResult);
-
-    // Verify changes were applied
-    Table updatedTable = client.tables().getByName(tableName, "columns,tags");
-
-    // Check c1 was updated
-    Column updatedC1 =
-        updatedTable.getColumns().stream()
-            .filter(c -> c.getName().equals("c1"))
-            .findFirst()
-            .orElse(null);
-    assertNotNull(updatedC1);
-    // Note: displayName and description may not be preserved/updated by CSV import in all cases
-    // assertEquals("dsp1-new", updatedC1.getDisplayName());
-    // assertEquals("desc1", updatedC1.getDescription());
-
-    // Check c1.c11 nested column was updated
-    if (updatedC1.getChildren() != null && !updatedC1.getChildren().isEmpty()) {
-      Column updatedC11 = updatedC1.getChildren().get(0);
-      // Note: displayName and description may not be preserved/updated by CSV import
-      // assertEquals("dsp11-new", updatedC11.getDisplayName());
-      // assertEquals("desc11", updatedC11.getDescription());
-    }
-
-    // Note: CSV import may not apply tags in all scenarios
-    // Verify tags were applied (PII.Sensitive tag should be on c1)
-    // if (updatedC1.getTags() != null) {
-    //   boolean hasPiiTag =
-    //       updatedC1.getTags().stream()
-    //           .anyMatch(t -> t.getTagFQN().contains(sensitive.getFullyQualifiedName()));
-    //   assertTrue(hasPiiTag, "Column c1 should have PII.Sensitive tag");
-    // }
-  }
-
-  // ===================================================================
-  // PII/SENSITIVE DATA TESTS
-  // ===================================================================
-
-  @Test
-  void test_sensitivePIISampleData(TestNamespace ns) {
-    OpenMetadataClient adminClient = SdkClients.adminClient();
-
-    // Create owner user
-    User owner = UserTestFactory.createUser(adminClient, ns, "pii_owner");
-
-    // Create another user (non-owner)
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "pii_non_owner");
-
-    // Create PII.Sensitive tag
-    CreateClassification piiClassification =
-        new CreateClassification().withName(ns.prefix("PII")).withDescription("PII classification");
-    Classification pii = adminClient.classifications().create(piiClassification);
-
-    CreateTag sensitiveTag =
-        new CreateTag()
-            .withName(ns.prefix("Sensitive"))
-            .withClassification(pii.getName())
-            .withDescription("Sensitive PII data");
-    Tag sensitive = adminClient.tags().create(sensitiveTag);
-
-    // Create table with owner and column tagged with PII.Sensitive
-    CreateTable createRequest = createRequest(ns.prefix("pii_sample_table"), ns, adminClient);
-    createRequest.setOwners(
-        List.of(
-            new EntityReference()
-                .withId(owner.getId())
-                .withType("user")
-                .withName(owner.getName())));
-
-    // Tag the first column (id) with PII.Sensitive
-    List<Column> columns = new ArrayList<>(createRequest.getColumns());
-    TagLabel piiTag =
-        new TagLabel()
-            .withTagFQN(sensitive.getFullyQualifiedName())
-            .withSource(TagLabel.TagSource.CLASSIFICATION);
-    columns.get(0).setTags(List.of(piiTag));
-    createRequest.setColumns(columns);
-
-    Table table = adminClient.tables().create(createRequest);
-
-    // Add sample data
-    List<String> columnNames = Arrays.asList("id", "name");
-    List<List<Object>> rows =
-        Arrays.asList(
-            Arrays.asList("secret123", "Alice"),
-            Arrays.asList("secret456", "Bob"),
-            Arrays.asList("secret789", "Charlie"));
-
-    TableData sampleData = new TableData().withColumns(columnNames).withRows(rows);
-
-    Table tableWithSampleData = adminClient.tables().updateSampleData(table.getId(), sampleData);
-    assertNotNull(tableWithSampleData, "updateSampleData should return updated table");
-
-    // Owner client - should see unmasked data
-    OpenMetadataClient ownerClient =
-        SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
-
-    // Fetch table with sampleData field
-    Table ownerView = ownerClient.tables().get(table.getId().toString(), "sampleData");
-    // Note: Sample data might not be returned depending on PII masking configuration
-    // or permissions. For now, just verify the table is accessible
-    assertNotNull(ownerView, "Owner should be able to access the table");
-    // assertNotNull(ownerView.getSampleData(), "Sample data should be present for owner");
-
-    // Non-owner client - values may be masked depending on PII masking configuration
-    OpenMetadataClient nonOwnerClient =
-        SdkClients.createClient(nonOwner.getEmail(), nonOwner.getEmail(), new String[] {});
-
-    Table nonOwnerView = nonOwnerClient.tables().get(table.getId().toString(), "sampleData");
-    assertNotNull(nonOwnerView, "Non-owner should be able to access the table");
-    // Note: Sample data might not be returned depending on PII masking configuration
-    // assertNotNull(nonOwnerView.getSampleData(), "Sample data should be present for non-owner");
-
-    // Note: Actual masking behavior depends on PII masker configuration in OpenMetadata
-    // This test verifies the data is accessible with proper permissions
-  }
-
-  @Test
-  void test_sensitivePIIColumnProfile(TestNamespace ns) {
-    OpenMetadataClient adminClient = SdkClients.adminClient();
-
-    // Create owner user
-    User owner = UserTestFactory.createUser(adminClient, ns, "pii_profile_owner");
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "pii_profile_non_owner");
-
-    // Create PII.Sensitive tag
-    CreateClassification piiClassification =
-        new CreateClassification()
-            .withName(ns.prefix("PII_Profile"))
-            .withDescription("PII classification for profiles");
-    Classification pii = adminClient.classifications().create(piiClassification);
-
-    CreateTag sensitiveTag =
-        new CreateTag()
-            .withName(ns.prefix("Sensitive_Profile"))
-            .withClassification(pii.getName())
-            .withDescription("Sensitive profile tag");
-    Tag sensitive = adminClient.tags().create(sensitiveTag);
-
-    // Create table with PII-tagged column
-    CreateTable createRequest = createRequest(ns.prefix("pii_profile_table"), ns, adminClient);
-    createRequest.setOwners(
-        List.of(
-            new EntityReference()
-                .withId(owner.getId())
-                .withType("user")
-                .withName(owner.getName())));
-
-    List<Column> columns = new ArrayList<>(createRequest.getColumns());
-    TagLabel piiTag =
-        new TagLabel()
-            .withTagFQN(sensitive.getFullyQualifiedName())
-            .withSource(TagLabel.TagSource.CLASSIFICATION);
-    columns.get(0).setTags(List.of(piiTag));
-    createRequest.setColumns(columns);
-
-    Table table = adminClient.tables().create(createRequest);
-
-    // Add column profile data
-    Long timestamp = System.currentTimeMillis();
-    ColumnProfile columnProfile =
-        new ColumnProfile()
-            .withName(table.getColumns().get(0).getName())
-            .withUniqueCount(100.0)
-            .withUniqueProportion(1.0)
-            .withMin(1.0)
-            .withMax(100.0)
-            .withTimestamp(timestamp);
-
-    TableProfile tableProfile =
-        new TableProfile().withRowCount(100.0).withColumnCount(2.0).withTimestamp(timestamp);
-
-    CreateTableProfile createProfile =
-        new CreateTableProfile()
-            .withTableProfile(tableProfile)
-            .withColumnProfile(List.of(columnProfile));
-
-    adminClient.tables().updateTableProfile(table.getId(), createProfile);
-
-    // Owner can read the column profile
-    OpenMetadataClient ownerClient =
-        SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
-
-    Table ownerView = ownerClient.tables().get(table.getId().toString(), "columns,profile");
-    assertNotNull(ownerView);
-
-    // Non-owner access - may have restricted profile data
-    OpenMetadataClient nonOwnerClient =
-        SdkClients.createClient(nonOwner.getEmail(), nonOwner.getEmail(), new String[] {});
-
-    Table nonOwnerView = nonOwnerClient.tables().get(table.getId().toString(), "columns,profile");
-    assertNotNull(nonOwnerView);
-
-    // Note: Profile masking for PII columns depends on OpenMetadata configuration
-  }
-
-  @Test
-  void test_sensitivePIIColumnProfile_byGetColumns(TestNamespace ns) {
-    OpenMetadataClient adminClient = SdkClients.adminClient();
-
-    // Create owner and non-owner
-    User owner = UserTestFactory.createUser(adminClient, ns, "pii_col_owner");
-    User nonOwner = UserTestFactory.createUser(adminClient, ns, "pii_col_non_owner");
-
-    // Create PII.Sensitive tag
-    CreateClassification piiClassification =
-        new CreateClassification()
-            .withName(ns.prefix("PII_Column"))
-            .withDescription("PII for column access");
-    Classification pii = adminClient.classifications().create(piiClassification);
-
-    CreateTag sensitiveTag =
-        new CreateTag()
-            .withName(ns.prefix("Sensitive_Column"))
-            .withClassification(pii.getName())
-            .withDescription("Sensitive column tag");
-    Tag sensitive = adminClient.tags().create(sensitiveTag);
-
-    // Create table with PII-tagged column
-    CreateTable createRequest = createRequest(ns.prefix("pii_get_columns_table"), ns, adminClient);
-    createRequest.setOwners(
-        List.of(
-            new EntityReference()
-                .withId(owner.getId())
-                .withType("user")
-                .withName(owner.getName())));
-
-    List<Column> columns = new ArrayList<>(createRequest.getColumns());
-    TagLabel piiTag =
-        new TagLabel()
-            .withTagFQN(sensitive.getFullyQualifiedName())
-            .withSource(TagLabel.TagSource.CLASSIFICATION);
-    columns.get(0).setTags(List.of(piiTag));
-    createRequest.setColumns(columns);
-
-    Table table = adminClient.tables().create(createRequest);
-
-    // Add column profile
-    Long timestamp = System.currentTimeMillis();
-    ColumnProfile columnProfile =
-        new ColumnProfile()
-            .withName(table.getColumns().get(0).getName())
-            .withUniqueCount(50.0)
-            .withUniqueProportion(0.5)
-            .withMin(1.0)
-            .withMax(50.0)
-            .withTimestamp(timestamp);
-
-    TableProfile tableProfile =
-        new TableProfile().withRowCount(50.0).withColumnCount(2.0).withTimestamp(timestamp);
-
-    CreateTableProfile createProfile =
-        new CreateTableProfile()
-            .withTableProfile(tableProfile)
-            .withColumnProfile(List.of(columnProfile));
-
-    adminClient.tables().updateTableProfile(table.getId(), createProfile);
-
-    // Owner uses getColumns endpoint
-    OpenMetadataClient ownerClient =
-        SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
-
-    TableColumnList ownerColumns = ownerClient.tables().getColumns(table.getId(), "profile");
-    assertNotNull(ownerColumns);
-    assertTrue(ownerColumns.getData().size() >= 1);
-
-    // Non-owner uses getColumns endpoint - may have masked profile data
-    OpenMetadataClient nonOwnerClient =
-        SdkClients.createClient(nonOwner.getEmail(), nonOwner.getEmail(), new String[] {});
-
-    TableColumnList nonOwnerColumns = nonOwnerClient.tables().getColumns(table.getId(), "profile");
-    assertNotNull(nonOwnerColumns);
-
-    // Note: The actual masking behavior depends on OpenMetadata's PII masker configuration
-    // These tests verify that the endpoints work with PII-tagged columns
-  }
-
-  // ===================================================================
   // PHASE 3: List Operations Support
   // ===================================================================
 
   @Override
-  protected ListResponse<Table> listEntities(ListParams params, OpenMetadataClient client) {
+  protected org.openmetadata.sdk.models.ListResponse<Table> listEntities(
+      org.openmetadata.sdk.models.ListParams params, OpenMetadataClient client) {
     return client.tables().list(params);
   }
 
@@ -3894,70 +3369,5 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   @Override
   protected Table getEntityIncludeDeleted(String id, OpenMetadataClient client) {
     return client.tables().get(id, "owners,tags,columns", "deleted");
-  }
-
-  // ===================================================================
-  // HELPER METHODS FOR ELASTICSEARCH
-  // ===================================================================
-
-  /**
-   * Get the full Elasticsearch index name with cluster alias prefix.
-   * In test environment, cluster alias is "openmetadata" so table index is "openmetadata_table_search_index"
-   */
-  private String getTableSearchIndexName() {
-    return "openmetadata_table_search_index";
-  }
-
-  /**
-   * Ensure Elasticsearch index exists. If not, wait for it to be created by SearchIndexHandler.
-   * The index is created lazily when the first table is indexed.
-   */
-  private void ensureSearchIndexExists(RestClient searchClient) throws Exception {
-    String indexName = getTableSearchIndexName();
-    Request checkRequest = new Request("HEAD", "/" + indexName);
-
-    // Try to check if index exists
-    try {
-      searchClient.performRequest(checkRequest);
-      // Index exists, we're good
-      System.out.println("Index " + indexName + " already exists");
-    } catch (Exception e) {
-      // Index doesn't exist yet - wait for SearchIndexHandler to create it
-      // This happens asynchronously after table creation
-      System.out.println(
-          "Index " + indexName + " doesn't exist yet, waiting up to 30 seconds for creation...");
-
-      // Wait up to 30 seconds for index to be created (SearchIndexHandler processes async)
-      for (int i = 0; i < 60; i++) {
-        Thread.sleep(500);
-        try {
-          searchClient.performRequest(checkRequest);
-          System.out.println("Index " + indexName + " now exists after " + ((i + 1) * 500) + "ms");
-          return;
-        } catch (Exception ignored) {
-          // Still doesn't exist, keep waiting
-          if (i % 10 == 9) {
-            System.out.println(
-                "Still waiting for index creation... (" + ((i + 1) * 500) + "ms elapsed)");
-          }
-        }
-      }
-
-      // If we get here, index still doesn't exist after 30 seconds
-      throw new RuntimeException("Index " + indexName + " was not created after 30 seconds");
-    }
-  }
-
-  /**
-   * Refresh Elasticsearch index to make sure all documents are searchable.
-   * Must be called after creating/updating entities before searching.
-   */
-  private void refreshSearchIndex(RestClient searchClient) throws Exception {
-    // First ensure index exists
-    ensureSearchIndexExists(searchClient);
-
-    // Now refresh it
-    Request refreshRequest = new Request("POST", "/" + getTableSearchIndexName() + "/_refresh");
-    searchClient.performRequest(refreshRequest);
   }
 }

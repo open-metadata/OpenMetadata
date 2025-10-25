@@ -157,7 +157,10 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
-    ListFilter filter = new ListFilter(include).addQueryParam("service", serviceParam);
+    ListFilter filter = new ListFilter(include);
+    if (serviceParam != null) {
+      filter.addQueryParam("service", serviceParam);
+    }
     return super.listInternal(
         uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

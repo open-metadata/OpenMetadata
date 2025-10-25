@@ -59,6 +59,11 @@ public class ListParams {
     return this;
   }
 
+  public ListParams setService(String service) {
+    filters.put("service", service);
+    return this;
+  }
+
   public Map<String, String> toQueryParams() {
     Map<String, String> params = new HashMap<>();
 

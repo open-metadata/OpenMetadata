@@ -25,6 +25,32 @@ public class SdkClients {
         "ingestion-bot@open-metadata.org", "ingestion-bot@open-metadata.org", new String[] {"bot"});
   }
 
+  public static OpenMetadataClient dataStewardClient() {
+    return createClient(
+        "data-steward@open-metadata.org",
+        "data-steward@open-metadata.org",
+        new String[] {"DataSteward"});
+  }
+
+  public static OpenMetadataClient dataConsumerClient() {
+    return createClient(
+        "data-consumer@open-metadata.org",
+        "data-consumer@open-metadata.org",
+        new String[] {"DataConsumer"});
+  }
+
+  public static OpenMetadataClient user1Client() {
+    return createClient("user1@open-metadata.org", "user1@open-metadata.org", new String[] {});
+  }
+
+  public static OpenMetadataClient user2Client() {
+    return createClient("user2@open-metadata.org", "user2@open-metadata.org", new String[] {});
+  }
+
+  public static OpenMetadataClient user3Client() {
+    return createClient("user3@open-metadata.org", "user3@open-metadata.org", new String[] {});
+  }
+
   public static OpenMetadataClient createClient(String subject, String email, String[] roles) {
     String token = JwtAuthProvider.tokenFor(subject, email, roles, 3600);
     OpenMetadataConfig cfg =
