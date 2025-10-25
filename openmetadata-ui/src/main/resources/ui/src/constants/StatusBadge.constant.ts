@@ -61,4 +61,5 @@ export const iconsV2: Partial<Record<StatusType, IconComponent>> = {
   [StatusType.Pending]: PendingIcon,
   [StatusType.InReview]: InReviewIcon,
   [StatusType.Deprecated]: DeprecatedIcon,
+  [StatusType.Aborted]: AbortedIcon,
 };

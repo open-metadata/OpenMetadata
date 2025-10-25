@@ -423,6 +423,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
               <Row
                 className="explore-data-container"
                 gutter={[20, 0]}
+                style={{ marginRight: 0 }}
                 wrap={false}>
                 <Col flex="auto">
                   <Card className="h-full explore-main-card">

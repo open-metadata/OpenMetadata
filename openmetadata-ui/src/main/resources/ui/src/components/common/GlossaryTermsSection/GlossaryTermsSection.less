@@ -1,0 +1,170 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+.edit-icon,
+.cancel-icon {
+  cursor: pointer;
+  height: 20px;
+}
+.glossary-terms-section {
+  border-bottom: 0.6px solid @grey-15;
+  .glossary-terms-header {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-left: 14px;
+    padding-right: 14px;
+
+    .glossary-terms-title {
+      font-weight: 600;
+      color: @grey-900;
+      font-size: 13px;
+    }
+
+    .edit-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+
+      .cursor-pointer {
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+
+        &:hover {
+          opacity: 0.7;
+        }
+      }
+    }
+
+    .cursor-pointer {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
+
+      &:hover {
+        opacity: 0.7;
+      }
+    }
+  }
+
+  .glossary-terms-content {
+    padding-left: 14px;
+    padding-right: 14px;
+    padding-bottom: 16px;
+    .glossary-terms-loading-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 16px 0;
+
+      .glossary-terms-loading-spinner {
+        .loading-spinner {
+          width: 16px;
+          height: 16px;
+          border: 2px solid #f3f3f3;
+          border-top: 2px solid #1890ff;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+        }
+      }
+    }
+
+    .inline-edit-container {
+      .glossary-term-selector {
+        width: 100%;
+      }
+    }
+
+    .no-data-placeholder {
+      color: @grey-700;
+      font-size: 13px;
+    }
+
+    .glossary-terms-display {
+      .glossary-terms-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+
+        .glossary-term-item {
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 5px 6px;
+          height: 26px;
+          border-radius: 8px;
+
+          min-width: 0;
+          background-color: @blue-29;
+          border: 1px solid @blue-30;
+          .glossary-term-icon {
+            width: 14px;
+            height: 14px;
+            color: #6b7280;
+            flex-shrink: 0;
+          }
+
+          .glossary-term-name {
+            color: @tag-text;
+            font-size: 12px;
+            font-weight: 400;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+        }
+
+        .show-more-terms-button {
+          display: flex;
+          align-items: center;
+          justify-content: flex-start;
+          padding: 0;
+          height: auto;
+          width: 100%;
+          background-color: transparent;
+          border: none;
+          color: @primary-7;
+          font-size: 12px;
+          font-weight: 400;
+          cursor: pointer;
+          transition: all 0.2s ease;
+
+          &:hover {
+            text-decoration: underline;
+          }
+
+          &:focus {
+            outline: none;
+          }
+        }
+      }
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
