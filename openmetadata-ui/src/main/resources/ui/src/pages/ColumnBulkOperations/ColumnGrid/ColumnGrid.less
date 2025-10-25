@@ -1,0 +1,192 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+.column-grid-container {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.column-grid-summary {
+  margin-bottom: 0;
+
+  .ant-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 4px;
+
+    .ant-card-body {
+      padding: 16px;
+    }
+
+    .ant-statistic-title {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 8px;
+      font-weight: 400;
+    }
+
+    .ant-statistic-content {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+  }
+}
+
+.column-grid-filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.column-grid-filters-collapse {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+
+  .ant-collapse-header {
+    padding: 16px !important;
+    font-weight: 500;
+  }
+
+  .ant-collapse-content-box {
+    padding: 16px;
+    background: #fafafa;
+  }
+
+  .ant-form-inline .ant-form-item {
+    margin-bottom: 16px;
+  }
+}
+
+.column-grid-stats {
+  padding: 16px 20px;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+.column-grid-wrapper {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  width: 100%;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  background: #ffffff;
+
+  .rdg {
+    overflow-x: auto;
+    border: none;
+  }
+}
+
+.column-grid {
+  height: 100%;
+  border: none;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --rdg-selection-color: transparent;
+
+  .rdg-cell {
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    border-right: none;
+    border-bottom: 1px solid #f0f0f0;
+  }
+
+  .rdg-header-row {
+    font-weight: 500;
+    background-color: #fafafa;
+    border-bottom: 1px solid #e5e7eb;
+    min-height: 40px;
+
+    .rdg-cell {
+      background-color: #fafafa;
+      padding: 12px 16px;
+      align-items: center;
+      color: rgba(0, 0, 0, 0.85);
+      font-size: 14px;
+      font-weight: 500;
+      border-bottom: 1px solid #e5e7eb;
+    }
+  }
+
+  .rdg-row {
+    background-color: #ffffff;
+
+    &:hover {
+      background-color: #fafafa;
+    }
+
+    &.rdg-row-selected {
+      background-color: #f0f9ff;
+    }
+
+    .rdg-cell {
+      font-size: 14px;
+      color: #37352f;
+      line-height: 20px;
+    }
+  }
+
+  .ant-btn {
+    &.ant-btn-text {
+      color: #6b7280;
+      font-size: 13px;
+
+      &:hover {
+        color: #1f2937;
+        background-color: #f3f4f6;
+      }
+    }
+  }
+
+  .tag-suggestion-container {
+    .ant-btn-text {
+      padding: 0 4px;
+      height: 24px;
+      line-height: 22px;
+    }
+  }
+}
+
+.column-grid-tag {
+  margin: 2px;
+  font-size: 12px;
+}
+
+.column-grid-loading {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.column-grid-error {
+  padding: 12px 16px;
+  background: #fff2f0;
+  border: 1px solid #ffccc7;
+  border-radius: 8px;
+}

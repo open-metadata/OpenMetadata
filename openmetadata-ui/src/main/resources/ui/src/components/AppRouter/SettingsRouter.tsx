@@ -27,6 +27,7 @@ import AlertDetailsPage from '../../pages/AlertDetailsPage/AlertDetailsPage';
 import AppearanceConfigSettingsPage from '../../pages/AppearanceConfigSettingsPage/AppearanceConfigSettingsPage';
 import ApplicationPage from '../../pages/Application/ApplicationPage';
 import BotsPageV1 from '../../pages/BotsPageV1/BotsPageV1.component';
+import ColumnBulkOperations from '../../pages/ColumnBulkOperations/ColumnBulkOperations.component';
 import DataAssetRulesPage from '../../pages/Configuration/DataAssetRules/DataAssetRulesPage';
 import EditLoginConfiguration from '../../pages/Configuration/EditLoginConfiguration/EditLoginConfigurationPage';
 import EditUrlConfigurationPage from '../../pages/Configuration/EditUrlConfiguration/EditUrlConfigurationPage';
@@ -618,6 +619,14 @@ const SettingsRouter = () => {
         path={getSettingCategoryPath(
           GlobalSettingsMenuCategory.CUSTOM_PROPERTIES
         )}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={false}>
+            <ColumnBulkOperations />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.COLUMN_BULK_OPERATIONS.replace(ROUTES.SETTINGS, '')}
       />
       <Route
         element={

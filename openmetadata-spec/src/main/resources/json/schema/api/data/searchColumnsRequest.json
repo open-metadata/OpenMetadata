@@ -1,0 +1,38 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/searchColumnsRequest.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SearchColumnsRequest",
+  "description": "Request to search and group columns by name across different entity types.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.SearchColumnsRequest",
+  "properties": {
+    "columnName": {
+      "description": "Column name to search for (exact match, case-sensitive).",
+      "type": "string"
+    },
+    "entityTypes": {
+      "description": "Filter by entity types. If not provided, searches across all supported types (table, dashboardDataModel, container, searchIndex).",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "serviceName": {
+      "description": "Filter by service name.",
+      "type": "string"
+    },
+    "databaseName": {
+      "description": "Filter by database name.",
+      "type": "string"
+    },
+    "schemaName": {
+      "description": "Filter by schema name.",
+      "type": "string"
+    },
+    "domainId": {
+      "description": "Filter by domain ID.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    }
+  },
+  "additionalProperties": false
+}
