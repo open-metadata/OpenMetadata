@@ -534,6 +534,13 @@ class LookerSource(DashboardServiceSource):
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
                 if self.repository_credentials:
+                    logger.info(
+                        f"Repository credentials are present, processing views of explore model {datamodel_name}"
+                    )
+                    if model.joins:
+                        logger.info(
+                            f"Joins are present, processing views of explore model {datamodel_name}"
+                        )
                     for view in model.joins:
                         if filter_by_datamodel(
                             self.source_config.dataModelFilterPattern, view.name
@@ -547,6 +554,9 @@ class LookerSource(DashboardServiceSource):
                             view_name=ViewName(view_name), explore=model
                         )
                     if model.view_name:
+                        logger.info(
+                            f"View name is present, processing view {model.view_name} of explore model {datamodel_name}"
+                        )
                         yield from self._process_view(
                             view_name=ViewName(model.view_name), explore=model
                         )
