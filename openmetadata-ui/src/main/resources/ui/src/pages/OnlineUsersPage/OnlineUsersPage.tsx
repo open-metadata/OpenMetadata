@@ -302,7 +302,7 @@ const OnlineUsersPage = () => {
               placeholder: `${t('label.search-for-type', {
                 type: t('label.user'),
               })}...`,
-              value: searchValue,
+              searchValue: searchValue,
               typingInterval: 400,
               onSearch: handleSearch,
             }}

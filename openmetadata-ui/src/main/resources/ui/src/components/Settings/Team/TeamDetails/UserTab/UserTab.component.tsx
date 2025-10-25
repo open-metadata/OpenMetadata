@@ -418,7 +418,7 @@ export const UserTab = ({
           placeholder: t('label.search-for-type', {
             type: t('label.user-lowercase'),
           }),
-          value: searchText,
+          searchValue: searchText,
           typingInterval: 500,
           onSearch: handleUsersSearchAction,
         }}
