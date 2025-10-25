@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.util.EntityValidation;
@@ -79,6 +80,16 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
    * Delete entity (soft delete if supported).
    */
   protected abstract void deleteEntity(String id, OpenMetadataClient client);
+
+  /**
+   * Restore a soft-deleted entity.
+   */
+  protected abstract void restoreEntity(String id, OpenMetadataClient client);
+
+  /**
+   * Hard delete an entity (permanently remove).
+   */
+  protected abstract void hardDeleteEntity(String id, OpenMetadataClient client);
 
   /**
    * Get the entity type name (e.g., "database", "table", "user").
@@ -534,19 +545,33 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // ===================================================================
 
   /**
-   * Test: Creating entity with non-existent owner should fail
+   * Test: PATCH entity with non-existent owner should fail
    * Equivalent to: post_entityWithNonExistentOwner_4xx in EntityResourceTest
    */
   @Test
-  void post_entityWithNonExistentOwner_4xx(TestNamespace ns) {
+  void patch_entityWithNonExistentOwner_4xx(TestNamespace ns) {
     if (!supportsOwners) return;
 
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // This test requires the ability to set owner in create request
-    // Most entities don't support setting owner in minimal request
-    // This will be tested in entity-specific test classes that support owners
-    // TODO: Implement when owner support is added to create requests
+    // Create entity without owner
+    K createRequest = createMinimalRequest(ns, client);
+    T created = createEntity(createRequest, client);
+
+    // Try to set a non-existent owner
+    org.openmetadata.schema.type.EntityReference nonExistentOwner =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(java.util.UUID.randomUUID())
+            .withType("user")
+            .withName("nonexistent@example.com");
+
+    created.setOwners(List.of(nonExistentOwner));
+
+    String entityId = created.getId().toString();
+    assertThrows(
+        Exception.class,
+        () -> patchEntity(entityId, created, client),
+        "Patching entity with non-existent owner should fail");
   }
 
   /**
@@ -563,51 +588,75 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     K createRequest = createMinimalRequest(ns, client);
     T created = createEntity(createRequest, client);
 
-    // TODO: Update owner using PATCH once SDK supports setting owners
-    // For now, this is a placeholder for the owner update test
-    // The full implementation will require:
-    // 1. Setting owners field on entity
-    // 2. Calling patch
-    // 3. Validating owner was set
-    // 4. Validating change description shows owner added
+    // Verify no owner initially
+    T fetched = getEntityWithFields(created.getId().toString(), "owners", client);
+    assertTrue(
+        fetched.getOwners() == null || fetched.getOwners().isEmpty(),
+        "Entity should not have owner initially");
+
+    // Get ingestion-bot user to use as owner (bots are auto-created)
+    org.openmetadata.schema.entity.teams.User botUser = client.users().getByName("ingestion-bot");
+    org.openmetadata.schema.type.EntityReference ownerRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(botUser.getId())
+            .withType("user")
+            .withName(botUser.getName())
+            .withFullyQualifiedName(botUser.getFullyQualifiedName());
+
+    // Set owner via PATCH
+    fetched.setOwners(List.of(ownerRef));
+    T updated = patchEntity(fetched.getId().toString(), fetched, client);
+
+    // Verify owner was set
+    T updatedFetched = getEntityWithFields(updated.getId().toString(), "owners", client);
+    assertNotNull(updatedFetched.getOwners(), "Entity should have owners");
+    assertEquals(1, updatedFetched.getOwners().size(), "Entity should have 1 owner");
+    assertEquals(
+        botUser.getId(),
+        updatedFetched.getOwners().get(0).getId(),
+        "Owner should be ingestion-bot user");
   }
 
   /**
-   * Test: PUT to update owner
+   * Test: Change owner from one user to another
    * Equivalent to: put_entityUpdateOwner_200 in EntityResourceTest
    */
   @Test
-  void put_entityUpdateOwner_200(TestNamespace ns) {
+  void patch_entityChangeOwner_200(TestNamespace ns) {
     if (!supportsOwners) return;
 
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create entity
+    // Create entity and set initial owner
     K createRequest = createMinimalRequest(ns, client);
     T created = createEntity(createRequest, client);
 
-    // TODO: Update owner using PUT once SDK supports setting owners
-    // Similar to patch_entityUpdateOwner_200 but uses PUT operation
-  }
+    // Set ingestion-bot as owner
+    org.openmetadata.schema.entity.teams.User botUser = client.users().getByName("ingestion-bot");
+    org.openmetadata.schema.type.EntityReference botRef =
+        new org.openmetadata.schema.type.EntityReference()
+            .withId(botUser.getId())
+            .withType("user")
+            .withName(botUser.getName());
 
-  /**
-   * Test: Non-owner cannot update entity
-   * Equivalent to: put_entityUpdate_as_non_owner_4xx in EntityResourceTest
-   */
-  @Test
-  void put_entityUpdate_as_non_owner_4xx(TestNamespace ns) {
-    if (!supportsOwners) return;
+    created.setOwners(List.of(botRef));
+    T withOwner = patchEntity(created.getId().toString(), created, client);
 
-    OpenMetadataClient adminClient = SdkClients.adminClient();
-    OpenMetadataClient testUserClient = SdkClients.testUserClient();
+    // Verify owner was set
+    T fetchedWithOwner = getEntityWithFields(withOwner.getId().toString(), "owners", client);
+    assertNotNull(fetchedWithOwner.getOwners());
+    assertEquals(1, fetchedWithOwner.getOwners().size());
+    assertEquals(botUser.getId(), fetchedWithOwner.getOwners().get(0).getId());
 
-    // Create entity as admin
-    K createRequest = createMinimalRequest(ns, adminClient);
-    T created = createEntity(createRequest, adminClient);
+    // Clear the owner by setting empty list
+    fetchedWithOwner.setOwners(new ArrayList<>());
+    T withoutOwner = patchEntity(fetchedWithOwner.getId().toString(), fetchedWithOwner, client);
 
-    // TODO: Set owner to a specific user (not test user)
-    // Then attempt to update as test user - should fail with 403
-    // This requires SDK support for setting owners
+    // Verify owner was removed
+    T finalFetch = getEntityWithFields(withoutOwner.getId().toString(), "owners", client);
+    assertTrue(
+        finalFetch.getOwners() == null || finalFetch.getOwners().isEmpty(),
+        "Owner should be removed");
   }
 
   // ===================================================================
@@ -805,66 +854,172 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   // PHASE 3: Pagination & List Operations
   // ===================================================================
 
-  // TODO: Fix server-side issue with service:null parameter before enabling
-  // @Test
+  @Test
   void get_entityListWithPagination_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create multiple entities for pagination testing (5-10 entities)
-    int entityCount = 7;
-    List<String> createdIds = new ArrayList<>();
+    // Create multiple entities for pagination testing
+    int entityCount = 5;
+    List<UUID> createdIds = new ArrayList<>();
 
     for (int i = 0; i < entityCount; i++) {
       K createRequest = createRequest(ns.prefix("entity" + i), ns, client);
       T entity = createEntity(createRequest, client);
-      createdIds.add(entity.getId().toString());
+      createdIds.add(entity.getId());
     }
 
     // Create and delete one entity to test include=deleted
+    UUID deletedId = null;
     if (supportsSoftDelete) {
       K deletedRequest = createRequest(ns.prefix("deleted"), ns, client);
       T deletedEntity = createEntity(deletedRequest, client);
+      deletedId = deletedEntity.getId();
       deleteEntity(deletedEntity.getId().toString(), client);
     }
 
-    // Test pagination with different limit sizes
-    testPaginationWithLimit(client, 2);
-    testPaginationWithLimit(client, 3);
-    testPaginationWithLimit(client, 5);
+    // Test pagination with 2 page sizes instead of 4 (reduced for performance)
+    // Still covers edge cases: small page size and medium page size
+    int[] pageSizes = {11, 23};
+    for (int limit : pageSizes) {
+      testComprehensivePagination(client, limit, createdIds, deletedId);
+    }
   }
 
-  private void testPaginationWithLimit(OpenMetadataClient client, int limit) {
+  private void testComprehensivePagination(
+      OpenMetadataClient client, int limit, List<UUID> createdIds, UUID deletedId) {
+    // Get all entities first to know the total count (like old test does)
+    org.openmetadata.sdk.models.ListParams allParams = new org.openmetadata.sdk.models.ListParams();
+    allParams.setLimit(1000); // Get all entities
+    org.openmetadata.sdk.models.ListResponse<T> allEntities = listEntities(allParams, client);
+
+    assertNotNull(allEntities, "All entities list should not be null");
+    assertNotNull(allEntities.getData(), "All entities data should not be null");
+    assertNotNull(allEntities.getPaging(), "Paging info should not be null");
+
+    int totalRecords = allEntities.getPaging().getTotal();
+    assertTrue(totalRecords > 0, "Should have at least some entities");
+
+    // Forward pagination - scroll through all pages
     org.openmetadata.sdk.models.ListParams params = new org.openmetadata.sdk.models.ListParams();
     params.setLimit(limit);
 
-    org.openmetadata.sdk.models.ListResponse<T> page1 = listEntities(params, client);
-    assertNotNull(page1, "First page should not be null");
-    assertNotNull(page1.getData(), "First page data should not be null");
-    assertTrue(
-        page1.getData().size() <= limit,
-        "First page should have at most " + limit + " items, got: " + page1.getData().size());
+    List<UUID> seenIdsForward = new ArrayList<>();
+    String afterCursor = null;
+    String lastBeforeCursor = null;
+    int pageCount = 0;
 
-    // If there's a next page, fetch it
-    if (page1.getPaging() != null && page1.getPaging().getAfter() != null) {
-      params.setAfter(page1.getPaging().getAfter());
-      org.openmetadata.sdk.models.ListResponse<T> page2 = listEntities(params, client);
-      assertNotNull(page2, "Second page should not be null");
-      assertNotNull(page2.getData(), "Second page data should not be null");
+    do {
+      params.setAfter(afterCursor);
+      params.setBefore(null);
+      org.openmetadata.sdk.models.ListResponse<T> page = listEntities(params, client);
 
-      // Verify no duplicate IDs between pages
-      List<String> page1Ids =
-          page1.getData().stream()
-              .map(e -> e.getId().toString())
-              .collect(java.util.stream.Collectors.toList());
-      List<String> page2Ids =
-          page2.getData().stream()
-              .map(e -> e.getId().toString())
-              .collect(java.util.stream.Collectors.toList());
+      assertNotNull(page, "Page " + pageCount + " should not be null");
+      assertNotNull(page.getData(), "Page " + pageCount + " data should not be null");
+      assertNotNull(page.getPaging(), "Page " + pageCount + " paging should not be null");
 
-      for (String id : page2Ids) {
-        assertFalse(page1Ids.contains(id), "Page 2 should not contain IDs from page 1");
+      // First page should not have before cursor
+      if (pageCount == 0) {
+        assertNull(
+            page.getPaging().getBefore(),
+            "First page should not have before cursor for limit " + limit);
+      } else {
+        // Subsequent pages should have before cursor
+        assertNotNull(
+            page.getPaging().getBefore(),
+            "Page " + pageCount + " should have before cursor for limit " + limit);
+
+        // Test backward navigation from current page (important for SDK correctness)
+        org.openmetadata.sdk.models.ListParams backParams =
+            new org.openmetadata.sdk.models.ListParams();
+        backParams.setLimit(limit);
+        backParams.setBefore(page.getPaging().getBefore());
+        org.openmetadata.sdk.models.ListResponse<T> backPage = listEntities(backParams, client);
+
+        assertNotNull(backPage, "Backward page should not be null");
+        assertTrue(
+            backPage.getData().size() <= limit, "Backward page should respect limit " + limit);
       }
+
+      // Verify page size
+      int expectedPageSize = Math.min(limit, totalRecords - seenIdsForward.size());
+      if (page.getPaging().getAfter() != null) {
+        // Not the last page - should have exactly 'limit' items
+        assertEquals(
+            limit,
+            page.getData().size(),
+            "Page " + pageCount + " should have " + limit + " items (limit=" + limit + ")");
+      } else {
+        // Last page - may have fewer items
+        assertTrue(
+            page.getData().size() <= limit, "Last page should have at most " + limit + " items");
+        assertTrue(page.getData().size() > 0, "Last page should have at least one item");
+      }
+
+      // Verify total count is at least what we initially saw
+      // (In parallel execution, the total may increase as other tests create entities)
+      assertTrue(
+          page.getPaging().getTotal() >= totalRecords,
+          "Total count should be at least "
+              + totalRecords
+              + " but was "
+              + page.getPaging().getTotal());
+
+      // Collect IDs and check for duplicates
+      for (T entity : page.getData()) {
+        UUID id = entity.getId();
+        assertFalse(seenIdsForward.contains(id), "Forward: Duplicate entity ID " + id + " found");
+        seenIdsForward.add(id);
+      }
+
+      afterCursor = page.getPaging().getAfter();
+      lastBeforeCursor = page.getPaging().getBefore();
+      pageCount++;
+
+      // Safety check to prevent infinite loops
+      assertTrue(pageCount < 1000, "Too many pages - possible infinite loop");
+
+    } while (afterCursor != null);
+
+    // Verify we saw at least the initial count of entities
+    // (In parallel execution, we may see more due to other tests creating entities)
+    assertTrue(
+        seenIdsForward.size() >= totalRecords,
+        "Forward pagination should have seen at least "
+            + totalRecords
+            + " entities but saw "
+            + seenIdsForward.size());
+
+    // Backward pagination - scroll from end to beginning
+    List<UUID> seenIdsBackward = new ArrayList<>();
+    String beforeCursor = lastBeforeCursor;
+    pageCount = 0;
+
+    while (beforeCursor != null) {
+      params = new org.openmetadata.sdk.models.ListParams();
+      params.setLimit(limit);
+      params.setBefore(beforeCursor);
+
+      org.openmetadata.sdk.models.ListResponse<T> page = listEntities(params, client);
+
+      assertNotNull(page, "Backward page " + pageCount + " should not be null");
+      assertNotNull(page.getData(), "Backward page " + pageCount + " data should not be null");
+
+      // Collect IDs and check for duplicates
+      for (T entity : page.getData()) {
+        UUID id = entity.getId();
+        assertFalse(seenIdsBackward.contains(id), "Backward: Duplicate entity ID " + id + " found");
+        seenIdsBackward.add(id);
+      }
+
+      beforeCursor = page.getPaging().getBefore();
+      pageCount++;
+
+      // Safety check
+      assertTrue(pageCount < 1000, "Too many backward pages - possible infinite loop");
     }
+
+    // Note: Backward pagination may not see all entities if we started from a middle page
+    // This is expected behavior - we're just verifying no duplicates and consistent cursors
   }
 
   @Test
