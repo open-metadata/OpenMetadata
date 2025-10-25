@@ -22,6 +22,7 @@ from sqlalchemy import Column
 from metadata.data_quality.validations.base_test_handler import (
     BaseTestValidator,
     DimensionInfo,
+    TestEvaluation,
 )
 from metadata.generated.schema.tests.basic import (
     TestCaseResult,
@@ -59,7 +60,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
     def _evaluate_test_condition(
         self, metric_values: dict, test_params: Optional[dict] = None
-    ) -> dict:
+    ) -> TestEvaluation:
         """Evaluate the uniqueness test condition and calculate derived values
 
         For uniqueness test: all values should be unique, meaning COUNT == UNIQUE_COUNT
@@ -67,12 +68,14 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         Args:
             metric_values: Dictionary with keys from Metrics enum names
                           e.g., {"COUNT": 100, "UNIQUE_COUNT": 95}
+            test_params: Optional test parameters (not used by uniqueness validator)
 
         Returns:
-            dict with keys:
+            TestEvaluation: TypedDict with keys:
                 - matched: bool - whether test passed (count == unique_count)
                 - passed_rows: int - number of unique values
                 - failed_rows: int - number of duplicate values
+                - total_rows: int - total row count
         """
         count = metric_values[Metrics.COUNT.name]
         unique_count = metric_values[Metrics.UNIQUE_COUNT.name]
@@ -81,16 +84,21 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             "matched": count == unique_count,
             "passed_rows": unique_count,
             "failed_rows": count - unique_count,
+            "total_rows": count,
         }
 
     def _format_result_message(
-        self, metric_values: dict, dimension_info: Optional[DimensionInfo] = None
+        self,
+        metric_values: dict,
+        dimension_info: Optional[DimensionInfo] = None,
+        test_params: Optional[dict] = None,
     ) -> str:
         """Format the result message for uniqueness test
 
         Args:
             metric_values: Dictionary with Metrics enum names as keys
             dimension_info: Optional DimensionInfo with dimension details
+            test_params: Optional test parameters (not used by this validator)
 
         Returns:
             str: Formatted result message
@@ -136,6 +144,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         Returns:
             TestCaseResult: The test case result for the overall validation
         """
+        test_params = self._get_test_parameters()
+
         try:
             column: Union[SQALikeColumn, Column] = self._get_column_name()
             count = self._run_results(Metrics.COUNT, column)
@@ -160,8 +170,10 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
                 ],
             )
 
-        evaluation = self._evaluate_test_condition(metric_values)
-        result_message = self._format_result_message(metric_values)
+        evaluation = self._evaluate_test_condition(metric_values, test_params)
+        result_message = self._format_result_message(
+            metric_values, test_params=test_params
+        )
         test_result_values = self._get_test_result_values(metric_values)
 
         return self.get_test_case_result_object(
@@ -192,8 +204,8 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
 
             column: Union[SQALikeColumn, Column] = self._get_column_name()
 
-            # Use shared method to get metrics to compute
-            metrics_to_compute = self._get_metrics_to_compute()
+            test_params = self._get_test_parameters()
+            metrics_to_compute = self._get_metrics_to_compute(test_params)
 
             dimension_results = []
             for dimension_column in dimension_columns:
@@ -201,7 +213,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
                     dimension_col = self._get_column_name(dimension_column)
 
                     single_dimension_results = self._execute_dimensional_validation(
-                        column, dimension_col, metrics_to_compute
+                        column, dimension_col, metrics_to_compute, test_params
                     )
 
                     dimension_results.extend(single_dimension_results)
@@ -260,6 +272,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
         column: Union[SQALikeColumn, Column],
         dimension_col: Union[SQALikeColumn, Column],
         metrics_to_compute: dict,
+        test_params: Optional[dict] = None,
     ) -> List[DimensionResult]:
         """Execute dimensional query for a single dimension
 
@@ -281,6 +294,7 @@ class BaseColumnValuesToBeUniqueValidator(BaseTestValidator):
             column: The column being validated (same as used in _run_validation)
             dimension_col: Single Column object corresponding to the dimension column
             metrics_to_compute: Dictionary mapping Metrics enum names to Metrics objects
+            test_params: Optional test parameters (empty dict for uniqueness validator)
 
         Returns:
             List[DimensionResult]: List of dimension results for this dimension column
