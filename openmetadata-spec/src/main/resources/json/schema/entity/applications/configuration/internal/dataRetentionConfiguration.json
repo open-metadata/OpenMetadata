@@ -17,10 +17,22 @@
       "type": "integer",
       "default": 60,
       "minimum": 0
+    },
+    "testCaseResultsRetentionPeriod": {
+      "title": "Test Case Results Retention Period (days)",
+      "description": "Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for two months).",
+      "type": "integer",
+      "default": 1440
+    },
+    "profileDataRetentionPeriod": {
+      "title": "Profile Data Retention Period (days)",
+      "description": "Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two months).",
+      "type": "integer",
+      "default": 1440
     }
   },
   "required": [
-    "changeEventRetentionPeriod", "activityThreadsRetentionPeriod"
+    "changeEventRetentionPeriod", "activityThreadsRetentionPeriod", "testCaseResultsRetentionPeriod", "profileDataRetentionPeriod"
   ],
   "additionalProperties": false
 }

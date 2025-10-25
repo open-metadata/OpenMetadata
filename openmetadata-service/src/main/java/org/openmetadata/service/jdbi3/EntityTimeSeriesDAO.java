@@ -543,6 +543,26 @@ public interface EntityTimeSeriesDAO {
     }
   }
 
+    @ConnectionAwareSqlUpdate(
+            value =
+                    "DELETE FROM <table> "
+                            + "WHERE id IN ( "
+                            + "  SELECT id FROM <table> "
+                            + "  WHERE timestamp < :cutoff ORDER BY timestamp LIMIT :limit "
+                            + ")",
+            connectionType = POSTGRES)
+  @ConnectionAwareSqlUpdate(
+      value = """
+            DELETE FROM <table> WHERE timestamp < :cutoffTs ORDER BY timestamp LIMIT :limit
+            """,
+  connectionType = MYSQL)
+  int deleteTestCaseResultsBeforeCutOff(
+      @Define("table") String table, @Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
+
+  default int deleteTestCaseResultsBeforeCutOff(long cutoffTs, int limit) {
+    return deleteTestCaseResultsBeforeCutOff(getTimeSeriesTableName(), cutoffTs, limit);
+  }
+
   /** @deprecated */
   @SqlQuery(
       "SELECT DISTINCT entityFQN FROM <table> WHERE entityFQNHash = '' or entityFQNHash is null LIMIT :limit")
