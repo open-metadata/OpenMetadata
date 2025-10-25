@@ -17,7 +17,6 @@ import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
 import { isEmpty, isUndefined } from 'lodash';
 import { ReactComponent as ExternalLinkIcon } from '../assets/svg/external-links.svg';
-import { StatusType } from '../components/common/StatusBadge/StatusBadge.interface';
 import { CommonWidgets } from '../components/DataAssets/CommonWidgets/CommonWidgets';
 import GlossaryTermTab from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.component';
 import { ModifiedGlossaryTerm } from '../components/Glossary/GlossaryTermTab/GlossaryTermTab.interface';
@@ -129,14 +128,6 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
       },
     },
   };
-};
-
-export const StatusClass = {
-  [EntityStatus.Approved]: StatusType.Success,
-  [EntityStatus.Draft]: StatusType.Pending,
-  [EntityStatus.Rejected]: StatusType.Failure,
-  [EntityStatus.Deprecated]: StatusType.Deprecated,
-  [EntityStatus.InReview]: StatusType.InReview,
 };
 
 export const StatusFilters = Object.values(EntityStatus)

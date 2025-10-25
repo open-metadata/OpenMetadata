@@ -204,6 +204,7 @@ export const DOMAIN_DEFAULT_TABS = [
   EntityTabs.DATA_PRODUCTS,
   EntityTabs.ASSETS,
   EntityTabs.CUSTOM_PROPERTIES,
+  EntityTabs.ACTIVITY_FEED,
 ];
 
 export const GLOSSARY_DEFAULT_TABS = [

@@ -2865,7 +2865,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addDeleteFollower_200(TestInfo test) throws IOException {
+  protected void put_addDeleteFollower_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -2897,7 +2897,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
+  protected void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }

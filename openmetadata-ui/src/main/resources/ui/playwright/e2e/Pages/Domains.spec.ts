@@ -655,11 +655,11 @@ test.describe('Domains', () => {
       await selectDataProduct(page, dataProduct.data);
 
       await expect(
-        page.getByTestId('domain-owner-name').getByTestId('owner-label')
+        page.getByTestId(user1.responseData.displayName)
       ).toContainText(user1.responseData.displayName);
 
       await expect(
-        page.getByTestId('domain-expert-name').getByTestId('owner-label')
+        page.getByTestId(user2.responseData.displayName)
       ).toContainText(user2.responseData.displayName);
     } finally {
       await dataProduct?.delete(apiContext);

@@ -13,4 +13,5 @@
 export enum TagTabs {
   OVERVIEW = 'overview',
   ASSETS = 'assets',
+  ACTIVITY_FEED = 'activity_feed',
 }
