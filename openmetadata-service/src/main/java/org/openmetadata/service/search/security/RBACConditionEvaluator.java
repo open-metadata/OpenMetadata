@@ -216,6 +216,7 @@ public class RBACConditionEvaluator {
       }
       case "isOwner" -> isOwner((User) spelContext.lookupVariable("user"), collector);
       case "noOwner" -> noOwner(collector);
+      case "isReviewer" -> isReviewer((User) spelContext.lookupVariable("user"), collector);
       case "hasAnyRole" -> {
         List<String> roles = extractMethodArguments(methodRef);
         hasAnyRole(roles, collector);
@@ -304,6 +305,28 @@ public class RBACConditionEvaluator {
   public void noOwner(ConditionCollector collector) {
     OMQueryBuilder existsQuery = queryBuilderFactory.existsQuery("owners.id");
     collector.addMustNot(existsQuery); // Wrap existsQuery in a List
+  }
+
+  public void isReviewer(User user, ConditionCollector collector) {
+    List<OMQueryBuilder> reviewerQueries = new ArrayList<>();
+    // Reviewer is the user
+    reviewerQueries.add(queryBuilderFactory.termQuery("reviewers.id", user.getId().toString()));
+
+    // Reviewer could also be any of the user's teams
+    if (user.getTeams() != null) {
+      for (EntityReference team : user.getTeams()) {
+        reviewerQueries.add(queryBuilderFactory.termQuery("reviewers.id", team.getId().toString()));
+      }
+    }
+
+    OMQueryBuilder reviewerQuery;
+    if (reviewerQueries.size() == 1) {
+      reviewerQuery = reviewerQueries.get(0);
+    } else {
+      reviewerQuery = queryBuilderFactory.boolQuery().should(reviewerQueries);
+    }
+
+    collector.addMust(reviewerQuery);
   }
 
   public void hasAnyRole(List<String> roles, ConditionCollector collector) {
