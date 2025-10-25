@@ -11,89 +11,27 @@
  *  limitations under the License.
  */
 /**
- * Response containing all unique columns grouped by metadata similarity for grid-based
- * editing.
+ * Response containing columns grouped by name with occurrence information.
  */
-export interface ColumnGridResponse {
+export interface GroupedColumnsResponse {
     /**
-     * List of unique column names with their metadata groups.
-     */
-    columns: ColumnGridItem[];
-    /**
-     * Cursor for pagination (Base64-encoded). Use this in the next request to get the next page
-     * of results.
-     */
-    cursor?: string;
-    /**
-     * Total number of column occurrences across all entities.
-     */
-    totalOccurrences: number;
-    /**
-     * Total number of unique column names.
-     */
-    totalUniqueColumns: number;
-}
-
-/**
- * A unique column name with its metadata groups.
- */
-export interface ColumnGridItem {
-    /**
-     * Name of the column.
+     * Name of the column being grouped.
      */
     columnName: string;
     /**
-     * Metadata groups - columns with identical metadata are grouped together.
+     * List of column occurrences across different entities.
      */
-    groups: ColumnMetadataGroup[];
-    /**
-     * Whether this column has different metadata across occurrences.
-     */
-    hasVariations: boolean;
+    occurrences: ColumnOccurrence[];
     /**
      * Total number of occurrences for this column name.
      */
-    totalOccurrences: number;
+    totalCount: number;
 }
 
 /**
- * A group of columns with identical metadata.
+ * Individual column occurrence with entity details.
  */
-export interface ColumnMetadataGroup {
-    /**
-     * Data type (common across all columns in this group).
-     */
-    dataType?: string;
-    /**
-     * Description (common across all columns in this group).
-     */
-    description?: string;
-    /**
-     * Display name (common across all columns in this group).
-     */
-    displayName?: string;
-    /**
-     * Unique identifier for this metadata group (hash of metadata values).
-     */
-    groupId: string;
-    /**
-     * Number of column occurrences in this group.
-     */
-    occurrenceCount: number;
-    /**
-     * List of column occurrences in this group.
-     */
-    occurrences: ColumnOccurrenceRef[];
-    /**
-     * Tags (common across all columns in this group).
-     */
-    tags?: TagLabel[];
-}
-
-/**
- * Reference to a column occurrence.
- */
-export interface ColumnOccurrenceRef {
+export interface ColumnOccurrence {
     /**
      * Fully qualified name of the column.
      */
@@ -103,6 +41,18 @@ export interface ColumnOccurrenceRef {
      */
     databaseName?: string;
     /**
+     * Data type of the column.
+     */
+    dataType?: string;
+    /**
+     * Description of the column.
+     */
+    description?: string;
+    /**
+     * Display name of the column.
+     */
+    displayName?: string;
+    /**
      * Display name of the parent entity.
      */
     entityDisplayName?: string;
@@ -111,7 +61,7 @@ export interface ColumnOccurrenceRef {
      */
     entityFQN: string;
     /**
-     * Type of entity containing the column.
+     * Type of entity containing the column (table or dashboardDataModel).
      */
     entityType: string;
     /**
@@ -122,6 +72,10 @@ export interface ColumnOccurrenceRef {
      * Name of the service.
      */
     serviceName?: string;
+    /**
+     * Tags and glossary terms associated with the column.
+     */
+    tags?: TagLabel[];
 }
 
 /**

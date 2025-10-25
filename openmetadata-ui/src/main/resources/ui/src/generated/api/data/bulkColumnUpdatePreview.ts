@@ -11,93 +11,31 @@
  *  limitations under the License.
  */
 /**
- * Response containing all unique columns grouped by metadata similarity for grid-based
- * editing.
+ * Preview response for bulk column update showing what will change for each column.
  */
-export interface ColumnGridResponse {
+export interface BulkColumnUpdatePreview {
     /**
-     * List of unique column names with their metadata groups.
+     * List of column update previews showing current vs new values.
      */
-    columns: ColumnGridItem[];
+    columnPreviews: ColumnUpdatePreview[];
     /**
-     * Cursor for pagination (Base64-encoded). Use this in the next request to get the next page
-     * of results.
+     * Total number of columns that will be updated.
      */
-    cursor?: string;
-    /**
-     * Total number of column occurrences across all entities.
-     */
-    totalOccurrences: number;
-    /**
-     * Total number of unique column names.
-     */
-    totalUniqueColumns: number;
+    totalColumns: number;
 }
 
 /**
- * A unique column name with its metadata groups.
+ * Preview of changes for a single column showing diff between current and new values.
  */
-export interface ColumnGridItem {
-    /**
-     * Name of the column.
-     */
-    columnName: string;
-    /**
-     * Metadata groups - columns with identical metadata are grouped together.
-     */
-    groups: ColumnMetadataGroup[];
-    /**
-     * Whether this column has different metadata across occurrences.
-     */
-    hasVariations: boolean;
-    /**
-     * Total number of occurrences for this column name.
-     */
-    totalOccurrences: number;
-}
-
-/**
- * A group of columns with identical metadata.
- */
-export interface ColumnMetadataGroup {
-    /**
-     * Data type (common across all columns in this group).
-     */
-    dataType?: string;
-    /**
-     * Description (common across all columns in this group).
-     */
-    description?: string;
-    /**
-     * Display name (common across all columns in this group).
-     */
-    displayName?: string;
-    /**
-     * Unique identifier for this metadata group (hash of metadata values).
-     */
-    groupId: string;
-    /**
-     * Number of column occurrences in this group.
-     */
-    occurrenceCount: number;
-    /**
-     * List of column occurrences in this group.
-     */
-    occurrences: ColumnOccurrenceRef[];
-    /**
-     * Tags (common across all columns in this group).
-     */
-    tags?: TagLabel[];
-}
-
-/**
- * Reference to a column occurrence.
- */
-export interface ColumnOccurrenceRef {
+export interface ColumnUpdatePreview {
     /**
      * Fully qualified name of the column.
      */
     columnFQN: string;
+    /**
+     * Current column metadata values.
+     */
+    currentValues: ColumnMetadata;
     /**
      * Name of the database (if applicable).
      */
@@ -111,9 +49,17 @@ export interface ColumnOccurrenceRef {
      */
     entityFQN: string;
     /**
-     * Type of entity containing the column.
+     * Type of entity containing the column (table, dashboardDataModel, etc.).
      */
     entityType: string;
+    /**
+     * True if there are actual changes between current and new values.
+     */
+    hasChanges: boolean;
+    /**
+     * New column metadata values that will be applied.
+     */
+    newValues: ColumnMetadata;
     /**
      * Name of the schema (if applicable).
      */
@@ -122,6 +68,28 @@ export interface ColumnOccurrenceRef {
      * Name of the service.
      */
     serviceName?: string;
+}
+
+/**
+ * Current column metadata values.
+ *
+ * Column metadata including display name, description, tags, and glossary terms.
+ *
+ * New column metadata values that will be applied.
+ */
+export interface ColumnMetadata {
+    /**
+     * Description of the column.
+     */
+    description?: string;
+    /**
+     * Display name of the column.
+     */
+    displayName?: string;
+    /**
+     * Tags and glossary terms associated with the column.
+     */
+    tags?: TagLabel[];
 }
 
 /**

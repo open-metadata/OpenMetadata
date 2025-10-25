@@ -11,117 +11,88 @@
  *  limitations under the License.
  */
 /**
- * Response containing all unique columns grouped by metadata similarity for grid-based
- * editing.
+ * Bulk update request for updating column metadata (description, display name, tags,
+ * glossary terms) across entities. Supports two modes: 1) Search-based: provide columnName
+ * and filters to find and update all matching columns, 2) Explicit: provide specific list
+ * of column FQNs to update.
  */
-export interface ColumnGridResponse {
+export interface BulkColumnUpdateRequest {
     /**
-     * List of unique column names with their metadata groups.
+     * Column name to search for (exact match, case-sensitive). When provided, the system will
+     * search for all columns with this name and apply updates based on filters.
      */
-    columns: ColumnGridItem[];
+    columnName?: string;
     /**
-     * Cursor for pagination (Base64-encoded). Use this in the next request to get the next page
-     * of results.
+     * Explicit list of column updates (alternative to search-based mode). Use this when you
+     * want to update specific columns by FQN.
      */
-    cursor?: string;
+    columnUpdates?: ColumnUpdate[];
     /**
-     * Total number of column occurrences across all entities.
+     * Filter by database name.
      */
-    totalOccurrences: number;
+    databaseName?: string;
     /**
-     * Total number of unique column names.
-     */
-    totalUniqueColumns: number;
-}
-
-/**
- * A unique column name with its metadata groups.
- */
-export interface ColumnGridItem {
-    /**
-     * Name of the column.
-     */
-    columnName: string;
-    /**
-     * Metadata groups - columns with identical metadata are grouped together.
-     */
-    groups: ColumnMetadataGroup[];
-    /**
-     * Whether this column has different metadata across occurrences.
-     */
-    hasVariations: boolean;
-    /**
-     * Total number of occurrences for this column name.
-     */
-    totalOccurrences: number;
-}
-
-/**
- * A group of columns with identical metadata.
- */
-export interface ColumnMetadataGroup {
-    /**
-     * Data type (common across all columns in this group).
-     */
-    dataType?: string;
-    /**
-     * Description (common across all columns in this group).
+     * Description to apply to all matching columns.
      */
     description?: string;
     /**
-     * Display name (common across all columns in this group).
+     * Display Name to apply to all matching columns.
      */
     displayName?: string;
     /**
-     * Unique identifier for this metadata group (hash of metadata values).
+     * Filter by domain ID.
      */
-    groupId: string;
+    domainId?: string;
     /**
-     * Number of column occurrences in this group.
+     * If true, performs a dry-run to preview which columns will be updated without actually
+     * making changes. Returns a list of columns that would be affected.
      */
-    occurrenceCount: number;
+    dryRun?: boolean;
     /**
-     * List of column occurrences in this group.
+     * Filter by entity types (e.g., table, dashboardDataModel). If not provided, searches
+     * across all supported types.
      */
-    occurrences: ColumnOccurrenceRef[];
+    entityTypes?: string[];
     /**
-     * Tags (common across all columns in this group).
+     * Filter by schema name.
+     */
+    schemaName?: string;
+    /**
+     * Filter by service name.
+     */
+    serviceName?: string;
+    /**
+     * Tags and glossary terms to apply to all matching columns. Provide an empty array to
+     * remove all tags.
      */
     tags?: TagLabel[];
 }
 
 /**
- * Reference to a column occurrence.
+ * Individual column update with FQN and metadata changes.
  */
-export interface ColumnOccurrenceRef {
+export interface ColumnUpdate {
     /**
-     * Fully qualified name of the column.
+     * Fully qualified name of the column to update.
      */
     columnFQN: string;
     /**
-     * Name of the database (if applicable).
+     * Description of the column.
      */
-    databaseName?: string;
+    description?: string;
     /**
-     * Display name of the parent entity.
+     * Display Name that identifies this column name.
      */
-    entityDisplayName?: string;
+    displayName?: string;
     /**
-     * Fully qualified name of the parent entity.
-     */
-    entityFQN: string;
-    /**
-     * Type of entity containing the column.
+     * Type of entity containing the column (table or dashboardDataModel).
      */
     entityType: string;
     /**
-     * Name of the schema (if applicable).
+     * Tags and glossary terms associated with the column. Provide an empty array to remove all
+     * tags.
      */
-    schemaName?: string;
-    /**
-     * Name of the service.
-     */
-    serviceName?: string;
+    tags?: TagLabel[];
 }
 
 /**

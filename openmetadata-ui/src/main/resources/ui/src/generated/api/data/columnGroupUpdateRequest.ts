@@ -11,117 +11,29 @@
  *  limitations under the License.
  */
 /**
- * Response containing all unique columns grouped by metadata similarity for grid-based
- * editing.
+ * Request to update metadata for a specific group of columns.
  */
-export interface ColumnGridResponse {
+export interface ColumnGroupUpdateRequest {
     /**
-     * List of unique column names with their metadata groups.
+     * List of column FQNs to update (all must be from the same group).
      */
-    columns: ColumnGridItem[];
+    columnFQNs: string[];
     /**
-     * Cursor for pagination (Base64-encoded). Use this in the next request to get the next page
-     * of results.
-     */
-    cursor?: string;
-    /**
-     * Total number of column occurrences across all entities.
-     */
-    totalOccurrences: number;
-    /**
-     * Total number of unique column names.
-     */
-    totalUniqueColumns: number;
-}
-
-/**
- * A unique column name with its metadata groups.
- */
-export interface ColumnGridItem {
-    /**
-     * Name of the column.
-     */
-    columnName: string;
-    /**
-     * Metadata groups - columns with identical metadata are grouped together.
-     */
-    groups: ColumnMetadataGroup[];
-    /**
-     * Whether this column has different metadata across occurrences.
-     */
-    hasVariations: boolean;
-    /**
-     * Total number of occurrences for this column name.
-     */
-    totalOccurrences: number;
-}
-
-/**
- * A group of columns with identical metadata.
- */
-export interface ColumnMetadataGroup {
-    /**
-     * Data type (common across all columns in this group).
-     */
-    dataType?: string;
-    /**
-     * Description (common across all columns in this group).
+     * New description for the columns.
      */
     description?: string;
     /**
-     * Display name (common across all columns in this group).
+     * New display name for the columns.
      */
     displayName?: string;
     /**
-     * Unique identifier for this metadata group (hash of metadata values).
+     * ID of the metadata group to update.
      */
-    groupId: string;
+    groupId?: string;
     /**
-     * Number of column occurrences in this group.
-     */
-    occurrenceCount: number;
-    /**
-     * List of column occurrences in this group.
-     */
-    occurrences: ColumnOccurrenceRef[];
-    /**
-     * Tags (common across all columns in this group).
+     * New tags for the columns.
      */
     tags?: TagLabel[];
-}
-
-/**
- * Reference to a column occurrence.
- */
-export interface ColumnOccurrenceRef {
-    /**
-     * Fully qualified name of the column.
-     */
-    columnFQN: string;
-    /**
-     * Name of the database (if applicable).
-     */
-    databaseName?: string;
-    /**
-     * Display name of the parent entity.
-     */
-    entityDisplayName?: string;
-    /**
-     * Fully qualified name of the parent entity.
-     */
-    entityFQN: string;
-    /**
-     * Type of entity containing the column.
-     */
-    entityType: string;
-    /**
-     * Name of the schema (if applicable).
-     */
-    schemaName?: string;
-    /**
-     * Name of the service.
-     */
-    serviceName?: string;
 }
 
 /**
