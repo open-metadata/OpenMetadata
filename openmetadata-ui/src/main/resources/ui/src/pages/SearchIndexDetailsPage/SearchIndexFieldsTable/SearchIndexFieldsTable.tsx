@@ -325,16 +325,16 @@ const SearchIndexFieldsTable = ({
   );
 
   useEffect(() => {
-    if (!searchText) {
-      setSearchedFields(sortByOrdinalPosition);
-      setExpandedRowKeys([]);
-    } else {
+    if (searchText) {
       const searchFields = searchInFields<SearchIndexField>(
         sortByOrdinalPosition,
         searchText
       );
       setSearchedFields(searchFields);
       setExpandedRowKeys(fieldAllRowKeys);
+    } else {
+      setSearchedFields(sortByOrdinalPosition);
+      setExpandedRowKeys([]);
     }
   }, [searchText, searchIndexFields]);
 
