@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/pipeline/dataflowConnection.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DataflowConnection",
-  "description": "Google Cloud Dataflow Pipeline Connection Config",
+  "description": "Dataflow Pipeline Connection Config",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.pipeline.DataflowConnection",
   "definitions": {
@@ -20,13 +20,9 @@
       "$ref": "#/definitions/dataflowType",
       "default": "Dataflow"
     },
-    "projectId": {
-      "title": "GCP Project ID",
-      "description": "Google Cloud project ID",
-      "type": "string"
-    },
-    "gcpConfig": {
-      "title": "GCP Credentials Configuration",
+    "credentials": {
+      "title": "GCP Credentials",
+      "description": "GCP Credentials",
       "$ref": "../../../../security/credentials/gcpCredentials.json"
     },
     "region": {
@@ -35,9 +31,9 @@
       "type": "string"
     },
     "pipelineFilterPattern": {
-      "description": "Regex to exclude pipelines.",
+      "description": "Regex exclude pipelines.",
       "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
-      "title": "Pipeline Filter Pattern"
+      "title": "Default Pipeline Filter Pattern"
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",
@@ -45,5 +41,5 @@
     }
   },
   "additionalProperties": false,
-  "required": ["projectId", "gcpConfig"]
+  "required": ["credentials"]
 }

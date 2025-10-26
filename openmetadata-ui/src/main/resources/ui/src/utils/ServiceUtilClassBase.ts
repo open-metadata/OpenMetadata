@@ -184,6 +184,7 @@ class ServiceUtilClassBase {
     DriveServiceType.GoogleDrive,
     DriveServiceType.SharePoint,
     DatabaseServiceType.ServiceNow,
+    PipelineServiceType.Dataflow,
   ];
 
   DatabaseServiceTypeSmallCase = this.convertEnumToLowerCase<
