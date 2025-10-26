@@ -536,8 +536,7 @@ test.describe('Mention notifications in Notification Box', () => {
         const mentionsFeedResponse = adminPage.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/feed') &&
-            response.url().includes('filterType=MENTIONS') &&
-            response.url().includes('type=Conversation')
+            response.url().includes('filterType=MENTIONS')
         );
 
         await mentionsTab.click();

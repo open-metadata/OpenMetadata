@@ -11,15 +11,23 @@
  *  limitations under the License.
  */
 
-import { Card, Col, Row, Typography } from 'antd';
-import React, { useMemo, useState } from 'react';
 import {
+  Box,
+  Card,
+  Skeleton,
+  Stack,
+  Typography,
+  useTheme,
+} from '@mui/material';
+import React, { Fragment, useMemo, useState } from 'react';
+import {
+  Area,
   Brush,
   CartesianGrid,
+  ComposedChart,
   Legend,
   LegendProps,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -29,10 +37,11 @@ import { GRAPH_BACKGROUND_COLOR } from '../../../../constants/constants';
 import { PROFILER_CHART_DATA_SIZE } from '../../../../constants/profiler.constant';
 import {
   axisTickFormatter,
+  createHorizontalGridLineRenderer,
   tooltipFormatter,
   updateActiveChartFilter,
 } from '../../../../utils/ChartUtils';
-import { CustomTooltip } from '../../../../utils/DataInsightUtils';
+import { CustomDQTooltip } from '../../../../utils/DataQuality/DataQualityUtils';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ProfilerDetailsCardProps } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -47,7 +56,9 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
   title,
   isLoading,
   noDataPlaceholderText,
+  chartType = 'line',
 }: ProfilerDetailsCardProps) => {
+  const theme = useTheme();
   const { data, information } = chartCollection;
   const [activeKeys, setActiveKeys] = useState<string[]>([]);
   const { showBrush, endIndex } = useMemo(() => {
@@ -63,50 +74,82 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
     );
   };
 
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
+
+  if (isLoading) {
+    return <Skeleton height={380} variant="rounded" width="100%" />;
+  }
+
   return (
-    <Card
-      className="shadow-none global-border-radius"
-      data-testid="profiler-details-card-container"
-      loading={isLoading}>
-      <Row gutter={[16, 16]}>
-        {title && (
-          <Col span={24}>
-            <Typography.Title level={5}>{title}</Typography.Title>
-          </Col>
-        )}
-        <Col span={4}>
+    <Box>
+      {title && (
+        <Typography
+          sx={{
+            fontSize: '16px',
+            color: theme.palette.grey[900],
+            fontWeight: 600,
+            mb: 3,
+          }}
+          variant="h6">
+          {title}
+        </Typography>
+      )}
+      <Card
+        data-testid="profiler-details-card-container"
+        sx={{
+          p: 4,
+          borderRadius: '10px',
+          border: `1px solid ${theme.palette.grey[200]}`,
+          boxShadow: 'none',
+        }}>
+        <Stack spacing={4}>
           <ProfilerLatestValue
             information={information}
             tickFormatter={tickFormatter}
           />
-        </Col>
-        <Col span={20}>
+
           {data.length > 0 ? (
             <ResponsiveContainer
               className="custom-legend"
               debounce={200}
               id={`${name}_graph`}
               minHeight={300}>
-              <LineChart className="w-full" data={data} margin={{ left: 16 }}>
-                <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
+              <ComposedChart
+                className="w-full"
+                data={data}
+                margin={{ left: 0 }}>
+                <CartesianGrid
+                  horizontal={renderHorizontalGridLine}
+                  stroke={GRAPH_BACKGROUND_COLOR}
+                  strokeDasharray="3 3"
+                  vertical={false}
+                />
                 <XAxis
+                  axisLine={false}
                   dataKey="name"
                   padding={{ left: 16, right: 16 }}
                   tick={{ fontSize: 12 }}
+                  tickLine={false}
                 />
 
                 <YAxis
                   allowDataOverflow
+                  axisLine={false}
                   padding={{ top: 16, bottom: 16 }}
                   tick={{ fontSize: 12 }}
                   tickFormatter={(props) =>
                     axisTickFormatter(props, tickFormatter)
                   }
+                  tickLine={false}
                   type={showYAxisCategory ? 'category' : 'number'}
+                  width={showYAxisCategory ? undefined : 50}
                 />
                 <Tooltip
                   content={
-                    <CustomTooltip
+                    <CustomDQTooltip
                       dateTimeFormatter={formatDateTimeLong}
                       timeStampKey="timestamp"
                       valueFormatter={(value) =>
@@ -114,22 +157,46 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                       }
                     />
                   }
+                  cursor={{
+                    stroke: theme.palette.grey[200],
+                    strokeDasharray: '3 3',
+                  }}
                 />
                 {information.map((info) => (
-                  <Line
-                    dataKey={info.dataKey}
-                    hide={
-                      activeKeys.length
-                        ? !activeKeys.includes(info.dataKey)
-                        : false
-                    }
-                    key={info.dataKey}
-                    name={info.title}
-                    stroke={info.color}
-                    type={curveType ?? 'monotone'}
-                  />
+                  <Fragment key={info.dataKey}>
+                    {chartType === 'area' && (
+                      <Area
+                        dataKey={info.dataKey}
+                        fill={info.fill ?? info.color}
+                        fillOpacity={info.fill ? 1 : 0.1}
+                        hide={
+                          activeKeys.length
+                            ? !activeKeys.includes(info.dataKey)
+                            : false
+                        }
+                        key={info.dataKey}
+                        name={info.title}
+                        stroke={info.color}
+                        type={curveType ?? 'monotone'}
+                      />
+                    )}
+                    <Line
+                      dataKey={info.dataKey}
+                      hide={
+                        activeKeys.length
+                          ? !activeKeys.includes(info.dataKey)
+                          : false
+                      }
+                      key={info.dataKey}
+                      name={info.title}
+                      stroke={info.color}
+                      type={curveType ?? 'monotone'}
+                    />
+                  </Fragment>
                 ))}
-                <Legend onClick={handleClick} />
+                {chartType === 'line' && (
+                  <Legend iconType="rect" onClick={handleClick} />
+                )}
                 {showBrush && (
                   <Brush
                     data={data}
@@ -139,21 +206,17 @@ const ProfilerDetailsCard: React.FC<ProfilerDetailsCardProps> = ({
                     padding={{ left: 16, right: 16 }}
                   />
                 )}
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           ) : (
-            <Row align="middle" className="h-full w-full" justify="center">
-              <Col>
-                <ErrorPlaceHolder
-                  className="mt-0-important"
-                  placeholderText={noDataPlaceholderText}
-                />
-              </Col>
-            </Row>
+            <ErrorPlaceHolder
+              className="mt-0-important"
+              placeholderText={noDataPlaceholderText}
+            />
           )}
-        </Col>
-      </Row>
-    </Card>
+        </Stack>
+      </Card>
+    </Box>
   );
 };
 

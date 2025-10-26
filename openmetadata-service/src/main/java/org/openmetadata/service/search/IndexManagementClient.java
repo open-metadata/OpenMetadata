@@ -102,4 +102,12 @@ public interface IndexManagementClient {
    * @return set of indices that have the alias
    */
   Set<String> getIndicesByAlias(String aliasName);
+
+  /**
+   * Get all indices that match the given prefix.
+   *
+   * @param prefix the prefix to match index names against
+   * @return set of indices that start with the prefix
+   */
+  Set<String> listIndicesByPrefix(String prefix);
 }

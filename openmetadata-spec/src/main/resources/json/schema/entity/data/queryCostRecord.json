@@ -34,6 +34,10 @@
             "$ref": "../../type/entityReference.json",
             "default": null
         },
+    "impersonatedBy": {
+      "description": "Bot user that performed the action on behalf of the actual user.",
+      "$ref": "../../type/basic.json#/definitions/impersonatedBy"
+    },
         "updatedAt": {
             "description": "Time when query cost record was updated.",
             "$ref": "../../type/basic.json#/definitions/timestamp"

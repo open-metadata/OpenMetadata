@@ -453,6 +453,7 @@ def test_case_column_values_to_be_unique():
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         computePassedFailedRowCount=True,
+        dimensionColumns=None,
     )  # type: ignore
 
 

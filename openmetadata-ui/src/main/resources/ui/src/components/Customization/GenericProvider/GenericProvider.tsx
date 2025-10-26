@@ -54,6 +54,7 @@ interface GenericProviderProps<T extends Omit<EntityReference, 'type'>> {
   currentVersionData?: T;
   isTabExpanded?: boolean;
   customizedPage?: Page | null;
+  muiTags?: boolean;
 }
 
 interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
@@ -70,6 +71,7 @@ interface GenericContextType<T extends Omit<EntityReference, 'type'>> {
   // Props to control the dropdown state of Tag/Glossary from the Generic Provider
   activeTagDropdownKey: string | null;
   updateActiveTagDropdownKey: (key: string | null) => void;
+  muiTags: boolean;
 }
 
 const createGenericContext = once(<T extends Omit<EntityReference, 'type'>>() =>
@@ -86,6 +88,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   currentVersionData,
   isTabExpanded = false,
   customizedPage,
+  muiTags = false,
 }: GenericProviderProps<T>) => {
   const GenericContext = createGenericContext<T>();
   const [threadLink, setThreadLink] = useState<string>('');
@@ -230,6 +233,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       updateWidgetHeight,
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
+      muiTags,
     }),
     [
       data,
@@ -244,6 +248,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
       updateWidgetHeight,
       activeTagDropdownKey,
       updateActiveTagDropdownKey,
+      muiTags,
     ]
   );
 

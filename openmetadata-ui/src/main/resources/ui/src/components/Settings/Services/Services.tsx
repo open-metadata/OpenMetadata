@@ -34,7 +34,6 @@ import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
-import { SearchIndex } from '../../../enums/search.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
@@ -54,6 +53,7 @@ import { getTermQuery } from '../../../utils/SearchUtils';
 import {
   getOptionalFields,
   getResourceEntityFromServiceCategory,
+  getSearchIndexFromService,
   getServiceTypesFromServiceCategory,
 } from '../../../utils/ServiceUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
@@ -111,28 +111,7 @@ const Services = ({ serviceName }: ServicesProps) => {
     setSearchTerm('');
     setServiceTypeFilter([]);
 
-    switch (serviceName) {
-      case ServiceCategory.DATABASE_SERVICES:
-        return SearchIndex.DATABASE_SERVICE;
-      case ServiceCategory.DASHBOARD_SERVICES:
-        return SearchIndex.DASHBOARD_SERVICE;
-      case ServiceCategory.MESSAGING_SERVICES:
-        return SearchIndex.MESSAGING_SERVICE;
-      case ServiceCategory.PIPELINE_SERVICES:
-        return SearchIndex.PIPELINE_SERVICE;
-      case ServiceCategory.ML_MODEL_SERVICES:
-        return SearchIndex.ML_MODEL_SERVICE;
-      case ServiceCategory.STORAGE_SERVICES:
-        return SearchIndex.STORAGE_SERVICE;
-      case ServiceCategory.SEARCH_SERVICES:
-        return SearchIndex.SEARCH_SERVICE;
-      case ServiceCategory.API_SERVICES:
-        return SearchIndex.API_SERVICE_INDEX;
-      case ServiceCategory.DRIVE_SERVICES:
-        return SearchIndex.DRIVE_SERVICE;
-    }
-
-    return SearchIndex.DATABASE_SERVICE;
+    return getSearchIndexFromService(serviceName);
   }, [serviceName]);
 
   const getServiceDetails = useCallback(

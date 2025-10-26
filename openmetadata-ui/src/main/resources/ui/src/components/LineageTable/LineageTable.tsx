@@ -629,7 +629,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             ? 'fromEntity'
             : 'toEntity',
         sorter: true,
-        render: (record?: SearchSourceAlias) => (
+        render: (record?: SearchSourceAlias & { type: EntityType }) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',
@@ -671,7 +671,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
             ? 'fromEntity'
             : 'toEntity',
         sorter: true,
-        render: (record?: SearchSourceAlias) => (
+        render: (record?: SearchSourceAlias & { type?: EntityType }) => (
           <Link
             to={getEntityLinkFromType(
               record?.fullyQualifiedName ?? '',

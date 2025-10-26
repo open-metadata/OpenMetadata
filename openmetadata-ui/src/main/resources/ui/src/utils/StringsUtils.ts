@@ -314,7 +314,7 @@ export const jsonToCSV = <T extends JSONRecord>(
         }
         const escaped =
           typeof value === 'string'
-            ? value.replace(/"/g, '\\"')
+            ? value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
             : value.toString(); // handle quotes in content
 
         return `"${escaped}"`; // wrap each field in quotes

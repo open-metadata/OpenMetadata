@@ -18,6 +18,7 @@ import {
   render,
   screen,
 } from '@testing-library/react';
+import { Status } from '../../../../../generated/entity/applications/appRunRecord';
 import { IngestionPipeline } from '../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { EXECUTION_RUNS, FAILURE } from '../../../../../mocks/Ingestion.mock';
 import { mockDataInsightApplicationRun } from '../../../../../mocks/LogsViewerPage.mock';
@@ -438,7 +439,7 @@ describe('Test IngestionRecentRun component', () => {
       const unorderedAppRuns = [
         {
           runId: 'app-run-2',
-          status: 'Success',
+          status: Status.Success,
           startTime: 1667307000,
           timestamp: 1667307000,
           endTime: 1667307003,
@@ -446,7 +447,7 @@ describe('Test IngestionRecentRun component', () => {
         },
         {
           runId: 'app-run-1',
-          status: 'Failed',
+          status: Status.Failed,
           startTime: 1667301000,
           timestamp: 1667301000,
           endTime: 1667301003,
@@ -454,7 +455,7 @@ describe('Test IngestionRecentRun component', () => {
         },
         {
           runId: 'app-run-3',
-          status: 'Running',
+          status: Status.Running,
           startTime: 1667309000,
           timestamp: 1667309000,
           endTime: 1667309003,

@@ -1094,6 +1094,81 @@ public class UserResource extends EntityResource<User, UserRepository> {
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  @GET
+  @Path("/{id}/assets")
+  @Operation(
+      operationId = "listUserAssets",
+      summary = "List assets owned by this user or their teams",
+      description =
+          "Get a paginated list of assets that are owned by this user or any of the teams they belong to. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "User for instance {id} is not found")
+      })
+  public Response listUserAssets(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the user", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getUserAssets(id, limit, offset)).build();
+  }
+
+  @GET
+  @Path("/name/{name}/assets")
+  @Operation(
+      operationId = "listUserAssetsByName",
+      summary = "List assets owned by this user or their teams by name",
+      description =
+          "Get a paginated list of assets that are owned by this user or any of the teams they belong to. "
+              + "Use limit and offset query params for pagination.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of assets",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = EntityReference.class))),
+        @ApiResponse(responseCode = "404", description = "User for instance {name} is not found")
+      })
+  public Response listUserAssetsByName(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the user", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Parameter(description = "Limit the number of assets returned. (1 to 1000, default = 100)")
+          @DefaultValue("10")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset) {
+    return Response.ok(repository.getUserAssetsByName(name, limit, offset)).build();
+  }
+
   @POST
   @Path("/signup")
   @Operation(

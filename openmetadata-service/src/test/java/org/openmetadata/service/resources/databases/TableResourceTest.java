@@ -21,6 +21,7 @@ import static jakarta.ws.rs.core.Response.Status.OK;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 import static java.lang.String.format;
 import static java.util.Collections.singletonList;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -64,10 +65,20 @@ import static org.openmetadata.service.util.EntityUtil.fieldUpdated;
 import static org.openmetadata.service.util.EntityUtil.tagLabelMatch;
 import static org.openmetadata.service.util.FullyQualifiedName.build;
 import static org.openmetadata.service.util.RestUtil.DATE_FORMAT;
-import static org.openmetadata.service.util.TestUtils.*;
+import static org.openmetadata.service.util.TestUtils.ADMIN_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.INGESTION_BOT_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.TEST_AUTH_HEADERS;
+import static org.openmetadata.service.util.TestUtils.UpdateType;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MAJOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.MINOR_UPDATE;
 import static org.openmetadata.service.util.TestUtils.UpdateType.NO_CHANGE;
+import static org.openmetadata.service.util.TestUtils.assertEntityPagination;
+import static org.openmetadata.service.util.TestUtils.assertListNotEmpty;
+import static org.openmetadata.service.util.TestUtils.assertListNotNull;
+import static org.openmetadata.service.util.TestUtils.assertListNull;
+import static org.openmetadata.service.util.TestUtils.assertResponse;
+import static org.openmetadata.service.util.TestUtils.assertResponseContains;
+import static org.openmetadata.service.util.TestUtils.validateEntityReference;
 
 import com.google.common.collect.Lists;
 import es.org.elasticsearch.client.Request;
@@ -163,6 +174,7 @@ import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TagLabel.LabelType;
+import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -5535,14 +5547,11 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(1, tableWithDomain.getDomains().size());
     assertEquals(domain.getId(), tableWithDomain.getDomains().getFirst().getId());
 
-    // Step 6: Add the table to the dataProduct
-    String originalJson = JsonUtils.pojoToJson(dataProduct);
-    dataProduct.setAssets(List.of(table.getEntityReference()));
-    ChangeDescription change = getChangeDescription(dataProduct, MINOR_UPDATE);
-    fieldAdded(change, "assets", List.of(table.getEntityReference()));
-    dataProduct =
-        dataProductTest.patchEntityAndCheck(
-            dataProduct, originalJson, ADMIN_AUTH_HEADERS, MINOR_UPDATE, change);
+    // Step 6: Add the table to the dataProduct using the bulk add API
+    BulkAssets bulkAssets = new BulkAssets().withAssets(List.of(table.getEntityReference()));
+    jakarta.ws.rs.client.WebTarget bulkAddTarget =
+        getResource("dataProducts/" + dataProduct.getFullyQualifiedName() + "/assets/add");
+    TestUtils.put(bulkAddTarget, bulkAssets, Status.OK, ADMIN_AUTH_HEADERS);
 
     // Verify table has the dataProduct
     Table tableWithDataProduct =
@@ -5584,12 +5593,12 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     assertEquals(dataProduct.getId(), fullyRestoredTable.getDataProducts().getFirst().getId());
 
     // Additional verification: Check that the dataProduct still lists the table as an asset
-    DataProduct verifyDataProduct =
-        dataProductTest.getEntity(dataProduct.getId(), "assets", ADMIN_AUTH_HEADERS);
-    assertNotNull(verifyDataProduct.getAssets());
+    // Note: Assets field is deprecated, use the paginated assets API instead
+    ResultList<EntityReference> assets =
+        dataProductTest.getAssets(dataProduct.getId(), 100, 0, ADMIN_AUTH_HEADERS);
+    assertNotNull(assets);
     assertTrue(
-        verifyDataProduct.getAssets().stream()
-            .anyMatch(asset -> asset.getId().equals(table.getId())),
+        assets.getData().stream().anyMatch(asset -> asset.getId().equals(table.getId())),
         "Table should still be an asset of the data product after restore");
 
     // Cleanup: Hard delete all test entities
@@ -5598,6 +5607,54 @@ public class TableResourceTest extends EntityResourceTest<Table, CreateTable> {
     dbTest.deleteEntity(db.getId(), false, true, ADMIN_AUTH_HEADERS);
     dataProductTest.deleteEntity(dataProduct.getId(), false, true, ADMIN_AUTH_HEADERS);
     domainTest.deleteEntity(domain.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testReindexEntities(TestInfo test) throws IOException, InterruptedException {
+    CreateTable createTable1 = createRequest(test, 1).withName("reindex_test_table_1");
+    Table table1 = createEntity(createTable1, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable2 = createRequest(test, 2).withName("reindex_test_table_2");
+    Table table2 = createEntity(createTable2, ADMIN_AUTH_HEADERS);
+
+    CreateTable createTable3 = createRequest(test, 3).withName("reindex_test_table_3");
+    Table table3 = createEntity(createTable3, ADMIN_AUTH_HEADERS);
+
+    List<EntityReference> entityRefs =
+        Arrays.asList(
+            table1.getEntityReference(), table2.getEntityReference(), table3.getEntityReference());
+
+    assertDoesNotThrow(
+        () -> Entity.getSearchRepository().getSearchClient().reindexEntities(entityRefs));
+
+    Thread.sleep(2000);
+
+    Table verifyTable1 = getEntity(table1.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable1);
+    assertEquals(table1.getName(), verifyTable1.getName());
+
+    Table verifyTable2 = getEntity(table2.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable2);
+    assertEquals(table2.getName(), verifyTable2.getName());
+
+    Table verifyTable3 = getEntity(table3.getId(), ADMIN_AUTH_HEADERS);
+    assertNotNull(verifyTable3);
+    assertEquals(table3.getName(), verifyTable3.getName());
+
+    deleteEntity(table1.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(table2.getId(), false, true, ADMIN_AUTH_HEADERS);
+    deleteEntity(table3.getId(), false, true, ADMIN_AUTH_HEADERS);
+  }
+
+  @Test
+  void testReindexEntities_EmptyList() {
+    assertDoesNotThrow(
+        () -> Entity.getSearchRepository().getSearchClient().reindexEntities(listOf()));
+  }
+
+  @Test
+  void testReindexEntities_NullList() {
+    assertDoesNotThrow(() -> Entity.getSearchRepository().getSearchClient().reindexEntities(null));
   }
 
   @Test

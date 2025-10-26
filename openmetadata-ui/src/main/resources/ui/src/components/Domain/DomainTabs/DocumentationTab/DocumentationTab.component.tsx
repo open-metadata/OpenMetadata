@@ -132,9 +132,10 @@ const DocumentationTab = ({
 
   return (
     <ResizablePanels
-      className="h-full domain-height-with-resizable-panel"
+      className="h-full domain-height-with-resizable-panel no-right-panel-splitter"
       firstPanel={{
-        className: 'domain-resizable-panel-container',
+        className:
+          'domain-resizable-panel-container left-panel-documentation-tab',
         children: (
           <DescriptionV1
             removeBlur
@@ -204,7 +205,7 @@ const DocumentationTab = ({
         ),
         ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
         className:
-          'entity-resizable-right-panel-container domain-resizable-panel-container',
+          'entity-resizable-right-panel-container domain-resizable-panel-container right-panel-documentation-tab',
       }}
     />
   );
