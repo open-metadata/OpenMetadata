@@ -156,7 +156,7 @@ const CustomPropertiesSection = ({
 
             return (
               <div className="custom-property-item" key={property.name}>
-                <Typography.Text strong className="property-name">
+                <Typography.Text className="property-name">
                   {property.displayName || property.name}
                 </Typography.Text>
                 <Typography.Text className="property-value">

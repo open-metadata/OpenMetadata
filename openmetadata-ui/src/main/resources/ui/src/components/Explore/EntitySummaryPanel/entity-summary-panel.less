@@ -197,7 +197,10 @@
     background-position: bottom;
     background-size: 3px 1px;
     background-repeat: repeat-x;
-
+    margin-right: -16px;
+    margin-left: -16px;
+    padding-right: 16px;
+    padding-left: 16px;
     &:last-child {
       border-bottom: none;
       margin-bottom: 0;
@@ -206,43 +209,40 @@
 
     .property-name {
       font-size: 13px;
-      color: @grey-700;
+      color: @grey-900;
       font-weight: 600;
-      margin-bottom: 4px;
+      margin-bottom: 6px;
     }
 
     .property-value {
-      font-size: 14px;
-      color: @text-color;
+      font-size: 12px;
+      font-weight: 400;
+      color: @grey-700;
       word-break: break-word;
     }
   }
 
   .custom-property-table {
     margin-top: 8px;
-    border: 1px solid @grey-15;
+    border: 1px solid @grey-200;
     border-top-right-radius: 10px;
     border-top-left-radius: 10px;
     thead {
       background-color: @grey-9;
     }
     th {
-      color: @grey-700;
-      font-weight: 600;
+      color: @grey-600;
+      font-weight: 500;
       padding-top: 10px;
       padding-bottom: 11px;
-      text-transform: uppercase;
       font-size: 11px;
       border-bottom: 1px solid @light-border-color;
     }
     tr {
       text-align: center;
-      padding-top: 10px;
-      padding-bottom: 11px;
-      border-bottom: 1px solid @light-border-color;
     }
     .ant-table {
-      border: 1px solid @grey-15;
+      border: 1px solid @grey-200;
       border-radius: 10px;
       overflow: hidden;
       width: 100%;
