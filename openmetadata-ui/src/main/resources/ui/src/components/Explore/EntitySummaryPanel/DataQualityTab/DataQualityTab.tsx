@@ -487,8 +487,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
             ) : (
               <div className="no-test-cases">
                 <Typography.Text className="text-grey-muted">
-                  {t('message.no-test-cases-for-status', {
-                    status: activeFilter,
+                  {t('label.no-entity', {
+                    entity: t('label.test-case-plural'),
                   })}
                 </Typography.Text>
               </div>
@@ -626,8 +626,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
               ) : (
                 <div className="no-incidents">
                   <Typography.Text className="text-grey-muted">
-                    {t('message.no-incidents-for-status', {
-                      status: activeIncidentFilter,
+                    {t('label.no-entity', {
+                      entity: activeIncidentFilter,
                     })}
                   </Typography.Text>
                 </div>

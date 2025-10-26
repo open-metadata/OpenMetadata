@@ -138,9 +138,12 @@
 
   .data-quality-tabs {
     .ant-tabs-nav {
-      margin-bottom: 16px;
+      //   margin-bottom: 16px;
       padding-left: 16px;
-
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      background-color: @white;
       .ant-tabs-nav-wrap {
         .ant-tabs-nav-list {
           justify-content: center;
@@ -207,6 +210,10 @@
       border-radius: 8px;
       flex-direction: column;
       margin-bottom: 14px;
+      position: sticky;
+      top: 48px;
+      z-index: 2;
+      background: @white;
 
       .incidents-stats-cards-container {
         display: flex;

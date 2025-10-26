@@ -75,6 +75,8 @@
     scrollbar-width: none;
     height: 100%;
     border-radius: 8px;
+    position: relative;
+    background: @white;
     &::-webkit-scrollbar {
       width: 0px;
       background: transparent;
@@ -353,6 +355,11 @@
     gap: 10px;
     margin-bottom: 16px;
     flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    padding-top: 8px;
+    padding-bottom: 8px;
 
     .lineage-filter-button {
       border-radius: 16px;
@@ -372,7 +379,7 @@
     }
   }
   .lineage-items-list {
-    overflow-y: auto;
+    // Let the parent container handle scrolling so the filter remains fixed
 
     .lineage-item-card {
       border: 0.6px solid @grey-15;

@@ -1010,7 +1010,7 @@ export default function EntitySummaryPanel({
               </div>
             )}
             <div className="entity-summary-panel-tab-content">
-              <div className="p-x-md p-t-md">
+              <div className="p-x-md">
                 {isLineageLoading ? (
                   <div className="flex-center p-lg">
                     <Loader size="default" />
@@ -1024,7 +1024,7 @@ export default function EntitySummaryPanel({
                   />
                 ) : (
                   <div className="text-center text-grey-muted p-lg">
-                    {t('message.no-data-found')}
+                    {t('label.no-data-found')}
                   </div>
                 )}
               </div>
