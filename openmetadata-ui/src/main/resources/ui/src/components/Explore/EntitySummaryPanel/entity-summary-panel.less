@@ -37,8 +37,6 @@
 }
 .overview-tab-content {
   height: 100vh;
-  //   padding-left: 14px;
-  //   padding-right: 14px;
 }
 .summary-panel-container {
   position: sticky;
@@ -152,7 +150,7 @@
 
 .summary-panel-card {
   background-color: @grey-9;
-  border: 0.5px solid #eaecf5;
+  border: 0.5px solid @grey-15;
 }
 .entity-icon {
   color: @primary-7;
@@ -170,7 +168,7 @@
   border-radius: 8px;
   height: 49px;
   padding-left: 4px;
-  background-color: #f8f9fc;
+  background-color: @grey-9;
 
   .entity-title-link {
     flex: 1;
@@ -222,7 +220,7 @@
 
   .custom-property-table {
     margin-top: 8px;
-    border: 1px solid #e3e8f0;
+    border: 1px solid @grey-15;
     border-top-right-radius: 10px;
     border-top-left-radius: 10px;
     thead {
@@ -235,26 +233,26 @@
       padding-bottom: 11px;
       text-transform: uppercase;
       font-size: 11px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid @light-border-color;
     }
     tr {
       text-align: center;
       padding-top: 10px;
       padding-bottom: 11px;
-      border-bottom: 1px solid #f0f0f0;
+      border-bottom: 1px solid @light-border-color;
     }
     .ant-table {
-      border: 1px solid #e3e8f0;
+      border: 1px solid @grey-15;
       border-radius: 10px;
       overflow: hidden;
       width: 100%;
 
       .ant-table-thead > tr > th {
-        background-color: #fafafa;
-        border-bottom: 1px solid #f0f0f0;
+        background-color: @grey-50;
+        border-bottom: 1px solid @light-border-color;
         font-weight: 600;
         font-size: 12px;
-        color: '#364254';
+        color: @text-color;
         padding: 12px 20px;
         text-align: left;
         white-space: nowrap;
@@ -273,9 +271,9 @@
       }
 
       .ant-table-thead > tr > td {
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid @light-border-color;
         font-size: 12px;
-        color: '#364254';
+        color: @text-color;
         padding: 12px 20px;
         text-align: left;
         white-space: nowrap;
@@ -291,7 +289,7 @@
 
       .ant-table-tbody > tr:last-child > td {
         border-bottom: none;
-        border-bottom: 1px solid #f0f0f0;
+        border-bottom: 1px solid @light-border-color;
       }
       tbody > tr > td {
         padding-top: 10px;
@@ -319,14 +317,22 @@
     color: @primary-7;
   }
 }
-
+.service-icon {
+  background-color: @white;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  border: 1px solid @grey-15;
+}
 .service-icon-lineage {
   width: 21px !important;
   height: 21px !important;
 }
 .lineage-item-direction {
   border-radius: 5px;
-  border: 0.8px solid #e3e8f0;
+  border: 0.8px solid @grey-15;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -354,9 +360,9 @@
       height: 28px;
       padding: 0 7px;
 
-      border: 1px solid #e3e8f0;
+      border: 1px solid @grey-15;
       background-color: @white;
-      color: #595959;
+      color: @grey-900;
 
       &.active {
         border: 1px solid @primary-7;
@@ -367,23 +373,19 @@
   }
   .lineage-items-list {
     overflow-y: auto;
-    margin-right: -16px;
-    margin-left: -16px;
+
     .lineage-item-card {
-      border-bottom: 1px solid @grey-15;
-      padding-bottom: 18px;
-      padding-right: 16px;
-      padding-left: 16px;
-      padding-top: 12px;
+      border: 0.6px solid @grey-15;
+      border-radius: 10px;
+      margin-bottom: 16px;
       .item-name-text {
-        color: #20293a;
+        color: @grey-900;
         text-transform: uppercase;
         font-size: 13px;
         font-weight: 600;
-        padding-top: 14px;
       }
       .item-direction-text {
-        color: #364254;
+        color: @grey-900;
         font-size: 9px;
         text-transform: uppercase;
         font-weight: 600;
@@ -393,10 +395,28 @@
         display: flex;
         align-items: center;
         gap: 6px;
+        justify-content: space-between;
+        padding: 12px;
+        border-top-right-radius: 10px;
+        border-top-left-radius: 10px;
+        background-color: @grey-9;
       }
-
+      .lineage-card-content {
+        border-bottom-right-radius: 10px;
+        border-bottom-left-radius: 10px;
+      }
+      .item-path-container {
+        border: 0.8px solid @grey-15;
+        border-radius: 5px;
+        height: 19px;
+        padding: 0 7px;
+        display: flex;
+        align-items: center;
+        width: fit-content;
+        margin-bottom: 13px;
+      }
       .item-path-text {
-        color: #242932;
+        color: @grey-900;
         font-size: 10px !important;
         line-height: 21px !important;
         text-transform: uppercase;

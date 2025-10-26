@@ -134,18 +134,6 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                     'service-icon-lineage'
                   )}
                 </div>
-                <div>
-                  {item.path && (
-                    <Typography.Text className="item-path-text">
-                      {item.path}
-                    </Typography.Text>
-                  )}
-                </div>
-              </div>
-              <div className="lineage-card-content d-flex items-end justify-between gap-2">
-                <Typography.Text className="item-name-text">
-                  {item.entity.displayName || item.entity.name}
-                </Typography.Text>
                 <div className="lineage-item-direction">
                   {item.direction === 'upstream' ? (
                     <UpstreamIcon />
@@ -158,6 +146,18 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                       : `${t('label.downstream')}`}
                   </Typography.Text>
                 </div>
+              </div>
+              <div className="lineage-card-content p-x-sm p-y-md">
+                <div className="item-path-container">
+                  {item.path && (
+                    <Typography.Text className="item-path-text">
+                      {item.path}
+                    </Typography.Text>
+                  )}
+                </div>
+                <Typography.Text className="item-name-text">
+                  {item.entity.displayName || item.entity.name}
+                </Typography.Text>
               </div>
             </div>
           ))
