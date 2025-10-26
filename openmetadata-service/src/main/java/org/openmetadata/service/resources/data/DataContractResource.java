@@ -231,9 +231,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
     // Check visibility permissions
     String currentUser = securityContext.getUserPrincipal().getName();
-    if (!repository.isDataContractVisibleToUser(dataContract, currentUser)) {
-      throw new EntityNotFoundException("Data contract not found for id " + id);
-    }
+    repository.checkEntityVisibilityByStatus(dataContract, currentUser);
 
     return dataContract;
   }
@@ -278,9 +276,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     DataContract dataContract =
         getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
     String currentUser = securityContext.getUserPrincipal().getName();
-    if (!repository.isDataContractVisibleToUser(dataContract, currentUser)) {
-      throw new EntityNotFoundException("Data contract not found for name " + fqn);
-    }
+    repository.checkEntityVisibilityByStatus(dataContract, currentUser);
 
     return dataContract;
   }

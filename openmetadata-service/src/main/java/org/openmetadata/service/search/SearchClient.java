@@ -501,7 +501,12 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
   */
   @SuppressWarnings("unused")
   default ResultList listPageHierarchyWithVisibility(
-      String parent, String pageType, int offset, int limit, java.util.UUID userId, boolean isAdmin) {
+      String parent,
+      String pageType,
+      int offset,
+      int limit,
+      java.util.UUID userId,
+      boolean isAdmin) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }
@@ -511,7 +516,12 @@ public interface SearchClient<T> extends IndexManagementClient, EntityManagement
   */
   @SuppressWarnings("unused")
   default ResultList listPageHierarchyForActivePageWithVisibility(
-      String activeFqn, String pageType, int offset, int limit, java.util.UUID userId, boolean isAdmin) {
+      String activeFqn,
+      String pageType,
+      int offset,
+      int limit,
+      java.util.UUID userId,
+      boolean isAdmin) {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
   }

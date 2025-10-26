@@ -57,7 +57,6 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -198,10 +197,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
 
     // Check visibility permissions
     String currentUser = securityContext.getUserPrincipal().getName();
-    DataProductRepository dataProductRepo = (DataProductRepository) repository;
-    if (!dataProductRepo.isDataProductVisibleToUser(dataProduct, currentUser)) {
-      throw new EntityNotFoundException("Data product not found for id " + id);
-    }
+    repository.checkEntityVisibilityByStatus(dataProduct, currentUser);
 
     return dataProduct;
   }
@@ -239,9 +235,7 @@ public class DataProductResource extends EntityResource<DataProduct, DataProduct
 
     // Check visibility permissions
     String currentUser = securityContext.getUserPrincipal().getName();
-    if (!repository.isDataProductVisibleToUser(dataProduct, currentUser)) {
-      throw new EntityNotFoundException("Data product not found for name " + name);
-    }
+    repository.checkEntityVisibilityByStatus(dataProduct, currentUser);
 
     return dataProduct;
   }

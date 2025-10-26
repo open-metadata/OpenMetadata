@@ -1208,12 +1208,26 @@ public class DataContractRepository extends EntityRepository<DataContract> {
     }
   }
 
-  public boolean isDataContractVisibleToUser(DataContract dataContract, String userName) {
-    return isEntityVisibleToUserByStatus(
-        dataContract.getEntityStatus(),
-        dataContract.getUpdatedBy(),
-        dataContract.getOwners(),
-        dataContract.getReviewers(),
-        userName);
+  @Override
+  protected boolean isEntityVisibleToUserByStatus(
+      EntityStatus entityStatus,
+      String updatedBy,
+      List<EntityReference> owners,
+      List<EntityReference> reviewers,
+      String userName) {
+    if (userName == null) {
+      return false;
+    }
+
+    if (isAdminUser(userName)) {
+      return true;
+    }
+
+    return switch (entityStatus) {
+      case APPROVED, UNPROCESSED -> true;
+      case DRAFT, IN_REVIEW, REJECTED -> isUserOwnerUpdaterOrReviewer(
+          updatedBy, owners, reviewers, userName);
+      default -> false;
+    };
   }
 }

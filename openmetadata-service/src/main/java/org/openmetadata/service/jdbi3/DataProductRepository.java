@@ -551,12 +551,26 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     }
   }
 
-  public boolean isDataProductVisibleToUser(DataProduct dataProduct, String userName) {
-    return isEntityVisibleToUserByStatus(
-        dataProduct.getEntityStatus(),
-        dataProduct.getUpdatedBy(),
-        dataProduct.getOwners(),
-        dataProduct.getReviewers(),
-        userName);
+  @Override
+  protected boolean isEntityVisibleToUserByStatus(
+      EntityStatus entityStatus,
+      String updatedBy,
+      List<EntityReference> owners,
+      List<EntityReference> reviewers,
+      String userName) {
+    if (userName == null) {
+      return false;
+    }
+
+    if (isAdminUser(userName)) {
+      return true;
+    }
+
+    return switch (entityStatus) {
+      case APPROVED, UNPROCESSED -> true;
+      case DRAFT, IN_REVIEW, REJECTED -> isUserOwnerUpdaterOrReviewer(
+          updatedBy, owners, reviewers, userName);
+      default -> false;
+    };
   }
 }

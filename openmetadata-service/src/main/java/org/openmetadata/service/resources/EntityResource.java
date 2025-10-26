@@ -233,7 +233,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.get(uriInfo, id, fields, include, false));
+    T entity = repository.get(uriInfo, id, fields, include, false);
+    repository.checkEntityVisibilityByStatus(entity, securityContext.getUserPrincipal().getName());
+    return addHref(uriInfo, entity);
   }
 
   public T getVersionInternal(SecurityContext securityContext, UUID id, String version) {
@@ -293,7 +295,9 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
+    T entity = repository.getByName(uriInfo, name, fields, include, false);
+    repository.checkEntityVisibilityByStatus(entity, securityContext.getUserPrincipal().getName());
+    return addHref(uriInfo, entity);
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {

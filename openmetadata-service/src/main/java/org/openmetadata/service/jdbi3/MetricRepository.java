@@ -356,12 +356,26 @@ public class MetricRepository extends EntityRepository<Metric> {
     }
   }
 
-  public boolean isMetricVisibleToUser(Metric metric, String userName) {
-    return isEntityVisibleToUserByStatus(
-        metric.getEntityStatus(),
-        metric.getUpdatedBy(),
-        metric.getOwners(),
-        metric.getReviewers(),
-        userName);
+  @Override
+  protected boolean isEntityVisibleToUserByStatus(
+      EntityStatus entityStatus,
+      String updatedBy,
+      List<EntityReference> owners,
+      List<EntityReference> reviewers,
+      String userName) {
+    if (userName == null) {
+      return false;
+    }
+
+    if (isAdminUser(userName)) {
+      return true;
+    }
+
+    return switch (entityStatus) {
+      case APPROVED, UNPROCESSED -> true;
+      case DRAFT, IN_REVIEW, REJECTED -> isUserOwnerUpdaterOrReviewer(
+          updatedBy, owners, reviewers, userName);
+      default -> false;
+    };
   }
 }
