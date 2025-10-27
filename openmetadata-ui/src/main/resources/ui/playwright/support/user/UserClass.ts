@@ -239,6 +239,11 @@ export class UserClass {
 
   async logout(page: Page) {
     await page.getByRole('menuitem', { name: 'Logout' }).click();
+
+    const waitLogout = page.waitForResponse('/api/v1/users/logout');
+
     await page.getByTestId('confirm-logout').click();
+
+    await waitLogout;
   }
 }

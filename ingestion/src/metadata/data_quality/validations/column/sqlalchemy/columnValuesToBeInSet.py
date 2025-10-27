@@ -15,7 +15,7 @@ Validator for column value to be in set test case
 
 from typing import List, Optional
 
-from sqlalchemy import Column, func, inspect
+from sqlalchemy import Column, inspect, literal
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
@@ -134,7 +134,7 @@ class ColumnValuesToBeInSetValidator(
                 metric_expressions[DIMENSION_TOTAL_COUNT_KEY] = metric_expressions[
                     Metrics.COUNT_IN_SET.name
                 ]
-                metric_expressions[DIMENSION_FAILED_COUNT_KEY] = func.literal(0)
+                metric_expressions[DIMENSION_FAILED_COUNT_KEY] = literal(0)
 
             result_rows = self._execute_with_others_aggregation(
                 dimension_col, metric_expressions, DEFAULT_TOP_DIMENSIONS

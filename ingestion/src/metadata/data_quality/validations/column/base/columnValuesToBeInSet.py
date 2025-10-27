@@ -82,7 +82,9 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
         return metrics
 
-    def _evaluate_test_condition(self, metric_values: dict, test_params: dict) -> dict:
+    def _evaluate_test_condition(
+        self, metric_values: dict, test_params: Optional[dict] = None
+    ) -> TestEvaluation:
         """Evaluate the in-set test condition
 
         For in-set test, behavior depends on match_enum flag:
@@ -92,15 +94,20 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         Args:
             metric_values: Dictionary with keys from Metrics enum names
                           e.g., {"COUNT_IN_SET": 50, "ROW_COUNT": 100}
-            test_params: Dictionary with 'allowed_values' and 'match_enum'
+            test_params: Dictionary with 'allowed_values' and 'match_enum'.
+                        Required for this validator.
 
         Returns:
-            dict with keys:
+            TestEvaluation: TypedDict with keys:
                 - matched: bool - whether test passed
                 - passed_rows: int - number of values in set
                 - failed_rows: int - number of values not in set (0 if not match_enum)
                 - total_rows: int - total row count for reporting
         """
+        if test_params is None:
+            raise ValueError(
+                "test_params is required for columnValuesToBeInSet._evaluate_test_condition"
+            )
         count_in_set = metric_values[Metrics.COUNT_IN_SET.name]
         match_enum = test_params["match_enum"]
 
@@ -122,13 +129,17 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
         }
 
     def _format_result_message(
-        self, metric_values: dict, dimension_info: Optional[DimensionInfo] = None
+        self,
+        metric_values: dict,
+        dimension_info: Optional[DimensionInfo] = None,
+        test_params: Optional[dict] = None,
     ) -> str:
         """Format the result message for in-set test
 
         Args:
             metric_values: Dictionary with Metrics enum names as keys
             dimension_info: Optional DimensionInfo with dimension details
+            test_params: Optional test parameters (not used by this validator)
 
         Returns:
             str: Formatted result message
@@ -198,7 +209,9 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
             )
 
         evaluation = self._evaluate_test_condition(metric_values, test_params)
-        result_message = self._format_result_message(metric_values)
+        result_message = self._format_result_message(
+            metric_values, test_params=test_params
+        )
         test_result_values = self._get_test_result_values(metric_values)
 
         if self.test_case.computePassedFailedRowCount:
