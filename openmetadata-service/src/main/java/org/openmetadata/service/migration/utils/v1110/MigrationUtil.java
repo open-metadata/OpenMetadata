@@ -1,15 +1,19 @@
 package org.openmetadata.service.migration.utils.v1110;
 
+import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.util.EntityUtil.hash;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
+import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.classification.LoadTags;
+import org.openmetadata.schema.type.Recognizer;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.QueryStatus;
@@ -34,17 +38,31 @@ public class MigrationUtil {
   public Map<String, QueryStatus> setRecognizersForSensitiveTags(
       String queryTemplate, Handle handle, MigrationDAO migrationDAO, boolean isForceMigration) {
     Map<String, QueryStatus> result = new HashMap<>();
-    PATH_BY_TAG.forEach(
-        (tagFqn, relativePath) -> {
+    List<LoadTags> loadTagsList;
+    try {
+      loadTagsList =
+          EntityRepository.getEntitiesFromSeedData(
+              CLASSIFICATION, ".*json/data/tags/piiTagsWithRecognizers.json$", LoadTags.class);
+    } catch (IOException e) {
+      LOG.error("Failed to load tag data");
+      return result;
+    }
+
+    Map<String, List<Recognizer>> recognizersByTag = new HashMap<>();
+    for (LoadTags loadTags : loadTagsList) {
+      String classification = loadTags.getCreateClassification().getName();
+      for (CreateTag createTag : loadTags.getCreateTags()) {
+        if (createTag.getAutoClassificationEnabled())
+          recognizersByTag.put(
+              classification + "." + createTag.getName(), createTag.getRecognizers());
+      }
+    }
+
+    recognizersByTag.forEach(
+        (tagFqn, recognizers) -> {
           try {
             updateTagRecognizers(
-                handle,
-                migrationDAO,
-                tagFqn,
-                relativePath,
-                result,
-                queryTemplate,
-                isForceMigration);
+                handle, migrationDAO, tagFqn, recognizers, result, queryTemplate, isForceMigration);
           } catch (Exception e) {
             LOG.error("Failed to update recognizers for tag: {}", tagFqn, e);
           }
@@ -57,26 +75,20 @@ public class MigrationUtil {
       Handle handle,
       MigrationDAO migrationDAO,
       String tagFqn,
-      String relativePath,
+      List<Recognizer> recognizers,
       Map<String, QueryStatus> results,
       String queryTemplate,
-      Boolean isForceMigration)
-      throws IOException {
-    Path dataPath = Paths.get(migrationFile.getDirPath(), relativePath);
+      Boolean isForceMigration) {
+    String jsonContent = JsonUtils.pojoToJson(recognizers);
 
-    if (!Files.exists(dataPath)) {
-      LOG.warn("Tag data file not found: {}", dataPath);
-      return;
-    }
+    String updateQuery = String.format(queryTemplate, jsonContent, tagFqn);
 
-    String jsonContent = Files.readString(dataPath);
-
-    String updateQuery = String.format(queryTemplate, jsonContent.replace("'", "''"), tagFqn);
-
-    String truncatedQuery = String.format(queryTemplate, "[ ... data truncated  ... ]", tagFqn);
+    String truncatedQuery =
+        String.format(
+            queryTemplate, String.format("[ ... data truncated for %s ... ]", tagFqn), tagFqn);
 
     try {
-      handle.execute(updateQuery);
+      handle.execute(queryTemplate, jsonContent, tagFqn);
       migrationDAO.upsertServerMigrationSQL(
           migrationFile.version, truncatedQuery, hash(truncatedQuery));
       results.put(

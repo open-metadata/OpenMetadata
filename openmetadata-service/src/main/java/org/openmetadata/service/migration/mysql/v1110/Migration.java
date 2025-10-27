@@ -23,9 +23,11 @@ public class Migration extends MigrationProcessImpl {
     Map<String, QueryStatus> result = super.runPostDDLScripts(isForceMigration);
     result.putAll(
         migrationUtil.setRecognizersForSensitiveTags(
-            "UPDATE tag SET json = JSON_SET(json, '$.recognizers', CAST('%s' AS JSON)) "
-                + "WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') = '%s'",
-            handle, migrationDAO, isForceMigration));
+            "UPDATE tag SET json = JSON_SET(json, '$.recognizers', CAST(? AS JSON)) "
+                + "WHERE JSON_EXTRACT(json, '$.fullyQualifiedName') = ?",
+            handle,
+            migrationDAO,
+            isForceMigration));
     return result;
   }
 
