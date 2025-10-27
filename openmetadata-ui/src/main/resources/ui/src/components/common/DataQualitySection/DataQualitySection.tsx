@@ -58,75 +58,57 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
 
   return isDataQualityTab ? (
     <div className="data-quality-stats-container">
-      <div
+      <button
         className={`data-quality-stat-card success-card ${
           activeFilter === 'success' ? 'active' : ''
         }`}
-        role="button"
-        tabIndex={0}
-        onClick={() => onFilterChange?.('success')}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            onFilterChange?.('success');
-          }
-        }}>
+        type="button"
+        onClick={() => onFilterChange?.('success')}>
         <Typography.Text className="stat-count success">
           {successTests}
         </Typography.Text>
         <Typography.Text className="stat-label success">
           {t('label.passed')}
         </Typography.Text>
-      </div>
+      </button>
       <Divider
         flexItem
         className="vertical-divider"
         orientation="vertical"
         variant="middle"
       />
-      <div
+      <button
         className={`data-quality-stat-card aborted-card ${
           activeFilter === 'aborted' ? 'active' : ''
         }`}
-        role="button"
-        tabIndex={0}
-        onClick={() => onFilterChange?.('aborted')}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            onFilterChange?.('aborted');
-          }
-        }}>
+        type="button"
+        onClick={() => onFilterChange?.('aborted')}>
         <Typography.Text className="stat-count aborted">
           {abortedTests}
         </Typography.Text>
         <Typography.Text className="stat-label aborted">
           {t('label.aborted')}
         </Typography.Text>
-      </div>
+      </button>
       <Divider
         flexItem
         className="vertical-divider"
         orientation="vertical"
         variant="middle"
       />
-      <div
+      <button
         className={`data-quality-stat-card failed-card ${
           activeFilter === 'failed' ? 'active' : ''
         }`}
-        role="button"
-        tabIndex={0}
-        onClick={() => onFilterChange?.('failed')}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            onFilterChange?.('failed');
-          }
-        }}>
+        type="button"
+        onClick={() => onFilterChange?.('failed')}>
         <Typography.Text className="stat-count failed">
           {failedTests}
         </Typography.Text>
         <Typography.Text className="stat-label failed">
           {t('label.failed')}
         </Typography.Text>
-      </div>
+      </button>
     </div>
   ) : (
     <SectionWithEdit

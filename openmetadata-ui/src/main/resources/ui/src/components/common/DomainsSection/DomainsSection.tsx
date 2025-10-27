@@ -60,11 +60,15 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
 
   // Sync activeDomains with domains prop, similar to DomainLabel
   useEffect(() => {
-    const nextActiveDomains = domains
-      ? Array.isArray(domains)
-        ? domains
-        : [domains]
-      : [];
+    let nextActiveDomains: EntityReference[] = [];
+
+    if (domains) {
+      if (Array.isArray(domains)) {
+        nextActiveDomains = domains;
+      } else {
+        nextActiveDomains = [domains];
+      }
+    }
 
     setActiveDomains((prev) => {
       if (

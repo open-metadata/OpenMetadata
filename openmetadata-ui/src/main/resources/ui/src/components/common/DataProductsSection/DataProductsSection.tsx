@@ -198,6 +198,90 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     setIsEditing(false);
   };
 
+  const renderLoadingState = () => (
+    <div className="data-products-loading-container">
+      <div className="data-products-loading-spinner">
+        <div className="loading-spinner" />
+      </div>
+    </div>
+  );
+
+  const renderEditingState = () => (
+    <div className="inline-edit-container">
+      <DataProductsSelectList
+        open
+        defaultValue={(dataProducts || []).map(
+          (item) => item?.fullyQualifiedName ?? ''
+        )}
+        fetchOptions={fetchAPI}
+        mode="multiple"
+        placeholder={t('label.data-product-plural')}
+        onCancel={handleCancel}
+        onSubmit={handleSaveWithDataProducts}
+      />
+    </div>
+  );
+
+  const renderEmptyContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return (
+      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+    );
+  };
+
+  const renderDataProductsDisplay = () => (
+    <div className="data-products-display">
+      <div className="data-products-list">
+        {(showAllDataProducts
+          ? dataProducts
+          : dataProducts.slice(0, maxVisibleDataProducts)
+        ).map((dataProduct) => (
+          <div
+            className="data-product-item"
+            key={dataProduct.id || dataProduct.fullyQualifiedName}>
+            <div className="data-product-card-bar">
+              <div className="data-product-card-content">
+                <DataProductIcon className="data-product-icon" />
+                <span className="data-product-name">
+                  {getEntityName(dataProduct)}
+                </span>
+              </div>
+            </div>
+          </div>
+        ))}
+        {dataProducts.length > maxVisibleDataProducts && (
+          <button
+            className="show-more-data-products-button"
+            type="button"
+            onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
+            {showAllDataProducts
+              ? t('label.less')
+              : `+${dataProducts.length - maxVisibleDataProducts} ${t(
+                  'label.more-lowercase'
+                )}`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDataProductsContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return renderDataProductsDisplay();
+  };
+
   if (!dataProducts?.length) {
     return (
       <div className="data-products-section">
@@ -224,33 +308,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
             </div>
           )}
         </div>
-        <div className="data-products-content">
-          {isLoading ? (
-            <div className="data-products-loading-container">
-              <div className="data-products-loading-spinner">
-                <div className="loading-spinner" />
-              </div>
-            </div>
-          ) : isEditing ? (
-            <div className="inline-edit-container">
-              <DataProductsSelectList
-                open
-                defaultValue={(dataProducts || []).map(
-                  (item) => item?.fullyQualifiedName ?? ''
-                )}
-                fetchOptions={fetchAPI}
-                mode="multiple"
-                placeholder={t('label.data-product-plural')}
-                onCancel={handleCancel}
-                onSubmit={handleSaveWithDataProducts}
-              />
-            </div>
-          ) : (
-            <span className="no-data-placeholder">
-              {t('label.no-data-found')}
-            </span>
-          )}
-        </div>
+        <div className="data-products-content">{renderEmptyContent()}</div>
       </div>
     );
   }
@@ -262,73 +320,22 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
           {t('label.data-product-plural')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span className="edit-icon" onClick={handleEditClick}>
+          <button className="edit-icon" type="button" onClick={handleEditClick}>
             <EditIcon />
-          </span>
+          </button>
         )}
         {isEditing && !isLoading && (
           <div className="edit-actions">
-            <span className="cancel-icon" onClick={handleCancel}>
+            <button
+              className="cancel-icon"
+              type="button"
+              onClick={handleCancel}>
               <CloseIcon />
-            </span>
+            </button>
           </div>
         )}
       </div>
-      <div className="data-products-content">
-        {isLoading ? (
-          <div className="data-products-loading-container">
-            <div className="data-products-loading-spinner">
-              <div className="loading-spinner" />
-            </div>
-          </div>
-        ) : isEditing ? (
-          <div className="inline-edit-container">
-            <DataProductsSelectList
-              open
-              defaultValue={(dataProducts || []).map(
-                (item) => item?.fullyQualifiedName ?? ''
-              )}
-              fetchOptions={fetchAPI}
-              mode="multiple"
-              placeholder={t('label.data-product-plural')}
-              onCancel={handleCancel}
-              onSubmit={handleSaveWithDataProducts}
-            />
-          </div>
-        ) : (
-          <div className="data-products-display">
-            <div className="data-products-list">
-              {(showAllDataProducts
-                ? dataProducts
-                : dataProducts.slice(0, maxVisibleDataProducts)
-              ).map((dataProduct, index) => (
-                <div className="data-product-item" key={index}>
-                  <div className="data-product-card-bar">
-                    <div className="data-product-card-content">
-                      <DataProductIcon className="data-product-icon" />
-                      <span className="data-product-name">
-                        {getEntityName(dataProduct)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {dataProducts.length > maxVisibleDataProducts && (
-                <button
-                  className="show-more-data-products-button"
-                  type="button"
-                  onClick={() => setShowAllDataProducts(!showAllDataProducts)}>
-                  {showAllDataProducts
-                    ? t('label.less')
-                    : `+${dataProducts.length - maxVisibleDataProducts} ${t(
-                        'label.more-lowercase'
-                      )}`}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      <div className="data-products-content">{renderDataProductsContent()}</div>
     </div>
   );
 };

@@ -94,14 +94,19 @@ const DomainSelectableList = ({
     async (domains: EntityReference[]) => {
       if (multiple) {
         await onUpdate(domains);
+        setPopupVisible(false);
+
+        return;
+      }
+
+      // Handle single domain mode
+      if (domains.length > 0) {
+        await onUpdate(domains[0]);
       } else {
-        // Handle empty selection case for single domain
-        if (domains.length > 0) {
-          await onUpdate(domains[0]);
-        } else {
-          // Pass undefined for empty selection in single domain mode
-          await onUpdate(undefined as any);
-        }
+        // Pass undefined for empty selection in single domain mode
+        await onUpdate(
+          undefined as unknown as EntityReference | EntityReference[]
+        );
       }
 
       setPopupVisible(false);

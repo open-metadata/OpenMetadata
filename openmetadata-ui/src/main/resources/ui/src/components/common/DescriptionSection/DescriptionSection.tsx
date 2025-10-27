@@ -87,9 +87,12 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
         <div className="description-header">
           <span className="description-title">{t('label.description')}</span>
           {showEditButton && onDescriptionUpdate && !isEditDescription && (
-            <span className="edit-icon" onClick={handleEditDescription}>
+            <button
+              className="edit-icon"
+              type="button"
+              onClick={handleEditDescription}>
               <EditIcon />
-            </span>
+            </button>
           )}
         </div>
         <div className="description-content">
@@ -116,9 +119,12 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       <div className="description-header">
         <span className="description-title">{t('label.description')}</span>
         {showEditButton && onDescriptionUpdate && !isEditDescription && (
-          <span className="edit-icon" onClick={handleEditDescription}>
+          <button
+            className="edit-icon"
+            type="button"
+            onClick={handleEditDescription}>
             <EditIcon />
-          </span>
+          </button>
         )}
       </div>
       <div className="description-content">
