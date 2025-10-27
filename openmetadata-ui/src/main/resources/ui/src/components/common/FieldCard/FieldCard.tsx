@@ -81,7 +81,6 @@ const FieldCard: React.FC<FieldCardProps> = ({
     return { bgColor: '#F5F5F5', color: '#8C8C8C' };
   };
 
-  const dataTypeStyle = getDataTypeColor(dataType);
   const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
 
   return (

@@ -38,7 +38,6 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
   tests,
   totalTests,
   onEdit,
-  showEditButton = true,
   isDataQualityTab = false,
   activeFilter = 'success',
   onFilterChange,

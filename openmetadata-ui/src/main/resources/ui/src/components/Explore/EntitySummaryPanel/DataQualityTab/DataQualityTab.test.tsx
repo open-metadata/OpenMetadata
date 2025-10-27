@@ -126,25 +126,23 @@ jest.mock('antd', () => ({
 jest.mock('../../../common/DataQualitySection', () => {
   return jest
     .fn()
-    .mockImplementation(
-      ({ tests, totalTests, onEdit, onFilterChange, activeFilter }) => (
-        <div data-testid="data-quality-section">
-          <div data-testid="total-tests">{totalTests}</div>
-          {tests.map((test: any, index: number) => (
-            <div
-              data-testid={`test-${test.type}`}
-              key={index}
-              role="button"
-              onClick={() => onFilterChange?.(test.type)}>
-              {test.count}
-            </div>
-          ))}
-          <button data-testid="edit-button" onClick={onEdit}>
-            Edit
-          </button>
-        </div>
-      )
-    );
+    .mockImplementation(({ tests, totalTests, onEdit, onFilterChange }) => (
+      <div data-testid="data-quality-section">
+        <div data-testid="total-tests">{totalTests}</div>
+        {tests.map((test: any, index: number) => (
+          <div
+            data-testid={`test-${test.type}`}
+            key={index}
+            role="button"
+            onClick={() => onFilterChange?.(test.type)}>
+            {test.count}
+          </div>
+        ))}
+        <button data-testid="edit-button" onClick={onEdit}>
+          Edit
+        </button>
+      </div>
+    ));
 });
 
 jest.mock('../../../common/Loader/Loader', () => {

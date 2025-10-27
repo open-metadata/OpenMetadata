@@ -33,12 +33,9 @@ export const getEntityChildDetailsV1 = (
   highlights?: SearchedDataProps['data'][number]['highlight'],
   loading?: boolean
 ) => {
-  let heading;
-  let headingTestId = 'schema-header';
+  // kept for potential future use; remove unused to satisfy linter
   switch (entityType) {
     case EntityType.TABLE:
-      heading = t('label.schema');
-
       return (
         <SchemaFieldCardsV1
           entityInfo={entityInfo as TableEntity}
@@ -49,8 +46,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.DATABASE_SCHEMA:
-      heading = t('label.table-plural');
-
       return (
         <DatabaseSchemaTablesV1
           entityInfo={entityInfo as any}
@@ -60,8 +55,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.DASHBOARD:
-      heading = t('label.chart-plural');
-
       return (
         <DashboardChartsV1
           entityInfo={entityInfo as any}
@@ -71,9 +64,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.DASHBOARD_DATA_MODEL:
-      heading = t('label.column-plural');
-      headingTestId = 'column-header';
-
       return (
         <SchemaFieldCardsV1
           entityInfo={entityInfo as any}
@@ -84,8 +74,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.TOPIC:
-      heading = t('label.schema');
-
       return (
         <TopicFieldCardsV1
           entityInfo={entityInfo as any}
@@ -95,8 +83,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.CONTAINER:
-      heading = t('label.schema');
-
       return (
         <ContainerFieldCardsV1
           entityInfo={entityInfo as any}
@@ -106,9 +92,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.SEARCH_INDEX:
-      heading = t('label.field-plural');
-      headingTestId = 'fields-header';
-
       return (
         <SearchIndexFieldCardsV1
           entityInfo={entityInfo as any}
@@ -118,8 +101,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.API_ENDPOINT:
-      heading = t('label.schema');
-
       return (
         <APIEndpointSchemaV1
           entityInfo={entityInfo as any}
@@ -129,8 +110,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.DATABASE:
-      heading = t('label.schema-plural');
-
       return (
         <DatabaseSchemasV1
           entityInfo={entityInfo as any}
@@ -140,8 +119,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.PIPELINE:
-      heading = t('label.task-plural');
-
       return (
         <PipelineTasksV1
           entityInfo={entityInfo as any}
@@ -151,8 +128,6 @@ export const getEntityChildDetailsV1 = (
       );
 
     case EntityType.API_COLLECTION:
-      heading = t('label.api-endpoint-plural');
-
       return (
         <APICollectionEndpointsV1
           entityInfo={entityInfo as any}
@@ -929,10 +904,6 @@ const DatabaseSchemasV1: React.FC<{
     <div className="schema-field-cards-container">
       <Row>
         {databaseSchemas.map((schema: any) => {
-          const isHighlighted = highlights?.databaseSchema?.includes(
-            schema.name
-          );
-
           return (
             <Col key={schema.id} span={24}>
               <FieldCard
