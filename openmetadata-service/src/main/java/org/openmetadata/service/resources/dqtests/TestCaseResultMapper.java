@@ -31,6 +31,7 @@ public class TestCaseResultMapper
         .withFailedRowsPercentage(create.getFailedRowsPercentage())
         .withIncidentId(create.getIncidentId())
         .withMaxBound(create.getMaxBound())
-        .withMinBound(create.getMinBound());
+        .withMinBound(create.getMinBound())
+        .withDimensionResults(create.getDimensionResults());
   }
 }

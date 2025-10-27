@@ -197,10 +197,7 @@ class MysqlIngestionClass extends ServiceBaseClass {
     });
 
     await page.getByTestId('profiler').click();
-    await page
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Table Profile')
-      .click();
+    await page.getByRole('tab', { name: 'Table Profile' }).click();
 
     await expect(
       page.locator('[data-testid="no-profiler-placeholder"]')
