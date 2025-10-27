@@ -327,7 +327,7 @@ export const getEntityTypeFromSearchIndex = (searchIndex: string) => {
  * @returns An array of objects with value and title properties
  */
 export const parseBucketsData = (
-  buckets: Array<any>,
+  buckets: Array<Record<string, unknown>>,
   sourceFields?: string,
   sourceFieldOptionType?: {
     label: string;

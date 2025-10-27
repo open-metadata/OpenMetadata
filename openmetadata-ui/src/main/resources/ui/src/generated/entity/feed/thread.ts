@@ -179,6 +179,8 @@ export interface ChatbotDetails {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Reference to the test case for efficient querying of dimensional time series
+ *
  * Test case that this result is for.
  *
  * Test definition that this result is for.
@@ -322,6 +324,8 @@ export interface EntityTestResultSummaryObject {
  * Status of the test case.
  *
  * Status of Test Case run.
+ *
+ * Status of the test for this dimension combination
  */
 export enum TestCaseStatus {
     Aborted = "Aborted",
@@ -350,6 +354,11 @@ export interface TestCaseParameterValue {
  * Schema to capture test case result.
  */
 export interface TestCaseResult {
+    /**
+     * List of dimensional test results. Only populated when the test case has dimensionColumns
+     * specified.
+     */
+    dimensionResults?: TestCaseDimensionResult[];
     /**
      * Number of rows that failed.
      */
@@ -413,6 +422,86 @@ export interface TestCaseResult {
      */
     timestamp: number;
     [property: string]: any;
+}
+
+/**
+ * Test case result for dimensional analysis - supports both single and multi-dimensional
+ * groupings
+ */
+export interface TestCaseDimensionResult {
+    /**
+     * Composite key for API filtering: 'region=mumbai' or 'region=mumbai,product=laptop'
+     */
+    dimensionKey: string;
+    /**
+     * Array of dimension name-value pairs for this result (e.g., [{'name': 'region', 'value':
+     * 'mumbai'}, {'name': 'product', 'value': 'laptop'}])
+     */
+    dimensionValues: DimensionValue[];
+    /**
+     * Number of rows that failed for this dimension combination
+     */
+    failedRows?: number;
+    /**
+     * Percentage of rows that failed for this dimension combination
+     */
+    failedRowsPercentage?: number;
+    /**
+     * Unique identifier of this dimensional result instance
+     */
+    id: string;
+    /**
+     * Impact score indicating the significance of this dimension for revealing data quality
+     * variations. Higher scores indicate dimensions with more significant quality issues
+     * considering both failure rate and data volume.
+     */
+    impactScore?: number;
+    /**
+     * Number of rows that passed for this dimension combination
+     */
+    passedRows?: number;
+    /**
+     * Percentage of rows that passed for this dimension combination
+     */
+    passedRowsPercentage?: number;
+    /**
+     * Details of test case results for this dimension combination
+     */
+    result?: string;
+    /**
+     * Reference to the test case for efficient querying of dimensional time series
+     */
+    testCase?: EntityReference;
+    /**
+     * Reference to the parent TestCaseResult execution that generated this dimensional result
+     */
+    testCaseResultId: string;
+    /**
+     * Status of the test for this dimension combination
+     */
+    testCaseStatus: TestCaseStatus;
+    /**
+     * Test result values for this dimension combination
+     */
+    testResultValue?: TestResultValue[];
+    /**
+     * Timestamp when the dimensional test result was captured (same as parent TestCaseResult)
+     */
+    timestamp: number;
+}
+
+/**
+ * A single dimension name-value pair for dimensional test results
+ */
+export interface DimensionValue {
+    /**
+     * Name of the dimension (e.g., 'column', 'region', 'tier')
+     */
+    name: string;
+    /**
+     * Value for this dimension (e.g., 'address', 'US', 'gold')
+     */
+    value: string;
 }
 
 /**

@@ -280,10 +280,7 @@ export const testProfilerTabPermission = async (
   effect: 'allow' | 'deny',
   expectedErrorMessage?: string
 ) => {
-  await testUserPage
-    .locator('[data-testid="profiler-tab-left-panel"]')
-    .getByText(tabName)
-    .click();
+  await testUserPage.getByRole('tab', { name: tabName }).click();
 
   if (effect === 'deny') {
     await expect(
