@@ -21,6 +21,7 @@ import {
 } from '@testing-library/react';
 import { Column } from '../../../generated/entity/data/table';
 import { useFqn } from '../../../hooks/useFqn';
+import { mockTableData } from '../../../mocks/TableVersion.mock';
 import { getTableColumnsByFQN } from '../../../rest/tableAPI';
 import { ContractSchemaFormTab } from './ContractScehmaFormTab';
 
@@ -48,6 +49,12 @@ jest.mock('../../../hooks/paging/usePaging', () => ({
 
 jest.mock('../../../utils/TableUtils', () => ({
   pruneEmptyChildren: jest.fn().mockImplementation((columns) => columns),
+}));
+
+jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+  useGenericContext: jest.fn().mockImplementation(() => ({
+    data: mockTableData,
+  })),
 }));
 
 jest.mock('../../common/Table/Table', () => {
