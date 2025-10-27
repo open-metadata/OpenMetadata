@@ -24,6 +24,7 @@ export enum StatusType {
   Deprecated = 'deprecated',
   Version = 'version',
   Acknowledged = 'acknowledged',
+  Unprocessed = 'unprocessed',
 }
 
 export interface StatusBadgeProps {

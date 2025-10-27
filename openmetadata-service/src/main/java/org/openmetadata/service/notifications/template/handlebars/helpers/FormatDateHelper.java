@@ -1,9 +1,11 @@
-package org.openmetadata.service.template.handlebars.helpers;
+package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.Date;
-import org.openmetadata.service.template.handlebars.HandlebarsHelper;
+import java.util.TimeZone;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +18,12 @@ public class FormatDateHelper implements HandlebarsHelper {
   private static final Logger LOG = LoggerFactory.getLogger(FormatDateHelper.class);
   private static final String DATE_FORMAT_PATTERN = "yyyy-MM-dd HH:mm:ss";
   private static final ThreadLocal<SimpleDateFormat> DATE_FORMATTER =
-      ThreadLocal.withInitial(() -> new SimpleDateFormat(DATE_FORMAT_PATTERN));
+      ThreadLocal.withInitial(
+          () -> {
+            SimpleDateFormat sdf = new SimpleDateFormat(DATE_FORMAT_PATTERN);
+            sdf.setTimeZone(TimeZone.getTimeZone(ZoneId.systemDefault()));
+            return sdf;
+          });
 
   @Override
   public String getName() {
