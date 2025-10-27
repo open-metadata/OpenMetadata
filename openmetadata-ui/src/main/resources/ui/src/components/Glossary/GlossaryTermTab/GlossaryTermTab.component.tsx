@@ -750,7 +750,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           }
 
           const name = getEntityName(record);
-          const isNested = (record.level ?? 0) > 0;
 
           return (
             <>
@@ -764,9 +763,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 />
               )}
               <Link
-                className={classNames('cursor-pointer vertical-baseline', {
-                  'text-grey-600': isNested,
-                })}
+                className="cursor-pointer vertical-baseline"
                 data-testid={name}
                 style={{ color: record.style?.color }}
                 to={getGlossaryPath(record.fullyQualifiedName ?? record.name)}>
@@ -1215,6 +1212,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     );
   };
 
+  const getRowClassName = useCallback(
+    (record: ModifiedGlossaryTerm) => {
+      const isNested = (record.level ?? 0) > 0;
+      const isExpanded = expandedRowKeys.includes(
+        record.fullyQualifiedName || ''
+      );
+
+      return isNested || isExpanded ? 'glossary-nested-row' : '';
+    },
+    [expandedRowKeys]
+  );
+
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
       expandIcon: ({ expanded, onExpand, record }) => {
@@ -1505,6 +1514,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 extraTableFilters={extraTableFilters}
                 loading={isTableLoading || isExpandingAll}
                 pagination={false}
+                rowClassName={getRowClassName}
                 rowKey="fullyQualifiedName"
                 size="small"
                 staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
@@ -1552,6 +1562,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 ),
               }}
               pagination={false}
+              rowClassName={getRowClassName}
               rowKey="fullyQualifiedName"
               size="small"
               staticVisibleColumns={STATIC_VISIBLE_COLUMNS}
