@@ -43,6 +43,7 @@
     padding: 0 !important;
     display: inherit;
     flex-direction: row;
+    position: relative;
     .scrollable-card-body();
     width: 100%;
     scrollbar-width: none;
@@ -152,8 +153,22 @@
   margin: 4px;
   border-radius: 8px;
   height: 49px;
+  position: sticky;
   padding-left: 4px;
+  padding-right: 4px;
+  top: 4px;
+  z-index: 999;
   background-color: @grey-9;
+  .d-flex {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .entity-icon {
+    flex-shrink: 0;
+    margin-right: 8px;
+  }
 
   .entity-title-link {
     flex: 1;
@@ -166,6 +181,8 @@
     white-space: nowrap;
     text-decoration: none;
     color: @primary-color;
+    display: block;
+
     .text-highlighter {
       color: @primary-color;
     }
