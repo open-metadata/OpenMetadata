@@ -99,7 +99,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
 
 # pylint: disable=line-too-long
 @pytest.mark.parametrize(
-    "test_case_name,test_case_type,test_type,expected",
+    "test_case_name,test_case_type,test_type,expected,expected_dimension",
     [
         (
             "test_case_column_value_length_to_be_between",
@@ -115,12 +115,14 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 66.67,
                 33.33,
             ),
+            None,
         ),
         (
             "test_case_column_value_length_to_be_between_col_space",
             "columnValueLengthsToBeBetween",
             "COLUMN",
             (TestCaseResult, "2", "3", TestCaseStatus.Success, 6000.0, 0.0, 100.0, 0.0),
+            None,
         ),
         (
             "test_case_column_value_length_to_be_between_no_min",
@@ -136,6 +138,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 100.0,
                 0.0,
             ),
+            None,
         ),
         (
             "test_case_column_value_max_to_be_between",
@@ -151,12 +154,14 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_max_to_be_between_no_min",
             "columnValueMaxToBeBetween",
             "COLUMN",
             (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_column_value_mean_to_be_between",
@@ -172,6 +177,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_mean_to_be_between_no_max",
@@ -187,6 +193,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_median_to_be_between",
@@ -202,6 +209,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_min_to_be_between",
@@ -217,6 +225,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_min_to_be_between_no_min",
@@ -232,6 +241,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_stddev_to_be_between",
@@ -247,6 +257,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_stddev_to_be_between_no_min",
@@ -262,6 +273,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_in_set",
@@ -277,6 +289,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 66.67,
                 33.33,
             ),
+            None,
         ),
         (
             "test_case_column_values_missing_count_to_be_equal",
@@ -292,6 +305,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_values_missing_count_to_be_equal_missing_values",
@@ -307,6 +321,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_values_not_in_set",
@@ -322,6 +337,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 33.33,
                 66.67,
             ),
+            None,
         ),
         (
             "test_case_column_sum_to_be_between",
@@ -337,6 +353,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_be_between",
@@ -352,6 +369,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 100.0,
                 0.0,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_be_not_null",
@@ -367,6 +385,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 66.67,
                 33.33,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_be_unique",
@@ -382,6 +401,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 0.0,
                 100.0,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_match_regex",
@@ -397,6 +417,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 100.0,
                 0.0,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_not_match_regex",
@@ -412,6 +433,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 100.0,
                 0.0,
             ),
+            None,
         ),
         (
             "test_case_table_column_count_to_be_between",
@@ -427,36 +449,42 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_table_column_count_to_equal",
             "tableColumnCountToEqual",
             "TABLE",
             (TestCaseResult, "11", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_table_column_name_to_exist",
             "tableColumnNameToExist",
             "TABLE",
             (TestCaseResult, "1", None, TestCaseStatus.Success, None, None, None, None),
+            None,
         ),
         (
             "test_case_column_to_match_set",
             "tableColumnToMatchSet",
             "TABLE",
             (TestCaseResult, "0", None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_column_to_match_set_ordered",
             "tableColumnToMatchSet",
             "TABLE",
             (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_table_custom_sql_query_failed_dl",
             "tableCustomSQLQuery",
             "TABLE",
             (TestCaseResult, None, None, TestCaseStatus.Failed, None, None, None, None),
+            None,
         ),
         (
             "test_case_table_custom_sql_query_success_dl",
@@ -472,6 +500,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_table_row_count_to_be_between",
@@ -487,6 +516,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_table_row_count_to_be_equal",
@@ -502,6 +532,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_table_row_inserted_count_to_be_between",
@@ -517,6 +548,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_values_to_be_at_expected_location",
@@ -532,6 +564,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
                 None,
             ),
+            None,
         ),
         (
             "test_case_column_value_in_set_boolean",
@@ -547,6 +580,7 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 66.67,
                 0.0,
             ),
+            None,
         ),
         (
             "test_case_table_custom_sql_query_success_dl_with_partition_expression",
@@ -562,6 +596,93 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 100.0,
                 0.0,
             ),
+            None,
+        ),
+        (
+            "test_case_column_values_to_be_in_set_dimensional_match_enum",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "4000",
+                None,
+                TestCaseStatus.Failed,
+                4000.0,
+                0.0,
+                66.67,
+                0.0,
+            ),
+            [
+                ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 2000, 0, 100, 0.6667),
+                ("fullname=John Doe", TestCaseStatus.Success, 4000, 0, 100, 0, 0.0),
+            ],
+        ),
+        (
+            "test_case_column_values_to_be_in_set_dimensional_no_match_enum",
+            "columnValuesToBeInSet",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "4000",
+                None,
+                TestCaseStatus.Success,
+                4000.0,
+                0.0,
+                66.67,
+                0.0,
+            ),
+            [
+                ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 0, 0, 0, None),
+                ("fullname=John Doe", TestCaseStatus.Success, 4000, 0, 100, 0, None),
+            ],
+        ),
+        (
+            "test_case_column_values_to_be_unique_dimensional",
+            "columnValuesToBeUnique",
+            "COLUMN",
+            (TestCaseResult, "6000", "0", TestCaseStatus.Failed, 0, 6000, 0.0, 100.0),
+            [
+                ("name=Jane", TestCaseStatus.Failed, 0, 2000, 0.0, 100, 0.6667),
+                ("name=John", TestCaseStatus.Failed, 0, 4000, 0.0, 100, 0.6667),
+            ],
+        ),
+        (
+            "test_case_column_value_mean_to_be_between_dimensional",
+            "columnValueMeanToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30.5",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Jane", TestCaseStatus.Failed, None, None, None, None, 0.6667),
+                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.6667),
+            ],
+        ),
+        (
+            "test_case_column_value_mean_to_be_between_dimensional_without_max",
+            "columnValueMeanToBeBetween",
+            "COLUMN",
+            (
+                TestCaseResult,
+                "30.5",
+                None,
+                TestCaseStatus.Failed,
+                None,
+                None,
+                None,
+                None,
+            ),
+            [
+                ("name=Jane", TestCaseStatus.Success, None, None, None, None, 0.0),
+                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.6667),
+            ],
         ),
     ],
 )
@@ -570,6 +691,7 @@ def test_suite_validation_datalake(
     test_case_type,
     test_type,
     expected,
+    expected_dimension,
     request,
 ):
     """Generic test runner for test validations"""
@@ -622,3 +744,32 @@ def test_suite_validation_datalake(
         assert res.failedRowsPercentage is not None
         assert res.passedRows is not None
         assert res.passedRowsPercentage is not None
+
+    if expected_dimension:
+        assert res.dimensionResults is not None
+        assert len(res.dimensionResults) == len(expected_dimension)
+        for expected_dim in expected_dimension:
+            dim = next(
+                (
+                    dim
+                    for dim in res.dimensionResults
+                    if dim.dimensionKey == expected_dim[0]
+                ),
+                None,
+            )
+            assert dim is not None
+            assert dim.testCaseStatus == expected_dim[1]
+            assert dim.passedRows == expected_dim[2]
+            assert dim.failedRows == expected_dim[3]
+
+            if expected_dim[4]:
+                assert round(dim.passedRowsPercentage, 2) == expected_dim[4]
+            else:
+                assert dim.passedRowsPercentage == expected_dim[4]
+
+            if expected_dim[5]:
+                assert round(dim.failedRowsPercentage, 2) == expected_dim[5]
+            else:
+                assert dim.failedRowsPercentage == expected_dim[5]
+
+            assert dim.impactScore == expected_dim[6]
