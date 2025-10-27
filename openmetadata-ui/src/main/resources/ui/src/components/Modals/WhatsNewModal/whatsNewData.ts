@@ -1225,9 +1225,11 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - New paginated API endpoints have been introduced for better performance with large asset collections.
 
 **New Endpoints:**
-- \`GET /v1/domains/{id}/assets\` - Paginated access to domain assets
-- \`GET /v1/dataProducts/{id}/assets\` - Paginated access to data product assets
-- Similar endpoints added for Glossary Terms, Tags, Teams, and Users
+- \`GET /v1/domains/{id}/assets\` - Paginated access to domain assets by ID
+- \`GET /v1/domains/name/{name}/assets\` - Paginated access to domain assets by name
+- \`GET /v1/dataProducts/{id}/assets\` - Paginated access to data product assets by ID
+- \`GET /v1/dataProducts/name/{name}/assets\` - Paginated access to data product assets by name
+- Similar endpoints (both by ID and name) added for Glossary Terms, Tags, Teams, and Users
 
 **Action Required:**
 - Update your integrations to use the new paginated endpoints instead of relying on the inline \`assets\` field.
