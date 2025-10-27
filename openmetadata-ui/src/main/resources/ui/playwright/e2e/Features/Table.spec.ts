@@ -270,11 +270,11 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await waitForTableSearchResponse;
 
     await expect(
-      page.getByTestId('agent_performance_summary').first()
-    ).toContainText('agent_performance_summary');
+      page.getByText('agent_performance_summary').first()
+    ).toBeVisible();
 
     await expect(
-      page.getByTestId('big_data_table_with_nested_columns').first()
+      page.getByText('big_data_table_with_nested_columns').first()
     ).not.toBeVisible();
 
     await page.getByText('Stored Procedures').click();
@@ -292,6 +292,33 @@ test.describe('Table pagination sorting search scenarios ', () => {
     await expect(
       page.getByText('calculate_interest').first()
     ).not.toBeVisible();
+  });
+
+  test('Verify search feature in service page', async ({
+    dataConsumerPage: page,
+  }) => {
+    await page.goto('/service/databaseServices/sample_data/databases');
+    await waitForAllLoadersToDisappear(page);
+
+    await expect(page.getByTestId('service-children-table')).toBeVisible();
+
+    const waitForTableSearchResponse = page.waitForResponse(
+      '/api/v1/search/query?q=*index=database_search_index*'
+    );
+
+    await page.getByTestId('searchbar').fill('ecommerce_db');
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+    await waitForTableSearchResponse;
+
+    await expect(page.getByText('ecommerce_db').first()).toBeVisible();
+
+    await page.getByTestId('searchbar').fill('test');
+    await page.waitForLoadState('networkidle');
+    await waitForAllLoadersToDisappear(page);
+    await waitForTableSearchResponse;
+
+    await expect(page.getByText('ecommerce_db').first()).not.toBeVisible();
   });
 });
 

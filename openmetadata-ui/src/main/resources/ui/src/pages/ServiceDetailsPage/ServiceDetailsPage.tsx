@@ -869,6 +869,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       }
     },
     [
+      tab,
       serviceCategory,
       fetchDatabases,
       fetchTopics,
