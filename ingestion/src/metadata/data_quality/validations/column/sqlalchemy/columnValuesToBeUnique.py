@@ -164,7 +164,7 @@ class ColumnValuesToBeUniqueValidator(
             )
 
             metric_expressions = {
-                Metrics.COUNT.name: func.count(),
+                Metrics.COUNT.name: func.count(column),
                 Metrics.UNIQUE_COUNT.name: unique_count_expr,
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
             }

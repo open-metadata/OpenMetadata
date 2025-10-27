@@ -120,7 +120,7 @@ class ColumnValueMeanToBeBetweenValidator(
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
 
             dimension_aggregates = defaultdict(
-                lambda: {"sums": [], "counts": [], "total_counts": []}
+                lambda: {"sums": [], "counts": [], "total_rows": []}
             )
 
             # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
@@ -138,7 +138,8 @@ class ColumnValueMeanToBeBetweenValidator(
                     dimension_aggregates[dimension_value]["counts"].append(
                         len(non_null_values)
                     )
-                    dimension_aggregates[dimension_value]["total_counts"].append(
+                    # Track total rows including NULLs (consistent with SQL COUNT(*))
+                    dimension_aggregates[dimension_value]["total_rows"].append(
                         len(group_df)
                     )
 
@@ -146,14 +147,14 @@ class ColumnValueMeanToBeBetweenValidator(
             for dimension_value, agg in dimension_aggregates.items():
                 total_count = sum(agg["counts"])
                 total_sum = sum(agg["sums"])
-                total_rows = sum(agg["total_counts"])
+                total_rows = sum(agg["total_rows"])
 
-                # Skip dimensions with no non-null values
                 if total_count == 0:
                     continue
 
                 mean_value = total_sum / total_count
 
+                # Statistical validator: when mean fails, ALL rows in dimension fail
                 if min_bound <= mean_value <= max_bound:
                     failed_count = 0
                 else:

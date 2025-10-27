@@ -122,6 +122,7 @@ class ColumnValueMeanToBeBetweenValidator(
                 violation = or_(*conditions) if len(conditions) > 1 else conditions[0]
 
                 return case(
+                    (mean_col.is_(None), literal(0)),
                     (violation, count_col),
                     else_=literal(0),
                 )

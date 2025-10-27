@@ -119,7 +119,7 @@ class ColumnValuesToBeUniqueValidator(
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
 
             dimension_aggregates = defaultdict(
-                lambda: {"all_values": [], "total_count": 0}
+                lambda: {"all_values": [], "total_count": 0, "total_rows": 0}
             )
 
             # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
@@ -129,18 +129,21 @@ class ColumnValuesToBeUniqueValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    # Collect all values to compute unique count across dataframes
+                    # Collect all non-NULL values to compute unique count across dataframes
                     dimension_aggregates[dimension_value]["all_values"].extend(
                         group_df[column.name].dropna().tolist()
                     )
-                    dimension_aggregates[dimension_value]["total_count"] += len(
-                        group_df
-                    )
+                    # Count non-NULL values (consistent with COUNT metric)
+                    dimension_aggregates[dimension_value]["total_count"] += group_df[
+                        column.name
+                    ].count()
+                    # Track total rows including NULLs for impact score
+                    dimension_aggregates[dimension_value]["total_rows"] += len(group_df)
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
                 total_count = agg["total_count"]
-                # Count values appearing exactly once (like UNIQUE_COUNT metric)
+                total_rows = agg["total_rows"]
                 counter = Counter(agg["all_values"])
                 unique_count = sum(1 for value in counter.values() if value == 1)
                 duplicate_count = total_count - unique_count
@@ -150,7 +153,7 @@ class ColumnValuesToBeUniqueValidator(
                         DIMENSION_VALUE_KEY: dimension_value,
                         Metrics.COUNT.name: total_count,
                         Metrics.UNIQUE_COUNT.name: unique_count,
-                        DIMENSION_TOTAL_COUNT_KEY: total_count,
+                        DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: duplicate_count,
                     }
                 )
@@ -171,17 +174,14 @@ class ColumnValuesToBeUniqueValidator(
                 )
 
                 for row_dict in results_df.to_dict("records"):
-                    # Build metric_values dict using helper method
                     metric_values = self._build_metric_values_from_row(
                         row_dict, metrics_to_compute, test_params
                     )
 
-                    # Evaluate test condition
                     evaluation = self._evaluate_test_condition(
                         metric_values, test_params
                     )
 
-                    # Create dimension result using helper method
                     dimension_result = self._create_dimension_result(
                         row_dict,
                         dimension_col.name,

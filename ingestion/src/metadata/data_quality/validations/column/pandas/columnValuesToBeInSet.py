@@ -188,17 +188,14 @@ class ColumnValuesToBeInSetValidator(
                 )
 
                 for row_dict in results_df.to_dict("records"):
-                    # Build metric_values dict using helper method
                     metric_values = self._build_metric_values_from_row(
                         row_dict, metrics_to_compute, test_params
                     )
 
-                    # Evaluate test condition
                     evaluation = self._evaluate_test_condition(
                         metric_values, test_params
                     )
 
-                    # Create dimension result using helper method
                     dimension_result = self._create_dimension_result(
                         row_dict,
                         dimension_col.name,
