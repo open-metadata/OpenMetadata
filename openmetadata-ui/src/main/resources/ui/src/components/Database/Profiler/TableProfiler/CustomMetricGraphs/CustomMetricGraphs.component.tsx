@@ -10,33 +10,32 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import MoreVertIcon from '@mui/icons-material/MoreVert';
 import {
-  Button,
-  Card,
-  Col,
-  Dropdown,
-  Form,
-  Modal,
-  Row,
-  Typography,
-} from 'antd';
+  Box,
+  Grid,
+  IconButton,
+  Menu,
+  MenuItem,
+  Stack,
+  useTheme,
+} from '@mui/material';
+import { Form, Modal } from 'antd';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, last, omit, toPairs } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Area,
   CartesianGrid,
-  Legend,
+  ComposedChart,
   Line,
-  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
-import { ReactComponent as IconDropdown } from '../../../../../assets/svg/menu.svg';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
-import { PAGE_HEADERS } from '../../../../../constants/PageHeaders.constant';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
@@ -46,13 +45,10 @@ import {
 } from '../../../../../rest/customMetricAPI';
 import {
   axisTickFormatter,
+  createHorizontalGridLineRenderer,
   tooltipFormatter,
 } from '../../../../../utils/ChartUtils';
-import { entityChartColor } from '../../../../../utils/CommonUtils';
-import {
-  CustomTooltip,
-  getRandomHexColor,
-} from '../../../../../utils/DataInsightUtils';
+import { CustomDQTooltip } from '../../../../../utils/DataQuality/DataQualityUtils';
 import { formatDateTimeLong } from '../../../../../utils/date-time/DateTimeUtils';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
@@ -62,8 +58,7 @@ import {
 import DeleteWidgetModal from '../../../../common/DeleteWidget/DeleteWidgetModal';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
-import PageHeader from '../../../../PageHeader/PageHeader.component';
-import ProfilerLatestValue from '../../ProfilerLatestValue/ProfilerLatestValue';
+import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import { useTableProfiler } from '../TableProfilerProvider';
 import './custom-metric-graphs.style.less';
 import {
@@ -76,6 +71,7 @@ const CustomMetricGraphs = ({
   isLoading,
   customMetrics,
 }: CustomMetricGraphsProps) => {
+  const theme = useTheme();
   const { t } = useTranslation();
   const [form] = Form.useForm<CustomMetric>();
   const {
@@ -92,6 +88,14 @@ const CustomMetricGraphs = ({
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [anchorEl, setAnchorEl] = useState<Record<string, HTMLElement | null>>(
+    {}
+  );
+
+  const renderHorizontalGridLine = useMemo(
+    () => createHorizontalGridLineRenderer(),
+    []
+  );
 
   const items = useMemo(
     () => [
@@ -168,6 +172,7 @@ const CustomMetricGraphs = ({
     setSelectedMetrics(
       customMetrics?.find((metric) => metric.name === metricName)
     );
+    setAnchorEl((prev) => ({ ...prev, [metricName]: null }));
     switch (key) {
       case MenuOptions.EDIT:
         setIsEditModalVisible(true);
@@ -182,119 +187,156 @@ const CustomMetricGraphs = ({
     }
   };
 
+  const handleMenuOpen = (
+    event: React.MouseEvent<HTMLElement>,
+    metricName: string
+  ) => {
+    setAnchorEl((prev) => ({ ...prev, [metricName]: event.currentTarget }));
+  };
+
+  const handleMenuClose = (metricName: string) => {
+    setAnchorEl((prev) => ({ ...prev, [metricName]: null }));
+  };
+
   return (
-    <Row data-testid="custom-metric-graph-container" gutter={[16, 16]}>
-      {!isEmpty(customMetrics) && (
-        <Col span={24}>
-          <PageHeader data={PAGE_HEADERS.CUSTOM_METRICS} />
-        </Col>
-      )}
-      {toPairs(customMetricsGraphData).map(([key, metric], i) => {
+    <Stack data-testid="custom-metric-graph-container" spacing="30px">
+      {toPairs(customMetricsGraphData).map(([key, metric]) => {
         const metricDetails = customMetrics?.find(
           (metric) => metric.name === key
         );
-        const color = entityChartColor(i) ?? getRandomHexColor();
 
         return isUndefined(metricDetails) ? null : (
-          <Col key={key} span={24}>
-            <Card
-              className="shadow-none global-border-radius custom-metric-card"
+          <Box key={key}>
+            <ProfilerStateWrapper
               data-testid={`${key}-custom-metrics`}
-              extra={
-                editPermission || deletePermission ? (
-                  <Dropdown
-                    menu={{
-                      items,
-                      onClick: (info) => handleMenuClick(info.key, key),
-                    }}
-                    placement="bottomLeft"
-                    trigger={['click']}>
-                    <Button
-                      className="flex-center"
-                      data-testid={`${key}-custom-metrics-menu`}
-                      icon={<IconDropdown className="self-center" />}
-                      size="small"
-                    />
-                  </Dropdown>
-                ) : null
-              }
-              loading={isLoading}
-              title={<Typography.Title level={5}>{key}</Typography.Title>}>
-              <Row gutter={[16, 16]}>
-                <Col span={4}>
-                  <ProfilerLatestValue
-                    information={[
-                      {
-                        latestValue: last(metric)?.[key] ?? '--',
-                        title: '',
-                        dataKey: key,
-                        color,
-                      },
-                    ]}
-                  />
-                </Col>
-                <Col span={20}>
-                  {isEmpty(metric) ? (
-                    <Row
-                      align="middle"
-                      className="h-full w-full"
-                      justify="center">
-                      <Col>
-                        <ErrorPlaceHolder className="mt-0-important" />
-                      </Col>
-                    </Row>
-                  ) : (
-                    <ResponsiveContainer
-                      className="custom-legend"
-                      debounce={200}
-                      id={`${key}-graph`}
-                      minHeight={300}>
-                      <LineChart
-                        className="w-full"
-                        data={metric}
-                        margin={{ left: 16 }}>
-                        <CartesianGrid stroke={GRAPH_BACKGROUND_COLOR} />
-                        <XAxis
-                          dataKey="formattedTimestamp"
-                          padding={{ left: 16, right: 16 }}
-                          tick={{ fontSize: 12 }}
-                        />
+              isLoading={isLoading}
+              profilerLatestValueProps={{
+                information: [
+                  {
+                    latestValue: last(metric)?.[key] ?? '--',
+                    title: t('label.count'),
+                    dataKey: key,
+                    color: theme.palette.allShades.blue[500],
+                  },
+                ],
+                extra:
+                  editPermission || deletePermission ? (
+                    <>
+                      <IconButton
+                        data-testid={`${key}-custom-metrics-menu`}
+                        size="small"
+                        sx={{
+                          color: theme.palette.grey[800],
+                        }}
+                        onClick={(e) => handleMenuOpen(e, key)}>
+                        <MoreVertIcon fontSize="small" />
+                      </IconButton>
+                      <Menu
+                        anchorEl={anchorEl[key]}
+                        anchorOrigin={{
+                          vertical: 'bottom',
+                          horizontal: 'right',
+                        }}
+                        open={Boolean(anchorEl[key])}
+                        sx={{
+                          '.MuiPaper-root': {
+                            width: 'max-content',
+                          },
+                        }}
+                        transformOrigin={{
+                          vertical: 'top',
+                          horizontal: 'right',
+                        }}
+                        onClose={() => handleMenuClose(key)}>
+                        {items.map((item) => (
+                          <MenuItem
+                            disabled={item.disabled}
+                            key={item.key}
+                            onClick={() => handleMenuClick(item.key, key)}>
+                            {item.label}
+                          </MenuItem>
+                        ))}
+                      </Menu>
+                    </>
+                  ) : undefined,
+              }}
+              title={key}>
+              <Box>
+                {isEmpty(metric) ? (
+                  <Grid
+                    alignItems="middle"
+                    className="h-full w-full"
+                    display="flex"
+                    justifyContent="center">
+                    <ErrorPlaceHolder className="mt-0-important" />
+                  </Grid>
+                ) : (
+                  <ResponsiveContainer
+                    className="custom-legend"
+                    debounce={200}
+                    id={`${key}-graph`}
+                    minHeight={300}>
+                    <ComposedChart
+                      className="w-full"
+                      data={metric}
+                      margin={{ left: 16 }}>
+                      <CartesianGrid
+                        horizontal={renderHorizontalGridLine}
+                        stroke={GRAPH_BACKGROUND_COLOR}
+                        strokeDasharray="3 3"
+                        vertical={false}
+                      />
+                      <XAxis
+                        axisLine={false}
+                        dataKey="formattedTimestamp"
+                        padding={{ left: 16, right: 16 }}
+                        tick={{ fontSize: 12 }}
+                        tickLine={false}
+                      />
 
-                        <YAxis
-                          domain={['min', 'max']}
-                          padding={{ top: 16, bottom: 16 }}
-                          tick={{ fontSize: 12 }}
-                          tickFormatter={(props) => axisTickFormatter(props)}
-                          type="number"
-                        />
+                      <YAxis
+                        axisLine={false}
+                        domain={['min', 'max']}
+                        padding={{ top: 16, bottom: 16 }}
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(props) => axisTickFormatter(props)}
+                        tickLine={false}
+                        type="number"
+                      />
 
-                        <Tooltip
-                          content={
-                            <CustomTooltip
-                              dateTimeFormatter={formatDateTimeLong}
-                              timeStampKey="timestamp"
-                              valueFormatter={(value) =>
-                                tooltipFormatter(value)
-                              }
-                            />
-                          }
-                        />
+                      <Tooltip
+                        content={
+                          <CustomDQTooltip
+                            dateTimeFormatter={formatDateTimeLong}
+                            timeStampKey="timestamp"
+                            valueFormatter={(value) => tooltipFormatter(value)}
+                          />
+                        }
+                        cursor={{
+                          stroke: theme.palette.grey[200],
+                          strokeDasharray: '3 3',
+                        }}
+                      />
 
-                        <Line
-                          dataKey={key}
-                          name={key}
-                          stroke={color}
-                          type="monotone"
-                        />
-
-                        <Legend />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )}
-                </Col>
-              </Row>
-            </Card>
-          </Col>
+                      <Line
+                        dataKey={key}
+                        name={key}
+                        stroke={theme.palette.allShades.blue[500]}
+                        type="monotone"
+                      />
+                      <Area
+                        dataKey={key}
+                        fill={theme.palette.allShades.blue[50]}
+                        name={key}
+                        stroke={theme.palette.allShades.blue[500]}
+                        type="monotone"
+                      />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                )}
+              </Box>
+            </ProfilerStateWrapper>
+          </Box>
         );
       })}
       <DeleteWidgetModal
@@ -329,7 +371,7 @@ const CustomMetricGraphs = ({
           />
         </Modal>
       )}
-    </Row>
+    </Stack>
   );
 };
 

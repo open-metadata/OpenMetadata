@@ -382,7 +382,7 @@ test.describe('Table & Data Model columns table pagination', () => {
     const colsResponse = page.waitForResponse(
       '/api/v1/tables/name/*/columns?*'
     );
-    await page.getByRole('menuitem', { name: 'Column Profile' }).click();
+    await page.getByRole('tab', { name: 'Column Profile' }).click();
 
     await colsResponse;
     await page.waitForSelector('[data-testid="loader"]', {

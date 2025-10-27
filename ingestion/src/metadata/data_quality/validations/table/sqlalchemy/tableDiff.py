@@ -181,7 +181,8 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     runtime_params: TableDiffRuntimeParameters
 
-    def run_validation(self) -> TestCaseResult:
+    def _run_validation(self):
+        """Run validation for the table diff test"""
         self.runtime_params = self.get_runtime_parameters(TableDiffRuntimeParameters)
         try:
             self._validate_dialects()
@@ -212,6 +213,19 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
             )
             logger.debug(result.result)
             return result
+
+    def _run_dimensional_validation(self):
+        """Execute dimensional validation for table diff test
+
+        Table diff tests don't currently support dimensional validation.
+        This method returns an empty list to indicate no dimensional results.
+
+        Returns:
+            List: Empty list for now (placeholder for future implementation)
+        """
+        # TODO: Implement dimensional validation for table diff tests if needed
+        # This would involve grouping by dimension columns and checking diffs per group
+        return []
 
     def _run(self) -> TestCaseResult:
         result = self.get_column_diff()

@@ -129,6 +129,8 @@ test.afterAll('Cleanup', async ({ browser }) => {
   await dataStewardUser.delete(apiContext);
   await policy.delete(apiContext);
   await role.delete(apiContext);
+  await persona1.delete(apiContext);
+  await persona2.delete(apiContext);
   await afterAction();
 });
 

@@ -123,7 +123,11 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
   );
 
   const handleChange = useCallback(
-    (_event: React.SyntheticEvent, newValue: (TagOption | string)[]) => {
+    (
+      _event: React.SyntheticEvent,
+      newValue: (TagOption | string)[]
+      // reason parameter omitted as it's not used
+    ) => {
       if (isArray(newValue)) {
         // Filter out string values from freeSolo
         const optionValues = newValue.filter(
@@ -169,7 +173,6 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
       freeSolo
       multiple
       // Force listbox to remount when options change to fix async search not updating dropdown
-      // Using 'as any' because key is not in MUI's ListboxProps type definition
       ListboxProps={
         {
           key: `listbox-${memoizedOptions.length}`,
@@ -180,7 +183,11 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
         typeof option === 'string' ? option : option.label
       }
       inputValue={inputValue}
-      isOptionEqualToValue={(option, value) => option.value === value.value}
+      isOptionEqualToValue={(option, value) =>
+        typeof option === 'string' || typeof value === 'string'
+          ? option === value
+          : option.value === value.value
+      }
       loading={loading}
       open={open && (memoizedOptions.length > 0 || loading)}
       options={memoizedOptions}
@@ -196,7 +203,6 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
             })
           }
           required={required}
-          size="small"
           slotProps={{
             inputLabel: {
               shrink: true,
@@ -205,39 +211,51 @@ const MUITagSuggestion: FC<MUITagSuggestionProps> = ({
           variant="outlined"
         />
       )}
-      renderOption={(props, option) => (
-        <Box component="li" {...props}>
-          <Box display="flex" flexDirection="column">
-            <Box
-              fontWeight="medium"
-              sx={{
-                color: option.data?.style?.color || undefined,
-              }}>
-              {option.label}
-            </Box>
-            {(option.data?.displayName || option.data?.name) && (
-              <Box color="text.secondary" fontSize="0.875rem">
-                {option.data?.displayName || option.data?.name}
-              </Box>
-            )}
-          </Box>
-        </Box>
-      )}
-      renderTags={(value, getTagProps) =>
-        value.map((option, index: number) => {
-          const chipProps = getTagProps({ index });
-
+      renderOption={(props, option) => {
+        if (typeof option === 'string') {
           return (
-            <TagChip
-              {...chipProps}
-              key={option.value}
-              label={option.label}
-              size="small"
-              tagColor={option.data?.style?.color}
-            />
+            <Box component="li" {...props}>
+              {option}
+            </Box>
           );
-        })
+        }
+
+        return (
+          <Box component="li" {...props}>
+            <Box display="flex" flexDirection="column">
+              <Box
+                fontWeight="medium"
+                sx={{ color: option.data?.style?.color || undefined }}>
+                {option.label}
+              </Box>
+              {(option.data?.displayName || option.data?.name) && (
+                <Box color="text.secondary" fontSize="0.875rem">
+                  {option.data?.displayName || option.data?.name}
+                </Box>
+              )}
+            </Box>
+          </Box>
+        );
+      }}
+      renderTags={(value: (string | TagOption)[], getTagProps) =>
+        value
+          .filter((v): v is TagOption => typeof v !== 'string')
+          .map((option: TagOption, index: number) => {
+            const { onDelete, ...chipProps } = getTagProps({ index });
+
+            return (
+              <TagChip
+                {...chipProps}
+                key={option.value}
+                label={option.label}
+                size="small"
+                tagColor={option.data?.style?.color}
+                onDelete={onDelete ? () => onDelete({} as never) : undefined}
+              />
+            );
+          })
       }
+      size="small"
       value={selectedOptions}
       onChange={handleChange}
       onClose={() => setOpen(false)}

@@ -184,9 +184,11 @@ class SalesforceSource(DatabaseServiceSource):
                     )
                     if filter_by_table(
                         self.config.sourceConfig.config.tableFilterPattern,
-                        table_fqn
-                        if self.config.sourceConfig.config.useFqnForFiltering
-                        else table_name,
+                        (
+                            table_fqn
+                            if self.config.sourceConfig.config.useFqnForFiltering
+                            else table_name
+                        ),
                     ):
                         self.status.filter(
                             table_fqn,
@@ -238,7 +240,7 @@ class SalesforceSource(DatabaseServiceSource):
         all_column_description = None
         try:
             result = self.client.toolingexecute(
-                f"query/?q=SELECT+Description+FROM+FieldDefinition+WHERE+"
+                f"query/?q=SELECT+Description, QualifiedApiName+FROM+FieldDefinition+WHERE+"
                 f"EntityDefinition.QualifiedApiName='{table_name}'"
             )
             all_column_description = result["records"]
@@ -313,7 +315,7 @@ class SalesforceSource(DatabaseServiceSource):
             for item in all_column_description:
                 try:
                     if item.get("Description") is not None:
-                        column_name = item["attributes"]["url"].split(".")[-1]
+                        column_name = item["QualifiedApiName"]
                         column_description_mapping.update(
                             {column_name: item["Description"]}
                         )
