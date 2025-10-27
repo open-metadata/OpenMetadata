@@ -17,6 +17,8 @@ from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
+EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
+
 
 @pytest.mark.parametrize(
     "param_values, name, type_, default, expected",
@@ -382,3 +384,64 @@ class TestBaseTestValidator:
 
         # Verify dimensional validation WAS attempted
         validator._run_dimensional_validation.assert_called_once()
+
+
+def test_get_test_parameters_default_returns_none():
+    """Test that default _get_test_parameters implementation returns None"""
+    test_case = MagicMock(spec=TestCase)
+    test_case.name = "test_default_params"
+    test_case.dimensionColumns = None
+
+    validator = MockTestValidator(
+        runner=MagicMock(),
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    result = validator._get_test_parameters()
+
+    assert result is None
+
+
+def test_evaluate_test_condition_not_implemented_error():
+    """Test that _evaluate_test_condition raises NotImplementedError with clear message"""
+    test_case = MagicMock(spec=TestCase)
+    test_case.name = "test_evaluate_not_implemented"
+    test_case.dimensionColumns = None
+
+    validator = MockTestValidator(
+        runner=MagicMock(),
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    metric_values = {"COUNT": 100}
+
+    with pytest.raises(NotImplementedError) as exc_info:
+        validator._evaluate_test_condition(metric_values)
+
+    assert "MockTestValidator must implement _evaluate_test_condition()" in str(
+        exc_info.value
+    )
+
+
+def test_format_result_message_not_implemented_error():
+    """Test that _format_result_message raises NotImplementedError with clear message"""
+    test_case = MagicMock(spec=TestCase)
+    test_case.name = "test_format_not_implemented"
+    test_case.dimensionColumns = None
+
+    validator = MockTestValidator(
+        runner=MagicMock(),
+        test_case=test_case,
+        execution_date=EXECUTION_DATE.timestamp(),
+    )
+
+    metric_values = {"COUNT": 100}
+
+    with pytest.raises(NotImplementedError) as exc_info:
+        validator._format_result_message(metric_values)
+
+    assert "MockTestValidator must implement _format_result_message()" in str(
+        exc_info.value
+    )
