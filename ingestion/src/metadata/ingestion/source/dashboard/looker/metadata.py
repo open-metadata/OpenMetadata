@@ -392,8 +392,13 @@ class LookerSource(DashboardServiceSource):
         We either get GitHubCredentials or `NoGitHubCredentials`
         """
         if not self._repo_credentials:
-            if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, get_args(ReadersCredentials)
+            if self.service_connection.gitCredentials and (
+                isinstance(
+                    self.service_connection.gitCredentials, get_args(ReadersCredentials)
+                )
+                or isinstance(
+                    self.service_connection.gitCredentials, LocalRepositoryPath
+                )
             ):
                 self._repo_credentials = self.service_connection.gitCredentials
 
