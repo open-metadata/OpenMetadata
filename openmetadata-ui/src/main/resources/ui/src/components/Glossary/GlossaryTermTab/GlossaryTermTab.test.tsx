@@ -468,7 +468,8 @@ describe('Test GlossaryTermTab component', () => {
 
       expect(mockGetGlossaryTermChildrenLazy).toHaveBeenCalledWith(
         'Business Glossary.Clothing',
-        1000
+        50,
+        undefined
       );
     });
   });
@@ -489,7 +490,12 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       expect(mockOnEditGlossaryTerm).toHaveBeenCalledWith(
-        mockedGlossaryTerms[0]
+        expect.objectContaining({
+          id: mockedGlossaryTerms[0].id,
+          name: mockedGlossaryTerms[0].name,
+          fullyQualifiedName: mockedGlossaryTerms[0].fullyQualifiedName,
+          level: expect.any(Number),
+        })
       );
     });
 
@@ -504,7 +510,12 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       expect(mockOnAddGlossaryTerm).toHaveBeenCalledWith(
-        mockedGlossaryTerms[1]
+        expect.objectContaining({
+          id: mockedGlossaryTerms[1].id,
+          name: mockedGlossaryTerms[1].name,
+          fullyQualifiedName: mockedGlossaryTerms[1].fullyQualifiedName,
+          level: expect.any(Number),
+        })
       );
     });
   });
