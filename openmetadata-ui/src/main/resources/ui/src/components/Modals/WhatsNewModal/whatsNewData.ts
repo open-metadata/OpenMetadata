@@ -16,7 +16,7 @@
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_8_11'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_12'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1245,6 +1245,19 @@ This change provides significant performance improvements for domains and data p
       Fixes: `- Fixed MF4 file reader import errors with proper lazy loading of dependencies.
 - Fixed domain assets count mismatch between API and UI responses.
 - Pinned \`pydantic\` dependency to version <2.12.0 for compatibility.
+`,
+    },
+  },
+  {
+    id: 84,
+    version: 'v1.8.12',
+    description: 'Released on 27th October 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Remove beta label from useDynamicAssertion in AutomatorTestCaseField component.
+`,
+      Fixes: `- Fix German language UI translations for login page.
+- Fix the UC Ingestion failing due to non-selected tables.
 `,
     },
   },
