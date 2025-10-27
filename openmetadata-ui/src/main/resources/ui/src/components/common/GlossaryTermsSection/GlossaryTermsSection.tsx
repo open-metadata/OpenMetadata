@@ -109,7 +109,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
       // Call the callback to update parent component
       if (onGlossaryTermsUpdate) {
-        await onGlossaryTermsUpdate(updatedTags);
+        await Promise.resolve(onGlossaryTermsUpdate(updatedTags));
       }
 
       setIsEditing(false);

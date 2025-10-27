@@ -19,7 +19,12 @@ import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classi
 import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { EntityType } from '../../../enums/entity.enum';
-import { TagLabel } from '../../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import { patchApiCollection } from '../../../rest/apiCollectionsAPI';
 import { patchApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import { patchChartDetails } from '../../../rest/chartsAPI';
@@ -74,6 +79,16 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   const [editingTags, setEditingTags] = useState<TagItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  const getTagFqn = (tag: TagLabel) =>
+    (tag.tagFQN || tag.name || tag.displayName || '').toString();
+
+  // Split current tags into Tier.* and non-tier tags
+  const nonTierTags: TagLabel[] = (tags || []).filter(
+    (t) => !getTagFqn(t).startsWith('Tier.')
+  );
+  const tierTags: TagLabel[] = (tags || []).filter((t) =>
+    getTagFqn(t).startsWith('Tier.')
+  );
   const getTagDisplayName = (tag: TagLabel) => {
     return tag.displayName || tag.name || tag.tagFQN || t('label.unknown');
   };
@@ -94,7 +109,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         fullyQualifiedName: tag.name,
         name: tag.displayName,
         displayName: tag.displayName,
-      } as any, // Type assertion to handle the data type mismatch
+      } as unknown as SelectOption['data'],
     }));
   };
 
@@ -140,7 +155,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   };
 
   const handleEditClick = () => {
-    setEditingTags(convertToTagItems(tags));
+    setEditingTags(convertToTagItems(nonTierTags));
     setIsEditing(true);
   };
 
@@ -169,15 +184,17 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         setIsLoading(true);
 
         // Convert TagItem[] to TagLabel[] format
-        const updatedTags: TagLabel[] = tagsToSave.map((tag) => ({
+        const updatedNonTier: TagLabel[] = tagsToSave.map((tag) => ({
           tagFQN: tag.name,
           displayName: tag.displayName,
           name: tag.displayName,
-          source: 'Classification' as any,
-          labelType: 'Manual' as any,
-          state: 'Confirmed' as any,
+          source: TagSource.Classification,
+          labelType: LabelType.Manual,
+          state: State.Confirmed,
         }));
 
+        // Merge back Tier tags unchanged so tier changes do not affect this section
+        const updatedTags: TagLabel[] = [...tierTags, ...updatedNonTier];
         // Create JSON patch by comparing the tags arrays
         const currentData = { tags };
         const updatedData = { tags: updatedTags };
@@ -227,7 +244,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
   // Save now happens via selection change; no explicit save button
 
   const handleCancel = () => {
-    setEditingTags(convertToTagItems(tags));
+    setEditingTags(convertToTagItems(nonTierTags));
     setIsEditing(false);
   };
 
@@ -244,7 +261,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
     await handleSaveWithTags(newTags);
   };
 
-  if (!tags.length) {
+  if (!nonTierTags.length) {
     return (
       <div className="tags-section">
         <div className="tags-header">
@@ -254,7 +271,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           {showEditButton && hasPermission && !isEditing && !isLoading && (
             <span
               className="edit-icon"
-              data-testid="edit-icon"
+              data-testid="edit-icon-tags"
               onClick={handleEditClick}>
               <EditIcon />
             </span>
@@ -311,7 +328,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         {showEditButton && hasPermission && !isEditing && !isLoading && (
           <span
             className="edit-icon"
-            data-testid="edit-icon"
+            data-testid="edit-icon-tags"
             onClick={handleEditClick}>
             <EditIcon />
           </span>
@@ -352,22 +369,23 @@ const TagsSection: React.FC<TagsSectionProps> = ({
         ) : (
           <div className="tags-display">
             <div className="tags-list">
-              {(showAllTags ? tags : tags.slice(0, maxVisibleTags)).map(
-                (tag, index) => (
-                  <div className="tag-item" key={index}>
-                    <ClassificationIcon className="tag-icon" />
-                    <span className="tag-name">{getTagDisplayName(tag)}</span>
-                  </div>
-                )
-              )}
-              {tags.length > maxVisibleTags && (
+              {(showAllTags
+                ? nonTierTags
+                : nonTierTags.slice(0, maxVisibleTags)
+              ).map((tag, index) => (
+                <div className="tag-item" key={index}>
+                  <ClassificationIcon className="tag-icon" />
+                  <span className="tag-name">{getTagDisplayName(tag)}</span>
+                </div>
+              ))}
+              {nonTierTags.length > maxVisibleTags && (
                 <button
                   className="show-more-tags-button"
                   type="button"
                   onClick={() => setShowAllTags(!showAllTags)}>
                   {showAllTags
                     ? t('label.less')
-                    : `+${tags.length - maxVisibleTags} ${t(
+                    : `+${nonTierTags.length - maxVisibleTags} ${t(
                         'label.more-lowercase'
                       )}`}
                 </button>

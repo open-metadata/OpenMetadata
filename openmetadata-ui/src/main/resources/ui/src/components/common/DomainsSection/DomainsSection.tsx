@@ -83,6 +83,29 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     setIsEditing(true);
   };
 
+  const normalizeDomains = (domains: EntityReference[]): EntityReference[] => {
+    if (Array.isArray(domains)) {
+      return domains;
+    }
+
+    return isEmpty(domains) ? [] : [domains as unknown as EntityReference];
+  };
+
+  const updateActiveDomains = (
+    entityDomains: EntityReference | EntityReference[] | Record<string, never>
+  ) => {
+    if (Array.isArray(entityDomains)) {
+      setActiveDomains(entityDomains);
+
+      return;
+    }
+
+    const newActiveDomains = isEmpty(entityDomains)
+      ? []
+      : [entityDomains as EntityReference];
+    setActiveDomains(newActiveDomains);
+  };
+
   const handleSaveWithDomains = useCallback(
     async (domainsToSave: EntityReference[]) => {
       if (!entityId || !entityType || !entityFqn) {
@@ -102,58 +125,50 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
 
         const entityDetailsResponse = await entityDetails;
 
-        if (entityDetailsResponse) {
-          // Create JSON patch by comparing the full entity objects, similar to DomainLabel
-          const jsonPatch = compare(entityDetailsResponse, {
-            ...entityDetailsResponse,
-            domains: Array.isArray(domainsToSave)
-              ? domainsToSave
-              : domainsToSave
-              ? [domainsToSave]
-              : [],
-          });
+        if (!entityDetailsResponse) {
+          setIsLoading(false);
 
-          // Only proceed if there are actual changes
-          if (jsonPatch.length === 0) {
-            setIsLoading(false);
-
-            return;
-          }
-
-          // Make the API call
-          const api = getAPIfromSource(entityType as AssetsUnion);
-          const res = await api(entityId, jsonPatch);
-
-          // Update internal state with the response, similar to DomainLabel
-          const entityDomains = get(res, 'domains', {});
-
-          if (Array.isArray(entityDomains)) {
-            setActiveDomains(entityDomains);
-          } else {
-            const newActiveDomains = isEmpty(entityDomains)
-              ? []
-              : [entityDomains];
-            setActiveDomains(newActiveDomains);
-          }
-
-          // Show success message
-          showSuccessToast(
-            t('server.update-entity-success', {
-              entity: t('label.domain-plural'),
-            })
-          );
-
-          // Call the callback to update parent component with the new domains
-          if (onDomainUpdate) {
-            onDomainUpdate(domainsToSave);
-          }
-
-          // Keep loading state for a brief moment to ensure smooth transition
-          setTimeout(() => {
-            setIsEditing(false);
-            setIsLoading(false);
-          }, 500);
+          return;
         }
+
+        // Create JSON patch by comparing the full entity objects
+        const jsonPatch = compare(entityDetailsResponse, {
+          ...entityDetailsResponse,
+          domains: normalizeDomains(domainsToSave),
+        });
+
+        // Only proceed if there are actual changes
+        if (jsonPatch.length === 0) {
+          setIsLoading(false);
+
+          return;
+        }
+
+        // Make the API call
+        const api = getAPIfromSource(entityType as AssetsUnion);
+        const res = await api(entityId, jsonPatch);
+
+        // Update internal state with the response
+        const entityDomains = get(res, 'domains', {});
+        updateActiveDomains(entityDomains);
+
+        // Show success message
+        showSuccessToast(
+          t('server.update-entity-success', {
+            entity: t('label.domain-plural'),
+          })
+        );
+
+        // Call the callback to update parent component with the new domains
+        if (onDomainUpdate) {
+          onDomainUpdate(domainsToSave);
+        }
+
+        // Keep loading state for a brief moment to ensure smooth transition
+        setTimeout(() => {
+          setIsEditing(false);
+          setIsLoading(false);
+        }, 500);
       } catch (error) {
         setIsLoading(false);
         showErrorToast(

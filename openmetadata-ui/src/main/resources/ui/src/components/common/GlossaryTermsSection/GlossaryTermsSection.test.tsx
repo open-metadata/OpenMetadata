@@ -80,9 +80,17 @@ const tagSelectFormMock = jest
     )
   );
 
+interface TagSelectFormProps {
+  onCancel?: () => void;
+  onSubmit?: (values: unknown[]) => void;
+  defaultValue?: string[];
+  placeholder?: string;
+  tagType?: string;
+}
+
 jest.mock('../../Tag/TagsSelectForm/TagsSelectForm.component', () => ({
   __esModule: true,
-  default: (props: any) => tagSelectFormMock(props),
+  default: (props: TagSelectFormProps) => tagSelectFormMock(props),
 }));
 
 // Utils mocks

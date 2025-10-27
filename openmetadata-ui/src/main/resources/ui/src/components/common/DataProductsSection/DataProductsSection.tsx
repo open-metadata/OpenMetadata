@@ -187,10 +187,6 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     [entityId, dataProducts, onDataProductsUpdate, t]
   );
 
-  const handleSave = () => {
-    handleSaveWithDataProducts(editingDataProducts);
-  };
-
   const handleCancel = () => {
     const dataProductsForEditing = (dataProducts || []).map((dp) => ({
       id: dp?.id,
@@ -202,7 +198,7 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     setIsEditing(false);
   };
 
-  if (!dataProducts || !dataProducts.length) {
+  if (!dataProducts?.length) {
     return (
       <div className="data-products-section">
         <div className="data-products-header">
@@ -210,15 +206,21 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
             {t('label.data-product-plural')}
           </Typography.Text>
           {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="edit-icon" onClick={handleEditClick}>
+            <button
+              className="edit-icon"
+              type="button"
+              onClick={handleEditClick}>
               <EditIcon />
-            </span>
+            </button>
           )}
           {isEditing && !isLoading && (
             <div className="edit-actions">
-              <span className="cancel-icon" onClick={handleCancel}>
+              <button
+                className="cancel-icon"
+                type="button"
+                onClick={handleCancel}>
                 <CloseIcon />
-              </span>
+              </button>
             </div>
           )}
         </div>

@@ -211,7 +211,10 @@ const TierSection: React.FC<TierSectionProps> = ({
           {t('label.tier')}
         </Typography.Text>
         {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <span className="edit-icon" onClick={handleEditClick}>
+          <span
+            className="edit-icon"
+            data-testid="edit-icon-tier"
+            onClick={handleEditClick}>
             <EditIcon />
           </span>
         )}

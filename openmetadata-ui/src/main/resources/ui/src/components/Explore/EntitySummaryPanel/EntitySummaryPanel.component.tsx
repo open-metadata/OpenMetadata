@@ -384,15 +384,22 @@ export default function EntitySummaryPanel({
 
   const handleTagsUpdate = useCallback(
     (updatedTags: any[]) => {
-      const tagsClone = updatedTags.map((t) => ({ ...t }));
       setEntityData((prevData: any) => {
         if (!prevData || prevData.id !== entityDetails.details.id) {
           return prevData;
         }
+        const currentTags = prevData.tags || [];
+        const existingGlossaryTerms = currentTags.filter(
+          (tag: any) => tag.source === TagSource.Glossary
+        );
+
+        // updatedTags already includes tier tags merged from TagsSection
+        // Merge with existing glossary terms
+        const mergedTags = [...existingGlossaryTerms, ...updatedTags];
 
         const updatedData = {
           ...prevData,
-          tags: tagsClone,
+          tags: mergedTags,
           entityType: prevData.entityType || entityDetails.details.entityType,
           fullyQualifiedName:
             prevData.fullyQualifiedName ||
