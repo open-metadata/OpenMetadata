@@ -85,7 +85,6 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
-import org.openmetadata.service.search.AggregationManagementClient;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -168,7 +167,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final OpenSearchIndexManager indexManager;
   private final OpenSearchEntityManager entityManager;
   private final OpenSearchGenericManager genericManager;
-  private final AggregationManagementClient aggregationManagementClient;
+  private final OpenSearchAggregationManager aggregationManager;
   private final OpenSearchDataInsightAggregatorManager dataInsightAggregatorManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
@@ -214,7 +213,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
     indexManager = new OpenSearchIndexManager(newClient, clusterAlias);
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, restClientBuilder.build());
-    aggregationManagementClient = new OpenSearchAggregationManager(newClient);
+    aggregationManager = new OpenSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
   }
 
@@ -1449,20 +1448,20 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
-    return aggregationManagementClient.aggregate(request);
+    return aggregationManager.aggregate(request);
   }
 
   @Override
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
-    return aggregationManagementClient.genericAggregation(query, index, aggregationMetadata);
+    return aggregationManager.genericAggregation(query, index, aggregationMetadata);
   }
 
   @Override
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
-    return aggregationManagementClient.aggregate(query, index, searchAggregation, filter);
+    return aggregationManager.aggregate(query, index, searchAggregation, filter);
   }
 
   @SneakyThrows
