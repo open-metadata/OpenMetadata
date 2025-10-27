@@ -206,10 +206,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       {
         title: 'Failed/aborted Reason',
         dataIndex: 'testCaseResult',
-        key: 'Reason',
+        key: 'reason',
         width: 200,
-        render: (result: TestCaseResult) => {
-          return result?.result ? (
+        render: (result: TestCaseResult, record: TestCase) => {
+          return result?.result &&
+            record.testCaseStatus !== TestCaseStatus.Success ? (
             <MuiTypography
               sx={{
                 wordBreak: 'break-word',

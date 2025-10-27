@@ -75,6 +75,7 @@ jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
 }));
 jest.mock('../../../../utils/CommonUtils', () => ({
   formatTimeFromSeconds: jest.fn().mockReturnValue('1 hour'),
+  formatNumberWithComma: jest.fn().mockImplementation((num) => num.toString()),
 }));
 
 describe('Test TestSummaryCustomTooltip component', () => {
