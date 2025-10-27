@@ -1,12 +1,13 @@
 package org.openmetadata.service.search.opensearch.aggregations;
 
-import jakarta.json.spi.JsonProvider;
-import jakarta.json.stream.JsonParser;
-import java.io.StringReader;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.search.SearchAggregationNode;
 import os.org.opensearch.client.json.JsonpMapper;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
@@ -14,16 +15,20 @@ import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 
 @Setter
 @Getter
+@Slf4j
 public class OpenFilterAggregations implements OpenAggregations {
   private String aggregationName;
   private Aggregation aggregation;
   private Map<String, Aggregation> subAggregations = new HashMap<>();
   private JsonpMapper mapper;
+  private Query filterQuery;
+  private ObjectMapper objectMapper;
 
   public OpenFilterAggregations() {}
 
   public OpenFilterAggregations(JsonpMapper mapper) {
     this.mapper = mapper;
+    this.objectMapper = new ObjectMapper();
   }
 
   @Override
@@ -37,11 +42,24 @@ public class OpenFilterAggregations implements OpenAggregations {
         throw new IllegalStateException("JsonpMapper is required for filter aggregations");
       }
 
-      JsonProvider provider = mapper.jsonProvider();
-      JsonParser parser = provider.createParser(new StringReader(queryJson));
-      Query filterQuery = Query._DESERIALIZER.deserialize(parser, mapper);
+      String queryToProcess = queryJson;
+      if (queryJson != null && !queryJson.equals("{}")) {
+        try {
+          JsonNode rootNode = objectMapper.readTree(queryJson);
+          JsonNode queryNode = rootNode.get("query");
+          if (queryNode != null) {
+            queryToProcess = queryNode.toString();
+          }
+        } catch (Exception e) {
+          // If parsing fails, use original query string
+          LOG.error(
+              "Failed to parse query, fallback to query string passed: {}", e.getMessage(), e);
+        }
+      }
 
-      this.aggregation = Aggregation.of(a -> a.filter(filterQuery));
+      String base64Query = Base64.getEncoder().encodeToString(queryToProcess.getBytes());
+      this.filterQuery = Query.of(q -> q.wrapper(w -> w.query(base64Query)));
+      this.aggregation = Aggregation.of(a -> a.filter(this.filterQuery));
     } catch (Exception e) {
       throw new IllegalArgumentException("Invalid filter query JSON: " + queryJson, e);
     }
@@ -50,5 +68,14 @@ public class OpenFilterAggregations implements OpenAggregations {
   @Override
   public void setSubAggregations(Map<String, Aggregation> subAggregations) {
     this.subAggregations = subAggregations;
+    if (!subAggregations.isEmpty() && this.filterQuery != null) {
+      this.aggregation =
+          Aggregation.of(a -> a.filter(this.filterQuery).aggregations(subAggregations));
+    }
+  }
+
+  @Override
+  public Boolean supportsSubAggregationsNatively() {
+    return true;
   }
 }

@@ -116,8 +116,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
       indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), i, now));
     }
 
-    Thread.sleep(1000);
-
     AggregationRequest request = new AggregationRequest();
     request.setIndex(indexName);
     request.setFieldName("testDefinition.dataQualityDimension.keyword");
@@ -141,8 +139,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
     long now = System.currentTimeMillis();
     indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
 
-    Thread.sleep(1000);
-
     AggregationRequest request = new AggregationRequest();
     request.setIndex(indexName);
     request.setFieldName("testDefinition.dataQualityDimension.keyword");
@@ -164,8 +160,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
 
     long now = System.currentTimeMillis();
     indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
-
-    Thread.sleep(1000);
 
     AggregationRequest request = new AggregationRequest();
     request.setIndex(indexName);
@@ -193,14 +187,58 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
     long now = System.currentTimeMillis();
     indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
 
-    Thread.sleep(1000);
-
     AggregationRequest request = new AggregationRequest();
     request.setIndex(indexName);
     request.setFieldName("testDefinition.dataQualityDimension.keyword");
     request.setSize(10);
     request.setFieldValue(".*");
     request.setDeleted(false);
+
+    Response response = aggregationManager.aggregate(request);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK");
+  }
+
+  @Test
+  void testAggregate_WithQueryWrapperFormat() throws Exception {
+    String indexName = testIndexPrefix + "_basic";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
+
+    AggregationRequest request = new AggregationRequest();
+    request.setIndex(indexName);
+    request.setFieldName("testDefinition.dataQualityDimension.keyword");
+    request.setSize(10);
+    request.setFieldValue(".*");
+    request.setQuery("{\"query\":{\"term\":{\"deleted\":false}}}");
+
+    Response response = aggregationManager.aggregate(request);
+
+    assertNotNull(response, "Response should not be null");
+    assertEquals(200, response.getStatus(), "Response status should be OK");
+  }
+
+  @Test
+  void testAggregate_WithComplexQueryWrapperFormat() throws Exception {
+    String indexName = testIndexPrefix + "_basic";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    for (int i = 0; i < 3; i++) {
+      indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), i, now));
+    }
+
+    AggregationRequest request = new AggregationRequest();
+    request.setIndex(indexName);
+    request.setFieldName("testDefinition.dataQualityDimension.keyword");
+    request.setSize(10);
+    request.setFieldValue(".*");
+    request.setQuery("{\"query\":{\"bool\":{\"must\":[{\"term\":{\"deleted\":false}}]}}}");
 
     Response response = aggregationManager.aggregate(request);
 
@@ -237,8 +275,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
           actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), i, timestamp));
     }
 
-    Thread.sleep(1000);
-
     SearchAggregation aggregation = createDateHistogramAggregation();
     String query = "{\"bool\":{\"must\":[{\"term\":{\"deleted\":false}}]}}";
 
@@ -258,8 +294,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
       indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), i, now));
     }
 
-    Thread.sleep(1000);
-
     SearchAggregation aggregation = createTermsAggregation();
     String query = null;
 
@@ -276,8 +310,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
 
     long now = System.currentTimeMillis();
     indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
-
-    Thread.sleep(1000);
 
     SearchAggregation aggregation = createTermsAggregation();
     String query = "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"deleted\":false}}]}}}";
@@ -310,8 +342,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
       indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), i, now));
     }
 
-    Thread.sleep(1000);
-
     SearchAggregation aggregation = createTermsAggregation();
     String query = "{\"bool\":{\"must\":[{\"term\":{\"deleted\":false}}]}}";
     String filter = "{\"term\":{\"testDefinition.dataQualityDimension.keyword\":\"Completeness\"}}";
@@ -330,8 +360,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
     long now = System.currentTimeMillis();
     indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
 
-    Thread.sleep(1000);
-
     SearchAggregation aggregation = createTermsAggregation();
     String query = "{\"bool\":{\"must\":[{\"term\":{\"deleted\":false}}]}}";
     String filter = null;
@@ -349,8 +377,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
 
     long now = System.currentTimeMillis();
     indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
-
-    Thread.sleep(1000);
 
     SearchAggregation aggregation = createTermsAggregation();
     String query = null;
@@ -394,8 +420,6 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
     long now = System.currentTimeMillis();
     indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
 
-    Thread.sleep(1000);
-
     SearchAggregation aggregation = createTermsAggregation();
     String query = "{\"term\":{\"deleted\":false}}";
     String filter = "{}";
@@ -418,13 +442,68 @@ class ElasticSearchAggregationManagerIntegrationTest extends OpenMetadataApplica
           actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), i, timestamp));
     }
 
-    Thread.sleep(1000);
-
     SearchAggregation aggregation = createDateHistogramAggregation();
 
     DataQualityReport report = aggregationManager.genericAggregation(null, indexName, aggregation);
 
     assertNotNull(report, "Report should not be null");
+  }
+
+  @Test
+  void testAggregateWithFilter_WithQueryWrapperFormat() throws Exception {
+    String indexName = testIndexPrefix + "_filter";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
+
+    SearchAggregation aggregation = createTermsAggregation();
+    String query = "{\"query\":{\"term\":{\"deleted\":false}}}";
+    String filter = null;
+
+    JsonObject result = aggregationManager.aggregate(query, indexName, aggregation, filter);
+
+    assertNotNull(result, "Result should not be null");
+  }
+
+  @Test
+  void testAggregateWithFilter_WithFilterWrapperFormat() throws Exception {
+    String indexName = testIndexPrefix + "_filter";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), 1, now));
+
+    SearchAggregation aggregation = createTermsAggregation();
+    String query = null;
+    String filter = "{\"query\":{\"term\":{\"deleted\":false}}}";
+
+    JsonObject result = aggregationManager.aggregate(query, indexName, aggregation, filter);
+
+    assertNotNull(result, "Result should not be null");
+  }
+
+  @Test
+  void testAggregateWithFilter_WithBothQueryAndFilterWrapperFormat() throws Exception {
+    String indexName = testIndexPrefix + "_filter";
+    String actualIndexName = Entity.getSearchRepository().getIndexOrAliasName(indexName);
+    createTestIndex(actualIndexName);
+
+    long now = System.currentTimeMillis();
+    for (int i = 0; i < 3; i++) {
+      indexTestDocument(actualIndexName, String.format(TEST_DOCUMENT, UUID.randomUUID(), i, now));
+    }
+
+    SearchAggregation aggregation = createTermsAggregation();
+    String query = "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"deleted\":false}}]}}}";
+    String filter =
+        "{\"query\":{\"term\":{\"testDefinition.dataQualityDimension.keyword\":\"Completeness\"}}}";
+
+    JsonObject result = aggregationManager.aggregate(query, indexName, aggregation, filter);
+
+    assertNotNull(result, "Result should not be null");
   }
 
   private void createTestIndex(String indexName) {

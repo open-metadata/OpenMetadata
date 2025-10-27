@@ -24,7 +24,8 @@ public class ElasticTopHitsAggregations implements ElasticAggregations {
 
     int size = Integer.parseInt(params.get("size"));
     String sortField = params.get("sort_field");
-    SortOrder sortOrder = SortOrder.valueOf(params.get("sort_order").toUpperCase());
+    String sortOrderParam = params.get("sort_order");
+    SortOrder sortOrder = sortOrderParam.equalsIgnoreCase("desc") ? SortOrder.Desc : SortOrder.Asc;
 
     this.aggregation =
         Aggregation.of(

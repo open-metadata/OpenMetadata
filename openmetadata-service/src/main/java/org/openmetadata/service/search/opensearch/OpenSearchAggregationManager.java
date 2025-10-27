@@ -1,11 +1,12 @@
 package org.openmetadata.service.search.opensearch;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.JsonObject;
-import jakarta.json.spi.JsonProvider;
-import jakarta.json.stream.JsonParser;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.io.StringReader;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -34,10 +35,25 @@ import os.org.opensearch.client.opensearch.core.SearchResponse;
 public class OpenSearchAggregationManager implements AggregationManagementClient {
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
+  private final ObjectMapper mapper;
 
   public OpenSearchAggregationManager(OpenSearchClient client) {
     this.client = client;
     this.isClientAvailable = client != null;
+    mapper = new ObjectMapper();
+  }
+
+  private String praseJsonQuery(String jsonQuery) throws JsonProcessingException {
+    JsonNode rootNode = mapper.readTree(jsonQuery);
+    String queryToProcess = jsonQuery;
+    try {
+      if (rootNode.has("query")) {
+        queryToProcess = rootNode.get("query").toString();
+      }
+    } catch (Exception e) {
+      LOG.debug("Query does not contain outer 'query' wrapper, using as-is");
+    }
+    return Base64.getEncoder().encodeToString(queryToProcess.getBytes());
   }
 
   @Override
@@ -58,11 +74,8 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       if (request.getQuery() != null && !request.getQuery().isEmpty()) {
         if (request.getQuery().trim().startsWith("{")) {
           try {
-            JsonpMapper mapper = client._transport().jsonpMapper();
-            JsonProvider provider = mapper.jsonProvider();
-            JsonParser parser = provider.createParser(new StringReader(request.getQuery()));
-
-            query = Query._DESERIALIZER.deserialize(parser, mapper);
+            final var queryToProcess = praseJsonQuery(request.getQuery());
+            query = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
           } catch (Exception e) {
             LOG.error("Failed to parse JSON query: {}", request.getQuery(), e);
             throw new IOException("Failed to parse JSON query: " + e.getMessage(), e);
@@ -171,26 +184,15 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
       String indexName = Entity.getSearchRepository().getIndexOrAliasName(index);
       searchRequestBuilder.index(indexName);
 
+      Query parsedQuery;
       if (query != null) {
-        JsonpMapper mapper = client._transport().jsonpMapper();
-        JsonProvider provider = mapper.jsonProvider();
-
         // Check if query string contains outer "query" wrapper and extract inner query
-        String queryToProcess = query;
         if (query.trim().startsWith("{")) {
-          try {
-            JsonObject jsonObject = JsonUtils.readJson(query).asJsonObject();
-            if (jsonObject.containsKey("query")) {
-              // Extract the inner query object
-              queryToProcess = jsonObject.getJsonObject("query").toString();
-            }
-          } catch (Exception e) {
-            // If parsing fails, use original query string
-          }
+          final var queryToProcess = praseJsonQuery(query);
+          parsedQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+        } else {
+          parsedQuery = Query.of(q -> q.queryString(qs -> qs.query(query)));
         }
-
-        JsonParser parser = provider.createParser(new StringReader(queryToProcess));
-        Query parsedQuery = Query._DESERIALIZER.deserialize(parser, mapper);
         searchRequestBuilder.query(parsedQuery);
       }
 
@@ -265,33 +267,24 @@ public class OpenSearchAggregationManager implements AggregationManagementClient
 
       Query parsedQuery = null;
       if (query != null) {
-        JsonpMapper mapper = client._transport().jsonpMapper();
-        JsonProvider provider = mapper.jsonProvider();
-
         // Check if query string contains outer "query" wrapper and extract inner query
-        String queryToProcess = query;
         if (query.trim().startsWith("{")) {
-          try {
-            JsonObject jsonObject = JsonUtils.readJson(query).asJsonObject();
-            if (jsonObject.containsKey("query")) {
-              // Extract the inner query object
-              queryToProcess = jsonObject.getJsonObject("query").toString();
-            }
-          } catch (Exception e) {
-            // If parsing fails, use original query string
-          }
+          final var queryToProcess = praseJsonQuery(query);
+          parsedQuery = Query.of(q -> q.wrapper(w -> w.query(queryToProcess)));
+        } else {
+          parsedQuery = Query.of(q -> q.queryString(qs -> qs.query(query)));
         }
-
-        JsonParser parser = provider.createParser(new StringReader(queryToProcess));
-        parsedQuery = Query._DESERIALIZER.deserialize(parser, mapper);
       }
 
       Query filterQuery = null;
       if (filter != null && !filter.isEmpty() && !filter.equals("{}")) {
-        JsonpMapper mapper = client._transport().jsonpMapper();
-        JsonProvider provider = mapper.jsonProvider();
-        JsonParser parser = provider.createParser(new StringReader(filter));
-        filterQuery = Query._DESERIALIZER.deserialize(parser, mapper);
+        // Check if filter string contains outer "query" wrapper and extract inner query
+        if (filter.trim().startsWith("{")) {
+          final var filterToProcess = praseJsonQuery(filter);
+          filterQuery = Query.of(q -> q.wrapper(w -> w.query(filterToProcess)));
+        } else {
+          filterQuery = Query.of(q -> q.queryString(qs -> qs.query(filter)));
+        }
       }
 
       final Query finalParsedQuery = parsedQuery;

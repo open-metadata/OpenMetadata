@@ -11,6 +11,10 @@ public interface ElasticAggregations {
     return false;
   }
 
+  default Boolean supportsSubAggregationsNatively() {
+    return false;
+  }
+
   default void setSubAggregations(Map<String, Aggregation> subAggregations) {}
 
   default Aggregation getAggregation() {

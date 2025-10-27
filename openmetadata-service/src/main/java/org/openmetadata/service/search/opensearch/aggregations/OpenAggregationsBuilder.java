@@ -45,7 +45,9 @@ public class OpenAggregationsBuilder {
     }
 
     Aggregation finalAggregation = openAggregation.getAggregation();
-    if (!subAggregations.isEmpty() && !openAggregation.isPipelineAggregation()) {
+    if (!subAggregations.isEmpty()
+        && !openAggregation.isPipelineAggregation()
+        && !openAggregation.supportsSubAggregationsNatively()) {
       Query matchAllQuery = Query.of(q -> q.matchAll(m -> m));
       finalAggregation = Aggregation.of(a -> a.filter(matchAllQuery).aggregations(subAggregations));
 
@@ -59,9 +61,7 @@ public class OpenAggregationsBuilder {
       }
     }
 
-    if (parentAggregation == null) {
-      rootAggregations.put(openAggregation.getAggregationName(), finalAggregation);
-    }
+    rootAggregations.put(openAggregation.getAggregationName(), finalAggregation);
   }
 
   private OpenAggregations getAggregation(String aggregationType) {
