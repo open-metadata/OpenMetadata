@@ -24,6 +24,7 @@ import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import chartDetailsClassBase from '../ChartDetailsClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
+import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
@@ -761,5 +762,8 @@ export const updateWidgetHeightRecursively = (
   }, [] as WidgetConfig[]);
 
 export const getTabDisplayName = (item: Tab) => {
-  return item.displayName ?? getTabLabelFromId(item.name as EntityTabs);
+  return (
+    item.displayName ??
+    customizeDetailPageClassBase.getTabLabelFromId(item.name as EntityTabs)
+  );
 };
