@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.testcontainers.containers.GenericContainer;
@@ -69,16 +70,20 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
   private static Glossary glossary;
   private static GlossaryTerm glossaryTerm;
 
+  private static CacheKeys cacheKeys;
+
   @BeforeAll
   @Override
   public void createApplication() throws Exception {
     // Start Redis container first
     startRedisContainer();
 
+    String keySpace = "om:test";
+
     // Configure application to use Redis
     configOverrides.add(ConfigOverride.config("cache.provider", "redis"));
     configOverrides.add(ConfigOverride.config("cache.redis.url", REDIS_HOST + ":" + REDIS_PORT));
-    configOverrides.add(ConfigOverride.config("cache.redis.keyspace", "om:test"));
+    configOverrides.add(ConfigOverride.config("cache.redis.keyspace", keySpace));
     configOverrides.add(ConfigOverride.config("cache.redis.authType", "PASSWORD"));
     configOverrides.add(ConfigOverride.config("cache.redis.passwordRef", "test-password"));
     configOverrides.add(ConfigOverride.config("cache.redis.database", "0"));
@@ -105,6 +110,7 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
 
     // Setup test data for relationship caching tests
     setupRelationshipTestData();
+    cacheKeys = new CacheKeys(keySpace);
   }
 
   private void startRedisContainer() {
@@ -1801,7 +1807,7 @@ public class CacheResourceIntegrationTest extends OpenMetadataApplicationTest {
     assertEquals(tagFqn, fetchedTable1.getTags().get(0).getTagFQN());
 
     // Check if tags are cached (could be in entity cache or separate relationship cache)
-    String tagsCacheKey = "om:test:tags:table:" + table.getId();
+    String tagsCacheKey = cacheKeys.tags(org.openmetadata.service.Entity.TABLE, table.getId());
     String cachedTags = redisCommands.get(tagsCacheKey);
 
     if (cachedTags != null && !cachedTags.isEmpty()) {

@@ -2,7 +2,6 @@ package org.openmetadata.service.cache;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +28,7 @@ public class CachedTagUsageDao {
 
     String cacheKey = keys.tags(entityType, entityId);
     try {
-      cache.hset(cacheKey, Map.of("tags", tagsJson), Duration.ofSeconds(config.entityTtlSeconds));
+      cache.set(cacheKey, tagsJson, Duration.ofSeconds(config.entityTtlSeconds));
       LOG.debug("Write-through cached tags for: {} -> {}", entityType, entityId);
     } catch (Exception e) {
       LOG.warn("Failed to write-through cache tags: {} -> {}", entityType, entityId, e);
