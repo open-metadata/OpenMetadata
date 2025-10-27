@@ -30,7 +30,6 @@ import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameMo
 import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
-  PAGE_SIZE,
 } from '../../constants/constants';
 import { DUMMY_DATABASE_SCHEMA_TABLES_DETAILS } from '../../constants/Database.constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
@@ -59,11 +58,15 @@ import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import { commonTableFields } from '../../utils/DatasetDetailsUtils';
 import { getBulkEditButton } from '../../utils/EntityBulkEdit/EntityBulkEditUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityBulkEditPath } from '../../utils/EntityUtils';
+import {
+  getEntityBulkEditPath,
+  highlightSearchText,
+} from '../../utils/EntityUtils';
 import {
   getPrioritizedEditPermission,
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
+import { stringToHTML } from '../../utils/StringsUtils';
 import {
   dataProductTableObject,
   domainTableObject,
@@ -134,11 +137,15 @@ function SchemaTablesTab({
   const searchSchema = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setTableDataLoading(true);
+      handlePageChange(pageNumber, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       try {
         const response = await searchQuery({
           query: '',
           pageNumber,
-          pageSize: PAGE_SIZE,
+          pageSize: pageSize,
           queryFilter: buildSchemaQueryFilter(
             'databaseSchema.fullyQualifiedName',
             decodedDatabaseSchemaFQN,
@@ -187,12 +194,16 @@ function SchemaTablesTab({
 
   const handleShowDeletedTables = (value: boolean) => {
     setFilters({ showDeletedTables: value });
-    handlePageChange(INITIAL_PAGING_VALUE);
+    handlePageChange(INITIAL_PAGING_VALUE, {
+      cursorType: null,
+      cursorValue: undefined,
+    });
   };
 
   const getSchemaTables = useCallback(
     async (params?: TableListParams) => {
       setTableDataLoading(true);
+      handlePageChange(INITIAL_PAGING_VALUE);
       try {
         const res = await getTableList({
           ...params,
@@ -256,7 +267,9 @@ function SchemaTablesTab({
         render: (_, record: Table) => {
           return (
             <DisplayName
-              displayName={record.displayName}
+              displayName={stringToHTML(
+                highlightSearchText(record.displayName, searchValue)
+              )}
               hasEditPermission={allowEditDisplayNamePermission}
               id={record.id}
               key={record.id}
@@ -264,7 +277,7 @@ function SchemaTablesTab({
                 EntityType.TABLE,
                 record.fullyQualifiedName as string
               )}
-              name={record.name}
+              name={stringToHTML(highlightSearchText(record.name, searchValue))}
               onEditDisplayName={handleDisplayNameUpdate}
             />
           );
@@ -351,6 +364,7 @@ function SchemaTablesTab({
         isLoading: tableDataLoading,
         pageSize,
         paging,
+        isNumberBased: Boolean(searchValue),
         pagingHandler: tablePaginationHandler,
         onShowSizeChange: handlePageSizeChange,
       }}

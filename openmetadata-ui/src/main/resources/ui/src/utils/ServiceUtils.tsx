@@ -337,6 +337,31 @@ export const getServiceRouteFromServiceType = (type: ServiceTypes) => {
   }
 };
 
+export const getSearchIndexForService = (type: ServiceTypes): SearchIndex => {
+  switch (type) {
+    case ServiceCategory.DATABASE_SERVICES:
+      return SearchIndex.DATABASE;
+    case ServiceCategory.MESSAGING_SERVICES:
+      return SearchIndex.TOPIC;
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return SearchIndex.DASHBOARD;
+    case ServiceCategory.PIPELINE_SERVICES:
+      return SearchIndex.PIPELINE;
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return SearchIndex.MLMODEL;
+    case ServiceCategory.STORAGE_SERVICES:
+      return SearchIndex.CONTAINER;
+    case ServiceCategory.SEARCH_SERVICES:
+      return SearchIndex.SEARCH_INDEX;
+    case ServiceCategory.API_SERVICES:
+      return SearchIndex.API_COLLECTION_INDEX;
+    case ServiceCategory.DRIVE_SERVICES:
+      return SearchIndex.DIRECTORY_SEARCH_INDEX;
+    default:
+      return SearchIndex.DATABASE;
+  }
+};
+
 export const getResourceEntityFromServiceCategory = (
   category: string | ServiceCategory
 ) => {
@@ -408,6 +433,30 @@ export const getCountLabel = (serviceName: ServiceTypes) => {
     case ServiceCategory.DATABASE_SERVICES:
     default:
       return t('label.database-plural');
+  }
+};
+
+export const getSearchPlaceholderKey = (serviceName?: ServiceTypes): string => {
+  switch (serviceName) {
+    case ServiceCategory.DASHBOARD_SERVICES:
+      return t('label.dashboard');
+    case ServiceCategory.MESSAGING_SERVICES:
+      return t('label.topic');
+    case ServiceCategory.PIPELINE_SERVICES:
+      return t('label.pipeline');
+    case ServiceCategory.ML_MODEL_SERVICES:
+      return t('label.ml-model');
+    case ServiceCategory.STORAGE_SERVICES:
+      return t('label.container');
+    case ServiceCategory.SEARCH_SERVICES:
+      return t('label.search-index');
+    case ServiceCategory.API_SERVICES:
+      return t('label.collection');
+    case ServiceCategory.DRIVE_SERVICES:
+      return t('label.directory');
+    case ServiceCategory.DATABASE_SERVICES:
+    default:
+      return t('label.database');
   }
 };
 

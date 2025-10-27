@@ -48,6 +48,7 @@ import Ingestion from '../../components/Settings/Services/Ingestion/Ingestion.co
 import ServiceConnectionDetails from '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component';
 import {
   INITIAL_PAGING_VALUE,
+  INITIAL_TABLE_FILTERS,
   pagingObject,
   ROUTES,
 } from '../../constants/constants';
@@ -84,6 +85,7 @@ import { useAuth } from '../../hooks/authHooks';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
+import { useTableFilters } from '../../hooks/useTableFilters';
 import { ConfigData, ServicesType } from '../../interface/service.interface';
 import { getApiCollections } from '../../rest/apiCollectionsAPI';
 import { getApplicationList } from '../../rest/applicationAPI';
@@ -264,7 +266,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [ingestionPipelines, setIngestionPipelines] = useState<
     IngestionPipeline[]
   >([]);
-  const [showDeleted, setShowDeleted] = useState<boolean>(false);
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -277,6 +278,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
   >([]);
   const [isCollateAgentLoading, setIsCollateAgentLoading] = useState(false);
   const [collateAgentsList, setCollateAgentsList] = useState<App[]>([]);
+  const { filters: tableFilters, setFilters } = useTableFilters(
+    INITIAL_TABLE_FILTERS
+  );
+  const { showDeletedTables: showDeleted } = tableFilters;
 
   const { isFollowing, followers = [] } = useMemo(
     () => ({
@@ -358,7 +363,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
 
   const handleShowDeleted = useCallback(
     (value: boolean) => {
-      setShowDeleted(value);
+      setFilters({ showDeletedTables: value });
       handlePageChange(INITIAL_PAGING_VALUE, {
         cursorType: null,
         cursorValue: undefined,
@@ -805,6 +810,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     async (paging?: PagingWithoutTotal) => {
       try {
         setIsServiceLoading(true);
+        handlePageChange(INITIAL_PAGING_VALUE);
         const pagingParams = { ...paging, limit: pageSize };
         switch (serviceCategory) {
           case ServiceCategory.DATABASE_SERVICES: {
@@ -895,7 +901,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       setServiceDetails(response);
       setConnectionDetails(response.connection?.config as DashboardConnection);
       // show deleted child entities if service is deleted
-      setShowDeleted(response.deleted ?? false);
+      handleShowDeleted(response.deleted ?? false);
     } catch (error) {
       // Error
       if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
@@ -1124,7 +1130,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: ingestionPaging[cursorType]!,
+            cursorValue: ingestionPaging[cursorType],
           },
           ingestionPageSize
         );
@@ -1155,7 +1161,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
           currentPage,
           {
             cursorType: cursorType,
-            cursorValue: collateAgentPaging[cursorType]!,
+            cursorValue: collateAgentPaging[cursorType],
           },
           collateAgentPageSize
         );
@@ -1183,25 +1189,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const entityType = useMemo(
     () => getEntityTypeFromServiceCategory(serviceCategory),
     [serviceCategory]
-  );
-
-  const pagingHandler = useCallback(
-    ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
-        getOtherDetails({
-          [cursorType]: paging[cursorType],
-        });
-        handlePageChange(
-          currentPage,
-          {
-            cursorType,
-            cursorValue: paging[cursorType],
-          },
-          pageSize
-        );
-      }
-    },
-    [paging, getOtherDetails, handlePageChange]
   );
 
   const onFilesPageChange = useCallback(
@@ -1242,7 +1229,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     });
 
     // toggle showDeleted to show the deleted child entities
-    setShowDeleted((prev) => !prev);
+    handleShowDeleted(!showDeleted);
   }, []);
 
   const afterDeleteAction = useCallback(
@@ -1325,6 +1312,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
       getOtherDetails({ limit: pageSize });
     }
   }, [showDeleted, deleted, pageSize, pagingInfo?.pagingCursor]);
+
+  useEffect(() => {
+    if (tab === getCountLabel(serviceCategory).toLowerCase()) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+      setFilters({ showDeletedTables: false });
+    }
+  }, [tab]);
 
   useEffect(() => {
     // fetch count for data modal tab, its need only when its dashboard page and data modal tab is not active
@@ -1563,14 +1557,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
             <ServiceMainTabContent
               currentPage={currentPage}
               data={data}
+              getServiceDetails={getOtherDetails}
               isServiceLoading={isServiceLoading}
               paging={paging}
-              pagingHandler={pagingHandler}
               pagingInfo={pagingInfo}
               saveUpdatedServiceData={saveUpdatedServiceData}
               serviceDetails={serviceDetails}
               serviceName={serviceCategory}
               servicePermission={servicePermission}
+              setFilters={setFilters}
+              setIsServiceLoading={setIsServiceLoading}
               showDeleted={showDeleted}
               onDataProductUpdate={handleDataProductUpdate}
               onDescriptionUpdate={handleDescriptionUpdate}
@@ -1666,7 +1662,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [
     currentUser,
     currentPage,
-    pagingHandler,
     serviceDetails,
     isAdminUser,
     serviceCategory,

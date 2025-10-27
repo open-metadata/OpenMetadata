@@ -14,9 +14,10 @@ import { Switch, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
+import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
+import DisplayName from '../../components/common/DisplayName/DisplayName';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/RichTextEditorPreviewNew';
@@ -42,7 +43,8 @@ import { searchQuery } from '../../rest/searchAPI';
 import { getStoredProceduresList } from '../../rest/storedProceduresAPI';
 import { buildSchemaQueryFilter } from '../../utils/DatabaseSchemaDetailsUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../utils/EntityUtils';
+import { highlightSearchText } from '../../utils/EntityUtils';
+import { stringToHTML } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const StoredProcedureTab = () => {
@@ -67,9 +69,22 @@ const StoredProcedureTab = () => {
   );
   const { showDeletedTables: showDeletedStoredProcedures } = tableFilters;
 
+  const searchValue = useMemo(() => {
+    const param = location.search;
+    const searchData = QueryString.parse(
+      param.startsWith('?') ? param.substring(1) : param
+    );
+
+    return searchData.schema as string | undefined;
+  }, [location.search]);
+
   const searchStoredProcedure = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
+      handlePageChange(pageNumber, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       try {
         const response = await searchQuery({
           query: '',
@@ -101,6 +116,7 @@ const StoredProcedureTab = () => {
     async (params?: Partial<Paging>) => {
       try {
         setIsLoading(true);
+        handlePageChange(INITIAL_PAGING_VALUE);
         const { data, paging } = await getStoredProceduresList({
           databaseSchema: decodedDatabaseSchemaFQN,
           include: showDeletedStoredProcedures
@@ -127,7 +143,9 @@ const StoredProcedureTab = () => {
 
   const storedProcedurePagingHandler = useCallback(
     async ({ cursorType, currentPage }: PagingHandlerParams) => {
-      if (cursorType) {
+      if (searchValue) {
+        searchStoredProcedure(searchValue, currentPage);
+      } else if (cursorType) {
         const pagingString = {
           [cursorType]: paging[cursorType],
         };
@@ -159,16 +177,18 @@ const StoredProcedureTab = () => {
         key: 'name',
         width: 350,
         render: (_, record) => (
-          <div className="d-inline-flex w-max-90">
-            <Link
-              className="break-word"
-              to={entityUtilClassBase.getEntityLink(
-                EntityType.STORED_PROCEDURE,
-                record.fullyQualifiedName ?? ''
-              )}>
-              {getEntityName(record)}
-            </Link>
-          </div>
+          <DisplayName
+            displayName={stringToHTML(
+              highlightSearchText(record.displayName, searchValue)
+            )}
+            id={record.id ?? ''}
+            key={record.id}
+            link={entityUtilClassBase.getEntityLink(
+              EntityType.STORED_PROCEDURE,
+              record.fullyQualifiedName ?? ''
+            )}
+            name={stringToHTML(highlightSearchText(record.name, searchValue))}
+          />
         ),
       },
       {
@@ -185,7 +205,7 @@ const StoredProcedureTab = () => {
           ),
       },
     ],
-    []
+    [searchValue]
   );
 
   const onStoredProcedureSearch = useCallback(
@@ -217,6 +237,7 @@ const StoredProcedureTab = () => {
       showPagination,
       pageSize,
       paging,
+      isNumberBased: Boolean(searchValue),
       pagingHandler: storedProcedurePagingHandler,
       onShowSizeChange: handlePageSizeChange,
     }),

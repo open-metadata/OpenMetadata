@@ -129,6 +129,7 @@ export const DatabaseSchemaTable = ({
 
       try {
         setIsLoading(true);
+        handlePageChange(INITIAL_PAGING_VALUE);
         const { data, paging } = await getDatabaseSchemas({
           databaseName: decodedDatabaseFQN,
           limit: pageSize,
@@ -152,6 +153,10 @@ export const DatabaseSchemaTable = ({
   const searchSchema = useCallback(
     async (searchValue: string, pageNumber = INITIAL_PAGING_VALUE) => {
       setIsLoading(true);
+      handlePageChange(pageNumber, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
       try {
         const response = await searchQuery({
           query: '',
