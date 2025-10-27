@@ -28,7 +28,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "high",
         "action": "DELETE",
-        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM v_table_purge_scores WHERE purge_score >= 9"
+        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM thirdeye.v_table_purge_scores WHERE purge_score >= 9"
     },
     {
         "id": "convert_to_transient",
@@ -40,7 +40,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "medium",
         "action": "CONVERT_TRANSIENT",
-        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM v_table_purge_scores WHERE purge_score >= 8 AND purge_score < 9"
+        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM thirdeye.v_table_purge_scores WHERE purge_score >= 8 AND purge_score < 9"
     },
     {
         "id": "review_required",
@@ -52,7 +52,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "medium",
         "action": "REVIEW",
-        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM v_table_purge_scores WHERE purge_score >= 7 AND purge_score < 8"
+        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM thirdeye.v_table_purge_scores WHERE purge_score >= 7 AND purge_score < 8"
     },
     {
         "id": "most_expensive",
@@ -64,7 +64,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "high",
         "action": "OPTIMIZE",
-        "query": "SELECT 10 as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM (SELECT monthly_cost_usd FROM v_table_purge_scores ORDER BY monthly_cost_usd DESC LIMIT 10) as top_tables"
+        "query": "SELECT 10 as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM (SELECT monthly_cost_usd FROM thirdeye.v_table_purge_scores ORDER BY monthly_cost_usd DESC LIMIT 10) as top_tables"
     },
     {
         "id": "zombie_tables",
@@ -76,7 +76,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "high",
         "action": "INVESTIGATE",
-        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM v_table_purge_scores WHERE COALESCE(ROLL_30D_TBL_QC, 0) = 0 AND COALESCE(ROLL_30D_TBL_UC, 0) = 0 AND COALESCE(days_since_access, 9999) > 90"
+        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM thirdeye.v_table_purge_scores WHERE COALESCE(ROLL_30D_TBL_QC, 0) = 0 AND COALESCE(ROLL_30D_TBL_UC, 0) = 0 AND COALESCE(days_since_access, 9999) > 90"
     },
     {
         "id": "refresh_waste",
@@ -88,7 +88,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "medium",
         "action": "STOP_REFRESH",
-        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM v_table_purge_scores WHERE LAST_REFRESHED_DATE > LAST_ACCESSED_DATE AND COALESCE(days_since_access, 9999) > 30"
+        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM thirdeye.v_table_purge_scores WHERE LAST_REFRESHED_DATE > LAST_ACCESSED_DATE AND COALESCE(days_since_access, 9999) > 30"
     },
     {
         "id": "large_unused",
@@ -100,7 +100,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "high",
         "action": "ARCHIVE",
-        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM v_table_purge_scores WHERE COALESCE(SIZE_GB, 0) > 100 AND COALESCE(days_since_access, 9999) > 60"
+        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM thirdeye.v_table_purge_scores WHERE COALESCE(SIZE_GB, 0) > 100 AND COALESCE(days_since_access, 9999) > 60"
     },
     {
         "id": "stale_tables",
@@ -112,7 +112,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "low",
         "action": "REVIEW_ACCESS",
-        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM v_table_purge_scores WHERE COALESCE(days_since_access, 9999) > 90"
+        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM thirdeye.v_table_purge_scores WHERE COALESCE(days_since_access, 9999) > 90"
     },
     {
         "id": "automated_queries",
@@ -124,7 +124,7 @@ ACTION_ITEM_CATEGORIES: List[ActionItemCategory] = [
         "category": "table",
         "priority": "medium",
         "action": "OPTIMIZE_ETL",
-        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM v_table_purge_scores WHERE COALESCE(ROLL_30D_TBL_QC, 0) > 1000 AND COALESCE(ROLL_30D_TBL_UC, 0) < 3"
+        "query": "SELECT COUNT(*) as count, SUM(COALESCE(monthly_cost_usd, 0)) as cost FROM thirdeye.v_table_purge_scores WHERE COALESCE(ROLL_30D_TBL_QC, 0) > 1000 AND COALESCE(ROLL_30D_TBL_UC, 0) < 3"
     }
 ]
 
@@ -149,7 +149,7 @@ ACTION_ITEM_QUERY_MAPPINGS: dict[str, QueryMapping] = {
         "orderClause": "ORDER BY purge_score DESC, monthly_cost_usd DESC"
     },
     "most_expensive": {
-        "whereClause": "WHERE FQN IN (SELECT FQN FROM v_table_purge_scores WHERE monthly_cost_usd > 0 ORDER BY monthly_cost_usd DESC LIMIT 10)",
+        "whereClause": "WHERE FQN IN (SELECT FQN FROM thirdeye.v_table_purge_scores WHERE monthly_cost_usd > 0 ORDER BY monthly_cost_usd DESC LIMIT 10)",
         "orderClause": "ORDER BY monthly_cost_usd DESC"
     },
     "zombie_tables": {
@@ -188,7 +188,7 @@ SUMMARY_TILE_CONFIG = {
     "action": "CALCULATE_SAVINGS",
     "query": """
         SELECT SUM(COALESCE(monthly_cost_usd, 0)) as total_savings 
-        FROM v_table_purge_scores 
+        FROM thirdeye.v_table_purge_scores 
         WHERE purge_score >= 8 
            OR (COALESCE(ROLL_30D_TBL_QC, 0) = 0 AND COALESCE(ROLL_30D_TBL_UC, 0) = 0 AND COALESCE(days_since_access, 9999) > 90)
            OR (LAST_REFRESHED_DATE > LAST_ACCESSED_DATE AND COALESCE(days_since_access, 9999) > 30)

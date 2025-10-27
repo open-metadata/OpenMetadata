@@ -11,7 +11,9 @@ import sys
 
 from thirdeye.config import settings
 from thirdeye.db import init_db, close_db
-from thirdeye.routers import health
+from thirdeye.routers import health, dashboard, zi_score, techniques, insights, action_items
+from thirdeye.graphql.schema import schema
+from strawberry.fastapi import GraphQLRouter
 
 
 # Configure loguru logger
@@ -79,8 +81,21 @@ app.add_middleware(
 )
 
 
-# Include routers
+# Include REST routers
 app.include_router(health.router)
+app.include_router(dashboard.router)
+app.include_router(zi_score.router)
+app.include_router(techniques.router)
+app.include_router(insights.router)
+app.include_router(action_items.router)
+
+# Include GraphQL router
+graphql_app = GraphQLRouter(
+    schema,
+    path="/graphql",
+    graphql_ide="apollo-sandbox" if settings.environment == "development" else None,
+)
+app.include_router(graphql_app, prefix="/api/v1/thirdeye", tags=["graphql"])
 
 
 # Prometheus metrics endpoint
@@ -90,13 +105,22 @@ app.mount("/metrics", metrics_app)
 
 @app.get("/", include_in_schema=False)
 async def root():
-    """Root endpoint redirect to health check."""
+    """Root endpoint with API information."""
     return {
         "service": "thirdeye-py-service",
         "message": "ThirdEye Analytics Service - Internal API",
-        "health": "/api/v1/thirdeye/health",
-        "metrics": "/metrics",
-        "docs": "/docs" if not settings.is_production else "disabled",
+        "version": "0.1.0",
+        "endpoints": {
+            "health": "/api/v1/thirdeye/health",
+            "graphql": "/api/v1/thirdeye/graphql" if not settings.is_production else "disabled",
+            "rest_api": {
+                "zi_score": "/api/v1/thirdeye/zi-score",
+                "dashboard": "/api/v1/thirdeye/dashboard/zi-score",
+                "purge_candidates": "/api/v1/thirdeye/zi-score/purge-candidates",
+            },
+            "metrics": "/metrics",
+            "docs": "/docs" if not settings.is_production else "disabled",
+        },
     }
 
 

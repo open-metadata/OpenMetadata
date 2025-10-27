@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     om_mysql_port: int = 3306
     om_mysql_user: str = "openmetadata_user"
     om_mysql_password: str = "openmetadata_password"
-    om_mysql_db: str = "openmetadata_db"
+    om_mysql_db: str = "thirdeye"
     om_mysql_pool_size: int = 10
     om_mysql_max_overflow: int = 20
     
@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     te_mysql_port: int = 3306
     te_mysql_user: str = "openmetadata_user"
     te_mysql_password: str = "openmetadata_password"
-    te_mysql_db: str = "openmetadata_db"
+    te_mysql_db: str = "thirdeye"
     te_mysql_schema: str = "thirdeye"
     te_mysql_pool_size: int = 10
     te_mysql_max_overflow: int = 20

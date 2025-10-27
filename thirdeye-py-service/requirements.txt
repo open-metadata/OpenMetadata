@@ -18,4 +18,4 @@ pytest-asyncio==0.23.3
 httpx==0.26.0
 mypy==1.8.0
 types-PyYAML==6.0.12.12
-PyYAML==6.0.1
+PyYAML==6.0.2

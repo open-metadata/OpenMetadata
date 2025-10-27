@@ -1,0 +1,72 @@
+#  OpenMetadata Docker Compose with ThirdEye Integration
+#  Copyright 2025 OpenMetadata
+#
+#  This docker-compose file extends the base configuration
+#  to include ThirdEye analytics service integration
+
+version: "3.9"
+
+services:
+  # ThirdEye Python Analytics Service
+  thirdeye:
+    container_name: thirdeye_service
+    build:
+      context: ../thirdeye-py-service
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      - DATABASE_USER=openmetadata_user
+      - DATABASE_PASSWORD=openmetadata_password
+      - DATABASE_NAME=openmetadata_db
+    ports:
+      - "8587:8586"  # External:Internal
+    networks:
+      - app_net
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8586/api/v1/thirdeye/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Override OpenMetadata server to use custom JAR with ThirdEye integration
+  openmetadata-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.custom
+    image: openmetadata-custom:1.9.9-thirdeye
+    environment:
+      # All base environment variables inherited from docker-compose.yml
+      
+      # ThirdEye Configuration
+      THIRDEYE_ENABLED: ${THIRDEYE_ENABLED:-true}
+      THIRDEYE_HOST: ${THIRDEYE_HOST:-thirdeye}
+      THIRDEYE_PORT: ${THIRDEYE_PORT:-8586}
+      THIRDEYE_BASE_PATH: ${THIRDEYE_BASE_PATH:-/api/v1/thirdeye}
+      THIRDEYE_TIMEOUT: ${THIRDEYE_TIMEOUT:-30000}
+      THIRDEYE_RETRY_ATTEMPTS: ${THIRDEYE_RETRY_ATTEMPTS:-3}
+      THIRDEYE_RETRY_DELAY: ${THIRDEYE_RETRY_DELAY:-1000}
+      THIRDEYE_SSL_ENABLED: ${THIRDEYE_SSL_ENABLED:-false}
+      THIRDEYE_SSL_VERIFY_HOSTNAME: ${THIRDEYE_SSL_VERIFY_HOSTNAME:-true}
+      THIRDEYE_SSL_TRUST_ALL_CERTIFICATES: ${THIRDEYE_SSL_TRUST_ALL_CERTIFICATES:-false}
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+      execute-migrate-all:
+        condition: service_completed_successfully
+      thirdeye:
+        condition: service_healthy
+
+networks:
+  app_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.16.240.0/24"

@@ -7,7 +7,7 @@ from sqlalchemy import text
 from typing import Optional
 from loguru import logger
 
-from thirdeye.db import get_session
+from thirdeye.db import get_om_session
 from thirdeye.constants.action_items import (
     ACTION_ITEM_CATEGORIES,
     ACTION_ITEM_QUERY_MAPPINGS,
@@ -26,7 +26,7 @@ def convert_to_number(value) -> float:
 
 @router.get("")
 async def get_action_items(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_om_session)
 ):
     """
     Get all action items with real-time database data
@@ -146,7 +146,7 @@ async def get_action_items_by_category(
     category: Optional[str] = Query(None, description="Category filter: table or summary"),
     priority: Optional[str] = Query(None, description="Priority filter: high, medium, low, info"),
     status: Optional[str] = Query(None, description="Status filter: pending, in_progress, completed"),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_om_session)
 ):
     """
     Get action items filtered by category, priority, or status
@@ -186,7 +186,7 @@ async def get_action_items_by_category(
 @router.get("/{action_item_id}")
 async def get_action_item_by_id(
     action_item_id: str,
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_om_session)
 ):
     """
     Get a single action item by ID
@@ -216,7 +216,7 @@ async def get_action_item_tables(
     action_item_id: str,
     limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_om_session)
 ):
     """
     Get detailed table list for a specific action item with pagination
@@ -251,7 +251,7 @@ async def get_action_item_tables(
                 COALESCE(monthly_cost_usd, 0) as monthly_cost_usd,
                 LAST_ACCESSED_DATE,
                 LAST_REFRESHED_DATE
-            FROM v_table_purge_scores 
+            FROM thirdeye.v_table_purge_scores 
             {query_mapping['whereClause']}
             {query_mapping['orderClause']}
             LIMIT :limit OFFSET :offset
@@ -260,7 +260,7 @@ async def get_action_item_tables(
         # Get count
         count_query = text(f"""
             SELECT COUNT(*) as total_count 
-            FROM v_table_purge_scores 
+            FROM thirdeye.v_table_purge_scores 
             {query_mapping['whereClause']}
         """)
         

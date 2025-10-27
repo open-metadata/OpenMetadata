@@ -7,14 +7,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 
-const THIRDEYE_BACKEND_URL = process.env.THIRDEYE_BACKEND_URL || 'http://localhost:8586';
+const THIRDEYE_BACKEND_URL = process.env.THIRDEYE_BACKEND_URL || 'http://localhost:8587';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const path = params.path.join('/');
+    const resolvedParams = await params;
+    const path = resolvedParams.path.join('/');
     const searchParams = request.nextUrl.searchParams.toString();
     const url = `${THIRDEYE_BACKEND_URL}/api/v1/thirdeye/${path}${searchParams ? `?${searchParams}` : ''}`;
 
@@ -53,10 +54,11 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const path = params.path.join('/');
+    const resolvedParams = await params;
+    const path = resolvedParams.path.join('/');
     const body = await request.json();
     const url = `${THIRDEYE_BACKEND_URL}/api/v1/thirdeye/${path}`;
 

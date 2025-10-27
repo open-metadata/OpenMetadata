@@ -1,0 +1,19 @@
+# Custom OpenMetadata Dockerfile with ThirdEye Integration
+# Based on official OpenMetadata image with custom JAR
+
+FROM docker.getcollate.io/openmetadata/server:1.8.9
+
+# Remove the default JAR (optional - can keep it as backup)
+# RUN rm -f /opt/openmetadata/openmetadata-*.jar
+
+# Copy custom JAR with ThirdEye integration
+COPY custom-jar/openmetadata-service-1.9.9.jar /opt/openmetadata/openmetadata-service-1.9.9.jar
+
+# Update the JAR path in startup scripts (if needed)
+# The container should auto-detect the JAR
+
+# Expose ports
+EXPOSE 8585 8586
+
+# Use the default entrypoint from base image
+# The base image entrypoint will start OpenMetadata server

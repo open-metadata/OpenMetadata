@@ -56,6 +56,87 @@ interface TechniquesResponse {
   totalCount: number;
 }
 
+interface ZIScoreBreakdown {
+  storage: number;
+  compute: number;
+  query: number;
+  others: number;
+}
+
+interface ZIScoreMetadata {
+  totalTables: number;
+  activeTables: number;
+  inactiveTables: number;
+  totalStorageTB: number;
+  wasteStorageTB: number;
+  wastePercentage: number;
+  monthlyCostUSD: number;
+  monthlySavingsOpportunityUSD: number;
+  annualSavingsOpportunityUSD: number;
+  zombieTables: number;
+  zombiePercentage: number;
+  staleTables: number;
+  stalePercentage: number;
+  calculatedAt?: string;
+}
+
+interface ZIScore {
+  overall: number;
+  status: string;
+  trend: string;
+  breakdown: ZIScoreBreakdown;
+  storageScore: number;
+  computeScore: number;
+  queryScore: number;
+  metadata: ZIScoreMetadata;
+}
+
+interface ZIScoreSummary {
+  score: number;
+  status: string;
+  breakdown: ZIScoreBreakdown;
+  trend: string;
+  savings: {
+    monthly: number;
+    annual: number;
+  };
+  alerts: {
+    zombie_tables: number;
+    zombie_percentage: number;
+    waste_storage_tb: number;
+    waste_percentage: number;
+  };
+}
+
+interface PurgeCandidate {
+  fqn: string;
+  database_name: string;
+  db_schema: string;
+  table_name: string;
+  table_type: string;
+  size_gb: number;
+  days_since_access: number | null;
+  query_count_30d: number;
+  user_count_30d: number;
+  monthly_cost_usd: number;
+  purge_score: number;
+  recommendation: string;
+  annual_savings_usd: number;
+}
+
+interface PurgeCandidatesResponse {
+  data: PurgeCandidate[];
+  pagination: {
+    limit: number;
+    offset: number;
+    count: number;
+  };
+  filters: {
+    min_score: number | null;
+    recommendation: string | null;
+  };
+}
+
 class ThirdEyeClient {
   private baseUrl: string;
 
@@ -165,6 +246,50 @@ class ThirdEyeClient {
     return this.fetch<any>('/techniques/stats/overview');
   }
 
+  // ZI Score endpoints
+  /**
+   * Get full ZI Score with all metadata
+   */
+  async getZIScore(): Promise<ZIScore> {
+    return this.fetch<ZIScore>('/zi-score');
+  }
+
+  /**
+   * Get ZI Score summary optimized for gauge display
+   */
+  async getZIScoreSummary(): Promise<ZIScoreSummary> {
+    return this.fetch<ZIScoreSummary>('/zi-score/summary');
+  }
+
+  /**
+   * Get raw health metrics from database view
+   */
+  async getHealthMetrics(): Promise<any> {
+    return this.fetch<any>('/zi-score/health-metrics');
+  }
+
+  /**
+   * Get purge candidates (tables recommended for deletion/archival)
+   * @param limit Maximum number of results (1-1000)
+   * @param offset Pagination offset
+   * @param minScore Filter by minimum purge score (0-10)
+   * @param recommendation Filter by recommendation category
+   */
+  async getPurgeCandidates(
+    limit: number = 100,
+    offset: number = 0,
+    minScore?: number,
+    recommendation?: 'EXCELLENT_CANDIDATE' | 'GOOD_CANDIDATE' | 'REVIEW_REQUIRED' | 'KEEP'
+  ): Promise<PurgeCandidatesResponse> {
+    const params = new URLSearchParams();
+    params.append('limit', limit.toString());
+    params.append('offset', offset.toString());
+    if (minScore !== undefined) params.append('min_score', minScore.toString());
+    if (recommendation) params.append('recommendation', recommendation);
+    
+    return this.fetch<PurgeCandidatesResponse>(`/zi-score/purge-candidates?${params}`);
+  }
+
   // Health check (direct to backend, not proxied)
   async healthCheck(): Promise<any> {
     const backendUrl = process.env.NEXT_PUBLIC_THIRDEYE_BACKEND_URL || 'http://localhost:8586';
@@ -179,5 +304,18 @@ export const thirdeyeClient = new ThirdEyeClient();
 
 // Export class for custom instances
 export { ThirdEyeClient };
-export type { DashboardData, ActionItemsResponse, InsightReport, TechniquesResponse };
+
+// Export types
+export type { 
+  DashboardData, 
+  ActionItemsResponse, 
+  InsightReport, 
+  TechniquesResponse,
+  ZIScore,
+  ZIScoreSummary,
+  ZIScoreBreakdown,
+  ZIScoreMetadata,
+  PurgeCandidate,
+  PurgeCandidatesResponse
+};
 

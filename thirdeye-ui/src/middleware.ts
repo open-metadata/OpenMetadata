@@ -58,7 +58,8 @@ export function middleware(request: NextRequest) {
     '/api/auth/logout',     // Logout API
     '/api/auth/me',         // User info API
     '/api/connection',      // Connection API
-    '/api/v1'               // OpenMetadata API routes (handled by proxy)
+    '/api/v1',              // OpenMetadata API routes (handled by proxy)
+    '/api/thirdeye'         // ThirdEye proxy routes (public for now)
   ];
 
   // Check if the current path is a public route

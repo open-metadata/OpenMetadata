@@ -7,7 +7,7 @@ from sqlalchemy import text
 from typing import Literal
 from loguru import logger
 
-from thirdeye.db import get_session
+from thirdeye.db import get_om_session
 
 router = APIRouter(prefix="/api/v1/thirdeye/insights", tags=["insights"])
 
@@ -17,7 +17,7 @@ async def get_insight_report(
     report_type: Literal["storage", "compute", "query", "other"] = Query(..., description="Type of insight report"),
     limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_om_session)
 ):
     """
     Get insight report by type with pagination
@@ -45,7 +45,7 @@ async def get_insight_report(
         # Get total count
         count_query = text(f"""
             SELECT COUNT(*) as total_count 
-            FROM v_table_purge_scores 
+            FROM thirdeye.v_table_purge_scores 
             {where_clause}
         """)
         
@@ -68,7 +68,7 @@ async def get_insight_report(
                 COALESCE(monthly_cost_usd, 0) as monthly_cost_usd,
                 LAST_ACCESSED_DATE,
                 LAST_REFRESHED_DATE
-            FROM v_table_purge_scores 
+            FROM thirdeye.v_table_purge_scores 
             {where_clause}
             {order_clause}
             LIMIT :limit OFFSET :offset
@@ -123,7 +123,7 @@ async def get_insight_report(
 
 @router.get("/summary")
 async def get_insight_summary(
-    session: AsyncSession = Depends(get_session)
+    session: AsyncSession = Depends(get_om_session)
 ):
     """
     Get summary statistics for all report types
@@ -141,7 +141,7 @@ async def get_insight_summary(
                 SUM(monthly_cost_usd) as total_monthly_cost,
                 AVG(purge_score) as avg_purge_score,
                 SUM(SIZE_GB) as total_size_gb
-            FROM v_table_purge_scores
+            FROM thirdeye.v_table_purge_scores
         """)
         
         result = await session.execute(summary_query)

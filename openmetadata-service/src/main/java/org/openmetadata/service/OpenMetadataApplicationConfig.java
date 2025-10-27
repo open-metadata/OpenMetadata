@@ -40,6 +40,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebConfiguration;
 import org.openmetadata.service.config.ObjectStorageConfiguration;
+import org.openmetadata.service.config.ThirdEyeConfiguration;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
 
@@ -154,6 +155,10 @@ public class OpenMetadataApplicationConfig extends Configuration {
 
   @JsonProperty("aiPlatformConfiguration")
   private AiPlatformConfiguration aiPlatformConfiguration;
+
+  @JsonProperty("thirdEyeConfiguration")
+  @Valid
+  private ThirdEyeConfiguration thirdEyeConfiguration;
 
   @Override
   public String toString() {

@@ -1,4 +1,4 @@
-# Example persisted GraphQL query for production use.
+# Persisted GraphQL queries for production use.
 # These queries are pre-approved and hashed for security.
 # Only persisted queries allowed in production (no arbitrary queries).
 
@@ -9,12 +9,51 @@ query GetZIScore {
     queryScore
     computeScore
     trend
+    status
+    breakdown {
+      storage
+      compute
+      query
+      others
+    }
+    metadata {
+      totalTables
+      activeTables
+      inactiveTables
+      totalStorageTb
+      wasteStorageTb
+      wastePercentage
+      monthlyCostUsd
+      monthlySavingsOpportunityUsd
+      annualSavingsOpportunityUsd
+      zombieTables
+      zombiePercentage
+      staleTables
+      stalePercentage
+      calculatedAt
+    }
   }
 }
 
-# Future: Add more persisted queries
+# Simplified query for just the gauge display
+query GetZIScoreSummary {
+  ziScore {
+    overall
+    status
+    trend
+    breakdown {
+      storage
+      compute
+      query
+      others
+    }
+  }
+}
+
+# Future persisted queries:
 # - GetActionItems
 # - GetCampaigns
-# - CreateActionItem
+# - GetPurgeCandidates
+# - CreateActionItem (mutation)
 # etc.
 

@@ -34,7 +34,7 @@ async def init_db() -> None:
         pool_size=settings.om_mysql_pool_size,
         max_overflow=settings.om_mysql_max_overflow,
         pool_pre_ping=True,  # Verify connections before use
-        echo=False,  # Set to True for SQL query logging
+        echo=True,  # SQL query logging enabled
     )
     OMSessionLocal = async_sessionmaker(
         om_engine,
@@ -51,7 +51,7 @@ async def init_db() -> None:
         pool_size=settings.te_mysql_pool_size,
         max_overflow=settings.te_mysql_max_overflow,
         pool_pre_ping=True,
-        echo=False,
+        echo=True,  # SQL query logging enabled
     )
     TESessionLocal = async_sessionmaker(
         te_engine,
