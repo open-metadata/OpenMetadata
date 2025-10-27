@@ -121,7 +121,7 @@ export const getGlossaryDefaultTabs = () => {
 export const getTabLabelFromId = (tab: EntityTabs): string => {
   const labelKey = TAB_LABEL_MAP[tab];
 
-  return labelKey ? i18n.t(labelKey) : '';
+  return labelKey ? i18n.t(labelKey) : tab;
 };
 
 export const getDefaultTabs = (pageType?: string): Tab[] => {
