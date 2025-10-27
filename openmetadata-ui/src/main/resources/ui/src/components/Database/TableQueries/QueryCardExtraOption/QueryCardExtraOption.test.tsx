@@ -56,6 +56,18 @@ jest.mock('react-router-dom', () => {
 });
 
 describe('QueryCardExtraOption component test', () => {
+  const originalMockUserData = {
+    id: '471353cb-f925-4c4e-be6c-14da2c0b00ce',
+    name: 'aaron_johnson0',
+    fullyQualifiedName: 'aaron_johnson0',
+    email: '',
+  };
+
+  beforeEach(() => {
+    // Reset to original user data before each test
+    mockUserData = { ...originalMockUserData };
+  });
+
   it('Component should render', async () => {
     render(<QueryCardExtraOption {...mockProps} />);
 
@@ -130,7 +142,16 @@ describe('QueryCardExtraOption component test', () => {
     );
   });
 
-  it.skip('OnClick of Vote up it should un vote if logged-in user has already up voted', async () => {
+  it('OnClick of Vote up it should un vote if logged-in user has already up voted', async () => {
+    // Set the mock user to be one who has already upvoted
+    mockUserData = {
+      id: 'cdccaedd-ed02-4c89-bc1a-1c4cd679d1e3',
+      name: 'shailesh.parmar',
+      fullyQualifiedName: 'shailesh.parmar',
+      displayName: 'ShaileshParmar',
+      email: '',
+    };
+    
     render(<QueryCardExtraOption {...mockProps} />);
 
     const voteUp = await screen.findByTestId('up-vote-btn');
@@ -156,7 +177,15 @@ describe('QueryCardExtraOption component test', () => {
     );
   });
 
-  it.skip('OnClick of Vote down it should un vote if logged-in user has already down voted', async () => {
+  it('OnClick of Vote down it should un vote if logged-in user has already down voted', async () => {
+    // Set the mock user to be one who has already downvoted
+    mockUserData = {
+      id: '4f277812-6670-4f28-a11b-459d537b7ba9',
+      name: 'admin',
+      fullyQualifiedName: 'admin',
+      deleted: false,
+    };
+    
     render(<QueryCardExtraOption {...mockProps} />);
 
     const voteDown = await screen.findByTestId('down-vote-btn');
