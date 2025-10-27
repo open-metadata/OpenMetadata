@@ -59,6 +59,8 @@ Example Scores:
     - 10,000 rows, 1,000 failed (10%): 0.010 (low - minor issue despite volume)
 """
 
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+
 from sqlalchemy import Float, case, func
 from sqlalchemy.sql.expression import ClauseElement
 
@@ -66,6 +68,9 @@ from metadata.data_quality.validations.base_test_handler import DIMENSION_OTHERS
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 # Configuration constants
 DEFAULT_SAMPLE_WEIGHT_THRESHOLD = 100.0  # Samples needed for full weight
@@ -370,3 +375,146 @@ def aggregate_others_pandas(
     df_aggregated.rename(columns={"dimension_group": dimension_column}, inplace=True)
 
     return df_aggregated
+
+
+def aggregate_others_statistical_pandas(
+    df,
+    dimension_column: str,
+    final_metric_calculators: Dict[
+        str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]
+    ],
+    top_n: int = DEFAULT_TOP_DIMENSIONS,
+    impact_column: str = "impact_score",
+    others_label: str = DIMENSION_OTHERS_LABEL,
+    exclude_from_final: Optional[List[str]] = None,
+):
+    """
+    Aggregate low-impact dimensions into "Others" using function-based statistical aggregation.
+
+    This function provides a flexible interface for statistical aggregation by using
+    function parameters, similar to the SQA version but for pandas DataFrames.
+
+    Args:
+        df: DataFrame with dimension results
+        dimension_column: Name of the dimension column
+        final_metric_calculators: Dict mapping metric names to functions that calculate final metrics
+        top_n: Number of top dimensions to keep (default: 5)
+        impact_column: Name of the impact score column
+        others_label: Label for aggregated dimensions (default: "Others")
+        exclude_from_final: Optional list of metric names to exclude from final output
+
+    Returns:
+        DataFrame with top N dimensions plus "Others"
+
+    Example:
+        >>> def calculate_failed_count(df_grouped):
+        ...     within_bounds = (df_grouped["mean"] >= 10.0) & (df_grouped["mean"] <= 100.0)
+        ...     return np.where(within_bounds, 0, df_grouped["total_count"])
+        >>>
+        >>> def calculate_weighted_mean(df_aggregated, others_mask, metric_column):
+        ...     result = df_aggregated[metric_column].copy()
+        ...     if others_mask.any():
+        ...         others_sum = df_aggregated.loc[others_mask, "sum_value"].iloc[0]
+        ...         others_count = df_aggregated.loc[others_mask, "total_count"].iloc[0]
+        ...         if others_count > 0:
+        ...             result.loc[others_mask] = others_sum / others_count
+        ...     return result
+        >>>
+        >>> result = aggregate_others_statistical_pandas(
+        ...     df, 'country', calculate_failed_count,
+        ...     {"mean": calculate_weighted_mean}, exclude_from_final=["sum_value"]
+        ... )
+    """
+    import numpy as np
+
+    exclude_from_final = exclude_from_final or []
+
+    # Sort by impact score descending
+    df_sorted = df.sort_values(by=impact_column, ascending=False)
+    top_dimensions = df_sorted.head(top_n)[dimension_column].tolist()
+
+    # Create dimension grouping
+    df["dimension_group"] = np.where(
+        df[dimension_column].isin(top_dimensions),
+        df[dimension_column],
+        others_label,
+    )
+
+    # Aggregate by dimension_group
+    numeric_cols = df.select_dtypes(include=[np.number]).columns
+    agg_dict = {
+        col: "sum"
+        for col in numeric_cols
+        if col not in [impact_column, "calculated_failed_count"]
+    }
+
+    # Aggregate by dimension_group
+    df_aggregated = df.groupby("dimension_group", as_index=False).agg(agg_dict)
+
+    # For top dimensions, preserve their original metric values
+    for metric_name, calculator in final_metric_calculators.items():
+        if metric_name in df.columns:
+            # For top dimensions, keep original values
+            for top_dim in top_dimensions:
+                top_mask = df_aggregated["dimension_group"] == top_dim
+                if top_mask.any():
+                    original_value = df[df[dimension_column] == top_dim][
+                        metric_name
+                    ].iloc[0]
+                    df_aggregated.loc[top_mask, metric_name] = original_value
+
+    # Apply final metric calculators for "Others"
+    if others_label in df_aggregated["dimension_group"].values:
+        others_mask = df_aggregated["dimension_group"] == others_label
+
+        for metric_name, calculator in final_metric_calculators.items():
+            if metric_name in df_aggregated.columns:
+                df_aggregated.loc[others_mask, metric_name] = calculator(
+                    df_aggregated, others_mask, metric_name
+                )
+
+    # Recalculate impact score for "Others"
+    if others_label in df_aggregated["dimension_group"].values:
+        others_mask = df_aggregated["dimension_group"] == others_label
+        if (
+            "failed_count" in df_aggregated.columns
+            and "total_count" in df_aggregated.columns
+        ):
+            others_row = df_aggregated[others_mask]
+            if not others_row.empty:
+                # Recalculate impact score using the pandas formula
+                failed = others_row["failed_count"].values[0]
+                total = others_row["total_count"].values[0]
+
+                if total > 0:
+                    failure_rate = failed / total
+                    failure_severity = failure_rate**2
+                    volume_factor = get_volume_factor(total)
+                    sample_weight = min(1.0, total / DEFAULT_SAMPLE_WEIGHT_THRESHOLD)
+                    raw_impact = failure_severity * volume_factor * sample_weight
+                    normalized_impact = raw_impact / DEFAULT_NORMALIZATION_FACTOR
+                    impact_score = min(1.0, max(0.0, normalized_impact))
+                else:
+                    impact_score = 0.0
+
+                df_aggregated.loc[others_mask, impact_column] = impact_score
+
+    # For non-Others rows, take the max impact score from original
+    for dim in top_dimensions:
+        dim_mask = df_aggregated["dimension_group"] == dim
+        if dim_mask.any():
+            original_score = df[df[dimension_column] == dim][impact_column].max()
+            df_aggregated.loc[dim_mask, impact_column] = original_score
+
+    # Sort by impact score again
+    df_aggregated = df_aggregated.sort_values(by=impact_column, ascending=False)
+
+    # Rename dimension_group back to original column name
+    df_aggregated.rename(columns={"dimension_group": dimension_column}, inplace=True)
+
+    # Clean up excluded columns
+    for col in exclude_from_final:
+        if col in df_aggregated.columns:
+            df_aggregated = df_aggregated.drop(columns=[col])
+
+    return df_aggregated.sort_values(by=impact_column, ascending=False)
