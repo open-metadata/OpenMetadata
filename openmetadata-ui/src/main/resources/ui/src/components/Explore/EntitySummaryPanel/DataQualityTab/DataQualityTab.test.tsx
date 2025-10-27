@@ -587,9 +587,7 @@ describe('DataQualityTab', () => {
 
       // Wait for the component to re-render with the filtered results
       await waitFor(() => {
-        expect(
-          screen.getByText(/message.no-test-cases-for-status/)
-        ).toBeInTheDocument();
+        expect(screen.getByText(/label.no-entity/)).toBeInTheDocument();
       });
     });
   });

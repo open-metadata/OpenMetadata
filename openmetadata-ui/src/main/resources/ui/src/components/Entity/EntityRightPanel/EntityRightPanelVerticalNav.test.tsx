@@ -499,22 +499,24 @@ describe('EntityRightPanelVerticalNav', () => {
 
   describe('Icon Rendering', () => {
     it('should render icons for all tabs', () => {
-      render(<EntityRightPanelVerticalNav {...defaultProps} />);
+      const { container } = render(
+        <EntityRightPanelVerticalNav {...defaultProps} />
+      );
 
-      const icons = screen.getAllByRole('img');
+      const icons = container.querySelectorAll('.ant-menu-item-icon');
 
       expect(icons).toHaveLength(5); // overview, schema, lineage, data-quality, custom-property
     });
 
     it('should render correct number of icons for DASHBOARD entity', () => {
-      render(
+      const { container } = render(
         <EntityRightPanelVerticalNav
           {...defaultProps}
           entityType={EntityType.DASHBOARD}
         />
       );
 
-      const icons = screen.getAllByRole('img');
+      const icons = container.querySelectorAll('.ant-menu-item-icon');
 
       expect(icons).toHaveLength(4); // overview, schema, lineage, custom-property
     });
