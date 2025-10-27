@@ -19,6 +19,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
 import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
+import { ReactComponent as TermsIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
 import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
 import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
@@ -78,18 +79,33 @@ const AddDataContract: React.FC<{
     setActiveTab(key);
   }, []);
 
-  const { validSemantics, isSaveDisabled } = useMemo(() => {
+  const { validSemantics, validSecurity, isSaveDisabled } = useMemo(() => {
     const validSemantics = formValues.semantics?.filter(
       (semantic) => !isEmpty(semantic.name) && !isEmpty(semantic.rule)
     );
 
+    const validSecurity = formValues.security
+      ? {
+          ...formValues.security,
+          policies: formValues.security.policies?.map((policy) => ({
+            ...policy,
+            rowFilters: policy.rowFilters?.filter(
+              (filter) =>
+                !isEmpty(filter?.columnName) && !isEmpty(filter?.values)
+            ),
+          })),
+        }
+      : undefined;
+
     return {
       validSemantics,
+      validSecurity,
       isSaveDisabled: isEmpty(
         compare(contract ?? {}, {
           ...contract,
           ...formValues,
           semantics: validSemantics,
+          security: validSecurity,
         })
       ),
     };
@@ -106,6 +122,7 @@ const AddDataContract: React.FC<{
             ...contract,
             ...formValues,
             semantics: validSemantics,
+            security: validSecurity,
             displayName: formValues.name,
           })
         );
@@ -118,6 +135,7 @@ const AddDataContract: React.FC<{
             type: EntityType.TABLE,
           },
           semantics: validSemantics,
+          security: validSecurity,
           entityStatus: EntityStatus.Approved,
         });
       }
@@ -129,7 +147,7 @@ const AddDataContract: React.FC<{
     } finally {
       setIsSubmitting(false);
     }
-  }, [contract, formValues, table?.id, validSemantics]);
+  }, [contract, formValues, table?.id, validSemantics, validSecurity]);
 
   const onFormChange = useCallback(
     (data: Partial<DataContract>) => {
@@ -168,7 +186,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <ContractIcon className="contract-tab-icon" />
+            <TermsIcon className="contract-tab-icon" />
             <span>{t('label.terms-of-service')}</span>
           </div>
         ),

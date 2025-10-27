@@ -3,7 +3,13 @@ source:
   serviceName: local_databricks
   serviceConnection:
     config:
-      token: <databricks token>
+      authType:
+        token: <databricks token>
+        # clientId: databricks service principal client id
+        # clientSecret: databricks service principal client secret
+        # azureClientSecret: azure client secret
+        # azureClientId: azure client id
+        # azureTenantId: azure tenant id
       hostPort: localhost:443
       connectionArguments:
         http_path: <http path of databricks cluster>

@@ -335,7 +335,7 @@ class REST:
         return self._request("POST", path, data, json)
 
     @calculate_execution_time(context="PUT")
-    def put(self, path, data=None):
+    def put(self, path, data=None, json=None, headers=None):
         """
         PUT method
 
@@ -346,7 +346,7 @@ class REST:
         Returns:
             Response
         """
-        return self._request("PUT", path, data)
+        return self._request("PUT", path, data, json=json, headers=headers)
 
     @calculate_execution_time(context="PATCH")
     def patch(self, path, data=None):

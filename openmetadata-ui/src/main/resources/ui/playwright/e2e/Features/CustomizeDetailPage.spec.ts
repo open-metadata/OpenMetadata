@@ -32,6 +32,7 @@ import {
   checkDefaultStateForNavigationTree,
   validateLeftSidebarWithHiddenItems,
 } from '../../utils/customizeNavigation';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
 const persona = new PersonaClass();
@@ -145,12 +146,12 @@ test.describe('Persona customize UI tab', async () => {
     await redirectToHomePage(adminPage);
 
     // Navigate to persona page
+    const personaListResponse = adminPage.waitForResponse(`/api/v1/personas?*`);
     await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-    await adminPage.waitForLoadState('networkidle');
-    await adminPage.waitForSelector('[data-testid="loader"]', {
-      state: 'detached',
-    });
-    await adminPage.getByText(persona.responseData.displayName).click();
+    await personaListResponse;
+
+    // Need to find persona card and click as the list might get paginated
+    await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
     await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
   });
 
@@ -345,11 +346,18 @@ test.describe('Persona customization', () => {
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
         async () => {
+          const personaListResponse =
+            adminPage.waitForResponse(`/api/v1/personas?*`);
           await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-          await adminPage.waitForLoadState('networkidle');
-          await adminPage
-            .getByTestId(`persona-details-card-${persona.data.name}`)
-            .click();
+          await personaListResponse;
+
+          // Need to find persona card and click as the list might get paginated
+          await navigateToPersonaWithPagination(
+            adminPage,
+            persona.data.name,
+            true
+          );
+
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
           await adminPage.waitForLoadState('networkidle');
           await adminPage.getByText('Data Assets').click();
@@ -447,11 +455,17 @@ test.describe('Persona customization', () => {
       await test.step(
         `should show all the tabs & widget as default when no customization is done`,
         async () => {
+          const personaListResponse =
+            adminPage.waitForResponse(`/api/v1/personas?*`);
           await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-          await adminPage.waitForLoadState('networkidle');
-          await adminPage
-            .getByTestId(`persona-details-card-${persona.data.name}`)
-            .click();
+          await personaListResponse;
+
+          // Need to find persona card and click as the list might get paginated
+          await navigateToPersonaWithPagination(
+            adminPage,
+            persona.data.name,
+            true
+          );
           await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
           await adminPage.waitForLoadState('networkidle');
           await adminPage.getByText('Governance').click();
@@ -542,11 +556,13 @@ test.describe('Persona customization', () => {
     test.slow();
 
     await test.step('apply customization', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
       await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-      await adminPage.waitForLoadState('networkidle');
-      await adminPage
-        .getByTestId(`persona-details-card-${persona.data.name}`)
-        .click();
+      await personaListResponse;
+
+      // Need to find persona card and click as the list might get paginated
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.waitForLoadState('networkidle');
       await adminPage.getByText('Governance').click();
@@ -583,21 +599,25 @@ test.describe('Persona customization', () => {
         state: 'detached',
       });
 
-      expect(userPage.getByRole('tab', { name: 'Overview' })).toBeVisible();
-      expect(
+      await expect(
+        userPage.getByRole('tab', { name: 'Overview' })
+      ).toBeVisible();
+      await expect(
         userPage.getByRole('tab', { name: 'Glossary Terms' })
       ).toBeVisible();
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Overview' }).click();
 
-      expect(userPage.getByTestId('asset-description-container')).toBeVisible();
+      await expect(
+        userPage.getByTestId('asset-description-container')
+      ).toBeVisible();
 
       await userPage.getByRole('tab', { name: 'Glossary Terms' }).click();
 
-      expect(
+      await expect(
         userPage.getByTestId('create-error-placeholder-Glossary Term')
       ).toBeVisible();
     });
@@ -608,11 +628,13 @@ test.describe('Persona customization', () => {
     userPage,
   }) => {
     await test.step('apply tab label customization for Table', async () => {
+      const personaListResponse =
+        adminPage.waitForResponse(`/api/v1/personas?*`);
       await settingClick(adminPage, GlobalSettingOptions.PERSONA);
-      await adminPage.waitForLoadState('networkidle');
-      await adminPage
-        .getByTestId(`persona-details-card-${persona.data.name}`)
-        .click();
+      await personaListResponse;
+
+      // Need to find persona card and click as the list might get paginated
+      await navigateToPersonaWithPagination(adminPage, persona.data.name, true);
       await adminPage.getByRole('tab', { name: 'Customize UI' }).click();
       await adminPage.waitForLoadState('networkidle');
       await adminPage.getByText('Data Assets').click();

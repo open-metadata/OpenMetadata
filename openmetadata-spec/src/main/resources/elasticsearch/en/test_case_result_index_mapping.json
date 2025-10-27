@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "priority": 500
+    },
     "analysis": {
       "tokenizer": {
         "edge_ngram_tokenizer": {
@@ -303,6 +306,7 @@
             "properties": {
               "tagFQN": {
                 "type": "keyword",
+                "normalizer": "lowercase_normalizer",
                 "fields": {
                   "text": {
                     "type": "text",
@@ -495,6 +499,5 @@
         }
       }
     }
-  },
-  "priority": 500
+  }
 }

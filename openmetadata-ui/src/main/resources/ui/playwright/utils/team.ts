@@ -13,6 +13,7 @@
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { GlobalSettingOptions } from '../constant/settings';
 import { Domain } from '../support/domain/Domain';
+import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
@@ -22,7 +23,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { addOwner } from './entity';
+import { addMultiOwner, addOwner } from './entity';
 import { validateFormNameFieldInput } from './form';
 import { settingClick } from './sidebar';
 
@@ -447,6 +448,7 @@ export const executionOnOwnerTeam = async (
   data: {
     domain: Domain;
     email: string;
+    user: string;
   }
 ) => {
   await team.visitTeamPage(page);
@@ -457,6 +459,16 @@ export const executionOnOwnerTeam = async (
   await expect(page.getByTestId('edit-team-type-icon')).toBeVisible();
 
   await assignDomain(page, data.domain.responseData);
+
+  await addMultiOwner({
+    page,
+    ownerNames: [data.user],
+    activatorBtnDataTestId: 'edit-owner',
+    resultTestId: 'teams-info-header',
+    endpoint: EntityTypeEndpoint.Teams,
+    type: 'Users',
+    clearAll: false,
+  });
 
   await addEmailTeam(page, data.email);
 

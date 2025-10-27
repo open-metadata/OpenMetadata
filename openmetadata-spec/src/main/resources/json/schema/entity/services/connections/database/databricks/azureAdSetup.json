@@ -1,0 +1,32 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/databricks/azureAdSetup.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Azure AD Setup",
+  "description": "Azure Active Directory authentication for Azure Databricks workspaces using Service Principal.",
+  "javaType": "org.openmetadata.schema.services.connections.database.databricks.AzureADSetup",
+  "type": "object",
+  "properties": {
+    "azureClientId": {
+      "title": "Azure Client ID",
+      "description": "Azure Service Principal Application (client) ID registered in your Azure Active Directory.",
+      "type": "string"
+    },
+    "azureClientSecret": {
+      "title": "Azure Client Secret",
+      "description": "Azure Service Principal client secret created in Azure AD for authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "azureTenantId": {
+      "title": "Azure Tenant ID",
+      "description": "Azure Active Directory Tenant ID where your Service Principal is registered.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "azureClientId",
+    "azureClientSecret",
+    "azureTenantId"
+  ]
+}

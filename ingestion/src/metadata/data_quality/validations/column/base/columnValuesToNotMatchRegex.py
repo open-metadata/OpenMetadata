@@ -37,11 +37,14 @@ NOT_LIKE_COUNT = "notLikeCount"
 class BaseColumnValuesToNotMatchRegexValidator(BaseTestValidator):
     """Validator for column values to not match regex test case"""
 
-    def run_validation(self) -> TestCaseResult:
-        """Run validation for the given test case
+    def _run_validation(self) -> TestCaseResult:
+        """Execute the specific test validation logic
+
+        This method contains the core validation logic that was previously
+        in the run_validation method.
 
         Returns:
-            TestCaseResult:
+            TestCaseResult: The test case result for the overall validation
         """
         forbidden_regex: str = self.get_test_case_param_value(
             self.test_case.parameterValues,  # type: ignore

@@ -20,6 +20,7 @@ import sqlalchemy.types as sqltypes
 import sqlparse
 from snowflake.sqlalchemy.custom_types import VARIANT, StructuredType
 from snowflake.sqlalchemy.snowdialect import SnowflakeDialect, ischema_names
+from sqlalchemy import exc as sa_exc
 from sqlalchemy.engine.reflection import Inspector
 from sqlparse.sql import Function, Identifier, Token
 
@@ -74,8 +75,10 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.snowflake.constants import (
     DEFAULT_STREAM_COLUMNS,
+    PROCEDURE_TYPE_URL_MAP,
     SNOWFLAKE_CLASSIFICATION_DESCRIPTION,
     SNOWFLAKE_TAG_DESCRIPTION,
+    TABLE_TYPE_URL_MAP,
 )
 from metadata.ingestion.source.database.snowflake.models import (
     STORED_PROC_LANGUAGE_MAP,
@@ -688,11 +691,11 @@ class SnowflakeSource(
         table_type: Optional[TableType] = None,
     ) -> Optional[str]:
         """
-        Method to get the source url for snowflake
+        Method to get the source url for snowflake tables
         """
         try:
             if self.account and self.org_name:
-                tab_type = "view" if table_type == TableType.View else "table"
+                tab_type = TABLE_TYPE_URL_MAP.get(table_type, "table")
                 url = self._get_source_url_root(
                     database_name=database_name, schema_name=schema_name
                 )
@@ -702,6 +705,41 @@ class SnowflakeSource(
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
+        return None
+
+    def get_procedure_source_url(
+        self,
+        database_name: Optional[str] = None,
+        schema_name: Optional[str] = None,
+        procedure_name: Optional[str] = None,
+        procedure_signature: Optional[str] = None,
+        procedure_type: Optional[str] = None,
+    ) -> Optional[str]:
+        """
+        Method to get the source url for snowflake stored procedures
+        """
+        try:
+            if self.account and self.org_name:
+                url = self._get_source_url_root(
+                    database_name=database_name, schema_name=schema_name
+                )
+
+                # Convert string procedure type to enum and get URL mapping
+                proc_type_enum = (
+                    StoredProcedureType(procedure_type)
+                    if procedure_type
+                    else StoredProcedureType.StoredProcedure
+                )
+                tab_type = PROCEDURE_TYPE_URL_MAP.get(proc_type_enum, "procedure")
+
+                if procedure_name:
+                    full_name = f"{procedure_name}{procedure_signature or ''}"
+                    url = f"{url}/{tab_type}/{full_name}"
+
+                return url
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.error(f"Unable to get procedure source url: {exc}")
         return None
 
     def _get_view_names_and_types(
@@ -844,12 +882,13 @@ class SnowflakeSource(
                     schema_name=self.context.get().database_schema,
                 ),
                 sourceUrl=SourceUrl(
-                    self._get_source_url_root(
+                    self.get_procedure_source_url(
                         database_name=self.context.get().database,
                         schema_name=self.context.get().database_schema,
+                        procedure_name=stored_procedure.name,
+                        procedure_signature=stored_procedure.signature,
+                        procedure_type=stored_procedure.procedure_type,
                     )
-                    + f"/procedure/{stored_procedure.name}"
-                    + f"{stored_procedure.signature if stored_procedure.signature else ''}"
                 ),
             )
             yield Either(right=stored_procedure_request)
@@ -910,17 +949,26 @@ class SnowflakeSource(
                     table_name = result[6].split(".")[-1]
                     # Can't fetch source of stream is source is dropped or no priviledge
                     if table_name == "No privilege or table dropped":
-                        logger.debug(
-                            f"Couldn't fetch columns of stream [{result and result[1]}],"
-                            f" due to error on source: {table_name}. Result: {result}"
+                        logger.warning(
+                            f"Couldn't fetch columns of stream [{result and result[1]}] "
+                            f"(schema: '{schema_name}', db: '{db_name}') due to error on"
+                            f" source: [{table_name}]. Result: {result}"
                         )
                         return []
             except Exception:
                 pass
 
-        columns = inspector.get_columns(
-            table_name, schema_name, table_type=table_type, db_name=db_name
-        )
+        try:
+            columns = inspector.get_columns(
+                table_name, schema_name, table_type=table_type, db_name=db_name
+            )
+        except sa_exc.NoSuchTableError:
+            logger.warning(
+                f"Table [{table_name}] (schema: '{schema_name}', db: '{db_name}') not found."
+                " Unable to fetch columns. Please check if the configured Snowflake user has"
+                " necessary grants on this table."
+            )
+            return []
 
         if table_type == TableType.Stream:
             columns = [*columns, *DEFAULT_STREAM_COLUMNS]

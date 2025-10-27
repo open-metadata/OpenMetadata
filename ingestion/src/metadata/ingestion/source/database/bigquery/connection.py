@@ -153,6 +153,10 @@ def test_connection(
             return policy_tags
 
     def test_tags():
+        if not service_connection.includePolicyTags:
+            logger.info("'includePolicyTags' is set to false, so skipping this test.")
+            return None
+
         taxonomy_project_ids = []
         if engine.url.host:
             taxonomy_project_ids.append(engine.url.host)

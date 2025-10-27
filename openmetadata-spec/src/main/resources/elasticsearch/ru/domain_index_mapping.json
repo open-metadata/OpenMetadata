@@ -233,6 +233,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "experts": {
         "properties": {
           "id": {

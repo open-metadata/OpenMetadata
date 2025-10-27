@@ -49,6 +49,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
   onFieldValueSelect,
   fieldsWithNullValues = [],
   defaultQueryFilter,
+  showSelectedCounts = false,
 }) => {
   const location = useCustomLocation();
   const [options, setOptions] = useState<SearchDropdownOption[]>();
@@ -94,7 +95,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           key,
           '',
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted
         ),
         key === TIER_FQN_KEY
           ? getTags({ parent: 'Tier', limit: 50 })
@@ -159,7 +161,8 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
           key,
           value,
           JSON.stringify(combinedQueryFilter),
-          independent
+          independent,
+          showDeleted
         );
 
         const buckets = res.data.aggregations[`sterms#${key}`].buckets;
@@ -212,6 +215,7 @@ const ExploreQuickFilters: FC<ExploreQuickFiltersProps> = ({
             options={options ?? []}
             searchKey={field.key}
             selectedKeys={selectedKeys ?? []}
+            showSelectedCounts={showSelectedCounts}
             triggerButtonSize="middle"
             onChange={(updatedValues) => {
               onFieldValueSelect({ ...field, value: updatedValues });

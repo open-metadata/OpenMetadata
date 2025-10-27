@@ -206,6 +206,26 @@ async function runParsers() {
   
   // Parse Application schemas
   await parseApplicationSchemas();
+
+  // Parse configuration schemas directly
+  const configDir = 'src/jsons/configuration';
+  if (!fs.existsSync(configDir)) {
+    fs.mkdirSync(configDir, { recursive: true });
+  }
+
+  const configSchemas = [
+    'authenticationConfiguration.json',
+    'authorizerConfiguration.json',
+  ];
+
+  for (const configFile of configSchemas) {
+    const srcPath = `${schemaDir}/configuration/${configFile}`;
+    const destPath = `${configDir}/${configFile}`;
+
+    // Only authenticationConfiguration.json needs dereferencing (has external $ref)
+    const needsDereference = configFile === 'authenticationConfiguration.json';
+    await parseSchema(srcPath, destPath, needsDereference);
+  }
 }
 
 runParsers();

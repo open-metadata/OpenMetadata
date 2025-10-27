@@ -49,10 +49,13 @@ jest.mock(
   })
 );
 
-jest.mock('../../../rest/miscAPI', () => ({
-  searchData: jest
-    .fn()
-    .mockImplementation(() => Promise.resolve(MOCK_ASSETS_DATA)),
+jest.mock('../../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: MOCK_ASSETS_DATA.data?.hits?.hits || [],
+      total: { value: MOCK_ASSETS_DATA.data?.hits?.total?.value || 0 },
+    },
+  }),
 }));
 
 jest.mock('./tabs/AssetsTabs.component', () =>

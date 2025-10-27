@@ -286,6 +286,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
       recordChange("disabled", original.getDisabled(), updated.getDisabled());
+      recordChange(
+          "autoClassificationConfig",
+          original.getAutoClassificationConfig(),
+          updated.getAutoClassificationConfig(),
+          true);
       updateName(original, updated);
     }
 

@@ -938,12 +938,18 @@ public class TestSuiteResourceTest extends EntityResourceTest<TestSuite, CreateT
 
   public void addTestCasesToLogicalTestSuite(TestSuite testSuite, List<UUID> testCaseIds)
       throws IOException {
+    addTestCasesToLogicalTestSuite(testSuite, testCaseIds, ADMIN_AUTH_HEADERS);
+  }
+
+  public void addTestCasesToLogicalTestSuite(
+      TestSuite testSuite, List<UUID> testCaseIds, Map<String, String> authHeaders)
+      throws IOException {
     WebTarget target = getResource("dataQuality/testCases/logicalTestCases");
     CreateLogicalTestCases createLogicalTestCases =
         new CreateLogicalTestCases()
             .withTestSuiteId(testSuite.getId())
             .withTestCaseIds(testCaseIds);
-    TestUtils.put(target, createLogicalTestCases, Response.Status.OK, ADMIN_AUTH_HEADERS);
+    TestUtils.put(target, createLogicalTestCases, Response.Status.OK, authHeaders);
   }
 
   public void deleteBasicTestSuite(

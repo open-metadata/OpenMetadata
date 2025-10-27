@@ -1,0 +1,279 @@
+/*
+ *  Copyright 2023 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.sso-doc-panel {
+  height: 100%;
+  padding-top: @size-lg;
+  display: flex;
+  flex-direction: column;
+
+  .sso-doc-content-wrapper {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .sso-doc-header {
+    display: flex;
+    align-items: center;
+    gap: @padding-xs;
+    padding: 0 @size-lg @size-lg @size-lg;
+
+    .sso-provider-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sso-provider-title {
+      margin: 0;
+      font-weight: 600;
+      color: @grey-900;
+      line-height: @size-lg;
+      font-size: 18px;
+    }
+  }
+
+  .markdown-parser {
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-size: 18px;
+      font-weight: 600;
+      line-height: @size-mlg;
+      padding-bottom: @size-xs;
+      color: @grey-800;
+      margin: 0;
+      padding: 0;
+
+      &[data-highlighted='true'] {
+        background: @primary-50;
+        border-left: @size-xxs solid @primary-6;
+
+        margin: 0;
+
+        &[data-highlight-position='first'] {
+          padding-top: @size-xs;
+          padding-bottom: @size-xs;
+          border-bottom: none;
+          h3 {
+            padding: 0 @size-lg;
+          }
+        }
+
+        &[data-highlight-position='middle'] {
+          border-radius: 0;
+          border-top: none;
+          border-bottom: none;
+        }
+
+        &[data-highlight-position='last'] {
+          border-radius: 0 0 @border-rad-sm @border-rad-sm;
+          border-top: none;
+          margin-bottom: @size-md;
+        }
+      }
+
+      span[data-id] {
+        font-weight: 600;
+        color: @grey-800;
+      }
+    }
+    h1 {
+      padding: 0 @size-lg;
+    }
+    h2 {
+      padding: 0 @size-lg @size-md @size-lg;
+    }
+
+    h3 {
+      color: @grey-800;
+      font-size: 18px;
+      padding: 0 @size-lg;
+      font-weight: 600;
+      border-bottom: none;
+      padding-bottom: @padding-xs;
+      margin: 24px 0px 10px 0px;
+
+      // Add margin after the entire section (after h3 and its siblings)
+      ~ h3 {
+        margin-top: @size-lg;
+      }
+
+      ~ ul {
+        padding: 0 @size-lg 0 40px;
+      }
+    }
+
+    h4 {
+      color: @grey-800;
+      font-size: @font-size-base;
+      font-weight: 600;
+    }
+
+    h6 {
+      font-size: 18px;
+    }
+
+    ul {
+      padding: 0 @size-lg @size-md @size-lg + @size-mlg;
+      margin-bottom: @size-lg;
+
+      ul {
+        margin-bottom: 0;
+        padding-bottom: 0;
+      }
+
+      &[data-highlighted='true'] {
+        background: @primary-50;
+        border-left: @size-xxs solid @primary-6;
+
+        margin: 0;
+
+        &[data-highlight-position='first'] {
+          border-bottom: none;
+          padding-left: @size-lg + @size-mlg;
+        }
+
+        &[data-highlight-position='middle'] {
+          border-radius: 0;
+          border-top: none;
+          border-bottom: none;
+        }
+
+        &[data-highlight-position='last'] {
+          border-top: none;
+          padding-bottom: @size-xs;
+          margin-bottom: @size-md;
+        }
+      }
+
+      li {
+        margin-bottom: @padding-xss;
+        line-height: @size-sm + 2px;
+        font-size: @font-size-base;
+        font-weight: 400;
+        color: @grey-800;
+
+        p {
+          padding: 0;
+          margin-bottom: 0;
+        }
+
+        strong {
+          color: @grey-800;
+          font-weight: 600;
+        }
+      }
+    }
+
+    p {
+      padding: 0 @size-lg;
+      margin-bottom: @size-lg;
+      line-height: @size-mlg;
+      font-size: @font-size-base;
+      font-weight: 400;
+      color: @grey-800;
+
+      // Remove padding for paragraphs that can be highlighted
+      &[data-highlighted] {
+        padding: 0;
+        margin-bottom: @size-lg;
+      }
+
+      &[data-highlighted='true'] {
+        background: @primary-50;
+        border: 1px solid @primary-6;
+        border-left: @size-xxs solid @primary-6;
+        padding: @padding-mlg @padding-md;
+        margin: 0;
+
+        &[data-highlight-position='first'] {
+          border-radius: @border-rad-sm @border-rad-sm 0 0;
+          border-bottom: none;
+          margin: 0;
+          padding: 0;
+        }
+
+        &[data-highlight-position='middle'] {
+          border-radius: 0;
+          border-top: none;
+          border-bottom: none;
+          padding: 0;
+        }
+
+        &[data-highlight-position='last'] {
+          border-radius: 0 0 @border-rad-sm @border-rad-sm;
+          border-top: none;
+          padding: 0;
+          margin: 0;
+        }
+      }
+    }
+
+    code {
+      background: @background-primary;
+      padding: @size-xxs / 2 @border-rad-xs - @size-xxs;
+      border-radius: @border-rad-xs;
+      font-size: @font-size-base - 1px;
+      font-weight: 400;
+      color: @grey-800;
+      border: 1px solid @border-color;
+    }
+
+    pre {
+      background: @background-primary;
+      border: 1px solid @border-color;
+      border-radius: @border-rad-sm;
+      padding: @padding-md;
+      overflow-x: auto;
+      margin-bottom: @padding-md;
+      font-size: @font-size-base;
+      font-weight: 400;
+      color: @grey-800;
+
+      code {
+        background: transparent;
+        border: none;
+        padding: 0;
+        color: @grey-800;
+      }
+    }
+
+    .highlight-section {
+      background: @primary-50;
+      border-left: @size-xxs solid @primary-6;
+      padding: @padding-md;
+      border-radius: 0 @border-rad-sm @border-rad-sm 0;
+      margin-bottom: @padding-md;
+
+      h4 {
+        margin-top: 0;
+        font-size: @font-size-base;
+        font-weight: 600;
+        color: @grey-800;
+      }
+
+      p {
+        font-size: @font-size-base;
+        font-weight: 400;
+        color: @grey-800;
+      }
+    }
+  }
+}

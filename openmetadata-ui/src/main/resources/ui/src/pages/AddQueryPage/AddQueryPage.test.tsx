@@ -22,8 +22,8 @@ jest.mock('../../rest/tableAPI', () => ({
 jest.mock('../../rest/queryAPI', () => ({
   postQuery: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn().mockImplementation(() => Promise.resolve()),
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ fqn: MOCK_TABLE.fullyQualifiedName }),

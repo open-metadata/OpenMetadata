@@ -149,7 +149,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     }
   }
 
-  private void createDataQualityDataIndex() {
+  public void createDataQualityDataIndex() {
     try {
       createIndexInternal(Entity.TEST_CASE_RESULT);
       createIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
@@ -165,7 +165,7 @@ public class DataInsightsApp extends AbstractNativeApplication {
     deleteIndexInternal(Entity.TEST_CASE_RESOLUTION_STATUS);
   }
 
-  private void createOrUpdateDataAssetsDataStream() {
+  public void createOrUpdateDataAssetsDataStream() {
     DataInsightsSearchInterface searchInterface = getSearchInterface();
 
     ElasticSearchConfiguration config = searchRepository.getSearchConfiguration();

@@ -19,6 +19,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { APIServiceType } from '../../../../generated/entity/services/apiService';
 import { DashboardServiceType } from '../../../../generated/entity/services/dashboardService';
 import { DatabaseServiceType } from '../../../../generated/entity/services/databaseService';
+import { DriveServiceType } from '../../../../generated/entity/services/driveService';
 import { MessagingServiceType } from '../../../../generated/entity/services/messagingService';
 import { MetadataServiceType } from '../../../../generated/entity/services/metadataService';
 import { MlModelServiceType } from '../../../../generated/entity/services/mlmodelService';
@@ -128,6 +129,14 @@ const ServiceConnectionDetails = ({
         setSchema(
           serviceUtilClassBase.getSecurityServiceConfig(
             serviceFQN as SecurityServiceType
+          ).schema
+        );
+
+        break;
+      case EntityType.DRIVE_SERVICE:
+        setSchema(
+          serviceUtilClassBase.getDriveServiceConfig(
+            serviceFQN as DriveServiceType
           ).schema
         );
 

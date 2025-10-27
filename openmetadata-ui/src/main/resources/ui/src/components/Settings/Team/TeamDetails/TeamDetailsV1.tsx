@@ -74,6 +74,7 @@ import {
   getSettingsPathWithFqn,
   getTeamsWithFqnPath,
 } from '../../../../utils/RouterUtils';
+import { getTermQuery } from '../../../../utils/SearchUtils';
 import {
   filterChildTeams,
   getDeleteMessagePostFix,
@@ -205,13 +206,6 @@ const TeamDetailsV1 = ({
   const updateActiveTab = (key: string) => {
     navigate({ search: Qs.stringify({ activeTab: key }) });
   };
-
-  const { editUserPermission } = useMemo(() => {
-    return {
-      editUserPermission:
-        entityPermissions.EditAll || entityPermissions.EditUsers,
-    };
-  }, [entityPermissions]);
 
   /**
    * Take user id as input to find out the user data and set it for delete
@@ -454,7 +448,7 @@ const TeamDetailsV1 = ({
           ? parentTeams.map((parent) => ({
               name: getEntityName(parent),
               url: getTeamsWithFqnPath(
-                parent.name ?? parent.fullyQualifiedName ?? ''
+                parent.fullyQualifiedName ?? parent.name ?? ''
               ),
             }))
           : [];
@@ -620,12 +614,12 @@ const TeamDetailsV1 = ({
   );
 
   const teamsTableRender = useMemo(() => {
-    let addUserButtonTitle = editUserPermission
+    let addTeamButtonTitle = entityPermissions.Create
       ? t('label.add-entity', { entity: t('label.team') })
       : t('message.no-permission-for-action');
 
     if (isTeamDeleted) {
-      addUserButtonTitle = t(
+      addTeamButtonTitle = t(
         'message.this-action-is-not-allowed-for-deleted-entities'
       );
     }
@@ -651,11 +645,11 @@ const TeamDetailsV1 = ({
             }}
           />
         </Typography.Paragraph>
-        <Tooltip placement="top" title={addUserButtonTitle}>
+        <Tooltip placement="top" title={addTeamButtonTitle}>
           <Button
             ghost
             data-testid="add-placeholder-button"
-            disabled={!editUserPermission || isTeamDeleted}
+            disabled={!entityPermissions.Create || isTeamDeleted}
             icon={<PlusOutlined />}
             type="primary"
             onClick={handleAddTeamButtonClick}>
@@ -718,6 +712,7 @@ const TeamDetailsV1 = ({
         isEntityDeleted={isTeamDeleted}
         noDataPlaceholder={t('message.adding-new-asset-to-team')}
         permissions={entityPermissions}
+        queryFilter={getTermQuery({ 'owners.id': currentTeam.id })}
         type={AssetsOfEntity.TEAM}
         onAddAsset={() => navigate(ROUTES.EXPLORE)}
         onAssetClick={setPreviewAsset}

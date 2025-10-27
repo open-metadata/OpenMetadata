@@ -59,4 +59,56 @@ public class JsonLogicUtils {
 
     return false;
   }
+
+  public static @NotNull Object evaluateIsUpdatedBefore(
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+      throws JsonLogicEvaluationException {
+    if (arguments.size() != 1) return false;
+
+    Object timestampObj = evaluator.evaluate(arguments.getFirst(), data);
+    if (timestampObj == null) return false;
+
+    // Get updatedAt from entity data
+    if (!(data instanceof Map<?, ?> entityMap)) return false;
+    Object updatedAtObj = entityMap.get("updatedAt");
+    if (updatedAtObj == null) return false;
+
+    long updatedAt;
+    if (updatedAtObj instanceof Long) {
+      updatedAt = (Long) updatedAtObj;
+    } else if (updatedAtObj instanceof Number) {
+      updatedAt = ((Number) updatedAtObj).longValue();
+    } else {
+      return false;
+    }
+
+    long timestamp = ((Number) timestampObj).longValue();
+    return updatedAt < timestamp;
+  }
+
+  public static @NotNull Object evaluateIsUpdatedAfter(
+      JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+      throws JsonLogicEvaluationException {
+    if (arguments.size() != 1) return false;
+
+    Object timestampObj = evaluator.evaluate(arguments.getFirst(), data);
+    if (timestampObj == null) return false;
+
+    // Get updatedAt from entity data
+    if (!(data instanceof Map<?, ?> entityMap)) return false;
+    Object updatedAtObj = entityMap.get("updatedAt");
+    if (updatedAtObj == null) return false;
+
+    long updatedAt;
+    if (updatedAtObj instanceof Long) {
+      updatedAt = (Long) updatedAtObj;
+    } else if (updatedAtObj instanceof Number) {
+      updatedAt = ((Number) updatedAtObj).longValue();
+    } else {
+      return false;
+    }
+
+    long timestamp = ((Number) timestampObj).longValue();
+    return updatedAt > timestamp;
+  }
 }

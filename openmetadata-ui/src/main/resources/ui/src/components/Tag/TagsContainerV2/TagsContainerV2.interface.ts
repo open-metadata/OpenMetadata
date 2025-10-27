@@ -24,6 +24,7 @@ export interface TagsContainerV2Props {
   tagType: TagSource;
   columnData?: {
     fqn: string;
+    name?: string;
   };
   showBottomEditButton?: boolean;
   showInlineEditButton?: boolean;

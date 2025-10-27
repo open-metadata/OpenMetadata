@@ -26,6 +26,7 @@ from typing import Optional
 from uuid import UUID
 
 from metadata.ingestion.ometa.client import REST
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.constants import UTF_8
 from metadata.utils.logger import ometa_logger
 
@@ -63,8 +64,11 @@ class OMetaLogsMixin:
             bool: True if logs were sent successfully, False otherwise
         """
         try:
+            # Extract the UUID string value from the object if it has a .root attribute
             # Build the API endpoint
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id}"
+            url = (
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            )
 
             # Prepare log batch data matching Java LogBatch structure
             log_batch = {
@@ -86,11 +90,17 @@ class OMetaLogsMixin:
                 url,
                 data=json.dumps(log_batch),
             )
-            if response.status_code == 200:
+
+            # The REST client returns None for successful requests with empty response body (HTTP 200 with no content)
+            # It also returns None on errors, but those are caught by the exception handler
+            # Since we're not in the exception handler, None here means successful upload with empty response
+            if response is None or response:
                 logger.debug(
                     f"Successfully sent {log_batch['lineCount']} log lines for pipeline {pipeline_fqn}"
                 )
                 return True
+
+            logger.warning(f"Unexpected response from log upload: {response}")
             return False
 
         except Exception as e:
@@ -160,7 +170,7 @@ class OMetaLogsMixin:
 
             # Use the metadata client's REST interface directly
             self.client.post(
-                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id}",
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}",
                 data=json.dumps(log_batch),
             )
 
@@ -196,8 +206,11 @@ class OMetaLogsMixin:
             Optional[str]: Stream session ID if applicable, None otherwise
         """
         try:
+
             # Initialize log stream with the server
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id}/init"
+            url = (
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            )
 
             init_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -242,7 +255,8 @@ class OMetaLogsMixin:
             bool: True if stream was closed successfully, False otherwise
         """
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id}/close"
+
+            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}/close"
 
             close_data = {
                 "connectorId": f"{socket.gethostname()}-{os.getpid()}",
@@ -287,7 +301,10 @@ class OMetaLogsMixin:
             Optional[str]: Log content if available, None otherwise
         """
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{run_id}"
+
+            url = (
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            )
 
             params = {
                 "offset": offset,

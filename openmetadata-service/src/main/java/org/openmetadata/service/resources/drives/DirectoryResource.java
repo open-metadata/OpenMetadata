@@ -76,7 +76,7 @@ import org.openmetadata.service.security.Authorizer;
 public class DirectoryResource extends EntityResource<Directory, DirectoryRepository> {
   public static final String COLLECTION_PATH = "v1/drives/directories/";
   static final String FIELDS =
-      "owners,children,parent,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers";
+      "owners,children,parent,usageSummary,tags,extension,domains,sourceHash,lifeCycle,votes,followers,numberOfFiles,numberOfSubDirectories,totalSize,directoryType";
   private final DirectoryMapper mapper = new DirectoryMapper();
 
   @Override
@@ -303,6 +303,35 @@ public class DirectoryResource extends EntityResource<Directory, DirectoryReposi
                       }))
           JsonPatch patch) {
     return patchInternal(uriInfo, securityContext, id, patch);
+  }
+
+  @PATCH
+  @Path("/name/{fqn}")
+  @Operation(
+      operationId = "patchDirectory",
+      summary = "Update a directory by name.",
+      description = "Update an existing directory using JsonPatch.",
+      externalDocs =
+          @ExternalDocumentation(
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
+  @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
+  public Response patch(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the directory", schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
+                  @Content(
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
+          JsonPatch patch) {
+    return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
   @PUT

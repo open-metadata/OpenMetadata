@@ -80,7 +80,7 @@ export const getCommonColumns = (): ColumnsType<Tag> => [
           <Badge
             className="badge-grey"
             count={t('label.disabled')}
-            data-testid="disabled"
+            data-testid={`tag-disabled-${record.name}`}
           />
         ) : null}
       </div>
@@ -248,6 +248,7 @@ export const getClassificationInfo = (
   return {
     currentVersion: currentClassification?.version ?? '0.1',
     isClassificationDisabled: currentClassification?.disabled ?? false,
+    isClassificationDeleted: currentClassification?.deleted ?? false,
     isTier: currentClassification?.name === 'Tier',
     isSystemClassification:
       currentClassification?.provider === ProviderType.System,

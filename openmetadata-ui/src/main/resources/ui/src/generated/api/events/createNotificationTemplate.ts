@@ -39,6 +39,10 @@ export interface CreateNotificationTemplate {
      * Handlebars template content for rendering notifications
      */
     templateBody: string;
+    /**
+     * Handlebars template for notification subject line
+     */
+    templateSubject: string;
 }
 
 /**

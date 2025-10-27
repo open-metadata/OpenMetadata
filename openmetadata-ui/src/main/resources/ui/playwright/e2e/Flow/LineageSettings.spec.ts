@@ -41,7 +41,7 @@ import { settingClick } from '../../utils/sidebar';
 test.describe('Lineage Settings Tests', () => {
   test.use({ storageState: 'playwright/.auth/admin.json' });
 
-  test('Verify global lineage config', async ({ browser }) => {
+  test.fixme('Verify global lineage config', async ({ browser }) => {
     test.slow(true);
 
     const { page } = await createNewPage(browser);

@@ -230,12 +230,28 @@ describe('ObjectFieldTemplate', () => {
       } as RJSFSchema,
     };
 
+    it('should render additional properties label when additionalProperties is true', () => {
+      render(<ObjectFieldTemplate {...propsWithAdditional} />);
+
+      expect(
+        screen.getByText('label.additional-property-plural')
+      ).toBeInTheDocument();
+    });
+
     it('should render add button when additionalProperties is true', () => {
       render(<ObjectFieldTemplate {...propsWithAdditional} />);
 
       const addButton = screen.getByTestId('add-item-Test Title');
 
       expect(addButton).toBeInTheDocument();
+    });
+
+    it('should not render additional properties label when additionalProperties is false', () => {
+      render(<ObjectFieldTemplate {...defaultProps} />);
+
+      expect(
+        screen.queryByText('label.additional-property-plural')
+      ).not.toBeInTheDocument();
     });
 
     it('should not render add button when additionalProperties is false', () => {

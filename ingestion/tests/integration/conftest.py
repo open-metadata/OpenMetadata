@@ -55,9 +55,17 @@ def pytest_pycollect_makeitem(collector, name, obj):
 
 @pytest.fixture(scope="session", autouse=sys.version_info >= (3, 9))
 def config_testcontatiners():
-    from testcontainers.core.config import testcontainers_config
+    try:
+        from testcontainers.core.config import testcontainers_config
+    except ModuleNotFoundError:
+
+        class _TestContainerConfig:  # type: ignore[too-few-public-methods]
+            max_tries = 10
+
+        return _TestContainerConfig()
 
     testcontainers_config.max_tries = 10
+    return testcontainers_config
 
 
 @pytest.fixture(scope="session")

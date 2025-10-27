@@ -14,6 +14,7 @@
 package org.openmetadata.service.resources.metadata;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.util.EntityUtil.fieldAdded;
@@ -478,6 +479,7 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     return new CreateType()
         .withName(name)
         .withCategory(Category.Field)
+        .withDescription("Type Test Description")
         .withSchema(INT_TYPE.getSchema());
   }
 
@@ -503,6 +505,54 @@ public class TypeResourceTest extends EntityResourceTest<Type, CreateType> {
     } catch (Exception e) {
       throw new IllegalStateException(e.getMessage());
     }
+  }
+
+  @Test
+  void test_getEntityTypeFields_internalSchemaReferences() throws HttpResponseException {
+    // Test that internal schema references like #/definitions/column are handled correctly
+    WebTarget target = getCollection().path("/fields/table");
+    List<Map<String, Object>> fields = TestUtils.get(target, List.class, ADMIN_AUTH_HEADERS);
+
+    // Find the columns field
+    Map<String, Object> columnsField =
+        fields.stream()
+            .filter(field -> "columns".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+
+    // Verify columns field exists and has correct type
+    assertNotNull(columnsField, "columns field should be present");
+    assertEquals(
+        "array<column>",
+        columnsField.get("type"),
+        "columns field should be of type array<column>, not array<string>");
+
+    // Verify that nested column properties are exposed
+    boolean hasColumnName =
+        fields.stream().anyMatch(field -> "columns.name".equals(field.get("name")));
+    boolean hasColumnDescription =
+        fields.stream().anyMatch(field -> "columns.description".equals(field.get("name")));
+    boolean hasColumnDataType =
+        fields.stream().anyMatch(field -> "columns.dataType".equals(field.get("name")));
+
+    assertTrue(hasColumnName, "columns.name field should be exposed");
+    assertTrue(hasColumnDescription, "columns.description field should be exposed");
+    assertTrue(hasColumnDataType, "columns.dataType field should be exposed");
+
+    // Test other internal schema references
+    Map<String, Object> dataModelField =
+        fields.stream()
+            .filter(field -> "dataModel".equals(field.get("name")))
+            .findFirst()
+            .orElse(null);
+
+    assertNotNull(dataModelField, "dataModel field should be present");
+    assertEquals("dataModel", dataModelField.get("type"), "dataModel should be of type object");
+
+    // Verify nested dataModel properties are exposed
+    boolean hasDataModelColumns =
+        fields.stream().anyMatch(field -> "dataModel.columns".equals(field.get("name")));
+    assertTrue(hasDataModelColumns, "dataModel.columns field should be exposed");
   }
 
   @Override

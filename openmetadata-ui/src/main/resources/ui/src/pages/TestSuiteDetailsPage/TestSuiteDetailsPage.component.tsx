@@ -380,8 +380,16 @@ const TestSuiteDetailsPage = () => {
     [currentPage, paging, pageSize, handlePageSizeChange, handleTestCasePaging]
   );
 
-  const tabs = useMemo(
-    () => [
+  const tabs = useMemo(() => {
+    const removeFromTestSuite = testSuite
+      ? {
+          testSuite,
+          isAllowed:
+            testSuitePermissions.EditAll || testSuitePermissions.EditTests,
+        }
+      : undefined;
+
+    return [
       {
         label: (
           <TabsLabel
@@ -398,7 +406,7 @@ const TestSuiteDetailsPage = () => {
             fetchTestCases={handleSortTestCase}
             isLoading={isLoading || isTestCaseLoading}
             pagingData={pagingData}
-            removeFromTestSuite={testSuite ? { testSuite } : undefined}
+            removeFromTestSuite={removeFromTestSuite}
             showPagination={showPagination}
             testCases={testCaseResult}
             onTestCaseResultUpdate={handleTestSuiteUpdate}
@@ -419,21 +427,21 @@ const TestSuiteDetailsPage = () => {
           <TestSuitePipelineTab isLogicalTestSuite testSuite={testSuite} />
         ),
       },
-    ],
-    [
-      testSuite,
-      incidentUrlState,
-      isLoading,
-      isTestCaseLoading,
-      pagingData,
-      showPagination,
-      testCaseResult,
-      handleTestSuiteUpdate,
-      handleSortTestCase,
-      fetchTestCases,
-      ingestionPipelineCount,
-    ]
-  );
+    ];
+  }, [
+    testSuite,
+    incidentUrlState,
+    isLoading,
+    isTestCaseLoading,
+    pagingData,
+    showPagination,
+    testCaseResult,
+    handleTestSuiteUpdate,
+    handleSortTestCase,
+    fetchTestCases,
+    ingestionPipelineCount,
+    testSuitePermissions,
+  ]);
 
   const selectedTestCases = useMemo(() => {
     return testCaseResult.map((test) => test.name);

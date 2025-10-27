@@ -132,7 +132,11 @@ class TableauSource(DashboardServiceSource):
         return cls(config, metadata)
 
     def get_dashboards_list(self) -> Iterable[TableauDashboard]:
-        yield from self.client.get_workbooks()
+        if not self.source_config.includeOwners:
+            logger.debug("Skipping owner information as includeOwners is False")
+        yield from self.client.get_workbooks(
+            include_owners=self.source_config.includeOwners
+        )
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
         return dashboard.name
@@ -151,6 +155,8 @@ class TableauSource(DashboardServiceSource):
         Get dashboard owner from email
         """
         try:
+            if not self.source_config.includeOwners:
+                return None
             if dashboard_details.owner and dashboard_details.owner.email:
                 return self.metadata.get_reference_by_email(
                     dashboard_details.owner.email

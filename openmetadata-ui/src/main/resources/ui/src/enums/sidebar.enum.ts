@@ -20,6 +20,8 @@ export enum SidebarItem {
   OBSERVABILITY_ALERT = 'observability-alert',
   DATA_INSIGHT = 'data-insight',
   DOMAIN = 'domain',
+  DOMAINS_SECTION = 'domains-section',
+  DATA_PRODUCT = 'data-product',
   GOVERNANCE = 'governance',
   GLOSSARY = 'glossary',
   TAGS = 'tags',

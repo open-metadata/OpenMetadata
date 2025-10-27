@@ -33,11 +33,13 @@ import {
 } from '../../../constants/Services.constant';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { CreateWorkflow } from '../../../generated/api/automations/createWorkflow';
+import { ConfigObject } from '../../../generated/entity/automations/testServiceConnection';
 import {
   StatusType,
   TestConnectionStepResult,
   Workflow,
   WorkflowStatus,
+  WorkflowType,
 } from '../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../generated/entity/services/connections/testConnectionDefinition';
 import useAbortController from '../../../hooks/AbortController/useAbortController';
@@ -50,9 +52,9 @@ import {
 } from '../../../rest/workflowAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { formatFormDataForSubmit } from '../../../utils/JSONSchemaFormUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import {
   getServiceType,
+  getTestConnectionName,
   shouldTestConnection,
 } from '../../../utils/ServiceUtils';
 import { getErrorText } from '../../../utils/StringsUtils';
@@ -70,8 +72,8 @@ const TestConnection: FC<TestConnectionProps> = ({
   onValidateFormRequiredFields,
   shouldValidateForm = true,
   showDetails = true,
-  onTestConnection,
   hostIp,
+  extraInfo,
 }) => {
   const { t } = useTranslation();
   const { isAirflowAvailable } = useAirflowStatus();
@@ -278,14 +280,26 @@ const TestConnection: FC<TestConnectionProps> = ({
       timeoutId?: number;
     } = {};
 
+    const { ingestionRunner, ...rest } = updatedFormData as ConfigObject & {
+      ingestionRunner?: string;
+    };
+
     try {
-      const createWorkflowData: CreateWorkflow =
-        serviceUtilClassBase.getAddWorkflowData(
-          connectionType,
+      const ingestionRunnerValue = extraInfo ?? ingestionRunner;
+
+      const createWorkflowData: CreateWorkflow = {
+        name: getTestConnectionName(connectionType),
+        workflowType: WorkflowType.TestConnection,
+        request: {
+          connection: { config: rest },
           serviceType,
+          connectionType,
           serviceName,
-          updatedFormData
-        );
+          ...(ingestionRunnerValue && {
+            ingestionRunner: ingestionRunnerValue,
+          }),
+        },
+      };
 
       // fetch the connection steps for current connectionType
       await fetchConnectionDefinition();
@@ -373,8 +387,6 @@ const TestConnection: FC<TestConnectionProps> = ({
       if (workflowId) {
         await handleDeleteWorkflow(workflowId);
       }
-    } finally {
-      onTestConnection?.();
     }
   };
 

@@ -39,6 +39,10 @@ const entityCreationConfig: EntityDataClassCreationConfig = {
   searchIndex: true,
   dashboardDataModel: true,
   entityDetails: true,
+  directory: true,
+  file: true,
+  spreadsheet: true,
+  worksheet: true,
 };
 
 const entities = [
@@ -52,6 +56,10 @@ const entities = [
   EntityDataClass.container1,
   EntityDataClass.searchIndex1,
   EntityDataClass.dashboardDataModel1,
+  EntityDataClass.directory1,
+  EntityDataClass.file1,
+  EntityDataClass.spreadsheet1,
+  EntityDataClass.worksheet1,
 ];
 
 // use the admin user to login

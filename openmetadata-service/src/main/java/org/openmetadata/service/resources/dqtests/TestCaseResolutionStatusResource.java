@@ -30,12 +30,13 @@ import jakarta.ws.rs.core.UriInfo;
 import java.beans.IntrospectionException;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.Include;
@@ -53,9 +54,9 @@ import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
@@ -159,18 +160,12 @@ public class TestCaseResolutionStatusResource
       @Parameter(description = "Filter incidents by domain", schema = @Schema(type = "String"))
           @QueryParam("domain")
           String domain) {
-    List<AuthRequest> requests = new ArrayList<>();
-    OperationContext testCaseOperationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
-    requests.add(new AuthRequest(testCaseOperationContext, testCaseResourceContext));
-    if (originEntityFQN != null) {
-      OperationContext entityOperationContext =
-          new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
-      ResourceContextInterface entityResourceContext =
-          new ResourceContext<>(Entity.TABLE, null, originEntityFQN);
-      requests.add(new AuthRequest(entityOperationContext, entityResourceContext));
-    }
+    ResourceContextInterface entityResourceContext =
+        buildEntityResourceContext(testCaseFQN, testCaseId, originEntityFQN);
+    List<AuthRequest> requests =
+        buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
+
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
     ListFilter filter = new ListFilter(include);
@@ -202,10 +197,11 @@ public class TestCaseResolutionStatusResource
       @Context SecurityContext securityContext,
       @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("stateId")
           UUID stateId) {
-    OperationContext testCaseOperationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
     ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
-    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
+    ResourceContextInterface entityResourceContext = TestCaseResourceContext.builder().build();
+    List<AuthRequest> requests =
+        buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
     return repository.listTestCaseResolutionStatusesForStateId(stateId);
   }
@@ -230,12 +226,26 @@ public class TestCaseResolutionStatusResource
       @Parameter(description = "Test Case Failure Status ID", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID testCaseResolutionStatusId) {
-    OperationContext testCaseOperationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
-    ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
-    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
+    TestCaseResolutionStatus testCaseResolutionStatus =
+        repository.getById(testCaseResolutionStatusId);
+    TestCase testCase =
+        Entity.getEntityByName(
+            Entity.TEST_CASE,
+            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+            "",
+            Include.ALL);
 
-    return repository.getById(testCaseResolutionStatusId);
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    ResourceContextInterface entityResourceContext =
+        TestCaseResourceContext.builder().entityLink(entityLink).build();
+    List<AuthRequest> requests =
+        buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
+
+    return testCaseResolutionStatus;
   }
 
   @POST
@@ -256,17 +266,22 @@ public class TestCaseResolutionStatusResource
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCaseResolutionStatus createTestCaseResolutionStatus) {
-    OperationContext testCaseOperationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
-    OperationContext entityOperationContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface entityResourceContext = TestCaseResourceContext.builder().build();
 
+    TestCase testCase =
+        Entity.getEntityByName(
+            Entity.TEST_CASE,
+            createTestCaseResolutionStatus.getTestCaseReference(),
+            "",
+            Include.ALL);
+
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    ResourceContextInterface entityResourceContext =
+        TestCaseResourceContext.builder().entityLink(entityLink).build();
     List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(entityOperationContext, entityResourceContext),
-            new AuthRequest(testCaseOperationContext, testCaseResourceContext));
+        buildEditAuthRequests(testCaseResourceContext, entityResourceContext);
 
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCaseResolutionStatus testCaseResolutionStatus =
@@ -305,10 +320,25 @@ public class TestCaseResolutionStatusResource
                       }))
           JsonPatch patch)
       throws IntrospectionException, InvocationTargetException, IllegalAccessException {
-    OperationContext testCaseOperationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
-    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
+
+    TestCaseResolutionStatus testCaseResolutionStatus = repository.getById(id);
+    TestCase testCase =
+        Entity.getEntityByName(
+            Entity.TEST_CASE,
+            testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName(),
+            "",
+            Include.ALL);
+
+    MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(testCase.getEntityLink());
+
+    ResourceContextInterface testCaseResourceContext =
+        TestCaseResourceContext.builder().name(testCase.getFullyQualifiedName()).build();
+    ResourceContextInterface entityResourceContext =
+        TestCaseResourceContext.builder().entityLink(entityLink).build();
+    List<AuthRequest> requests =
+        buildEditAuthRequests(testCaseResourceContext, entityResourceContext);
+
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     RestUtil.PatchResponse<TestCaseResolutionStatus> response =
         repository.patch(id, patch, securityContext.getUserPrincipal().getName());
     return response.toResponse();
@@ -419,12 +449,22 @@ public class TestCaseResolutionStatusResource
     searchListFilter.addQueryParam("testCaseFqn", testCaseFQN);
     searchListFilter.addQueryParam("originEntityFQN", originEntityFQN);
     searchListFilter.addQueryParam("domains", domain);
+    searchListFilter.addQueryParam("startTimestamp", String.valueOf(startTs));
+    searchListFilter.addQueryParam("endTimestamp", String.valueOf(endTs));
 
-    OperationContext testCaseOperationContext =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL);
-    ResourceContextInterface testCaseResourceContext = getTestCaseResourceContext(testCaseFQN);
+    ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
+    ResourceContextInterface entityResourceContext =
+        buildEntityResourceContext(testCaseFQN, null, originEntityFQN);
+    List<AuthRequest> requests =
+        List.of(
+            new AuthRequest(
+                new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL),
+                testCaseResourceContext),
+            new AuthRequest(
+                new OperationContext(Entity.TABLE, MetadataOperation.VIEW_ALL),
+                entityResourceContext));
 
-    authorizer.authorize(securityContext, testCaseOperationContext, testCaseResourceContext);
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
     if (latest) {
       // For latest results, use aggregation grouped by test case to get the latest status per test
@@ -436,17 +476,8 @@ public class TestCaseResolutionStatusResource
           // case
           null);
     } else {
-      return super.listInternalFromSearch(
-          securityContext,
-          new Fields(null),
-          searchListFilter,
-          limit,
-          offset,
-          searchSortFilter,
-          null,
-          null,
-          testCaseOperationContext,
-          testCaseResourceContext);
+      return repository.listFromSearchWithOffset(
+          new Fields(null), searchListFilter, limit, offset, searchSortFilter, null, null);
     }
   }
 
@@ -470,5 +501,59 @@ public class TestCaseResolutionStatusResource
       resourceContext = TestCaseResourceContext.builder().build();
     }
     return resourceContext;
+  }
+
+  protected static List<AuthRequest> buildViewAuthRequests(
+      ResourceContextInterface testCaseResourceContext,
+      ResourceContextInterface entityResourceContext) {
+    return List.of(
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.VIEW_ALL),
+            testCaseResourceContext),
+        new AuthRequest(
+            new OperationContext(Entity.TABLE, MetadataOperation.VIEW_ALL), entityResourceContext),
+        new AuthRequest(
+            new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS),
+            entityResourceContext));
+  }
+
+  protected static List<AuthRequest> buildEditAuthRequests(
+      ResourceContextInterface testCaseResourceContext,
+      ResourceContextInterface entityResourceContext) {
+    return List.of(
+        new AuthRequest(
+            new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS),
+            entityResourceContext),
+        new AuthRequest(
+            new OperationContext(Entity.TABLE, MetadataOperation.EDIT_ALL), entityResourceContext),
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_TESTS),
+            testCaseResourceContext),
+        new AuthRequest(
+            new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL),
+            testCaseResourceContext));
+  }
+
+  protected static ResourceContextInterface buildEntityResourceContext(
+      String testCaseFQN, UUID testCaseId, String originEntityFQN) {
+    if (testCaseFQN != null) {
+      TestCase testCase = Entity.getEntityByName(Entity.TEST_CASE, testCaseFQN, "", Include.ALL);
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(testCase.getEntityLink());
+      return TestCaseResourceContext.builder().entityLink(entityLink).build();
+    } else if (testCaseId != null) {
+      TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "", Include.ALL);
+      MessageParser.EntityLink entityLink =
+          MessageParser.EntityLink.parse(testCase.getEntityLink());
+      return TestCaseResourceContext.builder().entityLink(entityLink).build();
+    } else if (originEntityFQN != null) {
+      EntityInterface entityInterface =
+          Entity.getEntityByName(Entity.TABLE, originEntityFQN, "", Include.ALL);
+      String entityLinkStr =
+          EntityUtil.buildEntityLink(Entity.TABLE, entityInterface.getFullyQualifiedName());
+      MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
+      return TestCaseResourceContext.builder().entityLink(entityLink).build();
+    }
+    return TestCaseResourceContext.builder().build();
   }
 }

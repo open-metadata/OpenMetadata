@@ -79,7 +79,7 @@ public class ClassificationResource
     extends EntityResource<Classification, ClassificationRepository> {
   private final ClassificationMapper mapper = new ClassificationMapper();
   public static final String TAG_COLLECTION_PATH = "/v1/classifications/";
-  static final String FIELDS = "owners,reviewers,usageCount,termCount";
+  static final String FIELDS = "owners,reviewers,usageCount,termCount,autoClassificationConfig";
 
   static class ClassificationList extends ResultList<Classification> {
     /* Required for serde */

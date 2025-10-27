@@ -135,6 +135,24 @@ WHERE
 )
 
 CHECK_ACCESS_TO_ALL = "SELECT table_name FROM DBA_TABLES where ROWNUM < 2"
+
+
+TEST_MATERIALIZED_VIEWS = textwrap.dedent(
+    """
+SELECT COUNT(*) as count
+FROM DBA_MVIEWS
+WHERE ROWNUM = 1
+"""
+)
+
+TEST_QUERY_HISTORY = textwrap.dedent(
+    """
+SELECT COUNT(*) as count
+FROM gv$sql
+WHERE ROWNUM = 1
+"""
+)
+
 ORACLE_GET_STORED_PROCEDURE_QUERIES = textwrap.dedent(
     """
 WITH SP_HISTORY AS (SELECT

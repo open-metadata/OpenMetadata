@@ -198,6 +198,9 @@
           }
         }
       },
+      "followers": {
+        "type": "keyword"
+      },
       "experts": {
         "type": "keyword"
       },

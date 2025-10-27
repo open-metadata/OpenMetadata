@@ -30,7 +30,9 @@ public class LogicOps {
     LENGTH("length"),
     CONTAINS("contains"),
     IS_REVIEWER("isReviewer"),
-    IS_OWNER("isOwner");
+    IS_OWNER("isOwner"),
+    IS_UPDATED_BEFORE("isUpdatedBefore"),
+    IS_UPDATED_AFTER("isUpdatedAfter");
 
     public final String key;
 
@@ -110,6 +112,38 @@ public class LogicOps {
               JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
               throws JsonLogicEvaluationException {
             return evaluateUserInRole(evaluator, arguments, data, "owners");
+          }
+        });
+
+    // {"isUpdatedBefore": 1609459200000} - Check if entity was updated before timestamp
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.IS_UPDATED_BEFORE.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return JsonLogicUtils.evaluateIsUpdatedBefore(evaluator, arguments, data);
+          }
+        });
+
+    // {"isUpdatedAfter": 1609459200000} - Check if entity was updated after timestamp
+    jsonLogic.addOperation(
+        new JsonLogicExpression() {
+          @Override
+          public String key() {
+            return CustomLogicOps.IS_UPDATED_AFTER.key;
+          }
+
+          @Override
+          public Object evaluate(
+              JsonLogicEvaluator evaluator, JsonLogicArray arguments, Object data)
+              throws JsonLogicEvaluationException {
+            return JsonLogicUtils.evaluateIsUpdatedAfter(evaluator, arguments, data);
           }
         });
   }

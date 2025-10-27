@@ -23,6 +23,10 @@ export interface QueryRunnerResponse {
      */
     errorLog?: string;
     /**
+     * The actual query that was executed (may be transpiled or modified from the original)
+     */
+    executedQuery?: string;
+    /**
      * Error message in case of failure
      */
     message?: string;

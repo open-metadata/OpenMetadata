@@ -229,8 +229,10 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
 
-    if service_connection.metastoreConnection and isinstance(
-        service_connection.metastoreConnection, dict
+    if (
+        service_connection.metastoreConnection
+        and isinstance(service_connection.metastoreConnection, dict)
+        and len(service_connection.metastoreConnection) > 0
     ):
         try:
             service_connection.metastoreConnection = MysqlConnection.model_validate(

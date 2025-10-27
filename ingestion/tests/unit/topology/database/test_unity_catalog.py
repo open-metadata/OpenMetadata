@@ -69,7 +69,7 @@ mock_unitycatalog_config = {
                 "type": "UnityCatalog",
                 "catalog": "hive_metastore",
                 "databaseSchema": "default",
-                "token": "123sawdtesttoken",
+                "authType": {"token": "123sawdtesttoken"},
                 "hostPort": "localhost:443",
                 "httpPath": "/sql/1.0/warehouses/abcdedfg",
                 "connectionTimeout": 120,
@@ -483,6 +483,7 @@ EXPTECTED_TABLE = [
                     dataType=DataType.INT,
                     dataLength=1,
                     dataTypeDisplay="int",
+                    tags=None,
                 ),
                 Column(
                     name=ColumnName(root="array_data"),
@@ -490,18 +491,21 @@ EXPTECTED_TABLE = [
                     arrayDataType=DataType.INT,
                     dataLength=1,
                     dataTypeDisplay="array<int>",
+                    tags=None,
                 ),
                 Column(
                     name=ColumnName(root="map_data"),
                     dataType=DataType.MAP,
                     dataLength=1,
                     dataTypeDisplay="map<string,int>",
+                    tags=None,
                 ),
                 Column(
                     name=ColumnName(root="struct_data"),
                     dataType=DataType.STRUCT,
                     dataLength=1,
                     dataTypeDisplay="struct<a:int,b:string,c:array<string>,d:struct<abc:int>>",
+                    tags=None,
                     children=[
                         Column(
                             name=ColumnName(root="a"),

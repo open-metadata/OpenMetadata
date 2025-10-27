@@ -15,6 +15,12 @@ import {
   checkboxCheckedIcon,
   checkboxIndeterminateIcon,
 } from '../components/checkbox-icons';
+import {
+  BODY_FONT_SIZES,
+  BODY_LINE_HEIGHTS,
+  COMPONENT_FONT_SIZES,
+  COMPONENT_LINE_HEIGHTS,
+} from './typography-constants';
 
 export const formTheme = (colors: any) => ({
   MuiTextField: {
@@ -30,64 +36,14 @@ export const formTheme = (colors: any) => ({
     },
     styleOverrides: {
       root: {
-        display: 'flex' as const,
-        flexDirection: 'column' as const,
-        alignItems: 'flex-start',
-        justifyContent: 'flex-start',
-        gap: '6px',
-        height: 'max-content',
-        width: '100%',
-        margin: 0,
-        padding: 0,
-
-        '& .MuiInputLabel-root': {
-          position: 'static' as const,
-          transform: 'none',
-          display: 'flex' as const,
-          cursor: 'default' as const,
-          alignItems: 'center',
-          gap: '2px',
-          fontSize: '0.875rem',
-          lineHeight: '1.25rem',
-          fontWeight: 500,
-          color: colors.gray[700],
-          margin: 0,
-          padding: 0,
-
-          '&.Mui-error': {
-            color: colors.error[600],
-          },
-        },
-        '& .MuiInputLabel-shrink': {
-          transform: 'none',
-        },
-
-        '& .MuiFormHelperText-root': {
-          fontSize: '0.875rem',
-          lineHeight: '1.25rem',
-          color: colors.gray[600],
-          margin: 0,
-          padding: 0,
-
-          '&.Mui-error': {
-            color: colors.error[600],
-          },
-        },
         '& .MuiOutlinedInput-root': {
           borderRadius: '8px',
           backgroundColor: colors.white,
-
           boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
           transition: 'box-shadow 100ms linear',
-          border: 'none',
-          margin: 0,
+
           '& .MuiOutlinedInput-notchedOutline': {
             border: 'none',
-          },
-          '&:hover': {
-            '& .MuiOutlinedInput-notchedOutline': {
-              border: 'none',
-            },
           },
           '&.Mui-focused': {
             boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.brand[600]} inset`,
@@ -116,12 +72,10 @@ export const formTheme = (colors: any) => ({
             fontSize: '20px',
             width: '20px',
             height: '20px',
-            color: '${colors.gray[400]}',
+            color: colors.gray[400],
           },
           '&.MuiInputAdornment-positionStart': {
-            marginLeft: 0,
             marginRight: '8px',
-            paddingLeft: 0,
           },
         },
 
@@ -140,8 +94,8 @@ export const formTheme = (colors: any) => ({
 
           '& .MuiOutlinedInput-input': {
             padding: 0,
-            fontSize: '1rem',
-            lineHeight: '1.5rem',
+            fontSize: COMPONENT_FONT_SIZES.INPUT,
+            lineHeight: COMPONENT_LINE_HEIGHTS.INPUT,
             resize: 'vertical' as const,
             minHeight: 'auto',
           },
@@ -151,43 +105,12 @@ export const formTheme = (colors: any) => ({
   },
   MuiOutlinedInput: {
     styleOverrides: {
-      root: {
-        fontSize: '1rem',
-        lineHeight: '1.5rem',
-
-        '& .MuiOutlinedInput-notchedOutline': {
-          border: 'none',
-        },
-        '&:hover .MuiOutlinedInput-notchedOutline': {
-          border: 'none',
-        },
-        '&.Mui-disabled': {
-          '& .MuiOutlinedInput-notchedOutline': {
-            border: 'none',
-          },
-        },
-
-        '&.MuiOutlinedInput-adornedStart': {
-          paddingLeft: '14px',
-          '& .MuiInputAdornment-positionStart': {
-            marginLeft: 0,
-            marginRight: '8px',
-          },
-        },
+      root: {},
+      notchedOutline: {
+        border: 0,
       },
       input: {
-        display: 'flex' as const,
-        height: 'max-content',
-        alignItems: 'center',
-        padding: '10px 14px',
-        margin: 0,
-        width: '100%',
-        backgroundColor: 'transparent',
-        fontSize: '1rem',
-        color: '${colors.gray[900]}',
-        lineHeight: '1.5rem',
-        outline: 'none' as const,
-        border: 'none',
+        color: colors.gray[900],
         '&::placeholder': {
           color: colors.gray[500],
           opacity: 1,
@@ -195,31 +118,21 @@ export const formTheme = (colors: any) => ({
         '&:disabled': {
           cursor: 'not-allowed',
           color: colors.gray[500],
-          backgroundColor: 'transparent',
           '-webkit-text-fill-color': colors.gray[500],
         },
       },
 
-      sizeSmall: {
-        fontSize: '1rem',
-        '& .MuiOutlinedInput-input': {
-          padding: '8px 12px',
-        },
-      },
+      sizeSmall: {},
     },
   },
   MuiFormControl: {
     styleOverrides: {
       root: {
-        display: 'flex' as const,
-        flexDirection: 'column' as const,
         alignItems: 'flex-start',
         justifyContent: 'flex-start',
         gap: '6px',
         height: 'max-content',
         width: '100%',
-        margin: 0,
-        padding: 0,
 
         '& .MuiInputLabel-root': {
           position: 'static' as const,
@@ -228,12 +141,10 @@ export const formTheme = (colors: any) => ({
           cursor: 'default' as const,
           alignItems: 'center',
           gap: '2px',
-          fontSize: '0.875rem',
-          lineHeight: '1.25rem',
+          fontSize: BODY_FONT_SIZES.BODY2,
+          lineHeight: BODY_LINE_HEIGHTS.BODY2,
           fontWeight: 500,
           color: colors.gray[700],
-          margin: 0,
-          padding: 0,
 
           '&.Mui-error': {
             color: colors.error[600],
@@ -244,11 +155,9 @@ export const formTheme = (colors: any) => ({
         },
 
         '& .MuiFormHelperText-root': {
-          fontSize: '0.875rem',
-          lineHeight: '1.25rem',
+          fontSize: BODY_FONT_SIZES.BODY2,
+          lineHeight: BODY_LINE_HEIGHTS.BODY2,
           color: colors.gray[600],
-          margin: 0,
-          padding: 0,
 
           '&.Mui-error': {
             color: colors.error[600],
@@ -264,67 +173,37 @@ export const formTheme = (colors: any) => ({
       },
 
       outlined: {
-        width: '100%',
         borderRadius: '8px',
         backgroundColor: colors.white,
-        boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
-        transition: 'box-shadow 100ms linear',
-        border: 'none',
-
-        '& .MuiOutlinedInput-notchedOutline': {
-          border: 'none',
-        },
-
-        '&.Mui-focused': {
-          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.brand[600]} inset`,
-        },
-
-        '&:focus-visible': {
-          outline: `2px solid ${colors.brand[600]}`,
-          outlineOffset: '2px',
-        },
-
-        '&.Mui-disabled': {
-          backgroundColor: colors.gray[50],
-          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
-          cursor: 'not-allowed',
-        },
-
-        '&.Mui-error': {
-          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.error[300]} inset`,
-          '&.Mui-focused': {
-            boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.error[600]} inset`,
-          },
-          '&:focus-visible': {
-            outline: `2px solid ${colors.error[600]}`,
-            outlineOffset: '2px',
-          },
-        },
       },
 
       select: {
-        display: 'flex' as const,
-        height: 'max-content',
-        width: '100%',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
-        textAlign: 'left' as const,
         padding: '10px 14px',
         paddingRight: '40px',
-        fontSize: '1rem',
-        lineHeight: '1.5rem',
-        color: '${colors.gray[900]}',
-        backgroundColor: 'transparent',
-        border: 'none',
-        outline: 'none' as const,
-        overflow: 'hidden' as const,
+        fontSize: COMPONENT_FONT_SIZES.INPUT,
+        lineHeight: COMPONENT_LINE_HEIGHTS.INPUT,
+        color: colors.gray[900],
         textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
+        boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
+        transition: 'box-shadow 100ms linear',
+
+        '&:focus, &.Mui-focused': {
+          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.brand[600]} inset`,
+        },
 
         '&.Mui-disabled': {
           color: colors.gray[500],
           cursor: 'not-allowed',
+          backgroundColor: colors.gray[50],
+          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.gray[300]} inset`,
           '-webkit-text-fill-color': colors.gray[500],
+        },
+
+        '&.Mui-error': {
+          boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 1px ${colors.error[300]} inset`,
+          '&:focus, &.Mui-focused': {
+            boxShadow: `0px 1px 2px rgba(10, 13, 18, 0.05), 0px 0px 0px 2px ${colors.error[600]} inset`,
+          },
         },
 
         '&.MuiInputBase-inputSizeSmall': {
@@ -334,7 +213,7 @@ export const formTheme = (colors: any) => ({
       },
 
       icon: {
-        color: '${colors.gray[400]}',
+        color: colors.gray[400],
         fontSize: '20px',
         right: '14px',
 
@@ -527,8 +406,8 @@ export const formTheme = (colors: any) => ({
           gap: '8px',
 
           '& .MuiFormControlLabel-label': {
-            fontSize: '0.875rem',
-            lineHeight: '1.25rem',
+            fontSize: BODY_FONT_SIZES.SMALL,
+            lineHeight: BODY_LINE_HEIGHTS.HELPER,
           },
         },
 
@@ -537,8 +416,8 @@ export const formTheme = (colors: any) => ({
         },
       },
       label: {
-        fontSize: '1rem',
-        lineHeight: '1.5rem',
+        fontSize: COMPONENT_FONT_SIZES.INPUT,
+        lineHeight: COMPONENT_LINE_HEIGHTS.INPUT,
         fontWeight: 500,
         color: colors.gray[700],
         cursor: 'pointer' as const,
@@ -626,6 +505,15 @@ export const formTheme = (colors: any) => ({
         '& .MuiSwitch-track': {
           borderRadius: 24,
         },
+      },
+    },
+  },
+  MuiAutocomplete: {
+    styleOverrides: {
+      paper: {
+        boxShadow:
+          '0px 12px 16px -4px rgba(10, 13, 18, 0.08), 0px 4px 6px -2px rgba(10, 13, 18, 0.03), 0px 2px 2px -1px rgba(10, 13, 18, 0.04)',
+        border: '1px solid rgba(0, 0, 0, 0.08)',
       },
     },
   },

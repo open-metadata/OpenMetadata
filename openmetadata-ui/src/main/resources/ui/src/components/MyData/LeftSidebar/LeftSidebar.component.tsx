@@ -87,9 +87,11 @@ const LeftSidebar = () => {
   const { plugins = [] } = useApplicationsProvider();
 
   const pluginSidebarActions = useMemo(() => {
-    return plugins
-      .flatMap((plugin) => plugin.getSidebarActions?.() ?? [])
-      .sort((a, b) => (a.index ?? 999) - (b.index ?? 999));
+    return (
+      plugins
+        ?.flatMap((plugin) => plugin.getSidebarActions?.() ?? [])
+        .sort((a, b) => (a.index ?? 999) - (b.index ?? 999)) ?? []
+    );
   }, [plugins]);
 
   const menuItems = useMemo(() => {

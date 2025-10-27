@@ -18,6 +18,7 @@ import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { redirectToHomePage } from '../../utils/common';
 import { setUserDefaultPersona } from '../../utils/customizeLandingPage';
+import { navigateToPersonaWithPagination } from '../../utils/persona';
 import { settingClick } from '../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -40,15 +41,19 @@ base.beforeAll('Setup pre-requests', async ({ browser }) => {
   await afterAction();
 });
 
+base.afterAll('Cleanup', async ({ browser }) => {
+  const { afterAction, apiContext } = await performAdminLogin(browser);
+  await persona.delete(apiContext);
+  await afterAction();
+});
+
 const navigateToPersonaNavigation = async (page: Page) => {
   const getPersonas = page.waitForResponse('/api/v1/personas*');
   await settingClick(page, GlobalSettingOptions.PERSONA);
   await page.waitForLoadState('networkidle');
   await getPersonas;
 
-  await page
-    .getByTestId(`persona-details-card-${persona.responseData.name}`)
-    .click();
+  await navigateToPersonaWithPagination(page, persona.data.name, true);
 
   await page.getByTestId('navigation').click();
   await page.waitForLoadState('networkidle');
@@ -207,6 +212,7 @@ test.describe('Settings Navigation Page Tests', () => {
     //   Make changes
     const domainSwitch = page
       .locator('.ant-tree-title:has-text("Domains")')
+      .first()
       .locator('.ant-switch');
 
     await domainSwitch.click();

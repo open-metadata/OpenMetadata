@@ -120,18 +120,6 @@
             </configuration>
           </execution>
           <execution>
-            <id>yarn run type-check</id>
-            <goals>
-              <goal>yarn</goal>
-            </goals>
-            <phase>prepare-package</phase>
-            <configuration>
-              <yarnInheritsProxyConfigFromMaven>${yarnInheritsProxyConfigFromMaven}</yarnInheritsProxyConfigFromMaven>
-              <skip>${skipTests}</skip>
-              <arguments>run type-check</arguments>
-            </configuration>
-          </execution>
-          <execution>
             <id>yarn run build</id>
             <goals>
               <goal>yarn</goal>

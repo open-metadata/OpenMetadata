@@ -98,6 +98,16 @@ jest.mock('../pages/SearchIndexDetailsPage/SearchIndexDetailsPage', () =>
 jest.mock('../pages/StoredProcedure/StoredProcedurePage', () => jest.fn());
 jest.mock('../pages/TableDetailsPageV1/TableDetailsPageV1', () => jest.fn());
 jest.mock('../pages/TopicDetails/TopicDetailsPage.component', () => jest.fn());
+jest.mock('../pages/DirectoryDetailsPage/DirectoryDetailsPage', () =>
+  jest.fn()
+);
+jest.mock('../pages/FileDetailsPage/FileDetailsPage', () => jest.fn());
+jest.mock('../pages/SpreadsheetDetailsPage/SpreadsheetDetailsPage', () =>
+  jest.fn()
+);
+jest.mock('../pages/WorksheetDetailsPage/WorksheetDetailsPage', () =>
+  jest.fn()
+);
 
 describe('EntityUtilClassBase', () => {
   let entityUtil: EntityUtilClassBase;

@@ -380,18 +380,16 @@ export const getTreeConfig = ({
   searchOutputType,
   searchIndex,
   isExplorePage,
-  tierOptions,
 }: {
   searchOutputType: SearchOutputType;
   searchIndex: SearchIndex | SearchIndex[];
-  tierOptions: Promise<ListValues>;
   isExplorePage: boolean;
 }) => {
   const index = isArray(searchIndex) ? searchIndex : [searchIndex];
 
   return searchOutputType === SearchOutputType.ElasticSearch
-    ? advancedSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage)
-    : jsonLogicSearchClassBase.getQbConfigs(tierOptions, index, isExplorePage);
+    ? advancedSearchClassBase.getQbConfigs(index, isExplorePage)
+    : jsonLogicSearchClassBase.getQbConfigs(index, isExplorePage);
 };
 
 export const formatQueryValueBasedOnType = (

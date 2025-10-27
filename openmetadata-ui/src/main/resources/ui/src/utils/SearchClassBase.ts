@@ -22,6 +22,7 @@ import { ReactComponent as DashboardIcon } from '../assets/svg/ic-dashboard.svg'
 import { ReactComponent as DataProductIcon } from '../assets/svg/ic-data-product.svg';
 import { ReactComponent as DatabaseIcon } from '../assets/svg/ic-database.svg';
 import { ReactComponent as DomainIcon } from '../assets/svg/ic-domain.svg';
+import { ReactComponent as DriveIcon } from '../assets/svg/ic-drive-service.svg';
 import { ReactComponent as MlModelIcon } from '../assets/svg/ic-ml-model.svg';
 import { ReactComponent as PipelineIcon } from '../assets/svg/ic-pipeline.svg';
 import { ReactComponent as SchemaIcon } from '../assets/svg/ic-schema.svg';
@@ -115,6 +116,10 @@ class SearchClassBase {
       [EntityType.API_COLLECTION]: SearchIndex.API_COLLECTION_INDEX,
       [EntityType.API_ENDPOINT]: SearchIndex.API_ENDPOINT_INDEX,
       [EntityType.METRIC]: SearchIndex.METRIC_SEARCH_INDEX,
+      [EntityType.DIRECTORY]: SearchIndex.DIRECTORY_SEARCH_INDEX,
+      [EntityType.FILE]: SearchIndex.FILE_SEARCH_INDEX,
+      [EntityType.SPREADSHEET]: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+      [EntityType.WORKSHEET]: SearchIndex.WORKSHEET_SEARCH_INDEX,
     };
   }
 
@@ -156,6 +161,10 @@ class SearchClassBase {
       [SearchIndex.API_COLLECTION_INDEX]: EntityType.API_COLLECTION,
       [SearchIndex.API_ENDPOINT_INDEX]: EntityType.API_ENDPOINT,
       [SearchIndex.METRIC_SEARCH_INDEX]: EntityType.METRIC,
+      [SearchIndex.DIRECTORY_SEARCH_INDEX]: EntityType.DIRECTORY,
+      [SearchIndex.FILE_SEARCH_INDEX]: EntityType.FILE,
+      [SearchIndex.SPREADSHEET_SEARCH_INDEX]: EntityType.SPREADSHEET,
+      [SearchIndex.WORKSHEET_SEARCH_INDEX]: EntityType.WORKSHEET,
     };
   }
 
@@ -196,6 +205,22 @@ class SearchClassBase {
       {
         value: SearchIndex.METRIC_SEARCH_INDEX,
         label: t('label.metric'),
+      },
+      {
+        value: SearchIndex.DIRECTORY_SEARCH_INDEX,
+        label: t('label.directory'),
+      },
+      {
+        value: SearchIndex.FILE_SEARCH_INDEX,
+        label: t('label.file'),
+      },
+      {
+        value: SearchIndex.SPREADSHEET_SEARCH_INDEX,
+        label: t('label.spreadsheet'),
+      },
+      {
+        value: SearchIndex.WORKSHEET_SEARCH_INDEX,
+        label: t('label.worksheet'),
       },
     ];
   }
@@ -268,6 +293,20 @@ class SearchClassBase {
         icon: IconAPIService,
       },
       {
+        title: t('label.drive-plural'),
+        key: SearchIndex.DIRECTORY_SEARCH_INDEX,
+        data: {
+          isRoot: true,
+          childEntities: [
+            EntityType.DIRECTORY,
+            EntityType.FILE,
+            EntityType.SPREADSHEET,
+            EntityType.WORKSHEET,
+          ],
+        },
+        icon: DriveIcon,
+      },
+      {
         title: t('label.governance'),
         key: 'Governance',
         data: {
@@ -315,7 +354,6 @@ class SearchClassBase {
           },
         ],
       },
-
       {
         title: t('label.domain-plural'),
         key: 'Domain',
@@ -348,6 +386,10 @@ class SearchClassBase {
       [ExplorePageTabs.SEARCH_INDEX]: [SearchIndex.SEARCH_INDEX],
       [ExplorePageTabs.API_ENDPOINT]: [SearchIndex.API_ENDPOINT_INDEX],
       [ExplorePageTabs.METRIC]: [SearchIndex.METRIC_SEARCH_INDEX],
+      [ExplorePageTabs.DIRECTORIES]: [SearchIndex.DIRECTORY_SEARCH_INDEX],
+      [ExplorePageTabs.FILES]: [SearchIndex.FILE_SEARCH_INDEX],
+      [ExplorePageTabs.SPREADSHEETS]: [SearchIndex.SPREADSHEET_SEARCH_INDEX],
+      [ExplorePageTabs.WORKSHEETS]: [SearchIndex.WORKSHEET_SEARCH_INDEX],
     };
 
     return tabMapping[tab] || [SearchIndex.DATABASE];
@@ -472,6 +514,34 @@ class SearchClassBase {
         sortingFields: tagSortingFields,
         sortField: TAGS_INITIAL_SORT_FIELD,
         path: ExplorePageTabs.METRIC,
+        icon: MetricIcon,
+      },
+      [SearchIndex.DIRECTORY_SEARCH_INDEX]: {
+        label: t('label.directory-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.DIRECTORIES,
+        icon: MetricIcon,
+      },
+      [SearchIndex.FILE_SEARCH_INDEX]: {
+        label: t('label.file-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.FILES,
+        icon: MetricIcon,
+      },
+      [SearchIndex.SPREADSHEET_SEARCH_INDEX]: {
+        label: t('label.spreadsheet-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.SPREADSHEETS,
+        icon: MetricIcon,
+      },
+      [SearchIndex.WORKSHEET_SEARCH_INDEX]: {
+        label: t('label.worksheet-plural'),
+        sortingFields: tagSortingFields,
+        sortField: TAGS_INITIAL_SORT_FIELD,
+        path: ExplorePageTabs.WORKSHEETS,
         icon: MetricIcon,
       },
     };

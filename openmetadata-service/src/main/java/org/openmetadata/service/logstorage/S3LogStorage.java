@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.logstorage;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import io.micrometer.core.instrument.Timer;
@@ -23,6 +25,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -50,6 +53,7 @@ import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.service.monitoring.StreamableLogsMetrics;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -108,6 +112,8 @@ public class S3LogStorage implements LogStorageInterface {
   private long streamTimeoutMs;
   private int asyncBufferSize;
   private boolean isCustomEndpoint = false;
+  private ServerSideEncryption sseAlgorithm = null;
+  private String kmsKeyId = null;
 
   private final Map<String, StreamContext> activeStreams = new ConcurrentHashMap<>();
   private ExecutorService asyncExecutor;
@@ -136,6 +142,15 @@ public class S3LogStorage implements LogStorageInterface {
           s3Config.getEnableServerSideEncryption() != null
               ? s3Config.getEnableServerSideEncryption()
               : true;
+      if (enableSSE) {
+        if (LogStorageConfiguration.SseAlgorithm.AES_256.equals(s3Config.getSseAlgorithm())) {
+          this.sseAlgorithm = ServerSideEncryption.AES256;
+        } else if (LogStorageConfiguration.SseAlgorithm.AWS_KMS.equals(
+            s3Config.getSseAlgorithm())) {
+          this.sseAlgorithm = ServerSideEncryption.AWS_KMS;
+          this.kmsKeyId = !nullOrEmpty(s3Config.getKmsKeyId()) ? s3Config.getKmsKeyId() : null;
+        }
+      }
       this.storageClass =
           s3Config.getStorageClass() != null
               ? StorageClass.fromValue(s3Config.getStorageClass().value())
@@ -154,25 +169,18 @@ public class S3LogStorage implements LogStorageInterface {
               ? s3Config.getAsyncBufferSizeMB() * 1024 * 1024
               : 5 * 1024 * 1024;
 
-      S3ClientBuilder s3Builder = S3Client.builder().region(Region.of(s3Config.getRegion()));
+      S3ClientBuilder s3Builder =
+          S3Client.builder().region(Region.of(s3Config.getAwsConfig().getAwsRegion()));
 
-      String customEndpoint = (String) config.get("endpoint");
-      if (customEndpoint != null) {
-        s3Builder.endpointOverride(java.net.URI.create(customEndpoint));
+      URI customEndpoint = s3Config.getAwsConfig().getEndPointURL();
+      if (!nullOrEmpty(customEndpoint)) {
+        s3Builder.endpointOverride(java.net.URI.create(customEndpoint.toString()));
         s3Builder.forcePathStyle(true); // Required for MinIO
         this.isCustomEndpoint = true;
       }
 
-      String accessKey = (String) config.get("accessKey");
-      String secretKey = (String) config.get("secretKey");
-      if (accessKey != null && secretKey != null) {
-        s3Builder.credentialsProvider(
-            StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey)));
-      } else {
-        AwsCredentialsProvider credentialsProvider =
-            getCredentialsProvider(s3Config.getAwsConfig());
-        s3Builder.credentialsProvider(credentialsProvider);
-      }
+      AwsCredentialsProvider credentialsProvider = resolveCredentials(s3Config.getAwsConfig());
+      s3Builder.credentialsProvider(credentialsProvider);
 
       this.metrics = (StreamableLogsMetrics) config.get("metrics");
       if (this.metrics == null) {
@@ -185,6 +193,9 @@ public class S3LogStorage implements LogStorageInterface {
         s3Client.headBucket(HeadBucketRequest.builder().bucket(bucketName).build());
       } catch (NoSuchBucketException e) {
         throw new IOException("S3 bucket does not exist: " + bucketName);
+      } catch (Exception e) {
+        throw new RuntimeException(
+            "Error accessing S3 bucket: " + bucketName + ". Validate AWS configuration.", e);
       }
 
       this.asyncExecutor =
@@ -238,6 +249,33 @@ public class S3LogStorage implements LogStorageInterface {
           streamTimeoutMs);
     } catch (Exception e) {
       throw new IOException("Failed to initialize S3LogStorage", e);
+    }
+  }
+
+  private AwsCredentialsProvider resolveCredentials(AWSCredentials config) {
+    String accessKey = config.getAwsAccessKeyId();
+    String secretKey = config.getAwsSecretAccessKey();
+    String sessionToken = config.getAwsSessionToken();
+    if ((!nullOrEmpty(accessKey) && !nullOrEmpty(secretKey))
+        || !nullOrEmpty(config.getEndPointURL())) {
+      if (!nullOrEmpty(sessionToken)) {
+        return StaticCredentialsProvider.create(
+            AwsSessionCredentials.create(accessKey, secretKey, sessionToken));
+      } else {
+        return StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey));
+      }
+    } else {
+      try {
+        AwsCredentialsProvider defaultProvider = DefaultCredentialsProvider.create();
+        defaultProvider.resolveCredentials(); // Triggers validation
+        LOG.info("Using AWS DefaultCredentialsProvider");
+        return defaultProvider;
+      } catch (Exception e) {
+        LOG.warn(
+            "Default credentials not found. Falling back to static credentials. Reason: {}",
+            e.getMessage());
+        return StaticCredentialsProvider.create(AwsBasicCredentials.create(accessKey, secretKey));
+      }
     }
   }
 
@@ -388,7 +426,8 @@ public class S3LogStorage implements LogStorageInterface {
         List<String> lines = new ArrayList<>();
         String line;
         int lineNumber = 0;
-        int startLine = afterCursor != null ? Integer.parseInt(afterCursor) : 0;
+        int startLine =
+            afterCursor != null && !afterCursor.isEmpty() ? Integer.parseInt(afterCursor) : 0;
 
         while (lineNumber < startLine && (line = reader.readLine()) != null) {
           lineNumber++;
@@ -643,17 +682,6 @@ public class S3LogStorage implements LogStorageInterface {
     return String.format("%s/%s/", cleanPrefix, sanitizedFQN);
   }
 
-  private AwsCredentialsProvider getCredentialsProvider(AWSCredentials awsCredentials) {
-    if (awsCredentials != null
-        && awsCredentials.getAwsAccessKeyId() != null
-        && awsCredentials.getAwsSecretAccessKey() != null) {
-      return StaticCredentialsProvider.create(
-          AwsBasicCredentials.create(
-              awsCredentials.getAwsAccessKeyId(), awsCredentials.getAwsSecretAccessKey()));
-    }
-    return DefaultCredentialsProvider.create();
-  }
-
   private void configureLifecyclePolicy() {
     try {
       LifecycleRule rule =
@@ -746,7 +774,10 @@ public class S3LogStorage implements LogStorageInterface {
       }
 
       if (enableSSE && !isCustomEndpoint) {
-        putRequestBuilder.serverSideEncryption(ServerSideEncryption.AES256);
+        putRequestBuilder.serverSideEncryption(this.sseAlgorithm);
+        if (this.sseAlgorithm == ServerSideEncryption.AWS_KMS && this.kmsKeyId != null) {
+          putRequestBuilder.ssekmsKeyId(this.kmsKeyId);
+        }
       }
 
       s3Client.putObject(

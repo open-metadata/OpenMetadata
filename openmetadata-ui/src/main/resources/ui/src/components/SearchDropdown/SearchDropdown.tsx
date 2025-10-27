@@ -68,6 +68,7 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
   independent = false,
   hideCounts = false,
   hasNullOption = false,
+  showSelectedCounts = false,
   triggerButtonSize = 'small',
 }) => {
   const tabsInfo = searchClassBase.getTabsInfo();
@@ -349,7 +350,11 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
           className="quick-filter-dropdown-trigger-btn"
           size={triggerButtonSize}>
           <Space data-testid={`search-dropdown-${label}`} size={4}>
-            <Space size={0}>
+            <Space
+              className={classNames({
+                active: selectedKeys.length > 0,
+              })}
+              size={0}>
               <Typography.Text className="filters-label font-medium">
                 {label}
               </Typography.Text>
@@ -357,7 +362,9 @@ const SearchDropdown: FC<SearchDropdownProps> = ({
                 <span>
                   {': '}
                   <Typography.Text className="text-primary font-medium">
-                    {getSelectedOptionLabelString(selectedKeys)}
+                    {showSelectedCounts
+                      ? `(${selectedKeys.length})`
+                      : getSelectedOptionLabelString(selectedKeys)}
                   </Typography.Text>
                 </span>
               )}

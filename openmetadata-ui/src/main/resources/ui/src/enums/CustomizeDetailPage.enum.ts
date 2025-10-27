@@ -49,6 +49,9 @@ export enum DetailPageWidgetKeys {
   RELATED_METRICS = 'KnowledgePanel.RelatedMetrics',
   ML_MODEL_FEATURES = 'KnowledgePanel.MlModelFeatures',
   CONTAINER_SCHEMA = 'KnowledgePanel.ContainerSchema',
+  DIRECTORY_CHILDREN = 'KnowledgePanel.DirectoryChildren',
+  WORKSHEETS = 'KnowledgePanel.Worksheets',
+  WORKSHEET_COLUMNS = 'KnowledgePanel.WorksheetColumns',
 }
 
 export enum GlossaryTermDetailPageWidgetKeys {

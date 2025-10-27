@@ -13,6 +13,7 @@
 
 import { CheckOutlined } from '@ant-design/icons';
 import Form, { FormProps, IChangeEvent } from '@rjsf/core';
+import { WidgetProps } from '@rjsf/utils';
 import { Button } from 'antd';
 import classNames from 'classnames';
 import { LoadingState } from 'Models';
@@ -42,7 +43,7 @@ export interface Props extends FormProps {
   status?: LoadingState;
   onCancel?: () => void;
   useSelectWidget?: boolean;
-  hasTestedConnection?: boolean;
+  capitalizeOptionLabel?: boolean;
 }
 
 const FormBuilder = forwardRef<Form, Props>(
@@ -61,8 +62,8 @@ const FormBuilder = forwardRef<Form, Props>(
       uiSchema,
       onFocus,
       useSelectWidget = false,
+      capitalizeOptionLabel = false,
       children,
-      hasTestedConnection,
       ...props
     },
     ref
@@ -80,7 +81,14 @@ const FormBuilder = forwardRef<Form, Props>(
       autoComplete: AsyncSelectWidget,
       queryBuilder: QueryBuilderWidget,
       code: CodeWidget,
-      ...(useSelectWidget && { SelectWidget: SelectWidget }),
+      ...(useSelectWidget && {
+        SelectWidget: (props: WidgetProps) => (
+          <SelectWidget
+            {...props}
+            capitalizeOptionLabel={capitalizeOptionLabel}
+          />
+        ),
+      }),
     };
 
     const handleCancel = () => {
@@ -96,9 +104,6 @@ const FormBuilder = forwardRef<Form, Props>(
     };
 
     const submitButton = useMemo(() => {
-      if (hasTestedConnection === false) {
-        return null;
-      }
       if (status === 'waiting') {
         return (
           <Button
@@ -129,7 +134,7 @@ const FormBuilder = forwardRef<Form, Props>(
           </Button>
         );
       }
-    }, [status, isLoading, okText, hasTestedConnection]);
+    }, [status, isLoading, okText]);
 
     return (
       <Form

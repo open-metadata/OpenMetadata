@@ -18,7 +18,12 @@ export interface NodeInformation {
      * Entity object.
      */
     entity?: any;
-    paging?: LayerPaging;
+    /**
+     * Depth of the node from the root entity in the lineage graph. Root entity has depth 0, its
+     * immediate upstream/downstream entities have depth 1, and so on.
+     */
+    nodeDepth?: number;
+    paging?:    LayerPaging;
     [property: string]: any;
 }
 

@@ -302,7 +302,7 @@ test.describe('Tag Page with Admin Roles', () => {
     await adminPage.waitForLoadState('networkidle');
 
     const myDataRes = adminPage.waitForResponse(
-      `/api/v1/search/query?q=*&index=all&from=0&size=15`
+      `/api/v1/search/query?q=*&index=all&*`
     );
     await adminPage.getByTestId('mydata').click();
     await myDataRes;

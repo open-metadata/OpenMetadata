@@ -47,8 +47,11 @@ const AddSubDomainModal = ({
       maskClosable={false}
       okText={t('label.submit')}
       open={open}
+      styles={{
+        body: { padding: '48px' },
+      }}
       title={t('label.add-entity', { entity: t('label.sub-domain') })}
-      width={750}
+      width={670}
       onCancel={onCancel}>
       <AddDomainForm
         isFormInDialog

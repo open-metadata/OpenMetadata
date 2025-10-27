@@ -21,8 +21,8 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
-        'react', 
-        'react-dom', 
+        'react',
+        'react-dom',
         'react/jsx-runtime',
         '@mui/material',
         '@mui/system',
@@ -32,7 +32,8 @@ export default defineConfig({
         '@mui/x-date-pickers',
         '@emotion/react',
         '@emotion/styled',
-        '@material/material-color-utilities'
+        '@material/material-color-utilities',
+        'notistack'
       ],
       output: {
         globals: {
@@ -41,7 +42,8 @@ export default defineConfig({
           '@mui/material': 'MaterialUI',
           '@mui/system': 'MUISystem',
           '@emotion/react': 'EmotionReact',
-          '@emotion/styled': 'EmotionStyled'
+          '@emotion/styled': 'EmotionStyled',
+          'notistack': 'notistack'
         }
       }
     },

@@ -26,7 +26,7 @@ def create_service_request(postgres_container, tmp_path_factory):
                 username=postgres_container.username,
                 authType=BasicAuth(password=postgres_container.password),
                 hostPort="localhost:"
-                + postgres_container.get_exposed_port(postgres_container.port),
+                + str(postgres_container.get_exposed_port(postgres_container.port)),
                 database="dvdrental",
             )
         ),

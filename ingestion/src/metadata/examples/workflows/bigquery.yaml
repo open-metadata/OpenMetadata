@@ -5,6 +5,7 @@ source:
     config:
       type: BigQuery
       taxonomyProjectID: [ project-id-where-policy-tags-exist ]
+      # includePolicyTags: false
       credentials:
         gcpConfig:
           type: service_account

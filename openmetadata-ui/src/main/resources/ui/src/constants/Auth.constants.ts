@@ -33,4 +33,8 @@ export const HTTP_STATUS_CODE = {
   LIMIT_REACHED: 429, // Entity creation limit reached
 };
 
-export const UN_AUTHORIZED_EXCLUDED_PATHS = ['/users/refresh', '/users/login'];
+export const UN_AUTHORIZED_EXCLUDED_PATHS = [
+  '/users/refresh',
+  'auth/refresh',
+  '/users/login',
+];

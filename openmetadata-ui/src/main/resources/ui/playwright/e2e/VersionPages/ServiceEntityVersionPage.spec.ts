@@ -36,6 +36,7 @@ const entityCreationConfig: EntityDataClassCreationConfig = {
   searchIndexService: true,
   storageService: true,
   entityDetails: true,
+  driveService: true,
 };
 
 const entities = [
@@ -50,6 +51,7 @@ const entities = [
   EntityDataClass.storageService,
   EntityDataClass.database,
   EntityDataClass.databaseSchema,
+  EntityDataClass.driveService,
 ];
 
 // use the admin user to login

@@ -37,6 +37,10 @@
         "results": {
             "description": "Results of the query execution",
             "$ref": "../../data/table.json#/definitions/tableData"
+        },
+        "executedQuery": {
+            "description": "The actual query that was executed (may be transpiled or modified from the original)",
+            "type": "string"
         }
     },
     "additionalProperties": false

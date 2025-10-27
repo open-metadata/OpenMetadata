@@ -194,7 +194,10 @@ export const PersonaPage = ({ pageTitle }: { pageTitle: string }) => {
           <div className="persona-cards-grid">
             {isLoading
               ? [1, 2, 3].map((key) => (
-                  <div className="skeleton-card-item" key={key}>
+                  <div
+                    className="skeleton-card-item"
+                    data-testid="skeleton-card-loader"
+                    key={key}>
                     <Card>
                       <Skeleton active paragraph title />
                     </Card>

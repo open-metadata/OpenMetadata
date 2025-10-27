@@ -140,10 +140,30 @@ MOCK_SCHEMA_NAME_1 = "INFORMATION_SCHEMA"
 MOCK_SCHEMA_NAME_2 = "TPCDS_SF10TCL"
 MOCK_VIEW_NAME = "COLUMNS"
 MOCK_TABLE_NAME = "CALL_CENTER"
-EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+
+# Table URLs
 EXPECTED_SNOW_URL_TABLE = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
-EXPECTED_SNOW_URL_VIEW_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
 EXPECTED_SNOW_URL_TABLE_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/TPCDS_SF10TCL/table/CALL_CENTER"
+EXPECTED_SNOW_URL_TRANSIENT = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/table/TEST_TRANSIENT"
+EXPECTED_SNOW_URL_TRANSIENT_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/table/TEST_TRANSIENT"
+EXPECTED_SNOW_URL_DYNAMIC = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/dynamic-table/TEST_DYNAMIC"
+EXPECTED_SNOW_URL_DYNAMIC_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/dynamic-table/TEST_DYNAMIC"
+EXPECTED_SNOW_URL_EXTERNAL = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/external-table/TEST_EXTERNAL"
+EXPECTED_SNOW_URL_EXTERNAL_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/external-table/TEST_EXTERNAL"
+
+EXPECTED_SNOW_URL_VIEW = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+EXPECTED_SNOW_URL_VIEW_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/view/COLUMNS"
+EXPECTED_SNOW_URL_MATERIALIZED_VIEW = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/materialized-view/TEST_MV"
+EXPECTED_SNOW_URL_MATERIALIZED_VIEW_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/materialized-view/TEST_MV"
+
+EXPECTED_SNOW_URL_STREAM = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/stream/TEST_STREAM"
+EXPECTED_SNOW_URL_STREAM_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/stream/TEST_STREAM"
+
+# Procedure URLs
+EXPECTED_SNOW_URL_PROCEDURE = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/procedure/TEST_PROC(VARCHAR)"
+EXPECTED_SNOW_URL_PROCEDURE_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/procedure/TEST_PROC(VARCHAR)"
+EXPECTED_SNOW_URL_UDF = "https://app.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/user-function/TEST_UDF(NUMBER)"
+EXPECTED_SNOW_URL_UDF_CUSTOM = "https://custom.snowflake.com/random_org/random_account/#/data/databases/SNOWFLAKE_SAMPLE_DATA/schemas/INFORMATION_SCHEMA/user-function/TEST_UDF(NUMBER)"
 
 
 def get_snowflake_sources():
@@ -225,10 +245,28 @@ class SnowflakeUnitTest(TestCase):
         for source_key, source in self.sources.items():
             if source_key == "custom_host":
                 expected_table_url = EXPECTED_SNOW_URL_TABLE_CUSTOM
+                expected_transient_url = EXPECTED_SNOW_URL_TRANSIENT_CUSTOM
+                expected_dynamic_url = EXPECTED_SNOW_URL_DYNAMIC_CUSTOM
+                expected_external_url = EXPECTED_SNOW_URL_EXTERNAL_CUSTOM
                 expected_view_url = EXPECTED_SNOW_URL_VIEW_CUSTOM
+                expected_materialized_view_url = (
+                    EXPECTED_SNOW_URL_MATERIALIZED_VIEW_CUSTOM
+                )
+                expected_stream_url = EXPECTED_SNOW_URL_STREAM_CUSTOM
+                expected_procedure_url = EXPECTED_SNOW_URL_PROCEDURE_CUSTOM
+                expected_udf_url = EXPECTED_SNOW_URL_UDF_CUSTOM
             else:
                 expected_table_url = EXPECTED_SNOW_URL_TABLE
+                expected_transient_url = EXPECTED_SNOW_URL_TRANSIENT
+                expected_dynamic_url = EXPECTED_SNOW_URL_DYNAMIC
+                expected_external_url = EXPECTED_SNOW_URL_EXTERNAL
                 expected_view_url = EXPECTED_SNOW_URL_VIEW
+                expected_materialized_view_url = EXPECTED_SNOW_URL_MATERIALIZED_VIEW
+                expected_stream_url = EXPECTED_SNOW_URL_STREAM
+                expected_procedure_url = EXPECTED_SNOW_URL_PROCEDURE
+                expected_udf_url = EXPECTED_SNOW_URL_UDF
+
+            # Test regular table URL
             self.assertEqual(
                 source.get_source_url(
                     database_name=MOCK_DB_NAME,
@@ -239,6 +277,40 @@ class SnowflakeUnitTest(TestCase):
                 expected_table_url,
             )
 
+            # Test transient table URL (should use 'table')
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_TRANSIENT",
+                    table_type=TableType.Transient,
+                ),
+                expected_transient_url,
+            )
+
+            # Test dynamic table URL
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_DYNAMIC",
+                    table_type=TableType.Dynamic,
+                ),
+                expected_dynamic_url,
+            )
+
+            # Test external table URL
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_EXTERNAL",
+                    table_type=TableType.External,
+                ),
+                expected_external_url,
+            )
+
+            # Test view URL
             self.assertEqual(
                 source.get_source_url(
                     database_name=MOCK_DB_NAME,
@@ -247,6 +319,52 @@ class SnowflakeUnitTest(TestCase):
                     table_type=TableType.View,
                 ),
                 expected_view_url,
+            )
+
+            # Test materialized view URL
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_MV",
+                    table_type=TableType.MaterializedView,
+                ),
+                expected_materialized_view_url,
+            )
+
+            # Test stream URL
+            self.assertEqual(
+                source.get_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    table_name="TEST_STREAM",
+                    table_type=TableType.Stream,
+                ),
+                expected_stream_url,
+            )
+
+            # Test stored procedure URL
+            self.assertEqual(
+                source.get_procedure_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    procedure_name="TEST_PROC",
+                    procedure_signature="(VARCHAR)",
+                    procedure_type="StoredProcedure",
+                ),
+                expected_procedure_url,
+            )
+
+            # Test UDF URL
+            self.assertEqual(
+                source.get_procedure_source_url(
+                    database_name=MOCK_DB_NAME,
+                    schema_name=MOCK_SCHEMA_NAME_1,
+                    procedure_name="TEST_UDF",
+                    procedure_signature="(NUMBER)",
+                    procedure_type="UDF",
+                ),
+                expected_udf_url,
             )
 
     def test_source_url(self):

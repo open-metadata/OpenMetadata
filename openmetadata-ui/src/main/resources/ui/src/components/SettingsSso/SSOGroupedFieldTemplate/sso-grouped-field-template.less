@@ -1,0 +1,147 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import (reference) '../../../styles/variables.less';
+
+.sso-field-group-box {
+  background: @grey-9;
+  border: 1px solid @grey-200;
+  border-radius: @border-rad-xs;
+  padding: @size-mlg;
+  margin-bottom: @size-md;
+
+  &.hidden {
+    display: none !important;
+  }
+
+  .hidden {
+    display: none !important;
+  }
+
+  .group-title-header {
+    margin-bottom: @size-md;
+    padding-bottom: @size-xs;
+    border-bottom: 1px solid @grey-200;
+
+    .group-title-label {
+      font-size: @font-size-base;
+      font-weight: 600;
+      color: @grey-900;
+      margin: 0;
+      text-transform: none;
+    }
+  }
+
+  .property-wrapper {
+    margin-bottom: @size-mlg;
+
+    .form-group {
+      margin-bottom: 0;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &.sso-field-group-spaced {
+    margin-top: @size-md;
+  }
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  .form-control,
+  .ant-select-selector,
+  .ant-input {
+    background-color: @background-color;
+    border: 1px solid @grey-300;
+    border-radius: @border-rad-xs;
+
+    &:hover {
+      border-color: @primary-color;
+    }
+
+    &:focus {
+      border-color: @primary-color;
+      box-shadow: @box-shadow-ant-select;
+      outline: none;
+    }
+  }
+
+  .ant-radio-wrapper {
+    .ant-radio {
+      .ant-radio-inner {
+        background-color: @background-color;
+        border-color: @grey-300;
+      }
+
+      &.ant-radio-checked {
+        .ant-radio-inner {
+          background-color: @primary-color;
+          border-color: @primary-color;
+        }
+      }
+
+      &:hover .ant-radio-inner {
+        border-color: @primary-color;
+      }
+    }
+  }
+
+  &.ldap-saml-group {
+    border: none;
+    border-radius: @border-rad-xs;
+    padding: @size-mlg;
+    margin-bottom: @size-md;
+    box-shadow: none;
+
+    &:hover {
+      border: none;
+      box-shadow: none;
+    }
+  }
+}
+
+.sso-configuration-form-card .default-object-field,
+.sso-settings-page .default-object-field {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+
+  .property-wrapper {
+    margin-bottom: @size-md;
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+
+    .form-group {
+      margin-bottom: 0;
+      background: transparent !important;
+      border: none !important;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .sso-field-group-box {
+    background: @grey-9;
+    border: none;
+    border-radius: @border-rad-sm;
+    padding: @size-md;
+  }
+}

@@ -1,7 +1,7 @@
 {
     "name": "Databricks",
     "displayName": "Databricks Test Connection",
-    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas and tables.",
+    "description": "This Test Connection validates the access against the database and basic metadata extraction of schemas, tables, views, tags, and lineage information.",
     "steps": [
       {
         "name": "CheckAccess",
@@ -30,7 +30,7 @@
       },
       {
         "name": "GetViews",
-        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+        "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the views of a random schema.",
         "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
         "mandatory": false
       },
@@ -38,6 +38,48 @@
         "name": "GetQueries",
         "description": "Check if we can access the queries form `https://{your_host}/api/2.0/sql/history/queries` API. NOTE: To access this api you must have a premium subscription to databricks.",
         "errorMessage": "Failed to fetch queries, please validate if the user has access to `https://{your_host}/api/2.0/sql/history/queries` API.",
+        "mandatory": false
+      },
+      {
+        "name": "GetViewDefinitions",
+        "description": "Validate access to INFORMATION_SCHEMA.VIEWS for fetching view definitions.",
+        "errorMessage": "Failed to fetch view definitions from INFORMATION_SCHEMA.VIEWS. Please ensure the user has SELECT privilege on INFORMATION_SCHEMA.VIEWS. This is required for extracting view metadata.",
+        "mandatory": false
+      },
+      {
+        "name": "GetCatalogTags",
+        "description": "Validate access to information_schema.catalog_tags for catalog tag extraction.",
+        "errorMessage": "Failed to access information_schema.catalog_tags. Please ensure the user has SELECT privilege on information_schema.catalog_tags. This is required for extracting catalog-level tags.",
+        "mandatory": false
+      },
+      {
+        "name": "GetSchemaTags",
+        "description": "Validate access to information_schema.schema_tags for schema tag extraction.",
+        "errorMessage": "Failed to access information_schema.schema_tags. Please ensure the user has SELECT privilege on information_schema.schema_tags. This is required for extracting schema-level tags.",
+        "mandatory": false
+      },
+      {
+        "name": "GetTableTags",
+        "description": "Validate access to information_schema.table_tags for table tag extraction.",
+        "errorMessage": "Failed to access information_schema.table_tags. Please ensure the user has SELECT privilege on information_schema.table_tags. This is required for extracting table-level tags.",
+        "mandatory": false
+      },
+      {
+        "name": "GetColumnTags",
+        "description": "Validate access to information_schema.column_tags for column tag extraction.",
+        "errorMessage": "Failed to access information_schema.column_tags. Please ensure the user has SELECT privilege on information_schema.column_tags. This is required for extracting column-level tags.",
+        "mandatory": false
+      },
+      {
+        "name": "GetTableLineage",
+        "description": "Validate access to system.access.table_lineage for table lineage tracking.",
+        "errorMessage": "Failed to access system.access.table_lineage. Please ensure the user has SELECT privilege on system.access.table_lineage. This is required for table-level lineage extraction.",
+        "mandatory": false
+      },
+      {
+        "name": "GetColumnLineage",
+        "description": "Validate access to system.access.column_lineage for column lineage tracking.",
+        "errorMessage": "Failed to access system.access.column_lineage. Please ensure the user has SELECT privilege on system.access.column_lineage. This is required for column-level lineage extraction.",
         "mandatory": false
       }
     ]

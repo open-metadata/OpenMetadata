@@ -1,0 +1,34 @@
+{
+  "$id": "https://open-metadata.org/schema/type/customRecognizer.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "CustomRecognizer",
+  "description": "Custom recognizer with user-defined logic",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.CustomRecognizer",
+  "properties": {
+    "type": {
+      "const": "custom"
+    },
+    "validatorFunction": {
+      "description": "Optional custom validation function (Python code)",
+      "type": "string"
+    },
+    "config": {
+      "description": "Custom configuration parameters",
+      "type": "object",
+      "additionalProperties": true
+    },
+    "supportedEntity": {
+      "description": "The entity type this recognizer detects",
+      "$ref": "piiEntity.json"
+    },
+    "supportedLanguage": {
+      "description": "Language supported by this recognizer (ISO 639-1 code)",
+      "type": "string",
+      "default": "en",
+      "pattern": "^[a-z]{2}(-[A-Z]{2})?$"
+    }
+  },
+  "required": ["type", "validatorFunction", "supportedEntity", "supportedLanguage"],
+  "additionalProperties": false
+}

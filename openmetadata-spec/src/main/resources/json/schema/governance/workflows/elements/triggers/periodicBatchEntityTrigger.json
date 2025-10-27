@@ -20,13 +20,42 @@
         },
         "entityType": {
           "title": "Entity Type",
-          "description": "Entity Type for which it should be triggered.",
+          "description": "Deprecated: Single entity type for which workflow should be triggered. Use 'entityTypes' for multiple types.",
           "type": "string"
+        },
+        "entityTypes": {
+          "title": "Entity Types",
+          "description": "Array of Entity Types for which this workflow should be triggered. Supports multiple entity types in one workflow.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "uniqueItems": true
         },
         "filters": {
           "title": "Filters",
-          "description": "Select the Search Filters to filter down the entities fetched.",
-          "type": "string"
+          "description": "Search filters for entities. Can be a string (applied to all entity types) or an object mapping entity types to their specific filters.",
+          "oneOf": [
+            {
+              "type": "string",
+              "description": "Single filter applied to all entity types (legacy format)"
+            },
+            {
+              "type": "object",
+              "description": "Entity-specific filters with optional default",
+              "properties": {
+                "default": {
+                  "type": "string",
+                  "description": "Default filter for entity types not explicitly configured"
+                }
+              },
+              "additionalProperties": {
+                "type": "string",
+                "description": "Filter for specific entity type"
+              }
+            }
+          ]
         },
         "batchSize": {
           "title": "Batch Size",
@@ -35,10 +64,13 @@
           "default": 500
         }
       },
-      "required": [
-        "schedule",
-        "entityType",
-        "filters"
+      "anyOf": [
+        {
+          "required": ["schedule", "entityType", "filters"]
+        },
+        {
+          "required": ["schedule", "entityTypes", "filters"]
+        }
       ],
       "additionalProperties": false
     }

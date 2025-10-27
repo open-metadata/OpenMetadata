@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TFunctionKeys } from 'i18next';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/page';
 
-export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
+export const TAB_LABEL_MAP = {
   [EntityTabs.OVERVIEW]: 'label.overview',
   [EntityTabs.GLOSSARY_TERMS]: 'label.glossary-term-plural',
   [EntityTabs.ASSETS]: 'label.asset-plural',
@@ -58,7 +59,9 @@ export const TAB_LABEL_MAP: Record<EntityTabs, string> = {
   [EntityTabs.INSIGHTS]: 'label.insight-plural',
   [EntityTabs.SCHEMAS]: 'label.schema-plural',
   [EntityTabs.CONTRACT]: 'label.contract',
-} as const;
+  [EntityTabs.DIRECTORIES]: 'label.directory-plural',
+  [EntityTabs.WORKSHEETS]: 'label.worksheet-plural',
+} as Record<EntityTabs, TFunctionKeys>;
 
 export type CustomizeEntityType =
   | EntityType.TABLE
@@ -78,7 +81,11 @@ export type CustomizeEntityType =
   | EntityType.GLOSSARY_TERM
   | EntityType.CONTAINER
   | EntityType.METRIC
-  | EntityType.CHART;
+  | EntityType.CHART
+  | EntityType.DIRECTORY
+  | EntityType.FILE
+  | EntityType.SPREADSHEET
+  | EntityType.WORKSHEET;
 
 export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.TABLE]: PageType.Table,
@@ -99,4 +106,8 @@ export const ENTITY_PAGE_TYPE_MAP: Record<CustomizeEntityType, PageType> = {
   [EntityType.CONTAINER]: PageType.Container,
   [EntityType.METRIC]: PageType.Metric,
   [EntityType.CHART]: PageType.Chart,
+  [EntityType.DIRECTORY]: PageType.Directory,
+  [EntityType.FILE]: PageType.File,
+  [EntityType.SPREADSHEET]: PageType.Spreadsheet,
+  [EntityType.WORKSHEET]: PageType.Worksheet,
 };

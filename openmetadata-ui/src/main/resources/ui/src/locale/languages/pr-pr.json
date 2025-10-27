@@ -10,6 +10,7 @@
     "access": "دسترسی",
     "access-block-time": "زمان مسدود کردن دسترسی",
     "access-control": "کنترل دسترسی",
+    "access-policy": "ਐਕਸੈਸ ਨੀਤੀ",
     "access-policy-name": "نام سیاست دسترسی",
     "access-token": "توکن دسترسی",
     "accessed": "دسترسی پیدا کرد",
@@ -43,7 +44,9 @@
     "add-contract-detail-plural": "افزودن جزئیات قرارداد",
     "add-custom-entity-property": "اضافه کردن خصوصیت سفارشی {{entity}}",
     "add-data-asset-rule": "افزودن قانون دارایی داده",
+    "add-data-product": "Add Data Product",
     "add-deploy": "اضافه کردن و استقرار",
+    "add-domain": "Add Domain",
     "add-entity": "اضافه کردن {{entity}}",
     "add-entity-metric": "اضافه کردن معیار {{entity}}",
     "add-entity-test": "اضافه کردن تست {{entity}}",
@@ -65,6 +68,7 @@
     "added-yet-lowercase": "هنوز اضافه نشده است.",
     "adding-new-classification": "اضافه کردن طبقه‌بندی جدید",
     "adding-new-tag": "اضافه کردن تگ جدید به {{categoryName  }}",
+    "additional-property-plural": "ویژگی‌های اضافی",
     "address": "آدرس",
     "admin": "مدیر",
     "admin-plural": "مدیران",
@@ -130,7 +134,9 @@
     "arrow-symbol": "→",
     "as-lowercase": "به عنوان",
     "asset": "دارایی",
+    "asset-level": "سطح دارایی",
     "asset-lowercase": "دارایی",
+    "asset-or-column": "Asset or Column",
     "asset-plural": "دارایی‌ها",
     "asset-plural-lowercase": "دارایی‌ها",
     "assigned": "اختصاص داده شد",
@@ -197,6 +203,7 @@
     "by-lowercase": "توسط",
     "ca-certs": "گواهی‌های CA",
     "cancel": "لغو",
+    "cancel-lowercase": "لغو",
     "cardinality": "Cardinality",
     "category": "دسته‌بندی",
     "category-plural": "دسته‌بندی‌ها",
@@ -214,6 +221,7 @@
     "check-upstream-failure": "خطای بالادست را بررسی کنید",
     "children": "فرزندان",
     "children-lowercase": "فرزندان",
+    "choose-provider": "Choose Provider",
     "claim-ownership": "ادعای مالکیت",
     "classification": "طبقه‌بندی",
     "classification-lowercase": "طبقه‌بندی",
@@ -224,6 +232,7 @@
     "clear": "پاک کردن",
     "clear-entity": "پاک کردن {{entity}}",
     "click-here": "اینجا کلیک کنید",
+    "click-to-upload": "Click to upload",
     "client-email": "ایمیل کلاینت",
     "client-id": "شناسه کلاینت",
     "client-secret": "کلید مخفی کلاینت",
@@ -286,7 +295,9 @@
     "constraint": "محدودیت",
     "constraint-plural": "Constraints",
     "constraint-type": "نوع محدودیت",
+    "consumer": "ਉਪਭੋਗਤਾ",
     "consumer-aligned": "هماهنگ با مصرف‌کننده",
+    "consumer-plural": "ਉਪਭੋਗਤਾ",
     "contain-plural": "Contém",
     "container": "ظرف",
     "container-column": "ستون ظرف",
@@ -306,6 +317,7 @@
     "cost": "هزینه",
     "cost-analysis": "تحلیل هزینه",
     "count": "شمارش",
+    "cover-image": "Cover",
     "covered": "Covered",
     "create": "ایجاد",
     "create-entity": "ایجاد {{entity}}",
@@ -313,15 +325,18 @@
     "create-new-test-suite": "ایجاد مجموعه تست جدید",
     "create-widget": "ایجاد ویجت",
     "created-a-task-lowercase": "یک کار ایجاد شد",
+    "created-at": "Created at",
     "created-by": "ایجاد شده توسط",
     "created-by-me": "ایجاد شده توسط من",
     "created-date": "تاریخ ایجاد",
     "created-lowercase": "ایجاد شد",
+    "created-time": "زمان ایجاد",
     "creating-account": "ایجاد حساب کاربری",
     "creating-lowercase": "در حال ایجاد",
     "credentials-type": "نوع اعتبارنامه",
     "criteria": "معیارها",
     "cron": "کرون",
+    "csv": "CSV",
     "curated-asset-plural": "دارایی‌های انتخاب شده",
     "current-default": "ਮੌਜੂਦਾ ਡਿਫਾਲਟ",
     "current-offset": "آفست فعلی",
@@ -339,7 +354,7 @@
     "custom-query": "Custom Query",
     "custom-range": "محدوده سفارشی",
     "custom-theme": "تم سفارشی",
-    "customise": "سفارشی‌سازی",
+    "customize": "Customize",
     "customize-entity": "سفارشی‌سازی {{entity}}",
     "customize-entity-widget-plural": "سفارشی‌سازی ویجت‌های {{entity}}",
     "customize-tab-plural": "سفارشی‌سازی تب‌ها",
@@ -462,11 +477,14 @@
     "deleted": "حذف شد",
     "deleted-entity": "{{entity}} حذف شد",
     "deleted-lowercase": "حذف شد",
+    "deleting": "Deleting",
     "deleting-lowercase": "در حال حذف",
+    "deleting-with-progress": "Deleting... ({{current}} of {{total}})",
     "denied": "Denied",
     "denied-operation-plural": "Denied Operations",
     "denied-operations-label": "Denied Operations:",
     "deny-rule-plural": "Deny Rules",
+    "dependency-direction": "جهت وابستگی: <0>{{direction}}</0>",
     "deploy": "استقرار",
     "deployed": "مستقر شد",
     "deployed-lowercase": "مستقر شد",
@@ -483,15 +501,19 @@
     "developed-by-developer": "توسعه یافته توسط {{developer}}",
     "diagnostic-info": "اطلاعات تشخیصی",
     "dimension": "Dimension",
+    "direct": "مستقیم",
     "direct-lowercase": "direct",
     "direct-policy-plural": "Direct Policies",
     "direct-role": "Direct Role",
     "direct-role-plural": "Direct Roles",
     "direct-team-policy-plural": "Direct Team Policies",
+    "directory": "دایرکتوری",
+    "directory-plural": "دایرکتوری‌ها",
     "disable": "غیرفعال",
     "disable-lowercase": "غیرفعال",
     "disable-tag": "غیرفعال کردن برچسب",
     "disabled": "غیرفعال شد",
+    "discard": "رد کرنا",
     "discover": "کشف",
     "display-name": "نام نمایشی",
     "display-name-lowercase": "نام نمایشی",
@@ -510,7 +532,12 @@
     "domain-type": "نوع دامنه",
     "domain_access": "Domain Access",
     "down-vote": "رأی منفی",
+    "download": "دانلود",
+    "downloading-log-plural": "Downloading Logs",
+    "downstream": "Downstream",
     "downstream-depth": "عمق پایین‌دست",
+    "drive": "درایو",
+    "drive-plural": "درایوها",
     "duplicate": "تکراری",
     "duration": "مدت زمان",
     "dynamic-assertion": "ادعای پویا",
@@ -553,6 +580,7 @@
     "enable-partition": "فعال کردن پارتیشن",
     "enable-roles-polices-in-search": "Enable Roles & Policies in Search",
     "enable-smtp-server": "فعال کردن سرور SMTP",
+    "enable-sso": "Enable SSO",
     "enabled": "فعال شد",
     "end-date": "تاریخ پایان",
     "end-date-time-zone": "تاریخ پایان: ({{timeZone}})",
@@ -563,6 +591,7 @@
     "endpoint-url-for-aws": "URL نقطه انتهایی برای AWS",
     "enter": "ورود",
     "enter-custom-unit-of-measurement": "واحد اندازه‌گیری سفارشی را وارد کرده و Enter را بزنید",
+    "enter-each-value-and-press-enter": "Enter each value and press Enter",
     "enter-entity": "ورود {{entity}}",
     "enter-entity-name": "نام {{entity}} را وارد کنید",
     "enter-entity-value": "مقدار {{entity}} را وارد کنید",
@@ -591,6 +620,7 @@
     "entity-list": "لیست {{entity}}",
     "entity-lowercase": "entity",
     "entity-name": "نام {{entity}}",
+    "entity-parent": "{{entity}} والد",
     "entity-plural": "نهادها",
     "entity-proportion": "نسبت {{entity}}",
     "entity-record-plural": "سوابق {{entity}}",
@@ -641,6 +671,7 @@
     "explore-metric-plural": "کاوش متریک‌ها",
     "explore-now": "اکنون کاوش کنید",
     "export": "صادر کردن",
+    "export-as-type": "صادرات به عنوان {{type}}",
     "export-entity": "صادر کردن {{entity}}",
     "export-type": "نوع صادرات",
     "expression": "عبارت",
@@ -676,6 +707,10 @@
     "field-required-plural": "{{field}} الزامی هستند",
     "field-value-boost": "بزرگنمایی مقدار فیلد",
     "file": "فایل",
+    "file-extension": "File Extension",
+    "file-plural": "فایل‌ها",
+    "file-type": "File Type",
+    "file-version": "File Version",
     "filter": "فیلتر",
     "filter-pattern": "الگوی فیلتر",
     "filter-plural": "فیلترها",
@@ -715,6 +750,7 @@
     "from-service-type": "از نوع سرویس",
     "full-name": "نام کامل",
     "full-screen": "تمام صفحه",
+    "full-screen-view": "نمای تمام صفحه",
     "full-size": "اندازه کامل",
     "fullscreen": "Fullscreen",
     "function": "تابع",
@@ -790,10 +826,17 @@
     "http-config-source": "منبع پیکربندی HTTP",
     "http-method": "HTTP Method",
     "hyper-parameter-plural": "پارامترهای ابر",
+    "icon": "Icon",
+    "icon-plural": "Icons",
     "icon-url": "آیکون URL",
+    "identities": "ਪਛਾਣ",
     "image": "Image",
     "image-repository": "مخزن تصویر",
     "impact": "تأثیر",
+    "impact-analysis": "Impact Analysis",
+    "impact-on-area": "تأثیر بر: <0>{{area}}</0>",
+    "impacted": "تحت تأثیر",
+    "impacted-column-plural": "ستون‌های تحت تأثیر",
     "import": "وارد کردن",
     "import-entity": "وارد کردن {{entity}}",
     "in-last-number-of-days": "در {{numberOfDays}} روز گذشته",
@@ -811,6 +854,7 @@
     "include-owner": "شامل صاحبان",
     "incomplete": "ناقص",
     "index-states": "وضعیت‌های ایندکس",
+    "indirect": "غیرمستقیم",
     "ingest-sample-data": "وارد کردن داده نمونه",
     "ingestion": "ورود",
     "ingestion-lowercase": "ورود",
@@ -888,6 +932,7 @@
     "last-hour": "Last hour",
     "last-login": "Last Login",
     "last-lowercase": "آخرین",
+    "last-modified-by": "آخرین تغییر توسط",
     "last-n-minutes": "Last {{n}} minutes",
     "last-name-lowercase": "نام خانوادگی",
     "last-no-of-day-plural": "{{day}} روز گذشته",
@@ -915,6 +960,7 @@
     "line-plural": "خطوط",
     "lineage": "شجره داده",
     "lineage-config": "تنظیمات شجره داده",
+    "lineage-configuration": "پیکربندی تبار",
     "lineage-data-lowercase": "داده‌های شجره داده",
     "lineage-edge": "لبه‌ شجره‌نامه",
     "lineage-ingestion": "دریافت شجره داده",
@@ -931,6 +977,7 @@
     "loading-graph": "Loading Graph",
     "local-config-source": "منبع تنظیمات محلی",
     "location": "موقعیت",
+    "log-lowercase-plural": "logs",
     "log-plural": "گزارش‌ها",
     "log-viewer": "نمایش‌دهنده گزارش",
     "logged-in-user-lowercase": "کاربر وارد شده",
@@ -998,6 +1045,7 @@
     "metric-value": "مقدار مقیاس",
     "metrics-summary": "خلاصه مقیاس‌ها",
     "middot-symbol": "·",
+    "mime-type": "نوع MIME",
     "min": "حداقل",
     "minor": "فرعی",
     "minute": "دقیقه",
@@ -1015,6 +1063,7 @@
     "model-name": "نام مدل",
     "model-plural": "مدل‌ها",
     "model-store": "ذخیره‌ساز مدل",
+    "modified-time": "زمان تغییر",
     "modifier": "تغییر دهنده",
     "monday": "دوشنبه",
     "monogram-url": "آدرس مونوگرام",
@@ -1078,9 +1127,11 @@
     "no-reviewer": "بدون بازبین",
     "no-tags-added": "بدون برچسب افزوده شده",
     "no-tasks-yet": "هنوز وظیفه‌ای ندارید",
+    "node-depth": "Node Depth",
     "nodes-per-layer": "گره‌ها در هر لایه",
     "non-partitioned": "بدون تقسیم‌بندی",
     "none": "هیچ‌کدام",
+    "not-contain-plural": "شامل نیست",
     "not-covered": "Not Covered",
     "not-found-lowercase": "یافت نشد",
     "not-null": "غیر تهی",
@@ -1088,6 +1139,7 @@
     "notification": "اعلان",
     "notification-alert": "هشدار اعلان",
     "notification-plural": "اعلان‌ها",
+    "notify-downstream": "Notificar a Jusante",
     "november": "نوامبر",
     "null": "تهی",
     "number": "عدد",
@@ -1101,6 +1153,7 @@
     "observability": "قابلیت مشاهده",
     "observability-alert": "هشدار قابلیت مشاهده",
     "october": "اکتبر",
+    "of": "of",
     "of-lowercase": "از",
     "offset-information": "اطلاعات آفست",
     "ok": "باشه",
@@ -1130,6 +1183,7 @@
     "operation-plural": "عملیات",
     "option": "گزینه",
     "optional": "اختیاری",
+    "or-drag-and-drop": "or drag and drop",
     "or-lowercase": "یا",
     "ordinal-position": "موقعیت ترتیبی",
     "org-url": "آدرس سازمان",
@@ -1203,6 +1257,7 @@
     "platform-service-client-unavailable": "پلیٹ فارم سروس کلائنٹ دستیاب نہیں",
     "platform-type-lineage": "{{platformType}} شجره داده",
     "play": "پخش",
+    "please-enter-entity-name": "ਕਿਰਪਾ ਕਰਕੇ {{entity}} ਦਾ ਨਾਮ ਦਰਜ ਕਰੋ",
     "please-enter-value": "لطفاً مقدار {{name}} را وارد کنید",
     "please-password-type-first": "لطفاً ابتدا رمز عبور را وارد کنید",
     "please-select": "لطفاً انتخاب کنید",
@@ -1318,6 +1373,7 @@
     "reply-in-conversation": "پاسخ در گفتگو",
     "reply-lowercase": "پاسخ",
     "reply-lowercase-plural": "پاسخ‌ها",
+    "reposition": "Reposition",
     "request": "درخواست",
     "request-method": "روش درخواست",
     "request-schema-field": "فیلد اسکیما درخواست",
@@ -1325,6 +1381,7 @@
     "requirement-plural": "نیازمندی‌ها",
     "reset": "بازنشانی",
     "reset-default-layout": "بازنشانی طرح‌بندی پیش‌فرض",
+    "reset-position": "Reset to Center",
     "reset-your-password": "بازنشانی رمز عبور خود",
     "resolution": "دقت",
     "resolution-time": "Resolution Time",
@@ -1365,6 +1422,8 @@
     "row": "ردیف",
     "row-count": "Row Count",
     "row-count-lowercase": "تعداد ردیف",
+    "row-filter": "ਕਤਾਰ ਫਿਲਟਰ",
+    "row-filter-plural": "ਕਤਾਰ ਫਿਲਟਰ",
     "row-plural": "ردیف‌ها",
     "rtl-ltr-direction": "جهت RTL/LTR",
     "rule": "قانون",
@@ -1390,6 +1449,8 @@
     "sample-data-count-lowercase": "تعداد داده‌های نمونه",
     "saturday": "شنبه",
     "save": "ذخیره",
+    "save-changes": "تبدیلیاں محفوظ کریں",
+    "save-position": "Save Position",
     "scale": "مقیاس",
     "schedule": "برنامه‌ریزی",
     "schedule-for-entity": "برنامه‌ریز برای {{entity}}",
@@ -1443,9 +1504,11 @@
     "select-to-search": "جستجو برای انتخاب",
     "select-type": "نوع انتخاب",
     "select-user-to-debug-permissions": "Select a user to debug their permissions",
+    "select-users-or-team": "Select Users or a Team",
     "selected-entity": "انتخاب شده {{entity}}",
     "selected-lowercase": "انتخاب شده",
     "selected-user": "Selected user: {{username}}",
+    "semantic": "معنایی",
     "semantic-plural": "Semantics",
     "send": "ارسال",
     "send-login-link": "ارسال لینک درون‌بر",
@@ -1472,6 +1535,7 @@
     "set-as-default": "ਡਿਫਾਲਟ ਵਜੋਂ ਸੈੱਟ ਕਰੋ",
     "set-default-entity": "ਡਿਫਾਲਟ {{entity}} ਸੈੱਟ ਕਰੋ",
     "set-default-filters": "تعیین فیلترهای پیشفرض",
+    "set-up": "Set Up",
     "set-up-kpi": "راه‌اندازی KPI",
     "setting-plural": "تنظیمات",
     "setup-guide": "راهنمای راه‌اندازی",
@@ -1488,6 +1552,7 @@
     "show-more-entity": "نمایش بیشتر {{entity}}",
     "show-more-lowercase": "نمایش بیشتر",
     "show-or-hide-advanced-config": "{{showAdv}} پیکربندی پیشرفته",
+    "show-or-hide-column-plural": "Show / Hide Columns",
     "sign-in": "Sign In",
     "sign-in-with-sso": "ورود با {{sso}}",
     "sign-up": "Sign Up",
@@ -1507,15 +1572,20 @@
     "source": "منبع",
     "source-aligned": "هم‌راستا با منبع",
     "source-column": "ستون منبع",
+    "source-column-plural": "ستون‌های منبع",
     "source-label": "Source:",
     "source-match": "مطابقت بر اساس منبع رویداد",
     "source-plural": "منابع",
     "source-url": "آدرس منبع",
     "source-with-details": "Source: {{source}} ({{entityName}})",
     "specific-data-asset-plural": "دارایی‌های داده خاص",
+    "spreadsheet": "صفحه گسترده",
+    "spreadsheet-plural": "صفحات گسترده",
     "sql-function": "تابع SQL",
     "sql-uppercase": "SQL",
     "sql-uppercase-query": "پرس و جوی SQL",
+    "sso": "sso",
+    "sso-configuration": "SSO Configuration",
     "sso-uppercase": "SSO",
     "stage-file-location": "مکان فایل استیج",
     "standard-match": "Standard Match",
@@ -1546,6 +1616,7 @@
     "sub-domain-lowercase-plural": "زیر دامنه‌ها",
     "sub-domain-plural": "زیر دامنه‌ها",
     "sub-team-plural": "زیر تیم‌ها",
+    "subdirectory-plural": "زیرشاخه‌ها",
     "submit": "ارسال",
     "subscription": "اشتراک",
     "success": "موفقیت",
@@ -1634,6 +1705,7 @@
     "test-entity": "تست {{entity}}",
     "test-level-lowercase": "سطح تست",
     "test-plural": "تست‌ها",
+    "test-plural-type": "Testy {{type}}",
     "test-suite": "مجموعه تست",
     "test-suite-ingestion": "ورود مجموعه تست",
     "test-suite-lowercase": "مجموعه تست",
@@ -1732,11 +1804,14 @@
     "updated-on": "به‌روزرسانی شده در",
     "updating-lowercase": "در حال به‌روزرسانی",
     "upload": "بارگذاری",
+    "upload-cover-image": "Upload cover image",
     "upload-csv-uppercase-file": "بارگذاری فایل CSV",
     "upload-image": "بارگذاری تصویر",
     "uploading": "بارگذاری",
     "uploading-file": "بارگذاری فایل",
+    "upstream": "Upstream",
     "upstream-depth": "عمق بالادست",
+    "url": "URL",
     "url-lowercase": "آدرس وب",
     "url-uppercase": "URL",
     "usage": "استفاده",
@@ -1809,6 +1884,8 @@
     "workflow-definition": "تعریف جریان کار",
     "workflow-history": "Workflow History",
     "workflow-plural": "جریان‌های کاری",
+    "worksheet": "برگه کار",
+    "worksheet-plural": "برگه‌های کار",
     "year": "سال",
     "yes": "بله",
     "yes-comma-confirm": "بله، تأیید",
@@ -1851,6 +1928,7 @@
     "alerts-source-description": "منبعی را که باعث فعال شدن اعلان می‌شود مشخص کنید.",
     "alerts-trigger-description": "رویدادهای مهمی مانند 'تغییر شِما' یا 'خطای آزمون' را برای تولید اعلان انتخاب کنید.",
     "all-charts-are-mapped": "تمام نمودارها با KPI‌های موجود مطابقت دارند.",
+    "allow-user-to-login-via-sso": "Allow user to login via SSO",
     "already-a-user": "قبلاً کاربر هستید؟",
     "and-followed-owned-by-name": "و تیمی که دنبال می‌کنید متعلق به {{userName}} است.",
     "announcement-action-description": "بنرهایی را تنظیم کنید تا تیم خود را از نگهداری، بروزرسانی‌ها و حذف‌ها آگاه کنید.",
@@ -1874,6 +1952,8 @@
     "are-you-sure-to-revoke-access-personal-access": "آیا مطمئن هستید که می‌خواهید دسترسی برای توکن دسترسی شخصی را لغو کنید؟",
     "are-you-sure-want-to-enable": "آیا مطمئن هستید که می‌خواهید {{entity}} را فعال کنید؟",
     "are-you-sure-want-to-text": "آیا مطمئن هستید که می‌خواهید {{text}}؟",
+    "are-you-sure-you-want-to-delete-these-entities": "Are you sure you want to delete these {{count}} {{entity}}s? This action cannot be undone.",
+    "are-you-sure-you-want-to-delete-this-entity": "Are you sure you want to delete this {{entity}}? This action cannot be undone.",
     "are-you-sure-you-want-to-remove-child-from-parent": "آیا مطمئن هستید که می‌خواهید {{child}} را از {{parent}} حذف کنید؟",
     "are-you-want-to-restore": "آیا مطمئن هستید که می‌خواهید {{entity}} را بازیابی کنید؟",
     "assess-data-reliability-with-data-profiler-lineage": "با رویکرد صحیح به حکمرانی داده، مزیت رقابتی در دنیای داده‌محور به‌دست آورید. داده‌های خود را ایمن کنید و کسب‌وکار خود را به سمت نوآوری و رشد سوق دهید.",
@@ -1898,9 +1978,11 @@
     "closed-this-task": "این وظیفه را بست.",
     "collaborate-with-other-user": "برای همکاری با کاربران دیگر.",
     "collate-ai-widget-description": "نمای کلی داده‌های تولید شده توسط Collate AI برای سرویس. <0>بیشتر بدانید.</0>",
+    "column-name-sla-description": "<0>{{label}}</0>: زمان به‌روزرسانی داده‌ها را مطابق با <0>{{data}}</0> نشان می‌دهد",
     "completeness-sla-description": "<0>{{label}}</0>: در دسترس بودن داده‌ها برنامه‌ریزی شده است برای <0>{{data}}</0> هر روز",
     "compute-row-count-helper-text": "تعداد ردیف‌های موفق و ناموفق برای مورد آزمایش را محاسبه کنید.",
     "confidence-percentage-message": "سطح اطمینان مدل NLP را برای استفاده در تعیین اینکه آیا یک ستون شامل داده‌های PII است یا خیر، تنظیم کنید.",
+    "configuration-save-success": "تشکیل کامیابی سے محفوظ ہو گئی",
     "configure-a-service-description": "نام منحصر به فردی برای سرویس وارد کنید. نام باید در دسته سرویس‌ها منحصر به فرد باشد. به عنوان مثال، در میان خدمات پایگاه‌داده، نام‌های MySQL و Snowflake نمی‌توانند مشابه باشند (مثلاً customer_data). با این حال، دسته‌های مختلف خدمات (داشبورد، پایگاه‌داده) می‌توانند نام‌های مشابه داشته باشند. فضای خالی در نام سرویس پشتیبانی نمی‌شود. کاراکترهایی مانند - _ پشتیبانی می‌شوند. همچنین، توضیحی اضافه کنید.",
     "configure-airflow": "برای تنظیم استخراج متادیتا از طریق UI، ابتدا باید به Airflow پیکربندی و متصل شوید. برای جزئیات بیشتر به <0>{{text}}</0> مراجعه کنید.",
     "configure-dbt-model-description": "مدل dbt منطق تبدیل را ارائه می‌دهد که جدولی از داده‌های خام ایجاد می‌کند. خط‌شناسی مسیر داده‌ها را در جداول دنبال می‌کند، اما مدل dbt جزئیات را ارائه می‌دهد. منبع dbt مورد نیاز را انتخاب کرده و فیلدهای ضروری را پر کنید. با dbt از OpenMetadata برای مشاهده مدل‌های استفاده شده برای تولید جداول یکپارچه شوید.",
@@ -1917,10 +1999,14 @@
     "consumer-aligned-domain-type-description": "دامنه‌هایی که کاربر محور هستند و محصول نهایی ترکیب داده‌ها از دامنه‌های مختلف در اختیار کاربران تجاری یا شهروندان داده برای تصمیم‌گیری مبتنی بر داده قرار می‌گیر",
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",
+    "contract-security-consume-description": "ਡੇਟਾ ਦੇ ਇਰਾਦੇ ਵਾਲੇ ਉਪਭੋਗਤਾ",
+    "contract-sla-column-name-description": "Column that represents the refresh time of the data",
+    "contract-sla-timezone-availability-default": "منطقه زمانی برای زمان در دسترس بودن، به طور پیش‌فرض UTC.",
     "contract-status-description": "وضعیت کلی برای بررسی‌های موجود فراهم می‌کند",
     "contract-validation-trigger-successfully": "بررسی قرارداد با موفقیت انجام شد.",
     "copied-to-clipboard": "به حافظه موقت کپی شد",
     "copy-to-clipboard": "کپی به حافظه موقت",
+    "cover-image-format-dimensions": "{{formats}} (max {{width}}×{{height}}px)",
     "create-contract-description": "قراردادی بر اساس تمام متادیتایی که برای این موجودیت به دست آورده‌اید ایجاد کنید.",
     "create-new-domain-guide": "یک شبکه داده معماری داده‌های غیرمتمرکز است که داده‌ها را بر اساس یک دامنه تجاری خاص سازماندهی می‌کند که از مفاهیم طراحی مبتنی بر دامنه پیروی می‌کند. تیم‌ها مسئولیت داده‌های عملیاتی و تحلیلی متعلق به دامنه را به عهده می‌گیرند. بر اساس قرارداد داده، به مصرف‌کنندگان داده به عنوان یک محصول ارائه می‌شود. این امر با زیرساخت‌های خودخدمتی مستقل از دامنه پشتیبانی می‌شود. دامنه‌ها تیم‌های پشتیبانی‌کننده برای مشاوره دارند.",
     "create-new-glossary-guide": "یک فرهنگ لغت واژگان کنترل‌شده‌ای است که برای تعریف مفاهیم و اصطلاحات در یک سازمان استفاده می‌شود. فرهنگ لغت‌ها می‌توانند خاص یک دامنه خاص باشند (به عنوان مثال، فرهنگ لغت تجاری، فرهنگ لغت فنی). در فرهنگ لغت، اصطلاحات و مفاهیم استاندارد می‌توانند همراه با مترادف‌ها و اصطلاحات مرتبط تعریف شوند. کنترل می‌تواند بر نحوه و افرادی که می‌توانند اصطلاحات را به فرهنگ لغت اضافه کنند، برقرار شود.",
@@ -1968,6 +2054,7 @@
     "data-insight-report-send-failed-message": "ارسال گزارش بینش داده شکست خورد.",
     "data-insight-report-send-success-message": "گزارش بینش داده با موفقیت ارسال شد.",
     "data-insight-subtitle": "نمایی یکپارچه از سلامت تمام دارایی‌های داده‌ای شما در طول زمان.",
+    "data-product-description": "Manage and organize your data products for better data governance.",
     "data-products-no-data-message": "به نظر می‌رسد هیچ محصول داده‌ای اضافه نکرده‌اید، یکی بسازید!",
     "data-quality-test-contract-title": "تست‌های کیفیت داده و تأییدها",
     "database-service-name-message": "نام‌های سرویس پایگاه داده را اضافه کنید تا خط‌مش را ایجاد کنید.",
@@ -2000,6 +2087,7 @@
     "disable-classification-description": "با غیرفعال کردن طبقه‌بندی، دیگر قادر به جستجو یا اختصاص برچسب‌های مرتبط به هیچ موجودیتی نخواهید بود.",
     "disabled-classification-actions-message": "شما نمی‌توانید این عمل را روی طبقه‌بندی‌های غیرفعال انجام دهید.",
     "discover-your-data-and-unlock-the-value-of-data-assets": "کارها با کیفیت داده بدون نیاز به کدنویسی آسان‌تر شده است. با چند قدم ساده تست کنید، استقرار دهید و نتایج را جمع‌آوری کنید، همراه با اطلاعیه‌های فوری از شکست تست‌ها. با داده‌های قابل اعتماد به‌روز باشید.",
+    "domain-description": "Organize and manage data domains in your organization.",
     "domain-does-not-have-assets": "دامنه {{name}} هیچ دارایی برای افزودن به محصول داده ندارد.",
     "domain-type-guide": "سه نوع دامنه وجود دارد: تجمیعی، هماهنگ با مصرف‌کننده، و هماهنگ با منبع.",
     "domains-no-data-message": "هنوز هیچ دامنه‌ای اضافه یا متصل نشده است. دامنه‌ها به شما کمک می‌کنند تا داده‌های خود را بر اساس زمینه‌های تجاری خود سازماندهی کنید. برای شروع، یک دامنه ایجاد یا متصل کنید.",
@@ -2007,6 +2095,7 @@
     "downstream-depth-tooltip": "تا 3 سطح از نودهای پایین‌دست را نمایش دهید تا هدف (سطوح فرزند) را شناسایی کنید.",
     "drag-and-drop-files-here": "فایل‌ها را اینجا بکشید و رها کنید.",
     "drag-and-drop-or-browse-csv-files-here": "فایل CSV را بکشید و رها کنید یا <0>{{text}}</0> مرور کنید.",
+    "drag-to-adjust-position": "Drag up or down to adjust position",
     "duration-in-iso-format": "مدت زمان در قالب ISO 8601 'PnYnMnDTnHnMnS'.",
     "edit-entity-style-description": "آیکون و رنگ نشان برای {{entity}} را تغییر دهید.",
     "edit-glossary-display-name-help": "نام نمایشی را به‌روزرسانی کنید.",
@@ -2037,6 +2126,7 @@
     "enter-your-registered-email": "ایمیل ثبت‌شده خود را وارد کنید تا لینک بازنشانی رمز عبور را دریافت کنید.",
     "entity-already-exists": "{{entity}} از قبل موجود است.",
     "entity-are-not-available": "{{entity}} در دسترس نیست.",
+    "entity-created-but-cover-image-failed": "{{entity}} created successfully, but the cover image failed to upload.",
     "entity-customize-description": "صفحه جزئیات {{entity}} را با انتخاب ویجت‌ها و تب‌هایی که برای مورد استفاده شما مفیدتر است، سفارشی کنید.",
     "entity-delimiters-not-allowed": "نام با جداکننده‌ها مجاز نیست.",
     "entity-details-updated": "{{entityType}} {{fqn}} details updated successfully",
@@ -2072,6 +2162,7 @@
     "external-destination-selection": "Only external destinations can be tested.",
     "failed-events-description": "Count of failed events for specific alert.",
     "failed-status-for-entity-deploy": "<0>{{entity}}</0>  با موفقیت {{entityStatus}} شد، اما پیاده‌سازی ناموفق بود.",
+    "failed-to-load-image": "Failed to load image",
     "failed-x-checks": "{{failed}} از {{count}} بررسی ناموفق",
     "feed-asset-action-header": "{{action}} <0>دارایی داده</0>",
     "feed-custom-property-header": "بروزرسانی ویژگی‌های سفارشی روی",
@@ -2093,7 +2184,10 @@
     "field-timeout-description": "زمان انتظار اتصال",
     "field-use-aws-credentials-description": "مشخص می‌کند که آیا باید هنگام اتصال به OpenSearch در AWS از اعتبارنامه‌های AWS استفاده شود یا خیر.",
     "field-use-ssl-description": "این مشخص می‌کند که آیا هنگام اتصال به Elasticsearch باید از SSL استفاده کرد یا خیر. به‌طور پیش‌فرض، تنظیمات SSL نادیده گرفته می‌شود.",
+    "field-value-updated-notification": "{{fieldName}} شما به {{fieldValue}} تغییر کرد",
     "field-verify-certs-description": "این مشخص می‌کند که آیا باید هنگام استفاده از اتصال SSL گواهینامه‌ها را بررسی کرد یا خیر. به‌طور پیش‌فرض نادیده گرفته می‌شود و روی true تنظیم شده است. اطمینان حاصل کنید که گواهینامه‌ها را در ویژگی 'گواهینامه‌های CA' ارسال می‌کنید.",
+    "file-format-size": "{{formats}} (max. {{size}})",
+    "file-size-exceeded": "File size exceeds maximum allowed size of {{size}}",
     "filter-pattern-include-exclude-info": "{{activity}} {{filterPattern}} به‌طور صریح با افزودن لیستی از regex جدا شده با کاما.",
     "filter-pattern-info": "انتخاب کنید که آیا می‌خواهید {{filterPattern}} را به عنوان بخشی از استخراج متادیتا شامل کنید یا حذف کنید.",
     "filter-pattern-placeholder": "برای افزودن یک الگوی فیلتر، کافی است آن را تایپ کنید و Enter را فشار دهید.",
@@ -2118,6 +2212,9 @@
     "hex-code-placeholder": "انتخاب یا وارد کردن کد رنگ HEX.",
     "hex-color-validation": "ورودی کد HEX معتبر نیست.",
     "hi-user-welcome-to": "سلام {{user}}، خوش آمدید به",
+    "icon-aspect-ratio": "نسبت ابعاد آیکون باید 1:1 باشد و اندازه توصیه شده باید 64 x 64 پیکسل باشد",
+    "image-dimensions-exceeded": "Image dimensions exceed maximum allowed {{maxWidth}}×{{maxHeight}}px",
+    "image-too-small-to-reposition": "Image must be taller than 103px to reposition",
     "image-upload-error": "بارگذاری تصویر پشتیبانی نمی‌شود. لطفاً از نحو Markdown برای تصاویری که از طریق URL در دسترس هستند استفاده کنید.",
     "import-data-in-progress": "در حال وارد کردن.",
     "import-entity-help": "با بارگذاری یک فایل CSV که حاوی چندین {{entity}} است، در زمان و تلاش خود صرفه‌جویی کنید.",
@@ -2132,6 +2229,9 @@
     "input-placeholder": "Usa @mention para etiquetar y comentar...",
     "instance-identifier": "نامی که به صورت یکتا این پیکربندی را شناسایی می‌کند.",
     "integration-description": "برنامه‌ها و بات‌ها را پیکربندی کنید تا بهره‌وری را افزایش دهید.",
+    "invalid-dimensions": "Invalid image dimensions",
+    "invalid-file": "Invalid file",
+    "invalid-file-format": "Invalid file format. Accepted formats: {{formats}}",
     "invalid-object-key": "کلید شیء نامعتبر است. باید با یک حرف، زیرخط یا علامت دلار شروع شود و پس از آن حروف، زیرخط‌ها، علامت‌های دلار یا اعداد قرار گیرد.",
     "invalid-property-name": "نام ویژگی نامعتبر است.",
     "invalid-string-length-error": "تصویر {{exportType}} به دلیل بزرگ بودن بیش از حد {{entity}} قابل تولید نیست.",
@@ -2170,7 +2270,7 @@
     "metadata-agents-table-description": "عوامل متادیتا برای استخراج متادیتا از سرویس‌های منبع استفاده می‌شوند.",
     "metadata-ingestion-description": "بر اساس نوع سرویسی که انتخاب کرده‌اید، جزئیات الگوی فیلتر برای طرح یا جدول (پایگاه داده)، یا موضوع (پیام‌رسانی)، یا داشبورد وارد کنید. می‌توانید الگوهای فیلتر را شامل کنید یا حذف کنید. انتخاب کنید که آیا می‌خواهید نماها را شامل کنید، پروفایل داده را فعال یا غیرفعال کنید و داده نمونه را استخراج کنید.",
     "metric-configuration-description": "فیلدها را برای کنترل رفتار معیارها شخصی‌سازی کنید. می‌توانید فیلدها را بر اساس نیاز اضافه، حذف، پنهان یا غیرفعال کنید.",
-    "metric-description": "سلامت دارایی‌های داده‌ای خود را با متریک‌ها دنبال کنید.",
+    "metric-description": "در سراسر سازمان خود معیارهای استاندارد شده را تعریف و فهرست کنید.",
     "minimum-value-error": "مقدار حداقل باید کوچکتر از مقدار حداکثر باشد.",
     "minute": "دقیقه",
     "missing-config-value": "مقدار پیکربندی گم شده: {{field}}",
@@ -2257,6 +2357,7 @@
     "no-persona-message": "شخصیت‌ها برای سفارشی کردن صفحه اصلی لازم هستند. لطفاً از <0>{{link}}</0> یک شخصیت ایجاد کنید.",
     "no-profiler-card-message-with-link": "فعال کردن پروفایلر برای کشف اطلاعات قابل ارزش درباره جدول. برای مراحل ساخت و اجرا <0>اینجا</0> مراجعه کنید.",
     "no-profiler-message": "با اجرای جریان کاری پروفایلر، معیارهای جدول خود را کاوش کنید. شما تعداد ردیف، به‌روزرسانی‌های جدول، تغییرات حجم و موارد دیگر را خواهید دید. برای مراحل راه‌اندازی به مستندات ما مراجعه کنید ",
+    "no-profiler-title": "Uruchom Profiler, aby odblokować wgląd w tabele",
     "no-recently-viewed-date": "شما اخیراً هیچ دارایی داده‌ای را مشاهده نکرده‌اید. کاوش کنید تا چیزی جالب پیدا کنید!",
     "no-reference-available": "هیچ مرجعی در دسترس نیست.",
     "no-related-terms-available": "هیچ واژه مرتبطی موجود نیست.",
@@ -2313,6 +2414,7 @@
     "page-sub-header-for-data-observability": "متادیتا را از سرویس‌های مجموعه آزمایشی مستقیماً از رابط کاربری ingest کنید.",
     "page-sub-header-for-data-quality": "با تست‌های کیفیت اعتماد به داده‌های خود را بسازید و محصولات داده قابل اعتماد ایجاد کنید.",
     "page-sub-header-for-databases": "متادیتا را از محبوب‌ترین سرویس‌های پایگاه داده ingest کنید.",
+    "page-sub-header-for-drive": "فراداده را از محبوب‌ترین سرویس‌های درایو دریافت کنید.",
     "page-sub-header-for-lineage-config-setting": "Configure the lineage view settings.",
     "page-sub-header-for-login-configuration": "تعریف نحوه برخورد با تلاش‌های ناموفق ورود و انقضای توکن JWT.",
     "page-sub-header-for-messagings": "ورود متادیتا از پرکاربردترین سرویس‌های پیام‌رسانی.",
@@ -2377,6 +2479,7 @@
     "query-log-duration-message": "پیکربندی برای تنظیم چگونگی دوربردی که می‌خواهیم به لاگ‌های پرسش نگاه کنیم تا داده‌های استفاده را پردازش کنیم.",
     "query-used-by-other-tables": "پرسش استفاده‌شده توسط جداول دیگر.",
     "reacted-with-emoji": "با ایموجی {{type}} واکنش نشان داد.",
+    "read-setup-docs": "Read setup docs",
     "redirect-message": "لطفاً صبر کنید، در حال انتقال هستید.",
     "redirecting-to-home-page": "در حال انتقال به صفحه اصلی.",
     "refer-to-our-doc": "هنوز نیاز به کمک دارید؟ به <0>{{doc}}</0> ما مراجعه کنید برای اطلاعات بیشتر.",
@@ -2407,6 +2510,7 @@
     "schedule-entity-description": "این {{entity}} بر اساس زمان‌بندی شما به طور مکرر اجرا خواهد شد.",
     "schedule-for-ingestion-description": "برنامه‌ریزی می‌تواند به صورت ساعتی، روزانه یا هفتگی تنظیم شود. منطقه زمانی UTC است.",
     "scheduled-run-every": "برنامه‌ریزی شده برای اجرا هر",
+    "scim-allows-automatic-user-and-group-management-directly-from-your-sso-provider": "SCIM allows automatic user and group management directly from your SSO provider.",
     "scopes-comma-separated": "مقدار Scopes را با کاما جدا کنید.",
     "search-entity-count": "{{count}} assets have been found with this filter.",
     "search-for-data-assets-placeholder": "جستجوی دارایی‌های داده",
@@ -2446,6 +2550,7 @@
     "source-aligned-domain-type-description": "دامنه‌هایی که نزدیک به خدمات آنلاین و پایگاه‌های داده تراکنشی هستند که شامل رویدادها و داده‌های تراکنشی می‌شوند.",
     "special-character-not-allowed": "کاراکترهای خاص مجاز نیستند.",
     "sql-query-tooltip": "پرسش‌هایی که یک یا چند ردیف را برمی‌گردانند، منجر به شکست تست خواهند شد.",
+    "sso-configuration-directly-from-the-ui": "SSO configuration directly from the UI",
     "sso-provider-not-supported": "ارائه‌دهنده SSO {{provider}} پشتیبانی نمی‌شود.",
     "stage-file-location-message": "نام فایل موقت برای ذخیره لاگ‌های پرسش قبل از پردازش. مسیر فایل کامل الزامی است.",
     "star-on-github-description": "سلام توسعه‌دهندگان، بیایید به صحنه متن‌باز OpenMetadata نیرو ببخشیم! 🚀 ستاره‌های شما می‌توانند ما را به قله‌های موفقیت برسانند و OpenMetadata را به عنوان پلتفرم اصلی متادیتا معرفی کنند. خبر را منتشر کنید، سر و صدا کنید و بیایید OpenMetadata را در رادار همه قرار دهیم! 🌟",
@@ -2509,6 +2614,10 @@
     "unable-to-error-elasticsearch": "ما نمی‌توانیم به Elasticsearch برای ایندکس‌های موجودیت {{error}} دسترسی پیدا کنیم.",
     "uninstall-app": "حذف این برنامه {{app}} آن را از OpenMetaData حذف خواهد کرد.",
     "unix-epoch-time-in-ms": "{{prefix}} زمان Unix epoch به میلی‌ثانیه",
+    "unsaved-changes": "Unsaved changes",
+    "unsaved-changes-description": "Deseja salvar ou descartar as alterações?",
+    "unsaved-changes-discard": "Descartar",
+    "unsaved-changes-save": "Salvar alterações",
     "unsaved-changes-warning": "ممکن است تغییرات ذخیره نشده‌ای داشته باشید که با بستن از بین خواهند رفت.",
     "update-description-message": "درخواست برای به‌روزرسانی توضیحات برای",
     "update-displayName-entity": "به‌روزرسانی نام نمایشی برای {{entity}}.",
@@ -2516,6 +2625,7 @@
     "update-tag-message": "درخواست برای به‌روزرسانی برچسب‌ها برای",
     "updating-existing-not-possible-can-add-new-values": "به‌روزرسانی مقادیر موجود امکان‌پذیر نیست، فقط افزودن مقادیر جدید مجاز است.",
     "upload-file": "بارگذاری فایل",
+    "upload-not-configured": "Upload functionality is not configured. Please contact your administrator.",
     "upstream-depth-tooltip": "نمایش حداکثر ۳ گره از زنجیره بالادست برای شناسایی منبع (سطوح والد).",
     "usage-ingestion-description": "ورود مصرف می‌تواند پس از راه‌اندازی ورود متادیتا پیکربندی و مستقر شود. جریان کار ورود مصرف، جزئیات لاگ پرسش و ایجاد جدول را از پایگاه داده زیرین دریافت کرده و به OpenMetadata می‌فرستد. متادیتا و مصرف می‌توانند تنها یک خط لوله برای سرویس پایگاه داده داشته باشند. مدت زمان لاگ پرسش (به روز)، مکان فایل مرحله‌ای و محدودیت نتیجه را برای شروع تعریف کنید.",
     "use-fqn-for-filtering-message": "عبارت منظم روی نام کاملاً واجد شرایط (برای مثال، service_name.db_name.schema_name.table_name) به جای نام خام (برای مثال، table_name) اعمال خواهد شد.",
@@ -2523,6 +2633,7 @@
     "user-mentioned-in-comment": "{{user}} شما را در یک نظر ذکر کرد.",
     "user-verified-successfully": "کاربر با موفقیت تأیید شد.",
     "valid-url-endpoint": "نقاط پایانی باید URL معتبر باشند.",
+    "valid-urls-required": "لطفاً آدرس‌های URL معتبر وارد کنید (مثال: https://example.com)",
     "validation-error-assets": "لطفاً تمام دارایی‌هایی که در حال اضافه کردن آن‌ها هستید را بررسی کنید.",
     "value-must-be-greater-than": "{{field}} {{minimum}} से अधिक होना चाहिए",
     "value-should-equal-to-value": "مقدار باید برابر با {{value}} باشد.",
@@ -2560,6 +2671,7 @@
     "email-found": "کاربر با آدرس ایمیل داده شده وجود دارد!",
     "email-not-found": "کاربر با آدرس ایمیل داده شده وجود ندارد!",
     "email-verification-error": "ایمیل برای تأیید ارسال نشد. لطفاً با مدیر خود تماس بگیرید.",
+    "entities-deleted-successfully": "Successfully deleted {{count}} {{entity}}s",
     "entity-already-exist": "{{entity}} \"{{name}}\" قبلاً وجود دارد. موجودیت‌های تکراری مجاز نیستند.",
     "entity-already-exist-message-without-name": "یک {{entity}} با جزئیات داده شده قبلاً وجود دارد. موجودیت‌های تکراری مجاز نیستند.",
     "entity-creation-error": "خطا در ایجاد {{entity}}",
@@ -2575,6 +2687,7 @@
     "entity-updating-error": "خطا در به‌روزرسانی {{entity}}",
     "error-selected-node-name-details": "خطا در دریافت جزئیات {{selectedNodeName}}",
     "error-while-renewing-id-token-with-message": "خطا در تجدید توکن id از Auth0 SSO: {{message}}",
+    "failed-to-delete-entities": "Failed to delete: {{entities}}",
     "feed-post-error": "خطا در ارسال پیام!",
     "fetch-entity-permissions-error": "عدم توانایی در دریافت مجوز برای {{entity}}.",
     "fetch-re-index-data-error": "خطا در بازیابی داده‌های دوباره ایندکس!",
@@ -2609,6 +2722,7 @@
     "task-resolved-successfully": "وظیفه با موفقیت حل شد.",
     "team-moved-error": "خطا در انتقال تیم.",
     "test-connection-error": "خطا در تست اتصال!",
+    "this-action-cannot-be-undone": "This action cannot be undone.",
     "unauthorized-user": "کاربر غیرمجاز! لطفاً ایمیل یا رمز عبور را بررسی کنید.",
     "unexpected-error": "یک خطای غیرمنتظره رخ داده است.",
     "unexpected-response": "پاسخ غیرمنتظره‌ای از سرور.",

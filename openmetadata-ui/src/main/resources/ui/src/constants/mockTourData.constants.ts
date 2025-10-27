@@ -3294,4 +3294,8 @@ export const MOCK_EXPLORE_PAGE_COUNT = {
   [SearchIndex.API_COLLECTION_INDEX]: 0,
   [SearchIndex.API_ENDPOINT_INDEX]: 0,
   [SearchIndex.METRIC_SEARCH_INDEX]: 0,
+  [SearchIndex.DIRECTORY_SEARCH_INDEX]: 0,
+  [SearchIndex.FILE_SEARCH_INDEX]: 0,
+  [SearchIndex.SPREADSHEET_SEARCH_INDEX]: 0,
+  [SearchIndex.WORKSHEET_SEARCH_INDEX]: 0,
 };

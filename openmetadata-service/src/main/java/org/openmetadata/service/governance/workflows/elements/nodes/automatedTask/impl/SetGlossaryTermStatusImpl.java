@@ -24,6 +24,7 @@ import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 
+@Deprecated
 @Slf4j
 public class SetGlossaryTermStatusImpl implements JavaDelegate {
   private Expression statusExpr;

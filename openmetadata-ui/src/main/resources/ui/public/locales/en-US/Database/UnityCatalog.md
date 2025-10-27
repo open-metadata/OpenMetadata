@@ -33,9 +33,50 @@ If you are running the OpenMetadata ingestion in a docker and your services are 
 $$
 
 $$section
-### Token $(id="token")
-Generated Token to connect to Databricks. E.g., `dapw488e89a7176f7eb39bbc718617891564`.
+### Authentication Type $(id="authType")
+Select the authentication method to connect to your Databricks workspace.
+
+- **Personal Access Token**: Generated Personal Access Token for Databricks workspace authentication.
+
+- **Databricks OAuth**: OAuth2 Machine-to-Machine authentication using a Service Principal.
+
+- **Azure AD Setup**: Specifically for Azure Databricks workspaces that use Azure Active Directory for identity management. Uses Azure Service Principal authentication through Azure AD.
 $$
+
+$$section
+### Token $(id="token")
+Personal Access Token (PAT) for authenticating with Databricks workspace.
+(e.g., `dapi1234567890abcdef`)
+$$
+
+$$section
+### Client ID $(id="clientId")
+The Application ID of your Databricks Service Principal for OAuth2 authentication.
+(e.g., `12345678-1234-1234-1234-123456789abc`)
+$$
+
+$$section
+### Client Secret $(id="clientSecret")
+OAuth secret for the Databricks Service Principal.
+$$
+
+$$section
+### Azure Client ID $(id="azureClientId")
+Azure Active Directory Application (client) ID for Azure Databricks authentication.
+(e.g., `a1b2c3d4-e5f6-7890-abcd-ef1234567890`)
+$$
+
+$$section
+### Azure Client Secret $(id="azureClientSecret")
+Secret key for the Azure AD Application.
+$$
+
+$$section
+### Azure Tenant ID $(id="azureTenantId")
+Your Azure Active Directory tenant identifier.
+(e.g., `98765432-dcba-4321-abcd-1234567890ab`)
+$$
+
 
 $$section
 ### HTTP Path $(id="httpPath")

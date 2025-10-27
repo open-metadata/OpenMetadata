@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.search.IndexMapping.INDEX_NAME_SEPARATOR;
 import static org.openmetadata.service.Entity.AGGREGATED_COST_ANALYSIS_REPORT_DATA;
@@ -90,6 +91,8 @@ import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.analytics.ReportData;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
+import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
+import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
@@ -238,7 +241,37 @@ public class SearchRepository {
 
   public void createIndexes() {
     RecreateIndexHandler recreateIndexHandler = this.createReindexHandler();
-    recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    ReindexContext context = recreateIndexHandler.reCreateIndexes(entityIndexMap.keySet());
+    if (context != null) {
+      for (String entityType : context.getEntities()) {
+        try {
+          String originalIndex = context.getOriginalIndex(entityType).orElse(null);
+          String canonicalIndex = context.getCanonicalIndex(entityType).orElse(null);
+          String activeIndex = context.getOriginalIndex(entityType).orElse(null);
+          String stagedIndex = context.getStagedIndex(entityType).orElse(null);
+          String canonicalAlias = context.getCanonicalAlias(entityType).orElse(null);
+          Set<String> existingAliases = context.getExistingAliases(entityType);
+          Set<String> parentAliases =
+              new HashSet<>(listOrEmpty(context.getParentAliases(entityType)));
+
+          EntityReindexContext entityReindexContext =
+              EntityReindexContext.builder()
+                  .entityType(entityType)
+                  .originalIndex(originalIndex)
+                  .canonicalIndex(canonicalIndex)
+                  .activeIndex(activeIndex)
+                  .stagedIndex(stagedIndex)
+                  .canonicalAliases(canonicalAlias)
+                  .existingAliases(existingAliases)
+                  .parentAliases(parentAliases)
+                  .build();
+          recreateIndexHandler.finalizeReindex(entityReindexContext, true);
+
+        } catch (Exception ex) {
+          LOG.error("Failed to recreate index for entity {}", entityType, ex);
+        }
+      }
+    }
   }
 
   public void updateIndexes() {
@@ -270,12 +303,24 @@ public class SearchRepository {
   }
 
   public boolean indexExists(IndexMapping indexMapping) {
-    return searchClient.indexExists(indexMapping.getIndexName(clusterAlias));
+    String indexName = indexMapping.getIndexName(clusterAlias);
+    if (searchClient.indexExists(indexName)) {
+      return true;
+    }
+    return !searchClient.getIndicesByAlias(indexName).isEmpty();
   }
 
   public void createIndex(IndexMapping indexMapping) {
     try {
+      String indexName = indexMapping.getIndexName(clusterAlias);
       if (!indexExists(indexMapping)) {
+        // Clean up any lingering alias with the same name
+        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+        for (String target : aliasTargets) {
+          searchClient.removeAliases(target, Set.of(indexName));
+          searchClient.deleteIndex(target);
+        }
+
         String indexMappingContent = getIndexMapping(indexMapping);
         searchClient.createIndex(indexMapping, indexMappingContent);
         searchClient.createAliases(indexMapping);
@@ -304,8 +349,15 @@ public class SearchRepository {
 
   public void deleteIndex(IndexMapping indexMapping) {
     try {
-      if (indexExists(indexMapping)) {
+      String indexName = indexMapping.getIndexName(clusterAlias);
+      if (searchClient.indexExists(indexName)) {
         searchClient.deleteIndex(indexMapping);
+      } else {
+        Set<String> aliasTargets = searchClient.getIndicesByAlias(indexName);
+        for (String target : aliasTargets) {
+          searchClient.removeAliases(target, Set.of(indexName));
+          searchClient.deleteIndex(target);
+        }
       }
     } catch (Exception e) {
       LOG.error(
@@ -327,6 +379,10 @@ public class SearchRepository {
       LOG.error("Failed to read index Mapping file due to ", e);
     }
     return null;
+  }
+
+  public String readIndexMapping(IndexMapping indexMapping) {
+    return getIndexMapping(indexMapping);
   }
 
   /**
@@ -669,7 +725,8 @@ public class SearchRepository {
       String entityId,
       ChangeDescription changeDescription,
       IndexMapping indexMapping,
-      EntityInterface entity) {
+      EntityInterface entity)
+      throws IOException {
     if (changeDescription != null) {
       Pair<String, Map<String, Object>> updates =
           getInheritedFieldChanges(changeDescription, entity);
@@ -1177,7 +1234,8 @@ public class SearchRepository {
     }
   }
 
-  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping) {
+  public void deleteOrUpdateChildren(EntityInterface entity, IndexMapping indexMapping)
+      throws IOException {
     String docId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     switch (entityType) {
@@ -1242,7 +1300,8 @@ public class SearchRepository {
   }
 
   public void softDeleteOrRestoredChildren(
-      EntityReference entityReference, IndexMapping indexMapping, boolean delete) {
+      EntityReference entityReference, IndexMapping indexMapping, boolean delete)
+      throws IOException {
     String docId = entityReference.getId().toString();
     String entityType = entityReference.getType();
     String scriptTxt = String.format(SOFT_DELETE_RESTORE_SCRIPT, delete);
@@ -1430,6 +1489,23 @@ public class SearchRepository {
   public SearchLineageResult searchLineageWithDirection(SearchLineageRequest lineageRequest)
       throws IOException {
     return searchClient.searchLineageWithDirection(lineageRequest);
+  }
+
+  public LineagePaginationInfo getLineagePaginationInfo(
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
+    return searchClient.getLineagePaginationInfo(
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+  }
+
+  public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
+      throws IOException {
+    return searchClient.searchLineageByEntityCount(request);
   }
 
   public Response searchEntityRelationship(

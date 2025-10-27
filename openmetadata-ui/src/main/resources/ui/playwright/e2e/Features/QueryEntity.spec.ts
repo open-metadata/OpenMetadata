@@ -66,7 +66,7 @@ test('Query Entity', async ({ page }) => {
     );
     await page.click(`[data-testid="table_queries"]`);
     const tableResponse = page.waitForResponse(
-      '/api/v1/search/query?q=**&from=0&size=*&index=table_search_index*'
+      '/api/v1/search/query?q=&index=table_search_index&from=0&size=*'
     );
     await queryResponse;
     await page.click(`[data-testid="add-query-btn"]`);
@@ -110,7 +110,7 @@ test('Query Entity', async ({ page }) => {
 
   await test.step('Update owner, description and tag', async () => {
     const ownerListResponse = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page
       .getByTestId(

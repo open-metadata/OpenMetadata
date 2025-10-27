@@ -1,0 +1,20 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/databricks/personalAccessToken.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Personal Access Token",
+  "description": "Personal Access Token authentication for Databricks.",
+  "javaType": "org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken",
+  "type": "object",
+  "properties": {
+    "token": {
+      "title": "Token",
+      "description": "Generated Personal Access Token for Databricks workspace authentication. This token is created from User Settings -> Developer -> Access Tokens in your Databricks workspace.",
+      "type": "string",
+      "format": "password"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "token"
+  ]
+}

@@ -15,7 +15,14 @@ import { Button, Divider, Input, Popover, Select, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
@@ -66,6 +73,13 @@ export const GlobalSearchBar = () => {
     : '';
   const [searchValue, setSearchValue] = useState<string>(searchQuery);
 
+  const renderSearchDropdown = useCallback(
+    (originNode: ReactNode) => (
+      <div data-testid="global-search-select-dropdown">{originNode}</div>
+    ),
+    []
+  );
+
   const entitiesSelect = useMemo(
     () => (
       <Select
@@ -73,6 +87,7 @@ export const GlobalSearchBar = () => {
         bordered={false}
         className="global-search-select"
         data-testid="global-search-selector"
+        dropdownRender={renderSearchDropdown}
         listHeight={300}
         popupClassName="global-search-select-menu"
         size="small"
@@ -89,7 +104,7 @@ export const GlobalSearchBar = () => {
         ))}
       </Select>
     ),
-    [searchCriteria, i18n.language]
+    [searchCriteria, i18n.language, renderSearchDropdown]
   );
 
   const handleSelectOption = useCallback((text: string) => {

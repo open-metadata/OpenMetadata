@@ -468,6 +468,7 @@ const AppRunsHistory = forwardRef(
           }
           width={800}>
           <FormBuilder
+            capitalizeOptionLabel
             hideCancelButton
             readonly
             useSelectWidget

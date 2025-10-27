@@ -18,6 +18,7 @@ public class DirectoryMapper implements EntityMapper<Directory, CreateDirectory>
                 : null)
         .withPath(create.getPath())
         .withIsShared(create.getIsShared())
-        .withSourceUrl(create.getSourceUrl());
+        .withSourceUrl(create.getSourceUrl())
+        .withDirectoryType(create.getDirectoryType());
   }
 }

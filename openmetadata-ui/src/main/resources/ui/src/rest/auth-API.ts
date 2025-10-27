@@ -29,6 +29,7 @@ export interface AccessTokenResponse {
 }
 
 const apiPath = '/users';
+const loginAPIPath = '/auth/login';
 
 export const basicAuthRegister = async (payload: RegistrationRequest) => {
   const response = await axiosClient.post(`${apiPath}/signup`, payload);
@@ -40,7 +41,7 @@ export const basicAuthSignIn = async (payload: LoginRequest) => {
   const response = await axiosClient.post<
     LoginRequest,
     AxiosResponse<AccessTokenResponse>
-  >(`${apiPath}/login`, payload);
+  >(loginAPIPath, payload);
 
   return response.data;
 };
@@ -68,11 +69,11 @@ export const confirmRegistration = async (token: string) => {
   return response.data;
 };
 
-export const getAccessTokenOnExpiry = async (payload: TokenRefreshRequest) => {
+export const getAccessTokenOnExpiry = async () => {
   const response = await axiosClient.post<
-    TokenRefreshRequest,
+    void,
     AxiosResponse<AccessTokenResponse>
-  >(`${apiPath}/refresh`, payload);
+  >(`auth/refresh`);
 
   return response.data;
 };

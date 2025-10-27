@@ -2,6 +2,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
+import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.getEntityReferenceByName;
 
 import jakarta.json.JsonPatch;
@@ -14,11 +15,13 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
+import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
@@ -40,6 +43,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.IncidentManagerException;
+import org.openmetadata.service.resources.dqtests.TestCaseResolutionStatusMapper;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
@@ -111,6 +115,8 @@ public class TestCaseResolutionStatusRepository
     validatePatchFields(updated, original);
 
     timeSeriesDao.update(JsonUtils.pojoToJson(updated), id);
+    setInheritedFields(updated);
+    postUpdate(updated);
     return new RestUtil.PatchResponse<>(Response.Status.OK, updated, ENTITY_UPDATED);
   }
 
@@ -317,6 +323,15 @@ public class TestCaseResolutionStatusRepository
     MessageParser.EntityLink entityLink =
         new MessageParser.EntityLink(
             Entity.TEST_CASE, incidentStatus.getTestCaseReference().getFullyQualifiedName());
+
+    // Fetch the TestCase to get its domains
+    TestCase testCase =
+        Entity.getEntity(
+            Entity.TEST_CASE,
+            incidentStatus.getTestCaseReference().getId(),
+            "domains",
+            Include.ALL);
+
     Thread thread =
         new Thread()
             .withId(UUID.randomUUID())
@@ -328,6 +343,14 @@ public class TestCaseResolutionStatusRepository
             .withTask(taskDetails)
             .withUpdatedBy(incidentStatus.getUpdatedBy().getName())
             .withUpdatedAt(System.currentTimeMillis());
+
+    // Inherit domains from the test case
+    if (testCase.getDomains() != null && !testCase.getDomains().isEmpty()) {
+      List<UUID> domainIds =
+          testCase.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList());
+      thread.withDomains(domainIds);
+    }
+
     FeedRepository feedRepository = Entity.getFeedRepository();
     feedRepository.create(thread);
 
@@ -458,5 +481,32 @@ public class TestCaseResolutionStatusRepository
       }
     }
     if (!metrics.isEmpty()) newIncident.setMetrics(metrics);
+  }
+
+  public void cleanUpAssignees(String assignee) {
+    List<TestCaseResolutionStatus> testCaseResolutionStatuses =
+        JsonUtils.readObjects(
+            ((CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO) timeSeriesDao)
+                .listTestCaseResolutionForAssignee(assignee),
+            TestCaseResolutionStatus.class);
+
+    for (TestCaseResolutionStatus testCaseResolutionStatus : testCaseResolutionStatuses) {
+      // We'll keep the status as assigned but remove the deleted user as the assignee
+      // Incidents are treated as immutable entities -- hence we create a new one
+      setInheritedFields(testCaseResolutionStatus);
+      TestCaseResolutionStatusMapper mapper = new TestCaseResolutionStatusMapper();
+      TestCaseResolutionStatus newStatus =
+          mapper.createToEntity(
+              new CreateTestCaseResolutionStatus()
+                  .withTestCaseReference(
+                      testCaseResolutionStatus.getTestCaseReference().getFullyQualifiedName())
+                  .withTestCaseResolutionStatusType(
+                      testCaseResolutionStatus.getTestCaseResolutionStatusType())
+                  .withTestCaseResolutionStatusDetails(new Assigned())
+                  .withSeverity(testCaseResolutionStatus.getSeverity()),
+              INGESTION_BOT_NAME);
+
+      createNewRecord(newStatus, newStatus.getTestCaseReference().getFullyQualifiedName());
+    }
   }
 }

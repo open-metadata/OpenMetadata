@@ -55,10 +55,16 @@ describe('TagClassBase', () => {
 
     expect(searchQuery).toHaveBeenCalledWith({
       query: `*${searchText}*`,
-      filters: 'disabled:false',
       pageNumber: page,
       pageSize: 10, // Assuming PAGE_SIZE is 10
-      queryFilter: queryFilterToRemoveSomeClassification,
+      queryFilter: {
+        query: {
+          bool: {
+            must: [{ term: { disabled: 'false' } }],
+            must_not: queryFilterToRemoveSomeClassification.query.bool.must_not,
+          },
+        },
+      },
       searchIndex: SearchIndex.TAG,
     });
   });

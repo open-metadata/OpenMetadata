@@ -119,7 +119,9 @@ export enum PageType {
     DashboardDataModel = "DashboardDataModel",
     Database = "Database",
     DatabaseSchema = "DatabaseSchema",
+    Directory = "Directory",
     Domain = "Domain",
+    File = "File",
     Glossary = "Glossary",
     GlossaryTerm = "GlossaryTerm",
     LandingPage = "LandingPage",
@@ -127,9 +129,11 @@ export enum PageType {
     MlModel = "MlModel",
     Pipeline = "Pipeline",
     SearchIndex = "SearchIndex",
+    Spreadsheet = "Spreadsheet",
     StoredProcedure = "StoredProcedure",
     Table = "Table",
     Topic = "Topic",
+    Worksheet = "Worksheet",
 }
 
 /**

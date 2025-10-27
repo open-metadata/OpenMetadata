@@ -33,10 +33,10 @@ import { ReactComponent as EmptyContractIcon } from '../../../assets/svg/empty-c
 import { ReactComponent as FlagIcon } from '../../../assets/svg/flag.svg';
 import { ReactComponent as RunIcon } from '../../../assets/svg/ic-circle-pause.svg';
 import { ReactComponent as ExportIcon } from '../../../assets/svg/ic-export-box.svg';
-import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-v1.svg';
+import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-trash.svg';
-
 import {
+  CONTRACT_DATE_TIME_FORMAT,
   DataContractMode,
   DATA_CONTRACT_ACTION_DROPDOWN_KEY,
 } from '../../../constants/DataContract.constants';
@@ -53,6 +53,7 @@ import {
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
+import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
@@ -65,6 +66,7 @@ import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
+import ContractSecurityCard from '../ContractSecurity/ContractSecurityCard.component';
 import ContractSemantics from '../ContractSemantics/ContractSemantics.component';
 import ContractSLA from '../ContractSLACard/ContractSLA.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
@@ -271,6 +273,55 @@ const ContractDetail: React.FC<{
             </div>
           </Col>
           <Col className="d-flex items-center gap-2" span={24}>
+            {contract.createdBy && (
+              <>
+                <div className="d-flex items-center">
+                  <Typography.Text
+                    className="contract-sub-header-title"
+                    data-testid="contract-created-by-label">
+                    {`${t('label.created-by')} : `}
+                  </Typography.Text>
+
+                  <OwnerLabel
+                    owners={[
+                      { name: contract.createdBy, type: 'user', id: '' },
+                    ]}
+                  />
+                </div>
+
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+              </>
+            )}
+
+            {contract.createdAt && (
+              <>
+                <div className="d-flex items-center">
+                  <Typography.Text
+                    className="contract-sub-header-title"
+                    data-testid="contract-created-at-label">
+                    {`${t('label.created-at')} : `}
+                  </Typography.Text>
+
+                  <Typography.Text
+                    className="contract-sub-header-value"
+                    data-testid="contract-created-at-value">
+                    {customFormatDateTime(
+                      contract.createdAt,
+                      CONTRACT_DATE_TIME_FORMAT
+                    )}
+                  </Typography.Text>
+                </div>
+
+                <Divider
+                  className="self-center vertical-divider"
+                  type="vertical"
+                />
+              </>
+            )}
+
             <div className="d-flex items-center">
               <Typography.Text
                 className="contract-sub-header-title"
@@ -377,20 +428,22 @@ const ContractDetail: React.FC<{
           )}
 
           {/* Description Component */}
-          <Col className="contract-card-items" span={24}>
-            <div className="contract-card-header-container">
-              <Typography.Text className="contract-card-header">
-                {t('label.description')}
-              </Typography.Text>
-              <Divider className="contract-dash-separator" />
-            </div>
+          {!isDescriptionContentEmpty(contract.description ?? '') && (
+            <Col className="contract-card-items" span={24}>
+              <div className="contract-card-header-container">
+                <Typography.Text className="contract-card-header">
+                  {t('label.description')}
+                </Typography.Text>
+                <Divider className="contract-dash-separator" />
+              </div>
 
-            <RichTextEditorPreviewerNew
-              enableSeeMoreVariant
-              markdown={contract.description ?? ''}
-              maxLineLength="3"
-            />
-          </Col>
+              <RichTextEditorPreviewerNew
+                enableSeeMoreVariant
+                markdown={contract.description ?? ''}
+                maxLineLength="3"
+              />
+            </Col>
+          )}
 
           {/* Terms of Use Component */}
           {!isDescriptionContentEmpty(contract.termsOfUse ?? '') && (
@@ -430,6 +483,23 @@ const ContractDetail: React.FC<{
                 contractStatus={constraintStatus['schema']}
                 schemaDetail={schemaDetail}
               />
+            </Col>
+          )}
+
+          {/* Security Component */}
+          {!isEmpty(contract.security) && (
+            <Col
+              className="contract-card-items"
+              data-testid="security-card"
+              span={24}>
+              <div className="contract-card-header-container">
+                <Typography.Text className="contract-card-header">
+                  {t('label.security')}
+                </Typography.Text>
+                <Divider className="contract-dash-separator" />
+              </div>
+
+              <ContractSecurityCard security={contract.security} />
             </Col>
           )}
 

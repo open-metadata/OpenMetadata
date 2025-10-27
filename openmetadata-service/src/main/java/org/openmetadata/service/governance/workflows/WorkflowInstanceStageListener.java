@@ -30,7 +30,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
 
       switch (eventName) {
         case "start" -> {
-          LOG.info(
+          LOG.debug(
               "[STAGE_START] Workflow: {}, ProcessInstance: {}, Activity: {} - Creating new stage record",
               workflowName,
               processInstanceId,
@@ -38,7 +38,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
           addNewStage(varHandler, execution, workflowInstanceStateRepository);
         }
         case "end" -> {
-          LOG.info(
+          LOG.debug(
               "[STAGE_END] Workflow: {}, ProcessInstance: {}, Activity: {} - Updating stage completion",
               workflowName,
               processInstanceId,
@@ -180,7 +180,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
             workflowDefinitionName,
             System.currentTimeMillis());
     varHandler.setNodeVariable(STAGE_INSTANCE_STATE_ID_VARIABLE, workflowInstanceStateId);
-    LOG.info(
+    LOG.debug(
         "[STAGE_CREATED] Workflow: {}, ProcessInstance: {}, Stage: {}, StageId: {} - Stage record created successfully",
         workflowDefinitionName,
         processInstanceId,
@@ -213,7 +213,7 @@ public class WorkflowInstanceStageListener implements JavaDelegate {
     workflowInstanceStateRepository.updateStage(
         workflowInstanceStateId, System.currentTimeMillis(), execution.getVariables());
 
-    LOG.info(
+    LOG.debug(
         "[STAGE_UPDATED] Workflow: {}, ProcessInstance: {}, Stage: {}, StageId: {} - Stage completion recorded",
         workflowDefinitionName,
         processInstanceId,

@@ -52,6 +52,7 @@ def build_dbt_workflow_config(
         ),
         workflowConfig=build_workflow_config_property(ingestion_pipeline),
         ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
+        enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
     return workflow_config

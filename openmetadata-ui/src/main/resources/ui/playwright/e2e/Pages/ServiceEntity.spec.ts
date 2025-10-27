@@ -23,6 +23,7 @@ import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
 import { DashboardServiceClass } from '../../support/entity/service/DashboardServiceClass';
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
+import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
 import { MessagingServiceClass } from '../../support/entity/service/MessagingServiceClass';
 import { MlmodelServiceClass } from '../../support/entity/service/MlmodelServiceClass';
 import { PipelineServiceClass } from '../../support/entity/service/PipelineServiceClass';
@@ -50,6 +51,7 @@ const entities = [
   StorageServiceClass,
   DatabaseClass,
   DatabaseSchemaClass,
+  DriveServiceClass,
 ] as const;
 
 const adminUser = new UserClass();

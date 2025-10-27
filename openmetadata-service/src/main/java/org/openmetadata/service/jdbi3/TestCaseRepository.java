@@ -9,6 +9,7 @@ import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.INGESTION_BOT_NAME;
 import static org.openmetadata.service.Entity.TABLE;
+import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.TEST_CASE;
 import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
@@ -17,6 +18,9 @@ import static org.openmetadata.service.Entity.getEntityByName;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
+import static org.openmetadata.service.exception.CatalogExceptionMessage.notReviewer;
+import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.gson.Gson;
@@ -42,6 +46,8 @@ import org.openmetadata.schema.api.feed.CloseTask;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.feed.Thread;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameter;
@@ -57,11 +63,13 @@ import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TaskStatus;
 import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.type.TestCaseParameterValidationRuleType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
@@ -70,9 +78,12 @@ import org.openmetadata.schema.utils.EntityInterfaceUtil;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
+import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.SearchListFilter;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -460,6 +471,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         testDefinition.getTestPlatforms(),
         testDefinition);
     validateColumnTestCase(entityLink, testDefinition.getEntityType());
+    validateDimensionColumns(test, entityLink);
   }
 
   /*
@@ -607,6 +619,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       if (entityLink.getArrayFieldName() != null) {
         Table table = Entity.getEntity(entityLink, "columns", ALL);
         validateColumn(table, entityLink.getArrayFieldName());
+      }
+    }
+  }
+
+  private void validateDimensionColumns(TestCase test, EntityLink entityLink) {
+    if (test.getDimensionColumns() != null && !test.getDimensionColumns().isEmpty()) {
+      // Get the table referenced by the entityLink to validate dimension columns exist
+      Table table = Entity.getEntity(entityLink, "columns", ALL);
+
+      // Validate each dimension column exists in the table
+      for (String dimensionColumn : test.getDimensionColumns()) {
+        validateColumn(table, dimensionColumn);
       }
     }
   }
@@ -862,9 +886,27 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   public FeedRepository.TaskWorkflow getTaskWorkflow(FeedRepository.ThreadContext threadContext) {
     validateTaskThread(threadContext);
     TaskType taskType = threadContext.getThread().getTask().getType();
+
+    // Handle test case failure resolution tasks
     if (EntityUtil.isTestCaseFailureResolutionTask(taskType)) {
       return new TestCaseRepository.TestCaseFailureResolutionTaskWorkflow(threadContext);
     }
+
+    // Handle description tasks
+    if (EntityUtil.isDescriptionTask(taskType)) {
+      return new DescriptionTaskWorkflow(threadContext);
+    }
+
+    // Handle tag tasks
+    if (EntityUtil.isTagTask(taskType)) {
+      return new TagTaskWorkflow(threadContext);
+    }
+
+    // Handle approval tasks (RequestApproval, etc.)
+    if (EntityUtil.isApprovalTask(taskType)) {
+      return new ApprovalTaskWorkflow(threadContext);
+    }
+
     return super.getTaskWorkflow(threadContext);
   }
 
@@ -1036,6 +1078,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
+  public static class ApprovalTaskWorkflow extends FeedRepository.TaskWorkflow {
+    ApprovalTaskWorkflow(FeedRepository.ThreadContext threadContext) {
+      super(threadContext);
+    }
+
+    @Override
+    public EntityInterface performTask(String user, ResolveTask resolveTask) {
+      TestCase testCase = (TestCase) threadContext.getAboutEntity();
+      checkUpdatedByReviewer(testCase, user);
+
+      UUID taskId = threadContext.getThread().getId();
+      Map<String, Object> variables = new HashMap<>();
+      variables.put(RESULT_VARIABLE, resolveTask.getNewValue().equalsIgnoreCase("approved"));
+      variables.put(UPDATED_BY_VARIABLE, user);
+      WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+      workflowHandler.resolveTask(
+          taskId, workflowHandler.transformToNodeVariables(taskId, variables));
+
+      return testCase;
+    }
+  }
+
   public class TestUpdater extends EntityUpdater {
     public TestUpdater(TestCase original, TestCase updated, Operation operation) {
       super(original, updated, operation);
@@ -1203,5 +1267,88 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private enum Direction {
     TO,
     FROM
+  }
+
+  @Override
+  public void postUpdate(TestCase original, TestCase updated) {
+    super.postUpdate(original, updated);
+    if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
+      if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
+        closeApprovalTask(updated, "Approved the test case");
+      } else if (EntityStatus.REJECTED.equals(updated.getEntityStatus())) {
+        closeApprovalTask(updated, "Rejected the test case");
+      }
+    }
+
+    // TODO: It might happen that a task went from DRAFT to IN_REVIEW to DRAFT fairly quickly
+    // Due to ChangesConsolidation, the postUpdate will be called as from DRAFT to DRAFT, but there
+    // will be a Task created.
+    // This if handles this case scenario, by guaranteeing that we close any Approval Task if the
+    // TestCase goes back to DRAFT.
+    if (EntityStatus.DRAFT.equals(updated.getEntityStatus())) {
+      try {
+        closeApprovalTask(updated, "Closed due to test case going back to DRAFT.");
+      } catch (EntityNotFoundException ignored) {
+      } // No ApprovalTask is present, and thus we don't need to worry about this.
+    }
+  }
+
+  @Override
+  protected void preDelete(TestCase entity, String deletedBy) {
+    // A test case in `IN_REVIEW` state can only be deleted by the reviewers
+    if (EntityStatus.IN_REVIEW.equals(entity.getEntityStatus())) {
+      checkUpdatedByReviewer(entity, deletedBy);
+    }
+  }
+
+  private void closeApprovalTask(TestCase entity, String comment) {
+    MessageParser.EntityLink about =
+        new MessageParser.EntityLink(TEST_CASE, entity.getFullyQualifiedName());
+    FeedRepository feedRepository = Entity.getFeedRepository();
+
+    // Skip closing tasks if updatedBy is null (e.g., during tests)
+    if (entity.getUpdatedBy() == null) {
+      LOG.debug(
+          "Skipping task closure for test case {} - updatedBy is null",
+          entity.getFullyQualifiedName());
+      return;
+    }
+
+    // Close User Tasks
+    try {
+      Thread taskThread = feedRepository.getTask(about, TaskType.RequestApproval, TaskStatus.Open);
+      feedRepository.closeTask(
+          taskThread, entity.getUpdatedBy(), new CloseTask().withComment(comment));
+    } catch (EntityNotFoundException ex) {
+      LOG.info("No approval task found for test case {}", entity.getFullyQualifiedName());
+    }
+  }
+
+  public static void checkUpdatedByReviewer(TestCase testCase, String updatedBy) {
+    // Only list of allowed reviewers can change the status from DRAFT to APPROVED
+    List<EntityReference> reviewers = testCase.getReviewers();
+    if (!nullOrEmpty(reviewers)) {
+      // Updating user must be one of the reviewers
+      boolean isReviewer =
+          reviewers.stream()
+              .anyMatch(
+                  e -> {
+                    if (e.getType().equals(TEAM)) {
+                      Team team =
+                          Entity.getEntityByName(TEAM, e.getName(), "users", Include.NON_DELETED);
+                      return team.getUsers().stream()
+                          .anyMatch(
+                              u ->
+                                  u.getName().equals(updatedBy)
+                                      || u.getFullyQualifiedName().equals(updatedBy));
+                    } else {
+                      return e.getName().equals(updatedBy)
+                          || e.getFullyQualifiedName().equals(updatedBy);
+                    }
+                  });
+      if (!isReviewer) {
+        throw new AuthorizationException(notReviewer(updatedBy));
+      }
+    }
   }
 }

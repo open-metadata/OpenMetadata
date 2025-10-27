@@ -1,6 +1,9 @@
 from metadata.data_quality.interface.sqlalchemy.databricks.test_suite_interface import (
     DatabricksTestSuiteInterface,
 )
+from metadata.ingestion.source.database.databricks.data_diff.data_diff import (
+    DatabricksTableParameter,
+)
 from metadata.ingestion.source.database.databricks.lineage import (
     DatabricksLineageSource,
 )
@@ -19,4 +22,5 @@ ServiceSpec = DefaultDatabaseSpec(
     profiler_class=DatabricksProfilerInterface,
     test_suite_class=DatabricksTestSuiteInterface,
     sampler_class=DatabricksSamplerInterface,
+    data_diff=DatabricksTableParameter,
 )

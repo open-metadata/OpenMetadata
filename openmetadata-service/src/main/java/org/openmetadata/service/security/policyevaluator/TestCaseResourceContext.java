@@ -92,6 +92,9 @@ public class TestCaseResourceContext implements ResourceContextInterface {
     if (entityRepository.isSupportsTags()) {
       fields = EntityUtil.addField(fields, Entity.FIELD_TAGS);
     }
+    if (entityRepository.isSupportsDomains()) {
+      fields = EntityUtil.addField(fields, Entity.FIELD_DOMAINS);
+    }
     return entityRepository.getByName(
         null, entityLink.getEntityFQN(), entityRepository.getFields(fields));
   }

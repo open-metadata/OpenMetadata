@@ -1,5 +1,8 @@
 {
   "settings": {
+    "index": {
+      "priority": 500
+    },
     "analysis": {
       "normalizer": {
         "lowercase_normalizer": {
@@ -458,6 +461,5 @@
         }
       }
     }
-  },
-  "priority": 500
+  }
 }

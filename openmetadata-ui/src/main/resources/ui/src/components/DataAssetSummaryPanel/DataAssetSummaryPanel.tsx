@@ -185,6 +185,10 @@ export const DataAssetSummaryPanel = ({
       case EntityType.STORED_PROCEDURE:
       case EntityType.TABLE:
       case EntityType.TOPIC:
+      case EntityType.DIRECTORY:
+      case EntityType.FILE:
+      case EntityType.SPREADSHEET:
+      case EntityType.WORKSHEET:
         return (
           <>
             {entityInfo.some((info) =>

@@ -29,7 +29,11 @@
         "APIEndpoint",
         "Metric",
         "MlModel",
-        "Chart"
+        "Chart",
+        "Directory",
+        "File",
+        "Spreadsheet",
+        "Worksheet"
       ]
     }
   },

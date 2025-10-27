@@ -64,7 +64,7 @@
 .unsaved-changes-modal-actions {
   margin-top: @size-2xl;
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: @size-sm;
 
   .ant-btn {
@@ -74,5 +74,12 @@
     font-weight: @font-semibold;
     font-size: @size-md;
     line-height: 1.5;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .unsaved-changes-modal-discard {
+    color: @grey-800;
+    font-weight: @font-medium;
   }
 }

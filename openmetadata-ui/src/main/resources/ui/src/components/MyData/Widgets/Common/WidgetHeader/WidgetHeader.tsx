@@ -96,6 +96,7 @@ const WidgetHeader = ({
         )}
         <Typography.Paragraph
           className="widget-title cursor-pointer"
+          data-testid="widget-title"
           ellipsis={{ tooltip: true }}
           style={{
             maxWidth: widgetWidth === 1 ? '145px' : '525px',

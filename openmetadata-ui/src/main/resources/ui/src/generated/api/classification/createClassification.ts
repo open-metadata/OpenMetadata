@@ -15,6 +15,10 @@
  */
 export interface CreateClassification {
     /**
+     * Configuration for automatic classification behavior
+     */
+    autoClassificationConfig?: AutoClassificationConfig;
+    /**
      * Description of the classification.
      */
     description: string;
@@ -45,6 +49,37 @@ export interface CreateClassification {
      * User references of the reviewers for this tag.
      */
     reviewers?: EntityReference[];
+}
+
+/**
+ * Configuration for automatic classification behavior
+ */
+export interface AutoClassificationConfig {
+    /**
+     * Strategy for resolving conflicts when multiple tags match
+     */
+    conflictResolution?: ConflictResolution;
+    /**
+     * Whether automatic classification is enabled for this classification
+     */
+    enabled?: boolean;
+    /**
+     * Minimum confidence score required to apply a tag
+     */
+    minimumConfidence?: number;
+    /**
+     * Only apply tags when recognizers explicitly match (no default tagging)
+     */
+    requireExplicitMatch?: boolean;
+}
+
+/**
+ * Strategy for resolving conflicts when multiple tags match
+ */
+export enum ConflictResolution {
+    HighestConfidence = "highest_confidence",
+    HighestPriority = "highest_priority",
+    MostSpecific = "most_specific",
 }
 
 /**

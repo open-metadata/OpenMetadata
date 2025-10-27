@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import ConfigureService from './ConfigureService';
 import { ConfigureServiceProps } from './Steps.interface';
 
@@ -63,9 +69,11 @@ describe('Test ConfigureService component', () => {
 
     expect(await screen.findByTestId('service-name')).toHaveValue('newName');
 
-    expect(mockOnNext).toHaveBeenCalledWith({
-      description: '',
-      name: 'newName',
-    });
+    await waitFor(() =>
+      expect(mockOnNext).toHaveBeenCalledWith({
+        description: '',
+        name: 'newName',
+      })
+    );
   });
 });

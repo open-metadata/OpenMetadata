@@ -32,6 +32,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 SNOWFLAKE_ABORTED_CODE = "1969"
+SNOWFLAKE_QUERY_BATCH_SIZE = 1000
 
 
 class SnowflakeQueryParserSource(QueryParserSource, ABC):
@@ -51,18 +52,27 @@ class SnowflakeQueryParserSource(QueryParserSource, ABC):
             )
         return cls(config, metadata)
 
-    def get_sql_statement(self, start_time: datetime, end_time: datetime) -> str:
+    def get_sql_statement(
+        self,
+        start_time: datetime,
+        end_time: datetime,
+        offset: int = 0,
+        limit: int = None,
+    ) -> str:
         """
         returns sql statement to fetch query logs
         """
+        if limit is None:
+            limit = self.config.sourceConfig.config.resultLimit
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,
-            result_limit=self.config.sourceConfig.config.resultLimit,
+            result_limit=limit,
             filters=self.get_filters(),
             account_usage=self.service_connection.accountUsageSchema,
             credit_cost=self.service_connection.creditCost
             * self.service_connection.creditCost,
+            offset=offset,
         )
 
     def check_life_cycle_query(

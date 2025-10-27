@@ -43,6 +43,9 @@ from metadata.ingestion.source.database.postgres.queries import (
     POSTGRES_GET_DATABASE,
     POSTGRES_TEST_GET_QUERIES,
     POSTGRES_TEST_GET_TAGS,
+    TEST_COLUMN_METADATA,
+    TEST_INFORMATION_SCHEMA_COLUMNS,
+    TEST_TABLE_COMMENTS,
 )
 from metadata.ingestion.source.database.postgres.utils import (
     get_postgres_time_column_name,
@@ -91,6 +94,9 @@ class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
             ),
             "GetDatabases": POSTGRES_GET_DATABASE,
             "GetTags": POSTGRES_TEST_GET_TAGS,
+            "GetColumnMetadata": TEST_COLUMN_METADATA,
+            "GetTableComments": TEST_TABLE_COMMENTS,
+            "GetInformationSchemaColumns": TEST_INFORMATION_SCHEMA_COLUMNS,
         }
         return test_connection_db_common(
             metadata=metadata,

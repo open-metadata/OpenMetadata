@@ -1,0 +1,99 @@
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+@import (reference) '../../../styles/variables.less';
+
+.contract-security-component-container {
+  width: 80%;
+
+  .contract-security-classification-container {
+    border-color: @grey-200;
+    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+
+    .ant-card-body {
+      padding: 16px 20px;
+
+      .contract-security-classification-label {
+        display: block;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        color: @grey-700;
+      }
+    }
+  }
+
+  .contract-security-policy-label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: @grey-700;
+  }
+
+  .contract-security-policy-card {
+    border-color: @grey-200;
+    box-shadow: 0 1px 2px 0 rgba(10, 13, 18, 0.05);
+    margin-bottom: 20px;
+
+    .ant-card-head {
+      padding: 12px 14px;
+
+      .ant-card-head-title {
+        padding: 0;
+
+        .access-policy-label {
+          font-size: 14px;
+          font-weight: 500;
+          color: @grey-700;
+        }
+
+        .access-policy-value {
+          font-size: 14px;
+          font-weight: 500;
+          color: @grey-900;
+        }
+      }
+    }
+
+    .ant-card-body {
+      border-top: 1px solid @grey-200;
+      border-radius: 12px;
+      padding: 12px 0 12px 12px;
+
+      .contract-security-policy-subtitle-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 500;
+        color: @grey-700;
+        margin-bottom: 5px;
+      }
+
+      .custom-tag {
+        margin-right: 10px;
+        margin-bottom: 10px;
+        color: @grey-700;
+        background: @grey-100;
+
+        .row-filter-value {
+          font-weight: 600;
+          margin-right: 6px;
+        }
+      }
+
+      .contract-dash-separator {
+        margin: 12px 0;
+      }
+    }
+  }
+}

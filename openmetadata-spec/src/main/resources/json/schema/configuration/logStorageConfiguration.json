@@ -12,6 +12,11 @@
       "enum": ["default", "s3"],
       "default": "default"
     },
+    "enabled": {
+      "description": "Enable it for pipelines deployed in the server",
+      "type": "boolean",
+      "default": false
+    },
     "bucketName": {
       "description": "S3 bucket name for storing logs (required for S3 type)",
       "type": "string"
@@ -21,10 +26,6 @@
       "type": "string",
       "default": "pipeline-logs"
     },
-    "region": {
-      "description": "AWS region for the S3 bucket (required for S3 type)",
-      "type": "string"
-    },
     "awsConfig": {
       "description": "AWS credentials configuration",
       "$ref": "../security/credentials/awsCredentials.json"
@@ -33,6 +34,15 @@
       "description": "Enable server-side encryption for S3 objects",
       "type": "boolean",
       "default": true
+    },
+    "sseAlgorithm": {
+      "description": "Server-side encryption algorithm (if applicable)",
+      "type": "string",
+      "enum": ["AES256", "aws:kms"]
+    },
+    "kmsKeyId": {
+      "description": "KMS Key ID for server-side encryption (if applicable)",
+      "type": "string"
     },
     "storageClass": {
       "description": "S3 storage class for log objects",

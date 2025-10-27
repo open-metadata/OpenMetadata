@@ -76,6 +76,7 @@ def build_profiler_workflow_config(
             openMetadataServerConfig=ingestion_pipeline.openMetadataServerConnection,
         ),
         ingestionPipelineFQN=ingestion_pipeline.fullyQualifiedName.root,
+        enableStreamableLogs=ingestion_pipeline.enableStreamableLogs,
     )
 
     return workflow_config

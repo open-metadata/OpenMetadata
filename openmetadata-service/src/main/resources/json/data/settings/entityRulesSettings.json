@@ -35,6 +35,7 @@
       "description": "Validates that Data Products assigned to an entity match the entity's domains.",
       "rule": "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"},{\"var\":\"domains\"}]}",
       "enabled": true,
+      "ignoredEntities": ["user", "team", "persona", "bot"],
       "provider": "system"
     }
   ]

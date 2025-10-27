@@ -8,11 +8,14 @@ public class IncidentManagerException extends WebServiceException {
   private static final String ERROR_TYPE = "INCIDENT_INVALID_STATUS";
 
   protected IncidentManagerException(Response.Status status, String message) {
-    super(status.getStatusCode(), ERROR_TYPE, message);
+    super(Response.Status.fromStatusCode(status.getStatusCode()), ERROR_TYPE, message);
   }
 
   public IncidentManagerException(String message) {
-    super(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), ERROR_TYPE, message);
+    super(
+        Response.Status.fromStatusCode(Response.Status.INTERNAL_SERVER_ERROR.getStatusCode()),
+        ERROR_TYPE,
+        message);
   }
 
   public static IncidentManagerException invalidStatus(
