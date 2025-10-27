@@ -44,8 +44,10 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Column;
@@ -58,6 +60,8 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
+import org.openmetadata.service.resources.glossary.GlossaryResourceTest;
+import org.openmetadata.service.resources.glossary.GlossaryTermResourceTest;
 import org.openmetadata.service.resources.topics.TopicResourceTest;
 import org.openmetadata.service.util.TestUtils;
 
@@ -1451,6 +1455,109 @@ class SearchResourceTest extends OpenMetadataApplicationTest {
         tableResourceTest.deleteEntity(table.getId(), ADMIN_AUTH_HEADERS);
       } catch (Exception e) {
         LOG.warn("Failed to cleanup test table {}: {}", table.getName(), e.getMessage());
+      }
+    }
+  }
+
+  @Test
+  void testGlossaryTermSearchWithHierarchyAndWildcardDoesNotCauseTooManyClauses()
+      throws IOException {
+    GlossaryResourceTest glossaryResourceTest = new GlossaryResourceTest();
+    GlossaryTermResourceTest glossaryTermResourceTest = new GlossaryTermResourceTest();
+
+    try {
+      glossaryResourceTest.setup(null);
+      glossaryTermResourceTest.setup(null);
+    } catch (Exception e) {
+      LOG.warn("Some entities already exist - continuing with test execution");
+    }
+
+    String testPrefix = "hierarchy_wildcard_test_" + System.currentTimeMillis();
+
+    List<Glossary> createdGlossaries = new ArrayList<>();
+    List<org.openmetadata.schema.entity.data.GlossaryTerm> createdTerms = new ArrayList<>();
+
+    try {
+      for (int glossaryIdx = 0; glossaryIdx < 3; glossaryIdx++) {
+        CreateGlossary createGlossary =
+            glossaryResourceTest.createRequest(testPrefix + "_glossary_" + glossaryIdx);
+        Glossary glossary = glossaryResourceTest.createEntity(createGlossary, ADMIN_AUTH_HEADERS);
+        createdGlossaries.add(glossary);
+
+        for (int i = 0; i < 100; i++) {
+          String termName = testPrefix + "_glossary" + glossaryIdx + "_term_" + i;
+          org.openmetadata.schema.api.data.CreateGlossaryTerm createTerm =
+              glossaryTermResourceTest
+                  .createRequest(termName)
+                  .withGlossary(glossary.getFullyQualifiedName())
+                  .withDisplayName(
+                      "Test Term " + i + " with various names like revenue expense event")
+                  .withDescription(
+                      "Test term "
+                          + i
+                          + " for hierarchy wildcard search with keywords: revenue, expense, event, performance, measure, achievement");
+          org.openmetadata.schema.entity.data.GlossaryTerm term =
+              glossaryTermResourceTest.createEntity(createTerm, ADMIN_AUTH_HEADERS);
+          createdTerms.add(term);
+        }
+      }
+
+      TestUtils.simulateWork(5);
+
+      String wildcardQuery = "*e*";
+
+      assertDoesNotThrow(
+          () -> {
+            WebTarget target =
+                getResource("search/query")
+                    .queryParam("q", wildcardQuery)
+                    .queryParam("index", "glossary_term_search_index")
+                    .queryParam("from", 0)
+                    .queryParam("size", 25)
+                    .queryParam("deleted", false)
+                    .queryParam("track_total_hits", true)
+                    .queryParam("getHierarchy", true);
+
+            Response response;
+            try {
+              String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
+              response = Response.ok(result).build();
+            } catch (org.apache.http.client.HttpResponseException e) {
+              LOG.error("Error occurred while executing search query: {}", e.getMessage());
+              response = Response.status(e.getStatusCode()).entity(e.getMessage()).build();
+            }
+
+            assertEquals(
+                200,
+                response.getStatus(),
+                "Glossary term search with hierarchy and wildcard query should not cause too_many_clauses error");
+
+            String responseBody = (String) response.getEntity();
+            assertNotNull(responseBody);
+            assertFalse(responseBody.isEmpty());
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode responseJson = mapper.readTree(responseBody);
+            assertFalse(
+                responseBody.contains("too_many_clauses"),
+                "Response should not contain too_many_clauses error");
+          },
+          "Search with getHierarchy=true and wildcard query should succeed");
+
+    } finally {
+      for (org.openmetadata.schema.entity.data.GlossaryTerm term : createdTerms) {
+        try {
+          glossaryTermResourceTest.deleteEntity(term.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary term {}: {}", term.getName(), e.getMessage());
+        }
+      }
+      for (Glossary glossary : createdGlossaries) {
+        try {
+          glossaryResourceTest.deleteEntity(glossary.getId(), true, true, ADMIN_AUTH_HEADERS);
+        } catch (Exception e) {
+          LOG.warn("Failed to cleanup test glossary {}: {}", glossary.getName(), e.getMessage());
+        }
       }
     }
   }
