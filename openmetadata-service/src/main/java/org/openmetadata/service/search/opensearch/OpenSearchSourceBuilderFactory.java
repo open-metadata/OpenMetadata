@@ -182,12 +182,21 @@ public class OpenSearchSourceBuilderFactory
 
   @Override
   public SearchSourceBuilder buildAggregateSearchBuilder(String query, int from, int size) {
+    return buildAggregateSearchBuilder(query, from, size, true);
+  }
+
+  @Override
+  public SearchSourceBuilder buildAggregateSearchBuilder(
+      String query, int from, int size, boolean includeAggregations) {
     AssetTypeConfiguration compositeConfig = buildCompositeAssetConfig(searchSettings);
     QueryBuilder baseQuery = buildQueryWithMatchTypes(query, compositeConfig);
     QueryBuilder finalQuery = applyFunctionScoring(baseQuery, compositeConfig);
 
     SearchSourceBuilder searchSourceBuilder = searchBuilder(finalQuery, null, from, size);
-    return addAggregation(searchSourceBuilder);
+    if (includeAggregations) {
+      addAggregation(searchSourceBuilder);
+    }
+    return searchSourceBuilder;
   }
 
   @Override
@@ -199,6 +208,17 @@ public class OpenSearchSourceBuilderFactory
   @Override
   public SearchSourceBuilder buildDataAssetSearchBuilder(
       String indexName, String query, int from, int size, boolean explain) {
+    return buildDataAssetSearchBuilder(indexName, query, from, size, explain, true);
+  }
+
+  @Override
+  public SearchSourceBuilder buildDataAssetSearchBuilder(
+      String indexName,
+      String query,
+      int from,
+      int size,
+      boolean explain,
+      boolean includeAggregations) {
     AssetTypeConfiguration assetConfig = getAssetConfiguration(indexName);
     QueryBuilder baseQuery = buildBaseQuery(query, assetConfig);
     QueryBuilder finalQuery = applyFunctionScoring(baseQuery, assetConfig);
@@ -209,7 +229,9 @@ public class OpenSearchSourceBuilderFactory
       searchSourceBuilder.highlighter(highlightBuilder);
     }
 
-    addConfiguredAggregations(searchSourceBuilder, assetConfig);
+    if (includeAggregations) {
+      addConfiguredAggregations(searchSourceBuilder, assetConfig);
+    }
     searchSourceBuilder.explain(explain);
 
     return searchSourceBuilder;
