@@ -32,13 +32,7 @@ export interface UploadCoverImageOptions<T> {
   coverImageData?: CoverImageFileValue;
   createdEntity: T;
   entityType: EntityType;
-  entityLabel: string;
   onUpdate: (entity: T, coverImageUrl: string, position?: string) => Promise<T>;
-  enqueueSnackbar: (
-    message: React.ReactNode,
-    options?: Record<string, unknown>
-  ) => void;
-  t: (key: string, options?: Record<string, unknown>) => string;
 }
 
 /**
@@ -50,17 +44,16 @@ export interface UploadCoverImageOptions<T> {
  * 3. Handles errors gracefully (entity remains created even if upload fails)
  *
  * @param options - Configuration for upload and update
- * @returns The updated entity (or original if no cover image or upload fails)
+ * @returns Object containing the entity and upload failure status
  *
  * @example
  * ```typescript
  * const createdDomain = await addDomains(formData);
  *
- * const finalDomain = await handleCoverImageUpload({
+ * const { entity: finalDomain, uploadFailed } = await handleCoverImageUpload({
  *   coverImageData: extractCoverImageData(formData),
  *   createdEntity: createdDomain,
  *   entityType: EntityType.DOMAIN,
- *   entityLabel: t('label.domain'),
  *   onUpdate: async (domain, coverImageUrl, position) => {
  *     const updated = {
  *       ...domain,
@@ -73,34 +66,24 @@ export interface UploadCoverImageOptions<T> {
  *     const jsonPatch = compare(domain, updated);
  *     return await patchDomains(domain.id, jsonPatch);
  *   },
- *   enqueueSnackbar,
- *   t,
  * });
  * ```
  */
 export async function handleCoverImageUpload<T>(
   options: UploadCoverImageOptions<T>
-): Promise<T> {
-  const {
-    coverImageData,
-    createdEntity,
-    entityType,
-    entityLabel,
-    onUpdate,
-    enqueueSnackbar,
-    t,
-  } = options;
+): Promise<{ entity: T; uploadFailed: boolean }> {
+  const { coverImageData, createdEntity, entityType, onUpdate } = options;
 
   // No cover image to upload
   if (!coverImageData?.file) {
-    return createdEntity;
+    return { entity: createdEntity, uploadFailed: false };
   }
 
   // Check if upload functionality is available
   const { onImageUpload } =
     imageClassBase.getBlockEditorAttachmentProps() ?? {};
   if (!onImageUpload) {
-    return createdEntity;
+    return { entity: createdEntity, uploadFailed: false };
   }
 
   try {
@@ -112,22 +95,17 @@ export async function handleCoverImageUpload<T>(
     );
 
     // Let consumer handle the update logic
-    return await onUpdate(
+    const updatedEntity = await onUpdate(
       createdEntity,
       uploadedUrl,
       coverImageData.position?.y
     );
-  } catch (uploadError) {
-    // Entity created but upload/update failed - show warning
-    showNotistackWarning(
-      enqueueSnackbar,
-      t('message.entity-created-but-cover-image-failed', {
-        entity: entityLabel,
-      })
-    );
 
+    return { entity: updatedEntity, uploadFailed: false };
+  } catch (uploadError) {
     // Return original entity (without cover image)
-    return createdEntity;
+    // Note: Warning notification will be shown by caller
+    return { entity: createdEntity, uploadFailed: true };
   }
 }
 
@@ -215,12 +193,13 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
 
     // Step 4: Upload cover image and update (only if file exists)
     let finalEntity: TEntity = createdEntity;
+    let uploadFailed = false; // Default to false (no upload needed)
+
     if (coverImageData?.file) {
-      finalEntity = (await handleCoverImageUpload({
+      const result = await handleCoverImageUpload({
         coverImageData,
         createdEntity,
         entityType,
-        entityLabel,
         onUpdate: async (
           entity,
           coverImageUrl,
@@ -242,26 +221,41 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
           };
           const jsonPatch = compare(entityRecord, updatedEntity);
 
-          const result = await patchEntity(
+          const patchResult = await patchEntity(
             entityRecord.id as string,
             jsonPatch
           );
 
-          return result as Awaited<TEntity>;
+          return patchResult as Awaited<TEntity>;
         },
-        enqueueSnackbar,
-        t,
-      })) as TEntity;
+      });
+
+      finalEntity = result.entity as TEntity;
+      uploadFailed = result.uploadFailed;
     }
 
-    // Step 5: Show success message
-    showNotistackSuccess(
-      enqueueSnackbar,
-      <Typography sx={{ fontWeight: 600 }} variant="body2">
-        {t('server.create-entity-success', { entity: entityLabel })}
-      </Typography>,
-      closeSnackbar
-    );
+    // Step 5: Show appropriate notification based on upload status
+    if (uploadFailed) {
+      // Entity created but upload failed - show warning
+      showNotistackWarning(
+        enqueueSnackbar,
+        <Typography sx={{ fontWeight: 600 }} variant="body2">
+          {t('message.entity-created-but-cover-image-failed', {
+            entity: entityLabel,
+          })}
+        </Typography>,
+        closeSnackbar
+      );
+    } else {
+      // Entity created successfully (with or without cover image)
+      showNotistackSuccess(
+        enqueueSnackbar,
+        <Typography sx={{ fontWeight: 600 }} variant="body2">
+          {t('server.create-entity-success', { entity: entityLabel })}
+        </Typography>,
+        closeSnackbar
+      );
+    }
 
     // Step 6: Call success callback
     await onSuccess(finalEntity);

@@ -15,7 +15,7 @@ import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Thread } from '../../../generated/entity/feed/thread';
+import { Post, Thread } from '../../../generated/entity/feed/thread';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import {
   formatDateTime,
@@ -37,7 +37,7 @@ import ActivityFeedActions from '../Shared/ActivityFeedActions';
 
 interface CommentCardInterface {
   feed: Thread;
-  post: any;
+  post: Post;
   isLastReply: boolean;
   closeFeedEditor: () => void;
 }

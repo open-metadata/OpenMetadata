@@ -215,6 +215,24 @@ export const selectOption = async (
   await optionLocator.click();
 };
 
+export const selectRange = async (
+  page: Page,
+  ruleLocator: Locator,
+  startDate: string,
+  endDate: string
+) => {
+  await ruleLocator.locator('.rule--value .ant-picker-range').click();
+
+  await page.waitForSelector('.ant-picker-dropdown-range', {
+    state: 'visible',
+  });
+
+  await page.locator('.ant-picker-input-active input').fill(startDate);
+  await page.press('.ant-picker-input-active input', 'Enter');
+  await page.locator('.ant-picker-input-active input').fill(endDate);
+  await page.press('.ant-picker-input-active input', 'Enter');
+};
+
 export const fillRule = async (
   page: Page,
   {

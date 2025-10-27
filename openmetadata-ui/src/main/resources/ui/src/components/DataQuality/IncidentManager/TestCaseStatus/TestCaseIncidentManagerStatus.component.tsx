@@ -27,13 +27,16 @@ import AppBadge from '../../../common/Badge/Badge.component';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import { TestCaseStatusModal } from '../../TestCaseStatusModal/TestCaseStatusModal.component';
 import '../incident-manager.style.less';
+import InlineTestCaseIncidentStatus from './InlineTestCaseIncidentStatus.component';
 import { TestCaseStatusIncidentManagerProps } from './TestCaseIncidentManagerStatus.interface';
+
 const TestCaseIncidentManagerStatus = ({
   data,
   onSubmit,
   hasPermission,
   newLook = false,
   headerName,
+  isInline = false,
 }: TestCaseStatusIncidentManagerProps) => {
   const [isEditStatus, setIsEditStatus] = useState<boolean>(false);
   const { t } = useTranslation();
@@ -104,6 +107,16 @@ const TestCaseIncidentManagerStatus = ({
           />
         )}
       </div>
+    );
+  }
+
+  if (isInline) {
+    return (
+      <InlineTestCaseIncidentStatus
+        data={data}
+        hasEditPermission={hasEditPermission}
+        onSubmit={onSubmit}
+      />
     );
   }
 

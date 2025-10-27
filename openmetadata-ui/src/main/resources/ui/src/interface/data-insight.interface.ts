@@ -41,6 +41,7 @@ export interface ChartFilter {
 export interface DataInsightChartTooltipProps extends TooltipProps<any, any> {
   cardStyles?: React.CSSProperties;
   customValueKey?: string;
+  displayDateInHeader?: boolean;
   dateTimeFormatter?: (date?: number, format?: string) => string;
   isPercentage?: boolean;
   isTier?: boolean;
