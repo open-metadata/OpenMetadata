@@ -222,7 +222,6 @@ export const DataAssetSummaryPanelV1 = ({
       entityType === EntityType.DASHBOARD ? chartsDetailsLoading : false
     );
   }, [dataAsset, entityType, highlights, charts, chartsDetailsLoading]);
-  const isEntityDeleted = useMemo(() => dataAsset.deleted, [dataAsset]);
 
   const fetchIncidentCount = useCallback(async () => {
     if (

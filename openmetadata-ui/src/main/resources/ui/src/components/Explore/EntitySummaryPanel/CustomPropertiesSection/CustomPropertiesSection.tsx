@@ -112,29 +112,35 @@ const CustomPropertiesSection = ({
           <div className="custom-property-table">
             <table className="ant-table ant-table-small">
               <colgroup>
-                {val.columns.map((_: string, index: number) => (
-                  <col key={index} style={{ minWidth: '80px' }} />
+                {val.columns.map((column: string) => (
+                  <col key={column} style={{ minWidth: '80px' }} />
                 ))}
               </colgroup>
               <thead>
                 <tr>
-                  {val.columns.map((column: string, index: number) => (
-                    <th className="ant-table-cell" key={index}>
+                  {val.columns.map((column: string) => (
+                    <th className="ant-table-cell" key={column}>
                       {column}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {val.rows.map((row: any, rowIndex: number) => (
-                  <tr key={rowIndex}>
-                    {val.columns.map((column: string, colIndex: number) => (
-                      <td className="ant-table-cell" key={colIndex}>
-                        {row[column] || '-'}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {val.rows.map((row: any, rowIndex: number) => {
+                  const rowKey = `row-${rowIndex}-${val.columns
+                    .map((col: string) => row[col])
+                    .join('-')}`;
+
+                  return (
+                    <tr key={rowKey}>
+                      {val.columns.map((column: string) => (
+                        <td className="ant-table-cell" key={column}>
+                          {row[column] || '-'}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

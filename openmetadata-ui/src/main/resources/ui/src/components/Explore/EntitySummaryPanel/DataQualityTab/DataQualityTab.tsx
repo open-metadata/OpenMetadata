@@ -97,8 +97,45 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     }
   };
 
+  const getTestCaseStatusType = (status: string): StatusType => {
+    const lowerStatus = status?.toLowerCase();
+    if (lowerStatus === 'failed') {
+      return StatusType.Failure;
+    }
+    if (lowerStatus === 'success') {
+      return StatusType.Success;
+    }
+    if (lowerStatus === 'aborted') {
+      return StatusType.Aborted;
+    }
+
+    return lowerStatus as StatusType;
+  };
+
   const getSeverityText = (severity: number | string) => {
     return `SEVERITY - ${severity}`;
+  };
+
+  const renderAssigneeInfo = () => {
+    const assignee = incident?.testCaseResolutionStatusDetails?.assignee;
+    if (!assignee) {
+      return <Typography.Text className="detail-value">--</Typography.Text>;
+    }
+
+    const avatarText =
+      assignee.displayName?.charAt(0) || assignee.name?.charAt(0) || 'U';
+    const displayName = assignee.displayName || assignee.name || 'Unknown';
+
+    return (
+      <>
+        <Avatar className="assignee-avatar" size="small">
+          {avatarText}
+        </Avatar>
+        <Typography.Text className="assignee-name">
+          {displayName}
+        </Typography.Text>
+      </>
+    );
   };
 
   // If incident is provided, use incident data; otherwise use test case data
@@ -115,8 +152,10 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
       'Unknown Test Case'
     : testCase.name;
 
-  const assignee = incident?.testCaseResolutionStatusDetails?.assignee;
   const severity = incident?.severity;
+  const statusBadgeType = isIncidentMode
+    ? getStatusBadgeType(status as TestCaseResolutionStatusTypes)
+    : getTestCaseStatusType(status as string);
 
   return (
     <Card
@@ -135,17 +174,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
             <StatusBadgeV2
               hideIcon={isIncidentMode}
               label={status || 'Unknown'}
-              status={
-                isIncidentMode
-                  ? getStatusBadgeType(status as TestCaseResolutionStatusTypes)
-                  : status?.toLowerCase() === 'failed'
-                  ? StatusType.Failure
-                  : status?.toLowerCase() === 'success'
-                  ? StatusType.Success
-                  : status?.toLowerCase() === 'aborted'
-                  ? StatusType.Aborted
-                  : (status?.toLowerCase() as StatusType)
-              }
+              status={statusBadgeType}
             />
           </div>
         </div>
@@ -179,22 +208,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
               {isIncidentMode ? t('label.assignee') : t('label.incident')}
             </Typography.Text>
             {isIncidentMode ? (
-              <div className="assignee-info">
-                {assignee ? (
-                  <>
-                    <Avatar className="assignee-avatar" size="small">
-                      {assignee.displayName?.charAt(0) ||
-                        assignee.name?.charAt(0) ||
-                        'U'}
-                    </Avatar>
-                    <Typography.Text className="assignee-name">
-                      {assignee.displayName || assignee.name || 'Unknown'}
-                    </Typography.Text>
-                  </>
-                ) : (
-                  <Typography.Text className="detail-value">--</Typography.Text>
-                )}
-              </div>
+              <div className="assignee-info">{renderAssigneeInfo()}</div>
             ) : (
               <Typography.Text className="detail-value">
                 {testCase.incidentId ? 'ASSIGNED' : '--'}
@@ -436,6 +450,41 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
     } as TestCase;
   };
 
+  const renderIncidentCards = () => {
+    if (isIncidentsLoading) {
+      return (
+        <div className="flex-center p-lg">
+          <Loader size="default" />
+        </div>
+      );
+    }
+
+    if (filteredIncidents.length > 0) {
+      return (
+        <Row gutter={[0, 12]}>
+          {filteredIncidents.map((incident) => (
+            <Col key={incident.id} span={24}>
+              <TestCaseCard
+                incident={incident}
+                testCase={convertIncidentToTestCase(incident)}
+              />
+            </Col>
+          ))}
+        </Row>
+      );
+    }
+
+    return (
+      <div className="no-incidents">
+        <Typography.Text className="text-grey-muted">
+          {t('label.no-entity', {
+            entity: activeIncidentFilter,
+          })}
+        </Typography.Text>
+      </div>
+    );
+  };
+
   // Tab items configuration
   const tabItems = [
     {
@@ -520,75 +569,57 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
           {/* Incidents Stats Cards */}
           <div className="incidents-stats-container">
             <div className="incidents-stats-cards-container">
-              <div
+              <button
                 className={`incident-stat-card new-card ${
                   activeIncidentFilter === 'new' ? 'active' : ''
                 }`}
-                role="button"
-                tabIndex={0}
-                onClick={() => handleIncidentFilterChange('new')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    handleIncidentFilterChange('new');
-                  }
-                }}>
+                type="button"
+                onClick={() => handleIncidentFilterChange('new')}>
                 <Typography.Text className="stat-count new">
                   {incidentCounts.new.toString().padStart(2, '0')}
                 </Typography.Text>
                 <Typography.Text className="stat-label new">
                   {t('label.new')}
                 </Typography.Text>
-              </div>
+              </button>
               <Divider
                 flexItem
                 className="vertical-divider"
                 orientation="vertical"
                 variant="middle"
               />
-              <div
+              <button
                 className={`incident-stat-card ack-card ${
                   activeIncidentFilter === 'ack' ? 'active' : ''
                 }`}
-                role="button"
-                tabIndex={0}
-                onClick={() => handleIncidentFilterChange('ack')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    handleIncidentFilterChange('ack');
-                  }
-                }}>
+                type="button"
+                onClick={() => handleIncidentFilterChange('ack')}>
                 <Typography.Text className="stat-count ack">
                   {incidentCounts.ack.toString().padStart(2, '0')}
                 </Typography.Text>
                 <Typography.Text className="stat-label ack">
                   {t('label.acknowledged')}
                 </Typography.Text>
-              </div>
+              </button>
               <Divider
                 flexItem
                 className="vertical-divider"
                 orientation="vertical"
                 variant="middle"
               />
-              <div
+              <button
                 className={`incident-stat-card assigned-card ${
                   activeIncidentFilter === 'assigned' ? 'active' : ''
                 }`}
-                role="button"
-                tabIndex={0}
-                onClick={() => handleIncidentFilterChange('assigned')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    handleIncidentFilterChange('assigned');
-                  }
-                }}>
+                type="button"
+                onClick={() => handleIncidentFilterChange('assigned')}>
                 <Typography.Text className="stat-count assigned">
                   {incidentCounts.assigned.toString().padStart(2, '0')}
                 </Typography.Text>
                 <Typography.Text className="stat-label assigned">
                   {t('label.assigned')}
                 </Typography.Text>
-              </div>
+              </button>
             </div>
             <div>
               <div className="resolved-section">
@@ -608,30 +639,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({ entityFQN }) => {
           <div className="test-cases-section">
             {/* Incident Cards */}
             <div className="incident-cards-section">
-              {isIncidentsLoading ? (
-                <div className="flex-center p-lg">
-                  <Loader size="default" />
-                </div>
-              ) : filteredIncidents.length > 0 ? (
-                <Row gutter={[0, 12]}>
-                  {filteredIncidents.map((incident) => (
-                    <Col key={incident.id} span={24}>
-                      <TestCaseCard
-                        incident={incident}
-                        testCase={convertIncidentToTestCase(incident)}
-                      />
-                    </Col>
-                  ))}
-                </Row>
-              ) : (
-                <div className="no-incidents">
-                  <Typography.Text className="text-grey-muted">
-                    {t('label.no-entity', {
-                      entity: activeIncidentFilter,
-                    })}
-                  </Typography.Text>
-                </div>
-              )}
+              {renderIncidentCards()}
             </div>
           </div>
         </div>

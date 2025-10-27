@@ -193,6 +193,111 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     await handleSaveWithDomains(domainsArray);
   };
 
+  const renderLoadingState = () => (
+    <div className="domains-loading-container">
+      <div className="domains-loading-spinner">
+        <div className="loading-spinner" />
+      </div>
+    </div>
+  );
+
+  const renderEditingState = () => (
+    <div className="inline-edit-container">
+      <DomainSelectableList
+        multiple
+        hasPermission={hasPermission}
+        overlayClassName="w-auto"
+        popoverProps={{ placement: 'bottomLeft' }}
+        selectedDomain={editingDomains}
+        wrapInButton={false}
+        onUpdate={handleDomainSelection}>
+        <div className="domain-selector-display">
+          {editingDomains.length > 0 ? (
+            <div className="selected-domains-list">
+              {editingDomains.map((domain) => (
+                <div className="selected-domain-chip" key={domain.id}>
+                  <span className="domain-name">
+                    {domain.displayName || domain.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="domain-placeholder">
+              {t('label.select-entity', {
+                entity: t('label.domain-plural'),
+              })}
+            </span>
+          )}
+        </div>
+      </DomainSelectableList>
+    </div>
+  );
+
+  const renderEmptyContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return (
+      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+    );
+  };
+
+  const renderDomainsDisplay = () => (
+    <div className="domains-display">
+      <div className="domains-list">
+        {(showAllDomains
+          ? activeDomains
+          : activeDomains.slice(0, maxVisibleDomains)
+        ).map((domain, index) => {
+          const domainWithStyle = domain as EntityReference & {
+            style?: { color?: string; iconURL?: string };
+          };
+
+          return (
+            <div className="domain-item" key={index}>
+              <div className="domain-card-bar">
+                <div className="domain-card-content">
+                  <div className="domain-card-icon">
+                    {getDomainIcon(domainWithStyle?.style?.iconURL)}
+                  </div>
+                  <span className="domain-name">{getEntityName(domain)}</span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {activeDomains.length > maxVisibleDomains && (
+          <button
+            className="show-more-domains-button"
+            type="button"
+            onClick={() => setShowAllDomains(!showAllDomains)}>
+            {showAllDomains
+              ? t('label.less')
+              : `+${activeDomains.length - maxVisibleDomains} ${t(
+                  'label.more-lowercase'
+                )}`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderDomainsContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return renderDomainsDisplay();
+  };
+
   if (!activeDomains.length) {
     return (
       <div className="domains-section">
@@ -213,50 +318,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
             </div>
           )}
         </div>
-        <div className="domains-content">
-          {isLoading ? (
-            <div className="domains-loading-container">
-              <div className="domains-loading-spinner">
-                <div className="loading-spinner" />
-              </div>
-            </div>
-          ) : isEditing ? (
-            <div className="inline-edit-container">
-              <DomainSelectableList
-                multiple
-                hasPermission={hasPermission}
-                overlayClassName="w-auto"
-                popoverProps={{ placement: 'bottomLeft' }}
-                selectedDomain={editingDomains}
-                wrapInButton={false}
-                onUpdate={handleDomainSelection}>
-                <div className="domain-selector-display">
-                  {editingDomains.length > 0 ? (
-                    <div className="selected-domains-list">
-                      {editingDomains.map((domain) => (
-                        <div className="selected-domain-chip" key={domain.id}>
-                          <span className="domain-name">
-                            {domain.displayName || domain.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="domain-placeholder">
-                      {t('label.select-entity', {
-                        entity: t('label.domain-plural'),
-                      })}
-                    </span>
-                  )}
-                </div>
-              </DomainSelectableList>
-            </div>
-          ) : (
-            <span className="no-data-placeholder">
-              {t('label.no-data-found')}
-            </span>
-          )}
-        </div>
+        <div className="domains-content">{renderEmptyContent()}</div>
       </div>
     );
   }
@@ -280,86 +342,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           </div>
         )}
       </div>
-      <div className="domains-content">
-        {isLoading ? (
-          <div className="domains-loading-container">
-            <div className="domains-loading-spinner">
-              <div className="loading-spinner" />
-            </div>
-          </div>
-        ) : isEditing ? (
-          <div className="inline-edit-container">
-            <DomainSelectableList
-              multiple
-              hasPermission={hasPermission}
-              overlayClassName="w-auto"
-              popoverProps={{ placement: 'bottomLeft' }}
-              selectedDomain={editingDomains}
-              wrapInButton={false}
-              onUpdate={handleDomainSelection}>
-              <div className="domain-selector-display">
-                {editingDomains.length > 0 ? (
-                  <div className="selected-domains-list">
-                    {editingDomains.map((domain) => (
-                      <div className="selected-domain-chip" key={domain.id}>
-                        <span className="domain-name">
-                          {domain.displayName || domain.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="domain-placeholder">
-                    {t('label.select-entity', {
-                      entity: t('label.domain-plural'),
-                    })}
-                  </span>
-                )}
-              </div>
-            </DomainSelectableList>
-          </div>
-        ) : (
-          <div className="domains-display">
-            <div className="domains-list">
-              {(showAllDomains
-                ? activeDomains
-                : activeDomains.slice(0, maxVisibleDomains)
-              ).map((domain, index) => {
-                const domainWithStyle = domain as EntityReference & {
-                  style?: { color?: string; iconURL?: string };
-                };
-
-                return (
-                  <div className="domain-item" key={index}>
-                    <div className="domain-card-bar">
-                      <div className="domain-card-content">
-                        <div className="domain-card-icon">
-                          {getDomainIcon(domainWithStyle?.style?.iconURL)}
-                        </div>
-                        <span className="domain-name">
-                          {getEntityName(domain)}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-              {activeDomains.length > maxVisibleDomains && (
-                <button
-                  className="show-more-domains-button"
-                  type="button"
-                  onClick={() => setShowAllDomains(!showAllDomains)}>
-                  {showAllDomains
-                    ? t('label.less')
-                    : `+${activeDomains.length - maxVisibleDomains} ${t(
-                        'label.more-lowercase'
-                      )}`}
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-      </div>
+      <div className="domains-content">{renderDomainsContent()}</div>
     </div>
   );
 };

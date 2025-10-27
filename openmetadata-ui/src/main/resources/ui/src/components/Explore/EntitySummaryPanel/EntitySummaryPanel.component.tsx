@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Card, Tooltip, Typography } from 'antd';
+import { Link } from '@mui/material';
+import { Card, Tooltip } from 'antd';
 import { AxiosError } from 'axios';
 import { get } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -883,6 +884,33 @@ export default function EntitySummaryPanel({
     setActiveTab(tab);
   };
 
+  const renderLineageContent = () => {
+    if (isLineageLoading) {
+      return (
+        <div className="flex-center p-lg">
+          <Loader size="default" />
+        </div>
+      );
+    }
+
+    if (lineageData) {
+      return (
+        <LineageTabContent
+          entityFqn={entityDetails?.details?.fullyQualifiedName || ''}
+          filter={lineageFilter}
+          lineageData={lineageData}
+          onFilterChange={setLineageFilter}
+        />
+      );
+    }
+
+    return (
+      <div className="text-center text-grey-muted p-lg">
+        {t('label.no-data-found')}
+      </div>
+    );
+  };
+
   const renderTabContent = () => {
     switch (activeTab) {
       case EntityRightPanelTab.OVERVIEW:
@@ -901,23 +929,15 @@ export default function EntitySummaryPanel({
                         entityDetails.details.entityType ?? ''
                       )}
                     </span>
-                    <Typography.Text
+                    <Link
                       className="entity-title-link"
                       data-testid="entity-link"
-                      role="link"
-                      onClick={() => {
-                        const target =
-                          searchClassBase.getSearchEntityLinkTarget(
-                            entityDetails.details
-                          );
-                        if (target === '_blank') {
-                          window.open(entityLink as string, '_blank');
-                        } else {
-                          window.open(entityLink as string, '_blank');
-                        }
-                      }}>
+                      href={entityLink as string}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      underline="hover">
                       {stringToHTML(getEntityName(entityDetails.details))}
-                    </Typography.Text>
+                    </Link>
                   </div>
                 </Tooltip>
               </div>
@@ -941,23 +961,15 @@ export default function EntitySummaryPanel({
                         entityDetails.details.entityType ?? ''
                       )}
                     </span>
-                    <Typography.Text
+                    <Link
                       className="entity-title-link"
                       data-testid="entity-link"
-                      role="link"
-                      onClick={() => {
-                        const target =
-                          searchClassBase.getSearchEntityLinkTarget(
-                            entityDetails.details
-                          );
-                        if (target === '_blank') {
-                          window.open(entityLink as string, '_blank');
-                        } else {
-                          window.open(entityLink as string, '_blank');
-                        }
-                      }}>
+                      href={entityLink as string}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      underline="hover">
                       {stringToHTML(getEntityName(entityDetails.details))}
-                    </Typography.Text>
+                    </Link>
                   </div>
                 </Tooltip>
               </div>
@@ -988,46 +1000,21 @@ export default function EntitySummaryPanel({
                         entityDetails.details.entityType ?? ''
                       )}
                     </span>
-                    <Typography.Text
+                    <Link
                       className="entity-title-link"
                       data-testid="entity-link"
-                      role="link"
-                      onClick={() => {
-                        const target =
-                          searchClassBase.getSearchEntityLinkTarget(
-                            entityDetails.details
-                          );
-                        if (target === '_blank') {
-                          window.open(entityLink as string, '_blank');
-                        } else {
-                          window.open(entityLink as string, '_blank');
-                        }
-                      }}>
+                      href={entityLink as string}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      underline="hover">
                       {stringToHTML(getEntityName(entityDetails.details))}
-                    </Typography.Text>
+                    </Link>
                   </div>
                 </Tooltip>
               </div>
             )}
             <div className="entity-summary-panel-tab-content">
-              <div className="p-x-md">
-                {isLineageLoading ? (
-                  <div className="flex-center p-lg">
-                    <Loader size="default" />
-                  </div>
-                ) : lineageData ? (
-                  <LineageTabContent
-                    entityFqn={entityDetails?.details?.fullyQualifiedName || ''}
-                    filter={lineageFilter}
-                    lineageData={lineageData}
-                    onFilterChange={setLineageFilter}
-                  />
-                ) : (
-                  <div className="text-center text-grey-muted p-lg">
-                    {t('label.no-data-found')}
-                  </div>
-                )}
-              </div>
+              <div className="p-x-md">{renderLineageContent()}</div>
             </div>
           </>
         );
@@ -1047,23 +1034,15 @@ export default function EntitySummaryPanel({
                         entityDetails.details.entityType ?? ''
                       )}
                     </span>
-                    <Typography.Text
+                    <Link
                       className="entity-title-link"
                       data-testid="entity-link"
-                      role="link"
-                      onClick={() => {
-                        const target =
-                          searchClassBase.getSearchEntityLinkTarget(
-                            entityDetails.details
-                          );
-                        if (target === '_blank') {
-                          window.open(entityLink as string, '_blank');
-                        } else {
-                          window.open(entityLink as string, '_blank');
-                        }
-                      }}>
+                      href={entityLink as string}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      underline="hover">
                       {stringToHTML(getEntityName(entityDetails.details))}
-                    </Typography.Text>
+                    </Link>
                   </div>
                 </Tooltip>
               </div>
@@ -1090,23 +1069,15 @@ export default function EntitySummaryPanel({
                         entityDetails.details.entityType ?? ''
                       )}
                     </span>
-                    <Typography.Text
+                    <Link
                       className="entity-title-link"
                       data-testid="entity-link"
-                      role="link"
-                      onClick={() => {
-                        const target =
-                          searchClassBase.getSearchEntityLinkTarget(
-                            entityDetails.details
-                          );
-                        if (target === '_blank') {
-                          window.open(entityLink as string, '_blank');
-                        } else {
-                          window.open(entityLink as string, '_blank');
-                        }
-                      }}>
+                      href={entityLink as string}
+                      rel="noopener noreferrer"
+                      target="_blank"
+                      underline="hover">
                       {stringToHTML(getEntityName(entityDetails.details))}
-                    </Typography.Text>
+                    </Link>
                   </div>
                 </Tooltip>
               </div>

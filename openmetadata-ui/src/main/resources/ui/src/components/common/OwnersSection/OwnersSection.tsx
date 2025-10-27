@@ -191,6 +191,83 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     await handleSaveWithOwners(selectedOwners);
   };
 
+  const renderLoadingState = () => (
+    <div className="owners-loading-container">
+      <div className="owners-loading-spinner">
+        <div className="loading-spinner" />
+      </div>
+    </div>
+  );
+
+  const renderEditingState = () => (
+    <div className="inline-edit-container">
+      <UserSelectableList
+        multiSelect
+        hasPermission={hasPermission}
+        popoverProps={{ placement: 'bottomLeft' }}
+        selectedUsers={editingOwners}
+        onUpdate={handleOwnerSelection}>
+        <div className="owner-selector-display">
+          {editingOwners.length > 0 ? (
+            <div className="selected-owners-list">
+              {editingOwners.map((owner) => (
+                <div className="selected-owner-chip" key={owner.id}>
+                  <span className="owner-name">
+                    {owner.displayName || owner.name}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <span className="owner-placeholder">
+              {t('label.select-entity', {
+                entity: t('label.owner-plural'),
+              })}
+            </span>
+          )}
+        </div>
+      </UserSelectableList>
+    </div>
+  );
+
+  const renderEmptyContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return (
+      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
+    );
+  };
+
+  const renderOwnersDisplay = () => (
+    <div className="owners-display">
+      <OwnerLabel
+        avatarSize={24}
+        className="owner-label-section"
+        hasPermission={hasPermission}
+        isCompactView={false}
+        maxVisibleOwners={4}
+        owners={owners}
+        showLabel={false}
+      />
+    </div>
+  );
+
+  const renderOwnersContent = () => {
+    if (isLoading) {
+      return renderLoadingState();
+    }
+    if (isEditing) {
+      return renderEditingState();
+    }
+
+    return renderOwnersDisplay();
+  };
+
   if (!owners.length) {
     return (
       <div className="owners-section">
@@ -211,48 +288,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
             </div>
           )}
         </div>
-        <div className="owners-content">
-          {isLoading ? (
-            <div className="owners-loading-container">
-              <div className="owners-loading-spinner">
-                <div className="loading-spinner" />
-              </div>
-            </div>
-          ) : isEditing ? (
-            <div className="inline-edit-container">
-              <UserSelectableList
-                multiSelect
-                hasPermission={hasPermission}
-                popoverProps={{ placement: 'bottomLeft' }}
-                selectedUsers={editingOwners}
-                onUpdate={handleOwnerSelection}>
-                <div className="owner-selector-display">
-                  {editingOwners.length > 0 ? (
-                    <div className="selected-owners-list">
-                      {editingOwners.map((owner) => (
-                        <div className="selected-owner-chip" key={owner.id}>
-                          <span className="owner-name">
-                            {owner.displayName || owner.name}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="owner-placeholder">
-                      {t('label.select-entity', {
-                        entity: t('label.owner-plural'),
-                      })}
-                    </span>
-                  )}
-                </div>
-              </UserSelectableList>
-            </div>
-          ) : (
-            <span className="no-data-placeholder">
-              {t('label.no-data-found')}
-            </span>
-          )}
-        </div>
+        <div className="owners-content">{renderEmptyContent()}</div>
       </div>
     );
   }
@@ -276,56 +312,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           </div>
         )}
       </div>
-      <div className="owners-content">
-        {isLoading ? (
-          <div className="owners-loading-container">
-            <div className="owners-loading-spinner">
-              <div className="loading-spinner" />
-            </div>
-          </div>
-        ) : isEditing ? (
-          <div className="inline-edit-container">
-            <UserSelectableList
-              multiSelect
-              hasPermission={hasPermission}
-              popoverProps={{ placement: 'bottomLeft' }}
-              selectedUsers={editingOwners}
-              onUpdate={handleOwnerSelection}>
-              <div className="owner-selector-display">
-                {editingOwners.length > 0 ? (
-                  <div className="selected-owners-list">
-                    {editingOwners.map((owner) => (
-                      <div className="selected-owner-chip" key={owner.id}>
-                        <span className="owner-name">
-                          {owner.displayName || owner.name}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="owner-placeholder">
-                    {t('label.select-entity', {
-                      entity: t('label.owner-plural'),
-                    })}
-                  </span>
-                )}
-              </div>
-            </UserSelectableList>
-          </div>
-        ) : (
-          <div className="owners-display">
-            <OwnerLabel
-              avatarSize={24}
-              className="owner-label-section"
-              hasPermission={hasPermission}
-              isCompactView={false}
-              maxVisibleOwners={4}
-              owners={owners}
-              showLabel={false}
-            />
-          </div>
-        )}
-      </div>
+      <div className="owners-content">{renderOwnersContent()}</div>
     </div>
   );
 };
