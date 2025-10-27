@@ -239,9 +239,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     SecurityConfigurationManager.getInstance().initialize(this, catalogConfig, environment);
 
-    // Initialize Redis Cache if enabled
-    initializeCache(catalogConfig, environment);
-
     initializeWebsockets(catalogConfig, environment);
 
     // init Secret Manager
@@ -254,7 +251,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Instantiate JWT Token Generator
     JWTTokenGenerator.getInstance()
         .init(
-                SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+            SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
             catalogConfig.getJwtTokenConfiguration());
 
     // Set the Database type for choosing correct queries from annotations
@@ -396,7 +393,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     }
 
     SessionCookieConfig cookieConfig =
-            Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
+        Objects.requireNonNull(sessionHandler).getSessionCookieConfig();
     cookieConfig.setHttpOnly(true);
     cookieConfig.setSecure(isHttps(config));
 
@@ -404,9 +401,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     int sessionExpiry = 604800; // Default 7 days in seconds
     if (SecurityConfigurationManager.getCurrentAuthConfig().getOidcConfiguration() != null) {
       sessionExpiry =
-              SecurityConfigurationManager.getCurrentAuthConfig()
-                      .getOidcConfiguration()
-                      .getSessionExpiry();
+          SecurityConfigurationManager.getCurrentAuthConfig()
+              .getOidcConfiguration()
+              .getSessionExpiry();
     }
 
     cookieConfig.setMaxAge(sessionExpiry);
@@ -517,7 +514,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Ensure we have a session handler
     if (SecurityConfigurationManager.getCurrentAuthConfig() != null
-            && SecurityConfigurationManager.getCurrentAuthConfig()
+        && SecurityConfigurationManager.getCurrentAuthConfig()
             .getProvider()
             .equals(AuthProvider.SAML)) {
       MutableServletContextHandler contextHandler = environment.getApplicationContext();
@@ -530,7 +527,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
       contextHandler.addServlet(new ServletHolder(new SamlLoginServlet()), "/api/v1/saml/login");
       contextHandler.addServlet(
-              new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+          new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
       contextHandler.addServlet(
           new ServletHolder(new SamlMetadataServlet()), "/api/v1/saml/metadata");
       contextHandler.addServlet(
@@ -626,16 +623,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   public void reinitializeAuthSystem(
-          OpenMetadataApplicationConfig config, Environment environment) {
+      OpenMetadataApplicationConfig config, Environment environment) {
     try {
       LOG.info("Starting authentication system reinitialization");
       AuthServeletHandlerRegistry.setHandler(AuthServeletHandlerFactory.getHandler(config));
 
       // Update JWT configuration first
       JWTTokenGenerator.getInstance()
-              .init(
-                      SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
-                      config.getJwtTokenConfiguration());
+          .init(
+              SecurityConfigurationManager.getCurrentAuthConfig().getTokenValidationAlgorithm(),
+              config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config
       registerAuthenticator(SecurityConfigurationManager.getInstance());
@@ -646,16 +643,16 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Re-register servlets
       if (AuthServeletHandlerFactory.getHandler(config) instanceof AuthenticationCodeFlowHandler) {
         AuthenticationCodeFlowHandler.getInstance(
-                        SecurityConfigurationManager.getCurrentAuthConfig(),
-                        SecurityConfigurationManager.getCurrentAuthzConfig())
-                .updateConfiguration(
-                        SecurityConfigurationManager.getCurrentAuthConfig(),
-                        SecurityConfigurationManager.getCurrentAuthzConfig());
+                SecurityConfigurationManager.getCurrentAuthConfig(),
+                SecurityConfigurationManager.getCurrentAuthzConfig())
+            .updateConfiguration(
+                SecurityConfigurationManager.getCurrentAuthConfig(),
+                SecurityConfigurationManager.getCurrentAuthzConfig());
       }
 
       // Reinitialize SAML settings if SAML is enabled
       if (SecurityConfigurationManager.getCurrentAuthConfig() != null
-              && SecurityConfigurationManager.getCurrentAuthConfig()
+          && SecurityConfigurationManager.getCurrentAuthConfig()
               .getProvider()
               .equals(AuthProvider.SAML)) {
         LOG.info("Reinitializing SAML settings during authentication reinitialization");
@@ -680,7 +677,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           InstantiationException {
     AuthorizerConfiguration authorizerConf = SecurityConfigurationManager.getCurrentAuthzConfig();
     AuthenticationConfiguration authenticationConfiguration =
-            SecurityConfigurationManager.getCurrentAuthConfig();
+        SecurityConfigurationManager.getCurrentAuthConfig();
     DelegatingContainerRequestFilter delegatingFilter = new DelegatingContainerRequestFilter();
     environment.jersey().register(delegatingFilter);
     // to authenticate request while opening websocket connections
@@ -710,30 +707,30 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void reRegisterAuthorizer(
-          OpenMetadataApplicationConfig catalogConfig, Environment environment)
-          throws NoSuchMethodException,
+      OpenMetadataApplicationConfig catalogConfig, Environment environment)
+      throws NoSuchMethodException,
           ClassNotFoundException,
           IllegalAccessException,
           InvocationTargetException,
           InstantiationException {
     AuthorizerConfiguration authorizerConf = SecurityConfigurationManager.getCurrentAuthzConfig();
     AuthenticationConfiguration authenticationConfiguration =
-            SecurityConfigurationManager.getCurrentAuthConfig();
+        SecurityConfigurationManager.getCurrentAuthConfig();
     // to authenticate request while opening websocket connections
     if (authorizerConf != null) {
       authorizer =
-              Class.forName(authorizerConf.getClassName())
-                      .asSubclass(Authorizer.class)
-                      .getConstructor()
-                      .newInstance();
+          Class.forName(authorizerConf.getClassName())
+              .asSubclass(Authorizer.class)
+              .getConstructor()
+              .newInstance();
       String filterClazzName = authorizerConf.getContainerRequestFilter();
       ContainerRequestFilter filter;
       if (!StringUtils.isEmpty(filterClazzName)) {
         filter =
-                Class.forName(filterClazzName)
-                        .asSubclass(ContainerRequestFilter.class)
-                        .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
-                        .newInstance(authenticationConfiguration, authorizerConf);
+            Class.forName(filterClazzName)
+                .asSubclass(ContainerRequestFilter.class)
+                .getConstructor(AuthenticationConfiguration.class, AuthorizerConfiguration.class)
+                .newInstance(authenticationConfiguration, authorizerConf);
         LOG.info("Re Registering ContainerRequestFilter: {}", filter.getClass().getCanonicalName());
         ContainerRequestFilterManager.getInstance().registerFilter(filter);
       }
@@ -747,7 +744,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
   private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
     AuthenticationConfiguration authenticationConfiguration =
-            SecurityConfigurationManager.getCurrentAuthConfig();
+        SecurityConfigurationManager.getCurrentAuthConfig();
     switch (authenticationConfiguration.getProvider()) {
       case BASIC -> authenticatorHandler = new BasicAuthenticator();
       case LDAP -> authenticatorHandler = new LdapAuthenticator();
@@ -828,13 +825,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       OpenMetadataApplicationConfig config, Environment environment, Jdbi jdbi) {
     CollectionRegistry.initialize();
     CollectionRegistry.getInstance()
-            .registerResources(
-                    jdbi,
-                    environment,
-                    config,
-                    authorizer,
-                    SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
-                    limits);
+        .registerResources(
+            jdbi,
+            environment,
+            config,
+            authorizer,
+            SecurityConfigurationManager.getInstance().getAuthenticatorHandler(),
+            limits);
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
@@ -867,8 +864,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     if (catalogConfig.getAuthorizerConfiguration() != null) {
       socketAddressFilter =
           new SocketAddressFilter(
-                  SecurityConfigurationManager.getCurrentAuthConfig(),
-                  SecurityConfigurationManager.getCurrentAuthzConfig());
+              SecurityConfigurationManager.getCurrentAuthConfig(),
+              SecurityConfigurationManager.getCurrentAuthzConfig());
     } else {
       socketAddressFilter = new SocketAddressFilter();
     }

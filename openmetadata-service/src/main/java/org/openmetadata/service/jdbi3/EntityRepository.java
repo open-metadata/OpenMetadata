@@ -1427,7 +1427,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> createOrUpdate(
-          UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
+      UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     // Check if parent entity is being deleted
     if (lockManager != null) {
       try {
@@ -1456,7 +1456,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public PutResponse<T> createOrUpdateForImport(
-          UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
+      UriInfo uriInfo, T updated, String updatedBy, String impersonatedBy) {
     T original = findByNameOrNull(updated.getFullyQualifiedName(), ALL);
     if (original == null) { // If an original entity does not exist then create it, else update
       if (impersonatedBy != null) {
@@ -1595,7 +1595,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> update(
-          UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
+      UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
@@ -1628,7 +1628,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PutResponse<T> updateForImport(
-          UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
+      UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PUT operation
     setFieldsInternal(original, putFields);
     updated.setUpdatedBy(updatedBy);
@@ -1681,13 +1681,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PatchResponse<T> patch(
-          UriInfo uriInfo,
-          UUID id,
-          String user,
-          JsonPatch patch,
-          ChangeSource changeSource,
-          String ifMatchHeader,
-          String impersonatedBy) {
+      UriInfo uriInfo,
+      UUID id,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader,
+      String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(find(id, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1706,7 +1706,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Apply JSON patch to the original entity to get the updated entity
     return patchCommonWithOptimisticLocking(
-            original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
   }
 
   /**
@@ -1735,13 +1735,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   @Transaction
   public final PatchResponse<T> patch(
-          UriInfo uriInfo,
-          String fqn,
-          String user,
-          JsonPatch patch,
-          ChangeSource changeSource,
-          String ifMatchHeader,
-          String impersonatedBy) {
+      UriInfo uriInfo,
+      String fqn,
+      String user,
+      JsonPatch patch,
+      ChangeSource changeSource,
+      String ifMatchHeader,
+      String impersonatedBy) {
     // Get all the fields in the original entity that can be updated during PATCH operation
     T original = setFieldsInternal(findByName(fqn, NON_DELETED, false), patchFields);
     setInheritedFields(original, patchFields);
@@ -1760,13 +1760,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // Apply JSON patch to the original entity to get the updated entity
     return patchCommonWithOptimisticLocking(
-            original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, impersonatedBy);
   }
 
   private PatchResponse<T> patchCommon(
       T original, JsonPatch patch, String user, UriInfo uriInfo, ChangeSource changeSource) {
     return patchCommonWithOptimisticLocking(
-            original, patch, user, uriInfo, changeSource, false, null);
+        original, patch, user, uriInfo, changeSource, false, null);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -1777,17 +1777,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSource changeSource,
       boolean useOptimisticLocking) {
     return patchCommonWithOptimisticLocking(
-            original, patch, user, uriInfo, changeSource, useOptimisticLocking, null);
+        original, patch, user, uriInfo, changeSource, useOptimisticLocking, null);
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
-          T original,
-          JsonPatch patch,
-          String user,
-          UriInfo uriInfo,
-          ChangeSource changeSource,
-          boolean useOptimisticLocking,
-          String impersonatedBy) {
+      T original,
+      JsonPatch patch,
+      String user,
+      UriInfo uriInfo,
+      ChangeSource changeSource,
+      boolean useOptimisticLocking,
+      String impersonatedBy) {
     // Start timing JSON patch application
     T updated = JsonUtils.applyPatch(original, patch, entityClass);
     updated.setUpdatedBy(user);
@@ -2852,8 +2852,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
                 tagLabel.getTagFQN(),
                 targetFQN,
                 tagLabel.getLabelType().ordinal(),
-                    tagLabel.getState().ordinal(),
-                    tagLabel.getReason());
+                tagLabel.getState().ordinal(),
+                tagLabel.getReason());
 
         // Update RDF store
         org.openmetadata.service.rdf.RdfTagUpdater.applyTag(tagLabel, targetFQN);
@@ -4518,7 +4518,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       // Record changes for audit trail
       recordListChange(
-              fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
+          fieldName, origTags, updatedTags, new ArrayList<>(), new ArrayList<>(), tagLabelMatch);
       updatedTags.sort(compareTagLabel);
     }
 

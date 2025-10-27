@@ -107,9 +107,9 @@ public class SystemResource {
             config.getPipelineServiceClientConfiguration());
 
     this.jwtFilter =
-            new JwtFilter(
-                    SecurityConfigurationManager.getCurrentAuthConfig(),
-                    SecurityConfigurationManager.getCurrentAuthzConfig());
+        new JwtFilter(
+            SecurityConfigurationManager.getCurrentAuthConfig(),
+            SecurityConfigurationManager.getCurrentAuthzConfig());
     this.isNlqEnabled =
         config.getElasticSearchConfiguration().getNaturalLanguageSearch() != null
             ? config.getElasticSearchConfiguration().getNaturalLanguageSearch().getEnabled()
@@ -184,7 +184,7 @@ public class SystemResource {
     if (allConfigs != null && allConfigs.getData() != null) {
       for (Settings setting : allConfigs.getData()) {
         if (setting.getConfigType() != AUTHENTICATION_CONFIGURATION
-                && setting.getConfigType() != AUTHORIZER_CONFIGURATION) {
+            && setting.getConfigType() != AUTHORIZER_CONFIGURATION) {
           filteredSettings.add(setting);
         }
       }
@@ -216,9 +216,9 @@ public class SystemResource {
           String name) {
     // Restrict access to authentication and authorizer configurations
     if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
-            || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
       throw new SystemSettingsException(
-              "Access to authentication and authorizer configurations is not allowed through this endpoint");
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
     if (!name.equalsIgnoreCase(LINEAGE_SETTINGS.toString())) {
@@ -354,9 +354,9 @@ public class SystemResource {
       @Valid Settings settingName) {
     // Restrict updating authentication and authorizer configurations
     if (settingName.getConfigType() == AUTHENTICATION_CONFIGURATION
-            || settingName.getConfigType() == AUTHORIZER_CONFIGURATION) {
+        || settingName.getConfigType() == AUTHORIZER_CONFIGURATION) {
       throw new SystemSettingsException(
-              "Access to authentication and authorizer configurations is not allowed through this endpoint");
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
     authorizer.authorizeAdmin(securityContext);
@@ -400,9 +400,9 @@ public class SystemResource {
           String name) {
     // Restrict resetting authentication and authorizer configurations
     if (name.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
-            || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+        || name.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
       throw new SystemSettingsException(
-              "Access to authentication and authorizer configurations is not allowed through this endpoint");
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
     authorizer.authorizeAdmin(securityContext);
@@ -478,9 +478,9 @@ public class SystemResource {
           JsonPatch patch) {
     // Restrict patching authentication and authorizer configurations
     if (settingName.equalsIgnoreCase(AUTHENTICATION_CONFIGURATION.value())
-            || settingName.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
+        || settingName.equalsIgnoreCase(AUTHORIZER_CONFIGURATION.value())) {
       throw new SystemSettingsException(
-              "Access to authentication and authorizer configurations is not allowed through this endpoint");
+          "Access to authentication and authorizer configurations is not allowed through this endpoint");
     }
 
     authorizer.authorizeAdmin(securityContext);
@@ -575,22 +575,22 @@ public class SystemResource {
   @GET
   @Path("/security/config")
   @Operation(
-          operationId = "getSecurityConfig",
-          summary = "Get complete security configuration",
-          description = "Get both authentication and authorization configuration",
-          responses = {
-                  @ApiResponse(
-                          responseCode = "200",
-                          description = "Security Configuration",
-                          content =
-                          @Content(
-                                  mediaType = "application/json",
-                                  schema = @Schema(implementation = SecurityConfiguration.class)))
-          })
+      operationId = "getSecurityConfig",
+      summary = "Get complete security configuration",
+      description = "Get both authentication and authorization configuration",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Security Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityConfiguration.class)))
+      })
   public SecurityConfiguration getSecurityConfig(@Context SecurityContext securityContext) {
     authorizer.authorizeAdmin(securityContext);
     SecurityConfiguration originalConfig =
-            SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+        SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
 
     // Create a deep copy to avoid mutating the original shared objects
     String configJson = JsonUtils.pojoToJson(originalConfig);
@@ -600,20 +600,20 @@ public class SystemResource {
     if (authorizer.shouldMaskPasswords(securityContext)) {
       // Mask OIDC configuration if present
       if (config.getAuthenticationConfiguration() != null
-              && config.getAuthenticationConfiguration().getOidcConfiguration() != null) {
+          && config.getAuthenticationConfiguration().getOidcConfiguration() != null) {
         config
-                .getAuthenticationConfiguration()
-                .getOidcConfiguration()
-                .setSecret(PasswordEntityMasker.PASSWORD_MASK);
+            .getAuthenticationConfiguration()
+            .getOidcConfiguration()
+            .setSecret(PasswordEntityMasker.PASSWORD_MASK);
       }
 
       // Mask LDAP configuration if present
       if (config.getAuthenticationConfiguration() != null
-              && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
+          && config.getAuthenticationConfiguration().getLdapConfiguration() != null) {
         config
-                .getAuthenticationConfiguration()
-                .getLdapConfiguration()
-                .setDnAdminPassword(PasswordEntityMasker.PASSWORD_MASK);
+            .getAuthenticationConfiguration()
+            .getLdapConfiguration()
+            .setDnAdminPassword(PasswordEntityMasker.PASSWORD_MASK);
       }
     }
     return config;
@@ -622,35 +622,35 @@ public class SystemResource {
   @PUT
   @Path("/security/config")
   @Operation(
-          operationId = "updateSecurityConfig",
-          summary = "Update complete security configuration",
-          description = "Update both authentication and authorization configuration atomically",
-          responses = {
-                  @ApiResponse(
-                          responseCode = "200",
-                          description = "Updated Security Configuration",
-                          content =
-                          @Content(
-                                  mediaType = "application/json",
-                                  schema = @Schema(implementation = SecurityConfiguration.class)))
-          })
+      operationId = "updateSecurityConfig",
+      summary = "Update complete security configuration",
+      description = "Update both authentication and authorization configuration atomically",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Updated Security Configuration",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityConfiguration.class)))
+      })
   public Response updateSecurityConfig(
-          @Context UriInfo uriInfo,
-          @Context SecurityContext securityContext,
-          @Valid SecurityConfiguration securityConfig) {
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
 
     try {
       // Update both configurations in a transaction
       Settings authSettings =
-              new Settings()
-                      .withConfigType(AUTHENTICATION_CONFIGURATION)
-                      .withConfigValue(securityConfig.getAuthenticationConfiguration());
+          new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthenticationConfiguration());
 
       Settings authzSettings =
-              new Settings()
-                      .withConfigType(AUTHORIZER_CONFIGURATION)
-                      .withConfigValue(securityConfig.getAuthorizerConfiguration());
+          new Settings()
+              .withConfigType(AUTHORIZER_CONFIGURATION)
+              .withConfigValue(securityConfig.getAuthorizerConfiguration());
 
       // Save both to database
       systemRepository.createOrUpdate(authSettings);
@@ -673,48 +673,48 @@ public class SystemResource {
   @PATCH
   @Path("/security/config")
   @Operation(
-          operationId = "patchSecurityConfig",
-          summary = "Patch security configuration",
-          description = "Update security configuration using JsonPatch with validation and reload",
-          externalDocs =
+      operationId = "patchSecurityConfig",
+      summary = "Patch security configuration",
+      description = "Update security configuration using JsonPatch with validation and reload",
+      externalDocs =
           @ExternalDocumentation(
-                  description = "JsonPatch RFC",
-                  url = "https://tools.ietf.org/html/rfc6902"))
+              description = "JsonPatch RFC",
+              url = "https://tools.ietf.org/html/rfc6902"))
   @Consumes(MediaType.APPLICATION_JSON_PATCH_JSON)
   public Response patchSecurityConfig(
-          @Context UriInfo uriInfo,
-          @Context SecurityContext securityContext,
-          @RequestBody(
-                  description = "JsonPatch with array of operations",
-                  content =
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @RequestBody(
+              description = "JsonPatch with array of operations",
+              content =
                   @Content(
-                          mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
-                          examples = {
-                                  @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
-                          }))
+                      mediaType = MediaType.APPLICATION_JSON_PATCH_JSON,
+                      examples = {
+                        @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
+                      }))
           JsonPatch patch) {
     authorizer.authorizeAdmin(securityContext);
 
     try {
       SecurityConfiguration originalConfig =
-              SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
+          SecurityConfigurationManager.getInstance().getCurrentSecurityConfig();
 
       String configJson = JsonUtils.pojoToJson(originalConfig);
       SecurityConfiguration currentConfig =
-              JsonUtils.readValue(configJson, SecurityConfiguration.class);
+          JsonUtils.readValue(configJson, SecurityConfiguration.class);
 
       JsonPatch filteredPatch = systemRepository.filterInvalidPatchOperations(patch, currentConfig);
 
       JsonValue patched = JsonUtils.applyPatch(currentConfig, filteredPatch);
       String jsonString = patched.toString();
       SecurityConfiguration updatedConfig =
-              JsonUtils.readValue(jsonString, SecurityConfiguration.class);
+          JsonUtils.readValue(jsonString, SecurityConfiguration.class);
 
       SecurityValidationResponse validationResponse =
-              systemRepository.validateSecurityConfiguration(updatedConfig, applicationConfig);
+          systemRepository.validateSecurityConfiguration(updatedConfig, applicationConfig);
 
       boolean isValidConfig =
-              validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
+          validationResponse.getStatus() == SecurityValidationResponse.Status.SUCCESS;
 
       if (!isValidConfig) {
         // Consolidate all error messages for logging
@@ -728,20 +728,20 @@ public class SystemResource {
         // Log the errors
         if (!failedMessages.isEmpty()) {
           LOG.error(
-                  "Security configuration validation failed: {}", String.join("; ", failedMessages));
+              "Security configuration validation failed: {}", String.join("; ", failedMessages));
         }
 
         return Response.status(Response.Status.BAD_REQUEST).entity(validationResponse).build();
       }
       Settings authSettings =
-              new Settings()
-                      .withConfigType(AUTHENTICATION_CONFIGURATION)
-                      .withConfigValue(updatedConfig.getAuthenticationConfiguration());
+          new Settings()
+              .withConfigType(AUTHENTICATION_CONFIGURATION)
+              .withConfigValue(updatedConfig.getAuthenticationConfiguration());
 
       Settings authzSettings =
-              new Settings()
-                      .withConfigType(AUTHORIZER_CONFIGURATION)
-                      .withConfigValue(updatedConfig.getAuthorizerConfiguration());
+          new Settings()
+              .withConfigType(AUTHORIZER_CONFIGURATION)
+              .withConfigValue(updatedConfig.getAuthorizerConfiguration());
 
       systemRepository.createOrUpdate(authSettings);
       systemRepository.createOrUpdate(authzSettings);
@@ -760,20 +760,20 @@ public class SystemResource {
   @POST
   @Path("/security/validate")
   @Operation(
-          operationId = "validateSecurityConfig",
-          summary = "Validate security configuration",
-          description = "Test the security configuration before applying it",
-          responses = {
-                  @ApiResponse(
-                          responseCode = "200",
-                          description = "Security configuration validation results",
-                          content =
-                          @Content(
-                                  mediaType = "application/json",
-                                  schema = @Schema(implementation = SecurityValidationResponse.class)))
-          })
+      operationId = "validateSecurityConfig",
+      summary = "Validate security configuration",
+      description = "Test the security configuration before applying it",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Security configuration validation results",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SecurityValidationResponse.class)))
+      })
   public SecurityValidationResponse validateSecurityConfig(
-          @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
+      @Context SecurityContext securityContext, @Valid SecurityConfiguration securityConfig) {
     authorizer.authorizeAdmin(securityContext);
     return systemRepository.validateSecurityConfiguration(securityConfig, applicationConfig);
   }

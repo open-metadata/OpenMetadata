@@ -24,10 +24,6 @@ import es.org.elasticsearch.ElasticsearchStatusException;
 import es.org.elasticsearch.action.bulk.BulkRequest;
 import es.org.elasticsearch.action.bulk.BulkResponse;
 import es.org.elasticsearch.action.search.SearchResponse;
-import es.org.elasticsearch.action.support.WriteRequest;
-import es.org.elasticsearch.action.support.master.AcknowledgedResponse;
-import es.org.elasticsearch.action.update.UpdateRequest;
-import es.org.elasticsearch.action.update.UpdateResponse;
 import es.org.elasticsearch.client.Request;
 import es.org.elasticsearch.client.RequestOptions;
 import es.org.elasticsearch.client.RestClient;
@@ -183,8 +179,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   protected final RestHighLevelClient client;
 
   // New Java API client support for migration
-  @Getter
-  protected final ElasticsearchClient newClient;
+  @Getter protected final ElasticsearchClient newClient;
 
   private final RBACConditionEvaluator rbacConditionEvaluator;
   private final QueryBuilderFactory queryBuilderFactory;
@@ -214,18 +209,18 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
           "field_suggest");
 
   public static final List<String> SOURCE_FIELDS_TO_EXCLUDE =
-          Stream.concat(
-                          FIELDS_TO_REMOVE.stream(),
-                          Stream.of("schemaDefinition", "customMetrics", "embedding"))
+      Stream.concat(
+              FIELDS_TO_REMOVE.stream(),
+              Stream.of("schemaDefinition", "customMetrics", "embedding"))
           .toList();
 
   private static final Header[] defaultHeaders =
-          new Header[]{
-                  new BasicHeader(
-                          HttpHeaders.ACCEPT, "application/vnd.elasticsearch+json; compatible-with=7"),
-                  new BasicHeader(
-                          HttpHeaders.CONTENT_TYPE, "application/vnd.elasticsearch+json; compatible-with=7")
-          };
+      new Header[] {
+        new BasicHeader(
+            HttpHeaders.ACCEPT, "application/vnd.elasticsearch+json; compatible-with=7"),
+        new BasicHeader(
+            HttpHeaders.CONTENT_TYPE, "application/vnd.elasticsearch+json; compatible-with=7")
+      };
 
   // Add this field to the class
   private NLQService nlqService;
@@ -257,7 +252,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     try {
       // Create transport and new client
       RestClientTransport transport =
-              new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
+          new RestClientTransport(lowLevelClient, new JacksonJsonpMapper());
       ElasticsearchClient newClient = new ElasticsearchClient(transport);
 
       LOG.info("Successfully initialized new Elasticsearch Java API client");
@@ -912,20 +907,20 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public LineagePaginationInfo getLineagePaginationInfo(
-          String fqn,
-          int upstreamDepth,
-          int downstreamDepth,
-          String queryFilter,
-          boolean includeDeleted,
-          String entityType)
-          throws IOException {
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
     return lineageGraphBuilder.getLineagePaginationInfo(
-            fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
   }
 
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
-          throws IOException {
+      throws IOException {
     return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
@@ -1577,13 +1572,13 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void createTimeSeriesEntity(String indexName, String docId, String doc)
-          throws IOException {
+      throws IOException {
     entityManager.createTimeSeriesEntity(indexName, docId, doc);
   }
 
   @Override
   public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params)
-          throws IOException {
+      throws IOException {
     entityManager.deleteByScript(indexName, scriptTxt, params);
   }
 
@@ -1594,7 +1589,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteEntityByFields(
-          List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
     entityManager.deleteEntityByFields(indexNames, fieldAndValue);
   }
 
@@ -1605,14 +1600,14 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
-          throws IOException {
+      throws IOException {
     entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt);
   }
 
   @Override
   public void softDeleteOrRestoreChildren(
-          List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue)
-          throws IOException {
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue)
+      throws IOException {
     entityManager.softDeleteOrRestoreChildren(indexName, scriptTxt, fieldAndValue);
   }
 
@@ -1620,20 +1615,6 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public void updateEntity(
       String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
     entityManager.updateEntity(indexName, docId, doc, scriptTxt);
-  }
-
-  @Override
-  public void updateEntityAsync(
-      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-      updateRequest.scriptedUpsert(true);
-      updateRequest.script(script);
-      updateElasticSearchAsync(updateRequest);
-    }
   }
 
   @Override
@@ -1688,7 +1669,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       List<String> indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates)
-          throws IOException {
+      throws IOException {
     entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
@@ -1708,7 +1689,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       String entityType,
       List<UUID> entityIds) {
     entityManager.reindexWithEntityIds(
-            sourceIndices, destinationIndex, pipelineName, entityType, entityIds);
+        sourceIndices, destinationIndex, pipelineName, entityType, entityIds);
   }
 
   @Override
@@ -1721,27 +1702,26 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
    *
    */
   @Override
-  public void close() {
-  }
+  public void close() {}
 
   @Override
   public void deleteByRangeQuery(
-          String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
-          throws IOException {
+      String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
+      throws IOException {
     entityManager.deleteByRangeQuery(index, fieldName, gt, gte, lt, lte);
   }
 
   @Override
   public void deleteByRangeAndTerm(
-          String index,
-          String rangeFieldName,
-          Object gt,
-          Object gte,
-          Object lt,
-          Object lte,
-          String termKey,
-          String termValue)
-          throws IOException {
+      String index,
+      String rangeFieldName,
+      Object gt,
+      Object gte,
+      Object lt,
+      Object lte,
+      String termKey,
+      String termValue)
+      throws IOException {
     entityManager.deleteByRangeAndTerm(index, rangeFieldName, gt, gte, lt, lte, termKey, termValue);
   }
 
@@ -1865,9 +1845,9 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
       // Charts that use webAnalyticEntityViewReportData store owner in data.owner field
       // Charts that use entityReportData store owner in data.team field
       String teamField =
-              DataInsightChartRepository.USES_OWNER_FIELD_FOR_TEAM_FILTER.contains(dataInsightChartName)
-                      ? DataInsightChartRepository.DATA_OWNER
-                      : DataInsightChartRepository.DATA_TEAM;
+          DataInsightChartRepository.USES_OWNER_FIELD_FOR_TEAM_FILTER.contains(dataInsightChartName)
+              ? DataInsightChartRepository.DATA_OWNER
+              : DataInsightChartRepository.DATA_TEAM;
       teamQueryFilter.should(QueryBuilders.termsQuery(teamField, teamArray));
       searchQueryFiler.must(teamQueryFilter);
     }
@@ -2206,7 +2186,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public RestHighLevelClient createElasticSearchLegacyClient(RestClient lowLevelClient) {
     try {
       RestHighLevelClientBuilder restHighLevelClientBuilder =
-              new RestHighLevelClientBuilder(lowLevelClient).setApiCompatibilityMode(true);
+          new RestHighLevelClientBuilder(lowLevelClient).setApiCompatibilityMode(true);
       LOG.info("Successfully initialized legacy Elasticsearch Java API client");
       return restHighLevelClientBuilder.build();
     } catch (Exception e) {
@@ -2372,7 +2352,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     entityManager.updateGlossaryTermByFqnPrefix(
-            indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
   }
 
   @Override

@@ -25,7 +25,6 @@ import static org.openmetadata.service.search.SearchUtils.getRequiredEntityRelat
 import static org.openmetadata.service.search.SearchUtils.shouldApplyRbacConditions;
 import static org.openmetadata.service.util.FullyQualifiedName.getParentFQN;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -138,7 +137,6 @@ import os.org.opensearch.action.search.SearchType;
 import os.org.opensearch.action.support.WriteRequest;
 import os.org.opensearch.action.update.UpdateRequest;
 import os.org.opensearch.action.update.UpdateResponse;
-import os.org.opensearch.client.Request;
 import os.org.opensearch.client.RequestOptions;
 import os.org.opensearch.client.RestClient;
 import os.org.opensearch.client.RestClientBuilder;
@@ -203,8 +201,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   private final RBACConditionEvaluator rbacConditionEvaluator;
 
   // New OpenSearch Java API client
-  @Getter
-  private final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
+  @Getter private final os.org.opensearch.client.opensearch.OpenSearchClient newClient;
   private final boolean isNewClientAvailable;
 
   private final OSLineageGraphBuilder lineageGraphBuilder;
@@ -278,13 +275,13 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   }
 
   private os.org.opensearch.client.opensearch.OpenSearchClient createOpenSearchNewClient(
-          RestClientBuilder restClientBuilder) {
+      RestClientBuilder restClientBuilder) {
     try {
       // Create transport and new client
       RestClientTransport transport =
-              new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
+          new RestClientTransport(restClientBuilder.build(), new JacksonJsonpMapper());
       os.org.opensearch.client.opensearch.OpenSearchClient newClient =
-              new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
+          new os.org.opensearch.client.opensearch.OpenSearchClient(transport);
 
       LOG.info("Successfully initialized new OpenSearch Java API client");
       return newClient;
@@ -969,20 +966,20 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public LineagePaginationInfo getLineagePaginationInfo(
-          String fqn,
-          int upstreamDepth,
-          int downstreamDepth,
-          String queryFilter,
-          boolean includeDeleted,
-          String entityType)
-          throws IOException {
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException {
     return lineageGraphBuilder.getLineagePaginationInfo(
-            fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
+        fqn, upstreamDepth, downstreamDepth, queryFilter, includeDeleted, entityType);
   }
 
   @Override
   public SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
-          throws IOException {
+      throws IOException {
     return lineageGraphBuilder.searchLineageByEntityCount(request);
   }
 
@@ -1748,19 +1745,19 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void createEntities(String indexName, List<Map<String, String>> docsAndIds)
-          throws IOException {
+      throws IOException {
     entityManager.createEntities(indexName, docsAndIds);
   }
 
   @Override
   public void createTimeSeriesEntity(String indexName, String docId, String doc)
-          throws IOException {
+      throws IOException {
     entityManager.createTimeSeriesEntity(indexName, docId, doc);
   }
 
   @Override
   public void deleteByScript(String indexName, String scriptTxt, Map<String, Object> params)
-          throws IOException {
+      throws IOException {
     entityManager.deleteByScript(indexName, scriptTxt, params);
   }
 
@@ -1776,20 +1773,20 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public void deleteEntityByFields(
-          List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
+      List<String> indexNames, List<Pair<String, String>> fieldAndValue) throws IOException {
     entityManager.deleteEntityByFields(indexNames, fieldAndValue);
   }
 
   @Override
   public void softDeleteOrRestoreEntity(String indexName, String docId, String scriptTxt)
-          throws IOException {
+      throws IOException {
     entityManager.softDeleteOrRestoreEntity(indexName, docId, scriptTxt);
   }
 
   @Override
   public void softDeleteOrRestoreChildren(
-          List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue)
-          throws IOException {
+      List<String> indexName, String scriptTxt, List<Pair<String, String>> fieldAndValue)
+      throws IOException {
     entityManager.softDeleteOrRestoreChildren(indexName, scriptTxt, fieldAndValue);
   }
 
@@ -1802,21 +1799,6 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   @Override
   public void reindexEntities(List<EntityReference> entities) throws IOException {
     entityManager.reindexEntities(entities);
-  }
-
-  @Override
-  public void updateEntityAsync(
-      String indexName, String docId, Map<String, Object> doc, String scriptTxt) {
-    if (isClientAvailable) {
-      UpdateRequest updateRequest = new UpdateRequest(indexName, docId);
-      Script script =
-          new Script(
-              ScriptType.INLINE, Script.DEFAULT_SCRIPT_LANG, scriptTxt, JsonUtils.getMap(doc));
-      updateRequest.scriptedUpsert(true);
-      updateRequest.script(script);
-      updateRequest.retryOnConflict(3); // Retry up to 3 times on version conflict
-      updateOpenSearchAsync(updateRequest);
-    }
   }
 
   @Override
@@ -1861,7 +1843,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       List<String> indexName,
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates)
-          throws IOException {
+      throws IOException {
     entityManager.updateChildren(indexName, fieldAndValue, updates);
   }
 
@@ -1893,27 +1875,27 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       String entityType,
       List<UUID> entityIds) {
     entityManager.reindexWithEntityIds(
-            sourceIndices, destinationIndex, pipelineName, entityType, entityIds);
+        sourceIndices, destinationIndex, pipelineName, entityType, entityIds);
   }
 
   @Override
   public void deleteByRangeQuery(
-          String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
-          throws IOException {
+      String index, String fieldName, Object gt, Object gte, Object lt, Object lte)
+      throws IOException {
     entityManager.deleteByRangeQuery(index, fieldName, gt, gte, lt, lte);
   }
 
   @Override
   public void deleteByRangeAndTerm(
-          String index,
-          String rangeFieldName,
-          Object gt,
-          Object gte,
-          Object lt,
-          Object lte,
-          String termKey,
-          String termValue)
-          throws IOException {
+      String index,
+      String rangeFieldName,
+      Object gt,
+      Object gte,
+      Object lt,
+      Object lte,
+      String termKey,
+      String termValue)
+      throws IOException {
     entityManager.deleteByRangeAndTerm(index, rangeFieldName, gt, gte, lt, lte, termKey, termValue);
   }
 
@@ -2038,9 +2020,9 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
       // Charts that use webAnalyticEntityViewReportData store owner in data.owner field
       // Charts that use entityReportData store owner in data.team field
       String teamField =
-              DataInsightChartRepository.USES_OWNER_FIELD_FOR_TEAM_FILTER.contains(dataInsightChartName)
-                      ? DataInsightChartRepository.DATA_OWNER
-                      : DataInsightChartRepository.DATA_TEAM;
+          DataInsightChartRepository.USES_OWNER_FIELD_FOR_TEAM_FILTER.contains(dataInsightChartName)
+              ? DataInsightChartRepository.DATA_OWNER
+              : DataInsightChartRepository.DATA_TEAM;
       teamQueryFilter.should(QueryBuilders.termsQuery(teamField, teamArray));
       searchQueryFiler.must(teamQueryFilter);
     }
@@ -2578,7 +2560,7 @@ public class OpenSearchClient implements SearchClient<RestHighLevelClient> {
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldParentFQN, String newParentFQN, String prefixFieldCondition) {
     entityManager.updateGlossaryTermByFqnPrefix(
-            indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
+        indexName, oldParentFQN, newParentFQN, prefixFieldCondition);
   }
 
   @Override

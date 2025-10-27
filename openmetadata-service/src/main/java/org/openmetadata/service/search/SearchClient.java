@@ -35,7 +35,7 @@ import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient<T>
-        extends IndexManagementClient, EntityManagementClient, GenericClient {
+    extends IndexManagementClient, EntityManagementClient, GenericClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
@@ -117,7 +117,7 @@ public interface SearchClient<T>
       """;
 
   String UPDATE_FQN_PREFIX_SCRIPT =
-          """
+      """
                   String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
                   ctx._source.fullyQualifiedName = updatedFQN;
                   ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
@@ -447,16 +447,16 @@ public interface SearchClient<T>
       throws IOException;
 
   LineagePaginationInfo getLineagePaginationInfo(
-          String fqn,
-          int upstreamDepth,
-          int downstreamDepth,
-          String queryFilter,
-          boolean includeDeleted,
-          String entityType)
-          throws IOException;
+      String fqn,
+      int upstreamDepth,
+      int downstreamDepth,
+      String queryFilter,
+      boolean includeDeleted,
+      String entityType)
+      throws IOException;
 
   SearchLineageResult searchLineageByEntityCount(EntityCountLineageRequest request)
-          throws IOException;
+      throws IOException;
 
   SearchLineageResult searchPlatformLineage(String index, String queryFilter, boolean deleted)
       throws IOException;
