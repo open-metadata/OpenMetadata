@@ -37,6 +37,7 @@ import {
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
+import { Thread } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { calculatePercentageFromValue } from './CommonUtils';
@@ -128,6 +129,15 @@ export const getQueryFilterToIncludeApprovedTerm = () => {
       },
     },
   };
+};
+
+export const StatusClass = {
+  [EntityStatus.Approved]: StatusType.Success,
+  [EntityStatus.Draft]: StatusType.Pending,
+  [EntityStatus.Rejected]: StatusType.Failure,
+  [EntityStatus.Deprecated]: StatusType.Deprecated,
+  [EntityStatus.InReview]: StatusType.InReview,
+  [EntityStatus.Unprocessed]: StatusType.Unprocessed,
 };
 
 export const StatusFilters = Object.values(EntityStatus)
@@ -340,7 +350,7 @@ export const filterTreeNodeOptions = (
         if (!isMatching) {
           acc.push({
             ...node,
-            children: filteredChildren as GlossaryTerm[],
+            children: filteredChildren,
           });
         }
 
@@ -458,7 +468,7 @@ export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
 export const permissionForApproveOrReject = (
   record: ModifiedGlossaryTerm,
   currentUser: User,
-  termTaskThreads: Record<string, Array<any>>
+  termTaskThreads: Record<string, Thread[]>
 ) => {
   const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
   const taskThread = termTaskThreads[entityLink]?.find(
@@ -471,7 +481,7 @@ export const permissionForApproveOrReject = (
 
   return {
     permission: taskThread && isReviewer,
-    taskId: taskThread?.task?.id,
+    taskId: taskThread?.task?.id ?? '',
   };
 };
 
@@ -488,7 +498,6 @@ export const getGlossaryWidgetFromKey = (widget: WidgetConfig) => {
     />
   );
 };
-
 const processTerms = (termList: ModifiedGlossary[], keys: string[]) => {
   termList.forEach((term) => {
     if (
