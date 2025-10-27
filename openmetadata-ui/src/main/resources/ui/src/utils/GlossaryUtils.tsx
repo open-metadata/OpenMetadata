@@ -38,6 +38,7 @@ import {
   TermReference,
 } from '../generated/entity/data/glossaryTerm';
 import { Domain } from '../generated/entity/domains/domain';
+import { Thread } from '../generated/entity/feed/thread';
 import { User } from '../generated/entity/teams/user';
 import { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
 import { calculatePercentageFromValue } from './CommonUtils';
@@ -467,7 +468,7 @@ export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
 export const permissionForApproveOrReject = (
   record: ModifiedGlossaryTerm,
   currentUser: User,
-  termTaskThreads: Record<string, Array<any>>
+  termTaskThreads: Record<string, Thread[]>
 ) => {
   const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
   const taskThread = termTaskThreads[entityLink]?.find(

@@ -50,7 +50,6 @@ import {
   API_RES_MAX_SIZE,
   DE_ACTIVE_COLOR,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
@@ -82,7 +81,7 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getAllFeeds, updateTask } from '../../../rest/feedsAPI';
 import {
   getFirstLevelGlossaryTermsPaginated,
-  getGlossaryTermChildrenLazy,
+  getGlossaryTermChildrenPaginated,
   getGlossaryTerms,
   GlossaryTermWithChildren,
   patchGlossaryTerm,
@@ -166,9 +165,13 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   ]);
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
 
-  const { paging, handlePagingChange } = usePaging(PAGE_SIZE_LARGE);
+  const TERMS_PAGE_SIZE = 50;
+  const { paging, handlePagingChange } = usePaging(TERMS_PAGE_SIZE);
   const [loadingChildren, setLoadingChildren] = useState<
     Record<string, boolean>
+  >({});
+  const [childrenPaging, setChildrenPaging] = useState<
+    Record<string, { after?: string; hasMore: boolean; loading: boolean }>
   >({});
 
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -200,10 +203,32 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     handleSearch,
   ]);
 
-  const fetchChildTerms = async (parentFQN: string) => {
+  const fetchChildTerms = async (parentFQN: string, loadMore = false) => {
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
+
     try {
-      const { data } = await getGlossaryTermChildrenLazy(parentFQN, 1000); // Get all children
+      const currentPaging = childrenPaging[parentFQN];
+      const after = loadMore && currentPaging ? currentPaging.after : undefined;
+
+      const { data, paging: responsePaging } =
+        await getGlossaryTermChildrenPaginated(
+          parentFQN,
+          TERMS_PAGE_SIZE,
+          after
+        );
+
+      // Calculate if there are more pages based on the response
+      const hasMorePages = Boolean(responsePaging?.after);
+
+      // Update child pagination state
+      setChildrenPaging((prev) => ({
+        ...prev,
+        [parentFQN]: {
+          after: responsePaging?.after,
+          hasMore: hasMorePages,
+          loading: false,
+        },
+      }));
 
       // Validate glossaryChildTerms is an array
       if (!Array.isArray(glossaryChildTerms)) {
@@ -216,9 +241,37 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       ): ModifiedGlossary[] => {
         return terms.map((term) => {
           if (term.fullyQualifiedName === parentFQN) {
+            // Filter out existing load more rows first
+            const existingChildren =
+              loadMore && term.children
+                ? term.children.filter(
+                    (child) => !(child as ModifiedGlossaryTerm).isLoadMore
+                  )
+                : [];
+
+            const newChildren = loadMore
+              ? [...existingChildren, ...(data as GlossaryTermWithChildren[])]
+              : (data as GlossaryTermWithChildren[]);
+
+            // Add load more button as a special child at the END if there are more terms to load
+            // Use the calculated hasMorePages instead of state since state update is async
+            if (hasMorePages) {
+              const loadMoreRow = {
+                id: `${parentFQN}-load-more`,
+                name: '',
+                fullyQualifiedName: `${parentFQN}-load-more`,
+                isLoadMore: true,
+                parentFQN,
+                description: '',
+                entityStatus: EntityStatus.Approved,
+              } as unknown as ModifiedGlossaryTerm;
+
+              newChildren.push(loadMoreRow);
+            }
+
             return {
               ...term,
-              children: data as GlossaryTermWithChildren[],
+              children: newChildren as GlossaryTermWithChildren[],
             };
           }
 
@@ -270,7 +323,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           activeGlossary?.fullyQualifiedName,
           undefined,
           undefined,
-          PAGE_SIZE_LARGE,
+          TERMS_PAGE_SIZE,
           currentOffset,
           'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount'
         );
@@ -278,9 +331,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         pagingResponse = response.paging;
 
         // Update search pagination state
-        const newOffset = currentOffset + PAGE_SIZE_LARGE;
+        const newOffset = currentOffset + TERMS_PAGE_SIZE;
         const hasMore =
-          data.length === PAGE_SIZE_LARGE &&
+          data.length === TERMS_PAGE_SIZE &&
           (pagingResponse?.total === undefined ||
             newOffset < pagingResponse?.total);
         setSearchPaging({
@@ -292,7 +345,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         // Use regular listing API when no search term
         const response = await getFirstLevelGlossaryTermsPaginated(
           activeGlossary?.fullyQualifiedName || '',
-          PAGE_SIZE_LARGE,
+          TERMS_PAGE_SIZE,
           loadMore ? paging.after : undefined
         );
         data = response.data;
@@ -693,7 +746,35 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         className: 'glossary-name-column',
         ellipsis: true,
         width: tableColumnsWidth.name,
-        render: (_, record) => {
+        render: (_, record: ModifiedGlossaryTerm) => {
+          // Handle special "load more" rows
+          if (record.isLoadMore) {
+            return (
+              <div
+                className="load-more-container p-y-sm"
+                style={{ paddingLeft: '24px' }}>
+                <Button
+                  className="text-primary"
+                  disabled={false}
+                  size="small"
+                  type="link"
+                  onClick={() => {
+                    // Clear any stuck loading state first
+                    if (record.parentFQN) {
+                      const parentFQN = record.parentFQN;
+                      setLoadingChildren((prev) => ({
+                        ...prev,
+                        [parentFQN]: false,
+                      }));
+                      fetchChildTerms(parentFQN, true);
+                    }
+                  }}>
+                  {t('label.load-more')}
+                </Button>
+              </div>
+            );
+          }
+
           const name = getEntityName(record);
 
           return (
@@ -723,8 +804,12 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.DESCRIPTION,
         width: tableColumnsWidth.description,
-        render: (description: string) =>
-          description.trim() ? (
+        render: (description: string, record: ModifiedGlossaryTerm) => {
+          if (record.isLoadMore) {
+            return null;
+          }
+
+          return description.trim() ? (
             <RichTextEditorPreviewerNew
               enableSeeMoreVariant
               markdown={description}
@@ -732,7 +817,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             />
           ) : (
             <span className="text-grey-muted">{t('label.no-description')}</span>
-          ),
+          );
+        },
       },
       {
         title: t('label.status'),
@@ -743,7 +829,11 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         ...(permissions.Create && {
           width: tableColumnsWidth.status,
         }),
-        render: (_, record) => {
+        render: (_, record: ModifiedGlossaryTerm) => {
+          if (record.isLoadMore) {
+            return null;
+          }
+
           const status = record.entityStatus ?? EntityStatus.Approved;
           const termFQN = record.fullyQualifiedName ?? '';
           const { permission, taskId } = permissionForApproveOrReject(
@@ -752,12 +842,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
             termTaskThreads
           );
 
-          if (status === EntityStatus.InReview && permission) {
+          if (status === EntityStatus.InReview && permission && taskId) {
             return (
               <StatusAction
                 dataTestId={record.name}
-                onApprove={() => handleApproveGlossaryTerm(taskId, termFQN)}
-                onReject={() => handleRejectGlossaryTerm(taskId, termFQN)}
+                onApprove={() =>
+                  handleApproveGlossaryTerm(String(taskId), termFQN)
+                }
+                onReject={() =>
+                  handleRejectGlossaryTerm(String(taskId), termFQN)
+                }
               />
             );
           }
@@ -787,23 +881,36 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.REVIEWERS,
         width: tableColumnsWidth.reviewers,
-        render: (reviewers: EntityReference[]) => (
-          <OwnerLabel
-            isCompactView={false}
-            owners={reviewers}
-            placeHolder={t('label.no-entity', {
-              entity: t('label.reviewer-plural'),
-            })}
-            showLabel={false}
-          />
-        ),
+        render: (
+          reviewers: EntityReference[],
+          record: ModifiedGlossaryTerm
+        ) => {
+          if (record.isLoadMore) {
+            return null;
+          }
+
+          return (
+            <OwnerLabel
+              isCompactView={false}
+              owners={reviewers}
+              placeHolder={t('label.no-entity', {
+                entity: t('label.reviewer-plural'),
+              })}
+              showLabel={false}
+            />
+          );
+        },
       },
       {
         title: t('label.synonym-plural'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.SYNONYMS,
         width: tableColumnsWidth.synonyms,
-        render: (synonyms: string[]) => {
+        render: (synonyms: string[], record: ModifiedGlossaryTerm) => {
+          if (record.isLoadMore) {
+            return null;
+          }
+
           return isEmpty(synonyms) ? (
             <div>{NO_DATA_PLACEHOLDER}</div>
           ) : (
@@ -819,14 +926,28 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
           );
         },
       },
-      ...ownerTableObject<ModifiedGlossaryTerm>(),
+      ...ownerTableObject<ModifiedGlossaryTerm>().map((col) => ({
+        ...col,
+        render: (owners: EntityReference[], record: ModifiedGlossaryTerm) => {
+          if (record.isLoadMore) {
+            return null;
+          }
+
+          // Call the original render function
+          return col.render?.(owners, record, 0) || null;
+        },
+      })),
     ];
     if (permissions.Create) {
       data.push({
         title: t('label.action-plural'),
         dataIndex: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
         key: GLOSSARY_TERM_TABLE_COLUMNS_KEYS.ACTIONS,
-        render: (_, record) => {
+        render: (_, record: ModifiedGlossaryTerm) => {
+          if (record.isLoadMore) {
+            return null;
+          }
+
           const status = record.entityStatus ?? EntityStatus.Approved;
           const allowAddTerm = status === EntityStatus.Approved;
 
@@ -1108,6 +1229,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const expandableConfig: ExpandableConfig<ModifiedGlossaryTerm> = useMemo(
     () => ({
       expandIcon: ({ expanded, onExpand, record }) => {
+        // Don't show expand icon for load more rows
+        if ((record as ModifiedGlossaryTerm).isLoadMore) {
+          return (
+            <span
+              className="expand-cell-empty-icon-container"
+              style={{ marginLeft: '32px' }}
+            />
+          );
+        }
+
         const { children, childrenCount } = record;
         const isLoading = loadingChildren[record.fullyQualifiedName || ''];
 
@@ -1167,6 +1298,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       loadingChildren,
       fetchChildTerms,
       glossaryChildTerms,
+      childrenPaging,
     ]
   );
 
