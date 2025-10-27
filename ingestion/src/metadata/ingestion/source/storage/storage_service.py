@@ -275,6 +275,7 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
                 partitionColumns=entry.partitionColumns,
                 separator=entry.separator,
                 depth=entry.depth,
+                unstructuredFormats=entry.unstructuredFormats,
             )
             for entry in manifest.entries
             if entry.containerName == container_name
