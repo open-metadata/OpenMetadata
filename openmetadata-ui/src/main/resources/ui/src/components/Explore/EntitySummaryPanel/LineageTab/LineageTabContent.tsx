@@ -98,7 +98,6 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
   return (
     <div className="lineage-tab-content">
-      {/* Filter Buttons */}
       <div className="lineage-filter-buttons">
         <Button
           className={`lineage-filter-button ${
@@ -107,7 +106,12 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           size="small"
           onClick={() => onFilterChange('upstream')}>
           {t('label.upstream')}
-          <span className="lineage-filter-button-count">{upstreamCount}</span>
+          <span
+            className={`lineage-filter-button-count ${
+              filter === 'upstream' ? 'active' : ''
+            }`}>
+            {upstreamCount}
+          </span>
         </Button>
         <Button
           className={`lineage-filter-button ${
@@ -116,7 +120,12 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
           size="small"
           onClick={() => onFilterChange('downstream')}>
           {t('label.downstream')}
-          <span className="lineage-filter-button-count">{downstreamCount}</span>
+          <span
+            className={`lineage-filter-button-count ${
+              filter === 'downstream' ? 'active' : ''
+            }`}>
+            {downstreamCount}
+          </span>
         </Button>
       </div>
 

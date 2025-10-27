@@ -17,23 +17,6 @@
 .entity-summary-panel-container {
   height: 100%;
   background: @background-primary;
-  .entity-title-link {
-    text-decoration: none;
-    font-size: 13px;
-    font-weight: 700;
-    color: @text-color-2;
-    &:hover {
-      text-decoration: none;
-    }
-
-    &:visited {
-      text-decoration: none;
-    }
-
-    &:active {
-      text-decoration: none;
-    }
-  }
 }
 .overview-tab-content {
   height: 100vh;
@@ -309,14 +292,14 @@
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-  background-color: @grey-39;
+  background-color: @grey-9;
   border-radius: 9px;
   margin-left: 4px;
-  color: @text-color-2;
+  color: @grey-900;
   font-size: 10px;
   display: flex;
   &.active {
-    color: @primary-7;
+    color: @primary-6 !important;
   }
 }
 .service-icon {
@@ -372,8 +355,8 @@
       color: @grey-900;
 
       &.active {
-        border: 1px solid @primary-7;
-        background-color: @primary-7;
+        border: 1px solid @primary-6;
+        background-color: @primary-6;
         color: @white;
       }
     }
