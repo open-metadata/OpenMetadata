@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.type.EntityReference;
 
@@ -275,4 +276,30 @@ public interface EntityManagementClient {
    * @param entities list of entity references to reindex
    */
   void reindexEntities(List<EntityReference> entities) throws IOException;
+
+  /**
+   * Gets schema entity relationship information for a database schema.
+   * This method searches for tables within a schema and retrieves their relationships.
+   *
+   * @param schemaFqn the fully qualified name of the schema
+   * @param queryFilter optional query filter to apply
+   * @param includeSourceFields comma-separated list of source fields to include
+   * @param offset pagination offset for table results
+   * @param limit pagination limit for table results
+   * @param from pagination offset for relationships
+   * @param size pagination limit for relationships
+   * @param deleted whether to include deleted entities
+   * @return SearchSchemaEntityRelationshipResult containing tables and their relationships
+   * @throws IOException if there's an error during the search operation
+   */
+  SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
+      String schemaFqn,
+      String queryFilter,
+      String includeSourceFields,
+      int offset,
+      int limit,
+      int from,
+      int size,
+      boolean deleted)
+      throws IOException;
 }

@@ -1,7 +1,7 @@
-package org.openmetadata.service.template.handlebars.helpers;
+package org.openmetadata.service.notifications.template.handlebars.helpers;
 
 import com.github.jknack.handlebars.Handlebars;
-import org.openmetadata.service.template.handlebars.HandlebarsHelper;
+import org.openmetadata.service.notifications.template.handlebars.HandlebarsHelper;
 
 /**
  * Helper to check if a string starts with a prefix.
