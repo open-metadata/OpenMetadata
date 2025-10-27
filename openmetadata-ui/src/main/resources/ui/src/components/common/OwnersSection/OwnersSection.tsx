@@ -38,7 +38,7 @@ import { patchTableDetails } from '../../../rest/tableAPI';
 import { patchTopicDetails } from '../../../rest/topicsAPI';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { OwnerLabel } from '../OwnerLabel/OwnerLabel.component';
-import { UserSelectableList } from '../UserSelectableList/UserSelectableList.component';
+import { UserTeamSelectableList } from '../UserTeamSelectableList/UserTeamSelectableList.component';
 import './OwnersSection.less';
 
 interface OwnersSectionProps {
@@ -184,11 +184,12 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     setIsEditing(false);
   };
 
-  const handleOwnerSelection = async (selectedOwners: EntityReference[]) => {
-    setEditingOwners(selectedOwners);
+  const handleOwnerSelection = async (selectedOwners?: EntityReference[]) => {
+    const ownersToSave = selectedOwners ?? [];
+    setEditingOwners(ownersToSave);
 
     // Call API immediately like the existing system
-    await handleSaveWithOwners(selectedOwners);
+    await handleSaveWithOwners(ownersToSave);
   };
 
   const renderLoadingState = () => (
@@ -201,11 +202,11 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
 
   const renderEditingState = () => (
     <div className="inline-edit-container">
-      <UserSelectableList
-        multiSelect
+      <UserTeamSelectableList
         hasPermission={hasPermission}
+        multiple={{ user: true, team: true }}
+        owner={editingOwners}
         popoverProps={{ placement: 'bottomLeft' }}
-        selectedUsers={editingOwners}
         onUpdate={handleOwnerSelection}>
         <div className="owner-selector-display">
           {editingOwners.length > 0 ? (
@@ -226,7 +227,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
             </span>
           )}
         </div>
-      </UserSelectableList>
+      </UserTeamSelectableList>
     </div>
   );
 

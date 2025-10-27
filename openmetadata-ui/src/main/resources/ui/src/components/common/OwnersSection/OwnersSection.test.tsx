@@ -55,32 +55,32 @@ jest.mock('../OwnerLabel/OwnerLabel.component', () => ({
     .mockImplementation(() => <div data-testid="owner-label">OwnerLabel</div>),
 }));
 
-// Mock UserSelectableList
-const userSelectableListMock = jest
+// Mock UserTeamSelectableList
+const userTeamSelectableListMock = jest
   .fn()
-  .mockImplementation(({ children, onUpdate, selectedUsers }: any) => (
+  .mockImplementation(({ children, onUpdate, owner }: any) => (
     <div data-testid="user-selectable-list">
       {children}
       <button
         data-testid="owner-selector-trigger"
         onClick={() =>
           onUpdate?.([
-            { id: '2', name: 'bob', displayName: 'Bob' },
-            { id: '3', name: 'carol', displayName: 'Carol' },
+            { id: '2', name: 'bob', displayName: 'Bob', type: 'user' },
+            { id: '3', name: 'carol', displayName: 'Carol', type: 'team' },
           ])
         }>
         Select Owners
       </button>
       <div data-testid="selected-users-debug">
-        {(selectedUsers || []).map((u: any) => (
+        {(owner || []).map((u: any) => (
           <span key={u.id}>{u.displayName || u.name}</span>
         ))}
       </div>
     </div>
   ));
 
-jest.mock('../UserSelectableList/UserSelectableList.component', () => ({
-  UserSelectableList: (props: any) => userSelectableListMock(props),
+jest.mock('../UserTeamSelectableList/UserTeamSelectableList.component', () => ({
+  UserTeamSelectableList: (props: any) => userTeamSelectableListMock(props),
 }));
 
 // Mock ToastUtils
@@ -315,7 +315,7 @@ describe('OwnersSection', () => {
       fireEvent.click(editIcon!);
 
       // Simulate selecting the same owners list (no changes)
-      userSelectableListMock.mockImplementationOnce(
+      userTeamSelectableListMock.mockImplementationOnce(
         ({ onUpdate, children }: any) => (
           <div data-testid="user-selectable-list">
             {children}
@@ -468,6 +468,328 @@ describe('OwnersSection', () => {
       await waitFor(() => {
         expect(showErrorToast).toHaveBeenCalledWith(
           'message.invalid-entity-id'
+        );
+      });
+    });
+  });
+
+  describe('Team Selection Functionality', () => {
+    it('should handle team-only owners', async () => {
+      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
+      const { showSuccessToast } = jest.requireMock(
+        '../../../utils/ToastUtils'
+      );
+      const onOwnerUpdate = jest.fn();
+
+      patchTableDetails.mockResolvedValue({});
+
+      const teamOwners = [
+        {
+          id: 't1',
+          name: 'engineering',
+          displayName: 'Engineering',
+          type: 'team',
+        },
+      ];
+
+      const { container } = render(
+        <OwnersSection
+          {...(defaultProps as any)}
+          entityType={EntityType.TABLE}
+          owners={teamOwners}
+          onOwnerUpdate={onOwnerUpdate}
+        />
+      );
+
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+
+      // Mock selecting teams
+      userTeamSelectableListMock.mockImplementationOnce(
+        ({ onUpdate, children }: any) => (
+          <div data-testid="user-selectable-list">
+            {children}
+            <button
+              data-testid="owner-selector-trigger"
+              onClick={() =>
+                onUpdate?.([
+                  {
+                    id: 't2',
+                    name: 'data-team',
+                    displayName: 'Data Team',
+                    type: 'team',
+                  },
+                ])
+              }>
+              Select Team
+            </button>
+          </div>
+        )
+      );
+
+      // Re-render with new mock
+      const cancelIcon = container.querySelector('.cancel-icon');
+      fireEvent.click(cancelIcon!);
+      const editIcon2 = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon2!);
+
+      const trigger = screen.getByTestId('owner-selector-trigger');
+      fireEvent.click(trigger);
+
+      await waitFor(() => {
+        expect(patchTableDetails).toHaveBeenCalled();
+        expect(showSuccessToast).toHaveBeenCalled();
+        expect(onOwnerUpdate).toHaveBeenCalledWith([
+          {
+            id: 't2',
+            name: 'data-team',
+            displayName: 'Data Team',
+            type: 'team',
+          },
+        ]);
+      });
+    });
+
+    it('should handle mixed user and team owners', async () => {
+      const mixedOwners = [
+        {
+          id: 'u1',
+          name: 'alice',
+          displayName: 'Alice',
+          type: 'user',
+        },
+        {
+          id: 't1',
+          name: 'engineering',
+          displayName: 'Engineering',
+          type: 'team',
+        },
+      ];
+
+      const { container } = render(
+        <OwnersSection
+          {...(defaultProps as any)}
+          entityType={EntityType.TABLE}
+          owners={mixedOwners}
+        />
+      );
+
+      expect(screen.getByTestId('owner-label')).toBeInTheDocument();
+
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+
+      // Verify mixed owners display in edit mode
+      expect(
+        screen.getByText('Alice', { selector: '.owner-name' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('Engineering', { selector: '.owner-name' })
+      ).toBeInTheDocument();
+    });
+
+    it('should render team owners with displayName or name', () => {
+      const teamOwners = [
+        {
+          id: 't1',
+          name: 'engineering',
+          displayName: 'Engineering Team',
+          type: 'team',
+        },
+        { id: 't2', name: 'data-team', type: 'team' }, // No displayName
+      ];
+
+      const { container } = render(
+        <OwnersSection {...(defaultProps as any)} owners={teamOwners} />
+      );
+
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+
+      expect(
+        screen.getByText('Engineering Team', { selector: '.owner-name' })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText('data-team', { selector: '.owner-name' })
+      ).toBeInTheDocument();
+    });
+
+    it('should pass correct props to UserTeamSelectableList', () => {
+      const { container } = render(
+        <OwnersSection {...(defaultProps as any)} hasPermission />
+      );
+
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+
+      expect(userTeamSelectableListMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          hasPermission: true,
+          multiple: { user: true, team: true },
+          owner: defaultOwners,
+          popoverProps: { placement: 'bottomLeft' },
+        })
+      );
+    });
+
+    it('should handle undefined owners in onUpdate callback', async () => {
+      const { patchTableDetails } = jest.requireMock('../../../rest/tableAPI');
+      const onOwnerUpdate = jest.fn();
+
+      patchTableDetails.mockResolvedValue({});
+
+      const { container } = render(
+        <OwnersSection
+          {...(defaultProps as any)}
+          entityType={EntityType.TABLE}
+          onOwnerUpdate={onOwnerUpdate}
+        />
+      );
+
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+
+      // Mock selecting with undefined (should default to empty array)
+      userTeamSelectableListMock.mockImplementationOnce(
+        ({ onUpdate, children }: any) => (
+          <div data-testid="user-selectable-list">
+            {children}
+            <button
+              data-testid="owner-selector-trigger"
+              onClick={() => onUpdate?.(undefined)}>
+              Clear Owners
+            </button>
+          </div>
+        )
+      );
+
+      // Re-render with new mock
+      const cancelIcon = container.querySelector('.cancel-icon');
+      fireEvent.click(cancelIcon!);
+      const editIcon2 = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon2!);
+
+      const trigger = screen.getByTestId('owner-selector-trigger');
+      fireEvent.click(trigger);
+
+      await waitFor(() => {
+        expect(onOwnerUpdate).toHaveBeenCalledWith([]);
+      });
+    });
+  });
+
+  describe('Permission Handling', () => {
+    it('should not show edit button when hasPermission is false', () => {
+      const { container } = render(
+        <OwnersSection {...(defaultProps as any)} hasPermission={false} />
+      );
+
+      expect(container.querySelector('.edit-icon')).not.toBeInTheDocument();
+    });
+
+    it('should not show edit button when showEditButton is false', () => {
+      const { container } = render(
+        <OwnersSection
+          {...(defaultProps as any)}
+          hasPermission
+          showEditButton={false}
+        />
+      );
+
+      expect(container.querySelector('.edit-icon')).not.toBeInTheDocument();
+    });
+
+    it('should show edit button only when both hasPermission and showEditButton are true', () => {
+      const { container } = render(
+        <OwnersSection
+          {...(defaultProps as any)}
+          hasPermission
+          showEditButton
+        />
+      );
+
+      expect(container.querySelector('.edit-icon')).toBeInTheDocument();
+    });
+  });
+
+  describe('Additional Entity Types', () => {
+    it('should use correct patch API for MLMODEL entity', async () => {
+      const { patchMlModelDetails } = jest.requireMock(
+        '../../../rest/mlModelAPI'
+      );
+
+      patchMlModelDetails.mockResolvedValue({});
+
+      const { container } = render(
+        <OwnersSection
+          {...(defaultProps as any)}
+          entityType={EntityType.MLMODEL}
+        />
+      );
+
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+      const trigger = screen.getByTestId('owner-selector-trigger');
+      fireEvent.click(trigger);
+
+      await waitFor(() => {
+        expect(patchMlModelDetails).toHaveBeenCalledWith(
+          validUUID,
+          expect.any(Array)
+        );
+      });
+    });
+
+    it('should use correct patch API for DATA_PRODUCT entity', async () => {
+      const { patchDataProduct } = jest.requireMock(
+        '../../../rest/dataProductAPI'
+      );
+
+      patchDataProduct.mockResolvedValue({});
+
+      const { container } = render(
+        <OwnersSection
+          {...(defaultProps as any)}
+          entityType={EntityType.DATA_PRODUCT}
+        />
+      );
+
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+      const trigger = screen.getByTestId('owner-selector-trigger');
+      fireEvent.click(trigger);
+
+      await waitFor(() => {
+        expect(patchDataProduct).toHaveBeenCalledWith(
+          validUUID,
+          expect.any(Array)
+        );
+      });
+    });
+
+    it('should use correct patch API for CONTAINER entity', async () => {
+      const { patchContainerDetails } = jest.requireMock(
+        '../../../rest/storageAPI'
+      );
+
+      patchContainerDetails.mockResolvedValue({});
+
+      const { container } = render(
+        <OwnersSection
+          {...(defaultProps as any)}
+          entityType={EntityType.CONTAINER}
+        />
+      );
+
+      const editIcon = container.querySelector('.edit-icon');
+      fireEvent.click(editIcon!);
+      const trigger = screen.getByTestId('owner-selector-trigger');
+      fireEvent.click(trigger);
+
+      await waitFor(() => {
+        expect(patchContainerDetails).toHaveBeenCalledWith(
+          validUUID,
+          expect.any(Array)
         );
       });
     });
