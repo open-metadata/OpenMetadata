@@ -25,23 +25,6 @@
   font-weight: 600;
 }
 
-.total-incidents-badge {
-  border-radius: 6px;
-  padding: 0px;
-  width: 20px;
-  display: flex;
-  text-align: center;
-  margin-left: 8px;
-  justify-content: center;
-  align-items: center;
-  border: 1px solid @grey-39;
-  background-color: @grey-9;
-}
-.total-incidents-badge-text {
-  color: @grey-700;
-  font-size: 10px;
-  font-weight: 500;
-}
 .incident-filter-buttons-container {
   display: flex;
   gap: 10px;
@@ -55,11 +38,6 @@
 
   &::-webkit-scrollbar {
     display: none;
-  }
-
-  .incident-filter-button {
-    flex-shrink: 0;
-    white-space: nowrap;
   }
 }
 
@@ -155,23 +133,6 @@
           padding: 0;
         }
       }
-    }
-  }
-  .filter-button {
-    padding: 0 7px;
-    border-radius: 16px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #e3e8f0;
-    background: @white;
-    color: @text-color-2;
-    font-size: 12px;
-    &.active {
-      background: @primary-7;
-      border-color: @primary-7;
-      color: @white;
     }
   }
 
@@ -299,31 +260,6 @@
     }
 
     .test-cases-section {
-      .incident-filter-button {
-        padding: 0px 7px;
-        border-radius: 16px;
-        height: 28px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        border: 1px solid #e3e8f0;
-        background: @white;
-        color: @text-color-2;
-        transition: all 0.3s ease;
-        font-size: 12px;
-
-        &.active {
-          background: @primary-7;
-          border-color: @primary-7;
-          color: @white;
-        }
-
-        &:hover:not(.active) {
-          border-color: @primary-7;
-          color: @primary-7;
-        }
-      }
-
       .incident-cards-section {
         margin-right: -16px;
         margin-left: -16px;

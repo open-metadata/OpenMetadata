@@ -78,15 +78,6 @@ const TagsSection: React.FC<TagsSectionProps> = ({
     return tag.displayName || tag.name || tag.tagFQN || t('label.unknown');
   };
 
-  const getTagStyle = (_tag: TagLabel) => {
-    // Default styling for other tags
-    return {
-      backgroundColor: '#F9FAFC',
-      borderColor: '#E3E8F0',
-      color: '#262626',
-    };
-  };
-
   const convertToTagItems = (tags: TagLabel[]): TagItem[] => {
     return tags.map((tag) => ({
       id: tag.tagFQN || tag.displayName || '',
