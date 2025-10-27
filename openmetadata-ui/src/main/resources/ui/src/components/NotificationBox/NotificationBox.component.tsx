@@ -73,6 +73,7 @@ const NotificationBox = ({
       let actualUser = mainFeed.from;
       let actualTimestamp = mainFeed.postTs;
       let feedType = feed.type || ThreadType.Conversation;
+      let isConversationFeed = feed.type === ThreadType.Conversation;
 
       if (
         activeTab === ThreadType.Conversation &&
@@ -91,6 +92,7 @@ const NotificationBox = ({
           actualUser = mentionPost.from;
           actualTimestamp = mentionPost.postTs;
           feedType = ThreadType.Conversation;
+          isConversationFeed = false;
         }
       }
 
@@ -100,6 +102,7 @@ const NotificationBox = ({
           entityFQN={entityFQN as string}
           entityType={entityType as string}
           feedType={feedType}
+          isConversationFeed={isConversationFeed}
           key={`${actualUser} ${mainFeed.id}`}
           task={feed}
           timestamp={actualTimestamp}
