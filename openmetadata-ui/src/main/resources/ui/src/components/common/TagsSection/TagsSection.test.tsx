@@ -229,7 +229,7 @@ const defaultProps = {
 
 // Helper to click the edit control
 const clickEditControl = () => {
-  const el = screen.getByTestId('edit-icon');
+  const el = screen.getByTestId('edit-icon-tags');
   fireEvent.click(el);
 };
 
@@ -366,26 +366,26 @@ describe('TagsSection', () => {
 
       // Wait for the component to update after canceling edit mode
       await waitFor(() => {
-        expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+        expect(screen.getByTestId('edit-icon-tags')).toBeInTheDocument();
       });
     });
 
     it('should not show edit button when showEditButton is false', () => {
       render(<TagsSection {...defaultProps} showEditButton={false} />);
 
-      expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
 
     it('should not show edit button when hasPermission is false', () => {
       render(<TagsSection {...defaultProps} hasPermission={false} />);
 
-      expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
 
     it('should not show edit button when no tags and no permission', () => {
       render(<TagsSection {...defaultProps} hasPermission={false} tags={[]} />);
 
-      expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
   });
 
@@ -397,7 +397,7 @@ describe('TagsSection', () => {
 
       expect(screen.getByTestId('async-select-list')).toBeInTheDocument();
       expect(screen.getByTestId('close-icon')).toBeInTheDocument();
-      expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
 
     it('should show AsyncSelectList with correct props in edit mode', () => {
@@ -429,7 +429,7 @@ describe('TagsSection', () => {
       const cancelButton = screen.getByTestId('close-icon');
       fireEvent.click(cancelButton);
 
-      expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-icon-tags')).toBeInTheDocument();
       expect(screen.queryByTestId('async-select-list')).not.toBeInTheDocument();
     });
   });

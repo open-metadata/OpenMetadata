@@ -627,7 +627,7 @@ describe('OwnersSection', () => {
           hasPermission: true,
           multiple: { user: true, team: true },
           owner: defaultOwners,
-          popoverProps: { placement: 'bottomLeft' },
+          popoverProps: expect.objectContaining({ placement: 'bottomLeft' }),
         })
       );
     });

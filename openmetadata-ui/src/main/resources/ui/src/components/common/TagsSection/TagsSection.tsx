@@ -298,6 +298,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
             <div className="inline-edit-container">
               <AsyncSelectList
                 newLook
+                open
                 className="tag-selector"
                 fetchOptions={tagClassBase.getTags}
                 initialOptions={convertToSelectOptions(editingTags)}
@@ -355,6 +356,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           <div className="inline-edit-container">
             <AsyncSelectList
               newLook
+              open
               className="tag-selector"
               fetchOptions={tagClassBase.getTags}
               initialOptions={convertToSelectOptions(editingTags)}

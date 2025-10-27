@@ -62,6 +62,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editingOwners, setEditingOwners] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   // Function to get the appropriate patch API based on entity type
   const getPatchAPI = (entityType?: EntityType) => {
@@ -107,6 +108,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   const handleEditClick = () => {
     setEditingOwners(owners);
     setIsEditing(true);
+    setPopoverOpen(true);
   };
 
   const handleSaveWithOwners = useCallback(
@@ -165,6 +167,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         setTimeout(() => {
           setIsEditing(false);
           setIsLoading(false);
+          setPopoverOpen(false);
         }, 500);
       } catch (error) {
         setIsLoading(false);
@@ -182,6 +185,7 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
   const handleCancel = () => {
     setEditingOwners(owners);
     setIsEditing(false);
+    setPopoverOpen(false);
   };
 
   const handleOwnerSelection = async (selectedOwners?: EntityReference[]) => {
@@ -190,6 +194,15 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
 
     // Call API immediately like the existing system
     await handleSaveWithOwners(ownersToSave);
+  };
+
+  const handlePopoverOpenChange = (open: boolean) => {
+    setPopoverOpen(open);
+    if (!open) {
+      // When popover is closed, exit editing mode
+      setIsEditing(false);
+      setEditingOwners(owners);
+    }
   };
 
   const renderLoadingState = () => (
@@ -206,7 +219,12 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
         hasPermission={hasPermission}
         multiple={{ user: true, team: true }}
         owner={editingOwners}
-        popoverProps={{ placement: 'bottomLeft' }}
+        popoverProps={{
+          placement: 'bottomLeft',
+          open: popoverOpen,
+          onOpenChange: handlePopoverOpenChange,
+        }}
+        onClose={() => handlePopoverOpenChange(false)}
         onUpdate={handleOwnerSelection}>
         <div className="owner-selector-display">
           {editingOwners.length > 0 ? (

@@ -57,6 +57,7 @@ const TierSection: React.FC<TierSectionProps> = ({
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [popoverOpen, setPopoverOpen] = useState(false);
 
   // Function to get the appropriate patch API based on entity type
   const getPatchAPI = (entityType?: EntityType) => {
@@ -101,6 +102,7 @@ const TierSection: React.FC<TierSectionProps> = ({
 
   const handleEditClick = () => {
     setIsEditing(true);
+    setPopoverOpen(true);
   };
 
   const handleSaveWithTier = useCallback(
@@ -181,6 +183,7 @@ const TierSection: React.FC<TierSectionProps> = ({
         setTimeout(() => {
           setIsEditing(false);
           setIsLoading(false);
+          setPopoverOpen(false);
         }, 500);
       } catch (error) {
         setIsLoading(false);
@@ -197,6 +200,7 @@ const TierSection: React.FC<TierSectionProps> = ({
 
   const handleCancel = () => {
     setIsEditing(false);
+    setPopoverOpen(false);
   };
 
   const handleTierSelection = async (selectedTier?: Tag) => {
@@ -238,7 +242,7 @@ const TierSection: React.FC<TierSectionProps> = ({
             <TierCard
               currentTier={tier?.tagFQN}
               footerActionButtonsClassName="tier-card-footer-action-buttons"
-              popoverProps={{ open: isEditing }}
+              popoverProps={{ open: popoverOpen }}
               tierCardClassName="tier-card-popover"
               updateTier={handleTierSelection}
               onClose={handleCancel}>
