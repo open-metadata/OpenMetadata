@@ -63,6 +63,7 @@ import org.openmetadata.schema.type.TableConstraint.ConstraintType;
 import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationTest;
 import org.openmetadata.service.resources.databases.TableResourceTest;
 import org.openmetadata.service.util.TestUtils;
@@ -472,7 +473,7 @@ public class EntityProfileResourceTest extends OpenMetadataApplicationTest {
   }
 
   @Test
-  @Order(14)
+  @Order(9999)
   void delete_profileData_verifyDeletionByTimestamp() throws HttpResponseException, ParseException {
     long baseTimestamp = dateToTimestamp("2024-02-01");
     long dayInMs = 24 * 60 * 60 * 1000L;
@@ -492,6 +493,10 @@ public class EntityProfileResourceTest extends OpenMetadataApplicationTest {
 
     long cutoffTs = baseTimestamp + (3 * dayInMs);
     int limit = 10000;
+
+    Entity.getCollectionDAO()
+        .profilerDataTimeSeriesDao()
+        .deleteTestCaseResultsBeforeCutOff(cutoffTs, limit);
 
     ResultList<EntityProfile> remainingProfiles =
         getEntityProfiles(
