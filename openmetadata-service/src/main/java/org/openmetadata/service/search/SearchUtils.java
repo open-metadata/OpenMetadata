@@ -19,6 +19,7 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.net.ssl.SSLContext;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.entityRelationship.EntityRelationshipDirection;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageDirection;
@@ -34,6 +35,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.SSLUtil;
 
+@Slf4j
 public final class SearchUtils {
   public static final String GRAPH_AGGREGATION = "matchesPerKey";
   public static final String DOWNSTREAM_NODE_KEY = "upstreamLineage.fromEntity.fqnHash.keyword";

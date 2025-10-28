@@ -178,6 +178,7 @@ const DomainSelectableList = ({
     popoverProps,
     popupVisible,
     selectedDomainsList,
+    selectedDomain,
     isVersionView,
   ]);
 
