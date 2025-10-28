@@ -36,7 +36,8 @@ import {
   mockTypedEvent3,
   mockTypedEvent4,
 } from '../../mocks/AlertUtil.mock';
-import { searchData } from '../../rest/miscAPI';
+import { searchQuery } from '../../rest/searchAPI';
+import { getTermQuery } from '../SearchUtils';
 import {
   getAlertActionTypeDisplayName,
   getAlertEventsFilterLabels,
@@ -74,8 +75,8 @@ jest.mock('../../components/common/AsyncSelect/AsyncSelect', () => ({
     )),
 }));
 
-jest.mock('../../rest/miscAPI', () => ({
-  searchData: jest.fn(),
+jest.mock('../../rest/searchAPI', () => ({
+  searchQuery: jest.fn(),
 }));
 
 describe('AlertsUtil tests', () => {
@@ -275,15 +276,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'table_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'table_search_index',
+    });
   });
 
   it('should return correct fields for argumentType domainList', async () => {
@@ -295,15 +294,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'domain_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'domain_search_index',
+    });
   });
 
   it('should return correct fields for argumentType tableNameList', async () => {
@@ -320,15 +317,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'table_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'table_search_index',
+    });
   });
 
   it('should return correct fields for argumentType ownerNameList', async () => {
@@ -345,15 +340,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      'isBot:false',
-      '',
-      '',
-      ['team_search_index', 'user_search_index']
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      searchIndex: ['team_search_index', 'user_search_index'],
+    });
   });
 
   it('should return correct fields for argumentType updateByUserList', async () => {
@@ -370,15 +363,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'user_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'user_search_index',
+    });
   });
 
   it('should return correct fields for argumentType userList', async () => {
@@ -390,15 +381,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      'isBot:false',
-      '',
-      '',
-      'user_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: getTermQuery({ isBot: 'false' }),
+      searchIndex: 'user_search_index',
+    });
   });
 
   it('should return correct fields for argumentType eventTypeList', async () => {
@@ -505,15 +494,13 @@ describe('getFieldByArgumentType tests', () => {
 
     fireEvent.click(selectDiv);
 
-    expect(searchData).toHaveBeenCalledWith(
-      undefined,
-      1,
-      50,
-      '',
-      '',
-      '',
-      'test_suite_search_index'
-    );
+    expect(searchQuery).toHaveBeenCalledWith({
+      query: undefined,
+      pageNumber: 1,
+      pageSize: 50,
+      queryFilter: undefined,
+      searchIndex: 'test_suite_search_index',
+    });
   });
 
   it('should not return select component for random argumentType', () => {
