@@ -31,6 +31,7 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedureType,
 )
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -55,7 +56,6 @@ from metadata.utils.execution_time_tracker import (
     calculate_execution_time,
     calculate_execution_time_generator,
 )
-from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
 from metadata.utils.lru_cache import LRU_CACHE_SIZE, LRUCache
