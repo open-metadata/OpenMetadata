@@ -59,18 +59,17 @@ Example Scores:
     - 10,000 rows, 1,000 failed (10%): 0.010 (low - minor issue despite volume)
 """
 
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Float, case, func
 from sqlalchemy.sql.expression import ClauseElement
 
-from metadata.data_quality.validations.base_test_handler import DIMENSION_OTHERS_LABEL
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
 
 if TYPE_CHECKING:
-    import pandas as pd
+    pass
 
 # Configuration constants
 DEFAULT_SAMPLE_WEIGHT_THRESHOLD = 100.0  # Samples needed for full weight
@@ -88,10 +87,6 @@ VOLUME_FACTOR_TIERS = [
     (100000, 1.25),  # < 100,000 rows
 ]
 VOLUME_FACTOR_MAX = 1.50  # >= 100,000 rows
-
-# Type alias for failed count evaluator in pandas
-# Takes metric value and total count, returns failed count
-FailedCountEvaluator = Callable[[Union[float, int], int], int]
 
 
 def get_volume_factor(total_count: float) -> float:
