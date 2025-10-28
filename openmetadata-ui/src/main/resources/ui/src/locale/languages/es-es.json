@@ -681,6 +681,7 @@
     "failed": "Fallido",
     "failed-entity": "{{entity}} Fallido",
     "failed-event-plural": "Eventos fallidos",
+    "failed-slash-aborted-reason": "Motivo de fallo/aborto",
     "failed-to-upload-file": "Error al subir el archivo",
     "failing-subscription-id": "ID Subscripción Fallido",
     "failure-comment": "Comentario del error",

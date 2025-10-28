@@ -681,6 +681,7 @@
     "failed": "अयशस्वी",
     "failed-entity": "अयशस्वी {{entity}}",
     "failed-event-plural": "अयशस्वी घटना",
+    "failed-slash-aborted-reason": "अपयश/रद्द करण्याचे कारण",
     "failed-to-upload-file": "फाइल अपलोड करण्यात योग्य नाही",
     "failing-subscription-id": "अयशस्वी सदस्यता आयडी",
     "failure-comment": "अयशस्वी टिप्पणी",
