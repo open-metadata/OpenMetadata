@@ -681,6 +681,7 @@
     "failed": "נכשל",
     "failed-entity": "Failed {{entity}}",
     "failed-event-plural": "אירועים שנכשלו",
+    "failed-slash-aborted-reason": "סיבת כישלון/ביטול",
     "failed-to-upload-file": "נכשל בהעלאת קובץ",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "Failure Comment",
