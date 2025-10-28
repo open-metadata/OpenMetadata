@@ -204,7 +204,7 @@ public class ESLineageGraphBuilder {
       Map<String, String> hasToFqnMap,
       int remainingDepth)
       throws IOException {
-    if (remainingDepth <= 0 || hasToFqnMap.isEmpty()) {
+    if (remainingDepth <= 1 || hasToFqnMap.isEmpty()) {
       return;
     }
 
