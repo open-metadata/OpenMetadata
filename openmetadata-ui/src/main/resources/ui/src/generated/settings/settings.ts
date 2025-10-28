@@ -281,6 +281,14 @@ export interface PipelineServiceClientConfiguration {
      */
     keepAliveTimeoutSecs?: number;
     /**
+     * Maximum connections per host/route in the connection pool
+     */
+    maxConnPerRoute?: number;
+    /**
+     * Maximum total connections in the connection pool across all hosts
+     */
+    maxConnTotal?: number;
+    /**
      * Configuration for natural language search capabilities
      */
     naturalLanguageSearch?: NaturalLanguageSearch;
