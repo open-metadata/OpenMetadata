@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Space } from 'antd';
+import classNames from 'classnames';
 import { EntityTags } from 'Models';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
@@ -30,8 +31,8 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
+import './EntityRightPanel.less';
 import { EntityRightPanelTab } from './EntityRightPanelVerticalNav';
-
 interface EntityRightPanelContentProps<T extends ExtentionEntitiesKeys> {
   activeTab: EntityRightPanelTab;
   editTagPermission: boolean;
@@ -49,6 +50,7 @@ interface EntityRightPanelContentProps<T extends ExtentionEntitiesKeys> {
   editDataProductPermission?: boolean;
   onDataProductUpdate?: (dataProducts: DataProduct[]) => Promise<void>;
   entityDetails?: React.ReactNode;
+  showVerticalNav?: boolean;
 }
 
 const EntityRightPanelContent = <T extends ExtentionEntitiesKeys>({
@@ -67,6 +69,7 @@ const EntityRightPanelContent = <T extends ExtentionEntitiesKeys>({
   editCustomAttributePermission,
   editDataProductPermission,
   onDataProductUpdate,
+  showVerticalNav = true,
   entityDetails,
 }: EntityRightPanelContentProps<T>) => {
   const { t } = useTranslation();
@@ -187,7 +190,15 @@ const EntityRightPanelContent = <T extends ExtentionEntitiesKeys>({
     }
   };
 
-  return <div className="entity-right-panel-content">{renderContent()}</div>;
+  return (
+    <div
+      className={classNames(
+        'entity-right-panel-content',
+        !showVerticalNav && 'without-vertical-nav'
+      )}>
+      {renderContent()}
+    </div>
+  );
 };
 
 export default EntityRightPanelContent;

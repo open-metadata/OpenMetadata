@@ -22,7 +22,7 @@ import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
-import { DataAssetSummaryPanel } from '../../DataAssetSummaryPanel/DataAssetSummaryPanel';
+import { DataAssetSummaryPanelV1 as DataAssetSummaryPanel } from '../../DataAssetSummaryPanelV1/DataAssetSummaryPanelV1';
 import EntityHeaderTitle from '../EntityHeaderTitle/EntityHeaderTitle.component';
 import './entity-info-drawer.less';
 import { LineageDrawerProps } from './EntityInfoDrawer.interface';

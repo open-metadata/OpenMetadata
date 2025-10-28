@@ -31,96 +31,219 @@ jest.mock('react-i18next', () => ({
     },
   }),
 }));
+// Mock react-awesome-query-builder to avoid date picker issues
+jest.mock('@react-awesome-query-builder/antd', () => {
+  const mockConfig = {
+    types: {
+      multiselect: {
+        widgets: {},
+      },
+      text: {},
+      number: {},
+      boolean: {},
+      date: {},
+      time: {},
+      datetime: {},
+      select: {},
+      treeselect: {},
+    },
+    widgets: {},
+    operators: {},
+    settings: {},
+  };
 
-// Mock antd components
-jest.mock('antd', () => ({
-  Avatar: jest.fn().mockImplementation(({ children, ...props }) => (
-    <div data-testid="avatar" {...props}>
-      {children}
-    </div>
-  )),
-  Button: jest
+  return {
+    Config: mockConfig,
+    Utils: {},
+    // Default export
+    __esModule: true,
+    default: mockConfig,
+  };
+});
+
+// Mock LazyLog to avoid environment-specific issues
+jest.mock('@melloware/react-logviewer', () => ({
+  LazyLog: jest
     .fn()
-    .mockImplementation(({ children, onClick, className, ...props }) => (
-      <button
-        className={className}
-        data-testid="button"
-        onClick={onClick}
-        {...props}>
-        {children}
-      </button>
+    .mockImplementation(({ text }) => (
+      <pre data-testid="lazy-log-content">{text}</pre>
     )),
-  Card: jest.fn().mockImplementation(({ children, className, ...props }) => (
-    <div className={className} data-testid="card" {...props}>
-      {children}
-    </div>
-  )),
-  Col: jest
-    .fn()
-    .mockImplementation(({ children, span, className, ...props }) => (
-      <div className={className} data-span={span} data-testid="col" {...props}>
-        {children}
-      </div>
-    )),
-  Row: jest
-    .fn()
-    .mockImplementation(({ children, className, gutter, ...props }) => (
-      <div
-        className={className}
-        data-gutter={gutter}
-        data-testid="row"
-        {...props}>
-        {children}
-      </div>
-    )),
-  Tabs: jest
-    .fn()
-    .mockImplementation(
-      ({ children, items, activeKey, onChange, ...props }) => (
-        <div data-active-key={activeKey} data-testid="tabs" {...props}>
-          <div data-testid="tab-headers">
-            {items.map((item: any) => (
-              <button
-                data-testid={`tab-${item.key}`}
-                key={item.key}
-                onClick={() => onChange?.(item.key)}>
-                {item.label}
-              </button>
-            ))}
-          </div>
-          <div data-testid="tab-content">
-            {items.find((item: any) => item.key === activeKey)?.children}
-          </div>
-        </div>
-      )
-    ),
-  Typography: {
-    Text: jest
-      .fn()
-      .mockImplementation(
-        ({ children, className, ellipsis, strong, ...props }) => (
-          <span
-            className={className}
-            data-ellipsis={ellipsis}
-            data-testid="typography-text"
-            {...props}>
-            {children}
-          </span>
-        )
-      ),
-    Title: jest
-      .fn()
-      .mockImplementation(({ children, level, className, ...props }) => (
-        <h1
-          className={className}
-          data-level={level}
-          data-testid="typography-title"
-          {...props}>
-          {children}
-        </h1>
-      )),
+}));
+
+// Mock utils that depend on query builder
+jest.mock('../../../../utils/AdvancedSearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    autocomplete: jest.fn().mockReturnValue(jest.fn()),
+    getQbConfigs: jest.fn().mockReturnValue({}),
   },
 }));
+
+jest.mock('../../../../utils/CuratedAssetsUtils', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
+
+// Mock all utils that depend on JSONLogicSearchClassBase
+jest.mock('../../../../utils/JSONLogicSearchClassBase', () => ({
+  __esModule: true,
+  default: class MockJSONLogicSearchClassBase {
+    baseConfig = { types: {}, widgets: {}, operators: {}, settings: {} };
+    configTypes = {};
+  },
+}));
+
+jest.mock('../../../../utils/AdvancedSearchUtils', () => ({
+  __esModule: true,
+  default: jest.fn(),
+  getInitialIndex: jest.fn(),
+  getDropDownOptions: jest.fn(),
+  getOptionsObject: jest.fn(),
+}));
+
+jest.mock(
+  '../../../DataQuality/IncidentManager/Severity/Severity.component',
+  () => ({
+    __esModule: true,
+    default: jest
+      .fn()
+      .mockImplementation(({ severity }) => (
+        <div data-testid="severity-badge">SEVERITY - {severity}</div>
+      )),
+  })
+);
+// Mock antd components
+jest.mock('antd', () => {
+  const MockCollapse: any = jest
+    .fn()
+    .mockImplementation(({ children, className, ...props }) => (
+      <div className={className} data-testid="collapse" {...props}>
+        {children}
+      </div>
+    ));
+  MockCollapse.Panel = jest
+    .fn()
+    .mockImplementation(({ children, className, header, ...props }) => (
+      <div className={className} data-testid="collapse-panel" {...props}>
+        <div data-testid="collapse-panel-header">{header}</div>
+        {children}
+      </div>
+    ));
+
+  return {
+    Link: jest.fn().mockImplementation(({ children, ...props }) => (
+      <a data-testid="link" {...props}>
+        {children}
+      </a>
+    )),
+    Avatar: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div data-testid="avatar" {...props}>
+        {children}
+      </div>
+    )),
+    Button: jest
+      .fn()
+      .mockImplementation(({ children, onClick, className, ...props }) => (
+        <button
+          className={className}
+          data-testid="button"
+          onClick={onClick}
+          {...props}>
+          {children}
+        </button>
+      )),
+    Card: jest.fn().mockImplementation(({ children, className, ...props }) => (
+      <div className={className} data-testid="card" {...props}>
+        {children}
+      </div>
+    )),
+    Col: jest
+      .fn()
+      .mockImplementation(({ children, span, className, ...props }) => (
+        <div
+          className={className}
+          data-span={span}
+          data-testid="col"
+          {...props}>
+          {children}
+        </div>
+      )),
+    Row: jest
+      .fn()
+      .mockImplementation(({ children, className, gutter, ...props }) => (
+        <div
+          className={className}
+          data-gutter={gutter}
+          data-testid="row"
+          {...props}>
+          {children}
+        </div>
+      )),
+    Tabs: jest
+      .fn()
+      .mockImplementation(
+        ({ children, items, activeKey, onChange, ...props }) => (
+          <div data-active-key={activeKey} data-testid="tabs" {...props}>
+            <div data-testid="tab-headers">
+              {items.map((item: any) => (
+                <button
+                  data-testid={`tab-${item.key}`}
+                  key={item.key}
+                  onClick={() => onChange?.(item.key)}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div data-testid="tab-content">
+              {items.find((item: any) => item.key === activeKey)?.children}
+            </div>
+          </div>
+        )
+      ),
+    Typography: {
+      Text: jest
+        .fn()
+        .mockImplementation(
+          ({ children, className, ellipsis, strong, ...props }) => (
+            <span
+              className={className}
+              data-ellipsis={ellipsis}
+              data-testid="typography-text"
+              {...props}>
+              {children}
+            </span>
+          )
+        ),
+      Title: jest
+        .fn()
+        .mockImplementation(({ children, level, className, ...props }) => (
+          <h1
+            className={className}
+            data-level={level}
+            data-testid="typography-title"
+            {...props}>
+            {children}
+          </h1>
+        )),
+    },
+    Collapse: MockCollapse,
+    Divider: jest
+      .fn()
+      .mockImplementation(({ className, ...props }) => (
+        <div className={className} data-testid="divider" {...props} />
+      )),
+    Tooltip: jest.fn().mockImplementation(({ children, title, ...props }) => (
+      <div data-testid="tooltip" data-title={title} {...props}>
+        {children}
+      </div>
+    )),
+    Space: jest.fn().mockImplementation(({ children, className, ...props }) => (
+      <div className={className} data-testid="space" {...props}>
+        {children}
+      </div>
+    )),
+  };
+});
 
 // Mock child components
 jest.mock('../../../common/DataQualitySection', () => {

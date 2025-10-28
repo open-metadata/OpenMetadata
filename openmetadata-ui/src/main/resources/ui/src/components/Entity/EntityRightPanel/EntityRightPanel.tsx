@@ -39,6 +39,7 @@ interface EntityRightPanelProps<T extends ExtentionEntitiesKeys> {
   editDataProductPermission?: boolean;
   onDataProductUpdate?: (dataProducts: DataProduct[]) => Promise<void>;
   entityDetails?: React.ReactNode;
+  showVerticalNav?: boolean;
 }
 
 const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
@@ -57,6 +58,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   editDataProductPermission,
   onDataProductUpdate,
   entityDetails,
+  showVerticalNav = true,
 }: EntityRightPanelProps<T>) => {
   const [activeTab, setActiveTab] = useState<EntityRightPanelTab>(
     EntityRightPanelTab.OVERVIEW
@@ -82,15 +84,18 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
         selectedTags={selectedTags}
         showDataProductContainer={showDataProductContainer}
         showTaskHandler={showTaskHandler}
+        showVerticalNav={showVerticalNav}
         viewAllPermission={viewAllPermission}
         onDataProductUpdate={onDataProductUpdate}
         onTagSelectionChange={onTagSelectionChange}
       />
-      <EntityRightPanelVerticalNav
-        activeTab={activeTab}
-        entityType={entityType}
-        onTabChange={handleTabChange}
-      />
+      {showVerticalNav && (
+        <EntityRightPanelVerticalNav
+          activeTab={activeTab}
+          entityType={entityType}
+          onTabChange={handleTabChange}
+        />
+      )}
     </div>
   );
 };

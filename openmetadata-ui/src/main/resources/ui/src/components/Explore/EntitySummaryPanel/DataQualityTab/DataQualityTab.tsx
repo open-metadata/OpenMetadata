@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Divider } from '@mui/material';
+import { Divider, Link } from '@mui/material';
 import { Avatar, Card, Col, Row, Tabs, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { useEffect, useState } from 'react';
@@ -31,6 +31,7 @@ import {
   getCurrentMillis,
   getEpochMillisForPastDays,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { getTestCaseDetailPagePath } from '../../../../utils/RouterUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DataQualitySection from '../../../common/DataQualitySection';
@@ -38,6 +39,7 @@ import Loader from '../../../common/Loader/Loader';
 import '../../../common/OverviewSection/OverviewSection.less';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import StatusBadgeV2 from '../../../common/StatusBadge/StatusBadgeV2.component';
+import Severity from '../../../DataQuality/IncidentManager/Severity/Severity.component';
 import './DataQualityTab.less';
 
 interface DataQualityTabProps {
@@ -112,10 +114,6 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     return lowerStatus as StatusType;
   };
 
-  const getSeverityText = (severity: number | string) => {
-    return `SEVERITY - ${severity}`;
-  };
-
   const renderAssigneeInfo = () => {
     const assignee = incident?.testCaseResolutionStatusDetails?.assignee;
     if (!assignee) {
@@ -163,12 +161,17 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
       className="test-case-card"
       style={{ borderRadius: '0px' }}>
       <div className="test-case-card-content">
-        {/* Header Section */}
         <div className="test-case-header">
           <div className="test-case-title-section">
-            <Typography.Text className="test-case-name">
+            <Link
+              className="test-case-name"
+              data-testid={`test-case-${testCaseName}`}
+              href={getTestCaseDetailPagePath(
+                testCase.fullyQualifiedName ?? ''
+              )}
+              target="_blank">
               {testCaseName}
-            </Typography.Text>
+            </Link>
           </div>
           <div className="test-case-status-section">
             <StatusBadgeV2
@@ -197,9 +200,9 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
               <Typography.Text className="detail-label">
                 {t('label.severity')}
               </Typography.Text>
-              <Typography.Text className="detail-value">
-                {getSeverityText(severity)}
-              </Typography.Text>
+              <div className="detail-value">
+                <Severity hasPermission={false} severity={severity} />
+              </div>
             </div>
           )}
 

@@ -347,6 +347,7 @@ function ServiceMainTabContent({
                       entityType !== EntityType.METADATA_SERVICE
                     }
                     showTaskHandler={false}
+                    showVerticalNav={false}
                     onDataProductUpdate={onDataProductUpdate}
                     onTagSelectionChange={handleTagSelection}
                   />

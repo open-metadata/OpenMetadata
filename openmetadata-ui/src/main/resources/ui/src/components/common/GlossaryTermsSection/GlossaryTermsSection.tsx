@@ -127,7 +127,9 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
   if (!glossaryTerms || !glossaryTerms.length) {
     return (
-      <div className="glossary-terms-section">
+      <div
+        className="glossary-terms-section"
+        data-testid="KnowledgePanel.GlossaryTerms">
         <div className="glossary-terms-header">
           <Typography.Text className="glossary-terms-title">
             {t('label.glossary-term-plural')}
@@ -145,7 +147,9 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
             </div>
           )}
         </div>
-        <div className="glossary-terms-content">
+        <div
+          className="glossary-terms-content"
+          data-testid="glossary-container">
           {isLoading ? (
             <div className="glossary-terms-loading-container">
               <div className="glossary-terms-loading-spinner">
@@ -177,7 +181,9 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
   }
 
   return (
-    <div className="glossary-terms-section">
+    <div
+      className="glossary-terms-section"
+      data-testid="KnowledgePanel.GlossaryTerms">
       <div className="glossary-terms-header">
         <Typography.Text className="glossary-terms-title">
           {t('label.glossary-term-plural')}
@@ -195,7 +201,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           </div>
         )}
       </div>
-      <div className="glossary-terms-content">
+      <div className="glossary-terms-content" data-testid="glossary-container">
         {isLoading ? (
           <div className="glossary-terms-loading-container">
             <div className="glossary-terms-loading-spinner">
@@ -223,7 +229,15 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
                 ? glossaryTerms
                 : glossaryTerms.slice(0, maxVisibleGlossaryTerms)
               ).map((glossaryTerm, index) => (
-                <div className="glossary-term-item" key={index}>
+                <div
+                  className="glossary-term-item"
+                  data-testid={`tag-${
+                    glossaryTerm.tagFQN ||
+                    (glossaryTerm as any).name ||
+                    (glossaryTerm as any).displayName ||
+                    index
+                  }`}
+                  key={index}>
                   <GlossaryIcon className="glossary-term-icon" />
                   <span className="glossary-term-name">
                     {getEntityName(glossaryTerm)}
