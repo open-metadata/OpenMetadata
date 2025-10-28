@@ -924,29 +924,31 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && (
-              <div className="title-container">
-                <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="topLeft"
-                  title={entityDetails.details.name}
-                  trigger="hover">
-                  <div className="d-flex items-center">
-                    <span className="entity-icon">
-                      {searchClassBase.getEntityIcon(
-                        entityDetails.details.entityType ?? ''
-                      )}
-                    </span>
-                    <Link
-                      className="entity-title-link"
-                      data-testid="entity-link"
-                      href={entityLink as string}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      underline="hover">
-                      {stringToHTML(getEntityName(entityDetails.details))}
-                    </Link>
-                  </div>
-                </Tooltip>
+              <div className="title-section">
+                <div className="title-container">
+                  <Tooltip
+                    mouseEnterDelay={0.5}
+                    placement="topLeft"
+                    title={entityDetails.details.name}
+                    trigger="hover">
+                    <div className="d-flex items-center">
+                      <span className="entity-icon">
+                        {searchClassBase.getEntityIcon(
+                          entityDetails.details.entityType ?? ''
+                        )}
+                      </span>
+                      <Link
+                        className="entity-title-link"
+                        data-testid="entity-link"
+                        href={entityLink as string}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        underline="hover">
+                        {stringToHTML(getEntityName(entityDetails.details))}
+                      </Link>
+                    </div>
+                  </Tooltip>
+                </div>
               </div>
             )}
             <div className="overview-tab-content">{summaryComponentV1}</div>
@@ -956,29 +958,31 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && (
-              <div className="title-container">
-                <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="topLeft"
-                  title={entityDetails.details.name}
-                  trigger="hover">
-                  <div className="d-flex items-center">
-                    <span className="entity-icon">
-                      {searchClassBase.getEntityIcon(
-                        entityDetails.details.entityType ?? ''
-                      )}
-                    </span>
-                    <Link
-                      className="entity-title-link"
-                      data-testid="entity-link"
-                      href={entityLink as string}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      underline="hover">
-                      {stringToHTML(getEntityName(entityDetails.details))}
-                    </Link>
-                  </div>
-                </Tooltip>
+              <div className="title-section">
+                <div className="title-container">
+                  <Tooltip
+                    mouseEnterDelay={0.5}
+                    placement="topLeft"
+                    title={entityDetails.details.name}
+                    trigger="hover">
+                    <div className="d-flex items-center">
+                      <span className="entity-icon">
+                        {searchClassBase.getEntityIcon(
+                          entityDetails.details.entityType ?? ''
+                        )}
+                      </span>
+                      <Link
+                        className="entity-title-link"
+                        data-testid="entity-link"
+                        href={entityLink as string}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        underline="hover">
+                        {stringToHTML(getEntityName(entityDetails.details))}
+                      </Link>
+                    </div>
+                  </Tooltip>
+                </div>
               </div>
             )}
             <div className="entity-summary-panel-tab-content">
@@ -995,29 +999,31 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && (
-              <div className="title-container">
-                <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="topLeft"
-                  title={entityDetails.details.name}
-                  trigger="hover">
-                  <div className="d-flex items-center">
-                    <span className="entity-icon">
-                      {searchClassBase.getEntityIcon(
-                        entityDetails.details.entityType ?? ''
-                      )}
-                    </span>
-                    <Link
-                      className="entity-title-link"
-                      data-testid="entity-link"
-                      href={entityLink as string}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      underline="hover">
-                      {stringToHTML(getEntityName(entityDetails.details))}
-                    </Link>
-                  </div>
-                </Tooltip>
+              <div className="title-section">
+                <div className="title-container">
+                  <Tooltip
+                    mouseEnterDelay={0.5}
+                    placement="topLeft"
+                    title={entityDetails.details.name}
+                    trigger="hover">
+                    <div className="d-flex items-center">
+                      <span className="entity-icon">
+                        {searchClassBase.getEntityIcon(
+                          entityDetails.details.entityType ?? ''
+                        )}
+                      </span>
+                      <Link
+                        className="entity-title-link"
+                        data-testid="entity-link"
+                        href={entityLink as string}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        underline="hover">
+                        {stringToHTML(getEntityName(entityDetails.details))}
+                      </Link>
+                    </div>
+                  </Tooltip>
+                </div>
               </div>
             )}
             <div className="entity-summary-panel-tab-content">
@@ -1029,29 +1035,31 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && (
-              <div className="title-container">
-                <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="topLeft"
-                  title={entityDetails.details.name}
-                  trigger="hover">
-                  <div className="d-flex items-center">
-                    <span className="entity-icon">
-                      {searchClassBase.getEntityIcon(
-                        entityDetails.details.entityType ?? ''
-                      )}
-                    </span>
-                    <Link
-                      className="entity-title-link"
-                      data-testid="entity-link"
-                      href={entityLink as string}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      underline="hover">
-                      {stringToHTML(getEntityName(entityDetails.details))}
-                    </Link>
-                  </div>
-                </Tooltip>
+              <div className="title-section">
+                <div className="title-container">
+                  <Tooltip
+                    mouseEnterDelay={0.5}
+                    placement="topLeft"
+                    title={entityDetails.details.name}
+                    trigger="hover">
+                    <div className="d-flex items-center">
+                      <span className="entity-icon">
+                        {searchClassBase.getEntityIcon(
+                          entityDetails.details.entityType ?? ''
+                        )}
+                      </span>
+                      <Link
+                        className="entity-title-link"
+                        data-testid="entity-link"
+                        href={entityLink as string}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        underline="hover">
+                        {stringToHTML(getEntityName(entityDetails.details))}
+                      </Link>
+                    </div>
+                  </Tooltip>
+                </div>
               </div>
             )}
             <DataQualityTab
@@ -1064,29 +1072,31 @@ export default function EntitySummaryPanel({
         return (
           <>
             {viewPermission && (
-              <div className="title-container">
-                <Tooltip
-                  mouseEnterDelay={0.5}
-                  placement="topLeft"
-                  title={entityDetails.details.name}
-                  trigger="hover">
-                  <div className="d-flex items-center">
-                    <span className="entity-icon">
-                      {searchClassBase.getEntityIcon(
-                        entityDetails.details.entityType ?? ''
-                      )}
-                    </span>
-                    <Link
-                      className="entity-title-link"
-                      data-testid="entity-link"
-                      href={entityLink as string}
-                      rel="noopener noreferrer"
-                      target="_blank"
-                      underline="hover">
-                      {stringToHTML(getEntityName(entityDetails.details))}
-                    </Link>
-                  </div>
-                </Tooltip>
+              <div className="title-section">
+                <div className="title-container">
+                  <Tooltip
+                    mouseEnterDelay={0.5}
+                    placement="topLeft"
+                    title={entityDetails.details.name}
+                    trigger="hover">
+                    <div className="d-flex items-center">
+                      <span className="entity-icon">
+                        {searchClassBase.getEntityIcon(
+                          entityDetails.details.entityType ?? ''
+                        )}
+                      </span>
+                      <Link
+                        className="entity-title-link"
+                        data-testid="entity-link"
+                        href={entityLink as string}
+                        rel="noopener noreferrer"
+                        target="_blank"
+                        underline="hover">
+                        {stringToHTML(getEntityName(entityDetails.details))}
+                      </Link>
+                    </div>
+                  </Tooltip>
+                </div>
               </div>
             )}
             <CustomPropertiesSection

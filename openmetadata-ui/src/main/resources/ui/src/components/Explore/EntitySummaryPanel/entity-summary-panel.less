@@ -50,7 +50,7 @@
   }
 
   .content-area {
-    max-height: calc(100vh - 160px);
+    max-height: calc(100vh - 120px);
     overflow-y: auto;
     flex: 1;
     overflow-x: hidden;
@@ -146,18 +146,21 @@
   display: inline;
   align-items: center;
 }
+.title-section {
+  position: sticky;
+  padding: 4px;
+  z-index: 999;
+  top: 0;
+  background-color: @white;
+}
 .title-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 4px;
   border-radius: 8px;
   height: 49px;
-  position: sticky;
   padding-left: 4px;
   padding-right: 4px;
-  top: 4px;
-  z-index: 999;
   background-color: @grey-9;
   .d-flex {
     flex: 1;
