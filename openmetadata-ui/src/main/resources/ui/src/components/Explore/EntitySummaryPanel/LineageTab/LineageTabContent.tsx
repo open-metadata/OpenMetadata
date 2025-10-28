@@ -66,7 +66,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 
     // Add upstream items
     if (filter === 'upstream') {
-      upstreamNodes.forEach((entity) => {
+      for (const entity of upstreamNodes) {
         if (entity.fullyQualifiedName !== entityFqn) {
           const pathParts = entity.fullyQualifiedName?.split('.') || [];
           const path = pathParts.slice(0, -1).join(' / ');
@@ -76,12 +76,12 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             path,
           });
         }
-      });
+      }
     }
 
     // Add downstream items
     if (filter === 'downstream') {
-      downstreamNodes.forEach((entity) => {
+      for (const entity of downstreamNodes) {
         if (entity.fullyQualifiedName !== entityFqn) {
           const pathParts = entity.fullyQualifiedName?.split('.') || [];
           const path = pathParts.slice(0, -1).join(' / ');
@@ -91,7 +91,7 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             path,
           });
         }
-      });
+      }
     }
 
     return items;

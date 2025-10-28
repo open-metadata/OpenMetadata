@@ -32,7 +32,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { Chart } from '../../generated/entity/data/chart';
 import { Dashboard } from '../../generated/entity/data/dashboard';
 import { EntityReference } from '../../generated/entity/type';
-import { TestCase, TestCaseStatus } from '../../generated/tests/testCase';
+import { TestCaseStatus } from '../../generated/tests/testCase';
 import { TagSource } from '../../generated/type/tagLabel';
 import { patchApiCollection } from '../../rest/apiCollectionsAPI';
 import { patchApiEndPoint } from '../../rest/apiEndpointsAPI';
@@ -199,7 +199,6 @@ export const DataAssetSummaryPanelV1 = ({
     useState<OperationPermission | null>(null);
   const { isTourPage } = useTourProvider();
   const [isTestCaseLoading, setIsTestCaseLoading] = useState<boolean>(false);
-  const [, setTestCases] = useState<TestCase[]>([]);
   const [statusCounts, setStatusCounts] = useState<TestCaseStatusCounts>({
     success: 0,
     failed: 0,
@@ -280,8 +279,6 @@ export const DataAssetSummaryPanelV1 = ({
         fields: ['testCaseResult', 'incidentId'],
       });
 
-      setTestCases(response.data || []);
-
       // Calculate status counts
       const counts = (response.data || []).reduce(
         (acc, testCase) => {
@@ -312,7 +309,6 @@ export const DataAssetSummaryPanelV1 = ({
       setStatusCounts(counts);
     } catch (error) {
       showErrorToast(error as AxiosError);
-      setTestCases([]);
       setStatusCounts({ success: 0, failed: 0, aborted: 0, ack: 0, total: 0 });
     } finally {
       setIsTestCaseLoading(false);

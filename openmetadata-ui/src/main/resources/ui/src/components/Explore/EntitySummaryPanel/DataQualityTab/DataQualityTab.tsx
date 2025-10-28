@@ -78,7 +78,7 @@ const TestCaseCard: React.FC<TestCaseCardProps> = ({ testCase, incident }) => {
     if (entityLink.includes('::columns::')) {
       const parts = entityLink.split('::columns::');
 
-      return parts[parts.length - 1];
+      return parts.at(-1);
     }
 
     return null;

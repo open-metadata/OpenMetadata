@@ -110,11 +110,11 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       return;
     }
     const io = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
+      for (const entry of entries) {
         if (entry.isIntersecting) {
           checkIfTextIsTruncated();
         }
-      });
+      }
     });
     io.observe(node);
 

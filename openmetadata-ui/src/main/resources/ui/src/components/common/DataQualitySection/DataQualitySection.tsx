@@ -127,65 +127,62 @@ const DataQualitySection: React.FC<DataQualitySectionProps> = ({
       onEdit={onEdit}>
       <div className="data-quality-content">
         <div className="data-quality-header" />
+        <div className="data-quality-progress">
+          <div className="data-quality-progress-segments">
+            {successPercent > 0 && (
+              <div
+                className="progress-segment success"
+                style={{ width: `${successPercent}%` }}
+              />
+            )}
+            {abortedPercent > 0 && (
+              <div
+                className="progress-segment aborted"
+                style={{ width: `${abortedPercent}%` }}
+              />
+            )}
+            {failedPercent > 0 && (
+              <div
+                className="progress-segment failed"
+                style={{ width: `${failedPercent}%` }}
+              />
+            )}
+          </div>
+        </div>
 
-        <>
-          <div className="data-quality-progress">
-            <div className="data-quality-progress-segments">
-              {successPercent > 0 && (
-                <div
-                  className="progress-segment success"
-                  style={{ width: `${successPercent}%` }}
-                />
-              )}
-              {abortedPercent > 0 && (
-                <div
-                  className="progress-segment aborted"
-                  style={{ width: `${abortedPercent}%` }}
-                />
-              )}
-              {failedPercent > 0 && (
-                <div
-                  className="progress-segment failed"
-                  style={{ width: `${failedPercent}%` }}
-                />
-              )}
+        <div className="data-quality-legend">
+          {successTests > 0 && (
+            <div className="legend-item">
+              <span className="legend-dot success" />
+              <span className="legend-text">
+                <Typography.Text className="legend-text-label">
+                  {t('label.-with-colon', { text: t('label.success') })}{' '}
+                </Typography.Text>
+                <Typography.Text className="legend-text-value">
+                  {successTests}
+                </Typography.Text>
+              </span>
             </div>
-          </div>
-
-          <div className="data-quality-legend">
-            {successTests > 0 && (
-              <div className="legend-item">
-                <span className="legend-dot success" />
-                <span className="legend-text">
-                  <Typography.Text className="legend-text-label">
-                    {t('label.-with-colon', { text: t('label.success') })}{' '}
-                  </Typography.Text>
-                  <Typography.Text className="legend-text-value">
-                    {successTests}
-                  </Typography.Text>
-                </span>
-              </div>
-            )}
-            {abortedTests > 0 && (
-              <div className="legend-item">
-                <span className="legend-dot aborted" />
-                <span className="legend-text">
-                  {t('label.-with-colon', { text: t('label.aborted') })}{' '}
-                  {abortedTests}
-                </span>
-              </div>
-            )}
-            {failedTests > 0 && (
-              <div className="legend-item">
-                <span className="legend-dot failed" />
-                <span className="legend-text">
-                  {t('label.-with-colon', { text: t('label.failed') })}{' '}
-                  {failedTests}
-                </span>
-              </div>
-            )}
-          </div>
-        </>
+          )}
+          {abortedTests > 0 && (
+            <div className="legend-item">
+              <span className="legend-dot aborted" />
+              <span className="legend-text">
+                {t('label.-with-colon', { text: t('label.aborted') })}{' '}
+                {abortedTests}
+              </span>
+            </div>
+          )}
+          {failedTests > 0 && (
+            <div className="legend-item">
+              <span className="legend-dot failed" />
+              <span className="legend-text">
+                {t('label.-with-colon', { text: t('label.failed') })}{' '}
+                {failedTests}
+              </span>
+            </div>
+          )}
+        </div>
       </div>
     </SectionWithEdit>
   );

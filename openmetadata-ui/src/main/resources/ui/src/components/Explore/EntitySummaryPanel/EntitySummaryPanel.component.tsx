@@ -280,6 +280,7 @@ export default function EntitySummaryPanel({
       });
       setLineageData(response);
     } catch (error) {
+      showErrorToast(error as AxiosError);
       setLineageData(null);
     } finally {
       setIsLineageLoading(false);
@@ -308,9 +309,9 @@ export default function EntitySummaryPanel({
             prevData.displayName || entityDetails.details.displayName,
           name: prevData.name || entityDetails.details.name,
           deleted:
-            prevData.deleted !== undefined
-              ? prevData.deleted
-              : entityDetails.details.deleted,
+            prevData.deleted === undefined
+              ? entityDetails.details.deleted
+              : prevData.deleted,
           serviceType:
             prevData.serviceType || (entityDetails.details as any).serviceType,
           service: prevData.service || entityDetails.details.service,
@@ -356,9 +357,9 @@ export default function EntitySummaryPanel({
             prevData.displayName || entityDetails.details.displayName,
           name: prevData.name || entityDetails.details.name,
           deleted:
-            prevData.deleted !== undefined
-              ? prevData.deleted
-              : entityDetails.details.deleted,
+            prevData.deleted === undefined
+              ? entityDetails.details.deleted
+              : prevData.deleted,
           serviceType:
             prevData.serviceType || (entityDetails.details as any).serviceType,
           service: prevData.service || entityDetails.details.service,
@@ -411,9 +412,9 @@ export default function EntitySummaryPanel({
             prevData.displayName || entityDetails.details.displayName,
           name: prevData.name || entityDetails.details.name,
           deleted:
-            prevData.deleted !== undefined
-              ? prevData.deleted
-              : entityDetails.details.deleted,
+            prevData.deleted === undefined
+              ? entityDetails.details.deleted
+              : prevData.deleted,
           serviceType:
             prevData.serviceType || (entityDetails.details as any).serviceType,
           service: prevData.service || entityDetails.details.service,
@@ -467,9 +468,9 @@ export default function EntitySummaryPanel({
             prevData.displayName || entityDetails.details.displayName,
           name: prevData.name || entityDetails.details.name,
           deleted:
-            prevData.deleted !== undefined
-              ? prevData.deleted
-              : entityDetails.details.deleted,
+            prevData.deleted === undefined
+              ? entityDetails.details.deleted
+              : prevData.deleted,
           serviceType:
             prevData.serviceType || (entityDetails.details as any).serviceType,
           service: prevData.service || entityDetails.details.service,
@@ -515,9 +516,9 @@ export default function EntitySummaryPanel({
             prevData.displayName || entityDetails.details.displayName,
           name: prevData.name || entityDetails.details.name,
           deleted:
-            prevData.deleted !== undefined
-              ? prevData.deleted
-              : entityDetails.details.deleted,
+            prevData.deleted === undefined
+              ? entityDetails.details.deleted
+              : prevData.deleted,
           serviceType:
             prevData.serviceType || (entityDetails.details as any).serviceType,
           service: prevData.service || entityDetails.details.service,
@@ -644,9 +645,9 @@ export default function EntitySummaryPanel({
               prevData.displayName || entityDetails.details.displayName,
             name: prevData.name || entityDetails.details.name,
             deleted:
-              prevData.deleted !== undefined
-                ? prevData.deleted
-                : entityDetails.details.deleted,
+              prevData.deleted === undefined
+                ? entityDetails.details.deleted
+                : prevData.deleted,
             serviceType:
               prevData.serviceType ||
               (entityDetails.details as any).serviceType,
@@ -702,9 +703,9 @@ export default function EntitySummaryPanel({
             prevData.displayName || entityDetails.details.displayName,
           name: prevData.name || entityDetails.details.name,
           deleted:
-            prevData.deleted !== undefined
-              ? prevData.deleted
-              : entityDetails.details.deleted,
+            prevData.deleted === undefined
+              ? entityDetails.details.deleted
+              : prevData.deleted,
           serviceType:
             prevData.serviceType || (entityDetails.details as any).serviceType,
           service: prevData.service || entityDetails.details.service,

@@ -178,7 +178,7 @@ const CustomPropertiesSection = ({
                 target="_blank"
                 to={getEntityLinkFromType(
                   entityDetails.details.fullyQualifiedName || '',
-                  entityType as EntityType
+                  entityType
                 )}>
                 <Button size="small" type="primary">
                   {t('label.view-all')}
