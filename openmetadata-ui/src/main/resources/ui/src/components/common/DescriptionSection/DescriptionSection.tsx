@@ -45,6 +45,11 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
       const markdownParser = element.querySelector('.markdown-parser');
       // Fallback to the container itself if markdown parser is not found
       const measureNode = (markdownParser as HTMLElement) || element;
+      // If element is not visible (e.g., tab hidden), avoid recalculating to false
+      const isVisible = measureNode.getClientRects().length > 0;
+      if (!isVisible) {
+        return;
+      }
       // Check if the element's scroll height is greater than its client height
       // This indicates that the text is being truncated by CSS
       const isTruncated = measureNode.scrollHeight > measureNode.clientHeight;
@@ -77,9 +82,44 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
   useEffect(() => {
     if (description && !isEditDescription) {
       // Use setTimeout to ensure the DOM has been updated
-      setTimeout(checkIfTextIsTruncated, 0);
+      // Delay slightly to allow markdown to render fully
+      const id = setTimeout(checkIfTextIsTruncated, 50);
+
+      return () => clearTimeout(id);
     }
   }, [description, isEditDescription, checkIfTextIsTruncated]);
+
+  // Recalculate when container resizes or becomes visible after tab switch
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const observer = new ResizeObserver(() => {
+      checkIfTextIsTruncated();
+    });
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [checkIfTextIsTruncated]);
+
+  // Recalculate when the element becomes visible after tab/nav changes
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          checkIfTextIsTruncated();
+        }
+      });
+    });
+    io.observe(node);
+
+    return () => io.disconnect();
+  }, [checkIfTextIsTruncated]);
 
   if (!description?.trim()) {
     return (
@@ -140,7 +180,7 @@ const DescriptionSection: React.FC<DescriptionSectionProps> = ({
               markdown={description}
             />
           </div>
-          {shouldShowButton && (
+          {(shouldShowButton || isExpanded) && (
             <button
               className="show-more-button"
               type="button"
