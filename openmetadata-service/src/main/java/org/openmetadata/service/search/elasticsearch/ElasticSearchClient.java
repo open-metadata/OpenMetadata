@@ -195,8 +195,8 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     isNewClientAvailable = newClient != null;
     queryBuilderFactory = new ElasticQueryBuilderFactory();
     rbacConditionEvaluator = new RBACConditionEvaluator(queryBuilderFactory);
-    lineageGraphBuilder = new ESLineageGraphBuilder(client);
-    entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(client);
+    lineageGraphBuilder = new ESLineageGraphBuilder(newClient);
+    entityRelationshipGraphBuilder = new ESEntityRelationshipGraphBuilder(newClient);
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
