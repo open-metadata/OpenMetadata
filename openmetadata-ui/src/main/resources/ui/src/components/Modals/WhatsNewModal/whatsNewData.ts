@@ -16,7 +16,7 @@
 import collateIcon from '../../../assets/svg/ic-collate.svg';
 import { CarousalData } from './FeaturesCarousel.interface';
 
-export const COOKIE_VERSION = 'VERSION_1_8_9'; // To be changed with each release.
+export const COOKIE_VERSION = 'VERSION_1_8_12'; // To be changed with each release.
 
 // for youtube video make isImage = false and path = {video embed id}
 // embed:- youtube video => share => click on embed and take {url with id} from it
@@ -1198,6 +1198,66 @@ Coupled with existing SAML/OIDC SSO, SCIM rounds out a turn-key identity stackâ€
 - Add lineage propagation enhancements in Automator with stop conditions and propagation depth, along with related UI fixes, configuration support, and test improvements. ${CollateIconWithLinkMD}
 `,
       Fixes: `- Incorrect or missing security labels.
+`,
+    },
+  },
+  {
+    id: 82,
+    version: 'v1.8.10',
+    description: 'Released on October 2025.',
+    features: [],
+    changeLogs: {
+      Fixes: `- Fix Bulk Import to preserve existing metadata when fields are not included in the CSV.
+`,
+    },
+  },
+  {
+    id: 83,
+    version: 'v1.8.11',
+    description: 'Released on 24th October 2025.',
+    features: [],
+    changeLogs: {
+      ['Deprecation - Assets field in Domain and Data Product']: `
+**Important:** The inline \`assets\` field in Domain and Data Product entities has been **deprecated** and will be removed in a future release.
+
+**What changed:**
+- The \`assets\` field that returns all assets inline in Domain and Data Product API responses is now deprecated.
+- New paginated API endpoints have been introduced for better performance with large asset collections.
+
+**New Endpoints:**
+- \`GET /v1/domains/{id}/assets\` - Paginated access to domain assets by ID
+- \`GET /v1/domains/name/{name}/assets\` - Paginated access to domain assets by name
+- \`GET /v1/dataProducts/{id}/assets\` - Paginated access to data product assets by ID
+- \`GET /v1/dataProducts/name/{name}/assets\` - Paginated access to data product assets by name
+- Similar endpoints (both by ID and name) added for Glossary Terms, Tags, Teams, and Users
+
+**Action Required:**
+- Update your integrations to use the new paginated endpoints instead of relying on the inline \`assets\` field.
+- Python SDK users should migrate to: \`ometa.get_domain_assets(domain_id)\` and \`ometa.get_data_product_assets(data_product_id)\`
+
+This change provides significant performance improvements for domains and data products with large numbers of assets.
+`,
+      Improvements: `- Added paginated assets API endpoints for Domain, Data Product, Glossary Term, Tag, Team, and User entities for improved scalability.
+- Added support for MF4 (Measurement Data Format version 4) file reader for automotive and industrial measurement data.
+- Added support for BigQuery clone queries (\`CREATE TABLE ... CLONE\`) in lineage tracking.
+- Improved handling of nested column structures (subfields) in Datalake sources.
+`,
+      Fixes: `- Fixed MF4 file reader import errors with proper lazy loading of dependencies.
+- Fixed domain assets count mismatch between API and UI responses.
+- Pinned \`pydantic\` dependency to version <2.12.0 for compatibility.
+`,
+    },
+  },
+  {
+    id: 84,
+    version: 'v1.8.12',
+    description: 'Released on 27th October 2025.',
+    features: [],
+    changeLogs: {
+      Improvements: `- Remove beta label from useDynamicAssertion in AutomatorTestCaseField component.
+`,
+      Fixes: `- Fix German language UI translations for login page.
+- Fix the UC Ingestion failing due to non-selected tables.
 `,
     },
   },
