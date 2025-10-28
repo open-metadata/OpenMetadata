@@ -201,12 +201,14 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
   await test.step(
     'Remove test case from logical test suite by owner',
     async () => {
+      await ownerPage.getByTestId(`action-dropdown-${testCaseName1}`).click();
       await ownerPage.click(`[data-testid="remove-${testCaseName1}"]`);
       const removeTestCase1 = ownerPage.waitForResponse(
         '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
       );
       await ownerPage.click('[data-testid="save-button"]');
       await removeTestCase1;
+      await ownerPage.getByTestId(`action-dropdown-${testCaseName2}`).click();
       await ownerPage.click(`[data-testid="remove-${testCaseName2}"]`);
       const removeTestCase2 = ownerPage.waitForResponse(
         '/api/v1/dataQuality/testCases/logicalTestCases/*/*'
@@ -232,7 +234,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
       state: 'detached',
     });
     const getOwnerList = page.waitForResponse(
-      '/api/v1/search/query?q=*isBot:false*index=user_search_index*'
+      '/api/v1/search/query?q=&index=user_search_index&*'
     );
     await page.click('.ant-tabs [id*=tab-users]');
     await getOwnerList;

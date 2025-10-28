@@ -27,7 +27,7 @@ export const TEXT_BODY_COLOR = '#37352F';
 export const TEXT_GREY_MUTED = '#757575';
 export const SUCCESS_COLOR = '#008376';
 export const DE_ACTIVE_COLOR = '#6B7280';
-export const GRAPH_BACKGROUND_COLOR = '#f5f5f5';
+export const GRAPH_BACKGROUND_COLOR = '#E9EAEB';
 export const GRAYED_OUT_COLOR = '#959595';
 export const BORDER_COLOR = '#0000001a';
 export const BLACK_COLOR = '#000000';
@@ -317,6 +317,7 @@ export const SOCKET_EVENTS = {
   CSV_EXPORT_CHANNEL: 'csvExportChannel',
   SEARCH_INDEX_JOB_BROADCAST_CHANNEL: 'searchIndexJobStatus',
   DATA_INSIGHTS_JOB_BROADCAST_CHANNEL: 'dataInsightsJobStatus',
+  CACHE_WARMUP_JOB_BROADCAST_CHANNEL: 'cacheWarmupJobStatus',
   BULK_ASSETS_CHANNEL: 'bulkAssetsChannel',
   CSV_IMPORT_CHANNEL: 'csvImportChannel',
   BACKGROUND_JOB_CHANNEL: 'backgroundJobStatus',

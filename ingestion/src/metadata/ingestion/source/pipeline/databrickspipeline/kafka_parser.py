@@ -33,6 +33,12 @@ VARIABLE_ASSIGNMENT_PATTERN = re.compile(
     re.MULTILINE,
 )
 
+# Pattern to extract boolean variable assignments like: snapshot_required = True
+BOOL_ASSIGNMENT_PATTERN = re.compile(
+    r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(True|False)\s*$",
+    re.MULTILINE,
+)
+
 # Pattern to extract DLT table decorators: @dlt.table(name="table_name", ...) or @dlt.table(name=func())
 DLT_TABLE_PATTERN = re.compile(
     r"@dlt\.table\s*\(",
@@ -50,6 +56,26 @@ DLT_TABLE_NAME_FUNCTION = re.compile(
     re.DOTALL | re.IGNORECASE,
 )
 
+# Pattern to extract dlt.read_stream("table_name") calls
+DLT_READ_STREAM_PATTERN = re.compile(
+    r'dlt\.read_stream\s*\(\s*["\']([^"\']+)["\']\s*\)',
+    re.IGNORECASE,
+)
+
+# Pattern to extract dlt.read("table_name") calls (batch reads)
+DLT_READ_PATTERN = re.compile(
+    r'dlt\.read\s*\(\s*["\']([^"\']+)["\']\s*\)',
+    re.IGNORECASE,
+)
+
+# Pattern to extract S3 paths from spark.read operations
+# Matches: spark.read.json("s3://..."), spark.read.format("parquet").load("s3a://...")
+# Uses a simpler pattern that captures any spark.read followed by method calls ending with a path
+S3_PATH_PATTERN = re.compile(
+    r'spark\.read.*?\.(?:load|json|parquet|csv|orc|avro)\s*\(\s*["\']([^"\']+)["\']\s*\)',
+    re.DOTALL | re.IGNORECASE,
+)
+
 
 @dataclass
 class KafkaSourceConfig:
@@ -60,6 +86,17 @@ class KafkaSourceConfig:
     group_id_prefix: Optional[str] = None
 
 
+@dataclass
+class DLTTableDependency:
+    """Model for DLT table dependencies"""
+
+    table_name: str
+    depends_on: List[str] = field(default_factory=list)
+    reads_from_kafka: bool = False
+    reads_from_s3: bool = False
+    s3_locations: List[str] = field(default_factory=list)
+
+
 def _extract_variables(source_code: str) -> dict:
     """
     Extract variable assignments from source code
@@ -67,16 +104,25 @@ def _extract_variables(source_code: str) -> dict:
     Examples:
         TOPIC = "events"
         KAFKA_BROKER = "localhost:9092"
+        snapshot_required = True
 
-    Returns dict like: {"TOPIC": "events", "KAFKA_BROKER": "localhost:9092"}
+    Returns dict like: {"TOPIC": "events", "KAFKA_BROKER": "localhost:9092", "snapshot_required": "True"}
     """
     variables = {}
     try:
+        # Extract string variables
         for match in VARIABLE_ASSIGNMENT_PATTERN.finditer(source_code):
             var_name = match.group(1)
             var_value = match.group(2)
             variables[var_name] = var_value
             logger.debug(f"Found variable: {var_name} = {var_value}")
+
+        # Extract boolean variables
+        for match in BOOL_ASSIGNMENT_PATTERN.finditer(source_code):
+            var_name = match.group(1)
+            var_value = match.group(2)
+            variables[var_name] = var_value
+            logger.debug(f"Found boolean variable: {var_name} = {var_value}")
     except Exception as exc:
         logger.debug(f"Error extracting variables: {exc}")
     return variables
@@ -282,24 +328,43 @@ def _infer_table_name_from_function(
     Strategies:
     1. Look for entity_name variable and use it to build table name
     2. Extract keywords from function name (e.g., "event_log" from "generate_event_log_table_name")
+    3. Handle Materializer pattern: entity_name + suffix from function name
     """
     try:
         # Extract variables to find entity_name or similar
         variables = _extract_variables(source_code)
 
-        # Strategy 1: Use entity_name variable if present
+        # Strategy 1: Materializer pattern - entity_name + suffix from function
+        # Handles: @dlt.table(name=materializer.generate_event_log_table_name())
+        # where entity_name = "customerEvent" should produce "customerevent_event_log"
         entity_name = (
             variables.get("entity_name")
             or variables.get("entity")
             or variables.get("table_name")
         )
+
+        if entity_name and "generate_event_log_table_name" in function_call.lower():
+            table_name = f"{entity_name.lower()}_event_log"
+            logger.debug(
+                f"Inferred event_log table from Materializer pattern: {table_name}"
+            )
+            return table_name
+
+        if entity_name and "generate_snapshot_table_name" in function_call.lower():
+            table_name = f"{entity_name.lower()}_snapshot"
+            logger.debug(
+                f"Inferred snapshot table from Materializer pattern: {table_name}"
+            )
+            return table_name
+
+        # Strategy 2: Use entity_name variable if present (fallback)
         if entity_name:
             logger.debug(
                 f"Inferred table name from entity_name variable: {entity_name}"
             )
             return entity_name
 
-        # Strategy 2: Extract from function name (e.g., "event_log" from "generate_event_log_table_name")
+        # Strategy 3: Extract from function name (e.g., "event_log" from "generate_event_log_table_name")
         # Common patterns: generate_X_table_name, create_X_table, build_X_dataframe
         match = re.search(
             r"(?:generate|create|build)_([a-z_]+?)(?:_table|_dataframe)",
@@ -314,6 +379,197 @@ def _infer_table_name_from_function(
         logger.debug(f"Could not infer table name from function {function_call}: {exc}")
 
     return None
+
+
+def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]:
+    """
+    Extract DLT table dependencies by analyzing @dlt.table decorators and dlt.read_stream calls
+
+    For each DLT table, identifies:
+    - Table name from @dlt.table(name="...")
+    - Dependencies from dlt.read_stream("other_table") or dlt.read("other_table") calls
+    - Whether it reads from Kafka (spark.readStream.format("kafka"))
+    - Whether it reads from S3 (spark.read.json("s3://..."))
+    - S3 locations if applicable
+
+    Example:
+        @dlt.table(name="source_table")
+        def my_source():
+            return spark.read.json("s3://bucket/path/")...
+
+        @dlt.table(name="target_table")
+        def my_target():
+            return dlt.read("source_table")
+
+    Returns:
+        [
+            DLTTableDependency(table_name="source_table", depends_on=[], reads_from_s3=True,
+                             s3_locations=["s3://bucket/path/"]),
+            DLTTableDependency(table_name="target_table", depends_on=["source_table"],
+                             reads_from_s3=False)
+        ]
+    """
+    dependencies = []
+
+    try:
+        if not source_code:
+            return dependencies
+
+        # Split source code into function definitions
+        # Pattern: @dlt.table(...) or @dlt.view(...) followed by def function_name():
+        # Handle multiline decorators with potentially nested parentheses
+        function_pattern = re.compile(
+            r"(@dlt\.(?:table|view)\s*\(.*?\)\s*def\s+[a-zA-Z_][a-zA-Z0-9_]*\s*\([^)]*\)\s*:.*?)(?=@dlt\.|$)",
+            re.DOTALL | re.IGNORECASE,
+        )
+
+        for match in function_pattern.finditer(source_code):
+            try:
+                function_block = match.group(1)
+
+                # Extract table name from @dlt.table decorator
+                table_name = None
+                name_match = DLT_TABLE_NAME_LITERAL.search(function_block)
+                if name_match and name_match.group(1):
+                    table_name = name_match.group(1)
+                else:
+                    # Try function name pattern
+                    func_name_match = DLT_TABLE_NAME_FUNCTION.search(function_block)
+                    if func_name_match and func_name_match.group(1):
+                        table_name = _infer_table_name_from_function(
+                            func_name_match.group(1), source_code
+                        )
+
+                if not table_name:
+                    # Try to extract from function definition itself
+                    def_match = re.search(
+                        r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", function_block
+                    )
+                    if def_match:
+                        table_name = def_match.group(1)
+
+                if not table_name:
+                    logger.debug(
+                        f"Could not extract table name from block: {function_block[:100]}..."
+                    )
+                    continue
+
+                # Check if it reads from Kafka
+                # Direct pattern: spark.readStream.format("kafka")
+                reads_from_kafka = bool(KAFKA_STREAM_PATTERN.search(function_block))
+
+                # Materializer pattern: materializer.build_event_log_dataframe()
+                # This method internally reads from Kafka, so if we find this pattern
+                # and the table name matches event_log pattern, mark as Kafka reader
+                if (
+                    not reads_from_kafka
+                    and "materializer.build_event_log_dataframe" in function_block
+                ):
+                    if "event_log" in table_name:
+                        reads_from_kafka = True
+                        logger.debug(
+                            f"Table {table_name} reads from Kafka via Materializer"
+                        )
+
+                # Check if it reads from S3
+                s3_locations = []
+                for s3_match in S3_PATH_PATTERN.finditer(function_block):
+                    s3_path = s3_match.group(1)
+                    if s3_path.startswith(("s3://", "s3a://", "s3n://")):
+                        s3_locations.append(s3_path)
+                        logger.debug(f"Table {table_name} reads from S3: {s3_path}")
+
+                reads_from_s3 = len(s3_locations) > 0
+
+                # Extract dlt.read_stream dependencies (streaming)
+                depends_on = []
+                for stream_match in DLT_READ_STREAM_PATTERN.finditer(function_block):
+                    source_table = stream_match.group(1)
+                    depends_on.append(source_table)
+                    logger.debug(f"Table {table_name} streams from {source_table}")
+
+                # Extract dlt.read dependencies (batch)
+                for read_match in DLT_READ_PATTERN.finditer(function_block):
+                    source_table = read_match.group(1)
+                    depends_on.append(source_table)
+                    logger.debug(f"Table {table_name} reads from {source_table}")
+
+                dependency = DLTTableDependency(
+                    table_name=table_name,
+                    depends_on=depends_on,
+                    reads_from_kafka=reads_from_kafka,
+                    reads_from_s3=reads_from_s3,
+                    s3_locations=s3_locations,
+                )
+                dependencies.append(dependency)
+                logger.debug(
+                    f"Extracted dependency: {table_name} - depends_on={depends_on}, "
+                    f"reads_from_kafka={reads_from_kafka}, reads_from_s3={reads_from_s3}, "
+                    f"s3_locations={s3_locations}"
+                )
+
+            except Exception as exc:
+                logger.debug(f"Error parsing function block: {exc}")
+                continue
+
+        # Handle Materializer snapshot pattern:
+        # if snapshot_required:
+        #     materializer.build_snapshot_dataframe()
+        # This creates a snapshot table without @dlt.table decorator
+        try:
+            variables = _extract_variables(source_code)
+            snapshot_required = variables.get("snapshot_required")
+            entity_name = (
+                variables.get("entity_name")
+                or variables.get("entity")
+                or variables.get("table_name")
+            )
+
+            # Check if snapshot table is built
+            # snapshot_required can be "True" (string) or True (boolean)
+            is_snapshot_enabled = (
+                snapshot_required and str(snapshot_required).lower() == "true"
+            )
+
+            if (
+                is_snapshot_enabled
+                and entity_name
+                and "build_snapshot_dataframe" in source_code
+            ):
+                snapshot_table_name = f"{entity_name.lower()}_snapshot"
+                event_log_table_name = f"{entity_name.lower()}_event_log"
+
+                # Find the event_log table in existing dependencies
+                event_log_dep = next(
+                    (d for d in dependencies if d.table_name == event_log_table_name),
+                    None,
+                )
+
+                if event_log_dep:
+                    # Create snapshot table that depends on event_log
+                    snapshot_dependency = DLTTableDependency(
+                        table_name=snapshot_table_name,
+                        depends_on=[event_log_table_name],
+                        reads_from_kafka=False,
+                        reads_from_s3=False,
+                        s3_locations=[],
+                    )
+                    dependencies.append(snapshot_dependency)
+                    logger.debug(
+                        f"Extracted Materializer snapshot table: {snapshot_table_name} depends on {event_log_table_name}"
+                    )
+                else:
+                    logger.debug(
+                        f"Found snapshot pattern but event_log table {event_log_table_name} not found in dependencies"
+                    )
+
+        except Exception as exc:
+            logger.debug(f"Error extracting Materializer snapshot pattern: {exc}")
+
+    except Exception as exc:
+        logger.warning(f"Error extracting DLT table dependencies: {exc}")
+
+    return dependencies
 
 
 def get_pipeline_libraries(pipeline_config: dict, client=None) -> List[str]:

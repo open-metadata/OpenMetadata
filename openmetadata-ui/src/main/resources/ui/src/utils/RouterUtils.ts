@@ -764,13 +764,19 @@ export const getEntityDetailsPath = (
   entityType: EntityType,
   fqn: string,
   tab?: string,
-  subTab = 'all'
+  subTab?: string
 ) => {
   let path = tab ? ROUTES.ENTITY_DETAILS_WITH_TAB : ROUTES.ENTITY_DETAILS;
 
-  if (tab === EntityTabs.ACTIVITY_FEED) {
-    path = ROUTES.ENTITY_DETAILS_WITH_SUB_TAB;
-    path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, subTab);
+  // Handle tabs with subtabs (ACTIVITY_FEED and PROFILER)
+  // For ACTIVITY_FEED without subTab, default to 'all' for backward compatibility
+  if (tab === EntityTabs.ACTIVITY_FEED || tab === EntityTabs.PROFILER) {
+    const resolvedSubTab =
+      subTab || (tab === EntityTabs.ACTIVITY_FEED ? 'all' : undefined);
+    if (resolvedSubTab) {
+      path = ROUTES.ENTITY_DETAILS_WITH_SUB_TAB;
+      path = path.replace(PLACEHOLDER_ROUTE_SUB_TAB, resolvedSubTab);
+    }
   }
 
   if (tab) {

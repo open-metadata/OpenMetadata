@@ -69,6 +69,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
 )
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
+    LocalRepositoryPath,
     LookerConnection,
     NoGitCredentials,
 )
@@ -243,29 +244,43 @@ class LookerSource(DashboardServiceSource):
         credentials: Optional[
             Union[
                 NoGitCredentials,
+                LocalRepositoryPath,
                 GitHubCredentials,
                 BitBucketCredentials,
                 GitlabCredentials,
             ]
         ],
     ) -> "LookMLRepo":
-        repo_name = (
-            f"{credentials.repositoryOwner.root}/{credentials.repositoryName.root}"
-        )
-        repo_path = f"{REPO_TMP_LOCAL_PATH}/{credentials.repositoryName.root}"
-        _clone_repo(
-            repo_name,
-            repo_path,
-            credentials,
-            overwrite=True,
-        )
-        return LookMLRepo(name=repo_name, path=repo_path)
+        if isinstance(credentials, LocalRepositoryPath):
+            # For local repository path, use the path directly without cloning
+            local_path = Path(credentials.root)
+            repo_name = local_path.name
+            return LookMLRepo(name=repo_name, path=str(local_path))
+        elif isinstance(
+            credentials, (GitHubCredentials, BitBucketCredentials, GitlabCredentials)
+        ):
+            # For remote repositories, clone as before
+            repo_name = (
+                f"{credentials.repositoryOwner.root}/{credentials.repositoryName.root}"
+            )
+            repo_path = f"{REPO_TMP_LOCAL_PATH}/{credentials.repositoryName.root}"
+            _clone_repo(
+                repo_name,
+                repo_path,
+                credentials,
+                overwrite=True,
+            )
+            return LookMLRepo(name=repo_name, path=repo_path)
+        else:
+            # For NoGitCredentials or other unsupported types
+            raise ValueError(f"Unsupported credential type: {type(credentials)}")
 
     def __read_manifest(
         self,
         credentials: Optional[
             Union[
                 NoGitCredentials,
+                LocalRepositoryPath,
                 GitHubCredentials,
                 BitBucketCredentials,
                 GitlabCredentials,
@@ -273,21 +288,36 @@ class LookerSource(DashboardServiceSource):
         ],
         path="manifest.lkml",
     ) -> Optional[LookMLManifest]:
-        file_path = f"{self._main_lookml_repo.path}/{path}"
-        if not os.path.isfile(file_path):
+        file_path = Path(self._main_lookml_repo.path) / path
+        if not file_path.is_file():
+            if isinstance(credentials, LocalRepositoryPath):
+                logger.warning(
+                    f"Manifest file '{path}' not found in local repository at {file_path}. "
+                    f"Ensure the manifest file exists in your local LookML repository."
+                )
             return None
+
         with open(file_path, "r", encoding="utf-8") as fle:
             manifest = LookMLManifest.model_validate(lkml.load(fle))
             if manifest and manifest.remote_dependency:
                 remote_name = manifest.remote_dependency["name"]
                 remote_git_url = manifest.remote_dependency["url"]
 
-                url_parsed = giturlparse.parse(remote_git_url)
-                _clone_repo(
-                    f"{url_parsed.owner}/{url_parsed.repo}",  # pylint: disable=E1101
-                    f"{self._main_lookml_repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
-                    credentials,
-                )
+                if isinstance(credentials, LocalRepositoryPath):
+                    # For local repository path, warn about remote dependencies
+                    logger.warning(
+                        f"Remote dependency '{remote_name}' found in manifest. "
+                        f"When using localRepositoryPath, remote dependencies are not automatically fetched. "
+                        f"If needed, manually place the dependency in the '{IMPORTED_PROJECTS_DIR}/{remote_name}' directory within your local repository."
+                    )
+                else:
+                    # For remote repositories, clone the dependency as before
+                    url_parsed = giturlparse.parse(remote_git_url)
+                    _clone_repo(
+                        f"{url_parsed.owner}/{url_parsed.repo}",  # pylint: disable=E1101
+                        f"{self._main_lookml_repo.path}/{IMPORTED_PROJECTS_DIR}/{remote_name}",
+                        credentials,
+                    )
 
             return manifest
 
@@ -362,8 +392,13 @@ class LookerSource(DashboardServiceSource):
         We either get GitHubCredentials or `NoGitHubCredentials`
         """
         if not self._repo_credentials:
-            if self.service_connection.gitCredentials and isinstance(
-                self.service_connection.gitCredentials, get_args(ReadersCredentials)
+            if self.service_connection.gitCredentials and (
+                isinstance(
+                    self.service_connection.gitCredentials, get_args(ReadersCredentials)
+                )
+                or isinstance(
+                    self.service_connection.gitCredentials, LocalRepositoryPath
+                )
             ):
                 self._repo_credentials = self.service_connection.gitCredentials
 
@@ -504,6 +539,13 @@ class LookerSource(DashboardServiceSource):
                 # We can get VIEWs from the JOINs to know the dependencies
                 # We will only try and fetch if we have the credentials
                 if self.repository_credentials:
+                    logger.info(
+                        f"Repository credentials are present, processing views of explore model {datamodel_name}"
+                    )
+                    if model.joins:
+                        logger.info(
+                            f"Joins are present, processing views of explore model {datamodel_name}"
+                        )
                     for view in model.joins:
                         if filter_by_datamodel(
                             self.source_config.dataModelFilterPattern, view.name
@@ -517,6 +559,9 @@ class LookerSource(DashboardServiceSource):
                             view_name=ViewName(view_name), explore=model
                         )
                     if model.view_name:
+                        logger.info(
+                            f"View name is present, processing view {model.view_name} of explore model {datamodel_name}"
+                        )
                         yield from self._process_view(
                             view_name=ViewName(model.view_name), explore=model
                         )

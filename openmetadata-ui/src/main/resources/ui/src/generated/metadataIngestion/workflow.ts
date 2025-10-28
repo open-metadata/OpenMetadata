@@ -174,6 +174,8 @@ export interface ServiceConnection {
  *
  * Grafana Connection Config
  *
+ * Hex Connection Config
+ *
  * Google BigQuery Connection Config
  *
  * Google BigTable Connection Config
@@ -392,6 +394,8 @@ export interface ConfigObject {
      *
      * token to connect to Qlik Cloud.
      *
+     * Hex API token for authentication. Can be personal or workspace token.
+     *
      * To Connect to Dagster Cloud
      *
      * Generated Token to connect to Databricks.
@@ -467,7 +471,7 @@ export interface ConfigObject {
      * Credentials to extract the .lkml files from a repository. This is required to get all the
      * lineage and definitions.
      */
-    gitCredentials?: GitHubCredentials;
+    gitCredentials?: NoGitCredentialsClass | string;
     /**
      * URL to the Looker instance.
      *
@@ -498,6 +502,8 @@ export interface ConfigObject {
      * ThoughtSpot instance URL. Example: https://my-company.thoughtspot.cloud
      *
      * URL to the Grafana instance.
+     *
+     * Hex API URL. For Hex.tech cloud, use https://app.hex.tech
      *
      * BigQuery APIs URL.
      *
@@ -1010,6 +1016,16 @@ export interface ConfigObject {
      * Page size for pagination in API requests. Default is 100.
      */
     pageSize?: number;
+    /**
+     * Whether to import Hex project categories as OpenMetadata tags
+     *
+     * Include Tags for Indexing
+     */
+    includeTags?: boolean;
+    /**
+     * Type of token to use for authentication
+     */
+    tokenType?: TokenType;
     /**
      * Billing Project ID
      */
@@ -1628,10 +1644,6 @@ export interface ConfigObject {
      * Include Tables for Indexing
      */
     includeTables?: boolean;
-    /**
-     * Include Tags for Indexing
-     */
-    includeTags?: boolean;
     /**
      * Include Teams for Indexing
      */
@@ -2472,7 +2484,7 @@ export interface OAuth2Credential {
  * Iceberg File System configuration, based on where the Iceberg Warehouse is located.
  */
 export interface IcebergFileSystem {
-    type?: Credentials | null;
+    type?: AWSCredentialsClass | null;
 }
 
 /**
@@ -2484,7 +2496,7 @@ export interface IcebergFileSystem {
  *
  * Azure Credentials
  */
-export interface Credentials {
+export interface AWSCredentialsClass {
     /**
      * The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume
      * Role
@@ -2689,7 +2701,7 @@ export interface DeltaLakeConfigurationSource {
      * Prefix of the data source.
      */
     prefix?:         string;
-    securityConfig?: SecurityConfigClass;
+    securityConfig?: Credentials;
     /**
      * Account Name of your storage account
      */
@@ -2775,7 +2787,7 @@ export interface ConfigSourceConnection {
  *
  * AWS credentials configs.
  */
-export interface SecurityConfigClass {
+export interface Credentials {
     /**
      * Account Name of your storage account
      */
@@ -3475,9 +3487,6 @@ export enum FHIRVersion {
 }
 
 /**
- * Credentials to extract the .lkml files from a repository. This is required to get all the
- * lineage and definitions.
- *
  * Do not set any credentials. Note that credentials are required to extract .lkml views and
  * their lineage.
  *
@@ -3487,14 +3496,22 @@ export enum FHIRVersion {
  *
  * Credentials for a Gitlab repository
  */
-export interface GitHubCredentials {
+export interface NoGitCredentialsClass {
+    /**
+     * GitHub instance URL. For GitHub.com, use https://github.com
+     *
+     * BitBucket instance URL. For BitBucket Cloud, use https://bitbucket.org
+     *
+     * Gitlab instance URL. For Gitlab.com, use https://gitlab.com
+     */
+    gitHostURL?:      string;
     repositoryName?:  string;
     repositoryOwner?: string;
     token?:           string;
     /**
      * Credentials Type
      */
-    type?: GitHubCredentialsType;
+    type?: NoGitCredentialsType;
     /**
      * Main production branch of the repository. E.g., `main`
      */
@@ -3510,7 +3527,7 @@ export interface GitHubCredentials {
  *
  * Gitlab Credentials type
  */
-export enum GitHubCredentialsType {
+export enum NoGitCredentialsType {
     BitBucket = "BitBucket",
     GitHub = "GitHub",
     Gitlab = "Gitlab",
@@ -3765,7 +3782,7 @@ export interface PowerBIPbitFilesSource {
      */
     pbitFilesExtractDir?: string;
     prefixConfig?:        BucketDetails;
-    securityConfig?:      SecurityConfigClass;
+    securityConfig?:      Credentials;
 }
 
 /**
@@ -4052,6 +4069,14 @@ export enum TransactionMode {
 }
 
 /**
+ * Type of token to use for authentication
+ */
+export enum TokenType {
+    Personal = "personal",
+    Workspace = "workspace",
+}
+
+/**
  * REST API Type
  *
  * REST API type
@@ -4189,6 +4214,7 @@ export enum PurpleType {
     GoogleDrive = "GoogleDrive",
     Grafana = "Grafana",
     Greenplum = "Greenplum",
+    Hex = "Hex",
     Hive = "Hive",
     Iceberg = "Iceberg",
     Impala = "Impala",
@@ -4380,6 +4406,11 @@ export interface Pipeline {
      * applicable for fields like description, tags, owner and displayName
      */
     overrideMetadata?: boolean;
+    /**
+     * Advanced configuration for managing owners at multiple hierarchy levels (Service,
+     * Database, Schema, Table) with custom mappings and inheritance rules.
+     */
+    ownerConfig?: OwnerConfiguration;
     /**
      * Configuration to tune how far we want to look back in query logs to process Stored
      * Procedures results.
@@ -4856,6 +4887,8 @@ export interface Pipeline {
  *
  * Search Indexing App.
  *
+ * Cache Warmup Application Configuration.
+ *
  * Configuration for the Collate AI Quality Agent.
  *
  * Configuration for the AutoPilot Application.
@@ -4897,6 +4930,8 @@ export interface CollateAIAppConfig {
      * Maximum number of events processed at a time (Default 100).
      *
      * Maximum number of events sent in a batch (Default 100).
+     *
+     * Number of entities to process in each batch.
      */
     batchSize?:           number;
     moduleConfiguration?: ModuleConfiguration;
@@ -4915,10 +4950,14 @@ export interface CollateAIAppConfig {
     autoTune?: boolean;
     /**
      * Number of threads to use for reindexing
+     *
+     * Number of parallel threads for processing entities and warming cache.
      */
     consumerThreads?: number;
     /**
      * List of Entities to Reindex
+     *
+     * List of entity types to warm up in cache. Use 'all' to warm up all entity types.
      */
     entities?: string[];
     /**
@@ -4947,6 +4986,8 @@ export interface CollateAIAppConfig {
     producerThreads?: number;
     /**
      * Queue Size to user internally for reindexing.
+     *
+     * Internal queue size for entity processing pipeline.
      */
     queueSize?: number;
     /**
@@ -4957,6 +4998,10 @@ export interface CollateAIAppConfig {
      * Recreate Indexes with updated Language
      */
     searchIndexMappingLanguage?: SearchIndexMappingLanguage;
+    /**
+     * Force cache warmup even if another instance is detected (use with caution).
+     */
+    force?: boolean;
     /**
      * Whether the suggested tests should be active or not upon suggestion
      *
@@ -5421,9 +5466,31 @@ export interface Style {
      */
     color?: string;
     /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
      * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
      */
     iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -5705,6 +5772,7 @@ export interface Resource {
 export enum CollateAIAppConfigType {
     AutoPilotApplication = "AutoPilotApplication",
     Automator = "Automator",
+    CacheWarmup = "CacheWarmup",
     CollateAI = "CollateAI",
     CollateAIQualityAgent = "CollateAIQualityAgent",
     DataInsights = "DataInsights",
@@ -5835,7 +5903,7 @@ export interface DBTConfigurationSource {
      * Details of the bucket where the dbt files are stored
      */
     dbtPrefixConfig?:   DBTPrefixConfig;
-    dbtSecurityConfig?: SecurityConfigClass;
+    dbtSecurityConfig?: Credentials;
 }
 
 /**
@@ -5979,6 +6047,45 @@ export enum OperationType {
 }
 
 /**
+ * Advanced configuration for managing owners at multiple hierarchy levels (Service,
+ * Database, Schema, Table) with custom mappings and inheritance rules.
+ *
+ * Configuration for assigning owners to ingested entities following topology hierarchy with
+ * inheritance support
+ */
+export interface OwnerConfiguration {
+    /**
+     * Owner for database entities. Can be a single owner for all databases, or a map of
+     * database names to owner(s).
+     */
+    database?: { [key: string]: string[] | string } | string;
+    /**
+     * Owner for schema entities. Can be a single owner for all schemas, or a map of schema FQNs
+     * to owner(s).
+     */
+    databaseSchema?: { [key: string]: string[] | string } | string;
+    /**
+     * Default owner applied to all entities when no specific owner is configured (user or team
+     * name/email)
+     */
+    default?: string;
+    /**
+     * Enable child entities to inherit owner from parent entities when they don't have a
+     * specific owner configured
+     */
+    enableInheritance?: boolean;
+    /**
+     * Owner for the service level
+     */
+    service?: string;
+    /**
+     * Owner for table entities. Can be a single owner for all tables, or a map of table FQNs to
+     * owner(s).
+     */
+    table?: { [key: string]: string[] | string } | string;
+}
+
+/**
  * Processing Engine Configuration. If not provided, the Native Engine will be used by
  * default.
  *
@@ -6068,7 +6175,7 @@ export interface StorageMetadataConfigurationSource {
      */
     manifestHttpPath?: string;
     prefixConfig?:     StorageMetadataBucketDetails;
-    securityConfig?:   SecurityConfigClass;
+    securityConfig?:   Credentials;
 }
 
 /**
