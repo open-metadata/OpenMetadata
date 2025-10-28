@@ -121,11 +121,15 @@ def search_table_entities(
             )
 
             conn_type = service.connection.config.type.value.lower()
-            logger.debug(f"Searching for connection type '{conn_type}' in service '{service.name}'")
+            logger.debug(
+                f"Searching for connection type '{conn_type}' in service '{service.name}'"
+            )
 
         except Exception:
             conn_type = None
-            logger.warning(f"Could not determine connection type for service '{service_name}'")
+            logger.warning(
+                f"Could not determine connection type for service '{service_name}'"
+            )
 
         # ClickHouse normalization
         if conn_type == "clickhouse" and database:

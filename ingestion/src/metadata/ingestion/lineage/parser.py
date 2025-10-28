@@ -101,7 +101,7 @@ class LineageParser:
                 .union(set(self.intermediate_tables))
                 .union(set(self.target_tables))
             )
-        
+
         except SQLLineageException as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
@@ -187,14 +187,20 @@ class LineageParser:
         """
         # Check if involved_tables is present
         if not self.involved_tables:
-            logger.debug("[UsageSink] No involved tables found — alias map will be empty.")
+            logger.debug(
+                "[UsageSink] No involved tables found — alias map will be empty."
+            )
             return {}
 
         # Log raw involved tables for inspection
-        logger.debug(f"[UsageSink] Involved tables before alias mapping: {[str(t) for t in self.involved_tables]}")
+        logger.debug(
+            f"[UsageSink] Involved tables before alias mapping: {[str(t) for t in self.involved_tables]}"
+        )
 
         # Log alias/name pairs for each table
-        logger.debug(f"[UsageSink] Table alias-name pairs: {[(t.alias, str(t)) for t in self.involved_tables]}")
+        logger.debug(
+            f"[UsageSink] Table alias-name pairs: {[(t.alias, str(t)) for t in self.involved_tables]}"
+        )
 
         # Build the alias dictionary
         alias_map = {
@@ -207,7 +213,6 @@ class LineageParser:
         logger.debug(f"[UsageSink] Final computed alias map: {alias_map}")
 
         return alias_map
-
 
     def get_table_name_from_list(
         self,
@@ -551,4 +556,4 @@ class LineageParser:
             clean_table.schema.raw_name = insensitive_replace(
                 clean_table.schema.raw_name, r"\[(.*)\]", r"\1"
             )
-        return clean_table  
+        return clean_table
