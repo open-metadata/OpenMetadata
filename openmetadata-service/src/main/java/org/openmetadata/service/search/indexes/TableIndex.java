@@ -64,6 +64,8 @@ public record TableIndex(Table table) implements ColumnIndex, SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", flattenedTagList);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", table.getServiceType());
     doc.put("locationPath", table.getLocationPath());
     doc.put("schemaDefinition", table.getSchemaDefinition());
