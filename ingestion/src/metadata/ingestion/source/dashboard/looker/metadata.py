@@ -863,7 +863,30 @@ class LookerSource(DashboardServiceSource):
 
             db_service_prefixes = self.get_db_service_prefixes()
 
-            if view.sql_table_name:
+            if view.derived_table:
+                sql_query = view.derived_table.sql
+                if not sql_query:
+                    logger.info(f"view({view.name}), derived_table.sql not found")
+                    return
+                logger.info(f"view({view.name}), derived_table.sql = {sql_query}")
+                if find_derived_references(sql_query):
+                    sql_query = self.replace_derived_references(sql_query)
+                    # If we still have derived references, we cannot process the view
+                    if view_references := find_derived_references(sql_query):
+                        self._add_dependency_edge(view.name, view_references)
+                        logger.warning(
+                            f"Not all references are replaced for view [{view.name}]. Parsing it later."
+                        )
+                        return
+                logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")
+                yield from self._build_lineage_for_view(view.name, sql_query)
+                if self._unparsed_views:
+                    self.build_lineage_for_unparsed_views()
+
+            elif view.sql_table_name:
+                logger.info(
+                    f"view({view.name}), sql_table_name = {str(view.sql_table_name)}"
+                )
                 sql_table_name = self._render_table_name(view.sql_table_name)
 
                 for db_service_prefix in db_service_prefixes or []:
@@ -885,29 +908,17 @@ class LookerSource(DashboardServiceSource):
                         column_lineage=column_lineage,
                     )
 
-            elif view.derived_table:
-                sql_query = view.derived_table.sql
-                if not sql_query:
-                    return
-                if find_derived_references(sql_query):
-                    sql_query = self.replace_derived_references(sql_query)
-                    # If we still have derived references, we cannot process the view
-                    if view_references := find_derived_references(sql_query):
-                        self._add_dependency_edge(view.name, view_references)
-                        logger.warning(
-                            f"Not all references are replaced for view [{view.name}]. Parsing it later."
-                        )
-                        return
-                logger.debug(f"Processing view [{view.name}] with SQL: \n[{sql_query}]")
-                yield from self._build_lineage_for_view(view.name, sql_query)
-                if self._unparsed_views:
-                    self.build_lineage_for_unparsed_views()
-
         except Exception as err:
+            project_parser = self.parser.get(explore.project_name)
+            parsed_file_content = project_parser.parsed_files.get(
+                Includes(view.source_file)
+            )
             yield Either(
                 left=StackTraceError(
                     name=view.name,
-                    error=f"Error to yield lineage details for view [{view.name}]: {err}",
+                    error="Error to yield lineage details for view "
+                    f"[{view.name}]: {err}|| view source file details = "
+                    f"{str(parsed_file_content)}",
                     stackTrace=traceback.format_exc(),
                 )
             )
