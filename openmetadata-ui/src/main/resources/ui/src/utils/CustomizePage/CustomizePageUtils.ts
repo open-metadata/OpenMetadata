@@ -24,6 +24,7 @@ import apiEndpointClassBase from '../APIEndpoints/APIEndpointClassBase';
 import chartDetailsClassBase from '../ChartDetailsClassBase';
 import containerDetailsClassBase from '../ContainerDetailsClassBase';
 import { getNewWidgetPlacement } from '../CustomizableLandingPageUtils';
+import customizeDetailPageClassBase from '../CustomizeDetailPage/CustomizeDetailPageClassBase';
 import customizeGlossaryPageClassBase from '../CustomizeGlossaryPage/CustomizeGlossaryPage';
 import customizeGlossaryTermPageClassBase from '../CustomizeGlossaryTerm/CustomizeGlossaryTermBaseClass';
 import dashboardDataModelClassBase from '../DashboardDataModelClassBase';
@@ -121,7 +122,7 @@ export const getGlossaryDefaultTabs = () => {
 export const getTabLabelFromId = (tab: EntityTabs): string => {
   const labelKey = TAB_LABEL_MAP[tab];
 
-  return labelKey ? i18n.t(labelKey) : '';
+  return labelKey ? i18n.t(labelKey) : tab;
 };
 
 export const getDefaultTabs = (pageType?: string): Tab[] => {
@@ -478,7 +479,7 @@ const calculateNewPosition = (
   );
 
   // Get the last widget
-  const lastWidget = sortedLayout[sortedLayout.length - 1];
+  const lastWidget = sortedLayout.at(sortedLayout.length - 1);
 
   if (!lastWidget) {
     // If no widgets exist, start at 0,0
@@ -661,6 +662,8 @@ export const checkIfExpandViewSupported = (
       );
     case PageType.GlossaryTerm:
     case PageType.Metric:
+    case PageType.File:
+    case PageType.Worksheet:
       return (
         (!activeTab && firstTab.key === EntityTabs.OVERVIEW) ||
         activeTab === EntityTabs.OVERVIEW
@@ -676,6 +679,7 @@ export const checkIfExpandViewSupported = (
         activeTab === EntityTabs.MODEL
       );
     case PageType.Container:
+    case PageType.Directory:
       return (
         (!activeTab && firstTab.key === EntityTabs.CHILDREN) ||
         activeTab === EntityTabs.CHILDREN
@@ -717,17 +721,6 @@ export const checkIfExpandViewSupported = (
         (!activeTab && firstTab.key === EntityTabs.FEATURES) ||
         activeTab === EntityTabs.FEATURES
       );
-    case PageType.Directory:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.CHILDREN) ||
-        activeTab === EntityTabs.CHILDREN
-      );
-    case PageType.File:
-    case PageType.Worksheet:
-      return (
-        (!activeTab && firstTab.key === EntityTabs.OVERVIEW) ||
-        activeTab === EntityTabs.OVERVIEW
-      );
     case PageType.Spreadsheet:
       return (
         (!activeTab && firstTab.key === EntityTabs.WORKSHEETS) ||
@@ -761,5 +754,8 @@ export const updateWidgetHeightRecursively = (
   }, [] as WidgetConfig[]);
 
 export const getTabDisplayName = (item: Tab) => {
-  return item.displayName ?? getTabLabelFromId(item.name as EntityTabs);
+  return (
+    item.displayName ??
+    customizeDetailPageClassBase.getTabLabelFromId(item.name as EntityTabs)
+  );
 };
