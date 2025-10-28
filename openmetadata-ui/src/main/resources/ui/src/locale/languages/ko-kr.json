@@ -683,6 +683,7 @@
     "failed": "실패",
     "failed-entity": "실패한 {{entity}}",
     "failed-event-plural": "실패한 이벤트들",
+    "failed-slash-aborted-reason": "실패/중단 사유",
     "failed-to-upload-file": "파일 업로드에 실패했습니다",
     "failing-subscription-id": "실패한 구독 ID",
     "failure-comment": "실패 코멘트",

@@ -683,6 +683,7 @@
     "failed": "Başarısız",
     "failed-entity": "Başarısız {{entity}}",
     "failed-event-plural": "Başarısız Olaylar",
+    "failed-slash-aborted-reason": "Başarısızlık/iptal nedeni",
     "failed-to-upload-file": "Dosya yüklenemedi",
     "failing-subscription-id": "Başarısız Abonelik Kimliği",
     "failure-comment": "Başarısızlık Yorumu",

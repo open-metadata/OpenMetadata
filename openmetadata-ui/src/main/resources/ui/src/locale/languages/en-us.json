@@ -683,6 +683,7 @@
     "failed": "Failed",
     "failed-entity": "Failed {{entity}}",
     "failed-event-plural": "Failed Events",
+    "failed-slash-aborted-reason": "Failed/Aborted Reason",
     "failed-to-upload-file": "Failed to upload file",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "Failure Comment",
