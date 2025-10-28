@@ -97,22 +97,14 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "test_case_column_value_length_to_be_between_col_space",
             "columnValueLengthsToBeBetween",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, "2", "3", TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
-=======
-            (TestCaseResult, "2", "3", TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
->>>>>>> @{-1}
             None,
         ),
         (
             "test_case_column_value_length_to_be_between_no_min",
             "columnValueLengthsToBeBetween",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, None, None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
-=======
-            (TestCaseResult, None, None, TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
->>>>>>> @{-1}
             None,
         ),
         (
@@ -307,7 +299,6 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "test_case_column_values_to_be_between",
             "columnValuesToBeBetween",
             "COLUMN",
-<<<<<<< HEAD
             (
                 TestCaseResult,
                 "30",
@@ -318,9 +309,6 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 100,
                 0,
             ),
-=======
-            (TestCaseResult, "30", None, TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
->>>>>>> @{-1}
             None,
         ),
         (
@@ -343,33 +331,21 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "test_case_column_values_to_be_unique",
             "columnValuesToBeUnique",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, "70", "0", TestCaseStatus.Failed, 0.0, 70.0, 0.0, 100.0),
-=======
-            (TestCaseResult, "20", "0", TestCaseStatus.Failed, 0.0, 20.0, 0.0, 100.0),
->>>>>>> @{-1}
             None,
         ),
         (
             "test_case_column_values_to_match_regex",
             "columnValuesToMatchRegex",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, "30", None, TestCaseStatus.Failed, 30.0, 50.0, 37.5, 62.5),
-=======
-            (TestCaseResult, "30", None, TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
->>>>>>> @{-1}
             None,
         ),
         (
             "test_case_column_values_to_not_match_regex",
             "columnValuesToNotMatchRegex",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, "0", None, TestCaseStatus.Success, 80.0, 0.0, 100.0, 0.0),
-=======
-            (TestCaseResult, "0", None, TestCaseStatus.Success, 30.0, 0.0, 100.0, 0.0),
->>>>>>> @{-1}
             None,
         ),
         (
@@ -429,11 +405,7 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "test_case_table_custom_sql_query",
             "tableCustomSQLQuery",
             "TABLE",
-<<<<<<< HEAD
             (TestCaseResult, "60", None, TestCaseStatus.Failed, None, None, None, None),
-=======
-            (TestCaseResult, "20", None, TestCaseStatus.Failed, None, None, None, None),
->>>>>>> @{-1}
             None,
         ),
         (
@@ -504,39 +476,6 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
             ),
             None,
-<<<<<<< HEAD
-=======
-        ),
-        (
-            "test_case_table_row_count_to_be_equal",
-            "tableRowCountToEqual",
-            "TABLE",
-            (TestCaseResult, "30", None, TestCaseStatus.Failed, None, None, None, None),
-            None,
-        ),
-        (
-            "test_case_table_row_inserted_count_to_be_between",
-            "tableRowInsertedCountToBeBetween",
-            "TABLE",
-            (TestCaseResult, "6", None, TestCaseStatus.Success, None, None, None, None),
-            None,
-        ),
-        (
-            "test_case_table_custom_sql_query_with_threshold_success",
-            "tableCustomSQLQuery",
-            "TABLE",
-            (
-                TestCaseResult,
-                "10",
-                None,
-                TestCaseStatus.Success,
-                None,
-                None,
-                None,
-                None,
-            ),
-            None,
->>>>>>> @{-1}
         ),
         (
             "test_case_table_custom_sql_unsafe_query_aborted",
@@ -574,7 +513,6 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             "test_case_column_value_in_set_boolean",
             "columnValuesToBeInSet",
             "COLUMN",
-<<<<<<< HEAD
             (
                 TestCaseResult,
                 "70",
@@ -585,16 +523,12 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 87.5,
                 12.5,
             ),
-=======
-            (TestCaseResult, "20", None, TestCaseStatus.Success, 20.0, 0.0, 66.67, 0.0),
->>>>>>> @{-1}
             None,
         ),
         (
             "test_case_column_values_to_be_in_set_dimensional_match_enum",
             "columnValuesToBeInSet",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, "20", None, TestCaseStatus.Failed, 20.0, 60.0, 25.0, 75.0),
             [
                 ("fullname=Alice Smith", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
@@ -619,19 +553,12 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                     33.33,
                     0.0111,
                 ),
-=======
-            (TestCaseResult, "20", None, TestCaseStatus.Failed, 20.0, 0.0, 66.67, 0.0),
-            [
-                ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
-                ("fullname=John Doe", TestCaseStatus.Success, 20, 0, 100, 0, 0.0),
->>>>>>> @{-1}
             ],
         ),
         (
             "test_case_column_values_to_be_in_set_dimensional_no_match_enum",
             "columnValuesToBeInSet",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, "20", None, TestCaseStatus.Success, 20.0, 0.0, 25.0, 0.0),
             [
                 ("fullname=Alice Smith", TestCaseStatus.Failed, 0, 0, 0, 0, None),
@@ -640,19 +567,12 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 ("fullname=Diana Prince", TestCaseStatus.Failed, 0, 0, 0, 0, None),
                 ("fullname=Eve Wilson", TestCaseStatus.Failed, 0, 0, 0, 0, None),
                 ("fullname=Others", TestCaseStatus.Success, 20, 0, 100, 0, None),
-=======
-            (TestCaseResult, "20", None, TestCaseStatus.Success, 20.0, 0.0, 66.67, 0.0),
-            [
-                ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 0, 0, 0, None),
-                ("fullname=John Doe", TestCaseStatus.Success, 20, 0, 100, 0, None),
->>>>>>> @{-1}
             ],
         ),
         (
             "test_case_column_values_to_be_unique_dimensional",
             "columnValuesToBeUnique",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, "80", "0", TestCaseStatus.Failed, 0.0, 80.0, 0.0, 100.0),
             [
                 ("name=John", TestCaseStatus.Failed, 0, 20, 0, 100, 0.0667),
@@ -661,12 +581,6 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 ("name=Charlie", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
                 ("name=Diana", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
                 ("name=Others", TestCaseStatus.Failed, 0, 20, 0, 100, 0.0667),
-=======
-            (TestCaseResult, "30", "0", TestCaseStatus.Failed, 0.0, 30.0, 0.0, 100.0),
-            [
-                ("name=Jane", TestCaseStatus.Failed, 0, 10, 0, 100, 0.0333),
-                ("name=John", TestCaseStatus.Failed, 0, 20, 0, 100, 0.0667),
->>>>>>> @{-1}
             ],
         ),
         (
@@ -684,17 +598,12 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
             ),
             [
-<<<<<<< HEAD
                 ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
                 ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.0667),
                 ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.0333),
                 ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.0333),
                 ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.0333),
                 ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.0333),
-=======
-                ("name=Jane", TestCaseStatus.Failed, None, None, None, None, 0.0333),
-                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
->>>>>>> @{-1}
             ],
         ),
         (
@@ -712,7 +621,6 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 None,
             ),
             [
-<<<<<<< HEAD
                 ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
                 ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.0333),
                 ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.0333),
@@ -765,10 +673,6 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
                 ("name=Others", TestCaseStatus.Success, None, None, None, None, 0.0),
                 ("name=Diana", TestCaseStatus.Success, None, None, None, None, 0.0),
                 ("name=Bob", TestCaseStatus.Success, None, None, None, None, 0.0),
-=======
-                ("name=Jane", TestCaseStatus.Success, None, None, None, None, 0),
-                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
->>>>>>> @{-1}
             ],
         ),
     ],

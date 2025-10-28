@@ -186,7 +186,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
             "test_case_column_value_length_to_be_between_col_space",
             "columnValueLengthsToBeBetween",
             "COLUMN",
-<<<<<<< HEAD
             (
                 TestCaseResult,
                 "2",
@@ -197,9 +196,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 100.0,
                 0.0,
             ),
-=======
-            (TestCaseResult, "2", "3", TestCaseStatus.Success, 6000.0, 0.0, 100.0, 0.0),
->>>>>>> @{-1}
             None,
         ),
         (
@@ -687,7 +683,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 TestCaseStatus.Failed,
                 4000.0,
                 0.0,
-<<<<<<< HEAD
                 25.0,
                 0.0,
             ),
@@ -738,14 +733,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                     33.33,
                     0.0741,
                 ),
-=======
-                66.67,
-                0.0,
-            ),
-            [
-                ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 2000, 0, 100, 0.6667),
-                ("fullname=John Doe", TestCaseStatus.Success, 4000, 0, 100, 0, 0.0),
->>>>>>> @{-1}
             ],
         ),
         (
@@ -759,7 +746,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 TestCaseStatus.Success,
                 4000.0,
                 0.0,
-<<<<<<< HEAD
                 25.00,
                 0.0,
             ),
@@ -770,21 +756,12 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 ("fullname=Diana Prince", TestCaseStatus.Failed, 0, 0, 0, 0, None),
                 ("fullname=Eve Wilson", TestCaseStatus.Failed, 0, 0, 0, 0, None),
                 ("fullname=Others", TestCaseStatus.Success, 4000, 0, 100, 0, None),
-=======
-                66.67,
-                0.0,
-            ),
-            [
-                ("fullname=Jone Doe", TestCaseStatus.Failed, 0, 0, 0, 0, None),
-                ("fullname=John Doe", TestCaseStatus.Success, 4000, 0, 100, 0, None),
->>>>>>> @{-1}
             ],
         ),
         (
             "test_case_column_values_to_be_unique_dimensional",
             "columnValuesToBeUnique",
             "COLUMN",
-<<<<<<< HEAD
             (TestCaseResult, "16000", "0", TestCaseStatus.Failed, 0, 16000, 0.0, 100.0),
             [
                 ("name=Alice", TestCaseStatus.Failed, 0, 2000, 0, 100, 0.6667),
@@ -793,12 +770,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 ("name=Diana", TestCaseStatus.Failed, 0, 2000, 0, 100, 0.6667),
                 ("name=Eve", TestCaseStatus.Failed, 0, 2000, 0, 100, 0.6667),
                 ("name=Others", TestCaseStatus.Failed, 0, 6000, 0, 100, 0.6667),
-=======
-            (TestCaseResult, "6000", "0", TestCaseStatus.Failed, 0, 6000, 0.0, 100.0),
-            [
-                ("name=Jane", TestCaseStatus.Failed, 0, 2000, 0.0, 100, 0.6667),
-                ("name=John", TestCaseStatus.Failed, 0, 4000, 0.0, 100, 0.6667),
->>>>>>> @{-1}
             ],
         ),
         (
@@ -816,17 +787,12 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
             ),
             [
-<<<<<<< HEAD
                 ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.6667),
                 ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.6667),
                 ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.6667),
                 ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.6667),
                 ("name=Jane", TestCaseStatus.Failed, None, None, None, None, 0.6667),
                 ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.6667),
-=======
-                ("name=Jane", TestCaseStatus.Failed, None, None, None, None, 0.6667),
-                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.6667),
->>>>>>> @{-1}
             ],
         ),
         (
@@ -844,7 +810,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 None,
             ),
             [
-<<<<<<< HEAD
                 ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.6667),
                 ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.6667),
                 ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.6667),
@@ -897,10 +862,6 @@ DATALAKE_DATA_FRAME = lambda times_increase_sample_data: DataFrame(
                 ("name=Bob", TestCaseStatus.Success, None, None, None, None, 0),
                 ("name=Diana", TestCaseStatus.Success, None, None, None, None, 0),
                 ("name=Others", TestCaseStatus.Success, None, None, None, None, 0),
-=======
-                ("name=Jane", TestCaseStatus.Success, None, None, None, None, 0.0),
-                ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.6667),
->>>>>>> @{-1}
             ],
         ),
     ],

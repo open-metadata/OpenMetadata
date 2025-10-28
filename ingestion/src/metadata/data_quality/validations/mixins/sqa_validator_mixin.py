@@ -53,11 +53,8 @@ CTE_DIMENSION_RAW_METRICS = (
 CTE_DIMENSION_WITH_IMPACT = (
     "dimension_with_impact"  # For statistical validators: metrics + impact score
 )
-<<<<<<< HEAD
 CTE_FINAL_METRICS = "final_metrics"  # For final aggregated metrics
 
-=======
->>>>>>> @{-1}
 DIMENSION_GROUP_LABEL = "dimension_group"
 
 
@@ -308,15 +305,9 @@ class SQAValidatorMixin:
         self,
         dimension_col: Column,
         metric_expressions: Dict[str, ClauseElement],
-<<<<<<< HEAD
         failed_count_builder: FailedCountBuilderSQA,
         final_metric_builders: Optional[Dict[str, Any]] = None,
         exclude_from_results: Optional[List[str]] = None,
-=======
-        failed_count_expr_builder: Any,
-        final_metric_builders: Optional[Dict[str, Any]] = None,
-        exclude_from_final: Optional[List[str]] = None,
->>>>>>> @{-1}
         top_dimensions_count: int = DEFAULT_TOP_DIMENSIONS,
     ) -> List[Dict[str, Any]]:
         """Execute dimensional query for statistical validators with flexible aggregation
@@ -344,11 +335,7 @@ class SQAValidatorMixin:
             final_metric_builders: Optional dict of custom aggregation builders for
                 specific metrics. If not provided, metrics default to func.sum().
                 Format: {metric_name: Callable(categorized_cte) -> ClauseElement}
-<<<<<<< HEAD
             exclude_from_results: Optional list of metric names to exclude from final SELECT.
-=======
-            exclude_from_final: Optional list of metric names to exclude from final SELECT.
->>>>>>> @{-1}
                 Useful for intermediate metrics (e.g., sum_value used only for calculations).
             top_dimensions_count: Number of top dimensions before Others aggregation
 
