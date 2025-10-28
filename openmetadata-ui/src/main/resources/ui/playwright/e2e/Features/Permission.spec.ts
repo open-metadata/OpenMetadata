@@ -138,7 +138,9 @@ test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await user.delete(apiContext);
   await role.delete(apiContext);
+  await role2.delete(apiContext);
   await policy.delete(apiContext);
+  await policy2.delete(apiContext);
   await table.delete(apiContext);
   await afterAction();
 });
@@ -260,12 +262,11 @@ test('Permissions', async ({ userPage, adminPage }) => {
         response.url().includes('/api/v1/dataQuality/testCases/') &&
         response.request().method() === 'GET'
     );
-    await userPage
-      .getByTestId('profiler-tab-left-panel')
-      .getByText('Data Quality')
-      .click();
+
+    await userPage.getByRole('tab', { name: 'Data Quality' }).click();
     await testCaseResponse;
 
+    await userPage.getByTestId(`action-dropdown-${testCaseName}`).click();
     const testDefinitionResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testDefinitions/*'
     );

@@ -47,7 +47,7 @@ export const tabsInfo = [
 ];
 
 export const getFilters = (activeTab: ThreadType) => ({
-  threadType: activeTab,
+  threadType: activeTab === ThreadType.Task ? activeTab : undefined,
   feedFilter:
     activeTab === ThreadType.Task
       ? FeedFilter.ASSIGNED_TO
