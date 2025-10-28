@@ -5,23 +5,16 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.NOT_IMP
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipResult;
-import org.openmetadata.schema.api.entityRelationship.SearchSchemaEntityRelationshipResult;
 import org.openmetadata.schema.api.lineage.EntityCountLineageRequest;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
-import org.openmetadata.schema.dataInsight.DataInsightChartResult;
-import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
-import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
-import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
@@ -35,7 +28,10 @@ import os.org.opensearch.action.bulk.BulkResponse;
 import os.org.opensearch.client.RequestOptions;
 
 public interface SearchClient<T>
-    extends IndexManagementClient, EntityManagementClient, GenericClient {
+    extends IndexManagementClient,
+        EntityManagementClient,
+        GenericClient,
+        DataInsightAggregatorClient {
   String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
   String UPSTREAM_ENTITY_RELATIONSHIP_FIELD = "upstreamEntityRelationship";
   String FQN_FIELD = "fullyQualifiedName";
@@ -118,24 +114,24 @@ public interface SearchClient<T>
 
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
-      String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
-      ctx._source.fullyQualifiedName = updatedFQN;
-      ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
-      if (ctx._source.containsKey('parent')) {
-        if (ctx._source.parent.containsKey('fullyQualifiedName')) {
-          String parentFQN = ctx._source.parent.fullyQualifiedName;
-          ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
-        }
-      }
-      if (ctx._source.containsKey('tags')) {
-        for (int i = 0; i < ctx._source.tags.size(); i++) {
-          if (ctx._source.tags[i].containsKey('tagFQN')) {
-            String tagFQN = ctx._source.tags[i].tagFQN;
-            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
-          }
-        }
-      }
-      """;
+                  String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+                  ctx._source.fullyQualifiedName = updatedFQN;
+                  ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
+                  if (ctx._source.containsKey('parent')) {
+                    if (ctx._source.parent.containsKey('fullyQualifiedName')) {
+                      String parentFQN = ctx._source.parent.fullyQualifiedName;
+                      ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+                    }
+                  }
+                  if (ctx._source.containsKey('tags')) {
+                    for (int i = 0; i < ctx._source.tags.size(); i++) {
+                      if (ctx._source.tags[i].containsKey('tagFQN')) {
+                        String tagFQN = ctx._source.tags[i].tagFQN;
+                        ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+                      }
+                    }
+                  }
+                  """;
 
   String REMOVE_LINEAGE_SCRIPT =
       "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId)";
@@ -514,18 +510,6 @@ public interface SearchClient<T>
   /* This function takes in Entity Reference, Search for occurances of those  entity across ES, and perform an update for that with reindexing the data from the database to ES */
   void reindexAcrossIndices(String matchingKey, EntityReference sourceRef);
 
-  Response listDataInsightChartResult(
-      Long startTs,
-      Long endTs,
-      String tier,
-      String team,
-      DataInsightChartResult.DataInsightChartType dataInsightChartName,
-      Integer size,
-      Integer from,
-      String queryFilter,
-      String dataReportIndex)
-      throws IOException;
-
   default BulkResponse bulk(BulkRequest data, RequestOptions options) throws IOException {
     throw new CustomExceptionMessage(
         Response.Status.NOT_IMPLEMENTED, NOT_IMPLEMENTED_ERROR_TYPE, NOT_IMPLEMENTED_METHOD);
@@ -541,42 +525,15 @@ public interface SearchClient<T>
 
   void close();
 
-  default DataInsightCustomChartResultList buildDIChart(
-      DataInsightCustomChart diChart, long start, long end, boolean live) throws IOException {
-    return null;
-  }
-
-  default DataInsightCustomChartResultList buildDIChart(
-      DataInsightCustomChart diChart, long start, long end) throws IOException {
-    return buildDIChart(diChart, start, end, false);
-  }
-
-  default List<Map<String, String>> fetchDIChartFields() throws IOException {
-    return null;
-  }
-
   Object getLowLevelClient();
 
   Object getClient();
 
   T getHighLevelClient();
 
-  QueryCostSearchResult getQueryCostRecords(String serviceName) throws IOException;
-
   SearchEntityRelationshipResult searchEntityRelationship(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
 
   SearchEntityRelationshipResult searchEntityRelationshipWithDirection(
       SearchEntityRelationshipRequest entityRelationshipRequest) throws IOException;
-
-  SearchSchemaEntityRelationshipResult getSchemaEntityRelationship(
-      String schemaFqn,
-      String queryFilter,
-      String includeSourceFields,
-      int offset,
-      int limit,
-      int from,
-      int size,
-      boolean deleted)
-      throws IOException;
 }
