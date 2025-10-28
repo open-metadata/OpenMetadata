@@ -682,6 +682,7 @@
     "failed": "ناموفق",
     "failed-entity": "Failed {{entity}}",
     "failed-event-plural": "رویدادهای ناموفق",
+    "failed-slash-aborted-reason": "Razón de fallo/aborto",
     "failed-to-upload-file": "نا موفق در بارگذاری فایل",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "نظر درباره شکست",

@@ -682,6 +682,7 @@
     "failed": "Mislukt",
     "failed-entity": "Failed {{entity}}",
     "failed-event-plural": "Mislukte gebeurtenissen",
+    "failed-slash-aborted-reason": "Reden voor mislukking/afbreken",
     "failed-to-upload-file": "Mislukt om bestand te uploaden",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "Mislukt opmerking",

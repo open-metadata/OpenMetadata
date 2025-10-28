@@ -682,6 +682,7 @@
     "failed": "Провалено",
     "failed-entity": "Ошибка объекта «{{entity}}»",
     "failed-event-plural": "Неудачные события",
+    "failed-slash-aborted-reason": "Причина сбоя/отмены",
     "failed-to-upload-file": "Не удалось загрузить файл",
     "failing-subscription-id": "ID неудачной подписки",
     "failure-comment": "Комментарий с ошибкой",

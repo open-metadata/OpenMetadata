@@ -682,6 +682,7 @@
     "failed": "ล้มเหลว",
     "failed-entity": "Failed {{entity}}",
     "failed-event-plural": "เหตุการณ์ที่ล้มเหลว",
+    "failed-slash-aborted-reason": "เหตุผลที่ล้มเหลว/ยกเลิก",
     "failed-to-upload-file": "ลงทะเบียนไฟล์ล้มเหลว",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "ความคิดเห็นเกี่ยวกับความล้มเหลว",

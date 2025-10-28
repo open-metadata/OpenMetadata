@@ -682,6 +682,7 @@
     "failed": "失敗",
     "failed-entity": "失敗した{{entity}}",
     "failed-event-plural": "失敗したイベント",
+    "failed-slash-aborted-reason": "失敗/中止の理由",
     "failed-to-upload-file": "ファイルのアップロードに失敗しました",
     "failing-subscription-id": "失敗中のサブスクリプションID",
     "failure-comment": "失敗のコメント",

@@ -204,7 +204,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       {
-        title: 'Failed/aborted Reason',
+        title: t('label.failed-slash-aborted-reason'),
         dataIndex: 'testCaseResult',
         key: 'reason',
         width: 200,

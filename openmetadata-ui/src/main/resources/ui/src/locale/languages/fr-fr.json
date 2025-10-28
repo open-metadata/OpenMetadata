@@ -682,6 +682,7 @@
     "failed": "Échec",
     "failed-entity": "Failed {{entity}}",
     "failed-event-plural": "Événements échoués",
+    "failed-slash-aborted-reason": "Raison de l'échec/abandon",
     "failed-to-upload-file": "Échec du téléchargement du fichier",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "Commentaire de l'échec",
