@@ -58,7 +58,6 @@ import {
   ElementLoadingState,
   LineageConfig,
 } from '../../components/Entity/EntityLineage/EntityLineage.interface';
-import EntityLineageSidebar from '../../components/Entity/EntityLineage/EntityLineageSidebar.component';
 import NodeSuggestions from '../../components/Entity/EntityLineage/NodeSuggestions.component';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
 import {
@@ -1851,7 +1850,6 @@ const LineageProvider = ({ children }: LineageProviderProps) => {
           <TitleBreadcrumb className="p-b-sm" titleLinks={breadcrumbs} />
         )}
         {children}
-        <EntityLineageSidebar newAddedNode={newAddedNode} show={isEditMode} />
 
         {isDrawerOpen &&
           !isEditMode &&

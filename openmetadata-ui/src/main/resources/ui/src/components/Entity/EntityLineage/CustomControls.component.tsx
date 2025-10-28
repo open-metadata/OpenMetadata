@@ -442,20 +442,24 @@ const CustomControls: FC<{
           {searchBarComponent}
         </div>
         <div className="d-flex gap-4 items-center">
-          <Button
-            className="font-semibold"
-            sx={activeTab === 'lineage' ? buttonActiveStyle : {}}
-            variant="outlined"
-            onClick={handleLineageClick}>
-            {t('label.lineage')}
-          </Button>
-          <Button
-            className="font-semibold"
-            sx={activeTab === 'impact_analysis' ? buttonActiveStyle : {}}
-            variant="outlined"
-            onClick={handleImpactAnalysisClick}>
-            {t('label.impact-analysis')}
-          </Button>
+          {isEditMode ? null : (
+            <>
+              <Button
+                className="font-semibold"
+                sx={activeTab === 'lineage' ? buttonActiveStyle : {}}
+                variant="outlined"
+                onClick={handleLineageClick}>
+                {t('label.lineage')}
+              </Button>
+              <Button
+                className="font-semibold"
+                sx={activeTab === 'impact_analysis' ? buttonActiveStyle : {}}
+                variant="outlined"
+                onClick={handleImpactAnalysisClick}>
+                {t('label.impact-analysis')}
+              </Button>{' '}
+            </>
+          )}
           <Tooltip
             arrow
             placement="top"
