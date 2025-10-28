@@ -1,47 +1,45 @@
 package org.openmetadata.service.search.elasticsearch.dataInsightAggregators;
 
-import es.org.elasticsearch.search.aggregations.Aggregations;
-import es.org.elasticsearch.search.aggregations.bucket.MultiBucketsAggregation;
-import es.org.elasticsearch.search.aggregations.metrics.Sum;
+import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
+import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import java.util.List;
+import java.util.Map;
 import org.openmetadata.service.dataInsight.MostViewedEntitiesAggregator;
 
 public class ElasticSearchMostViewedEntitiesAggregator
     extends MostViewedEntitiesAggregator<
-        Aggregations, MultiBucketsAggregation.Bucket, MultiBucketsAggregation, Sum> {
-  public ElasticSearchMostViewedEntitiesAggregator(Aggregations aggregations) {
+        Map<String, Aggregate>, StringTermsBucket, Aggregate, Aggregate> {
+  public ElasticSearchMostViewedEntitiesAggregator(Map<String, Aggregate> aggregations) {
     super(aggregations);
   }
 
   @Override
-  protected Double getValue(Sum key) {
-    return key != null ? key.getValue() : null;
+  protected Double getValue(Aggregate key) {
+    return key != null && key.isSum() ? key.sum().value() : null;
   }
 
   @Override
-  protected MultiBucketsAggregation getBucketAggregation(
-      MultiBucketsAggregation.Bucket bucket, String key) {
-    return bucket.getAggregations().get(key);
+  protected Aggregate getBucketAggregation(StringTermsBucket bucket, String key) {
+    return bucket.aggregations().get(key);
   }
 
   @Override
-  protected Sum getAggregations(MultiBucketsAggregation.Bucket bucket, String key) {
-    return bucket.getAggregations().get(key);
+  protected Aggregate getAggregations(StringTermsBucket bucket, String key) {
+    return bucket.aggregations().get(key);
   }
 
   @Override
-  protected String getKeyAsString(MultiBucketsAggregation.Bucket bucket) {
-    return bucket.getKeyAsString();
+  protected String getKeyAsString(StringTermsBucket bucket) {
+    return bucket.key().stringValue();
   }
 
   @Override
-  protected List<? extends MultiBucketsAggregation.Bucket> getBuckets(
-      MultiBucketsAggregation bucket) {
-    return bucket.getBuckets();
+  protected List<StringTermsBucket> getBuckets(Aggregate bucket) {
+    return bucket.sterms().buckets().array();
   }
 
   @Override
-  protected MultiBucketsAggregation getEntityFqnBuckets(Aggregations aggregations) {
+  protected Aggregate getEntityFqnBuckets(Map<String, Aggregate> aggregations) {
     return aggregations.get("entityFqn");
   }
 }
