@@ -273,6 +273,7 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
             nativeMigrationSQLPath,
             connType,
             extensionSQLScriptRootPath,
+            "", // flywayPath - empty string as placeholder
             config,
             forceMigrations);
     // Initialize search repository

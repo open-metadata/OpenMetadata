@@ -45,7 +45,6 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.CredentialsProvider;
 import org.apache.http.impl.client.BasicCredentialsProvider;
 import org.eclipse.jetty.client.HttpClient;
-import org.flywaydb.core.Flyway;
 import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.jetty.connector.JettyClientProperties;
@@ -176,9 +175,6 @@ public abstract class OpenMetadataApplicationTest {
     dataSourceFactory.setDriverClass(sqlContainer.getDriverClassName());
     config.setDataSourceFactory(dataSourceFactory);
 
-    final String flyWayMigrationScriptsLocation =
-        ResourceHelpers.resourceFilePath(
-            "db/sql/migrations/flyway/" + sqlContainer.getDriverClassName());
     final String nativeMigrationScriptsLocation =
         ResourceHelpers.resourceFilePath("db/sql/migrations/native/");
 
@@ -193,17 +189,6 @@ public abstract class OpenMetadataApplicationTest {
     } catch (Exception ex) {
       LOG.info("Extension migrations not found");
     }
-    Flyway flyway =
-        Flyway.configure()
-            .dataSource(
-                sqlContainer.getJdbcUrl(), sqlContainer.getUsername(), sqlContainer.getPassword())
-            .table("DATABASE_CHANGE_LOG")
-            .locations("filesystem:" + flyWayMigrationScriptsLocation)
-            .sqlMigrationPrefix("v")
-            .cleanDisabled(false)
-            .load();
-    flyway.clean();
-    flyway.migrate();
 
     ELASTIC_SEARCH_CONTAINER = new ElasticsearchContainer(elasticSearchContainerImage);
     ELASTIC_SEARCH_CONTAINER.withPassword("password");
@@ -227,8 +212,6 @@ public abstract class OpenMetadataApplicationTest {
     IndexMappingLoader.init(getEsConfig());
 
     // Migration overrides
-    configOverrides.add(
-        ConfigOverride.config("migrationConfiguration.flywayPath", flyWayMigrationScriptsLocation));
     configOverrides.add(
         ConfigOverride.config("migrationConfiguration.nativePath", nativeMigrationScriptsLocation));
 
@@ -274,6 +257,7 @@ public abstract class OpenMetadataApplicationTest {
             nativeMigrationSQLPath,
             connType,
             extensionSQLScriptRootPath,
+            config.getMigrationConfiguration().getFlywayPath(),
             config,
             forceMigrations);
     // Initialize search repository
