@@ -48,6 +48,7 @@ import { ServiceCategory } from '../../../enums/service.enum';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
 import { Container } from '../../../generated/entity/data/container';
 import { ContractExecutionStatus } from '../../../generated/entity/data/dataContract';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { PageType } from '../../../generated/system/ui/page';
@@ -85,6 +86,7 @@ import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton
 import { EditIconButton } from '../../common/IconButtons/EditIconButton';
 import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import RetentionPeriod from '../../Database/RetentionPeriod/RetentionPeriod.component';
+import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import Voting from '../../Entity/Voting/Voting.component';
 import { VotingDataProps } from '../../Entity/Voting/voting.interface';
 import MetricHeaderInfo from '../../Metric/MetricHeaderInfo/MetricHeaderInfo';
@@ -229,9 +231,22 @@ export const DataAssetsHeader = ({
   };
 
   const alertBadge = useMemo(() => {
+    const shouldShowStatus =
+      entityUtilClassBase.shouldShowEntityStatus(entityType);
+    const entityStatus =
+      'entityStatus' in dataAsset
+        ? dataAsset.entityStatus
+        : EntityStatus.Unprocessed;
+
+    const statusBadge =
+      shouldShowStatus && entityStatus ? (
+        <EntityStatusBadge showDivider={false} status={entityStatus} />
+      ) : null;
+
     const renderAlertBadgeWithDq = () => (
       <Space size={8}>
         {badge}
+        {statusBadge}
         <Tooltip placement="right" title={t('label.check-upstream-failure')}>
           <Link
             to={{
@@ -250,6 +265,20 @@ export const DataAssetsHeader = ({
         </Tooltip>
       </Space>
     );
+
+    const renderDefaultBadge = () => {
+      if (!badge && !statusBadge) {
+        return null;
+      }
+
+      return (
+        <Space size={8}>
+          {badge}
+          {statusBadge}
+        </Space>
+      );
+    };
+
     if (
       isDqAlertSupported &&
       tableClassBase.getAlertEnableStatus() &&
@@ -258,8 +287,14 @@ export const DataAssetsHeader = ({
       return renderAlertBadgeWithDq();
     }
 
-    return badge;
-  }, [dqFailureCount, dataAsset?.fullyQualifiedName, entityType, badge]);
+    return renderDefaultBadge();
+  }, [
+    dqFailureCount,
+    dataAsset?.fullyQualifiedName,
+    entityType,
+    badge,
+    dataAsset,
+  ]);
 
   const fetchActiveAnnouncement = async () => {
     try {
