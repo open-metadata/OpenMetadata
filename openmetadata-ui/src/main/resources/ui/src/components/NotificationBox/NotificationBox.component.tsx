@@ -73,7 +73,7 @@ const NotificationBox = ({
       let actualUser = mainFeed.from;
       let actualTimestamp = mainFeed.postTs;
       let feedType = feed.type || ThreadType.Conversation;
-      let isConversationFeed = feed.type === ThreadType.Conversation;
+      const isConversationFeed = feed.type === ThreadType.Conversation;
 
       if (
         activeTab === ThreadType.Conversation &&
@@ -92,7 +92,6 @@ const NotificationBox = ({
           actualUser = mentionPost.from;
           actualTimestamp = mentionPost.postTs;
           feedType = ThreadType.Conversation;
-          isConversationFeed = false;
         }
       }
 
