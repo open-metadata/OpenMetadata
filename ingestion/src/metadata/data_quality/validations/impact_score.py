@@ -59,7 +59,7 @@ Example Scores:
     - 10,000 rows, 1,000 failed (10%): 0.010 (low - minor issue despite volume)
 """
 
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional
+from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
 
 from sqlalchemy import Float, case, func
 from sqlalchemy.sql.expression import ClauseElement
@@ -380,13 +380,14 @@ def aggregate_others_pandas(
 def aggregate_others_statistical_pandas(
     df,
     dimension_column: str,
-    final_metric_calculators: Dict[
-        str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]
-    ],
+    final_metric_calculators: Optional[
+        Dict[str, Callable[["pd.DataFrame", "pd.Series", str], "pd.Series"]]
+    ] = None,
     top_n: int = DEFAULT_TOP_DIMENSIONS,
     impact_column: str = "impact_score",
     others_label: str = DIMENSION_OTHERS_LABEL,
     exclude_from_final: Optional[List[str]] = None,
+    agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,
 ):
     """
     Aggregate low-impact dimensions into "Others" using function-based statistical aggregation.
@@ -397,11 +398,17 @@ def aggregate_others_statistical_pandas(
     Args:
         df: DataFrame with dimension results
         dimension_column: Name of the dimension column
-        final_metric_calculators: Dict mapping metric names to functions that calculate final metrics
+        final_metric_calculators: Optional dict mapping metric names to functions that calculate
+            final metrics after aggregation (for derived metrics like weighted mean from sum/count).
+            Only needed when metric requires multiple columns (e.g., mean = sum/count).
         top_n: Number of top dimensions to keep (default: 5)
         impact_column: Name of the impact score column
         others_label: Label for aggregated dimensions (default: "Others")
         exclude_from_final: Optional list of metric names to exclude from final output
+        agg_functions: Optional dict mapping column names to pandas aggregation functions
+            (e.g., {"MAX": "max", "MIN": "min"}). Defaults to "sum" for unspecified columns.
+            Use this for simple metrics that aggregate correctly (max, min, median).
+            Use final_metric_calculators for derived metrics (mean = sum/count).
 
     Returns:
         DataFrame with top N dimensions plus "Others"
@@ -428,6 +435,8 @@ def aggregate_others_statistical_pandas(
     import numpy as np
 
     exclude_from_final = exclude_from_final or []
+    agg_functions = agg_functions or {}
+    final_metric_calculators = final_metric_calculators or {}
 
     # Sort by impact score descending
     df_sorted = df.sort_values(by=impact_column, ascending=False)
@@ -440,10 +449,10 @@ def aggregate_others_statistical_pandas(
         others_label,
     )
 
-    # Aggregate by dimension_group
+    # Aggregate by dimension_group using custom functions or default to sum
     numeric_cols = df.select_dtypes(include=[np.number]).columns
     agg_dict = {
-        col: "sum"
+        col: agg_functions.get(col, "sum")
         for col in numeric_cols
         if col not in [impact_column, "calculated_failed_count"]
     }

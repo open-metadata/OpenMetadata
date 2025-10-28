@@ -20,7 +20,6 @@ import pandas as pd
 
 from metadata.data_quality.validations.base_test_handler import (
     DIMENSION_FAILED_COUNT_KEY,
-    DIMENSION_SUM_VALUE_KEY,
     DIMENSION_TOTAL_COUNT_KEY,
     DIMENSION_VALUE_KEY,
 )
@@ -120,7 +119,11 @@ class ColumnValueMeanToBeBetweenValidator(
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
 
             dimension_aggregates = defaultdict(
-                lambda: {"sums": [], "counts": [], "total_rows": []}
+                lambda: {
+                    Metrics.SUM.name: [],
+                    Metrics.COUNT.name: [],
+                    DIMENSION_TOTAL_COUNT_KEY: [],
+                }
             )
 
             # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
@@ -130,24 +133,22 @@ class ColumnValueMeanToBeBetweenValidator(
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
 
-                    # dropna for mean calculation (consistent with pandas .mean())
-                    non_null_values = group_df[column.name].dropna()
-                    dimension_aggregates[dimension_value]["sums"].append(
-                        non_null_values.sum()
+                    dimension_aggregates[dimension_value][Metrics.SUM.name].append(
+                        Metrics.SUM(column).df_fn([group_df])
                     )
-                    dimension_aggregates[dimension_value]["counts"].append(
-                        len(non_null_values)
+                    dimension_aggregates[dimension_value][Metrics.COUNT.name].append(
+                        Metrics.COUNT(column).df_fn([group_df])
                     )
-                    # Track total rows including NULLs (consistent with SQL COUNT(*))
-                    dimension_aggregates[dimension_value]["total_rows"].append(
-                        len(group_df)
-                    )
+
+                    dimension_aggregates[dimension_value][
+                        DIMENSION_TOTAL_COUNT_KEY
+                    ].append(len([group_df]))
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
-                total_count = sum(agg["counts"])
-                total_sum = sum(agg["sums"])
-                total_rows = sum(agg["total_rows"])
+                total_count = sum(agg[Metrics.COUNT.name])
+                total_sum = sum(agg[Metrics.SUM.name])
+                total_rows = sum(agg[DIMENSION_TOTAL_COUNT_KEY])
 
                 if total_count == 0:
                     continue
@@ -164,7 +165,8 @@ class ColumnValueMeanToBeBetweenValidator(
                     {
                         DIMENSION_VALUE_KEY: dimension_value,
                         Metrics.MEAN.name: mean_value,
-                        DIMENSION_SUM_VALUE_KEY: total_sum,
+                        Metrics.SUM.name: total_sum,
+                        Metrics.COUNT.name: total_count,
                         DIMENSION_TOTAL_COUNT_KEY: total_rows,
                         DIMENSION_FAILED_COUNT_KEY: failed_count,
                     }
@@ -183,10 +185,10 @@ class ColumnValueMeanToBeBetweenValidator(
                     result = df_aggregated[metric_column].copy()
                     if others_mask.any():
                         others_sum = df_aggregated.loc[
-                            others_mask, DIMENSION_SUM_VALUE_KEY
+                            others_mask, Metrics.SUM.name
                         ].iloc[0]
                         others_count = df_aggregated.loc[
-                            others_mask, DIMENSION_TOTAL_COUNT_KEY
+                            others_mask, Metrics.COUNT.name
                         ].iloc[0]
                         if others_count > 0:
                             result.loc[others_mask] = others_sum / others_count
@@ -198,7 +200,7 @@ class ColumnValueMeanToBeBetweenValidator(
                     final_metric_calculators={
                         Metrics.MEAN.name: calculate_weighted_mean
                     },
-                    exclude_from_final=[DIMENSION_SUM_VALUE_KEY],
+                    exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name],
                     top_n=DEFAULT_TOP_DIMENSIONS,
                 )
 
