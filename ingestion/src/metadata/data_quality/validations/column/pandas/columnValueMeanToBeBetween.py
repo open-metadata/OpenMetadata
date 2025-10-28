@@ -14,7 +14,7 @@ Validator for column value mean to be between test case
 """
 
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import pandas as pd
 
@@ -28,11 +28,11 @@ from metadata.data_quality.validations.column.base.columnValueMeanToBeBetween im
 )
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
-    aggregate_others_statistical_pandas,
     calculate_impact_score_pandas,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
+    aggregate_others_statistical_pandas,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
@@ -116,6 +116,9 @@ class ColumnValueMeanToBeBetweenValidator(
             min_bound = test_params["minValueForMeanInCol"]
             max_bound = test_params["maxValueForMeanInCol"]
 
+            def is_violation_mean(value: object) -> bool:
+                return not (min_bound <= value <= max_bound)
+
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
 
             dimension_aggregates = defaultdict(
@@ -128,7 +131,8 @@ class ColumnValueMeanToBeBetweenValidator(
 
             # Iterate over all dataframe chunks (empty dataframes are safely skipped by groupby)
             for df in dfs:
-                grouped = df.groupby(dimension_col.name, dropna=False)
+                df_typed = cast(pd.DataFrame, df)
+                grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
@@ -156,10 +160,7 @@ class ColumnValueMeanToBeBetweenValidator(
                 mean_value = total_sum / total_count
 
                 # Statistical validator: when mean fails, ALL rows in dimension fail
-                if min_bound <= mean_value <= max_bound:
-                    failed_count = 0
-                else:
-                    failed_count = total_rows
+                failed_count = total_rows if is_violation_mean(mean_value) else 0
 
                 results_data.append(
                     {
@@ -202,6 +203,8 @@ class ColumnValueMeanToBeBetweenValidator(
                     },
                     exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name],
                     top_n=DEFAULT_TOP_DIMENSIONS,
+                    violation_metric=Metrics.MEAN.name,
+                    violation_predicate=is_violation_mean,
                 )
 
                 for row_dict in results_df.to_dict("records"):

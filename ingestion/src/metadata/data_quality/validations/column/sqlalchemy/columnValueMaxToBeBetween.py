@@ -130,7 +130,6 @@ class ColumnValueMaxToBeBetweenValidator(
                 metric_expressions,
                 build_failed_count,
                 final_metric_builders={Metrics.MAX.name: build_max_final},
-                exclude_from_final=[],
                 top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
             )
 

@@ -599,11 +599,11 @@ TEST_CASE_SUPPORT_ROW_LEVEL_PASS_FAILED = {
             ),
             [
                 ("name=John", TestCaseStatus.Failed, None, None, None, None, 0.0667),
+                ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.0667),
                 ("name=Diana", TestCaseStatus.Failed, None, None, None, None, 0.0333),
                 ("name=Charlie", TestCaseStatus.Failed, None, None, None, None, 0.0333),
                 ("name=Bob", TestCaseStatus.Failed, None, None, None, None, 0.0333),
                 ("name=Alice", TestCaseStatus.Failed, None, None, None, None, 0.0333),
-                ("name=Others", TestCaseStatus.Failed, None, None, None, None, 0.0167),
             ],
         ),
         (

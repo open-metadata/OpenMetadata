@@ -106,9 +106,9 @@ class ColumnValueMeanToBeBetweenValidator(
                 DIMENSION_TOTAL_COUNT_KEY: func.count(),
             }
 
-            def build_failed_count(cte1):
-                mean_col = getattr(cte1.c, Metrics.MEAN.name)
-                count_col = getattr(cte1.c, DIMENSION_TOTAL_COUNT_KEY)
+            def build_failed_count(cte):
+                mean_col = getattr(cte.c, Metrics.MEAN.name)
+                count_col = getattr(cte.c, DIMENSION_TOTAL_COUNT_KEY)
 
                 conditions = []
                 if not math.isinf(min_bound):
@@ -147,7 +147,7 @@ class ColumnValueMeanToBeBetweenValidator(
                 metric_expressions,
                 build_failed_count,
                 final_metric_builders={Metrics.MEAN.name: build_mean_final},
-                exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name],
+                exclude_from_results=[Metrics.SUM.name, Metrics.COUNT.name],
                 top_dimensions_count=DEFAULT_TOP_DIMENSIONS,
             )
 

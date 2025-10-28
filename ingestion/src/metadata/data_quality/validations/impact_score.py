@@ -89,6 +89,10 @@ VOLUME_FACTOR_TIERS = [
 ]
 VOLUME_FACTOR_MAX = 1.50  # >= 100,000 rows
 
+# Type alias for failed count evaluator in pandas
+# Takes metric value and total count, returns failed count
+FailedCountEvaluator = Callable[[Union[float, int], int], int]
+
 
 def get_volume_factor(total_count: float) -> float:
     """
@@ -183,8 +187,8 @@ def get_impact_score_expression(
     raw_impact = failure_severity * volume_factor * sample_weight
 
     # Normalize to approximately 0-1 range
-    # Max theoretical value is 1.0 * log10(large_number) * 1.0
-    # For 10K rows: 1.0 * 4 * 1.0 = 4, so we divide by 4
+    # Max theoretical value: 1.0 (failure²) × 1.5 (max volume tier) × 1.0 (sample) = 1.5
+    # Divide by normalization_factor (1.5) to normalize to 0-1 range
     normalized_impact = raw_impact / normalization_factor
 
     # Ensure final score is between 0 and 1 using case expressions for compatibility
@@ -388,6 +392,8 @@ def aggregate_others_statistical_pandas(
     others_label: str = DIMENSION_OTHERS_LABEL,
     exclude_from_final: Optional[List[str]] = None,
     agg_functions: Optional[Dict[str, Union[str, Callable]]] = None,
+    violation_metric: Optional[str] = None,
+    violation_predicate: Optional[Callable[[object], bool]] = None,
 ):
     """
     Aggregate low-impact dimensions into "Others" using function-based statistical aggregation.
@@ -461,6 +467,8 @@ def aggregate_others_statistical_pandas(
     df_aggregated = df.groupby("dimension_group", as_index=False).agg(agg_dict)
 
     # For top dimensions, preserve their original metric values
+    # NOTE: While top dimensions are single-row groups (aggregation doesn't change them),
+    # we explicitly restore original values for clarity and defensive programming
     for metric_name, calculator in final_metric_calculators.items():
         if metric_name in df.columns:
             # For top dimensions, keep original values
@@ -482,7 +490,23 @@ def aggregate_others_statistical_pandas(
                     df_aggregated, others_mask, metric_name
                 )
 
-    # Recalculate impact score for "Others"
+        # Recompute failed_count for Others if violation condition provided
+        if (
+            violation_metric is not None
+            and violation_predicate is not None
+            and "failed_count" in df_aggregated.columns
+            and violation_metric in df_aggregated.columns
+        ):
+            import numpy as np
+
+            metric_series = df_aggregated.loc[others_mask, violation_metric]
+            total_series = df_aggregated.loc[others_mask, "total_count"]
+            violation_mask = metric_series.apply(violation_predicate)
+            df_aggregated.loc[others_mask, "failed_count"] = np.where(
+                violation_mask, total_series, 0
+            )
+
+    # Recalculate impact score for "Others" (based on final failed_count and total_count)
     if others_label in df_aggregated["dimension_group"].values:
         others_mask = df_aggregated["dimension_group"] == others_label
         if (

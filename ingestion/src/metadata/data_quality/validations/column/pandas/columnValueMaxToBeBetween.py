@@ -13,7 +13,7 @@ Validator for column value max to be between test case
 """
 
 from collections import defaultdict
-from typing import List, Optional
+from typing import List, Optional, cast
 
 import pandas as pd
 
@@ -27,11 +27,11 @@ from metadata.data_quality.validations.column.base.columnValueMaxToBeBetween imp
 )
 from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
-    aggregate_others_statistical_pandas,
     calculate_impact_score_pandas,
 )
 from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
     PandasValidatorMixin,
+    aggregate_others_statistical_pandas,
 )
 from metadata.generated.schema.tests.dimensionResult import DimensionResult
 from metadata.profiler.metrics.registry import Metrics
@@ -112,6 +112,9 @@ class ColumnValueMaxToBeBetweenValidator(
             min_bound = test_params["minValueForMaxInCol"]
             max_bound = test_params["maxValueForMaxInCol"]
 
+            def is_violation_max(value: object) -> bool:
+                return not (min_bound <= value <= max_bound)
+
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
 
             dimension_aggregates = defaultdict(
@@ -119,7 +122,8 @@ class ColumnValueMaxToBeBetweenValidator(
             )
 
             for df in dfs:
-                grouped = df.groupby(dimension_col.name, dropna=False)
+                df_typed = cast(pd.DataFrame, df)
+                grouped = df_typed.groupby(dimension_col.name, dropna=False)
 
                 for dimension_value, group_df in grouped:
                     dimension_value = self.format_dimension_value(dimension_value)
@@ -141,10 +145,7 @@ class ColumnValueMaxToBeBetweenValidator(
 
                 max_value = max(maxes_list)
 
-                if min_bound <= max_value <= max_bound:
-                    failed_count = 0
-                else:
-                    failed_count = total_rows
+                failed_count = total_rows if is_violation_max(max_value) else 0
 
                 results_data.append(
                     {
@@ -169,6 +170,8 @@ class ColumnValueMaxToBeBetweenValidator(
                     dimension_column=DIMENSION_VALUE_KEY,
                     agg_functions={Metrics.MAX.name: "max"},
                     top_n=DEFAULT_TOP_DIMENSIONS,
+                    violation_metric=Metrics.MAX.name,
+                    violation_predicate=lambda v: is_violation_max(v),
                 )
 
                 for row_dict in results_df.to_dict("records"):
