@@ -14,10 +14,8 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { get, isEmpty } from 'lodash';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import {
@@ -52,8 +50,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
   maxVisibleDomains = 3,
 }) => {
   const { t } = useTranslation();
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingDomains, setEditingDomains] = useState<EntityReference[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeDomains, setActiveDomains] = useState<EntityReference[]>([]);
   const [showAllDomains, setShowAllDomains] = useState(false);
@@ -82,19 +78,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     });
   }, [domains]);
 
-  const handleEditClick = () => {
-    setEditingDomains(activeDomains);
-    setIsEditing(true);
-  };
-
-  const normalizeDomains = (domains: EntityReference[]): EntityReference[] => {
-    if (Array.isArray(domains)) {
-      return domains;
-    }
-
-    return isEmpty(domains) ? [] : [domains as unknown as EntityReference];
-  };
-
   const updateActiveDomains = (
     entityDomains: EntityReference | EntityReference[] | Record<string, never>
   ) => {
@@ -110,8 +93,8 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     setActiveDomains(newActiveDomains);
   };
 
-  const handleSaveWithDomains = useCallback(
-    async (domainsToSave: EntityReference[]) => {
+  const handleDomainSave = useCallback(
+    async (selectedDomain: EntityReference | EntityReference[]) => {
       if (!entityId || !entityType || !entityFqn) {
         showErrorToast(t('message.entity-details-required'));
 
@@ -121,7 +104,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
       try {
         setIsLoading(true);
 
-        // Get current entity details
         const entityDetails = getEntityAPIfromSource(entityType as AssetsUnion)(
           entityFqn,
           { fields: 'domains' }
@@ -135,13 +117,17 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           return;
         }
 
-        // Create JSON patch by comparing the full entity objects
+        const domainsToSave = Array.isArray(selectedDomain)
+          ? selectedDomain
+          : [selectedDomain];
+
+        // Create JSON patch
         const jsonPatch = compare(entityDetailsResponse, {
           ...entityDetailsResponse,
-          domains: normalizeDomains(domainsToSave),
+          domains: domainsToSave,
         });
 
-        // Only proceed if there are actual changes
+        // Only proceed if there are changes
         if (jsonPatch.length === 0) {
           setIsLoading(false);
 
@@ -152,7 +138,7 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         const api = getAPIfromSource(entityType as AssetsUnion);
         const res = await api(entityId, jsonPatch);
 
-        // Update internal state with the response
+        // Update internal state
         const entityDomains = get(res, 'domains', {});
         updateActiveDomains(entityDomains);
 
@@ -163,16 +149,12 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           })
         );
 
-        // Call the callback to update parent component with the new domains
+        // Call the callback
         if (onDomainUpdate) {
           onDomainUpdate(domainsToSave);
         }
 
-        // Keep loading state for a brief moment to ensure smooth transition
-        setTimeout(() => {
-          setIsEditing(false);
-          setIsLoading(false);
-        }, 500);
+        setIsLoading(false);
       } catch (error) {
         setIsLoading(false);
         showErrorToast(
@@ -183,34 +165,8 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         );
       }
     },
-    [entityId, entityType, entityFqn, domains, onDomainUpdate, t]
+    [entityId, entityType, entityFqn, onDomainUpdate, t]
   );
-
-  const handleCancel = () => {
-    setEditingDomains(activeDomains);
-    setIsEditing(false);
-  };
-
-  const handleDomainSelection = async (
-    selectedDomains: EntityReference | EntityReference[] | undefined
-  ) => {
-    // Handle empty selection case
-    let domainsArray: EntityReference[] = [];
-
-    if (selectedDomains) {
-      if (Array.isArray(selectedDomains)) {
-        domainsArray = selectedDomains;
-      } else {
-        domainsArray = [selectedDomains];
-      }
-    }
-    // If selectedDomains is undefined, domainsArray remains empty []
-
-    setEditingDomains(domainsArray);
-
-    // Call API immediately like the existing system
-    await handleSaveWithDomains(domainsArray);
-  };
 
   const renderLoadingState = () => (
     <div className="domains-loading-container">
@@ -219,52 +175,6 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
       </div>
     </div>
   );
-
-  const renderEditingState = () => (
-    <div className="inline-edit-container">
-      <DomainSelectableList
-        multiple
-        hasPermission={hasPermission}
-        overlayClassName="w-auto"
-        popoverProps={{ placement: 'bottomLeft' }}
-        selectedDomain={editingDomains}
-        wrapInButton={false}
-        onUpdate={handleDomainSelection}>
-        <div className="domain-selector-display">
-          {editingDomains.length > 0 ? (
-            <div className="selected-domains-list">
-              {editingDomains.map((domain) => (
-                <div className="selected-domain-chip" key={domain.id}>
-                  <span className="domain-name">
-                    {domain.displayName || domain.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <span className="domain-placeholder">
-              {t('label.select-entity', {
-                entity: t('label.domain-plural'),
-              })}
-            </span>
-          )}
-        </div>
-      </DomainSelectableList>
-    </div>
-  );
-
-  const renderEmptyContent = () => {
-    if (isLoading) {
-      return renderLoadingState();
-    }
-    if (isEditing) {
-      return renderEditingState();
-    }
-
-    return (
-      <span className="no-data-placeholder">{t('label.no-data-found')}</span>
-    );
-  };
 
   const renderDomainsDisplay = () => (
     <div className="domains-display">
@@ -306,16 +216,35 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
     </div>
   );
 
-  const renderDomainsContent = () => {
-    if (isLoading) {
-      return renderLoadingState();
-    }
-    if (isEditing) {
-      return renderEditingState();
-    }
+  const selectableList = useMemo(() => {
+    return (
+      showEditButton &&
+      hasPermission && (
+        <DomainSelectableList
+          multiple
+          editIconClassName="edit-icon"
+          hasPermission={hasPermission}
+          overlayClassName="domain-popover"
+          selectedDomain={activeDomains}
+          wrapInButton={false}
+          onUpdate={handleDomainSave}
+        />
+      )
+    );
+  }, [showEditButton, hasPermission, activeDomains, handleDomainSave]);
 
-    return renderDomainsDisplay();
-  };
+  if (isLoading) {
+    return (
+      <div className="domains-section">
+        <div className="domains-header">
+          <Typography.Text className="domains-title">
+            {t('label.domain-plural')}
+          </Typography.Text>
+        </div>
+        <div className="domains-content">{renderLoadingState()}</div>
+      </div>
+    );
+  }
 
   if (!activeDomains.length) {
     return (
@@ -324,20 +253,13 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
           <Typography.Text className="domains-title">
             {t('label.domain-plural')}
           </Typography.Text>
-          {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <span className="edit-icon" onClick={handleEditClick}>
-              <EditIcon />
-            </span>
-          )}
-          {isEditing && !isLoading && (
-            <div className="edit-actions">
-              <span className="cancel-icon" onClick={handleCancel}>
-                <CloseIcon />
-              </span>
-            </div>
-          )}
+          {selectableList}
         </div>
-        <div className="domains-content">{renderEmptyContent()}</div>
+        <div className="domains-content">
+          <span className="no-data-placeholder">
+            {t('label.no-data-found')}
+          </span>
+        </div>
       </div>
     );
   }
@@ -348,20 +270,9 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         <Typography.Text className="domains-title">
           {t('label.domain-plural')}
         </Typography.Text>
-        {showEditButton && !isEditing && !isLoading && (
-          <span className="edit-icon" onClick={handleEditClick}>
-            <EditIcon />
-          </span>
-        )}
-        {isEditing && !isLoading && (
-          <div className="edit-actions">
-            <span className="cancel-icon" onClick={handleCancel}>
-              <CloseIcon />
-            </span>
-          </div>
-        )}
+        {selectableList}
       </div>
-      <div className="domains-content">{renderDomainsContent()}</div>
+      <div className="domains-content">{renderDomainsDisplay()}</div>
     </div>
   );
 };

@@ -68,11 +68,18 @@ jest.mock('../../../utils/Assets/AssetsUtils', () => ({
   getAPIfromSource: jest.fn().mockImplementation(() => mockPatchAPI),
 }));
 
-// DomainSelectableList mock: exposes onUpdate and renders children
+// DomainSelectableList mock: exposes onUpdate and renders children with edit button
 const domainSelectableListMock = jest
   .fn()
-  .mockImplementation(({ children, onUpdate }: any) => (
+  .mockImplementation(({ children, onUpdate, editIconClassName }: any) => (
     <div data-testid="domain-selectable-list">
+      {/* Render the edit button with the className passed from parent */}
+      <button
+        className={editIconClassName || 'edit-icon'}
+        data-testid="edit-icon"
+        type="button">
+        <div data-testid="edit-icon-svg">Edit</div>
+      </button>
       {children}
       <button
         data-testid="domain-select-submit"
@@ -116,26 +123,6 @@ const defaultProps = {
   onDomainUpdate: jest.fn(),
 };
 
-const clickHeaderEdit = () => {
-  const clickable = document.querySelector(
-    '.domains-header .edit-icon'
-  ) as HTMLElement | null;
-  if (!clickable) {
-    throw new Error('Edit clickable not found');
-  }
-  fireEvent.click(clickable);
-};
-
-const clickHeaderCancel = () => {
-  const clickable = document.querySelector(
-    '.edit-actions .cancel-icon'
-  ) as HTMLElement | null;
-  if (!clickable) {
-    throw new Error('Cancel clickable not found');
-  }
-  fireEvent.click(clickable);
-};
-
 describe('DomainsSection', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -170,25 +157,16 @@ describe('DomainsSection', () => {
     });
   });
 
-  describe('Edit Mode', () => {
-    it('enters edit mode and shows selectable list and placeholder', () => {
+  describe('Edit Functionality', () => {
+    it('renders DomainSelectableList when hasPermission is true', () => {
       render(<DomainsSection {...(defaultProps as any)} />);
 
-      clickHeaderEdit();
-
+      // The DomainSelectableList should be rendered (with edit button)
       expect(screen.getByTestId('domain-selectable-list')).toBeInTheDocument();
-      expect(
-        screen.getByText(
-          'label.select-entity - {"entity":"label.domain-plural"}'
-        )
-      ).toBeInTheDocument();
-
-      clickHeaderCancel();
-
-      expect(screen.getByText('label.no-data-found')).toBeInTheDocument();
+      expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
     });
 
-    it('shows selected domain chips in edit display when editingDomains present', () => {
+    it('shows domain list with edit button when domains are present', () => {
       render(
         <DomainsSection
           {...(defaultProps as any)}
@@ -196,9 +174,18 @@ describe('DomainsSection', () => {
         />
       );
 
-      clickHeaderEdit();
-
+      // Domain should be displayed
       expect(screen.getByText('Domain 1')).toBeInTheDocument();
+      // Edit button should be present
+      expect(screen.getByTestId('edit-icon')).toBeInTheDocument();
+    });
+
+    it('does not render edit button when hasPermission is false', () => {
+      render(
+        <DomainsSection {...(defaultProps as any)} hasPermission={false} />
+      );
+
+      expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
     });
   });
 
@@ -222,7 +209,7 @@ describe('DomainsSection', () => {
         <DomainsSection {...(defaultProps as any)} onDomainUpdate={onUpdate} />
       );
 
-      clickHeaderEdit();
+      // No need to click edit - directly submit from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-submit'));
 
       await waitFor(() => {
@@ -244,7 +231,7 @@ describe('DomainsSection', () => {
 
       render(<DomainsSection {...(defaultProps as any)} />);
 
-      clickHeaderEdit();
+      // No need to click edit - directly submit from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-submit'));
 
       await waitFor(() => {
@@ -258,7 +245,7 @@ describe('DomainsSection', () => {
 
       render(<DomainsSection {...(defaultProps as any)} />);
 
-      clickHeaderEdit();
+      // No need to click edit - directly clear from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-clear'));
 
       await waitFor(() => {
@@ -277,7 +264,7 @@ describe('DomainsSection', () => {
 
       render(<DomainsSection {...(defaultProps as any)} />);
 
-      clickHeaderEdit();
+      // No need to click edit - directly submit from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-submit'));
 
       await waitFor(() => {
@@ -296,7 +283,7 @@ describe('DomainsSection', () => {
         <DomainsSection {...(defaultProps as any)} entityId={undefined} />
       );
 
-      clickHeaderEdit();
+      // No need to click edit - directly submit from the dropdown
       fireEvent.click(screen.getByTestId('domain-select-submit'));
 
       await waitFor(() => {

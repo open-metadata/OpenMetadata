@@ -56,9 +56,6 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
-  const [editingDataProducts, setEditingDataProducts] = useState<DataProduct[]>(
-    []
-  );
   const [isLoading, setIsLoading] = useState(false);
   const [showAllDataProducts, setShowAllDataProducts] = useState(false);
 
@@ -84,14 +81,6 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
   };
 
   const handleEditClick = () => {
-    // Convert EntityReference[] to DataProduct[] for editing
-    const dataProductsForEditing = (dataProducts || []).map((dp) => ({
-      id: dp?.id,
-      fullyQualifiedName: dp?.fullyQualifiedName,
-      name: dp?.name,
-      displayName: dp?.displayName,
-    })) as DataProduct[];
-    setEditingDataProducts(dataProductsForEditing);
     setIsEditing(true);
   };
 
@@ -188,13 +177,6 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
   );
 
   const handleCancel = () => {
-    const dataProductsForEditing = (dataProducts || []).map((dp) => ({
-      id: dp?.id,
-      fullyQualifiedName: dp?.fullyQualifiedName,
-      name: dp?.name,
-      displayName: dp?.displayName,
-    })) as DataProduct[];
-    setEditingDataProducts(dataProductsForEditing);
     setIsEditing(false);
   };
 
@@ -228,6 +210,15 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
     }
     if (isEditing) {
       return renderEditingState();
+    }
+
+    // Show message if no domain is selected
+    if (!activeDomains || activeDomains.length === 0) {
+      return (
+        <Typography.Text className="text-sm text-grey-muted">
+          {t('message.select-domain-to-add-data-product')}
+        </Typography.Text>
+      );
     }
 
     return (
@@ -289,14 +280,19 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
           <Typography.Text className="data-products-title">
             {t('label.data-product-plural')}
           </Typography.Text>
-          {showEditButton && hasPermission && !isEditing && !isLoading && (
-            <button
-              className="edit-icon"
-              type="button"
-              onClick={handleEditClick}>
-              <EditIcon />
-            </button>
-          )}
+          {showEditButton &&
+            hasPermission &&
+            !isEditing &&
+            !isLoading &&
+            activeDomains &&
+            activeDomains.length > 0 && (
+              <button
+                className="edit-icon"
+                type="button"
+                onClick={handleEditClick}>
+                <EditIcon />
+              </button>
+            )}
           {isEditing && !isLoading && (
             <div className="edit-actions">
               <button
@@ -319,11 +315,19 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
         <Typography.Text className="data-products-title">
           {t('label.data-product-plural')}
         </Typography.Text>
-        {showEditButton && hasPermission && !isEditing && !isLoading && (
-          <button className="edit-icon" type="button" onClick={handleEditClick}>
-            <EditIcon />
-          </button>
-        )}
+        {showEditButton &&
+          hasPermission &&
+          !isEditing &&
+          !isLoading &&
+          activeDomains &&
+          activeDomains.length > 0 && (
+            <button
+              className="edit-icon"
+              type="button"
+              onClick={handleEditClick}>
+              <EditIcon />
+            </button>
+          )}
         {isEditing && !isLoading && (
           <div className="edit-actions">
             <button

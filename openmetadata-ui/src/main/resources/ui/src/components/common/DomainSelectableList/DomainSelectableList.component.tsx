@@ -67,6 +67,7 @@ const DomainSelectableList = ({
   showAllDomains = false,
   wrapInButton = true,
   overlayClassName,
+  editIconClassName,
 }: DomainSelectableListProps) => {
   const { t } = useTranslation();
   const [popupVisible, setPopupVisible] = useState(false);
@@ -154,6 +155,7 @@ const DomainSelectableList = ({
           (!isVersionView && (
             <EditIconButton
               newLook
+              className={editIconClassName}
               data-testid="add-domain"
               disabled={!hasPermission || disabled}
               icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}

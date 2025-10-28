@@ -297,7 +297,6 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           ) : isEditing ? (
             <div className="inline-edit-container">
               <AsyncSelectList
-                newLook
                 open
                 className="tag-selector"
                 fetchOptions={tagClassBase.getTags}
@@ -365,6 +364,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
                 entity: t('label.tag'),
               })}
               value={editingTags.map((tag) => tag.name)}
+              onCancel={handleCancel}
               onChange={handleTagSelection}
             />
           </div>
