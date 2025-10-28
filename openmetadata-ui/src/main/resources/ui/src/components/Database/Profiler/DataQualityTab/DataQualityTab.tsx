@@ -11,19 +11,25 @@
  *  limitations under the License.
  */
 
-import { Col, Row, Skeleton, Typography } from 'antd';
+import {
+  Box,
+  IconButton,
+  Menu,
+  MenuItem,
+  Skeleton,
+  Typography as MuiTypography,
+} from '@mui/material';
+import { Typography } from 'antd';
 import { ColumnsType, TablePaginationConfig } from 'antd/lib/table';
 import { FilterValue, SorterResult } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isArray, isUndefined, sortBy, toLower } from 'lodash';
 import { PagingResponse } from 'Models';
-import QueryString from 'qs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { DATA_QUALITY_PROFILER_DOCS } from '../../../../constants/docs.constants';
-import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { SORT_ORDER } from '../../../../enums/common.enum';
@@ -51,10 +57,8 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
-import {
-  DeleteIconButton,
-  EditIconButton,
-} from '../../../common/IconButtons/EditIconButton';
+
+import { ReactComponent as MenuIcon } from '../../../../assets/svg/menu.svg';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 import Table from '../../../common/Table/Table';
@@ -63,7 +67,7 @@ import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
   DataQualityTabProps,
-  TableProfilerTab,
+  ProfilerTabPath,
   TestCaseAction,
   TestCasePermission,
 } from '../ProfilerDashboard/profilerDashboard.interface';
@@ -82,6 +86,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   fetchTestCases,
   isEditAllowed,
   tableHeader,
+  removeTableBorder = false,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const { getEntityPermissionByFqn } = usePermissionProvider();
@@ -96,6 +101,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   const [testCasePermissions, setTestCasePermissions] = useState<
     TestCasePermission[]
   >([]);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [activeRecordId, setActiveRecordId] = useState<string | null>(null);
   const isApiSortingEnabled = useRef(false);
 
   const sortedData = useMemo(
@@ -120,6 +127,30 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
   const handleCancel = () => {
     setSelectedTestCase(undefined);
+  };
+
+  const handleMenuClick = (
+    event: React.MouseEvent<HTMLElement>,
+    recordId: string
+  ) => {
+    event.stopPropagation();
+    setAnchorEl(event.currentTarget);
+    setActiveRecordId(recordId);
+  };
+
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setActiveRecordId(null);
+  };
+
+  const handleEdit = (record: TestCase) => {
+    setSelectedTestCase({ data: record, action: 'UPDATE' });
+    handleMenuClose();
+  };
+
+  const handleDelete = (record: TestCase) => {
+    setSelectedTestCase({ data: record, action: 'DELETE' });
+    handleMenuClose();
   };
 
   const handleConfirmClick = async () => {
@@ -159,7 +190,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.status'),
         dataIndex: 'testCaseResult',
         key: 'status',
-        width: 120,
+        width: 80,
         render: (result: TestCaseResult, record) => {
           return result?.testCaseStatus ? (
             <StatusBadge
@@ -173,10 +204,44 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       {
+        title: 'Failed/aborted Reason',
+        dataIndex: 'testCaseResult',
+        key: 'Reason',
+        width: 200,
+        render: (result: TestCaseResult) => {
+          return result?.result ? (
+            <MuiTypography
+              sx={{
+                wordBreak: 'break-word',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                fontSize: '14px',
+              }}>
+              {result.result}
+            </MuiTypography>
+          ) : (
+            '--'
+          );
+        },
+      },
+      {
+        title: t('label.last-run'),
+        dataIndex: 'testCaseResult',
+        key: 'lastRun',
+        width: 150,
+        sorter: true,
+        render: (result: TestCaseResult) => {
+          return <DateTimeDisplay timestamp={result?.timestamp} />;
+        },
+      },
+      {
         title: t('label.name'),
         dataIndex: 'name',
         key: 'name',
-        width: 300,
+        width: 200,
         sorter: true,
         sortDirections: ['ascend', 'descend'],
         render: (name: string, record) => {
@@ -203,7 +268,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               title: t('label.table'),
               dataIndex: 'entityLink',
               key: 'table',
-              width: 200,
+              width: 150,
               render: (entityLink: string) => {
                 const tableFqn = getEntityFQN(entityLink);
 
@@ -211,16 +276,12 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                   <Link
                     className="break-word"
                     data-testid="table-link"
-                    to={{
-                      pathname: getEntityDetailsPath(
-                        EntityType.TABLE,
-                        tableFqn,
-                        EntityTabs.PROFILER
-                      ),
-                      search: QueryString.stringify({
-                        activeTab: TableProfilerTab.DATA_QUALITY,
-                      }),
-                    }}
+                    to={getEntityDetailsPath(
+                      EntityType.TABLE,
+                      tableFqn,
+                      EntityTabs.PROFILER,
+                      ProfilerTabPath.DATA_QUALITY
+                    )}
                     onClick={(e) => e.stopPropagation()}>
                     {tableFqn}
                   </Link>
@@ -243,7 +304,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title: t('label.column'),
         dataIndex: 'entityLink',
         key: 'column',
-        width: 150,
+        width: 80,
         render: (entityLink) => {
           const isColumn = entityLink.includes('::columns::');
           if (isColumn) {
@@ -255,7 +316,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               <Typography.Paragraph
                 className="m-0"
                 data-testid={name}
-                style={{ maxWidth: 150 }}>
+                style={{ maxWidth: 120 }}>
                 {name}
               </Typography.Paragraph>
             );
@@ -278,20 +339,10 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         sortDirections: ['ascend', 'descend'],
       },
       {
-        title: t('label.last-run'),
-        dataIndex: 'testCaseResult',
-        key: 'lastRun',
-        width: 150,
-        sorter: true,
-        render: (result: TestCaseResult) => {
-          return <DateTimeDisplay timestamp={result?.timestamp} />;
-        },
-      },
-      {
         title: t('label.incident'),
         dataIndex: 'testCaseResult',
         key: 'incident',
-        width: 120,
+        width: 80,
         render: (_, record) => {
           const testCaseResult = testCaseStatus.find(
             (status) =>
@@ -300,7 +351,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           );
 
           if (isStatusLoading) {
-            return <Skeleton.Input size="small" />;
+            return <Skeleton height={30} width={60} />;
           }
 
           if (!testCaseResult) {
@@ -317,6 +368,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
 
           return (
             <TestCaseIncidentManagerStatus
+              isInline
               data={testCaseResult}
               hasPermission={hasEditPermission}
               onSubmit={handleStatusSubmit}
@@ -325,14 +377,13 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         },
       },
       {
-        title: t('label.action-plural'),
         dataIndex: 'actions',
         key: 'actions',
-        width: 100,
+        width: 50,
         fixed: 'right',
         render: (_, record) => {
           if (isPermissionLoading) {
-            return <Skeleton.Input size="small" />;
+            return <Skeleton height={30} width={30} />;
           }
 
           const testCasePermission = testCasePermissions.find(
@@ -345,54 +396,68 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           const testCaseDeletePermission =
             removeFromTestSuite?.isAllowed || testCasePermission?.Delete;
 
-          const deleteBtnTooltip = removeFromTestSuite
+          const deleteBtnLabel = removeFromTestSuite
             ? t('label.remove')
             : t('label.delete');
 
+          const isMenuOpen = Boolean(anchorEl) && activeRecordId === record.id;
+          const hasAnyPermission =
+            testCaseEditPermission || testCaseDeletePermission;
+
           return (
-            <Row align="middle" gutter={[8, 8]}>
-              <Col>
-                <EditIconButton
-                  newLook
-                  className="flex-center"
+            <Box>
+              <IconButton
+                data-testid={`action-dropdown-${record.name}`}
+                disabled={!hasAnyPermission}
+                size="small"
+                sx={{
+                  width: 24,
+                  height: 24,
+                  py: 2,
+                  px: 0,
+                  border: '1px solid',
+                  borderColor: 'grey.400',
+                  color: 'grey.400',
+                  '&:hover': { backgroundColor: 'transparent' },
+                }}
+                onClick={(e) => handleMenuClick(e, record.id ?? '')}>
+                <MenuIcon />
+              </IconButton>
+              <Menu
+                anchorEl={anchorEl}
+                anchorOrigin={{
+                  vertical: 'bottom',
+                  horizontal: 'right',
+                }}
+                open={isMenuOpen}
+                sx={{
+                  '.MuiPaper-root': {
+                    width: 'max-content',
+                  },
+                }}
+                transformOrigin={{
+                  vertical: 'top',
+                  horizontal: 'right',
+                }}
+                onClose={handleMenuClose}>
+                <MenuItem
                   data-testid={`edit-${record.name}`}
                   disabled={!testCaseEditPermission}
-                  size="middle"
-                  title={
-                    testCaseEditPermission
-                      ? t('label.edit')
-                      : NO_PERMISSION_FOR_ACTION
-                  }
-                  onClick={(e) => {
-                    // preventing expand/collapse on click of edit button
-                    e.stopPropagation();
-                    setSelectedTestCase({ data: record, action: 'UPDATE' });
-                  }}
-                />
-              </Col>
-              <Col>
-                <DeleteIconButton
-                  className="flex-center"
+                  onClick={() => handleEdit(record)}>
+                  {t('label.edit')}
+                </MenuItem>
+                <MenuItem
                   data-testid={
                     removeFromTestSuite
                       ? `remove-${record.name}`
                       : `delete-${record.name}`
                   }
                   disabled={!testCaseDeletePermission}
-                  size="middle"
-                  title={
-                    testCaseDeletePermission
-                      ? deleteBtnTooltip
-                      : NO_PERMISSION_FOR_ACTION
-                  }
-                  onClick={(e) => {
-                    // preventing expand/collapse on click of delete button
-                    e.stopPropagation();
-                    setSelectedTestCase({ data: record, action: 'DELETE' });
-                  }}
-                />
-              </Col>
-            </Row>
+                  onClick={() => handleDelete(record)}>
+                  {deleteBtnLabel}
+                </MenuItem>
+              </Menu>
+            </Box>
           );
         },
       },
@@ -407,6 +472,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     testCasePermissions,
     handleStatusSubmit,
     isEditAllowed,
+    anchorEl,
+    activeRecordId,
   ]);
 
   const fetchTestCaseStatus = async () => {
@@ -513,7 +580,8 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       <Table
         columns={columns}
         containerClassName={classNames('test-case-table-container', {
-          'custom-card-with-table': !isUndefined(tableHeader),
+          'custom-card-with-table':
+            !isUndefined(tableHeader) || removeTableBorder,
         })}
         {...(pagingData && showPagination
           ? {
@@ -551,7 +619,6 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         pagination={false}
         rowKey="fullyQualifiedName"
         scroll={{ x: true }}
-        size="small"
         onChange={handleTableChange}
       />
       {selectedTestCase?.action === 'UPDATE' && (

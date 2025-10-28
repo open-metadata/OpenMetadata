@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import type { Components, Theme } from '@mui/material/styles';
+import { BODY_FONT_SIZES } from './typography-constants';
 
 export const navigationTheme = (colors: any): Components<Theme> => ({
   MuiTabs: {
@@ -51,7 +52,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         borderRadius: 0,
         minHeight: 'auto',
         textTransform: 'none' as const,
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         fontWeight: 500,
 
         '&:not(:first-of-type)': {
@@ -105,7 +106,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
       },
       separator: {
         fontFamily: 'Poppins, -apple-system, BlinkMacSystemFont, sans-serif',
-        fontSize: '12px',
+        fontSize: BODY_FONT_SIZES.CAPTION,
         fontWeight: 400,
         lineHeight: '18px',
         color: 'rgba(120, 116, 134, 1)',
@@ -118,7 +119,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
       root: {
         fontFamily:
           'var(--font-inter, "Inter"), -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
-        fontSize: '14px',
+        fontSize: BODY_FONT_SIZES.BODY2,
         fontWeight: 400,
         lineHeight: '20px',
         textDecoration: 'none',
@@ -169,7 +170,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         alignItems: 'center',
         justifyContent: 'center',
         padding: '12px',
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         fontWeight: 500,
         color: colors.gray[500],
         backgroundColor: 'transparent',
@@ -275,7 +276,7 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         cursor: 'pointer' as const,
         margin: '1px 6px',
         padding: '8px 10px',
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         fontWeight: 600,
         color: colors.gray[700],
         backgroundColor: 'transparent',
@@ -328,15 +329,15 @@ export const navigationTheme = (colors: any): Components<Theme> => ({
         minHeight: '56px',
       },
       selectLabel: {
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         color: colors.gray[600],
       },
       displayedRows: {
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
         color: colors.gray[600],
       },
       select: {
-        fontSize: '0.875rem',
+        fontSize: BODY_FONT_SIZES.BODY2,
       },
       actions: {
         marginLeft: '20px',

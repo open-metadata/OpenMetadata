@@ -32,7 +32,10 @@ export const INDIGO_1 = '#3538CD';
 export const PRIMARY_COLOR = DEFAULT_THEME.primaryColor;
 export const BLUE_1 = '#175cd3';
 export const BLUE_2 = '#3ca2f4';
-export const CHART_BLUE_1 = '#1890FF';
+export const BLUE_500 = '#2E90FA';
+export const BLUE_800 = '#1849A9';
+export const BLUE_50 = '#EFF8FF';
+export const CHART_BLUE_1 = '#4689FF';
 export const RIPTIDE = '#76E9C6';
 export const MY_SIN = '#FEB019';
 export const SAN_MARINO = '#416BB3';
@@ -44,3 +47,24 @@ export const LEMON_ZEST = '#FFD700';
 export const GREY_100 = '#f5f5f5';
 export const GREY_200 = '#E9EAEB';
 export const GRAY_600 = '#535862';
+
+export const SEVERITY_COLORS: Record<
+  string,
+  { bg: string; color: string; border: string }
+> = {
+  Severity1: { bg: '#FEF3F2', color: '#B42318', border: '#FDA29B' },
+  Severity2: { bg: '#FEF6EE', color: '#C4320A', border: '#FDB022' },
+  Severity3: { bg: '#FFFAEB', color: '#DC6803', border: '#FEC84B' },
+  Severity4: { bg: '#F0F9FF', color: '#026AA2', border: '#7CD4FD' },
+  Severity5: { bg: '#F9FAFB', color: '#344054', border: '#D0D5DD' },
+};
+
+export const STATUS_COLORS: Record<
+  string,
+  { bg: string; color: string; border: string }
+> = {
+  New: { bg: '#E1D3FF', color: '#7147E8', border: '#7147E8' },
+  Ack: { bg: '#EBF6FE', color: '#3DA2F3', border: '#3DA2F3' },
+  Assigned: { bg: '#FFF6E1', color: '#D99601', border: '#D99601' },
+  Resolved: { bg: '#E8F5E9', color: '#4CAF50', border: '#81C784' },
+};
