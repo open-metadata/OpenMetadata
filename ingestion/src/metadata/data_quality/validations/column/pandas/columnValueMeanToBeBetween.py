@@ -142,7 +142,7 @@ class ColumnValueMeanToBeBetweenValidator(
 
                     dimension_aggregates[dimension_value][
                         DIMENSION_TOTAL_COUNT_KEY
-                    ].append(len([group_df]))
+                    ].append(len(group_df))
 
             results_data = []
             for dimension_value, agg in dimension_aggregates.items():
