@@ -56,7 +56,7 @@ export const ContractSchemaFormTab: React.FC<{
   const { t } = useTranslation();
   const { fqn } = useFqn();
   const { data: tableData } = useGenericContext();
-  const [allColumnsData, setAllColumnData] = useState<Column[]>([]);
+  const [allColumnsData, setAllColumnsData] = useState<Column[]>([]);
   const [columnsData, setColumnsData] = useState<Column[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>();
   const [isLoading, setIsLoading] = useState(false);
@@ -130,7 +130,7 @@ export const ContractSchemaFormTab: React.FC<{
         setColumnsData(
           offset === 0 ? [...oldPrunedColumns, ...prunedColumns] : prunedColumns
         );
-        setAllColumnData((prev) => {
+        setAllColumnsData((prev) => {
           const combined = [
             ...prev,
             ...selectedSchema,
@@ -153,7 +153,7 @@ export const ContractSchemaFormTab: React.FC<{
       }
       setIsLoading(false);
     },
-    [tableFqn, pageSize, selectedSchema, oldRemovedColumns, setAllColumnData]
+    [tableFqn, pageSize, selectedSchema, oldRemovedColumns, setAllColumnsData]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -317,7 +317,7 @@ export const ContractSchemaFormTab: React.FC<{
 
   useEffect(() => {
     setSelectedKeys(
-      selectedSchema.map((item) => (item as Column).fullyQualifiedName ?? '')
+      selectedSchema.map((item) => item.fullyQualifiedName ?? '')
     );
   }, [selectedSchema]);
 

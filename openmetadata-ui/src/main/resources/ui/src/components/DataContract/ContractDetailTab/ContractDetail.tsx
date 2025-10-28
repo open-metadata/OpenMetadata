@@ -55,6 +55,7 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
+import { getPopupContainer } from '../../../utils/formUtils';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
@@ -254,6 +255,7 @@ const ContractDetail: React.FC<{
 
               <Dropdown
                 destroyPopupOnHide
+                getPopupContainer={getPopupContainer}
                 menu={{
                   items: contractActionsItems,
                   onClick: handleContractAction,
