@@ -427,6 +427,7 @@ const TreeAsyncSelectList: FC<TreeAsyncSelectListProps> = ({
 
         return Promise.resolve();
       }}
+      //   multiple={isMultiSelect}
       notFoundContent={
         isLoading ? (
           <Loader size="small" />

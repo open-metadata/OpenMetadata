@@ -53,6 +53,7 @@ import { Thread } from '../../../generated/entity/feed/thread';
 import { PageType } from '../../../generated/system/ui/page';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { SearchSourceAlias } from '../../../interface/search.interface';
 import { triggerOnDemandApp } from '../../../rest/applicationAPI';
 import { getActiveAnnouncement } from '../../../rest/feedsAPI';
@@ -144,6 +145,10 @@ export const DataAssetsHeader = ({
   const [isFollowingLoading, setIsFollowingLoading] = useState(false);
   const navigate = useNavigate();
   const [isAutoPilotTriggering, setIsAutoPilotTriggering] = useState(false);
+
+  const { uiHints } = useEntityRules({
+    entityType: entityType,
+  });
 
   const icon = useMemo(() => {
     const serviceType = get(dataAsset, 'serviceType', '');
@@ -661,7 +666,6 @@ export const DataAssetsHeader = ({
               <>
                 <DomainLabel
                   headerLayout
-                  multiple
                   showDashPlaceholder
                   afterDomainUpdateAction={afterDomainUpdateAction}
                   domains={(dataAsset as EntitiesWithDomainField).domains}
@@ -669,6 +673,7 @@ export const DataAssetsHeader = ({
                   entityId={dataAsset.id ?? ''}
                   entityType={entityType}
                   hasPermission={editDomainPermission}
+                  multiple={uiHints.canAddMultipleDomains}
                   textClassName="render-domain-lebel-style"
                 />
                 <Divider
@@ -683,6 +688,10 @@ export const DataAssetsHeader = ({
               hasPermission={editOwnerPermission}
               isCompactView={false}
               maxVisibleOwners={4}
+              multiple={{
+                user: uiHints.canAddMultipleOwners,
+                team: uiHints.canAddTeamOwner,
+              }}
               owners={dataAsset?.owners}
               onUpdate={onOwnerUpdate}
             />

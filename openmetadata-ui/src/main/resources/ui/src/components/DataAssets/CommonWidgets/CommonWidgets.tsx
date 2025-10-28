@@ -89,7 +89,7 @@ export const CommonWidgets = ({
   entityType,
   showTaskHandler = true,
 }: CommonWidgetsProps) => {
-  const { data, type, onUpdate, permissions, isVersionView } =
+  const { data, type, uiHints, onUpdate, permissions, isVersionView } =
     useGenericContext<GenericEntity>();
   const [tagsUpdating, setTagsUpdating] = useState<TagLabel[]>();
 
@@ -278,6 +278,7 @@ export const CommonWidgets = ({
         activeDomains={domains}
         dataProducts={dataProducts ?? []}
         hasPermission={editDataProductPermission}
+        multiple={uiHints.canAddMultipleDataProducts}
         onSave={handleDataProductsSave}
       />
     );
@@ -320,6 +321,7 @@ export const CommonWidgets = ({
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
+        isMultiSelect={uiHints.canAddMultipleGlossaryTermTable}
         permission={editGlossaryTermsPermission && !isVersionView}
         selectedTags={tags}
         showTaskHandler={showTaskHandler && !isVersionView}

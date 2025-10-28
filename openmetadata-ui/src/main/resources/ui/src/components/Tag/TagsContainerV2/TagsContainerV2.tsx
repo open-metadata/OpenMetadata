@@ -77,6 +77,7 @@ const TagsContainerV2 = ({
   sizeCap = LIST_SIZE,
   useGenericControls,
   tagNewLook = false,
+  multiSelect,
 }: TagsContainerV2Props) => {
   const navigate = useNavigate();
   const [form] = Form.useForm();
@@ -249,6 +250,7 @@ const TagsContainerV2 = ({
       <TagSelectForm
         defaultValue={selectedTagsInternal ?? []}
         fetchApi={fetchAPI}
+        multiSelect={multiSelect}
         placeholder={getTagPlaceholder(isGlossaryType)}
         tagData={initialOptions}
         tagType={tagType}
@@ -257,6 +259,7 @@ const TagsContainerV2 = ({
       />
     );
   }, [
+    multiSelect,
     isGlossaryType,
     selectedTagsInternal,
     getTagPlaceholder,

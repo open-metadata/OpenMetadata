@@ -33,6 +33,7 @@ import { CreateThread } from '../../../generated/api/feed/createThread';
 import { ThreadType } from '../../../generated/entity/feed/thread';
 import { EntityReference } from '../../../generated/entity/type';
 import { Page } from '../../../generated/system/ui/page';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { WidgetConfig } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { postThread } from '../../../rest/feedsAPI';
 import {
@@ -107,6 +108,10 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const [activeTagDropdownKey, setActiveTagDropdownKey] = useState<
     string | null
   >(null);
+
+  const { uiHints } = useEntityRules({
+    entityType: type,
+  });
 
   useEffect(() => {
     setLayout(
@@ -222,6 +227,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
   const values = useMemo(
     () => ({
       data,
+      uiHints,
       type,
       onUpdate,
       isVersionView,
@@ -237,6 +243,7 @@ export const GenericProvider = <T extends Omit<EntityReference, 'type'>>({
     }),
     [
       data,
+      uiHints,
       type,
       onUpdate,
       isVersionView,

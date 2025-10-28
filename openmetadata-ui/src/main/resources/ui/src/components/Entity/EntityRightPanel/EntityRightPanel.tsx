@@ -17,6 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import { PartitionedKeys } from '../../../pages/TableDetailsPageV1/PartitionedKeys/PartitionedKeys.component';
 import entityRightPanelClassBase from '../../../utils/EntityRightPanelClassBase';
@@ -62,6 +63,10 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
   editDataProductPermission,
   onDataProductUpdate,
 }: EntityRightPanelProps<T>) => {
+  const { uiHints } = useEntityRules({
+    entityType,
+    entityData: {},
+  });
   const KnowledgeArticles =
     entityRightPanelClassBase.getKnowLedgeArticlesWidget();
   const { fqn: entityFQN } = useFqn();
@@ -84,6 +89,7 @@ const EntityRightPanel = <T extends ExtentionEntitiesKeys>({
               activeDomains={domains}
               dataProducts={dataProducts}
               hasPermission={editDataProductPermission ?? false}
+              multiple={uiHints.canAddMultipleDataProducts}
               onSave={onDataProductUpdate}
             />
           </div>
