@@ -16,13 +16,16 @@ import { capitalize } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/downstream.svg';
+import { ReactComponent as NoDataIcon } from '../../../../assets/svg/ic-task-empty.svg';
 import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/upstream.svg';
 import {
   LineageData,
   LineageEntityReference,
 } from '../../../../components/Lineage/Lineage.interface';
+import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageUtils';
+import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
 
 interface LineageTabContentProps {
   entityFqn: string;
@@ -171,9 +174,13 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
             </div>
           ))
         ) : (
-          <div className="text-center text-grey-muted p-lg">
-            {t('label.no-data-found')}
-          </div>
+          <ErrorPlaceHolderNew
+            icon={<NoDataIcon height={140} width={140} />}
+            type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
+            <Typography.Paragraph className="text-center text-grey-muted m-t-sm">
+              {t('label.no-data-found')}
+            </Typography.Paragraph>
+          </ErrorPlaceHolderNew>
         )}
       </div>
     </div>
