@@ -182,13 +182,20 @@ const DomainsSection: React.FC<DomainsSectionProps> = ({
         {(showAllDomains
           ? activeDomains
           : activeDomains.slice(0, maxVisibleDomains)
-        ).map((domain, index) => {
+        ).map((domain) => {
           const domainWithStyle = domain as EntityReference & {
             style?: { color?: string; iconURL?: string };
           };
 
           return (
-            <div className="domain-item" key={index}>
+            <div
+              className="domain-item"
+              key={
+                domainWithStyle.id ||
+                domainWithStyle.fullyQualifiedName ||
+                domainWithStyle.name ||
+                JSON.stringify(domainWithStyle)
+              }>
               <div className="domain-card-bar">
                 <div className="domain-card-content">
                   <div className="domain-card-icon">

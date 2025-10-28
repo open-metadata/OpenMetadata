@@ -125,7 +125,7 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
     }
   };
 
-  if (!glossaryTerms || !glossaryTerms.length) {
+  if (!glossaryTerms?.length) {
     return (
       <div
         className="glossary-terms-section"

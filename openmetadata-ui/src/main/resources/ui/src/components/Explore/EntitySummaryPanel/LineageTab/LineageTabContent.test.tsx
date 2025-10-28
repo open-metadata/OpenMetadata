@@ -118,23 +118,59 @@ jest.mock('../../../../utils/EntityLineageUtils', () => ({
   getUpstreamDownstreamNodesEdges: jest.fn(),
 }));
 
+// Mock SearchClassBase to avoid importing @react-awesome-query-builder
+jest.mock('../../../../utils/SearchClassBase', () => ({
+  __esModule: true,
+  default: {
+    getEntityIcon: jest
+      .fn()
+      .mockImplementation((entityType: string) => (
+        <div data-testid={`entity-icon-${entityType}`}>EntityIcon</div>
+      )),
+  },
+}));
+
+// Mock OwnerLabel component
+jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
+  OwnerLabel: jest
+    .fn()
+    .mockImplementation(({ owners }) => (
+      <div data-testid="owner-label">
+        {owners?.map((owner: any) => owner.name).join(', ')}
+      </div>
+    )),
+}));
+
+// Mock NoOwnerFound component
+jest.mock('../../../common/NoOwner/NoOwnerFound', () => ({
+  NoOwnerFound: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="no-owner-found">No Owner</div>),
+}));
+
 // Mock data
-const mockUpstreamEntity: LineageEntityReference = {
+const mockUpstreamEntity: LineageEntityReference & {
+  entityType?: string;
+} = {
   id: 'upstream-1',
   type: 'table',
   name: 'upstream_table',
   displayName: 'Upstream Table',
   fullyQualifiedName: 'service.database.schema.upstream_table',
   serviceType: FormattedDatabaseServiceType.BigQuery,
+  entityType: 'table',
 };
 
-const mockDownstreamEntity: LineageEntityReference = {
+const mockDownstreamEntity: LineageEntityReference & {
+  entityType?: string;
+} = {
   id: 'downstream-1',
   type: 'table',
   name: 'downstream_table',
   displayName: 'Downstream Table',
   fullyQualifiedName: 'service.database.schema.downstream_table',
   serviceType: FormattedDatabaseServiceType.Snowflake,
+  entityType: 'table',
 };
 
 const mockLineageData: LineageData = {
@@ -303,9 +339,8 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
       expect(screen.getByText('Upstream Table')).toBeInTheDocument();
-      expect(
-        screen.getByText('service / database / schema')
-      ).toBeInTheDocument();
+      // Path is truncated to "service > ... > schema" when there are more than 2 parts
+      expect(screen.getByText('service > ... > schema')).toBeInTheDocument();
     });
 
     it('should render direction icon for upstream items', () => {
@@ -325,9 +360,12 @@ describe('LineageTabContent', () => {
     it('should render upstream direction text', () => {
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(
-        screen.getByText('label.upstream', { selector: '.item-direction-text' })
-      ).toBeInTheDocument();
+      // Note: The component shows direction via icon, not text with .item-direction-text class
+      const directionElements = document.querySelectorAll(
+        '.lineage-item-direction'
+      );
+
+      expect(directionElements.length).toBeGreaterThan(0);
     });
 
     it('should render service logo for upstream items', () => {
@@ -348,19 +386,19 @@ describe('LineageTabContent', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
       expect(screen.getByText('Downstream Table')).toBeInTheDocument();
-      expect(
-        screen.getByText('service / database / schema')
-      ).toBeInTheDocument();
+      // Path is truncated to "service > ... > schema" when there are more than 2 parts
+      expect(screen.getByText('service > ... > schema')).toBeInTheDocument();
     });
 
     it('should render downstream direction text', () => {
       render(<LineageTabContent {...defaultProps} filter="downstream" />);
 
-      expect(
-        screen.getByText('label.downstream', {
-          selector: '.item-direction-text',
-        })
-      ).toBeInTheDocument();
+      // Note: The component shows direction via icon, not text with .item-direction-text class
+      const directionElements = document.querySelectorAll(
+        '.lineage-item-direction'
+      );
+
+      expect(directionElements.length).toBeGreaterThan(0);
     });
 
     it('should render service logo for downstream items', () => {
@@ -411,9 +449,8 @@ describe('LineageTabContent', () => {
     it('should render entity path when available', () => {
       render(<LineageTabContent {...defaultProps} />);
 
-      expect(
-        screen.getByText('service / database / schema')
-      ).toBeInTheDocument();
+      // Path is truncated to "service > ... > schema" when there are more than 2 parts
+      expect(screen.getByText('service > ... > schema')).toBeInTheDocument();
     });
 
     it('should render entity display name or name', () => {
@@ -468,6 +505,7 @@ describe('LineageTabContent', () => {
               displayName: 'Current Table',
               fullyQualifiedName: currentEntityFqn,
               serviceType: FormattedDatabaseServiceType.BigQuery,
+              entityType: 'table',
             },
             paging: { entityUpstreamCount: 1 },
           },
@@ -484,6 +522,7 @@ describe('LineageTabContent', () => {
             displayName: 'Current Table',
             fullyQualifiedName: currentEntityFqn,
             serviceType: FormattedDatabaseServiceType.BigQuery,
+            entityType: 'table',
           },
         ],
         downstreamNodes: [mockDownstreamEntity],
@@ -515,6 +554,7 @@ describe('LineageTabContent', () => {
               displayName: 'Current Table',
               fullyQualifiedName: currentEntityFqn,
               serviceType: FormattedDatabaseServiceType.BigQuery,
+              entityType: 'table',
             },
             paging: { entityUpstreamCount: 1 },
           },
@@ -532,6 +572,7 @@ describe('LineageTabContent', () => {
             displayName: 'Current Table',
             fullyQualifiedName: currentEntityFqn,
             serviceType: FormattedDatabaseServiceType.BigQuery,
+            entityType: 'table',
           },
         ],
       });
@@ -564,9 +605,8 @@ describe('LineageTabContent', () => {
 
       render(<LineageTabContent {...defaultProps} filter="upstream" />);
 
-      expect(
-        screen.getByText('service / database / schema / table')
-      ).toBeInTheDocument();
+      // Path is truncated to "service > ... > table" when there are more than 2 parts
+      expect(screen.getByText('service > ... > table')).toBeInTheDocument();
     });
 
     it('should handle entities without fullyQualifiedName', () => {
@@ -728,6 +768,7 @@ describe('LineageTabContent', () => {
           displayName: 'Upstream Table 2',
           fullyQualifiedName: 'service.database.schema.upstream_table_2',
           serviceType: FormattedDatabaseServiceType.Postgres,
+          entityType: 'table',
         },
       ];
 
@@ -752,6 +793,7 @@ describe('LineageTabContent', () => {
           displayName: 'Downstream Table 2',
           fullyQualifiedName: 'service.database.schema.downstream_table_2',
           serviceType: FormattedDatabaseServiceType.Mysql,
+          entityType: 'table',
         },
       ];
 

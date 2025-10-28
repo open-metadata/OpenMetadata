@@ -55,32 +55,6 @@ const FieldCard: React.FC<FieldCardProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const getDataTypeColor = (type: string) => {
-    const normalizedType = type.toLowerCase();
-    if (
-      normalizedType.includes('numeric') ||
-      normalizedType.includes('int') ||
-      normalizedType.includes('float')
-    ) {
-      return { bgColor: '#E6DDFF', color: '#703EFD' };
-    }
-    if (
-      normalizedType.includes('varchar') ||
-      normalizedType.includes('string') ||
-      normalizedType.includes('text')
-    ) {
-      return { bgColor: '#E6F7FF', color: '#1890FF' };
-    }
-    if (normalizedType.includes('date') || normalizedType.includes('time')) {
-      return { bgColor: '#F6FFED', color: '#52C41A' };
-    }
-    if (normalizedType.includes('boolean') || normalizedType.includes('bool')) {
-      return { bgColor: '#FFF2E8', color: '#FA8C16' };
-    }
-
-    return { bgColor: '#F5F5F5', color: '#8C8C8C' };
-  };
-
   const glossaryTerms = tags.filter((tag) => tag.source === TagSource.Glossary);
 
   return (

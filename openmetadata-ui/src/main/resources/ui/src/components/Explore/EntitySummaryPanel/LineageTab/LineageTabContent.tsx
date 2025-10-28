@@ -15,18 +15,21 @@ import { Button, Typography } from 'antd';
 import { capitalize } from 'lodash';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/downstream.svg';
 import { ReactComponent as NoDataIcon } from '../../../../assets/svg/ic-task-empty.svg';
-import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/upstream.svg';
-import {
-  LineageData,
-  LineageEntityReference,
-} from '../../../../components/Lineage/Lineage.interface';
+import { ReactComponent as DownstreamIcon } from '../../../../assets/svg/lineage-downstream-icon.svg';
+import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-upstream-icon.svg';
+import { LineageData } from '../../../../components/Lineage/Lineage.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
+import { EntityType } from '../../../../generated/api/tests/createTestDefinition';
+import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/CommonUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageUtils';
+import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
+import searchClassBase from '../../../../utils/SearchClassBase';
 import ErrorPlaceHolderNew from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';
-
+import { NoOwnerFound } from '../../../common/NoOwner/NoOwnerFound';
+import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
+import './LineageTabContent.less';
 interface LineageTabContentProps {
   entityFqn: string;
   filter: 'upstream' | 'downstream';
@@ -34,6 +37,25 @@ interface LineageTabContentProps {
   onFilterChange: (filter: 'upstream' | 'downstream') => void;
 }
 
+// Function to truncate path with ellipsis in the middle
+const getTruncatedPath = (path: string) => {
+  if (!path) {
+    return path;
+  }
+
+  const parts = path.split(' > ');
+
+  // If there are more than 2 parts, show first ... last
+  if (parts.length > 2) {
+    const firstPart = parts[0];
+    const lastPart = parts[parts.length - 1];
+
+    return `${firstPart} > ... > ${lastPart}`;
+  }
+
+  return path;
+};
+const BULLET_SEPARATOR = '•';
 const LineageTabContent: React.FC<LineageTabContentProps> = ({
   lineageData,
   entityFqn,
@@ -42,7 +64,6 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  // Get upstream and downstream nodes using the utility function
   const { upstreamNodes, downstreamNodes } = getUpstreamDownstreamNodesEdges(
     [
       ...Object.values(lineageData.downstreamEdges || {}),
@@ -59,9 +80,14 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
   // Get filtered lineage items
   const getFilteredLineageItems = () => {
     const items: Array<{
-      entity: LineageEntityReference;
+      entity: EntityReference & {
+        serviceType?: FormattedDatabaseServiceType;
+        entityType?: EntityType;
+        owners?: EntityReference[];
+      };
       direction: 'upstream' | 'downstream';
       path: string;
+      owners?: EntityReference[];
     }> = [];
 
     // Add upstream items
@@ -69,11 +95,19 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
       for (const entity of upstreamNodes) {
         if (entity.fullyQualifiedName !== entityFqn) {
           const pathParts = entity.fullyQualifiedName?.split('.') || [];
-          const path = pathParts.slice(0, -1).join(' / ');
+          const path = pathParts.slice(0, -1).join(' > ');
+          // Get owners from the node data if available
+          const nodeData = lineageData.nodes?.[entity.id];
+          const owners = (
+            nodeData?.entity as EntityReference & {
+              owners?: EntityReference[];
+            }
+          )?.owners;
           items.push({
             entity,
             direction: 'upstream',
             path,
+            owners,
           });
         }
       }
@@ -84,11 +118,19 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
       for (const entity of downstreamNodes) {
         if (entity.fullyQualifiedName !== entityFqn) {
           const pathParts = entity.fullyQualifiedName?.split('.') || [];
-          const path = pathParts.slice(0, -1).join(' / ');
+          const path = pathParts.slice(0, -1).join(' > ');
+          // Get owners from the node data if available
+          const nodeData = lineageData.nodes?.[entity.id];
+          const owners = (
+            nodeData?.entity as EntityReference & {
+              owners?: EntityReference[];
+            }
+          )?.owners;
           items.push({
             entity,
             direction: 'downstream',
             path,
+            owners,
           });
         }
       }
@@ -135,16 +177,31 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
       {/* Lineage Items */}
       <div className="lineage-items-list">
         {lineageItems.length > 0 ? (
-          lineageItems.map((item, index) => (
+          lineageItems.map((item) => (
             <div
               className="lineage-item-card"
-              key={`${item.entity.id}-${index}`}>
+              key={
+                item.entity.id ||
+                item.entity.fullyQualifiedName ||
+                `${item.direction}-${item.path}`
+              }>
               <div className="lineage-item-header">
-                <div className="service-icon">
-                  {getServiceLogo(
-                    capitalize(item.entity.serviceType) ?? '',
-                    'service-icon-lineage'
-                  )}
+                <div className="d-flex align-items-center gap-1">
+                  <div className="service-icon">
+                    {getServiceLogo(
+                      capitalize(item.entity.serviceType) ?? '',
+                      'service-icon-lineage'
+                    )}
+                  </div>
+                  <div className="item-path-container">
+                    {item.path && (
+                      <Typography.Text
+                        className="item-path-text"
+                        title={item.path}>
+                        {getTruncatedPath(item.path)}
+                      </Typography.Text>
+                    )}
+                  </div>
                 </div>
                 <div className="lineage-item-direction">
                   {item.direction === 'upstream' ? (
@@ -152,24 +209,51 @@ const LineageTabContent: React.FC<LineageTabContentProps> = ({
                   ) : (
                     <DownstreamIcon />
                   )}
-                  <Typography.Text className="item-direction-text">
-                    {item.direction === 'upstream'
-                      ? `${t('label.upstream')}`
-                      : `${t('label.downstream')}`}
-                  </Typography.Text>
                 </div>
               </div>
-              <div className="lineage-card-content p-x-sm p-y-md">
-                <div className="item-path-container">
-                  {item.path && (
-                    <Typography.Text className="item-path-text">
-                      {item.path}
-                    </Typography.Text>
-                  )}
-                </div>
+              <div className="lineage-card-content">
                 <Typography.Text className="item-name-text">
                   {item.entity.displayName || item.entity.name}
                 </Typography.Text>
+                <div className="d-flex align-items-center gap-1 lineage-info-container">
+                  {item.entity.entityType && (
+                    <>
+                      {searchClassBase.getEntityIcon(
+                        item.entity.entityType ?? ''
+                      ) && (
+                        <span className="w-4 d-inline-flex align-middle entity-type-icon">
+                          {searchClassBase.getEntityIcon(
+                            item.entity.entityType ?? ''
+                          )}
+                        </span>
+                      )}
+                      <Typography.Text className="item-entity-type-text">
+                        {capitalize(item.entity.entityType)}
+                      </Typography.Text>
+                    </>
+                  )}
+                  <span className="item-bullet-separator">
+                    {BULLET_SEPARATOR}
+                  </span>
+                  {item.entity.owners && item.entity.owners.length > 0 ? (
+                    <OwnerLabel
+                      isCompactView
+                      avatarSize={16}
+                      className="item-owner-label-text"
+                      owners={item.entity.owners}
+                      showLabel={false}
+                    />
+                  ) : (
+                    <NoOwnerFound
+                      isCompactView
+                      showLabel
+                      className="item-owner-label-text"
+                      multiple={{ user: false, team: false }}
+                      owners={[]}
+                      showDashPlaceholder={false}
+                    />
+                  )}
+                </div>
               </div>
             </div>
           ))

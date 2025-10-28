@@ -322,18 +322,13 @@
   }
 }
 .service-icon-lineage {
-  width: 21px !important;
-  height: 21px !important;
+  width: 14px !important;
+  height: 14px !important;
 }
 .lineage-item-direction {
-  border-radius: 5px;
-  border: 0.8px solid @grey-15;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: @white;
-  padding: 0px 4px;
-  gap: 4px;
 
   .ant-badge {
     .ant-badge-status-text {
@@ -372,17 +367,15 @@
     }
   }
   .lineage-items-list {
-    // Let the parent container handle scrolling so the filter remains fixed
-
     .lineage-item-card {
-      border: 0.6px solid @grey-15;
-      border-radius: 10px;
+      border: 1px solid @grey-200;
+      border-radius: 8px;
       margin-bottom: 16px;
       .item-name-text {
         color: @grey-900;
-        text-transform: uppercase;
-        font-size: 13px;
+        font-size: 16px;
         font-weight: 600;
+        padding-top: 8px;
       }
       .item-direction-text {
         color: @grey-900;
@@ -394,41 +387,34 @@
       .lineage-item-header {
         display: flex;
         align-items: center;
-        gap: 6px;
         justify-content: space-between;
         padding: 12px;
+        padding-bottom: 0;
         border-top-right-radius: 10px;
         border-top-left-radius: 10px;
-        background-color: @grey-9;
+
         .service-icon {
-          background-color: @white;
-          padding: 5px;
           display: flex;
           align-items: center;
           justify-content: center;
-          border-radius: 5px;
-          border: 1px solid @grey-15;
         }
       }
       .lineage-card-content {
-        border-bottom-right-radius: 10px;
-        border-bottom-left-radius: 10px;
+        padding-left: 12px;
+        padding-right: 12px;
+        padding-bottom: 12px;
+        padding-top: 8px;
       }
       .item-path-container {
-        border: 0.8px solid @grey-15;
-        border-radius: 5px;
-        height: 19px;
-        padding: 0 7px;
+        height: 18px;
+        padding-left: 4px;
         display: flex;
         align-items: center;
         width: fit-content;
-        margin-bottom: 13px;
       }
       .item-path-text {
-        color: @grey-900;
-        font-size: 10px !important;
-        line-height: 21px !important;
-        text-transform: uppercase;
+        color: @grey-500;
+        font-size: 12px !important;
       }
 
       .ant-badge {
@@ -442,4 +428,19 @@
       }
     }
   }
+}
+.item-entity-type-text,
+.item-owner-label-text {
+  color: @grey-500 !important;
+  font-size: 12px !important;
+  align-content: center;
+  font-weight: 400 !important;
+}
+.item-bullet-separator {
+  color: @grey-400 !important;
+  align-content: center;
+  margin-right: 4px;
+}
+.entity-type-icon {
+  color: @grey-500 !important;
 }
