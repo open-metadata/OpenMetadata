@@ -206,9 +206,7 @@ class SalesforceSource(DatabaseServiceSource):
                 )
             )
 
-    def get_table_description(
-        self, table_name: str, object_label: Optional[str]
-    ) -> Optional[str]:
+    def get_table_description(self, table_name: str) -> Optional[str]:
         """
         Method to get the table description for salesforce with Tooling API
         """
@@ -231,7 +229,7 @@ class SalesforceSource(DatabaseServiceSource):
             logger.warning(
                 f"Unable to get description with Tooling API for table [{table_name}]: {exc}"
             )
-        return table_description if table_description else object_label
+        return table_description
 
     def get_table_column_description(self, table_name: str) -> Optional[List]:
         """
@@ -273,10 +271,9 @@ class SalesforceSource(DatabaseServiceSource):
             columns = self.get_columns(table_name, salesforce_objects.get("fields", []))
             table_request = CreateTableRequest(
                 name=EntityName(table_name),
+                displayName=salesforce_objects.get("label"),
                 tableType=table_type,
-                description=self.get_table_description(
-                    table_name, salesforce_objects.get("label")
-                ),
+                description=self.get_table_description(table_name),
                 columns=columns,
                 tableConstraints=table_constraints,
                 databaseSchema=FullyQualifiedEntityName(
@@ -331,14 +328,13 @@ class SalesforceSource(DatabaseServiceSource):
                 col_constraint = Constraint.NOT_NULL
             if column["unique"]:
                 col_constraint = Constraint.UNIQUE
-            if column_description_mapping.get(column["name"]):
-                column_description = column_description_mapping[column["name"]]
-            else:
-                column_description = column["label"]
+
+            column_description = column_description_mapping.get(column["name"])
 
             columns.append(
                 Column(
                     name=column["name"],
+                    displayName=column["label"],
                     description=column_description,
                     dataType=self.column_type(column["type"].upper()),
                     dataTypeDisplay=column["type"],
