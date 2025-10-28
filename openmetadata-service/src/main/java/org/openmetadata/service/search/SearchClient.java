@@ -114,24 +114,24 @@ public interface SearchClient<T>
 
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
-      String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
-      ctx._source.fullyQualifiedName = updatedFQN;
-      ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
-      if (ctx._source.containsKey('parent')) {
-        if (ctx._source.parent.containsKey('fullyQualifiedName')) {
-          String parentFQN = ctx._source.parent.fullyQualifiedName;
-          ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
-        }
-      }
-      if (ctx._source.containsKey('tags')) {
-        for (int i = 0; i < ctx._source.tags.size(); i++) {
-          if (ctx._source.tags[i].containsKey('tagFQN')) {
-            String tagFQN = ctx._source.tags[i].tagFQN;
-            ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
-          }
-        }
-      }
-      """;
+                  String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+                  ctx._source.fullyQualifiedName = updatedFQN;
+                  ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
+                  if (ctx._source.containsKey('parent')) {
+                    if (ctx._source.parent.containsKey('fullyQualifiedName')) {
+                      String parentFQN = ctx._source.parent.fullyQualifiedName;
+                      ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+                    }
+                  }
+                  if (ctx._source.containsKey('tags')) {
+                    for (int i = 0; i < ctx._source.tags.size(); i++) {
+                      if (ctx._source.tags[i].containsKey('tagFQN')) {
+                        String tagFQN = ctx._source.tags[i].tagFQN;
+                        ctx._source.tags[i].tagFQN = tagFQN.replace(params.oldParentFQN, params.newParentFQN);
+                      }
+                    }
+                  }
+                  """;
 
   String REMOVE_LINEAGE_SCRIPT =
       "ctx._source.upstreamLineage.removeIf(lineage -> lineage.docUniqueId == params.docUniqueId)";
