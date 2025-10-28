@@ -481,6 +481,9 @@ const ContractDetail: React.FC<{
 
               <ContractSchemaTable
                 contractStatus={constraintStatus['schema']}
+                latestSchemaValidationResult={
+                  latestContractResults?.schemaValidation
+                }
                 schemaDetail={schemaDetail}
               />
             </Col>

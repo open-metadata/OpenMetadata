@@ -1508,6 +1508,14 @@ test.describe('Data Contracts', () => {
       page.getByTestId('data-contract-latest-result-btn')
     ).toContainText('Contract Failed');
 
+    await expect(
+      page.getByTestId(`schema-column-${table.entityLinkColumnsName[0]}-failed`)
+    ).toBeVisible();
+
+    await expect(
+      page.getByTestId(`schema-column-${table.entityLinkColumnsName[1]}-failed`)
+    ).toBeVisible();
+
     // Check the Columns Present in Contract Schema Form Component
 
     await page.getByTestId('manage-contract-actions').click();
