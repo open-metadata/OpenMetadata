@@ -174,6 +174,7 @@ const DataProductsSelectList = ({
 
   return (
     <Select
+      allowClear
       autoFocus
       showSearch
       className="w-full"
