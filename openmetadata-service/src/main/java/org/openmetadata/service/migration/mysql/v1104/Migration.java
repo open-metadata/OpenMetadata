@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.mysql.v1101;
+package org.openmetadata.service.migration.mysql.v1104;
 
 import static org.openmetadata.service.migration.utils.v1104.MigrationUtil.updateGlossaryTermApprovalWorkflow;
 
