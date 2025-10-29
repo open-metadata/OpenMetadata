@@ -718,6 +718,78 @@ class LookerUnitTest(TestCase):
         """
         Test the _is_sql_query method correctly identifies SQL queries vs table names
         """
+        test_query_with_template = """
+            (select *
+                ,license_name as content_license_name,licensor_id as content_licensor_id
+                ,licensor_name as content_licensor_name,provider_name as content_provider_name
+                ,content_headline as content_title,uri as content_canonical_url
+            from
+            {% if _explore._name == 'v_content_rt' or _explore._name == 'sketch_lm_content_fact' %}
+                `maw-bigquery.maw.spanner_dim_content`
+            {% else %}
+                `maw-bigquery.maw_views.v_dim_content`
+            {% endif %}
+            a
+            where {% condition content_uuid %} content_uuid {% endcondition %}
+            and {% condition content_title %} REGEXP_REPLACE(content_headline, r"&apos;|&#39;|&#039;", "'") {% endcondition %}
+            and {% condition content_byline %} REGEXP_REPLACE(content_byline, r"&apos;|&#39;|&#039;", "'") {% endcondition %}
+            and {% condition content_category_cap %} content_category_cap {% endcondition %}
+            and {% condition content_category_label %} content_category_label {% endcondition %}
+            and {% condition content_canonical_url %} uri {% endcondition %}
+            and {% condition content_editor %} content_editor {% endcondition %}
+            and {% condition content_language %} content_language {% endcondition %}
+            and {% condition content_license_name %} license_name {% endcondition %}
+            and {% condition content_licensor_id %} licensor_id {% endcondition %}
+            and {% condition content_licensor_name %} licensor_name {% endcondition %}
+            and {% condition content_provider_category %} TRIM(provider_category, ' ') {% endcondition %}
+            and {% condition content_provider_guid %} content_provider_guid {% endcondition %}
+            and {% condition content_provider_id %} provider_id {% endcondition %}
+            and {% condition content_provider_name %} provider_name {% endcondition %}
+            and {% condition content_provider_url %} provider_url {% endcondition %}
+            and {% condition content_region %} CASE WHEN upper(content_region)='GB' THEN 'UK' ELSE upper(content_region) END {% endcondition %}
+            and {% condition content_salesforce_id %} content_salesforce_id {% endcondition %}
+            and {% condition content_source_url %} content_source_url {% endcondition %}
+            and {% condition content_summary %} content_summary {% endcondition %}
+            and {% condition content_tags_nested %} lower(ARRAY_TO_STRING(content_tags, '||')) {% endcondition %}
+            and {% condition content_thumbnail_url %} content_thumbnail_url {% endcondition %}
+            and {% condition editorial_tags_nested %} ARRAY_TO_STRING(ARRAY(select distinct lower(value) from UNNEST(editorial_tags) as value order by 1), "||") {% endcondition %}
+            and {% condition secondary_types_nested %} lower(ARRAY_TO_STRING(SPLIT(secondary_types, ''), '||')) {% endcondition %}
+            and {% condition editorial_team %} lower(editorial_team) {% endcondition %}
+            and {% condition series_name %} series_name {% endcondition %}
+            and {% condition subsite %} subsite {% endcondition %}
+            and {% condition content_type_raw %} a.content_type {% endcondition %}
+            and {% condition content_type %} CASE WHEN length(a.content_type)=2 OR a.content_type='ca_st' OR a.content_type='nca' OR a.content_type='story' THEN 'story'
+                        WHEN a.content_type='cluster' THEN NULL
+                        WHEN a.content_type='ca_ss' OR a.content_type='slideshow' THEN 'slideshow'
+                        WHEN a.content_type IN ('cavideo', 'ca_vd', 'video') THEN 'video'
+                        WHEN a.content_type='ca_bp' THEN 'blogpost'
+                        WHEN a.content_type='offnet' THEN 'offnet (unknown type)'
+                        WHEN a.content_type IS NULL THEN 'unknown'
+                        ELSE a.content_type END {% endcondition %}
+            and {% condition is_ai_srl %} is_ai_srl {% endcondition %}
+            and {% condition provider_site %} provider_site {% endcondition %}
+            and {% condition provider_region %} provider_region {% endcondition %}
+            and {% condition provider_lang %} is_ai_srl {% endcondition %}
+            and {% condition gc_reason %} gc_reason {% endcondition %}
+            and {% condition gc_confidence_score %} gc_confidence_score {% endcondition %}
+            and {% condition gc_model %} gc_model {% endcondition %}
+            and {% condition gc_site %} gc_site {% endcondition %}
+            and {% condition gc_region %} gc_region {% endcondition %}
+            and {% condition gc_lang %} gc_lang {% endcondition %}
+            and {% condition gc_prompt %} gc_prompt {% endcondition %}
+            and {% condition commerce_article_type %} commerce_article_type {% endcondition %}
+            and {% condition is_commerce_article %} case when commerce_article_type is not null then true else false end {% endcondition %}
+            {% if _explore._name == 'v_content_daily' %}
+            and {% condition v_content_daily.content_uuid %} content_uuid {% endcondition %}
+            {% endif %}
+            {% if _view._name == 'v_merged_video' %}
+            and {% condition v_merged_video.content_uuid %} content_uuid {% endcondition %}
+            and a.content_type IN ("cavideo", "video", "ca_vd")
+            {% endif %}
+            ) ;;
+            """
+        rendered_table_name = self.looker._render_table_name(test_query_with_template)
+        self.assertTrue(self.looker._is_sql_query(rendered_table_name))
         self.assertTrue(
             self.looker._is_sql_query(
                 """
