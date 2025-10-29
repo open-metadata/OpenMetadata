@@ -1418,6 +1418,144 @@ test.describe('Data Contracts', () => {
     }
   });
 
+  test('Operation on Old Schema Columns Contract', async ({ page }) => {
+    test.slow(true);
+
+    const { apiContext } = await getApiContext(page);
+    const table = new TableClass();
+    await table.create(apiContext);
+
+    await redirectToHomePage(page);
+    await table.visitEntityPage(page);
+
+    const entityFQN = table.entityResponseData.fullyQualifiedName;
+
+    await page.click('[data-testid="contract"]');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await page.getByTestId('add-contract-button').click();
+
+    await expect(page.getByTestId('add-contract-card')).toBeVisible();
+
+    await page.getByTestId('contract-name').fill(DATA_CONTRACT_DETAILS.name);
+
+    await page.getByRole('tab', { name: 'Schema' }).click();
+
+    await page
+      .locator('input[type="checkbox"][aria-label="Select all"]')
+      .check();
+
+    await expect(
+      page.getByRole('checkbox', { name: 'Select all' })
+    ).toBeChecked();
+
+    // save and trigger contract validation
+    await saveAndTriggerDataContractValidation(page, true);
+
+    await expect(
+      page.getByTestId('contract-status-card-item-schema-status')
+    ).toContainText('Passed');
+
+    // Modify the first 2 columns with PATCH API
+    await table.patch({
+      apiContext,
+      patchData: [
+        {
+          op: 'replace',
+          path: '/columns/0/name',
+          value: 'new_column_0',
+        },
+        {
+          op: 'replace',
+          path: '/columns/0/fullyQualifiedName',
+          value: `${table.entityResponseData.fullyQualifiedName}.new_column_0`,
+        },
+        {
+          op: 'replace',
+          path: '/columns/1/name',
+          value: 'new_column_1',
+        },
+        {
+          op: 'replace',
+          path: '/columns/1/fullyQualifiedName',
+          value: `${table.entityResponseData.fullyQualifiedName}.new_column_1`,
+        },
+      ],
+    });
+
+    // Run Contract After Schema Change should Fail
+    await page.getByTestId('manage-contract-actions').click();
+
+    await page.waitForSelector('.contract-action-dropdown', {
+      state: 'visible',
+    });
+
+    await page.getByTestId('contract-run-now-button').click();
+
+    await page.reload();
+
+    await page.waitForLoadState('networkidle');
+    await page.waitForSelector('[data-testid="loader"]', {
+      state: 'detached',
+    });
+
+    await expect(
+      page.getByTestId('contract-status-card-item-schema-status')
+    ).toContainText('Failed');
+    await expect(
+      page.getByTestId('data-contract-latest-result-btn')
+    ).toContainText('Contract Failed');
+
+    await expect(
+      page.getByTestId(`schema-column-${table.entityLinkColumnsName[0]}-failed`)
+    ).toBeVisible();
+
+    await expect(
+      page.getByTestId(`schema-column-${table.entityLinkColumnsName[1]}-failed`)
+    ).toBeVisible();
+
+    // Check the Columns Present in Contract Schema Form Component
+
+    await page.getByTestId('manage-contract-actions').click();
+
+    await page.waitForSelector('.contract-action-dropdown', {
+      state: 'visible',
+    });
+    await page.getByTestId('contract-edit-button').click();
+
+    await page.getByRole('tab', { name: 'Schema' }).click();
+
+    // Old column should be visible and we should un-check them
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[0]}"] .ant-checkbox-input`
+      )
+      .click();
+
+    await page
+      .locator(
+        `[data-row-key="${entityFQN}.${table.entityLinkColumnsName[1]}"] .ant-checkbox-input`
+      )
+      .click();
+
+    // Select newly added column
+    await page
+      .locator(`[data-row-key="${entityFQN}.new_column_0"] .ant-checkbox-input`)
+      .click();
+    await page
+      .locator(`[data-row-key="${entityFQN}.new_column_1"] .ant-checkbox-input`)
+      .click();
+
+    // save and trigger contract validation
+    await saveAndTriggerDataContractValidation(page, true);
+
+    await expect(
+      page.getByTestId('contract-status-card-item-schema-status')
+    ).toContainText('Passed');
+  });
+
   test('should allow adding a semantic with multiple rules', async ({
     page,
   }) => {

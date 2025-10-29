@@ -240,8 +240,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     // Initialize the test summary with 0 values
     TestSummary testSummary =
         new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
-    Optional<JsonObject> summary =
-        Optional.ofNullable(aggregation.getJsonObject("sterms#status_counts"));
+    Optional<JsonObject> summary = Optional.ofNullable(aggregation.getJsonObject("status_counts"));
     return summary
         .map(
             s -> {
@@ -259,7 +258,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         new TestSummary().withAborted(0).withFailed(0).withSuccess(0).withQueued(0).withTotal(0);
     List<ColumnTestSummaryDefinition> columnTestSummaries = new ArrayList<>();
     Optional<JsonObject> entityLinkAgg =
-        Optional.ofNullable(getAggregationObject(aggregation, "sterms#entityLinks"));
+        Optional.ofNullable(getAggregationObject(aggregation, "entityLinks"));
 
     return entityLinkAgg
         .map(
