@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { DataAssetRuleValidation } from '../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import { EntityType } from '../enums/entity.enum';
 import {
   EntityRule,
@@ -59,11 +60,8 @@ export const parseRule = (rule: EntityRule): ParsedRule => {
 /**
  * Get UI hints for specific rules (e.g., disable buttons, show warnings)
  */
-export const getUIHints = (
-  rules: ParsedRule[],
-  entityType: EntityType | string
-) => {
-  const hints = {
+export const getUIHints = (rules: ParsedRule[], entityType: EntityType) => {
+  const hints: DataAssetRuleValidation = {
     canAddMultipleUserOwners: true,
     canAddMultipleTeamOwner: true,
     canAddMultipleDomains: true,

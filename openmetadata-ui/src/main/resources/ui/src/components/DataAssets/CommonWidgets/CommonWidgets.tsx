@@ -15,6 +15,7 @@ import { EntityTags } from 'Models';
 import { useCallback, useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
+import { DataAssetRuleValidation } from '../../../context/RuleEnforcementProvider/RuleEnforcementProvider';
 import {
   DetailPageWidgetKeys,
   GlossaryTermDetailPageWidgetKeys,
@@ -76,6 +77,7 @@ interface GenericEntity
       | 'tags'
     > {
   changeDescription: ChangeDescription;
+  uiHints: DataAssetRuleValidation;
 }
 
 interface CommonWidgetsProps {
@@ -321,7 +323,7 @@ export const CommonWidgets = ({
         displayType={DisplayType.READ_MORE}
         entityFqn={fullyQualifiedName}
         entityType={type}
-        isMultiSelect={uiHints.canAddMultipleGlossaryTermTable}
+        multiSelect={uiHints.canAddMultipleGlossaryTermTable}
         permission={editGlossaryTermsPermission && !isVersionView}
         selectedTags={tags}
         showTaskHandler={showTaskHandler && !isVersionView}

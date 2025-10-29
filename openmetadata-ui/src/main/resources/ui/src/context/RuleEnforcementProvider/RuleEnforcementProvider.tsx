@@ -26,6 +26,18 @@ import { getEntityRules } from '../../rest/ruleEnforcementAPI';
 import { getUIHints, parseRule } from '../../utils/RuleEnforcementUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
+export interface DataAssetRuleValidation {
+  canAddMultipleUserOwners: boolean;
+  canAddMultipleTeamOwner: boolean;
+  canAddMultipleDomains: boolean;
+  canAddMultipleDataProducts: boolean;
+  maxDomains: number;
+  maxDataProducts: number;
+  canAddMultipleGlossaryTermTable: boolean;
+  requireDomainForDataProduct: boolean;
+  warnings: string[];
+}
+
 interface RuleEnforcementContextType {
   rules: Record<EntityType, ParsedRule[]>;
   isLoading: boolean;

@@ -14,7 +14,7 @@
 import { Col, Form, Row, Space, Typography } from 'antd';
 import { DefaultOptionType } from 'antd/lib/select';
 import classNames from 'classnames';
-import { isEmpty, isEqual } from 'lodash';
+import { isArray, isEmpty, isEqual } from 'lodash';
 import { EntityTags } from 'Models';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -163,7 +163,7 @@ const TagsContainerV2 = ({
   );
 
   const handleSave = async (data: DefaultOptionType | DefaultOptionType[]) => {
-    const updatedTags = (data as DefaultOptionType[]).map((tag) => {
+    const updatedTags = (isArray(data) ? data : [data]).map((tag) => {
       let tagData: EntityTags = {
         tagFQN: typeof tag === 'string' ? tag : tag.value,
         source: tagType,
