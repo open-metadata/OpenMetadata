@@ -139,6 +139,10 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/blob-report
           retention-days: 5
 
+      - name: Run Okta Login Tests
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn playwright:okta
+
       - name: Clean Up
         run: |
           cd ./docker/development
