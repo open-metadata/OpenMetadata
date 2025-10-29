@@ -866,24 +866,33 @@ class LookerSource(DashboardServiceSource):
             if view.sql_table_name:
                 sql_table_name = self._render_table_name(view.sql_table_name)
 
-                for db_service_prefix in db_service_prefixes or []:
-                    db_service_name, *_ = self.parse_db_service_prefix(
-                        db_service_prefix
+                # Check if sql_table_name is a query (starts with '(' or 'SELECT')
+                if self._is_sql_query(sql_table_name):
+                    logger.debug(
+                        f"Detected SQL query in sql_table_name for view [{view.name}]"
                     )
-                    dialect = self._get_db_dialect(db_service_name)
-                    source_table_name = self._clean_table_name(sql_table_name, dialect)
-                    self._parsed_views[view.name] = source_table_name
+                    yield from self._build_lineage_for_view(view.name, sql_table_name)
+                else:
+                    for db_service_prefix in db_service_prefixes or []:
+                        db_service_name, *_ = self.parse_db_service_prefix(
+                            db_service_prefix
+                        )
+                        dialect = self._get_db_dialect(db_service_name)
+                        source_table_name = self._clean_table_name(
+                            sql_table_name, dialect
+                        )
+                        self._parsed_views[view.name] = source_table_name
 
-                    # Extract column lineage
-                    column_lineage = self._extract_column_lineage(view)
+                        # Extract column lineage
+                        column_lineage = self._extract_column_lineage(view)
 
-                    # View to the source is only there if we are informing the dbServiceNames
-                    yield self.build_lineage_request(
-                        source=source_table_name,
-                        db_service_prefix=db_service_prefix,
-                        to_entity=self._view_data_model,
-                        column_lineage=column_lineage,
-                    )
+                        # View to the source is only there if we are informing the dbServiceNames
+                        yield self.build_lineage_request(
+                            source=source_table_name,
+                            db_service_prefix=db_service_prefix,
+                            to_entity=self._view_data_model,
+                            column_lineage=column_lineage,
+                        )
 
             elif view.derived_table:
                 sql_query = view.derived_table.sql
@@ -1072,6 +1081,17 @@ class LookerSource(DashboardServiceSource):
                 f"Cannot get folder name from dashboard [{dashboard_details.title}] - [{exc}]"
             )
         return None
+
+    @staticmethod
+    def _is_sql_query(table_name: str) -> bool:
+        """
+        Check if table_name is a SQL query rather than a simple table reference.
+        LookML sql_table_name can contain subqueries wrapped in parentheses.
+        """
+        if not table_name:
+            return False
+        cleaned = table_name.strip()
+        return cleaned.startswith("(") or cleaned.upper().startswith("SELECT")
 
     @staticmethod
     def _clean_table_name(table_name: str, dialect: Dialect = Dialect.ANSI) -> str:

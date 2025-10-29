@@ -681,3 +681,66 @@ class LookerUnitTest(TestCase):
 
             # Should return None when exception occurs
             self.assertIsNone(result)
+
+    def test_build_lineage_for_view(self):
+        """
+        Test that SQL queries in sql_table_name are correctly parsed to extract table names
+        """
+        from metadata.ingestion.lineage.parser import LineageParser
+
+        sql_query_sample = """
+        (SELECT distinct mapped_dimension,
+            dim1_key,  dim1_value,
+            dim2_key,  dim2_value,
+            dim3_key,  dim3_value,
+            friendly_name,
+            friendly_name_group,
+            display_in_lm,
+            CASE WHEN mapped_dimension="page_type" THEN friendly_name END as mapped_page_type_suggestions,
+            CASE WHEN mapped_dimension="module" THEN friendly_name END as mapped_module_suggestions
+            from `maw-bigquery.maw_views.v_dim_friendly_names`
+            ) ;;
+        """
+
+        lineage_parser = LineageParser(
+            f"create view test_view as {sql_query_sample}",
+            Dialect.BIGQUERY,
+            timeout_seconds=30,
+        )
+
+        self.assertIsNotNone(lineage_parser.source_tables)
+        self.assertGreater(len(lineage_parser.source_tables), 0)
+
+        table_names = [str(table) for table in lineage_parser.source_tables]
+        self.assertIn("maw-bigquery.maw_views.v_dim_friendly_names", table_names)
+
+    def test_is_sql_query(self):
+        """
+        Test the _is_sql_query method correctly identifies SQL queries vs table names
+        """
+        self.assertTrue(
+            self.looker._is_sql_query(
+                """
+            (SELECT distinct mapped_dimension,
+                dim1_key,  dim1_value,
+                dim2_key,  dim2_value,
+                dim3_key,  dim3_value,
+                friendly_name,
+                friendly_name_group,
+                display_in_lm,
+                CASE WHEN mapped_dimension="page_type" THEN friendly_name END as mapped_page_type_suggestions,
+                CASE WHEN mapped_dimension="module" THEN friendly_name END as mapped_module_suggestions
+                from `maw-bigquery.maw_views.v_dim_friendly_names`
+                ) ;;
+            """
+            )
+        )
+        self.assertTrue(self.looker._is_sql_query("(SELECT * FROM table)"))
+        self.assertTrue(self.looker._is_sql_query("  (SELECT * FROM table)  "))
+        self.assertTrue(self.looker._is_sql_query("SELECT * FROM table"))
+        self.assertTrue(self.looker._is_sql_query("select * from table"))
+
+        self.assertFalse(self.looker._is_sql_query("my_schema.my_table"))
+        self.assertFalse(self.looker._is_sql_query("`project.dataset.table`"))
+        self.assertFalse(self.looker._is_sql_query("table_name"))
+        self.assertFalse(self.looker._is_sql_query(""))
