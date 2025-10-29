@@ -1,4 +1,4 @@
-package org.openmetadata.service.migration.mysql.v1104;
+package org.openmetadata.service.migration.mysql.v1100;
 
 import lombok.SneakyThrows;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
