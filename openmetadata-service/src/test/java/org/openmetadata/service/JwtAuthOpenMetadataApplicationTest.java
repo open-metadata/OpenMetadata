@@ -23,7 +23,6 @@ import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.FileConfigurationSourceProvider;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.configuration.YamlConfigurationFactory;
-import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.jackson.JacksonFeature;
 import io.dropwizard.jersey.validation.Validators;
@@ -69,6 +68,7 @@ import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.jobs.JobDAO;
@@ -168,7 +168,7 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
     sqlContainer.start();
 
     // Note: Added DataSourceFactory since this configuration is needed by the WorkflowHandler.
-    DataSourceFactory dataSourceFactory = new DataSourceFactory();
+    HikariCPDataSourceFactory dataSourceFactory = new HikariCPDataSourceFactory();
     dataSourceFactory.setUrl(sqlContainer.getJdbcUrl());
     dataSourceFactory.setUser(sqlContainer.getUsername());
     dataSourceFactory.setPassword(sqlContainer.getPassword());
@@ -273,6 +273,7 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
             nativeMigrationSQLPath,
             connType,
             extensionSQLScriptRootPath,
+            "", // flywayPath - empty string as placeholder
             config,
             forceMigrations);
     // Initialize search repository

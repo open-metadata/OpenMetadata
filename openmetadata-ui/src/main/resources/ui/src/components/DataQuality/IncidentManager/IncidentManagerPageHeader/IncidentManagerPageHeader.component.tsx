@@ -50,7 +50,6 @@ import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVer
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { getDecodedFqn } from '../../../../utils/StringsUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
@@ -74,8 +73,7 @@ const IncidentManagerPageHeader = ({
   const [isLoading, setIsLoading] = useState(true);
   const { testCase: testCaseData, testCasePermission } = useTestCaseStore();
 
-  const { fqn } = useRequiredParams<{ fqn: string }>();
-  const decodedFqn = getDecodedFqn(fqn);
+  const { fqn: decodedFqn } = useRequiredParams<{ fqn: string }>();
   const {
     setActiveThread,
     entityThread,
