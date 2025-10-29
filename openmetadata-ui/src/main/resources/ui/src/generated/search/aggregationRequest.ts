@@ -35,6 +35,10 @@ export interface AggregationRequest {
      */
     query?: string;
     /**
+     * Optional script to apply on the terms aggregation.
+     */
+    script?: string;
+    /**
      * Size to limit the number of aggregation buckets returned.
      */
     size?: number;
