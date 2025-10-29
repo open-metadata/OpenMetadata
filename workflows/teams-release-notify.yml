@@ -1,0 +1,43 @@
+name: Notify Teams on Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Microsoft Teams
+        uses: skitionek/notify-microsoft-teams@master
+        with:
+          webhook_url: ${{ secrets.TEAMS_WEBHOOK }}
+          title: "New OpenMetadata Release Published!"
+          raw: >-
+            {
+              "type": "message",
+              "attachments": [
+                {
+                  "contentType": "application/vnd.microsoft.card.adaptive",
+                  "content": {
+                    "type": "AdaptiveCard",
+                    "body": [
+                      {
+                        "type": "TextBlock",
+                        "text": "Release: ${{ github.event.release.name }}",
+                        "weight": "bolder",
+                        "size": "medium"
+                      },
+                      {
+                        "type": "TextBlock",
+                        "text": "Details: ${{ github.event.release.body }}"
+                      },
+                      {
+                        "type": "TextBlock",
+                        "text": "View on GitHub: ${{ github.event.release.html_url }}"
+                      }
+                    ]
+                  }
+                }
+              ]
+            }
