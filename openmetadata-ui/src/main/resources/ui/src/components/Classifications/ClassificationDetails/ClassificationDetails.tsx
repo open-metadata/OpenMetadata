@@ -15,7 +15,6 @@ import { Button, Card, Col, Row, Space, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ColumnsType } from 'antd/lib/table';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { capitalize, isEmpty, isUndefined, toString } from 'lodash';
 import {
   forwardRef,
@@ -83,6 +82,7 @@ const ClassificationDetails = forwardRef(
       handleAddNewTagClick,
       disableEditButton,
       isVersionView = false,
+      handleToggleDisable,
     }: Readonly<ClassificationDetailsProps>,
     ref
   ) => {
@@ -297,6 +297,7 @@ const ClassificationDetails = forwardRef(
           handleEditTagClick,
           handleActionDeleteTag,
           isVersionView,
+          handleToggleDisable,
         }),
       [
         isClassificationDisabled,
@@ -306,6 +307,7 @@ const ClassificationDetails = forwardRef(
         handleEditTagClick,
         handleActionDeleteTag,
         isVersionView,
+        handleToggleDisable,
       ]
     );
 
@@ -357,9 +359,7 @@ const ClassificationDetails = forwardRef(
                     )}
                   </div>
                 }
-                className={classNames('flex-wrap', {
-                  'opacity-60': isClassificationDisabled,
-                })}
+                className="flex-wrap"
                 displayName={displayName}
                 icon={
                   <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />
@@ -443,9 +443,6 @@ const ClassificationDetails = forwardRef(
                 <div className="m-b-sm" data-testid="description-container">
                   <DescriptionV1
                     wrapInCard
-                    className={classNames({
-                      'opacity-60': isClassificationDisabled,
-                    })}
                     description={description}
                     entityName={getEntityName(currentClassification)}
                     entityType={EntityType.CLASSIFICATION}
@@ -457,9 +454,6 @@ const ClassificationDetails = forwardRef(
                 </div>
 
                 <Table
-                  className={classNames({
-                    'opacity-60': isClassificationDisabled,
-                  })}
                   columns={tableColumn}
                   customPaginationProps={{
                     currentPage,
@@ -482,9 +476,6 @@ const ClassificationDetails = forwardRef(
                     ),
                   }}
                   pagination={false}
-                  rowClassName={(record) =>
-                    record.disabled ? 'opacity-60' : ''
-                  }
                   rowKey="id"
                   scroll={{ x: true }}
                   size="small"

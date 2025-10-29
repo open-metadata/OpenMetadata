@@ -482,6 +482,25 @@ const TagsPage = () => {
     setIsAddingTag(true);
   }, []);
 
+  const handleToggleDisable = useCallback(async (tag: Tag) => {
+    try {
+      const updatedTag = {
+        ...tag,
+        disabled: !tag.disabled,
+      };
+      const patchData = compare(tag, updatedTag);
+      await patchTag(tag.id ?? '', patchData);
+      classificationDetailsRef.current?.refreshClassificationTags();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.entity-updating-error', {
+          entity: t('label.tag-lowercase'),
+        })
+      );
+    }
+  }, []);
+
   useEffect(() => {
     if (currentClassification) {
       fetchCurrentClassificationPermission();
@@ -581,10 +600,9 @@ const TagsPage = () => {
                   {getEntityName(category)}
                   {category.disabled && (
                     <Badge
-                      className="m-l-xs badge-grey opacity-60"
+                      className="m-l-xs badge-grey "
                       count={t('label.disabled')}
                       data-testid="disabled"
-                      size="small"
                     />
                   )}
                 </Typography.Paragraph>
@@ -722,6 +740,7 @@ const TagsPage = () => {
                 handleAddNewTagClick={handleAddNewTagClick}
                 handleAfterDeleteAction={handleAfterDeleteAction}
                 handleEditTagClick={handleEditTagClick}
+                handleToggleDisable={handleToggleDisable}
                 handleUpdateClassification={handleUpdateClassification}
                 isAddingTag={isAddingTag}
                 ref={classificationDetailsRef}

@@ -28,6 +28,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
+import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
 import { ReactComponent as IconDropdown } from '../../assets/svg/menu.svg';
@@ -204,6 +205,11 @@ const TagPage = () => {
     [tagFqn]
   );
 
+  const showDisableOption = useMemo(
+    () => tagPermissions.EditAll && !tagItem?.deleted,
+    [tagPermissions.EditAll, tagItem?.deleted]
+  );
+
   const fetchCurrentTagPermission = async () => {
     if (!tagItem?.id) {
       return;
@@ -301,6 +307,16 @@ const TagPage = () => {
       setIsStyleEditing(false);
     }
   };
+
+  const handleEnableDisableTagClick = useCallback(async () => {
+    if (tagItem) {
+      const updatedTag = {
+        ...tagItem,
+        disabled: !tagItem.disabled,
+      };
+      await updateTag(updatedTag);
+    }
+  }, [tagItem, updateTag]);
 
   const handleTagDelete = async (id: string) => {
     try {
@@ -417,6 +433,32 @@ const TagPage = () => {
             onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
               e.domEvent.stopPropagation();
               setIsStyleEditing(true);
+              setShowActions(false);
+            },
+          },
+        ]
+      : []),
+    ...(showDisableOption
+      ? [
+          {
+            label: (
+              <ManageButtonItemLabel
+                description={
+                  tagItem?.disabled
+                    ? t('message.enable-tag-description')
+                    : t('message.disable-tag-description')
+                }
+                icon={IconDisableTag}
+                id="enable-disable-tag"
+                name={
+                  tagItem?.disabled ? t('label.enable') : t('label.disable')
+                }
+              />
+            ),
+            key: 'disable-button',
+            onClick: (e: { domEvent: { stopPropagation: () => void } }) => {
+              e.domEvent.stopPropagation();
+              handleEnableDisableTagClick();
               setShowActions(false);
             },
           },
