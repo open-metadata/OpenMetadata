@@ -48,12 +48,12 @@
       {
         "name": "classificationTags",
         "type": "terms",
-        "script": "def classificationTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Classification') { classificationTags.add(tag.tagFQN); } } } return classificationTags;"
+        "field": "classificationTags"
       },
       {
         "name": "glossaryTags",
         "type": "terms",
-        "script": "def glossaryTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Glossary') { glossaryTags.add(tag.tagFQN); } } } return glossaryTags;"
+        "field": "glossaryTags"
       },
       {
         "name": "certification.tagLabel.tagFQN",
