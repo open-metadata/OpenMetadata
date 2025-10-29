@@ -41,7 +41,6 @@ export interface WidgetHeaderProps {
   }>;
   title: ReactNode;
   widgetKey: string;
-  widgetWidth?: number;
 }
 
 const WidgetHeader = ({
@@ -86,7 +85,7 @@ const WidgetHeader = ({
 
   return (
     <Row
-      className={`widget-header h-15 ${className}`}
+      className={`widget-header ${className}`}
       data-testid="widget-header"
       justify="space-between">
       <Col

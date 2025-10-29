@@ -159,7 +159,6 @@ const MyFeedWidgetInternal = ({
         sortOptions={FEED_WIDGET_FILTER_OPTIONS}
         title={t('label.activity-feed')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange(key)}
         onTitleClick={() => navigate(userActivityFeedLink)}
       />
