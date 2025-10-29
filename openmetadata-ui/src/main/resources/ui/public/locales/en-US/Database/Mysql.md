@@ -163,6 +163,22 @@ The source identity specified by the principal that is calling the `AssumeRole` 
 Find more information about <a href="https://docs.aws.amazon.com/STS/latest/APIReference/API_AssumeRole.html#:~:text=Required%3A%20No-,SourceIdentity,-The%20source%20identity" target="_blank">Source Identity</a>.
 $$
 
+$$section
+### Bucket Name $(id="bucketName")
+
+A bucket name in Data Lake is a unique identifier used to organize and store data objects.
+
+It's similar to a folder name, but it's used for object storage rather than file storage.
+$$
+
+$$section
+### Prefix $(id="prefix")
+
+The prefix of a data source refers to the first part of the data path that identifies the source or origin of the data.
+
+It's used to organize and categorize data within the container, and can help users easily locate and access the data they need.
+$$
+
 ## Azure Auth Config
 
 $$section
@@ -264,3 +280,19 @@ $$
 $$section
 ### Connection Arguments $(id="connectionArguments")
 Additional connection arguments such as security or protocol configs that can be sent to the service during connection.
+$$
+
+$$section
+### Default Database Filter Pattern $(id="databaseFilterPattern")
+Regex to only include/exclude databases that matches the pattern.
+$$
+
+$$section
+### Default Schema Filter Pattern $(id="schemaFilterPattern")
+Regex to only include/exclude schemas that matches the pattern.
+$$
+
+$$section
+### Default Table Filter Pattern $(id="tableFilterPattern")
+Regex to only include/exclude tables that matches the pattern.
+$$
