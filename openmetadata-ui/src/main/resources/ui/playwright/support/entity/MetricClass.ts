@@ -67,7 +67,7 @@ export class MetricClass extends EntityClass {
     };
   }
 
-  async get() {
+  get() {
     return {
       entity: this.entityResponseData,
     };

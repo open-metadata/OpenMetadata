@@ -523,7 +523,9 @@ export class EntityDataClass {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    fs.writeFileSync(filePath, JSON.stringify(responseData, null, 2));
+    fs.writeFileSync(filePath, JSON.stringify(responseData, null, 2), {
+      flag: 'w',
+    });
   }
 
   static loadResponseData() {
@@ -597,142 +599,137 @@ export class EntityDataClass {
           this.dataProduct3.responseData = responseData.dataProduct3;
         }
         if (responseData.table1) {
+          //   console.log('Loading table1 data:', responseData.table1);
           this.table1.set(responseData.table1);
         }
         if (responseData.table2) {
+          //   console.log('Loading table2 data:', responseData.table2);
           this.table2.set(responseData.table2);
         }
         if (responseData.topic1) {
-          this.topic1.entityResponseData = responseData.topic1;
+          //   console.log('Loading topic1 data:', responseData.topic1);
+          this.topic1.set(responseData.topic1);
         }
         if (responseData.topic2) {
-          this.topic2.entityResponseData = responseData.topic2;
+          //   console.log('Loading topic2 data:', responseData.topic2);
+          this.topic2.set(responseData.topic2);
         }
         if (responseData.dashboard1) {
-          this.dashboard1.entityResponseData = responseData.dashboard1;
+          this.dashboard1.set(responseData.dashboard1);
         }
         if (responseData.dashboard2) {
-          this.dashboard2.entityResponseData = responseData.dashboard2;
+          this.dashboard2.set(responseData.dashboard2);
         }
         if (responseData.mlModel1) {
-          this.mlModel1.entityResponseData = responseData.mlModel1;
+          this.mlModel1.set(responseData.mlModel1);
         }
         if (responseData.mlModel2) {
-          this.mlModel2.entityResponseData = responseData.mlModel2;
+          this.mlModel2.set(responseData.mlModel2);
         }
         if (responseData.pipeline1) {
-          this.pipeline1.entityResponseData = responseData.pipeline1;
+          this.pipeline1.set(responseData.pipeline1);
         }
         if (responseData.pipeline2) {
-          this.pipeline2.entityResponseData = responseData.pipeline2;
+          this.pipeline2.set(responseData.pipeline2);
         }
         if (responseData.dashboardDataModel1) {
-          this.dashboardDataModel1.entityResponseData =
-            responseData.dashboardDataModel1;
+          this.dashboardDataModel1.set(responseData.dashboardDataModel1);
         }
         if (responseData.dashboardDataModel2) {
-          this.dashboardDataModel2.entityResponseData =
-            responseData.dashboardDataModel2;
+          this.dashboardDataModel2.set(responseData.dashboardDataModel2);
         }
         if (responseData.apiCollection1) {
-          this.apiCollection1.entityResponseData = responseData.apiCollection1;
+          this.apiCollection1.set(responseData.apiCollection1);
         }
         if (responseData.apiCollection2) {
-          this.apiCollection2.entityResponseData = responseData.apiCollection2;
+          this.apiCollection2.set(responseData.apiCollection2);
         }
         if (responseData.apiEndpoint1) {
-          this.apiEndpoint1.entityResponseData = responseData.apiEndpoint1;
+          this.apiEndpoint1.set(responseData.apiEndpoint1);
         }
         if (responseData.apiEndpoint2) {
-          this.apiEndpoint2.entityResponseData = responseData.apiEndpoint2;
+          this.apiEndpoint2.set(responseData.apiEndpoint2);
         }
         if (responseData.storedProcedure1) {
-          this.storedProcedure1.entityResponseData =
-            responseData.storedProcedure1;
+          this.storedProcedure1.set(responseData.storedProcedure1);
         }
         if (responseData.storedProcedure2) {
-          this.storedProcedure2.entityResponseData =
-            responseData.storedProcedure2;
+          this.storedProcedure2.set(responseData.storedProcedure2);
         }
         if (responseData.searchIndex1) {
-          this.searchIndex1.entityResponseData = responseData.searchIndex1;
+          this.searchIndex1.set(responseData.searchIndex1);
         }
         if (responseData.searchIndex2) {
-          this.searchIndex2.entityResponseData = responseData.searchIndex2;
+          this.searchIndex2.set(responseData.searchIndex2);
         }
         if (responseData.container1) {
-          this.container1.entityResponseData = responseData.container1;
+          this.container1.set(responseData.container1);
         }
         if (responseData.container2) {
-          this.container2.entityResponseData = responseData.container2;
+          this.container2.set(responseData.container2);
         }
         if (responseData.databaseService) {
-          this.databaseService.entityResponseData =
-            responseData.databaseService;
+          this.databaseService.set(responseData.databaseService);
         }
         if (responseData.database) {
-          this.database.entityResponseData = responseData.database;
+          this.database.set(responseData.database);
         }
         if (responseData.databaseSchema) {
-          this.databaseSchema.entityResponseData = responseData.databaseSchema;
+          this.databaseSchema.set(responseData.databaseSchema);
         }
         if (responseData.apiService) {
-          this.apiService.entityResponseData = responseData.apiService;
+          this.apiService.set(responseData.apiService);
         }
         if (responseData.dashboardService) {
-          this.dashboardService.entityResponseData =
-            responseData.dashboardService;
+          this.dashboardService.set(responseData.dashboardService);
         }
         if (responseData.messagingService) {
-          this.messagingService.entityResponseData =
-            responseData.messagingService;
+          this.messagingService.set(responseData.messagingService);
         }
         if (responseData.mlmodelService) {
-          this.mlmodelService.entityResponseData = responseData.mlmodelService;
+          this.mlmodelService.set(responseData.mlmodelService);
         }
         if (responseData.pipelineService) {
-          this.pipelineService.entityResponseData =
-            responseData.pipelineService;
+          this.pipelineService.set(responseData.pipelineService);
         }
         if (responseData.searchIndexService) {
-          this.searchIndexService.entityResponseData =
-            responseData.searchIndexService;
+          this.searchIndexService.set(responseData.searchIndexService);
         }
         if (responseData.storageService) {
-          this.storageService.entityResponseData = responseData.storageService;
+          this.storageService.set(responseData.storageService);
         }
         if (responseData.driveService) {
-          this.driveService.entityResponseData = responseData.driveService;
+          this.driveService.set(responseData.driveService);
         }
         if (responseData.metric1) {
-          this.metric1.entityResponseData = responseData.metric1;
+          this.metric1.set(responseData.metric1);
         }
         if (responseData.chart1) {
-          this.chart1.entityResponseData = responseData.chart1;
+          this.chart1.set(responseData.chart1);
         }
         if (responseData.directory1) {
-          this.directory1.entityResponseData = responseData.directory1;
+          this.directory1.set(responseData.directory1);
         }
         if (responseData.directory2) {
-          this.directory2.entityResponseData = responseData.directory2;
+          this.directory2.set(responseData.directory2);
         }
         if (responseData.file1) {
-          this.file1.entityResponseData = responseData.file1;
+          this.file1.set(responseData.file1);
         }
         if (responseData.file2) {
-          this.file2.entityResponseData = responseData.file2;
+          this.file2.set(responseData.file2);
         }
         if (responseData.spreadsheet1) {
-          this.spreadsheet1.entityResponseData = responseData.spreadsheet1;
+          this.spreadsheet1.set(responseData.spreadsheet1);
         }
         if (responseData.spreadsheet2) {
-          this.spreadsheet2.entityResponseData = responseData.spreadsheet2;
+          this.spreadsheet2.set(responseData.spreadsheet2);
         }
         if (responseData.worksheet1) {
-          this.worksheet1.entityResponseData = responseData.worksheet1;
+          this.worksheet1.set(responseData.worksheet1);
         }
         if (responseData.worksheet2) {
-          this.worksheet2.entityResponseData = responseData.worksheet2;
+          this.worksheet2.set(responseData.worksheet2);
         }
       }
     } catch (error) {
