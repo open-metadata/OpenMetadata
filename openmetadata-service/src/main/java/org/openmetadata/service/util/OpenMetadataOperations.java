@@ -312,6 +312,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           boolean force) {
     try {
       parseConfig();
+      initializeCollectionRegistry();
+      initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
 
       if (!force && isAppInstalled(appRepository, appName)) {
@@ -342,6 +344,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
           String appName) {
     try {
       parseConfig();
+      initializeCollectionRegistry();
+      initializeSecurityConfig();
       AppRepository appRepository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
       if (deleteApplication(appRepository, appName)) {
         LOG.info("App deleted.");
@@ -562,6 +566,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       }
       parseConfig();
       CollectionRegistry.initialize();
+      initializeSecurityConfig();
 
       AuthProvider authProvider = SecurityConfigurationManager.getCurrentAuthConfig().getProvider();
 
