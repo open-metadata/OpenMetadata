@@ -29,18 +29,7 @@ class ColumnValuesSumToBeBetweenValidator(
     BaseColumnValuesSumToBeBetweenValidator, PandasValidatorMixin
 ):
     """Validator for column values sum to be between test case"""
-
-    def _get_column_name(self) -> SQALikeColumn:
-        """Get column name from the test case entity link
-
-        Returns:
-            SQALikeColumn: column
-        """
-        return self.get_column_name(
-            self.test_case.entityLink.root,
-            self.runner,
-        )
-
+    
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
 

@@ -31,17 +31,6 @@ class ColumnValuesToBeNotInSetValidator(
 ):
     """Validator for column value to be not in set test case"""
 
-    def _get_column_name(self) -> Column:
-        """Get column name from the test case entity link
-
-        Returns:
-            Column: column
-        """
-        return self.get_column_name(
-            self.test_case.entityLink.root,
-            inspect(self.runner.dataset).c,
-        )
-
     def _run_results(self, metric: Metrics, column: Column, **kwargs) -> Optional[int]:
         """compute result of the test case
 

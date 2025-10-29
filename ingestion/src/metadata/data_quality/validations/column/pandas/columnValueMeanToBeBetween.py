@@ -47,29 +47,6 @@ class ColumnValueMeanToBeBetweenValidator(
 ):
     """Validator for column value mean to be between test case"""
 
-    def _get_column_name(self, column_name: Optional[str] = None) -> SQALikeColumn:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            SQALikeColumn: Column object
-        """
-        if column_name is None:
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                self.runner,
-            )
-        else:
-            return self.get_column_name(
-                column_name,
-                self.runner,
-            )
-
     def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:
         """compute result of the test case
 
@@ -110,15 +87,10 @@ class ColumnValueMeanToBeBetweenValidator(
         Returns:
             List[DimensionResult]: Top N dimensions plus "Others"
         """
+        checker = self._get_validation_checker(test_params)
         dimension_results = []
 
         try:
-            min_bound = test_params["minValueForMeanInCol"]
-            max_bound = test_params["maxValueForMeanInCol"]
-
-            def is_violation_mean(value: object) -> bool:
-                return not (min_bound <= value <= max_bound)
-
             dfs = self.runner if isinstance(self.runner, list) else [self.runner]
 
             dimension_aggregates = defaultdict(
@@ -160,7 +132,7 @@ class ColumnValueMeanToBeBetweenValidator(
                 mean_value = total_sum / total_count
 
                 # Statistical validator: when mean fails, ALL rows in dimension fail
-                failed_count = total_rows if is_violation_mean(mean_value) else 0
+                failed_count = total_rows if checker.check_pandas(mean_value) else 0
 
                 results_data.append(
                     {
@@ -204,7 +176,7 @@ class ColumnValueMeanToBeBetweenValidator(
                     exclude_from_final=[Metrics.SUM.name, Metrics.COUNT.name],
                     top_n=DEFAULT_TOP_DIMENSIONS,
                     violation_metric=Metrics.MEAN.name,
-                    violation_predicate=is_violation_mean,
+                    violation_predicate=checker.check_pandas,
                 )
 
                 for row_dict in results_df.to_dict("records"):

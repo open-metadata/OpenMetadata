@@ -47,29 +47,6 @@ class ColumnValuesToBeInSetValidator(
 ):
     """Validator for column value to be in set test case"""
 
-    def _get_column_name(self, column_name: Optional[str] = None) -> SQALikeColumn:
-        """Get column object for the given column name
-
-        If column_name is None, returns the main column being validated.
-        If column_name is provided, returns the column object for that specific column.
-
-        Args:
-            column_name: Optional column name. If None, returns the main validation column.
-
-        Returns:
-            SQALikeColumn: Column object
-        """
-        if column_name is None:
-            return self.get_column_name(
-                self.test_case.entityLink.root,
-                self.runner,
-            )
-        else:
-            return self.get_column_name(
-                column_name,
-                self.runner,
-            )
-
     def _run_results(
         self, metric: Metrics, column: SQALikeColumn, **kwargs
     ) -> Optional[int]:

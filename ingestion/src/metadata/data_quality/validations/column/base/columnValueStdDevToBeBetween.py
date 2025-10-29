@@ -73,9 +73,5 @@ class BaseColumnValueStdDevToBeBetweenValidator(BaseTestValidator):
         )
 
     @abstractmethod
-    def _get_column_name(self):
-        raise NotImplementedError
-
-    @abstractmethod
     def _run_results(self, metric: Metrics, column: Union[SQALikeColumn, Column]):
         raise NotImplementedError
