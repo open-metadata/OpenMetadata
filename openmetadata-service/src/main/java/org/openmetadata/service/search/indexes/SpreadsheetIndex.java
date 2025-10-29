@@ -37,6 +37,8 @@ public class SpreadsheetIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", tags);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", spreadsheet.getServiceType());
     doc.put("service", getEntityWithDisplayName(spreadsheet.getService()));
     doc.put("directory", getEntityWithDisplayName(spreadsheet.getDirectory()));
