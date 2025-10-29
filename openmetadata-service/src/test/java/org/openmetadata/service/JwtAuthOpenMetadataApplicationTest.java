@@ -266,6 +266,9 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
       String nativeMigrationSQLPath,
       String extensionSQLScriptRootPath,
       boolean forceMigrations) {
+    // Clear any stale state from previous tests
+    Entity.cleanup();
+
     DatasourceConfig.initialize(connType.label);
     MigrationWorkflow workflow =
         new MigrationWorkflow(
@@ -279,6 +282,7 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
     // Initialize search repository
     SearchRepository searchRepository = new SearchRepository(getEsConfig(), 50);
     Entity.setSearchRepository(searchRepository);
+    Entity.setJdbi(jdbi);
     Entity.setCollectionDAO(getDao(jdbi));
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.initializeRepositories(config, jdbi);
@@ -288,7 +292,6 @@ public abstract class JwtAuthOpenMetadataApplicationTest {
     SettingsCache.initialize(config);
     ApplicationHandler.initialize(config);
     ApplicationContext.initialize();
-    Entity.cleanup();
   }
 
   protected OpenMetadataApplicationConfig readTestAppConfig(String path)
