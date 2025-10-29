@@ -49,8 +49,8 @@
       "type": "string",
       "default": null
     },
-    "schema": {
-      "description": "Optional schema to use for query execution (selected by user in QueryRunner Studio). Service-specific name (e.g., Snowflake schema).",
+    "databaseSchema": {
+      "description": "Optional database schema to use for query execution (selected by user in QueryRunner Studio). Service-specific name (e.g., Snowflake schema). Named 'databaseSchema' instead of 'schema' to avoid conflicts with Pydantic's BaseModel.schema() method.",
       "type": "string",
       "default": null
     }
