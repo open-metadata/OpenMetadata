@@ -67,6 +67,7 @@ import {
 import {
   getApplicationDetailsPath,
   getBotsPath,
+  getClassificationTagPath,
   getDomainDetailsPath,
   getEditWebhookPath,
   getEntityDetailsPath,
@@ -218,6 +219,7 @@ class EntityUtilClassBase {
         );
       case SearchIndex.TAG:
       case EntityType.TAG:
+        return getClassificationTagPath(fullyQualifiedName, tab, subTab);
       case EntityType.CLASSIFICATION:
         return getTagsDetailsPath(fullyQualifiedName);
 
@@ -259,7 +261,7 @@ class EntityUtilClassBase {
 
       case EntityType.DOMAIN:
       case SearchIndex.DOMAIN:
-        return getDomainDetailsPath(fullyQualifiedName, tab);
+        return getDomainDetailsPath(fullyQualifiedName, tab, subTab);
 
       case EntityType.DATA_PRODUCT:
       case SearchIndex.DATA_PRODUCT:
@@ -574,6 +576,11 @@ class EntityUtilClassBase {
       this.getEntityTypeLookupMap().get(normalizedKey) ??
       serviceType
     );
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public shouldShowEntityStatus(entityType: string): boolean {
+    return false;
   }
 }
 
