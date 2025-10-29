@@ -1,3 +1,4 @@
+/* eslint-disable i18next/no-literal-string */
 /*
  *  Copyright 2022 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +19,14 @@ import { useLineageProvider } from '../../../context/LineageProvider/LineageProv
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { LineageLayer } from '../../../generated/configuration/lineageSettings';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import DownloadIcon from '@mui/icons-material/SaveAlt';
+
+import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
+
 import LineageNodeRemoveButton from '../../Lineage/LineageNodeRemoveButton';
 import './custom-node.less';
 import {
@@ -32,6 +41,8 @@ import {
 } from './EntityLineage.interface';
 import LineageNodeLabelV1 from './LineageNodeLabelV1';
 import NodeChildren from './NodeChildren/NodeChildren.component';
+import { Divider, IconButton, Menu, MenuItem } from '@mui/material';
+import { Button } from 'antd';
 
 const NodeHandles = memo(
   ({
@@ -143,6 +154,71 @@ const ExpandCollapseHandles = memo(
   }
 );
 
+const MeatballMenu = () => {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+
+  const handleClose = () => {
+    setAnchorEl(null);
+  };
+
+  return (
+    <div className="manage-node">
+      <IconButton
+        aria-controls={open ? 'menu' : undefined}
+        aria-haspopup="true"
+        aria-label="more options"
+        onClick={(e) => {
+          e.stopPropagation();
+          setAnchorEl(e.currentTarget);
+        }}>
+        <MoreVertIcon sx={{ pointerEvents: 'none' }} />
+      </IconButton>
+
+      <Menu
+        PaperProps={{
+          elevation: 2,
+          sx: {
+            mt: 1,
+            minWidth: 150,
+          },
+        }}
+        anchorEl={anchorEl}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        className="manage-node-menu"
+        id="menu"
+        open={open}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'left',
+        }}
+        onClick={(e) => {
+          e.stopPropagation();
+        }}
+        onClose={() => setAnchorEl(null)}>
+        <MenuItem onClick={handleClose}>
+          <ArrowBackIcon />
+          Edit Upstream
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <ArrowForwardIcon />
+          Edit DownStream
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={handleClose}>
+          <TrendingDownIcon />
+          View Impact
+        </MenuItem>
+        <MenuItem onClick={handleClose}>
+          <DownloadIcon /> Download Impact
+        </MenuItem>
+      </Menu>
+    </div>
+  );
+};
 const CustomNodeV1 = (props: NodeProps) => {
   const { data, type, isConnectable } = props;
   const { t } = useTranslation();
@@ -156,7 +232,6 @@ const CustomNodeV1 = (props: NodeProps) => {
     loadChildNodesHandler,
     activeLayer,
     dataQualityLineage,
-    redraw,
   } = useLineageProvider();
 
   const {
@@ -271,7 +346,6 @@ const CustomNodeV1 = (props: NodeProps) => {
           <div className="lineage-node-badge" />
         </div>
       )}
-
       <NodeHandles
         expandCollapseHandles={handlesElement}
         id={id}
@@ -282,6 +356,7 @@ const CustomNodeV1 = (props: NodeProps) => {
         <div className="label-container bg-white">{nodeLabel}</div>
         <NodeChildren isConnectable={isConnectable} node={node} />
       </div>
+      <MeatballMenu />
     </div>
   );
 };
