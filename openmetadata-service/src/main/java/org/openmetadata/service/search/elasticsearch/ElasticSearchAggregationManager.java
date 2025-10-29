@@ -162,16 +162,7 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
 
-      // Serialize entire response to JSON
-      JsonpMapper jsonpMapper = client._transport().jsonpMapper();
-      jakarta.json.spi.JsonProvider provider = jsonpMapper.jsonProvider();
-      java.io.StringWriter stringWriter = new java.io.StringWriter();
-      jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
-
-      searchResponse.serialize(generator, jsonpMapper);
-      generator.close();
-
-      String responseJson = stringWriter.toString();
+      String responseJson = serializeSearchResponse(searchResponse);
       return Response.status(Response.Status.OK).entity(responseJson).build();
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
@@ -216,35 +207,8 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
 
-      // Extract aggregations directly from the response
-      Map<String, es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate>
-          aggregationsMap = searchResponse.aggregations();
-
-      if (aggregationsMap == null || aggregationsMap.isEmpty()) {
-        return SearchIndexUtils.parseAggregationResults(
-            Optional.empty(), aggregationMetadata.getAggregationMetadata());
-      }
-
-      // Serialize aggregations to JSON for parsing
-      JsonpMapper mapper = client._transport().jsonpMapper();
-      jakarta.json.spi.JsonProvider provider = mapper.jsonProvider();
-      java.io.StringWriter stringWriter = new java.io.StringWriter();
-      jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
-
-      generator.writeStartObject();
-      generator.writeKey("aggregations");
-      generator.writeStartObject();
-      for (Map.Entry<String, es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate>
-          entry : aggregationsMap.entrySet()) {
-        generator.writeKey(entry.getKey());
-        entry.getValue().serialize(generator, mapper);
-      }
-      generator.writeEnd();
-      generator.writeEnd();
-      generator.close();
-
-      String aggregationsJson = stringWriter.toString();
-      JsonObject jsonResponse = JsonUtils.readJson(aggregationsJson).asJsonObject();
+      String response = serializeSearchResponse(searchResponse);
+      JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
       Optional<JsonObject> aggregationResults =
           Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
       return SearchIndexUtils.parseAggregationResults(
@@ -319,34 +283,30 @@ public class ElasticSearchAggregationManager implements AggregationManagementCli
       SearchResponse<JsonData> searchResponse =
           client.search(searchRequestBuilder.build(), JsonData.class);
 
-      // Extract aggregations directly from the response
-      Map<String, es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate>
-          aggregationsMap = searchResponse.aggregations();
-
-      if (aggregationsMap == null || aggregationsMap.isEmpty()) {
-        return null;
-      }
-
-      // Serialize aggregations to JSON for parsing
-      JsonpMapper mapper = client._transport().jsonpMapper();
-      jakarta.json.spi.JsonProvider provider = mapper.jsonProvider();
-      java.io.StringWriter stringWriter = new java.io.StringWriter();
-      jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
-
-      generator.writeStartObject();
-      for (Map.Entry<String, es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate>
-          entry : aggregationsMap.entrySet()) {
-        generator.writeKey(entry.getKey());
-        entry.getValue().serialize(generator, mapper);
-      }
-      generator.writeEnd();
-      generator.close();
-
-      String aggregationsJson = stringWriter.toString();
-      return JsonUtils.readJson(aggregationsJson).asJsonObject();
+      String response = serializeSearchResponse(searchResponse);
+      JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
+      return jsonResponse.getJsonObject("aggregations");
     } catch (Exception e) {
       LOG.error("Failed to execute aggregation", e);
       throw new IOException("Failed to execute aggregation: " + e.getMessage(), e);
     }
+  }
+
+  /**
+   * Serializes a SearchResponse to JSON string.
+   *
+   * @param searchResponse the SearchResponse to serialize
+   * @return JSON string representation of the response
+   */
+  private String serializeSearchResponse(SearchResponse<JsonData> searchResponse) {
+    JsonpMapper jsonpMapper = client._transport().jsonpMapper();
+    jakarta.json.spi.JsonProvider provider = jsonpMapper.jsonProvider();
+    java.io.StringWriter stringWriter = new java.io.StringWriter();
+    jakarta.json.stream.JsonGenerator generator = provider.createGenerator(stringWriter);
+
+    searchResponse.serialize(generator, jsonpMapper);
+    generator.close();
+
+    return stringWriter.toString();
   }
 }
