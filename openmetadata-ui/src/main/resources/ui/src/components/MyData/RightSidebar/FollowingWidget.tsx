@@ -268,7 +268,6 @@ function FollowingWidget({
         sortOptions={FOLLOWING_WIDGET_FILTER_OPTIONS}
         title={t('label.following-assets')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleEntityFilterChange({ key })}
         onTitleClick={() =>
           navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.FOLLOWING))

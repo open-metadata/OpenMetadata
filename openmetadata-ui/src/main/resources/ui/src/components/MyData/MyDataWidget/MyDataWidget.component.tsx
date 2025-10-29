@@ -281,7 +281,6 @@ const MyDataWidgetInternal = ({
         sortOptions={MY_DATA_WIDGET_FILTER_OPTIONS}
         title={t('label.my-data')}
         widgetKey={widgetKey}
-        widgetWidth={widgetData?.w}
         onSortChange={(key) => handleFilterChange({ key })}
         onTitleClick={() =>
           navigate(getUserPath(currentUser?.name ?? '', UserPageTabs.MY_DATA))
