@@ -26,6 +26,7 @@ import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { compare } from 'fast-json-patch';
 import {
   AuthenticationConfiguration,
   AuthorizerConfiguration,
@@ -58,7 +59,6 @@ import {
   createDOMFocusHandler,
   createFreshFormData,
   findChangedFields,
-  generatePatches,
   getProviderDisplayName,
   getProviderIcon,
   handleClientTypeChange,
@@ -633,7 +633,7 @@ const SSOConfigurationFormRJSF = ({
         return false;
       }
 
-      const allPatches = generatePatches(savedData, cleanedFormData);
+      const allPatches = compare(savedData, cleanedFormData);
       if (allPatches.length > 0) {
         await patchSecurityConfiguration(allPatches);
       }
