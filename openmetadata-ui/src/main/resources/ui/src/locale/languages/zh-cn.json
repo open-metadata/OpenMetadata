@@ -683,6 +683,7 @@
     "failed": "失败",
     "failed-entity": "Failed {{entity}}",
     "failed-event-plural": "失败事件",
+    "failed-slash-aborted-reason": "失败/中止原因",
     "failed-to-upload-file": "上传文件失败",
     "failing-subscription-id": "Failing Subscription Id",
     "failure-comment": "失败信息",
