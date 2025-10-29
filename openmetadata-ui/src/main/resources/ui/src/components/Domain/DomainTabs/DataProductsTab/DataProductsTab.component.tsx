@@ -42,7 +42,10 @@ import { SourceType } from '../../../SearchedData/SearchedData.interface';
 import { DataProductsTabProps } from './DataProductsTab.interface';
 
 const DataProductsTab = forwardRef(
-  ({ permissions, onAddDataProduct }: DataProductsTabProps, ref) => {
+  (
+    { permissions, onAddDataProduct, domainName }: DataProductsTabProps,
+    ref
+  ) => {
     const { t } = useTranslation();
     const { fqn: domainFqn } = useFqn();
     const [dataProducts, setDataProducts] = useState<
@@ -63,7 +66,7 @@ const DataProductsTab = forwardRef(
           pageNumber: 1,
           pageSize: PAGE_SIZE_LARGE,
           queryFilter: getTermQuery({
-            'domains.fullyQualifiedName': domainFqn ?? '',
+            'domains.fullyQualifiedName': domainFqn || domainName || '',
           }),
           searchIndex: SearchIndex.DATA_PRODUCT,
         });
@@ -108,6 +111,7 @@ const DataProductsTab = forwardRef(
     if (isEmpty(dataProducts.data) && !loading) {
       return (
         <ErrorPlaceHolder
+          className="p-lg"
           heading={t('label.data-product')}
           permission={permissions.Create}
           permissionValue={t('label.create-entity', {

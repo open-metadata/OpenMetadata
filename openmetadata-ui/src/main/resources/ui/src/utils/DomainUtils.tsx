@@ -441,6 +441,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.DATA_PRODUCTS,
             children: (
               <DataProductsTab
+                domainName={domain.fullyQualifiedName}
                 permissions={domainPermission}
                 ref={dataProductsTabRef}
                 onAddDataProduct={onAddDataProduct}
@@ -508,6 +509,7 @@ export const getDomainDetailTabs = ({
             key: EntityTabs.CUSTOM_PROPERTIES,
             children: (
               <CustomPropertyTable<EntityType.DOMAIN>
+                className="p-lg"
                 entityType={EntityType.DOMAIN}
                 hasEditAccess={getPrioritizedEditPermission(
                   domainPermission,

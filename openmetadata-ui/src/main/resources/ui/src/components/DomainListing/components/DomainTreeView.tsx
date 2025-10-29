@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { ExpandCircleDownOutlined } from '@mui/icons-material';
 import { Box, Chip, Typography, useTheme } from '@mui/material';
 import { SimpleTreeView, TreeItem, treeItemClasses } from '@mui/x-tree-view';
 import { AxiosError } from 'axios';
-import { compare } from 'fast-json-patch';
+import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as ArrowCircleDown } from '../../../assets/svg/arrow-circle-down.svg';
+import { BORDER_COLOR } from '../../../constants/constants';
 import { EntityTabs, TabSpecificField } from '../../../enums/entity.enum';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
@@ -86,11 +87,11 @@ const DomainTreeView = ({
     const parents: DomainParentMap = {};
 
     const traverse = (nodes: Domain[], parentFqn?: string) => {
-      nodes.forEach((node) => {
+      for (const node of nodes) {
         const identifier = node.fullyQualifiedName || node.name || node.id;
 
         if (!identifier) {
-          return;
+          continue;
         }
 
         map[identifier] = node;
@@ -104,7 +105,7 @@ const DomainTreeView = ({
         if (childDomains.length) {
           traverse(childDomains, identifier);
         }
-      });
+      }
     };
 
     traverse(domains);
@@ -232,7 +233,7 @@ const DomainTreeView = ({
   }, [selectedFqn]);
 
   const handleSelectionChange = useCallback(
-    (value: string | string[]) => {
+    (value: string | string[] | null) => {
       const nextFqn = Array.isArray(value) ? value[0] : value;
       if (!nextFqn || nextFqn === selectedFqnRef.current) {
         return;
@@ -262,9 +263,15 @@ const DomainTreeView = ({
         return;
       }
 
-      const jsonPatch = compare(selectedDomain, updatedData) as Operation[];
+      const jsonPatch = compare(
+        selectedDomain,
+        updatedData
+      ) as unknown as Operation[];
       try {
-        const response = await patchDomains(selectedDomain.id, jsonPatch);
+        const response = await patchDomains(
+          selectedDomain.id,
+          jsonPatch as unknown as JsonPathOperation[]
+        );
         setSelectedDomain(response);
 
         if (response.fullyQualifiedName) {
@@ -279,17 +286,14 @@ const DomainTreeView = ({
     [refreshAll, selectedDomain]
   );
 
-  const handleDomainDelete = useCallback(
-    async (_id: string) => {
-      const parentFqn =
-        selectedDomain?.parent?.fullyQualifiedName ??
-        parentMap[selectedFqnRef.current ?? ''];
-      setSelectedDomain(null);
-      setSelectedFqn(parentFqn ?? null);
-      await refreshAll();
-    },
-    [parentMap, refreshAll, selectedDomain]
-  );
+  const handleDomainDelete = useCallback(async () => {
+    const parentFqn =
+      selectedDomain?.parent?.fullyQualifiedName ??
+      parentMap[selectedFqnRef.current ?? ''];
+    setSelectedDomain(null);
+    setSelectedFqn(parentFqn ?? null);
+    await refreshAll();
+  }, [parentMap, refreshAll, selectedDomain]);
 
   const followDomain = useCallback(async () => {
     if (!selectedDomain?.id || !currentUserId) {
@@ -377,17 +381,15 @@ const DomainTreeView = ({
 
   const handleNavigate = useCallback(
     (path: string) => {
-      const match = path.match(/^\/domain\/([^/]+)(?:\/([^/]+))?/);
+      const regex = /^\/domain\/([^/]+)(?:\/([^/]+))?/;
+      const match = regex.exec(path);
       if (match) {
         const decodedFqn = getDecodedFqn(match[1]);
         setSelectedFqn(decodedFqn);
 
         const requestedTab = match[2] as EntityTabs | undefined;
-        if (
-          requestedTab &&
-          Object.values(EntityTabs).includes(requestedTab as EntityTabs)
-        ) {
-          setActiveTab(requestedTab as EntityTabs);
+        if (requestedTab && Object.values(EntityTabs).includes(requestedTab)) {
+          setActiveTab(requestedTab);
         } else {
           setActiveTab(EntityTabs.DOCUMENTATION);
         }
@@ -436,8 +438,10 @@ const DomainTreeView = ({
                     size="small"
                     sx={{
                       height: 20,
-                      backgroundColor: theme.palette.allShades?.gray?.[100],
-                      color: theme.palette.allShades?.gray?.[700],
+                      border: 'none',
+                      color: theme.palette.allShades?.gray?.[800],
+                      fontWeight: theme.typography.fontWeightRegular,
+                      backgroundColor: theme.palette.allShades?.blueGray?.[100],
                     }}
                   />
                 )}
@@ -449,6 +453,156 @@ const DomainTreeView = ({
       }),
     [childIndent, connectorOffset, outlineColor, theme.palette.allShades?.gray]
   );
+
+  const renderDomainSection = () => {
+    if (isDomainLoading) {
+      return <Loader />;
+    }
+
+    if (selectedDomain) {
+      return (
+        <DomainDetails
+          activeTab={activeTab}
+          domain={selectedDomain}
+          handleFollowingClick={handleFollowingToggle}
+          isFollowing={isFollowing}
+          isFollowingLoading={isFollowingLoading}
+          onActiveTabChange={setActiveTab}
+          onDelete={handleDomainDelete}
+          onNavigate={handleNavigate}
+          onUpdate={handleDomainUpdate}
+        />
+      );
+    }
+
+    return (
+      <Typography sx={{ color: 'text.secondary', mt: 2 }} variant="body2">
+        {t('message.no-entity-selected', {
+          entity: t('label.domain'),
+        })}
+      </Typography>
+    );
+  };
+
+  const renderHierarchySection = () => {
+    if (isHierarchyLoading) {
+      return <Loader />;
+    }
+
+    if (hierarchy.length === 0) {
+      return (
+        <Typography sx={{ color: 'text.secondary', mt: 2 }} variant="body2">
+          {t('message.no-entity-available', {
+            entity: t('label.domain-plural'),
+          })}
+        </Typography>
+      );
+    }
+
+    return (
+      <SimpleTreeView
+        expandedItems={expandedItems}
+        selectedItems={selectedFqn}
+        slots={{
+          expandIcon: ArrowCircleDown,
+          collapseIcon: ArrowCircleDown,
+        }}
+        sx={{
+          '--tree-item-center': '22px',
+          '& .MuiTreeItem-content': {
+            borderRadius: 1,
+            gap: 3,
+            p: 0,
+            mb: 1.5,
+            display: 'flex',
+            alignItems: 'center',
+            position: 'relative',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              left: '-20px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: '12px',
+              height: '1px',
+              background: theme.palette.allShades?.gray?.[200],
+              zIndex: 0,
+            },
+          },
+
+          '& .MuiTreeItem-label': { p: 1 },
+          '& .MuiChip-root': { px: 3 },
+          '& .MuiChip-label': { fontSize: '10px' },
+
+          '& .MuiTreeItem-iconContainer:empty': { display: 'none' },
+
+          [`& .${treeItemClasses.groupTransition}`]: {
+            ml: 3,
+            pl: 5,
+            position: 'relative',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              bottom: '22px',
+              width: '1px',
+              background: theme.palette.allShades?.gray?.[200],
+              zIndex: 0,
+            },
+          },
+
+          '& .MuiTreeItem-root:last-of-type, & .MuiTreeItem-group > .MuiTreeItem-root:last-of-type':
+            {
+              mb: 0,
+            },
+
+          '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
+            '&:hover, &.Mui-selected': {
+              backgroundColor: theme.palette.allShades?.blue?.[50],
+            },
+          },
+
+          '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:not(:empty))':
+            {
+              '&:hover, &.Mui-selected': {
+                backgroundColor: 'transparent !important',
+              },
+              '&:hover .MuiTreeItem-label': {
+                backgroundColor: '#0000000A',
+                borderRadius: '8px',
+              },
+              '&.Mui-selected .MuiTreeItem-label': {
+                backgroundColor: theme.palette.allShades?.blue?.[50],
+                borderRadius: '8px',
+              },
+            },
+          'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg))':
+            {
+              pl: '36px !important',
+            },
+          'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg)) li .MuiTreeItem-content::before':
+            {
+              left: '-35px',
+              width: '28px',
+            },
+          'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content::before':
+            {
+              borderBottom: `1px dashed ${BORDER_COLOR}`,
+              backgroundColor: 'transparent',
+            },
+          'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]) .MuiCollapse-vertical::before':
+            {
+              borderLeft: `1px dashed ${BORDER_COLOR}`,
+              backgroundColor: 'transparent',
+            },
+        }}
+        onExpandedItemsChange={handleExpandedChange}
+        onSelectedItemsChange={(_, value) => handleSelectionChange(value)}>
+        {renderTreeItems(hierarchy)}
+      </SimpleTreeView>
+    );
+  };
 
   return (
     <Box
@@ -466,84 +620,7 @@ const DomainTreeView = ({
           mr: 1,
           overflowY: 'auto',
         }}>
-        {isHierarchyLoading ? (
-          <Loader />
-        ) : hierarchy.length === 0 ? (
-          <Typography sx={{ color: 'text.secondary', mt: 2 }} variant="body2">
-            {t('message.no-entity-available', {
-              entity: t('label.domain-plural'),
-            })}
-          </Typography>
-        ) : (
-          <SimpleTreeView
-            expandedItems={expandedItems}
-            selectedItems={selectedFqn}
-            slots={{
-              expandIcon: ExpandCircleDownOutlined,
-              collapseIcon: ExpandCircleDownOutlined,
-            }}
-            sx={{
-              // CSS variable: distance from the bottom of the group to where vertical line should stop.
-              // This should equal half of the tree item height (center of item). Adjust if needed.
-              '--tree-item-center': '22px',
-
-              '& .MuiTreeItem-content': {
-                borderRadius: 0.5,
-                gap: 3,
-                p: 1,
-                mb: 1.5,
-                display: 'flex',
-                alignItems: 'center',
-                position: 'relative', // needed for content ::before horizontal
-                // horizontal connector for the child item
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: '-20px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  width: '12px', // horizontal length
-                  height: '1px', // thickness of horizontal line
-                  background: theme.palette.allShades?.gray?.[200],
-                  zIndex: 0,
-                },
-              },
-
-              // Hide empty icon container (from previous)
-              '& .MuiTreeItem-iconContainer:empty': {
-                display: 'none',
-              },
-
-              // Group container: vertical connector that stops above the child's center
-              // so the child's horizontal connector can join it.
-              [`& .${treeItemClasses.groupTransition}`]: {
-                ml: 3,
-                pl: 5,
-                position: 'relative',
-                '&::before': {
-                  content: '""',
-                  position: 'absolute',
-                  left: 0, // x position of the vertical line
-                  top: 0,
-                  bottom: '22px', // stop above the child's center
-                  width: '1px',
-                  background: theme.palette.allShades?.gray?.[200],
-                  zIndex: 0,
-                },
-              },
-
-              '& > .MuiTreeItem-root:last-of-type': {
-                marginBottom: 0,
-              },
-              '& .MuiTreeItem-group > .MuiTreeItem-root:last-of-type': {
-                marginBottom: 0,
-              },
-            }}
-            onExpandedItemsChange={handleExpandedChange}
-            onSelectedItemsChange={(_, value) => handleSelectionChange(value)}>
-            {renderTreeItems(hierarchy)}
-          </SimpleTreeView>
-        )}
+        {renderHierarchySection()}
       </Box>
 
       <Box
@@ -553,27 +630,7 @@ const DomainTreeView = ({
           maxHeight: 'calc(80vh - 160px)',
           pt: 3,
         }}>
-        {isDomainLoading ? (
-          <Loader />
-        ) : selectedDomain ? (
-          <DomainDetails
-            activeTab={activeTab}
-            domain={selectedDomain}
-            handleFollowingClick={handleFollowingToggle}
-            isFollowing={isFollowing}
-            isFollowingLoading={isFollowingLoading}
-            onActiveTabChange={setActiveTab}
-            onDelete={handleDomainDelete}
-            onNavigate={handleNavigate}
-            onUpdate={handleDomainUpdate}
-          />
-        ) : (
-          <Typography sx={{ color: 'text.secondary', mt: 2 }} variant="body2">
-            {t('message.no-entity-selected', {
-              entity: t('label.domain'),
-            })}
-          </Typography>
-        )}
+        {renderDomainSection()}
       </Box>
     </Box>
   );
