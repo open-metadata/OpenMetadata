@@ -1138,16 +1138,15 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   );
 
   const extraTableFilters = useMemo(() => {
-    const getExpandCollapseLabel = () => {
-      if (isExpandingAll) {
-        return t('label.loading');
-      }
-      if (isAllExpanded) {
-        return t('label.collapse-all');
-      }
+    let expandCollapseLabel = '';
 
-      return t('label.expand-all');
-    };
+    if (isExpandingAll) {
+      expandCollapseLabel = t('label.loading');
+    } else if (isAllExpanded) {
+      expandCollapseLabel = t('label.collapse-all');
+    } else {
+      expandCollapseLabel = t('label.expand-all');
+    }
 
     return (
       <>
@@ -1198,7 +1197,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 height="14px"
               />
             )}
-            {getExpandCollapseLabel()}
+            {expandCollapseLabel}
           </Space>
         </Button>
       </>
@@ -1467,6 +1466,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const isSearchActive = Boolean(searchTerm && searchTerm.trim().length > 0);
   const hasNoTerms = isEmpty(glossaryTerms);
 
+  const glossaryPlaceholderText = useMemo(() => {
+    if (isSearchActive && searchTerm) {
+      return `No Glossary Term found for "${searchTerm}"`;
+    }
+    if (isSearchActive) {
+      return 'No Glossary Term found';
+    }
+
+    return 'No Glossary Terms';
+  }, [isSearchActive, searchTerm]);
+
   // Special case: if there are truly no terms in the glossary at all (not just search results)
   // and no search is active, show the full placeholder
   if (hasNoTerms && !isSearchActive && !isTableLoading) {
@@ -1491,17 +1501,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       </div>
     );
   }
-
-  const getGlossaryPlaceholderText = () => {
-    if (isSearchActive && searchTerm) {
-      return `No Glossary Term found for "${searchTerm}"`;
-    }
-    if (isSearchActive) {
-      return 'No Glossary Term found';
-    }
-
-    return 'No Glossary Terms';
-  };
 
   return (
     <Row className={className} gutter={[0, 16]}>
@@ -1566,7 +1565,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 emptyText: (
                   <ErrorPlaceHolder
                     className="p-md"
-                    placeholderText={getGlossaryPlaceholderText()}
+                    placeholderText={glossaryPlaceholderText}
                     type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
                   />
                 ),
