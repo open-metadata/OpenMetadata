@@ -315,7 +315,7 @@ class PowerbiSource(DashboardServiceSource):
         """
         return (
             f"{clean_uri(self.service_connection.hostPort)}/groups/"
-            f"{workspace_id}/datasets/{dataset_id}?experience=power-bi"
+            f"{workspace_id}/datasets/{dataset_id}/details?experience=power-bi"
         )
 
     def _get_dataflow_url(self, workspace_id: str, dataflow_id: str) -> str:
