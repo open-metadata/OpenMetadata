@@ -756,6 +756,10 @@ test.describe('Glossary tests', () => {
         );
         await page.getByTestId('assets').click();
         await queryRes;
+        await page.waitForLoadState('networkidle');
+        await page.waitForSelector('[data-testid="loader"]', {
+          state: 'detached',
+        });
         await page.waitForSelector('.ant-tabs-tab-active:has-text("Assets")');
 
         await expect(

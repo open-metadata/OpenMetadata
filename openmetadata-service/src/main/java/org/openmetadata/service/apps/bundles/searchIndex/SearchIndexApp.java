@@ -271,7 +271,9 @@ public class SearchIndexApp extends AbstractNativeApplication {
           .forEach(
               entityType -> {
                 try {
-                  finalizeEntityReindex(entityType, finalSuccess);
+                  // Always promote indices regardless of failures
+                  // This handles common scenarios like partial deletions and corrupted data
+                  finalizeEntityReindex(entityType, true);
                 } catch (Exception ex) {
                   LOG.error("Failed to finalize reindex for entity: {}", entityType, ex);
                 }

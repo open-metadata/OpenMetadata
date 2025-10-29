@@ -37,6 +37,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
   timestamp,
   feedType,
   task,
+  isConversationFeed = false,
 }) => {
   const { t } = useTranslation();
   const { task: taskDetails } = task ?? {};
@@ -95,7 +96,7 @@ const NotificationFeedCard: FC<NotificationFeedProp> = ({
     <Link
       className="no-underline"
       to={
-        feedType === ThreadType.Conversation
+        isConversationFeed
           ? prepareFeedLink(entityType, entityFQN, ActivityFeedTabs.ALL)
           : getTaskDetailPath(task)
       }>

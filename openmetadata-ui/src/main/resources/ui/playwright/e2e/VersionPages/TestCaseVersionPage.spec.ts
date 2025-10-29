@@ -45,7 +45,9 @@ test.describe('TestCase Version Page', () => {
     const testCase = table1.testCasesResponseData[0];
 
     await redirectToHomePage(page);
-    await page.goto(`/test-case/${testCase.fullyQualifiedName}`);
+    await page.goto(
+      `/test-case/${encodeURIComponent(testCase.fullyQualifiedName)}`
+    );
     await page.waitForLoadState('networkidle');
     await page.waitForSelector('[data-testid="loader"]', {
       state: 'detached',

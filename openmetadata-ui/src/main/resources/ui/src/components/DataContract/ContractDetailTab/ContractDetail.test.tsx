@@ -103,9 +103,9 @@ jest.mock('../ContractSLACard/ContractSLA.component', () =>
     ))
 );
 
-jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => {
+jest.mock('../../common/RichTextEditor/RichTextEditorPreviewerV1', () => {
   return jest.fn().mockImplementation(() => {
-    return <div>RichTextEditorPreviewerNew</div>;
+    return <div>RichTextEditorPreviewerV1</div>;
   });
 });
 
@@ -240,8 +240,7 @@ describe('ContractDetail', () => {
 
       expect(screen.getByText('Test Contract')).toBeInTheDocument();
       expect(screen.getByText('label.description')).toBeInTheDocument();
-
-      expect(screen.getAllByText('RichTextEditorPreviewerNew')).toHaveLength(2);
+      expect(screen.getByText('RichTextEditorPreviewerV1')).toBeInTheDocument();
     });
 
     it('should display contract actions', () => {

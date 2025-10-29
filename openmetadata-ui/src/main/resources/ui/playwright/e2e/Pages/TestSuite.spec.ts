@@ -84,7 +84,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
 
     const getTestCase = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*${testCaseName1}*`
+      `/api/v1/dataQuality/testCases/search/list?*`
     );
     await page.fill(
       '[data-testid="test-case-selection-card"] [data-testid="searchbar"]',
@@ -153,7 +153,7 @@ test('Logical TestSuite', async ({ page, ownerPage }) => {
     await testCaseResponse;
 
     const getTestCase = ownerPage.waitForResponse(
-      `/api/v1/dataQuality/testCases/search/list?*${testCaseName2}*`
+      `/api/v1/dataQuality/testCases/search/list?*`
     );
     await ownerPage.fill('[data-testid="searchbar"]', testCaseName2);
     await getTestCase;

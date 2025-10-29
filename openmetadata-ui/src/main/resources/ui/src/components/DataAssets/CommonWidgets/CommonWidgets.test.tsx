@@ -233,7 +233,7 @@ describe('CommonWidgets', () => {
       />
     );
 
-    expect(screen.getByTestId('owner-label-widget')).toBeInTheDocument();
+    expect(screen.getByTestId('domain-expert-name')).toBeInTheDocument();
   });
 
   it('should call commonWidgetClassBase.getCommonWidgetsFromConfig for unknown widget type', () => {

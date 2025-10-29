@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import React, { act } from 'react';
+import * as reactRouterDom from 'react-router-dom';
 import { Severities } from '../../../../generated/tests/testCaseResolutionStatus';
 import {
   MOCK_TEST_CASE_DATA,
@@ -289,5 +290,25 @@ describe('Incident Manager Page Header component', () => {
     // If Column is present
     expect(screen.getByText('label.column')).toBeInTheDocument();
     expect(screen.getByText('getColumnNameFromEntityLink')).toBeInTheDocument();
+  });
+
+  it('should handle FQN from URL params without double decoding', async () => {
+    const mockUseParamsWithSpecialChars = jest.fn().mockReturnValue({
+      fqn: 'database.schema.table%test',
+    });
+
+    jest
+      .spyOn(reactRouterDom, 'useParams')
+      .mockImplementation(mockUseParamsWithSpecialChars);
+
+    render(<IncidentManagerPageHeader {...mockProps} />);
+
+    expect(mockUseActivityFeedProviderValue.getFeedData).toHaveBeenCalledWith(
+      undefined,
+      undefined,
+      'Task',
+      'testCase',
+      'database.schema.table%test'
+    );
   });
 });

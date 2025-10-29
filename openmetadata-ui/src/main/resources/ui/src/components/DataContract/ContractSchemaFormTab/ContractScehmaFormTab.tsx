@@ -26,7 +26,7 @@ import {
 import { TABLE_COLUMNS_KEYS } from '../../../constants/TableKeys.constants';
 import { EntityType, FqnPart } from '../../../enums/entity.enum';
 import { DataContract } from '../../../generated/entity/data/dataContract';
-import { Column } from '../../../generated/entity/data/table';
+import { Column, Table } from '../../../generated/entity/data/table';
 import { TagSource } from '../../../generated/tests/testCase';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
@@ -40,7 +40,8 @@ import {
 import Fqn from '../../../utils/Fqn';
 import { pruneEmptyChildren } from '../../../utils/TableUtils';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
-import Table from '../../common/Table/Table';
+import AntTable from '../../common/Table/Table';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
 import { TableCellRendered } from '../../Database/SchemaTable/SchemaTable.interface';
 import TableTags from '../../Database/TableTags/TableTags.component';
 
@@ -54,7 +55,8 @@ export const ContractSchemaFormTab: React.FC<{
 }> = ({ selectedSchema, onNext, onChange, onPrev, nextLabel, prevLabel }) => {
   const { t } = useTranslation();
   const { fqn } = useFqn();
-  const [allColumnsData, setAllColumnData] = useState<Column[]>([]);
+  const { data: tableData } = useGenericContext();
+  const [allColumnsData, setAllColumnsData] = useState<Column[]>([]);
   const [columnsData, setColumnsData] = useState<Column[]>([]);
   const [selectedKeys, setSelectedKeys] = useState<string[]>();
   const [isLoading, setIsLoading] = useState(false);
@@ -95,6 +97,17 @@ export const ContractSchemaFormTab: React.FC<{
     [allColumnsData, onChange]
   );
 
+  // Old Columns which are available in Contract but being Modified/Removed at Table Schema Level
+  const oldRemovedColumns = useMemo(() => {
+    const columnsDataFQN = new Set(
+      (tableData as Table).columns.map((col) => col.fullyQualifiedName)
+    );
+
+    return selectedSchema.filter(
+      (col) => !columnsDataFQN.has(col.fullyQualifiedName)
+    );
+  }, [selectedSchema, tableData]);
+
   const fetchTableColumns = useCallback(
     async (page = 1) => {
       if (!tableFqn) {
@@ -112,9 +125,18 @@ export const ContractSchemaFormTab: React.FC<{
         });
 
         const prunedColumns = pruneEmptyChildren(response.data);
-        setColumnsData(prunedColumns);
-        setAllColumnData((prev) => {
-          const combined = [...prev, ...selectedSchema, ...prunedColumns];
+        const oldPrunedColumns = pruneEmptyChildren(oldRemovedColumns);
+        // should render the oldPrunedColumns only on the first page, if there is pagination
+        setColumnsData(
+          offset === 0 ? [...oldPrunedColumns, ...prunedColumns] : prunedColumns
+        );
+        setAllColumnsData((prev) => {
+          const combined = [
+            ...prev,
+            ...selectedSchema,
+            ...oldPrunedColumns,
+            ...prunedColumns,
+          ];
 
           return uniqBy(combined, 'fullyQualifiedName');
         });
@@ -131,7 +153,7 @@ export const ContractSchemaFormTab: React.FC<{
       }
       setIsLoading(false);
     },
-    [tableFqn, pageSize, selectedSchema, setAllColumnData]
+    [tableFqn, pageSize, selectedSchema, oldRemovedColumns, setAllColumnsData]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -295,7 +317,7 @@ export const ContractSchemaFormTab: React.FC<{
 
   useEffect(() => {
     setSelectedKeys(
-      selectedSchema.map((item) => (item as Column).fullyQualifiedName ?? '')
+      selectedSchema.map((item) => item.fullyQualifiedName ?? '')
     );
   }, [selectedSchema]);
 
@@ -314,7 +336,7 @@ export const ContractSchemaFormTab: React.FC<{
             {t('message.data-contract-schema-description')}
           </Typography.Paragraph>
         </div>
-        <Table
+        <AntTable
           columns={columns}
           customPaginationProps={paginationProps}
           dataSource={columnsData}

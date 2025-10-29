@@ -9,3 +9,6 @@ SET json = JSON_SET(
     ) AS JSON)
 )
 WHERE JSON_CONTAINS(json, '"DBT"', '$.testPlatforms');
+
+-- Delete searchSettings to force reload from packaged searchSettings.json with field-based aggregations
+DELETE FROM openmetadata_settings WHERE configType='searchSettings';

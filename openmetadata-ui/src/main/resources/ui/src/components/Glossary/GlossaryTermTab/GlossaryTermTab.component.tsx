@@ -90,6 +90,7 @@ import {
 } from '../../../rest/glossaryAPI';
 import { Transi18next } from '../../../utils/CommonUtils';
 import { getBulkEditButton } from '../../../utils/EntityBulkEdit/EntityBulkEditUtils';
+import { EntityStatusClass } from '../../../utils/EntityStatusUtils';
 import {
   getEntityBulkEditPath,
   getEntityName,
@@ -100,7 +101,6 @@ import {
   findExpandableKeysForArray,
   glossaryTermTableColumnsWidth,
   permissionForApproveOrReject,
-  StatusClass,
 } from '../../../utils/GlossaryUtils';
 import { getGlossaryPath } from '../../../utils/RouterUtils';
 import { ownerTableObject } from '../../../utils/TableColumn.util';
@@ -844,7 +844,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                 <StatusBadge
                   dataTestId={termFQN + '-status'}
                   label={status}
-                  status={StatusClass[status as keyof typeof StatusClass]}
+                  status={EntityStatusClass[status]}
                 />
               </div>
             </Popover>
@@ -1624,7 +1624,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
                       className="p-x-xs p-y-xss"
                       dataTestId=""
                       label={EntityStatus.InReview}
-                      status={StatusClass[EntityStatus.InReview]}
+                      status={EntityStatusClass[EntityStatus.InReview]}
                     />
                   </span>
                 </span>

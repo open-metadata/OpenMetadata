@@ -48,12 +48,12 @@
       {
         "name": "classificationTags",
         "type": "terms",
-        "script": "def classificationTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Classification') { classificationTags.add(tag.tagFQN); } } } return classificationTags;"
+        "field": "classificationTags"
       },
       {
         "name": "glossaryTags",
         "type": "terms",
-        "script": "def glossaryTags = []; if (params._source.tags != null) { for (tag in params._source.tags) { if (tag.source == 'Glossary') { glossaryTags.add(tag.tagFQN); } } } return glossaryTags;"
+        "field": "glossaryTags"
       },
       {
         "name": "certification.tagLabel.tagFQN",
@@ -3636,7 +3636,7 @@
     "globalInstructions": [
       {
         "section": "QUERY GENERATION PROCESS",
-        "content": "1. Analyze the USER QUERY to identify key entities, concepts (like domain, owner, tags, data product), and filter values.\n2. Consult the provided FIELD SUMMARY for the detected entity type.\n3. Select the MOST APPROPRIATE field(s) from the summary based on their descriptions.\n4. Determine the correct query type (`match` for flexible/text search, `term` for exact/keyword search) based on the field description and the guidelines below.\n5. Construct the OpenSearch query JSON using ONLY the selected fields and types.",
+        "content": "1. Analyze the USER QUERY to identify key entities, concepts (like domain, owner, tags, data product, certification), and filter values.\n2. Consult the provided FIELD SUMMARY for the detected entity type.\n3. Select the MOST APPROPRIATE field(s) from the summary based on their descriptions.\n4. Determine the correct query type (`match` for flexible/text search, `term` for exact/keyword search) based on the field description and the guidelines below.\n5. Construct the OpenSearch query JSON using ONLY the selected fields and types.",
         "order": 1
       },
       {
@@ -3675,8 +3675,18 @@
         "order": 14
       },
       {
+        "section": "SERVICE TYPE FILTERING",
+        "content": "When a user specifies a particular service type (e.g., 'big query', 'redshift', 'snowflake', 'looker', 'tableau',...):\n1. ALWAYS add a term filter for 'serviceType' with the CANONICAL form, with lowercase and without spaces. For example, if query mentions 'Big Query', add {\"term\":{\"serviceType\":\"bigquery\"}}.",
+        "order": 15
+      },
+      {
         "section": "TIER TAG FORMATTING",
         "content": "When querying by tier, ALWAYS follow these formats:\n- For Tier 1: \"tier.tagFQN\": \"Tier.Tier1\" (not \"tier1\" or \"Tier1\")\n- For Tier 2: \"tier.tagFQN\": \"Tier.Tier2\" (not \"tier2\" or \"Tier2\")\n- For Tier 3: \"tier.tagFQN\": \"Tier.Tier3\" (not \"tier3\" or \"Tier3\")",
+        "order": 15
+      },
+      {
+        "section": "CERTIFICATION FORMATTING",
+        "content": "When querying by Certification, ALWAYS follow these formats:\n- For Gold: \"certification.tagLabel.tagFQN\": \"Certification.Gold\" (not \"gold\")\n- For Silver: \"certification.tagLabel.tagFQN\": \"Certification.Silver\" (not \"silver\")\n- For Bronze: \"certification.tagLabel.tagFQN\": \"Certification.Bronze\" (not \"bronze\")\n- Use this when asked about 'assets with gold certification' or 'gold certified assets', etc.",
         "order": 15
       },
       {
@@ -3765,6 +3775,20 @@
         ]
       },
       {
+        "query": "gold certified tables",
+        "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"certification.tagLabel.tagFQN\": \"Certification.Gold\"}}]}}",
+        "entityTypes": [
+          "table"
+        ]
+      },
+      {
+        "query": "tables with silver certification",
+        "esQuery": "{\"bool\": {\"should\": [{\"term\": {\"certification.tagLabel.tagFQN\": \"Certification.Silver\"}}]}}",
+        "entityTypes": [
+          "table"
+        ]
+      },
+      {
         "query": "tables with PII.Sensitive tag",
         "esQuery": "{\"bool\": {\"must\": [{\"term\": {\"tags.tagFQN\": \"PII.Sensitive\"}}]}}",
         "entityTypes": [
@@ -3801,6 +3825,16 @@
         "description": "Find tables with no description:",
         "query": "tables without description",
         "esQuery": "{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"term\":{\"description\":\"\"}}]}}"
+      },
+      {
+        "description": "Find all data assets owned by a specific user.",
+        "query": "All assets owned by John Doe",
+        "esQuery": "{\"bool\": {\"must\": [{\"bool\": {\"should\": [[{\"term\": {\"owners.name\": \"john\"}}, {\"term\": {\"owners.displayName.keyword\": \"john+doe\"}}]}}]}}"
+      },
+      {
+        "description": "Find tables that belong to a specific service",
+        "query": "Provide a list of all big query tables",
+        "esQuery": "{\"query\":{\"bool\":{\"must\":[{\"term\":{\"entityType\":\"table\"}},{\"bool\":{\"should\":[{\"term\":{\"serviceType\":\"bigquery\"}}]}}]}}}"
       }
     ],
     "mappingConfiguration": {

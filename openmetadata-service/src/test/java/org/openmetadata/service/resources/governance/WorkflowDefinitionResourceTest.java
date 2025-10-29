@@ -3936,9 +3936,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), noOutgoingEdgeResponse.getStatus());
     String noOutgoingEdgeResponseBody = noOutgoingEdgeResponse.readEntity(String.class);
     assertTrue(
-        noOutgoingEdgeResponseBody.contains("non-end node")
-            && noOutgoingEdgeResponseBody.contains("no outgoing edges"),
-        "Expected no outgoing edges error message, got: " + noOutgoingEdgeResponseBody);
+        noOutgoingEdgeResponseBody.contains("requires outgoing edges"),
+        "Expected requires outgoing edges error message, got: " + noOutgoingEdgeResponseBody);
     LOG.debug(
         "Non-end node without outgoing edges correctly rejected: {}", noOutgoingEdgeResponseBody);
 
@@ -4014,9 +4013,8 @@ public class WorkflowDefinitionResourceTest extends OpenMetadataApplicationTest 
     assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), endWithOutgoingResponse.getStatus());
     String endWithOutgoingResponseBody = endWithOutgoingResponse.readEntity(String.class);
     assertTrue(
-        endWithOutgoingResponseBody.contains("end event node")
-            && endWithOutgoingResponseBody.contains("with outgoing edges"),
-        "Expected end node with outgoing edges error message, got: " + endWithOutgoingResponseBody);
+        endWithOutgoingResponseBody.contains("cannot have outgoing edges"),
+        "Expected cannot have outgoing edges error message, got: " + endWithOutgoingResponseBody);
     LOG.debug("End node with outgoing edges correctly rejected: {}", endWithOutgoingResponseBody);
 
     LOG.info("test_WorkflowValidationEndpoint completed successfully");

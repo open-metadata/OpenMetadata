@@ -85,7 +85,6 @@ export const TABLE_DEFAULT_TABS = [
   EntityTabs.CUSTOM_PROPERTIES,
   EntityTabs.PROFILER,
   EntityTabs.LINEAGE,
-  EntityTabs.KNOWLEDGE_GRAPH,
   EntityTabs.TABLE_QUERIES,
   EntityTabs.SAMPLE_DATA,
   EntityTabs.SCHEMA,
@@ -204,6 +203,7 @@ export const DOMAIN_DEFAULT_TABS = [
   EntityTabs.DATA_PRODUCTS,
   EntityTabs.ASSETS,
   EntityTabs.CUSTOM_PROPERTIES,
+  EntityTabs.ACTIVITY_FEED,
 ];
 
 export const GLOSSARY_DEFAULT_TABS = [

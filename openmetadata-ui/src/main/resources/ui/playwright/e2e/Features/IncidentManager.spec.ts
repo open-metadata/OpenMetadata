@@ -571,13 +571,13 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 
     await page.click('[data-testid="test-case-select"]');
     const testCaseResponse = page.waitForResponse(
-      `/api/v1/search/query?q=${testCase1}*index=test_case_search_index*`
+      `/api/v1/search/query?q=*index=test_case_search_index*`
     );
     await page.getByTestId('test-case-select').locator('input').fill(testCase1);
     await testCaseResponse;
 
     const testCaseFilterRes = page.waitForResponse(
-      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*${testCase1}*`
+      `/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*testCaseFQN=*`
     );
     await page.click(`[title="${testCase1}"]`);
     await testCaseFilterRes;

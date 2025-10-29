@@ -37,6 +37,8 @@ public class DirectoryIndex implements SearchIndex {
     doc.putAll(commonAttributes);
     doc.put("tags", tags);
     doc.put("tier", parseTags.getTierTag());
+    doc.put("classificationTags", parseTags.getClassificationTags());
+    doc.put("glossaryTags", parseTags.getGlossaryTags());
     doc.put("serviceType", directory.getServiceType());
     doc.put("service", getEntityWithDisplayName(directory.getService()));
     doc.put("parent", getEntityWithDisplayName(directory.getParent()));

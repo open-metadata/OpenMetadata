@@ -54,7 +54,7 @@ export const ContractTab = () => {
     }
   };
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     if (contract?.id) {
       setIsDeleteModalVisible(true);
     }
