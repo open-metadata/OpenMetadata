@@ -39,12 +39,7 @@ import es.org.elasticsearch.index.query.QueryStringQueryBuilder;
 import es.org.elasticsearch.rest.RestStatus;
 import es.org.elasticsearch.search.SearchHit;
 import es.org.elasticsearch.search.SearchHits;
-import es.org.elasticsearch.search.aggregations.AggregationBuilders;
-import es.org.elasticsearch.search.aggregations.BucketOrder;
-import es.org.elasticsearch.search.aggregations.bucket.terms.IncludeExclude;
 import es.org.elasticsearch.search.aggregations.bucket.terms.Terms;
-import es.org.elasticsearch.search.aggregations.bucket.terms.TermsAggregationBuilder;
-import es.org.elasticsearch.search.aggregations.metrics.TopHitsAggregationBuilder;
 import es.org.elasticsearch.search.builder.SearchSourceBuilder;
 import es.org.elasticsearch.search.fetch.subphase.FetchSourceContext;
 import es.org.elasticsearch.search.sort.FieldSortBuilder;
@@ -59,6 +54,7 @@ import es.org.elasticsearch.xcontent.XContentType;
 import jakarta.json.JsonObject;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -105,7 +101,6 @@ import org.openmetadata.schema.entity.data.QueryCostSearchResult;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.search.SearchRequest;
-import org.openmetadata.schema.search.TopHits;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -124,11 +119,8 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
-import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregations;
-import org.openmetadata.service.search.elasticsearch.aggregations.ElasticAggregationsBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -163,6 +155,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
   private final ElasticSearchIndexManager indexManager;
   private final ElasticSearchEntityManager entityManager;
   private final ElasticSearchGenericManager genericManager;
+  private final ElasticSearchAggregationManager aggregationManager;
   private final ElasticSearchDataInsightAggregatorManager dataInsightAggregatorManager;
 
   private static final Set<String> FIELDS_TO_REMOVE =
@@ -208,6 +201,7 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     indexManager = new ElasticSearchIndexManager(newClient, clusterAlias);
     entityManager = new ElasticSearchEntityManager(newClient);
     genericManager = new ElasticSearchGenericManager(newClient);
+    aggregationManager = new ElasticSearchAggregationManager(newClient);
     dataInsightAggregatorManager = new ElasticSearchDataInsightAggregatorManager(newClient);
     nlqService = null;
   }
@@ -1364,165 +1358,20 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
 
   @Override
   public Response aggregate(AggregationRequest request) throws IOException {
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-
-    // Check if query is JSON format or simple search query
-    if (request.getQuery() != null && !request.getQuery().isEmpty()) {
-      // Try to parse as JSON first (for backward compatibility with filters)
-      if (request.getQuery().trim().startsWith("{")) {
-        buildSearchSourceFilter(request.getQuery(), searchSourceBuilder);
-      } else {
-        // Handle as a search query (including field:value syntax)
-        ElasticSearchSourceBuilderFactory searchBuilderFactory = getSearchBuilderFactory();
-        // Use getSearchSourceBuilder which properly handles field:value syntax
-        SearchSourceBuilder tempBuilder =
-            searchBuilderFactory.getSearchSourceBuilder(
-                request.getIndex(), request.getQuery(), 0, 10);
-        searchSourceBuilder.query(tempBuilder.query());
-      }
-    }
-
-    // Apply deleted filter if specified
-    if (request.getDeleted() != null) {
-      QueryBuilder currentQuery = searchSourceBuilder.query();
-      BoolQueryBuilder boolQuery = QueryBuilders.boolQuery();
-
-      if (currentQuery != null) {
-        boolQuery.must(currentQuery);
-      }
-      boolQuery.must(QueryBuilders.termQuery("deleted", request.getDeleted()));
-
-      searchSourceBuilder.query(boolQuery);
-    }
-
-    String aggregationField = request.getFieldName();
-    if (aggregationField == null || aggregationField.isBlank()) {
-      throw new IllegalArgumentException("Aggregation field (fieldName) cannot be null or empty");
-    }
-
-    int bucketSize = request.getSize();
-    String includeValue = request.getFieldValue().toLowerCase();
-
-    TermsAggregationBuilder termsAgg =
-        AggregationBuilders.terms(aggregationField)
-            .field(aggregationField)
-            .size(bucketSize)
-            .includeExclude(new IncludeExclude(includeValue, null))
-            .order(BucketOrder.key(true));
-
-    if (request.getSourceFields() != null && !request.getSourceFields().isEmpty()) {
-      request.setTopHits(Optional.ofNullable(request.getTopHits()).orElse(new TopHits()));
-
-      List<String> topHitFields = request.getSourceFields();
-
-      TopHitsAggregationBuilder topHitsAgg =
-          AggregationBuilders.topHits("top")
-              .size(request.getTopHits().getSize())
-              .fetchSource(topHitFields.toArray(new String[0]), null)
-              .trackScores(false);
-
-      termsAgg.subAggregation(topHitsAgg);
-    }
-
-    searchSourceBuilder.aggregation(termsAgg).size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    SearchResponse searchResponse =
-        client.search(
-            new es.org.elasticsearch.action.search.SearchRequest(
-                    Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-                .source(searchSourceBuilder),
-            RequestOptions.DEFAULT);
-
-    return Response.status(Response.Status.OK).entity(searchResponse.toString()).build();
+    return aggregationManager.aggregate(request);
   }
 
   @Override
   public DataQualityReport genericAggregation(
       String query, String index, SearchAggregation aggregationMetadata) throws IOException {
-    List<ElasticAggregations> aggregationBuilder =
-        ElasticAggregationsBuilder.buildAggregation(
-            aggregationMetadata.getAggregationTree(), null, new ArrayList<>());
-
-    // Create search request
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-
-    // Create search source builder
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    if (query != null) {
-      XContentParser queryParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-      es.org.elasticsearch.index.query.QueryBuilder parsedQuery =
-          SearchSourceBuilder.fromXContent(queryParser).query();
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery().must(parsedQuery);
-      searchSourceBuilder.query(boolQueryBuilder);
-    }
-    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    for (ElasticAggregations aggregation : aggregationBuilder) {
-      if (!aggregation.isPipelineAggregation()) {
-        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
-      } else {
-        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
-      }
-    }
-
-    searchRequest.source(searchSourceBuilder);
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
-    Optional<JsonObject> aggregationResults =
-        Optional.ofNullable(jsonResponse.getJsonObject("aggregations"));
-    return SearchIndexUtils.parseAggregationResults(
-        aggregationResults, aggregationMetadata.getAggregationMetadata());
+    return aggregationManager.genericAggregation(query, index, aggregationMetadata);
   }
 
   @Override
   public JsonObject aggregate(
       String query, String index, SearchAggregation searchAggregation, String filter)
       throws IOException {
-    if (searchAggregation == null) {
-      return null;
-    }
-
-    List<ElasticAggregations> aggregationBuilder =
-        ElasticAggregationsBuilder.buildAggregation(
-            searchAggregation.getAggregationTree(), null, new ArrayList<>());
-    es.org.elasticsearch.action.search.SearchRequest searchRequest =
-        new es.org.elasticsearch.action.search.SearchRequest(
-            Entity.getSearchRepository().getIndexOrAliasName(index));
-    SearchSourceBuilder searchSourceBuilder = new SearchSourceBuilder();
-    if (query != null) {
-      XContentParser queryParser =
-          XContentType.JSON
-              .xContent()
-              .createParser(EsUtils.esXContentRegistry, LoggingDeprecationHandler.INSTANCE, query);
-      es.org.elasticsearch.index.query.QueryBuilder parsedQuery =
-          SearchSourceBuilder.fromXContent(queryParser).query();
-      es.org.elasticsearch.index.query.BoolQueryBuilder boolQueryBuilder =
-          QueryBuilders.boolQuery().must(parsedQuery);
-      searchSourceBuilder.query(boolQueryBuilder);
-    }
-    getSearchFilter(filter, searchSourceBuilder);
-
-    searchSourceBuilder.size(0).timeout(new TimeValue(30, TimeUnit.SECONDS));
-
-    for (ElasticAggregations aggregation : aggregationBuilder) {
-      if (!aggregation.isPipelineAggregation()) {
-        searchSourceBuilder.aggregation(aggregation.getElasticAggregationBuilder());
-      } else {
-        searchSourceBuilder.aggregation(aggregation.getElasticPipelineAggregationBuilder());
-      }
-    }
-
-    searchRequest.source(searchSourceBuilder);
-
-    String response = client.search(searchRequest, RequestOptions.DEFAULT).toString();
-    JsonObject jsonResponse = JsonUtils.readJson(response).asJsonObject();
-    return jsonResponse.getJsonObject("aggregations");
+    return aggregationManager.aggregate(query, index, searchAggregation, filter);
   }
 
   @Override
@@ -1668,7 +1517,9 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
     entityManager.updateLineage(indexName, fieldAndValue, lineageData);
   }
 
-  /** */
+  /**
+   *
+   */
   @Override
   public void close() {}
 
@@ -1738,33 +1589,57 @@ public class ElasticSearchClient implements SearchClient<RestHighLevelClient> {
             RestClient.builder(
                 new HttpHost(esConfig.getHost(), esConfig.getPort(), esConfig.getScheme()));
 
-        if (StringUtils.isNotEmpty(esConfig.getUsername())
-            && StringUtils.isNotEmpty(esConfig.getPassword())) {
-          CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-          credentialsProvider.setCredentials(
-              AuthScope.ANY,
-              new UsernamePasswordCredentials(esConfig.getUsername(), esConfig.getPassword()));
-          SSLContext sslContext = createElasticSearchSSLContext(esConfig);
-          restClientBuilder.setHttpClientConfigCallback(
-              httpAsyncClientBuilder -> {
+        // Configure connection pooling
+        restClientBuilder.setHttpClientConfigCallback(
+            httpAsyncClientBuilder -> {
+              // Set connection pool sizes
+              if (esConfig.getMaxConnTotal() != null && esConfig.getMaxConnTotal() > 0) {
+                httpAsyncClientBuilder.setMaxConnTotal(esConfig.getMaxConnTotal());
+              }
+              if (esConfig.getMaxConnPerRoute() != null && esConfig.getMaxConnPerRoute() > 0) {
+                httpAsyncClientBuilder.setMaxConnPerRoute(esConfig.getMaxConnPerRoute());
+              }
+
+              // Configure authentication if provided
+              if (StringUtils.isNotEmpty(esConfig.getUsername())
+                  && StringUtils.isNotEmpty(esConfig.getPassword())) {
+                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(
+                    AuthScope.ANY,
+                    new UsernamePasswordCredentials(
+                        esConfig.getUsername(), esConfig.getPassword()));
                 httpAsyncClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
-                if (sslContext != null) {
-                  httpAsyncClientBuilder.setSSLContext(sslContext);
-                }
-                // Enable TCP keep alive strategy
-                if (esConfig.getKeepAliveTimeoutSecs() != null
-                    && esConfig.getKeepAliveTimeoutSecs() > 0) {
-                  httpAsyncClientBuilder.setKeepAliveStrategy(
-                      (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
-                }
-                return httpAsyncClientBuilder;
-              });
-        }
+              }
+
+              // Configure SSL if needed
+              SSLContext sslContext = null;
+              try {
+                sslContext = createElasticSearchSSLContext(esConfig);
+              } catch (KeyStoreException e) {
+                throw new RuntimeException(e);
+              }
+              if (sslContext != null) {
+                httpAsyncClientBuilder.setSSLContext(sslContext);
+              }
+
+              // Enable TCP keep alive strategy
+              if (esConfig.getKeepAliveTimeoutSecs() != null
+                  && esConfig.getKeepAliveTimeoutSecs() > 0) {
+                httpAsyncClientBuilder.setKeepAliveStrategy(
+                    (response, context) -> esConfig.getKeepAliveTimeoutSecs() * 1000);
+              }
+
+              return httpAsyncClientBuilder;
+            });
+
+        // Configure request timeouts
         restClientBuilder.setRequestConfigCallback(
             requestConfigBuilder ->
                 requestConfigBuilder
                     .setConnectTimeout(esConfig.getConnectionTimeoutSecs() * 1000)
                     .setSocketTimeout(esConfig.getSocketTimeoutSecs() * 1000));
+
+        // Enable compression for better network efficiency
         restClientBuilder.setCompressionEnabled(true);
 
         // Build client without default headers first to check version
