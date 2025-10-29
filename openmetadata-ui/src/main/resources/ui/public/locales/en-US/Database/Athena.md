@@ -200,3 +200,28 @@ The prefix of a data source refers to the first part of the data path that ident
 
 It's used to organize and categorize data within the container, and can help users easily locate and access the data they need.
 $$
+
+$$section
+### Connection Options $(id="connectionOptions")
+Additional connection options to build the URL that can be sent to service during the connection.
+$$
+
+$$section
+### Connection Arguments $(id="connectionArguments")
+Additional connection arguments such as security or protocol configs that can be sent to service during connection.
+$$
+
+$$section
+### Default Database Filter Pattern $(id="databaseFilterPattern")
+Regex to only include/exclude databases that matches the pattern.
+$$
+
+$$section
+### Default Schema Filter Pattern $(id="schemaFilterPattern")
+Regex to only include/exclude schemas that matches the pattern.
+$$
+
+$$section
+### Default Table Filter Pattern $(id="tableFilterPattern")
+Regex to only include/exclude tables that matches the pattern.
+$$
