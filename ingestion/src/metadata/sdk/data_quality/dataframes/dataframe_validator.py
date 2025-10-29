@@ -11,10 +11,17 @@
 
 """DataFrame validation API."""
 import warnings
-from typing import Callable, Iterable, List
+from typing import Any, Callable, Iterable, List, Optional, cast, final
 
 from pandas import DataFrame
 
+from metadata.data_quality.api.models import TestCaseDefinition
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testSuite import TestSuite
+from metadata.ingestion.ometa.ometa_api import OpenMetadata as OMeta
+from metadata.sdk import OpenMetadata
+from metadata.sdk import client as get_client
 from metadata.sdk.data_quality.dataframes.custom_warnings import WholeTableTestsWarning
 from metadata.sdk.data_quality.dataframes.dataframe_validation_engine import (
     DataFrameValidationEngine,
@@ -29,6 +36,7 @@ from metadata.sdk.data_quality.tests.base_tests import BaseTest
 ValidatorCallback = Callable[[DataFrame, ValidationResult], None]
 
 
+@final
 class DataFrameValidator:
     """Facade for DataFrame data quality validation.
 
@@ -45,8 +53,19 @@ class DataFrameValidator:
             print(f"Validation failed: {result.failures}")
     """
 
-    def __init__(self):
-        self._test_definitions: List[BaseTest] = []
+    def __init__(
+        self,
+        client: Optional[  # pyright: ignore[reportRedeclaration]
+            OMeta[Any, Any]
+        ] = None,
+    ):
+        self._test_definitions: List[TestCaseDefinition] = []
+
+        if client is None:
+            metadata: OpenMetadata = get_client()
+            client: OMeta[Any, Any] = metadata.ometa
+
+        self._client = client
 
     def add_test(self, test: BaseTest) -> None:
         """Add a single test definition to be executed.
@@ -54,7 +73,7 @@ class DataFrameValidator:
         Args:
             test: Test definition (e.g., ColumnValuesToBeNotNull)
         """
-        self._test_definitions.append(test)
+        self._test_definitions.append(test.to_test_case_definition())
 
     def add_tests(self, *tests: BaseTest) -> None:
         """Add multiple test definitions at once.
@@ -62,7 +81,45 @@ class DataFrameValidator:
         Args:
             *tests: Variable number of test definitions
         """
-        self._test_definitions.extend(tests)
+        self._test_definitions.extend(t.to_test_case_definition() for t in tests)
+
+    def add_openmetadata_test(self, test_fqn: str) -> None:
+        test_case = cast(
+            TestCase,
+            self._client.get_by_name(
+                TestCase,
+                test_fqn,
+                fields=["testDefinition", "testSuite"],
+                nullable=False,
+            ),
+        )
+
+        self._test_definitions.append(TestCaseDefinition.from_test_case(test_case))
+
+    def add_openmetadata_table_tests(self, table_fqn: str) -> None:
+        table = cast(
+            Table,
+            self._client.get_by_name(
+                Table, table_fqn, fields=["testSuite"], nullable=False
+            ),
+        )
+
+        if table.testSuite is None:
+            raise ValueError(f"Table {table_fqn!r} does not have a test suite to run")
+
+        test_case: TestSuite = cast(
+            TestSuite,
+            self._client.get_by_name(
+                TestSuite,
+                table.testSuite.fullyQualifiedName,  # pyright: ignore[reportArgumentType]
+                fields=["tests"],
+                nullable=False,
+            ),
+        )
+
+        for test in test_case.tests or []:
+            assert test.fullyQualifiedName is not None
+            self.add_openmetadata_test(test.fullyQualifiedName)
 
     def validate(
         self,
@@ -78,19 +135,14 @@ class DataFrameValidator:
         Returns:
             ValidationResult with outcomes for all tests
         """
-
-        test_case_definitions = [
-            test.to_test_case_definition() for test in self._test_definitions
-        ]
-
-        engine = DataFrameValidationEngine(test_case_definitions)
+        engine = DataFrameValidationEngine(self._test_definitions)
         return engine.execute(df, mode)
 
     def _check_full_table_tests_included(self) -> None:
-        test_names = {
-            test.test_definition_name
+        test_names: set[str] = {
+            test.testDefinitionName
             for test in self._test_definitions
-            if requires_whole_table(test.test_definition_name)
+            if requires_whole_table(test.testDefinitionName)
         }
 
         if not test_names:

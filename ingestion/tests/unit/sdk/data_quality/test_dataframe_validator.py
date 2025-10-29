@@ -11,6 +11,7 @@
 
 """Unit tests for DataFrame validator."""
 from typing import Generator, List, Tuple
+from unittest.mock import Mock
 
 import pandas as pd
 import pytest
@@ -35,19 +36,19 @@ class TestDataFrameValidator:
 
     def test_validator_initialization(self):
         """Test validator can be created."""
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         assert validator is not None
         assert validator._test_definitions == []
 
     def test_add_single_test(self):
         """Test adding a single test definition."""
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(ColumnValuesToBeNotNull(column="email"))
         assert len(validator._test_definitions) == 1
 
     def test_add_multiple_tests(self):
         """Test adding multiple test definitions at once."""
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_tests(
             ColumnValuesToBeNotNull(column="email"),
             ColumnValuesToBeUnique(column="id"),
@@ -62,7 +63,7 @@ class TestValidationSuccess:
     def test_validate_not_null_success(self):
         """Test validation passes with valid DataFrame."""
         df = pd.DataFrame({"email": ["a@b.com", "c@d.com", "e@f.com"]})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(ColumnValuesToBeNotNull(column="email"))
 
         result = validator.validate(df)
@@ -76,7 +77,7 @@ class TestValidationSuccess:
     def test_validate_unique_success(self):
         """Test uniqueness validation passes."""
         df = pd.DataFrame({"id": [1, 2, 3, 4, 5]})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(ColumnValuesToBeUnique(column="id"))
 
         result = validator.validate(df)
@@ -93,7 +94,7 @@ class TestValidationSuccess:
                 "age": [25, 30, 35],
             }
         )
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_tests(
             ColumnValuesToBeNotNull(column="email"),
             ColumnValuesToBeUnique(column="id"),
@@ -113,7 +114,7 @@ class TestValidationFailure:
     def test_validate_not_null_failure(self):
         """Test validation fails with null values."""
         df = pd.DataFrame({"email": ["a@b.com", None, "e@f.com"]})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(ColumnValuesToBeNotNull(column="email"))
 
         result = validator.validate(df)
@@ -126,7 +127,7 @@ class TestValidationFailure:
     def test_validate_unique_failure(self):
         """Test uniqueness validation fails with duplicates."""
         df = pd.DataFrame({"id": [1, 2, 2, 3]})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(ColumnValuesToBeUnique(column="id"))
 
         result = validator.validate(df)
@@ -137,7 +138,7 @@ class TestValidationFailure:
     def test_validate_row_count_failure(self):
         """Test row count validation fails."""
         df = pd.DataFrame({"col": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(TableRowCountToBeBetween(min_count=1, max_count=10))
 
         result = validator.validate(df)
@@ -156,7 +157,7 @@ class TestShortCircuitMode:
                 "email": [None, None, None],
             }
         )
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_tests(
             ColumnValuesToBeUnique(column="id"),
             ColumnValuesToBeNotNull(column="email"),
@@ -175,7 +176,7 @@ class TestShortCircuitMode:
                 "email": ["a@b.com", "c@d.com", "e@f.com"],
             }
         )
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_tests(
             ColumnValuesToBeUnique(column="id"),
             ColumnValuesToBeNotNull(column="email"),
@@ -198,7 +199,7 @@ class TestValidationResultProperties:
                 "email": ["a@b.com", "c@d.com", "e@f.com"],
             }
         )
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_tests(
             ColumnValuesToBeUnique(column="id"),
             ColumnValuesToBeNotNull(column="email"),
@@ -216,7 +217,7 @@ class TestValidationResultProperties:
                 "email": ["a@b.com", None, "e@f.com"],
             }
         )
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_tests(
             ColumnValuesToBeUnique(column="id"),
             ColumnValuesToBeNotNull(column="email"),
@@ -233,7 +234,7 @@ class TestEdgeCases:
     def test_empty_dataframe(self):
         """Test validation on empty DataFrame."""
         df = pd.DataFrame({"email": []})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(ColumnValuesToBeNotNull(column="email"))
 
         result = validator.validate(df)
@@ -243,7 +244,7 @@ class TestEdgeCases:
     def test_missing_column(self):
         """Test validation with missing column."""
         df = pd.DataFrame({"name": ["Alice", "Bob"]})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(ColumnValuesToBeNotNull(column="email"))
 
         result = validator.validate(df)
@@ -254,7 +255,7 @@ class TestEdgeCases:
     def test_no_tests_configured(self):
         """Test validation with no tests configured."""
         df = pd.DataFrame({"col": [1, 2, 3]})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
 
         result = validator.validate(df)
 
@@ -265,7 +266,7 @@ class TestEdgeCases:
     def test_execution_time_recorded(self):
         """Test that execution time is recorded."""
         df = pd.DataFrame({"col": [1, 2, 3]})
-        validator = DataFrameValidator()
+        validator = DataFrameValidator(Mock())
         validator.add_test(TableRowCountToBeBetween(min_count=1, max_count=10))
 
         result = validator.validate(df)
@@ -303,7 +304,7 @@ class TestValidatorRun:
 
     @pytest.fixture
     def validator(self) -> DataFrameValidator:
-        df_validator = DataFrameValidator()
+        df_validator = DataFrameValidator(Mock())
         df_validator.add_tests(
             ColumnValuesToBeNotNull(column="id"),
         )
