@@ -2865,7 +2865,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addDeleteFollower_200(TestInfo test) throws IOException {
+  protected void put_addDeleteFollower_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -2897,7 +2897,7 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
 
   @Test
   @Execution(ExecutionMode.CONCURRENT)
-  void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
+  protected void put_addFollowerDeleteEntity_200(TestInfo test) throws IOException {
     if (!supportsFollowers) {
       return; // Entity does not support following
     }
@@ -4401,18 +4401,10 @@ public abstract class EntityResourceTest<T extends EntityInterface, K extends Cr
         getResource(
             String.format(
                 "search/get/%s/doc/%s", indexMapping.getIndexName(null), entityId.toString()));
-    String result = TestUtils.get(target, String.class, ADMIN_AUTH_HEADERS);
-    GetResponse response = null;
-    try {
-      NamedXContentRegistry registry = new NamedXContentRegistry(getDefaultNamedXContents());
-      XContentParser parser =
-          JsonXContent.jsonXContent.createParser(
-              registry, DeprecationHandler.IGNORE_DEPRECATIONS, result);
-      response = GetResponse.fromXContent(parser);
-    } catch (Exception e) {
-      System.out.println("exception " + e);
-    }
-    return response.getSourceAsMap();
+
+    // Get the document directly as a Map from the REST API response
+    Map<String, Object> response = TestUtils.get(target, Map.class, ADMIN_AUTH_HEADERS);
+    return response;
   }
 
   @Test
