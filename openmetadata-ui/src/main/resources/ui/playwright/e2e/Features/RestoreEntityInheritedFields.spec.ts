@@ -75,7 +75,6 @@ entities.forEach((EntityClass) => {
     test('Validate restore with Inherited domain and data products assigned', async ({
       page,
     }) => {
-
       test.slow();
 
       await entity.visitEntityPage(page);

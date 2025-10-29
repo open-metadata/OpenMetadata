@@ -3,8 +3,8 @@ package org.openmetadata.service.search.opensearch;
 import static org.openmetadata.common.utils.CommonUtil.collectionOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
+import static org.openmetadata.service.search.SearchClient.DATA_ASSET_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
-import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchUtils.GRAPH_AGGREGATION;
 import static org.openmetadata.service.search.SearchUtils.buildDirectionToFqnSet;
 import static org.openmetadata.service.search.SearchUtils.getLineageDirection;
@@ -131,7 +131,7 @@ public class OSLineageGraphBuilder {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
-            GLOBAL_SEARCH_ALIAS,
+            DATA_ASSET_SEARCH_ALIAS,
             lineageRequest.getUpstreamDepth() == remainingDepth
                 ? null
                 : lineageRequest.getQueryFilter(),
@@ -218,7 +218,7 @@ public class OSLineageGraphBuilder {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
-            GLOBAL_SEARCH_ALIAS,
+            DATA_ASSET_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             GRAPH_AGGREGATION,
             directionKeyAndValues,
@@ -321,7 +321,6 @@ public class OSLineageGraphBuilder {
           getDownstreamLineage(
               lineageRequest
                   .withDirection(LineageDirection.DOWNSTREAM)
-                  .withDownstreamDepth(lineageRequest.getDownstreamDepth() + 1)
                   .withDirectionValue(
                       getLineageDirection(
                           lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
@@ -376,7 +375,6 @@ public class OSLineageGraphBuilder {
             getDownstreamLineage(
                 lineageRequest
                     .withDirection(LineageDirection.DOWNSTREAM)
-                    .withDownstreamDepth(lineageRequest.getDownstreamDepth() + 1)
                     .withDirectionValue(
                         getLineageDirection(
                             lineageRequest.getDirection(), lineageRequest.getIsConnectedVia())));
@@ -399,7 +397,7 @@ public class OSLineageGraphBuilder {
     Map<String, Object> rootEntityMap =
         OsUtils.searchEntityByKey(
             null,
-            GLOBAL_SEARCH_ALIAS,
+            DATA_ASSET_SEARCH_ALIAS,
             FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
             Pair.of(FullyQualifiedName.buildHash(lineageRequest.getFqn()), lineageRequest.getFqn()),
             SOURCE_FIELDS_TO_EXCLUDE);
@@ -428,7 +426,7 @@ public class OSLineageGraphBuilder {
     os.org.opensearch.action.search.SearchRequest searchRequest =
         getSearchRequest(
             LineageDirection.DOWNSTREAM,
-            GLOBAL_SEARCH_ALIAS,
+            DATA_ASSET_SEARCH_ALIAS,
             lineageRequest.getQueryFilter(),
             GRAPH_AGGREGATION,
             directionKeyAndValues,
@@ -619,7 +617,7 @@ public class OSLineageGraphBuilder {
       os.org.opensearch.action.search.SearchRequest searchRequest =
           getSearchRequest(
               direction,
-              GLOBAL_SEARCH_ALIAS,
+              DATA_ASSET_SEARCH_ALIAS,
               depth == 0 ? null : queryFilter,
               GRAPH_AGGREGATION,
               directionKeyAndValues,
@@ -688,7 +686,7 @@ public class OSLineageGraphBuilder {
       os.org.opensearch.action.search.SearchRequest searchRequest =
           getSearchRequest(
               direction,
-              GLOBAL_SEARCH_ALIAS,
+              DATA_ASSET_SEARCH_ALIAS,
               queryFilter,
               GRAPH_AGGREGATION,
               directionKeyAndValues,
@@ -735,7 +733,7 @@ public class OSLineageGraphBuilder {
       Map<String, Object> entityDoc =
           OsUtils.searchEntityByKey(
               null,
-              GLOBAL_SEARCH_ALIAS,
+              DATA_ASSET_SEARCH_ALIAS,
               FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
               Pair.of(FullyQualifiedName.buildHash(entityFqn), entityFqn),
               SOURCE_FIELDS_TO_EXCLUDE);
@@ -836,7 +834,7 @@ public class OSLineageGraphBuilder {
       SearchRequest searchRequest =
           getSearchRequest(
               request.getDirection(),
-              GLOBAL_SEARCH_ALIAS,
+              DATA_ASSET_SEARCH_ALIAS,
               depth == 0 ? null : request.getQueryFilter(),
               GRAPH_AGGREGATION,
               directionKeyAndValues,

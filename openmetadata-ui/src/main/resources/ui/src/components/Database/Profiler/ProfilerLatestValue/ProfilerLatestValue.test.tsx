@@ -14,6 +14,7 @@
 import { render, screen } from '@testing-library/react';
 import { act } from 'react-test-renderer';
 import { INITIAL_ROW_METRIC_VALUE } from '../../../../constants/profiler.constant';
+import '../../../../test/unit/mocks/mui.mock';
 import { ProfilerLatestValueProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerLatestValue from './ProfilerLatestValue';
 
@@ -69,7 +70,7 @@ describe('ProfilerLatestValue component test', () => {
     const container = screen.queryByTestId('data-summary-container');
     const title = screen.queryByTestId('title');
 
-    expect(container).not.toBeInTheDocument();
+    expect(container).toBeInTheDocument();
     expect(title).not.toBeInTheDocument();
   });
 });
