@@ -14,7 +14,6 @@ import { Typography } from 'antd';
 import { AxiosError } from 'axios';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
 import {
@@ -135,17 +134,19 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
 
   const renderEditingState = () => (
     <div className="inline-edit-container">
-      <TagSelectForm
-        defaultValue={editingGlossaryTerms.map((term) => term.tagFQN)}
-        fetchApi={fetchGlossaryList}
-        key={`glossary-terms-${entityId}`}
-        placeholder={t('label.add-a-entity', {
-          entity: t('label.glossary-term'),
-        })}
-        tagType={TagSource.Glossary}
-        onCancel={handleCancel}
-        onSubmit={handleGlossaryTermSelection}
-      />
+      <div className="glossary-term-selector">
+        <TagSelectForm
+          defaultValue={editingGlossaryTerms.map((term) => term.tagFQN)}
+          fetchApi={fetchGlossaryList}
+          key={`glossary-terms-${entityId}`}
+          placeholder={t('label.add-a-entity', {
+            entity: t('label.glossary-term'),
+          })}
+          tagType={TagSource.Glossary}
+          onCancel={handleCancel}
+          onSubmit={handleGlossaryTermSelection}
+        />
+      </div>
     </div>
   );
 
@@ -228,16 +229,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
               <EditIcon />
             </button>
           )}
-          {isEditing && !isLoading && (
-            <div className="edit-actions">
-              <button
-                className="cancel-icon"
-                type="button"
-                onClick={handleCancel}>
-                <CloseIcon />
-              </button>
-            </div>
-          )}
         </div>
         <div
           className="glossary-terms-content"
@@ -260,16 +251,6 @@ const GlossaryTermsSection: React.FC<GlossaryTermsSectionProps> = ({
           <button className="edit-icon" type="button" onClick={handleEditClick}>
             <EditIcon />
           </button>
-        )}
-        {isEditing && !isLoading && (
-          <div className="edit-actions">
-            <button
-              className="cancel-icon"
-              type="button"
-              onClick={handleCancel}>
-              <CloseIcon />
-            </button>
-          </div>
         )}
       </div>
       <div className="glossary-terms-content" data-testid="glossary-container">

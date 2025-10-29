@@ -224,8 +224,6 @@ describe('GlossaryTermsSection', () => {
       // enter edit
       clickHeaderEdit();
 
-      // edit-actions visible
-      expect(document.querySelector('.edit-actions')).toBeInTheDocument();
       // form visible with default values
       expect(screen.getByTestId('tag-select-form')).toHaveAttribute(
         'data-default',

@@ -16,7 +16,6 @@ import { compare } from 'fast-json-patch';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as ClassificationIcon } from '../../../assets/svg/classification.svg';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -276,16 +275,6 @@ const TagsSection: React.FC<TagsSectionProps> = ({
               <EditIcon />
             </span>
           )}
-          {isEditing && !isLoading && (
-            <div className="edit-actions">
-              <span
-                className="cancel-icon"
-                data-testid="close-icon"
-                onClick={handleCancel}>
-                <CloseIcon />
-              </span>
-            </div>
-          )}
         </div>
         <div className="tags-content">
           {isLoading ? (
@@ -297,6 +286,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
           ) : isEditing ? (
             <div className="inline-edit-container">
               <AsyncSelectList
+                newLook
                 open
                 className="tag-selector"
                 fetchOptions={tagClassBase.getTags}
@@ -306,6 +296,7 @@ const TagsSection: React.FC<TagsSectionProps> = ({
                   entity: t('label.tag'),
                 })}
                 value={editingTags.map((tag) => tag.name)}
+                onCancel={handleCancel}
                 onChange={handleTagSelection}
               />
             </div>
@@ -332,16 +323,6 @@ const TagsSection: React.FC<TagsSectionProps> = ({
             onClick={handleEditClick}>
             <EditIcon />
           </span>
-        )}
-        {isEditing && !isLoading && (
-          <div className="edit-actions">
-            <span
-              className="cancel-icon"
-              data-testid="close-icon"
-              onClick={handleCancel}>
-              <CloseIcon />
-            </span>
-          </div>
         )}
       </div>
       <div className="tags-content">

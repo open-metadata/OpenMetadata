@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 @import (reference) '../../../styles/variables.less';
-.edit-icon,
-.cancel-icon {
+.edit-icon {
   cursor: pointer;
   height: 20px;
 }
@@ -32,11 +31,6 @@
       font-size: 13px;
       color: @grey-900;
     }
-
-    .edit-actions {
-      display: flex;
-      gap: 8px;
-    }
   }
 
   .tags-content {
@@ -54,7 +48,7 @@
         .ant-select-selector {
           min-height: 40px !important;
           border-radius: 6px !important;
-          border: 1px solid #1890ff !important;
+          border: 1px solid @grey-22 !important;
           background-color: @white !important;
           padding: 4px 8px !important;
         }

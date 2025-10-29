@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { ReactComponent as DataProductIcon } from '../../../assets/svg/ic-data-product.svg';
 import { EntityType } from '../../../enums/entity.enum';
@@ -190,17 +189,19 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
 
   const renderEditingState = () => (
     <div className="inline-edit-container">
-      <DataProductsSelectList
-        open
-        defaultValue={(dataProducts || []).map(
-          (item) => item?.fullyQualifiedName ?? ''
-        )}
-        fetchOptions={fetchAPI}
-        mode="multiple"
-        placeholder={t('label.data-product-plural')}
-        onCancel={handleCancel}
-        onSubmit={handleSaveWithDataProducts}
-      />
+      <div className="data-products-selector">
+        <DataProductsSelectList
+          open
+          defaultValue={(dataProducts || []).map(
+            (item) => item?.fullyQualifiedName ?? ''
+          )}
+          fetchOptions={fetchAPI}
+          mode="multiple"
+          placeholder={t('label.data-product-plural')}
+          onCancel={handleCancel}
+          onSubmit={handleSaveWithDataProducts}
+        />
+      </div>
     </div>
   );
 
@@ -293,16 +294,6 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
                 <EditIcon />
               </button>
             )}
-          {isEditing && !isLoading && (
-            <div className="edit-actions">
-              <button
-                className="cancel-icon"
-                type="button"
-                onClick={handleCancel}>
-                <CloseIcon />
-              </button>
-            </div>
-          )}
         </div>
         <div className="data-products-content">{renderEmptyContent()}</div>
       </div>
@@ -328,16 +319,6 @@ const DataProductsSection: React.FC<DataProductsSectionProps> = ({
               <EditIcon />
             </button>
           )}
-        {isEditing && !isLoading && (
-          <div className="edit-actions">
-            <button
-              className="cancel-icon"
-              type="button"
-              onClick={handleCancel}>
-              <CloseIcon />
-            </button>
-          </div>
-        )}
       </div>
       <div className="data-products-content">{renderDataProductsContent()}</div>
     </div>

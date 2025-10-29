@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
@@ -182,12 +181,6 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
     [entityId, entityType, owners, onOwnerUpdate, t]
   );
 
-  const handleCancel = () => {
-    setEditingOwners(owners);
-    setIsEditing(false);
-    setPopoverOpen(false);
-  };
-
   const handleOwnerSelection = async (selectedOwners?: EntityReference[]) => {
     const ownersToSave = selectedOwners ?? [];
     setEditingOwners(ownersToSave);
@@ -299,13 +292,6 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
               <EditIcon />
             </span>
           )}
-          {isEditing && !isLoading && (
-            <div className="edit-actions">
-              <span className="cancel-icon" onClick={handleCancel}>
-                <CloseIcon />
-              </span>
-            </div>
-          )}
         </div>
         <div className="owners-content">{renderEmptyContent()}</div>
       </div>
@@ -322,13 +308,6 @@ const OwnersSection: React.FC<OwnersSectionProps> = ({
           <span className="edit-icon" onClick={handleEditClick}>
             <EditIcon />
           </span>
-        )}
-        {isEditing && !isLoading && (
-          <div className="edit-actions">
-            <span className="cancel-icon" onClick={handleCancel}>
-              <CloseIcon />
-            </span>
-          </div>
         )}
       </div>
       <div className="owners-content">{renderOwnersContent()}</div>

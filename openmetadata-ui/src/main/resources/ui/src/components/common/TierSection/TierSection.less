@@ -22,8 +22,7 @@
     padding-right: 16px;
   }
 }
-.edit-icon,
-.cancel-icon {
+.edit-icon {
   cursor: pointer;
   height: 20px;
 }
@@ -44,22 +43,6 @@
       font-size: 14px;
       font-weight: 600;
       color: @grey-900;
-    }
-
-    .edit-actions {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-
-      .cancel-icon {
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 4px;
-        border-radius: 4px;
-        transition: background-color 0.2s;
-      }
     }
   }
 
@@ -82,12 +65,12 @@
 
     .inline-edit-container {
       .tier-selector-display {
-        cursor: pointer;
-        padding: 8px;
-        border: 1px solid @grey-300;
-        border-radius: 6px;
-        background-color: @white;
-        transition: border-color 0.2s;
+        align-content: center;
+        min-height: 40px !important;
+        border-radius: 6px !important;
+        border: 1px solid @grey-22 !important;
+        background-color: @white !important;
+        padding: 4px 2px !important;
       }
     }
 

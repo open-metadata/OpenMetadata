@@ -44,10 +44,6 @@ jest.mock('../../../assets/svg/edit.svg', () => ({
   ReactComponent: () => <div data-testid="edit-icon">EditIcon</div>,
 }));
 
-jest.mock('../../../assets/svg/close-icon.svg', () => ({
-  ReactComponent: () => <div data-testid="close-icon">CloseIcon</div>,
-}));
-
 // Mock OwnerLabel
 jest.mock('../OwnerLabel/OwnerLabel.component', () => ({
   OwnerLabel: jest
@@ -217,23 +213,6 @@ describe('OwnersSection', () => {
       expect(
         screen.getByText('Alice', { selector: '.owner-name' })
       ).toBeInTheDocument();
-    });
-
-    it('should exit edit mode on cancel', () => {
-      const { container } = render(
-        <OwnersSection {...(defaultProps as any)} />
-      );
-
-      const editIcon = container.querySelector('.edit-icon');
-      fireEvent.click(editIcon!);
-
-      const cancelIcon = container.querySelector('.cancel-icon');
-      fireEvent.click(cancelIcon!);
-
-      expect(
-        screen.queryByTestId('user-selectable-list')
-      ).not.toBeInTheDocument();
-      expect(screen.getByTestId('owner-label')).toBeInTheDocument();
     });
   });
 

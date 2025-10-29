@@ -396,7 +396,6 @@ describe('TagsSection', () => {
       clickEditControl();
 
       expect(screen.getByTestId('async-select-list')).toBeInTheDocument();
-      expect(screen.getByTestId('close-icon')).toBeInTheDocument();
       expect(screen.queryByTestId('edit-icon-tags')).not.toBeInTheDocument();
     });
 
@@ -409,28 +408,6 @@ describe('TagsSection', () => {
 
       expect(asyncSelectList).toBeInTheDocument();
       expect(asyncSelectList).toHaveClass('tag-selector');
-    });
-
-    it('should show cancel button in edit mode', () => {
-      render(<TagsSection {...defaultProps} />);
-
-      clickEditControl();
-
-      expect(screen.getByTestId('close-icon')).toBeInTheDocument();
-    });
-
-    it('should exit edit mode when cancel button is clicked', () => {
-      render(<TagsSection {...defaultProps} />);
-
-      // Enter edit mode
-      clickEditControl();
-
-      // Exit edit mode
-      const cancelButton = screen.getByTestId('close-icon');
-      fireEvent.click(cancelButton);
-
-      expect(screen.getByTestId('edit-icon-tags')).toBeInTheDocument();
-      expect(screen.queryByTestId('async-select-list')).not.toBeInTheDocument();
     });
   });
 

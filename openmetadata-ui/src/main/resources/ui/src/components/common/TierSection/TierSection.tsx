@@ -15,7 +15,6 @@ import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CloseIcon } from '../../../assets/svg/close-icon.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit.svg';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
@@ -221,13 +220,6 @@ const TierSection: React.FC<TierSectionProps> = ({
             onClick={handleEditClick}>
             <EditIcon />
           </span>
-        )}
-        {isEditing && !isLoading && (
-          <div className="edit-actions">
-            <span className="cancel-icon" onClick={handleCancel}>
-              <CloseIcon />
-            </span>
-          </div>
         )}
       </div>
       <div className="tier-content">
