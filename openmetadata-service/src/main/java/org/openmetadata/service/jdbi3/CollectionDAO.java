@@ -4434,7 +4434,7 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash) AND tu.state = 1",
+                    + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
@@ -4446,7 +4446,7 @@ public interface CollectionDAO {
                 + "FROM tag_usage tu "
                 + "LEFT JOIN glossary_term_entity gterm ON tu.source = 1 AND gterm.fqnHash = tu.tagFQNHash "
                 + "LEFT JOIN tag ta ON tu.source = 0 AND ta.fqnHash = tu.tagFQNHash "
-                + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash) AND tu.state = 1",
+                    + "WHERE tu.targetfqnhash_lower LIKE LOWER(:targetFQNHash)",
         connectionType = POSTGRES)
     @RegisterRowMapper(TagLabelRowMapperWithTargetFqnHash.class)
     List<Pair<String, TagLabel>> getTagsInternalByPrefix(
